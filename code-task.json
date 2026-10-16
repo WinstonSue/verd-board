@@ -1,0 +1,12 @@
+{
+  "agent": {
+    "name": "cursor",
+    "model": "auto"
+  },
+  "review": {
+    "agent": {
+      "name": "claude",
+      "model": "deepseek-flash"
+    }
+  }
+}

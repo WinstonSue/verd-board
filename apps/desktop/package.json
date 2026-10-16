@@ -1,0 +1,68 @@
+{
+  "name": "desktop",
+  "version": "0.0.1",
+  "private": true,
+  "main": "dist-electron/main.js",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "build:dir": "tsc && vite build && electron-builder --dir",
+    "preview": "vite preview",
+    "lint": "eslint .",
+    "test": "vitest run --passWithNoTests && node --test architecture/generate.test.mjs",
+    "generate-architecture": "node architecture/generate.mjs"
+  },
+  "dependencies": {
+    "@sue/verd-board-app": "workspace:*",
+    "@sue/verd-board-ui": "workspace:*",
+    "@sue/board-react": "workspace:*",
+    "@sue/board-react-text": "workspace:*",
+    "@sue/board-react-workflow": "workspace:*",
+    "@sue/board-workflow": "workspace:*",
+    "react": "19.2.0",
+    "react-dom": "19.2.0"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^4.2.0",
+    "eslint": "^9.22.0",
+    "vite": "^6.2.2",
+    "vite-plugin-electron": "^0.28.0",
+    "vite-plugin-electron-renderer": "^0.14.0",
+    "vitest": "^3.0.8",
+    "@types/react": "19.2.2",
+    "@types/react-dom": "19.2.2",
+    "typescript": "^6.0.3",
+    "electron": "^28.0.0",
+    "electron-builder": "^24.9.1"
+  },
+  "build": {
+    "appId": "com.verdboard.desktop",
+    "productName": "VerdBoard",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**/*",
+      "dist-electron/**/*"
+    ],
+    "mac": {
+      "target": [
+        "dmg",
+        "zip"
+      ],
+      "category": "public.app-category.graphics-design"
+    },
+    "win": {
+      "target": [
+        "nsis",
+        "zip"
+      ]
+    },
+    "linux": {
+      "target": [
+        "AppImage",
+        "deb"
+      ]
+    }
+  }
+}

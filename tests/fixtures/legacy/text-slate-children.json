@@ -1,0 +1,7 @@
+{
+  "type": "line",
+  "children": [
+    { "text": "Bold ", "bold": true },
+    { "text": "and italic", "italic": true }
+  ]
+}

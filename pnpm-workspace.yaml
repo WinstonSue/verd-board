@@ -1,0 +1,23 @@
+packages:
+  - 'apps/*'
+  - 'packages/engine/*'
+  - 'packages/react/*'
+  - 'packages/converters/*'
+  - 'packages/product/*'
+  - 'tests/*'
+allowBuilds:
+  '@parcel/watcher': true
+  '@swc/core': true
+  electron: true
+  esbuild: true
+confirmModulesPurge: false
+minimumReleaseAgeExclude:
+  - '@ylib/ai-config-manager@1.0.0-beta.0'
+publicHoistPattern:
+  - '*eslint*'
+  - prettier
+overrides:
+  react: 19.2.0
+  react-dom: 19.2.0
+  '@tiptap/core': 3.31.3
+  '@tiptap/pm': 3.31.3

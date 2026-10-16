@@ -1,0 +1,10 @@
+export const BASE = 4;
+export const PRIMARY_COLOR = '#6698FF';
+export const RESIZE_HANDLE_DIAMETER = 9;
+export const WithTextPluginKey = 'board-text';
+export const DEFAULT_ROUTE_MARGIN = 30;
+export const TRANSPARENT = 'transparent';
+export const ROTATE_HANDLE_DISTANCE_TO_ELEMENT = 4;
+export const ROTATE_HANDLE_SIZE = 18;
+export const DEFAULT_FONT_FAMILY = `'Source Han Sans SC', 'Source Han Sans CN', 'Noto Sans CJK SC', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'PingFang SC', 'Microsoft Yahei', 'Hiragino Sans GB', Arial, sans-serif`;
+export const DEFAULT_FILL = 'none';

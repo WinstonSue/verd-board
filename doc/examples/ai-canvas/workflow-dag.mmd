@@ -1,0 +1,8 @@
+flowchart LR
+  %% verd:{"positions":{"start":{"x":60,"y":140},"submit":{"x":260,"y":140},"stock":{"x":500,"y":120},"ship":{"x":700,"y":80},"notify":{"x":700,"y":220},"done":{"x":700,"y":320}}}
+  start([开始]) --> submit[提交订单]
+  submit --> stock{库存充足?}
+  stock -->|有货| ship[安排发货]
+  stock -->|缺货| notify[通知补货]
+  ship --> done[完成]
+  notify --> done

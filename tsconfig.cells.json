@@ -1,0 +1,35 @@
+{
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "jsx": "react-jsx",
+    "noEmit": true,
+    "types": [
+      "vite/client",
+      "node"
+    ]
+  },
+  "include": [
+    "packages/engine/core/src/cell/**/*.ts",
+    "packages/engine/core/src/geometry/**/*.ts",
+    "packages/engine/architecture/src/cell-*.ts",
+    "packages/engine/workflow/src/cell-*.ts",
+    "packages/engine/mind/src/cell-*.ts",
+    "packages/react/board/src/frame-canvas.tsx",
+    "packages/product/app/src/frames/workspace-storage.ts",
+    "packages/product/app/src/migration/cell-workspace.ts",
+    "packages/engine/draw/src/cell-utils.ts",
+    "packages/react/mind/src/frame-extension.ts",
+    "packages/react/workflow/src/frame-extension.ts",
+    "packages/react/architecture/src/frame-extension.ts",
+    "packages/product/app/src/verd-board-app.tsx",
+    "packages/product/ui/src/verd-frame.tsx",
+    "apps/web/src/app/harness.tsx",
+    "tests/consumer/src/main.ts",
+    "packages/converters/markdown-to-board/src/index.ts",
+    "packages/converters/mermaid-to-board/src/index.ts"
+  ],
+  "exclude": [
+    "**/*.spec.ts",
+    "**/*.spec.tsx"
+  ]
+}

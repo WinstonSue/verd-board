@@ -1,0 +1,447 @@
+import { Translations } from '../types';
+
+const enTranslations: Translations = {
+  'arrange.fitContent': 'Fit size to content',
+  'settings.mind': 'Mind maps',
+  'settings.mindMaxWidth': 'Default Mind maximum width',
+  'settings.mindMaxWidthDescription':
+    'Outer width: 80–2000 canvas units; default 240. Long content wraps with unlimited height. Each map can override this default.',
+  'settings.resetMindWidth': 'Reset default width',
+  'mind.maxNodeWidth': 'Maximum node width',
+  'mind.widthMode': 'Maximum width source',
+  'mind.followDefault': 'Follow application default',
+  'mind.customWidth': 'Custom width',
+  'mind.effectiveWidth': 'Effective maximum width',
+  'arrange.title': 'Arrange',
+  'arrange.left': 'Align left',
+  'arrange.center': 'Align horizontal centers',
+  'arrange.right': 'Align right',
+  'arrange.top': 'Align top',
+  'arrange.middle': 'Align vertical centers',
+  'arrange.bottom': 'Align bottom',
+  'arrange.distributeHorizontal': 'Distribute horizontally',
+  'arrange.distributeVertical': 'Distribute vertically',
+  'arrange.group': 'Group',
+  'arrange.ungroup': 'Ungroup',
+  'arrange.lock': 'Lock',
+  'arrange.unlock': 'Unlock',
+  'arrange.layout': 'Auto layout style',
+  'arrange.apply': 'Auto layout',
+  'arrange.grid': 'Grid',
+  'arrange.horizontal': 'Horizontal',
+  'arrange.vertical': 'Vertical',
+  'arrange.flow': 'By flow hierarchy',
+  'arrange.layers': 'By architecture layer',
+  'arrange.cycle':
+    'Grouped connections contain a cycle; hierarchy layout is unavailable',
+  'arrange.crossLayer':
+    'A group crosses architecture layers; layer layout is unavailable',
+  'arrange.currentScope':
+    'Arrange the selection, or the current Frame’s direct objects when nothing is selected',
+  'settings.smartGuides': 'Smart guides',
+  'settings.smartGuidesDescription':
+    'Snap to object edges and centers while dragging. Hold Alt to bypass snapping.',
+
+  // Toolbar items
+  'toolbar.hand': 'Hand — H',
+  'toolbar.selection': 'Selection — V',
+  'toolbar.mind': 'Mind Map',
+  'toolbar.architecture': 'Architecture',
+  'toolbar.text': 'Text — T',
+  'toolbar.arrow': 'Arrow — A',
+  'toolbar.shape': 'Shape',
+  'toolbar.image': 'Image — Cmd+U',
+
+  'toolbar.pen': 'Pen — P',
+  'toolbar.eraser': 'Eraser — E',
+
+  'toolbar.arrow.straight': 'Straight Arrow Line',
+  'toolbar.arrow.elbow': 'Elbow Arrow Line',
+  'toolbar.arrow.curve': 'Curve Arrow Line',
+
+  'toolbar.shape.rectangle': 'Rectangle — R',
+  'toolbar.shape.ellipse': 'Ellipse — O',
+  'toolbar.shape.triangle': 'Triangle',
+  'toolbar.shape.terminal': 'Terminal',
+  'toolbar.shape.diamond': 'Diamond',
+  'toolbar.shape.parallelogram': 'Parallelogram',
+  'toolbar.shape.roundRectangle': 'Round Rectangle',
+
+  // Shape names
+  'shape.name.rectangle': 'Rectangle',
+  'shape.name.roundRectangle': 'Rounded Rectangle',
+  'shape.name.ellipse': 'Ellipse',
+  'shape.name.diamond': 'Diamond',
+  'shape.name.triangle': 'Triangle',
+  'shape.name.parallelogram': 'Parallelogram',
+  'shape.name.trapezoid': 'Trapezoid',
+  'shape.name.leftArrow': 'Left Arrow',
+  'shape.name.rightArrow': 'Right Arrow',
+  'shape.name.cross': 'Cross',
+  'shape.name.star': 'Star',
+  'shape.name.pentagon': 'Pentagon',
+  'shape.name.hexagon': 'Hexagon',
+  'shape.name.octagon': 'Octagon',
+  'shape.name.pentagonArrow': 'Pentagon Arrow',
+  'shape.name.processArrow': 'Process Arrow',
+  'shape.name.twoWayArrow': 'Two-way Arrow',
+  'shape.name.comment': 'Callout',
+  'shape.name.roundComment': 'Rounded Callout',
+  'shape.name.cloud': 'Cloud',
+  'shape.name.process': 'Process',
+  'shape.name.decision': 'Decision',
+  'shape.name.data': 'Data',
+  'shape.name.connector': 'Connector',
+  'shape.name.terminal': 'Terminal',
+  'shape.name.manualInput': 'Manual Input',
+  'shape.name.preparation': 'Preparation',
+  'shape.name.manualLoop': 'Manual Loop',
+  'shape.name.merge': 'Merge',
+  'shape.name.delay': 'Delay',
+  'shape.name.storedData': 'Stored Data',
+  'shape.name.or': 'Or',
+  'shape.name.summingJunction': 'Summing Junction',
+  'shape.name.predefinedProcess': 'Predefined Process',
+  'shape.name.offPage': 'Off-page Connector',
+  'shape.name.document': 'Document',
+  'shape.name.multiDocument': 'Multiple Documents',
+  'shape.name.database': 'Database',
+  'shape.name.hardDisk': 'Hard Disk',
+  'shape.name.internalStorage': 'Internal Storage',
+  'shape.name.noteCurlyRight': 'Right Brace Note',
+  'shape.name.noteCurlyLeft': 'Left Brace Note',
+  'shape.name.noteSquare': 'Bracket Note',
+  'shape.name.display': 'Display',
+  'shape.name.actor': 'Actor',
+  'shape.name.useCase': 'Use Case',
+  'shape.name.container': 'Container',
+  'shape.name.note': 'Note',
+  'shape.name.simpleClass': 'Simple Class',
+  'shape.name.activityClass': 'Activity Class',
+  'shape.name.branchMerge': 'Branch Merge',
+  'shape.name.port': 'Port',
+  'shape.name.package': 'Package',
+  'shape.name.combinedFragment': 'Combined Fragment',
+  'shape.name.class': 'Class',
+  'shape.name.interface': 'Interface',
+  'shape.name.object': 'Object',
+  'shape.name.component': 'Component',
+  'shape.name.componentBox': 'Component Box',
+  'shape.name.template': 'Template',
+  'shape.name.activation': 'Activation',
+  'shape.name.deletion': 'Destruction',
+  'shape.name.assembly': 'Assembly',
+  'shape.name.providedInterface': 'Provided Interface',
+  'shape.name.requiredInterface': 'Required Interface',
+
+  // Zoom controls
+  'zoom.in': 'Zoom In — Cmd++',
+  'zoom.out': 'Zoom Out — Cmd+-',
+  'zoom.fit': 'Fit to Screen',
+  'zoom.100': 'Zoom to 100%',
+
+  // Themes
+  'theme.default': 'Default',
+  'theme.colorful': 'Colorful',
+  'theme.soft': 'Soft',
+  'theme.retro': 'Retro',
+  'theme.dark': 'Dark',
+  'theme.starry': 'Starry',
+
+  // Colors
+  'color.none': 'Topic Color',
+  'color.unknown': 'Other Color',
+  'color.default': 'Basic Black',
+  'color.white': 'White',
+  'color.gray': 'Grey',
+  'color.deepBlue': 'Deep Blue',
+  'color.red': 'Red',
+  'color.green': 'Green',
+  'color.yellow': 'Yellow',
+  'color.purple': 'Purple',
+  'color.orange': 'Orange',
+  'color.pastelPink': 'Paster Pink',
+  'color.cyan': 'Cyan',
+  'color.brown': 'Brown',
+  'color.forestGreen': 'Forest Green',
+  'color.lightGray': 'Light Grey',
+
+  // General
+  'general.undo': 'Undo',
+  'general.redo': 'Redo',
+  'general.menu': 'App Menu',
+  'general.duplicate': 'Duplicate',
+  'general.delete': 'Delete',
+  'general.more': 'More',
+  'general.cut': 'Cut',
+  'general.copy': 'Copy',
+  'layer.order': 'Layer',
+  'layer.moveUp': 'Bring forward',
+  'layer.moveDown': 'Send backward',
+  'layer.toTop': 'Bring to front',
+  'layer.toBottom': 'Send to back',
+
+  'settings.title': 'Settings',
+  'settings.back': 'Back to canvas',
+  'settings.general': 'General',
+  'settings.interaction': 'Canvas interaction',
+  'settings.interactionDescription':
+    'Applies immediately to all canvases on this device.',
+  'settings.zoomSensitivity': 'Trackpad zoom sensitivity',
+  'settings.zoomSensitivityDescription':
+    'Adjust zoom speed for trackpad pinch and Ctrl/⌘ + wheel.',
+  'settings.dragPanSpeed': 'Canvas drag speed',
+  'settings.dragPanSpeedDescription':
+    'Adjust canvas dragging with the hand tool, Space, middle or right mouse button.',
+  'settings.resetInteraction': 'Reset interaction speeds',
+  'menu.importText': 'Import text',
+  'menu.exportImage': 'Export image',
+  'menu.exportMermaid': 'Export as Mermaid',
+  'menu.clear': 'Clear',
+
+  // Language
+  'language.switcher': 'Language',
+  'language.chinese': '中文',
+  'language.english': 'English',
+
+  // Menu items
+  'menu.open': 'Open',
+  'menu.openError':
+    'Failed to open the file. Check that it is valid board data.',
+  'menu.saveFile': 'Save File',
+  'menu.import': 'Import',
+  'menu.export': 'Export',
+  'menu.importMermaid': 'Import from Mermaid',
+  'menu.importMarkdown': 'Import from Markdown',
+  'menu.exportMarkdown': 'Export as Markdown',
+  'menu.exportImage.svg': 'SVG',
+  'menu.exportImage.png': 'PNG',
+  'menu.exportImage.jpg': 'JPG',
+  'menu.cleanBoard': 'Clear Board',
+
+  // Dialog translations
+  'dialog.mermaid.title': 'Mermaid to VerdBoard',
+  'dialog.mermaid.description': 'Currently supports',
+  'dialog.mermaid.flowchart': 'flowcharts',
+  'dialog.mermaid.sequence': 'sequence diagrams',
+  'dialog.mermaid.class': 'class diagrams',
+  'dialog.mermaid.otherTypes':
+    ', and other diagram types (rendered as images).',
+  'dialog.mermaid.syntax': 'Mermaid Syntax',
+  'dialog.mermaid.placeholder': 'Write your Mermaid chart definition here…',
+  'dialog.mermaid.preview': 'Preview',
+  'dialog.mermaid.insert': 'Insert',
+  'dialog.markdown.description':
+    'Supports automatic conversion of Markdown syntax to mind map.',
+  'dialog.markdown.syntax': 'Markdown Syntax',
+  'dialog.markdown.placeholder': 'Write your Markdown text definition here...',
+  'dialog.markdown.preview': 'Preview',
+  'dialog.markdown.insert': 'Insert',
+  'dialog.verdBoardToMarkdown.description':
+    'Convert selected mind map to Markdown format.',
+  'dialog.verdBoardToMarkdown.result': 'Markdown Result',
+  'dialog.verdBoardToMarkdown.copy': 'Copy',
+  'dialog.verdBoardToMarkdown.placeholder':
+    'Markdown result will be displayed here...',
+  'dialog.error.loadMermaid': 'Failed to load Mermaid library',
+
+  // Clean confirm dialog
+  'cleanConfirm.title': 'Clear Board',
+  'cleanConfirm.description':
+    'This will clear the entire board. Do you want to continue?',
+  'cleanConfirm.cancel': 'Cancel',
+  'cleanConfirm.ok': 'OK',
+
+  // Link popup items
+  'popupLink.delLink': 'Delete Link',
+
+  // Tool popup items
+  'popupToolbar.fillColor': 'Fill Color',
+  'popupToolbar.fontColor': 'Font Color',
+  'popupToolbar.link': 'Insert Link',
+  'popupToolbar.stroke': 'Stroke',
+  'popupToolbar.opacity': 'Opacity',
+  'popupToolbar.borderWidth': 'Border width',
+  'popupToolbar.noColor': 'No color',
+  'popupToolbar.moreColors': 'More colors',
+  'popupToolbar.shadow': 'Shadow',
+  'popupToolbar.aspectRatio': 'Position and size',
+  'frame.position.x': 'Horizontal position',
+  'frame.position.y': 'Vertical position',
+  'frame.size.width': 'Width',
+  'frame.size.height': 'Height',
+  'frame.aspect.lock': 'Lock ratio',
+  'frame.aspect.custom': 'Custom',
+  'frame.aspect.a4': 'A4',
+  'frame.aspect.square': '1:1',
+  'frame.aspect.4x3': '4:3',
+  'frame.aspect.16x10': '16:10',
+  'frame.aspect.16x9': '16:9',
+  'frame.aspect.browser': 'Browser',
+  'frame.aspect.tablet': 'Tablet',
+  'frame.aspect.phone': 'Phone',
+  'shadow.none': 'None',
+  'shadow.sm': 'S',
+  'shadow.md': 'M',
+  'shadow.lg': 'L',
+  'canvasStatus.theme': 'Theme',
+  'canvasStatus.settings': 'Canvas settings',
+  'canvasStatus.overview': 'Overview',
+  'canvasStatus.fit': 'Fit all',
+  'canvasStatus.recenter': 'Re-center',
+  'canvasStatus.zoomIn': 'Zoom in',
+  'canvasStatus.zoomOut': 'Zoom out',
+  'canvasStatus.autoLayout': 'Auto layout',
+
+  // Text placeholders
+  'textPlaceholders.link': 'Link',
+  'textPlaceholders.text': 'Text',
+
+  // Line tool
+  'line.source': 'Start',
+  'line.target': 'End',
+  'line.arrow': 'Arrow',
+  'line.none': 'None',
+
+  // Stroke style
+  'stroke.solid': 'Solid',
+  'stroke.dashed': 'Dashed',
+  'stroke.dotted': 'Dotted',
+
+  //markdown example
+  'markdown.example': `# I have started
+
+  - Let me see who made this bug 🕵️ ♂️ 🔍
+    - 😯 💣
+      - Turns out it was me 👈 🎯 💘
+
+  - Unexpectedly, it cannot run; why is that 🚫 ⚙️ ❓
+    - Unexpectedly, it can run now; why is that? 🎢 ✨
+      - 🤯 ⚡ ➡️ 🎉
+
+  - What can run 🐞 🚀
+    - then do not touch it 🛑 ✋
+      - 👾 💥 🏹 🎯
+    
+  ## Boy or girl 👶 ❓ 🤷 ♂️ ♀️
+
+  ### Hello world 👋 🌍 ✨ 💻
+
+  #### Wow, a programmer 🤯 ⌨️ 💡 👩 💻`,
+
+  // Draw elements text
+  'draw.lineText': 'Text',
+  'draw.geometryText': 'Text',
+
+  // Mind map elements text
+  'mind.centralText': 'Central Topic',
+  'mind.abstractNodeText': 'Summary',
+
+  'save.saving': 'Saving',
+  'save.saved': 'Saved',
+  'save.error': 'Save failed',
+  'save.retry': 'Retry',
+  'save.unsaved': 'Not saved yet',
+  'save.unknownTime': 'Save time unknown',
+  'save.lastSaved': 'Last successful save',
+
+  'rightPanel.canvasSettings': 'Canvas settings',
+  'rightPanel.mindConfig': 'Mind map settings',
+  'rightPanel.elementProps': 'Element properties',
+  'rightPanel.selectedCount': '{count} selected',
+  'rightPanel.canvasGlobal': 'Canvas-wide settings',
+  'rightPanel.defaultTitleColor': 'Default title color',
+  'rightPanel.defaultStroke': 'Default stroke',
+  'rightPanel.defaultFill': 'Default fill',
+  'rightPanel.titleColor': 'Title color',
+  'rightPanel.stroke': 'Stroke',
+  'rightPanel.fill': 'Fill',
+  'rightPanel.link': 'Link',
+  'rightPanel.arrow': 'Arrow',
+  'rightPanel.arrowStart': 'Start arrow',
+  'rightPanel.arrowEnd': 'End arrow',
+  'rightPanel.note': 'Note',
+  'rightPanel.canvasTheme': 'Canvas theme',
+  'rightPanel.colorScheme': 'Color scheme',
+  'rightPanel.background': 'Background color',
+  'rightPanel.showGrid': 'Show grid',
+  'rightPanel.gridSize': 'Grid size',
+  'rightPanel.canvasInfo': 'Canvas info',
+  'rightPanel.zoom': 'Zoom:',
+  'rightPanel.canvasSize': 'Canvas size:',
+  'rightPanel.layout': 'Layout',
+  'rightPanel.bg.white': 'White',
+  'rightPanel.bg.lightGray': 'Light gray',
+  'rightPanel.bg.gray': 'Gray',
+  'rightPanel.bg.soft': 'Soft (theme default)',
+  'rightPanel.bg.retro': 'Retro (theme default)',
+  'rightPanel.bg.dark': 'Dark (theme default)',
+  'rightPanel.bg.starry': 'Starry (theme default)',
+  'rightPanel.bg.deepGray': 'Deep gray',
+
+  'mind.layout.standard': 'Standard',
+  'mind.layout.right': 'Right',
+  'mind.layout.left': 'Left',
+  'mind.layout.downward': 'Downward',
+
+  'note.add': 'Add note',
+  'note.edit': 'Edit note',
+  'note.expand': 'Expand note',
+  'note.collapse': 'Collapse note',
+  'note.delete': 'Delete note',
+
+  'popupToolbar.addNote': 'Add Note',
+  'popupToolbar.editNote': 'Edit Note',
+  'popupToolbar.expandNote': 'Expand Note',
+  'popupToolbar.collapseNote': 'Collapse Note',
+
+  'app.name': 'VerdBoard',
+  'tutorial.title': 'VerdBoard',
+  'tutorial.description':
+    'All-in-one whiteboard, including mind maps, flowcharts, free drawing, and more',
+  'tutorial.dataDescription': 'All data is saved on this device',
+  'tutorial.markdown':
+    'Open replaces this canvas and restores the file theme and fits the content. Import appends content. A selected mind can export Markdown, with preview, copy, and download.',
+  'tutorial.skip': 'Skip',
+  'tutorial.appToolbar':
+    'Undo and redo; open, import, export, and settings in More',
+  'tutorial.creationToolbar': 'Select V, hand H, drawing, and domain tools',
+  'tutorial.themeDescription': 'Switch between light and dark themes',
+
+  'workspace.board': 'Board',
+  'workspace.mind': 'Mind Map',
+  'workspace.workflow': 'Flowchart',
+  'workspace.architecture': 'Architecture',
+  'workspace.back': 'Back to board',
+  'mind.addChild': 'Add child',
+  'mind.openExclusive': 'Open exclusive editor',
+  'component.openDetail': 'Open details',
+  'toolbar.workflow': 'Flowchart',
+  'workflow.palette.task': 'Task',
+  'workflow.palette.decision': 'Decision',
+  'workflow.inspector.label': 'Name',
+  'architecture.kind.label': 'Kind',
+  'architecture.kind.box': 'Box',
+  'architecture.kind.decision': 'Decision',
+  'architecture.kind.store': 'Store',
+  'architecture.action.delete': 'Delete',
+  'architecture.edge.label': 'Arrow',
+  'workflow.inspector.empty': 'Select a node to edit',
+  'workflow.start': 'Start',
+  'workflow.empty': 'Drag a node from the left to begin',
+  'workflow.addGraph': 'New flowchart',
+  'workflow.mode.label': 'Graph mode',
+  'workflow.mode.dag': 'DAG',
+  'workflow.mode.process': 'Process',
+  'workflow.layout.cyclic': 'DAG auto layout is unavailable for cyclic graphs',
+  'presentation.open': 'Present',
+  'presentation.overview': 'Overview',
+  'presentation.previous': 'Previous',
+  'presentation.next': 'Next',
+  'presentation.laser': 'Laser',
+  'presentation.exit': 'Exit',
+  'presentation.hint': 'Click to focus · 0 overview · L laser · Esc exit',
+  'presentation.hintSteps': '← / → previous / next',
+};
+
+export default enTranslations;

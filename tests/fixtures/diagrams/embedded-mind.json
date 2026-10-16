@@ -1,0 +1,224 @@
+{
+  "store": {
+    "rootId": "board",
+    "cells": {
+      "mind": {
+        "id": "mind",
+        "kind": "frame",
+        "cellType": "frame",
+        "geometry": {
+          "x": 80,
+          "y": 80,
+          "width": 1100,
+          "height": 700
+        },
+        "children": [
+          "first",
+          "second",
+          "first-child-0",
+          "first-branch-0",
+          "first-child-1",
+          "first-branch-1",
+          "second-child-0",
+          "second-branch-0",
+          "second-child-1",
+          "second-branch-1"
+        ],
+        "groups": []
+      },
+      "first": {
+        "id": "first",
+        "kind": "mind-root",
+        "cellType": "node",
+        "geometry": {
+          "x": 0,
+          "y": 0,
+          "width": 160,
+          "height": 56,
+          "outline": "roundRectangle"
+        },
+        "content": {
+          "label": "Central topic"
+        },
+        "data": {
+          "layout": "right"
+        }
+      },
+      "second": {
+        "id": "second",
+        "kind": "mind-root",
+        "cellType": "node",
+        "geometry": {
+          "x": 0,
+          "y": 250,
+          "width": 160,
+          "height": 56,
+          "outline": "roundRectangle"
+        },
+        "content": {
+          "label": "Second tree"
+        },
+        "data": {
+          "layout": "right"
+        }
+      },
+      "first-child-0": {
+        "id": "first-child-0",
+        "kind": "mind-child",
+        "cellType": "node",
+        "geometry": {
+          "x": 0,
+          "y": 0,
+          "width": 120,
+          "height": 40,
+          "derived": true,
+          "outline": "roundRectangle"
+        },
+        "content": {
+          "label": "Topic"
+        },
+        "data": {
+          "collapsed": false
+        }
+      },
+      "first-branch-0": {
+        "id": "first-branch-0",
+        "kind": "mind-branch",
+        "cellType": "edge",
+        "source": {
+          "cellId": "first"
+        },
+        "target": {
+          "cellId": "first-child-0"
+        },
+        "route": {
+          "mode": "auto"
+        },
+        "data": {
+          "order": "00000000"
+        }
+      },
+      "first-child-1": {
+        "id": "first-child-1",
+        "kind": "mind-child",
+        "cellType": "node",
+        "geometry": {
+          "x": 0,
+          "y": 0,
+          "width": 120,
+          "height": 40,
+          "derived": true,
+          "outline": "roundRectangle"
+        },
+        "content": {
+          "label": "Topic"
+        },
+        "data": {
+          "collapsed": false
+        }
+      },
+      "first-branch-1": {
+        "id": "first-branch-1",
+        "kind": "mind-branch",
+        "cellType": "edge",
+        "source": {
+          "cellId": "first"
+        },
+        "target": {
+          "cellId": "first-child-1"
+        },
+        "route": {
+          "mode": "auto"
+        },
+        "data": {
+          "order": "00000001"
+        }
+      },
+      "second-child-0": {
+        "id": "second-child-0",
+        "kind": "mind-child",
+        "cellType": "node",
+        "geometry": {
+          "x": 0,
+          "y": 0,
+          "width": 120,
+          "height": 40,
+          "derived": true,
+          "outline": "roundRectangle"
+        },
+        "content": {
+          "label": "Topic"
+        },
+        "data": {
+          "collapsed": false
+        }
+      },
+      "second-branch-0": {
+        "id": "second-branch-0",
+        "kind": "mind-branch",
+        "cellType": "edge",
+        "source": {
+          "cellId": "second"
+        },
+        "target": {
+          "cellId": "second-child-0"
+        },
+        "route": {
+          "mode": "auto"
+        },
+        "data": {
+          "order": "00000000"
+        }
+      },
+      "second-child-1": {
+        "id": "second-child-1",
+        "kind": "mind-child",
+        "cellType": "node",
+        "geometry": {
+          "x": 0,
+          "y": 0,
+          "width": 120,
+          "height": 40,
+          "derived": true,
+          "outline": "roundRectangle"
+        },
+        "content": {
+          "label": "Topic"
+        },
+        "data": {
+          "collapsed": false
+        }
+      },
+      "second-branch-1": {
+        "id": "second-branch-1",
+        "kind": "mind-branch",
+        "cellType": "edge",
+        "source": {
+          "cellId": "second"
+        },
+        "target": {
+          "cellId": "second-child-1"
+        },
+        "route": {
+          "mode": "auto"
+        },
+        "data": {
+          "order": "00000001"
+        }
+      },
+      "board": {
+        "id": "board",
+        "kind": "frame",
+        "cellType": "frame",
+        "geometry": {
+          "x": 0,
+          "y": 0,
+          "width": 960,
+          "height": 640
+        },
+        "children": ["mind"],
+        "groups": []
+      }
+    }
+  }
+}

@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "skills": {},
+  "agents": [
+    {
+      "name": "cursor",
+      "link": ".cursor",
+      "skills": [
+        "verd-board-dev"
+      ]
+    }
+  ]
+}

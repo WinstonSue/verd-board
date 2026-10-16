@@ -1,0 +1,48 @@
+{
+  "name": "@sue/board-common",
+  "version": "1.0.0",
+  "main": "./dist/index.cjs",
+  "types": "./src/public-api.ts",
+  "source": "./src/public-api.ts",
+  "private": false,
+  "scripts": {
+    "build": "vite build",
+    "dev": "node -e \"process.exit(0)\"",
+    "lint": "eslint src",
+    "test": "vitest run --passWithNoTests"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "@types/lodash": "^4.17.21",
+    "eslint": "^9.22.0",
+    "vitest": "^3.0.8"
+  },
+  "exports": {
+    ".": {
+      "development": "./src/public-api.ts",
+      "types": "./src/public-api.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs",
+      "default": "./dist/index.js"
+    }
+  },
+  "sideEffects": false,
+  "type": "module",
+  "module": "./dist/index.js",
+  "files": [
+    "dist"
+  ],
+  "publishConfig": {
+    "main": "./dist/index.cjs",
+    "module": "./dist/index.js",
+    "types": "./dist/index.d.ts",
+    "exports": {
+      ".": {
+        "types": "./dist/index.d.ts",
+        "import": "./dist/index.js",
+        "require": "./dist/index.cjs",
+        "default": "./dist/index.js"
+      }
+    }
+  }
+}

@@ -1,0 +1,79 @@
+{
+  "name": "@sue/verd-board-ui",
+  "version": "1.0.0",
+  "main": "./dist/index.cjs",
+  "types": "./src/index.ts",
+  "source": "./src/index.ts",
+  "private": false,
+  "scripts": {
+    "build": "vite build",
+    "dev": "node -e \"process.exit(0)\"",
+    "lint": "eslint src",
+    "test": "vitest run --passWithNoTests"
+  },
+  "dependencies": {
+    "@floating-ui/react": "^0.26.24",
+    "@sue/board-architecture": "workspace:*",
+    "@sue/board-common": "workspace:*",
+    "@sue/board-core": "workspace:*",
+    "@sue/board-draw": "workspace:*",
+    "@sue/board-layouts": "workspace:*",
+    "@sue/board-markdown-to-board": "workspace:*",
+    "@sue/board-mermaid-to-board": "workspace:*",
+    "@sue/board-mind": "workspace:*",
+    "@sue/board-react": "workspace:*",
+    "@sue/board-react-architecture": "workspace:*",
+    "@sue/board-react-mind": "workspace:*",
+    "@sue/board-react-text": "workspace:*",
+    "@sue/board-react-workflow": "workspace:*",
+    "@sue/board-workflow": "workspace:*",
+    "@ylib/tabs": "0.0.1",
+    "lucide-react": "^1.47.0"
+  },
+  "peerDependencies": {
+    "react": ">=18",
+    "react-dom": ">=18"
+  },
+  "devDependencies": {
+    "eslint": "^9.22.0",
+    "vite": "^6.2.2",
+    "vitest": "^3.0.8"
+  },
+  "exports": {
+    ".": {
+      "development": "./src/index.ts",
+      "types": "./src/index.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs",
+      "default": "./dist/index.js"
+    },
+    "./style.css": {
+      "development": "./src/styles/frame.scss",
+      "default": "./dist/style.css"
+    }
+  },
+  "type": "module",
+  "module": "./dist/index.js",
+  "files": [
+    "dist"
+  ],
+  "publishConfig": {
+    "main": "./dist/index.cjs",
+    "module": "./dist/index.js",
+    "types": "./dist/index.d.ts",
+    "exports": {
+      ".": {
+        "types": "./dist/index.d.ts",
+        "import": "./dist/index.js",
+        "require": "./dist/index.cjs",
+        "default": "./dist/index.js"
+      },
+      "./style.css": "./dist/style.css"
+    }
+  },
+  "sideEffects": [
+    "**/*.css",
+    "**/*.scss",
+    "./src/style.ts"
+  ]
+}

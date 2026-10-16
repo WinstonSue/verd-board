@@ -1,0 +1,15 @@
+.lineText {
+  width: 100%;
+  font: inherit;
+  color: inherit;
+  padding: 0;
+  margin: 0;
+  border: none;
+  background: transparent;
+  cursor: text;
+
+  &.readonly {
+    cursor: default;
+    user-select: text;
+  }
+}

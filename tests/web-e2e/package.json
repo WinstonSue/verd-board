@@ -1,0 +1,14 @@
+{
+  "name": "web-e2e",
+  "version": "0.0.1",
+  "private": true,
+  "scripts": {
+    "test:e2e": "playwright test",
+    "test:ui": "playwright test --ui",
+    "lint": "eslint src"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.36.0",
+    "eslint": "^9.22.0"
+  }
+}

@@ -1,0 +1,77 @@
+.verd-product-shell {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+}
+
+.exclusive-editor-bar {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 8px 12px 0;
+  padding: 6px 10px;
+  border-radius: 8px;
+  background: var(--floating-panel-bg-color, #fff);
+  box-shadow: 0 1px 4px rgba(15, 23, 42, 0.12);
+  z-index: 20;
+}
+
+.exclusive-editor-bar__back,
+.exclusive-editor-bar__title {
+  font-size: 13px;
+}
+
+.exclusive-editor-bar__back {
+  border: 0;
+  background: transparent;
+  color: inherit;
+  border-radius: 6px;
+  padding: 6px 10px;
+  cursor: pointer;
+}
+
+.exclusive-editor-bar__back:hover {
+  background: var(--color-surface-primary-container, #e2e8f0);
+}
+
+.exclusive-editor-bar__title {
+  font-weight: 600;
+}
+
+.exclusive-editor-bar__actions {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.workflow-graph-mode {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+}
+
+.workflow-graph-mode select {
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  padding: 4px 8px;
+  background: #fff;
+}
+
+.verd-product-shell__body {
+  flex: 1;
+  min-height: 0;
+  position: relative;
+}
+
+.verd-product-shell__pane {
+  width: 100%;
+  height: 100%;
+}
+
+.verd-product-shell__pane[hidden] {
+  display: none !important;
+}

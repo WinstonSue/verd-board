@@ -1,0 +1,42 @@
+{
+  "children": [
+    {
+      "id": "styled-mind",
+      "type": "mind",
+      "points": [
+        [10, 20],
+        [430, 280]
+      ],
+      "layout": "right",
+      "data": { "topic": "Legacy center" },
+      "children": [
+        {
+          "id": "styled-topic",
+          "type": "mind_child",
+          "children": [],
+          "shape": "underline",
+          "fill": "#ffeeaa",
+          "strokeColor": "#aa0000",
+          "strokeWidth": 4,
+          "strokeStyle": "dotted",
+          "branchColor": "#008800",
+          "branchWidth": 5,
+          "branchShape": "polyline",
+          "manualWidth": 220,
+          "layout": "upward",
+          "data": {
+            "topic": "Styled topic",
+            "topicSize": { "width": 92, "height": 40 },
+            "note": "Preserved note",
+            "emojis": [{ "name": "🚀" }],
+            "image": {
+              "url": "data:image/png;base64,iVBORw0KGgo=",
+              "width": 64,
+              "height": 32
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

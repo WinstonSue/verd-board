@@ -1,0 +1,35 @@
+{
+  "name": "web",
+  "version": "0.0.1",
+  "private": true,
+  "scripts": {
+    "dev": "vite --host=0.0.0.0",
+    "build": "vite build",
+    "preview": "vite preview",
+    "lint": "eslint .",
+    "test": "vitest run --passWithNoTests"
+  },
+  "dependencies": {
+    "@sue/board-core": "workspace:*",
+    "@sue/verd-board-app": "workspace:*",
+    "@sue/verd-board-ui": "workspace:*",
+    "@sue/board-architecture": "workspace:*",
+    "@sue/board-mind": "workspace:*",
+    "@sue/board-react": "workspace:*",
+    "@sue/board-react-architecture": "workspace:*",
+    "@sue/board-react-mind": "workspace:*",
+    "@sue/board-react-workflow": "workspace:*",
+    "@sue/board-workflow": "workspace:*",
+    "react": "19.2.0",
+    "react-dom": "19.2.0"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^4.2.0",
+    "eslint": "^9.22.0",
+    "vite": "^6.2.2",
+    "vitest": "^3.0.8",
+    "@types/react": "19.2.2",
+    "@types/react-dom": "19.2.2",
+    "typescript": "^6.0.3"
+  }
+}

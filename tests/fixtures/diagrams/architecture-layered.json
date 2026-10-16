@@ -1,0 +1,819 @@
+{
+  "store": {
+    "rootId": "diagram",
+    "cells": {
+      "diagram": {
+        "id": "diagram",
+        "kind": "frame",
+        "cellType": "frame",
+        "geometry": {
+          "x": 0,
+          "y": 0,
+          "width": 960,
+          "height": 640
+        },
+        "children": [
+          "cell-0",
+          "cell-1",
+          "cell-2",
+          "cell-3",
+          "cell-4",
+          "cell-5",
+          "cell-6",
+          "cell-7",
+          "cell-8",
+          "cell-9",
+          "cell-10",
+          "cell-11",
+          "cell-12",
+          "cell-13",
+          "cell-14",
+          "cell-15",
+          "cell-16",
+          "cell-17",
+          "cell-18",
+          "cell-19",
+          "cell-20",
+          "cell-21",
+          "cell-22",
+          "cell-23",
+          "cell-24",
+          "cell-25",
+          "cell-26",
+          "cell-27",
+          "cell-28",
+          "cell-29",
+          "cell-30",
+          "cell-31",
+          "cell-32",
+          "cell-33",
+          "cell-34",
+          "cell-35",
+          "cell-36",
+          "cell-37",
+          "cell-38",
+          "cell-39"
+        ],
+        "groups": [],
+        "view": {
+          "theme": {
+            "themeColorMode": "default"
+          }
+        },
+        "appearance": {
+          "shadow": "none"
+        },
+        "aspectRatio": "custom",
+        "content": {
+          "label": "Package architecture"
+        }
+      },
+      "cell-0": {
+        "id": "cell-0",
+        "kind": "architecture-layer",
+        "cellType": "node",
+        "geometry": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0,
+          "derived": true
+        },
+        "content": {
+          "label": "应用层"
+        },
+        "data": {
+          "order": "0000",
+          "memberIds": ["cell-1", "cell-2"]
+        }
+      },
+      "cell-1": {
+        "id": "cell-1",
+        "kind": "architecture-module",
+        "cellType": "node",
+        "geometry": {
+          "x": 20,
+          "y": 44,
+          "width": 240,
+          "height": 44,
+          "derived": false,
+          "outline": {
+            "kind": "roundRectangle",
+            "radius": 8
+          }
+        },
+        "content": {
+          "label": "Desktop Electron"
+        },
+        "data": {
+          "shape": "box",
+          "placed": true
+        }
+      },
+      "cell-2": {
+        "id": "cell-2",
+        "kind": "architecture-module",
+        "cellType": "node",
+        "geometry": {
+          "x": 556.0574841858984,
+          "y": 43.17450937335791,
+          "width": 240,
+          "height": 44,
+          "derived": false,
+          "outline": {
+            "kind": "roundRectangle",
+            "radius": 8
+          }
+        },
+        "content": {
+          "label": "Web Browser"
+        },
+        "data": {
+          "shape": "box",
+          "placed": true
+        }
+      },
+      "cell-3": {
+        "id": "cell-3",
+        "kind": "architecture-layer",
+        "cellType": "node",
+        "geometry": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0,
+          "derived": true
+        },
+        "content": {
+          "label": "产品层"
+        },
+        "data": {
+          "order": "0001",
+          "memberIds": ["cell-4", "cell-5"]
+        }
+      },
+      "cell-4": {
+        "id": "cell-4",
+        "kind": "architecture-module",
+        "cellType": "node",
+        "geometry": {
+          "x": 20,
+          "y": 220,
+          "width": 240,
+          "height": 44,
+          "derived": false,
+          "outline": {
+            "kind": "roundRectangle",
+            "radius": 8
+          }
+        },
+        "content": {
+          "label": "@sue/verd-board-app"
+        },
+        "data": {
+          "shape": "box",
+          "placed": true
+        }
+      },
+      "cell-5": {
+        "id": "cell-5",
+        "kind": "architecture-module",
+        "cellType": "node",
+        "geometry": {
+          "x": 558.6281696699525,
+          "y": 219.85643641275792,
+          "width": 240,
+          "height": 44,
+          "derived": false,
+          "outline": {
+            "kind": "roundRectangle",
+            "radius": 8
+          }
+        },
+        "content": {
+          "label": "@sue/verd-board-ui"
+        },
+        "data": {
+          "shape": "box",
+          "placed": true
+        }
+      },
+      "cell-6": {
+        "id": "cell-6",
+        "kind": "architecture-layer",
+        "cellType": "node",
+        "geometry": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0,
+          "derived": true
+        },
+        "content": {
+          "label": "React 适配"
+        },
+        "data": {
+          "order": "0002",
+          "memberIds": ["cell-7", "cell-8", "cell-9", "cell-10"]
+        }
+      },
+      "cell-7": {
+        "id": "cell-7",
+        "kind": "architecture-module",
+        "cellType": "node",
+        "geometry": {
+          "x": 20,
+          "y": 396,
+          "width": 240,
+          "height": 44,
+          "derived": false,
+          "outline": {
+            "kind": "roundRectangle",
+            "radius": 8
+          }
+        },
+        "content": {
+          "label": "@sue/board-react"
+        },
+        "data": {
+          "shape": "box",
+          "placed": true
+        }
+      },
+      "cell-8": {
+        "id": "cell-8",
+        "kind": "architecture-module",
+        "cellType": "node",
+        "geometry": {
+          "x": 284,
+          "y": 396,
+          "width": 240,
+          "height": 44,
+          "derived": false,
+          "outline": {
+            "kind": "roundRectangle",
+            "radius": 8
+          }
+        },
+        "content": {
+          "label": "@sue/board-react-text"
+        },
+        "data": {
+          "shape": "box",
+          "placed": true
+        }
+      },
+      "cell-9": {
+        "id": "cell-9",
+        "kind": "architecture-module",
+        "cellType": "node",
+        "geometry": {
+          "x": 734.0584090657737,
+          "y": 399.29747614446734,
+          "width": 240,
+          "height": 44,
+          "derived": false,
+          "outline": {
+            "kind": "roundRectangle",
+            "radius": 8
+          }
+        },
+        "content": {
+          "label": "@sue/board-react-mind"
+        },
+        "data": {
+          "shape": "box",
+          "placed": true
+        }
+      },
+      "cell-10": {
+        "id": "cell-10",
+        "kind": "architecture-module",
+        "cellType": "node",
+        "geometry": {
+          "x": 1075.3584280714467,
+          "y": 392.3122103527182,
+          "width": 240,
+          "height": 44,
+          "derived": false,
+          "outline": {
+            "kind": "roundRectangle",
+            "radius": 8
+          }
+        },
+        "content": {
+          "label": "@sue/board-react-workflow"
+        },
+        "data": {
+          "shape": "box",
+          "placed": true
+        }
+      },
+      "cell-11": {
+        "id": "cell-11",
+        "kind": "architecture-layer",
+        "cellType": "node",
+        "geometry": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0,
+          "derived": true
+        },
+        "content": {
+          "label": "引擎"
+        },
+        "data": {
+          "order": "0003",
+          "memberIds": [
+            "cell-12",
+            "cell-13",
+            "cell-14",
+            "cell-15",
+            "cell-16",
+            "cell-17",
+            "cell-18"
+          ]
+        }
+      },
+      "cell-12": {
+        "id": "cell-12",
+        "kind": "architecture-module",
+        "cellType": "node",
+        "geometry": {
+          "x": 20,
+          "y": 575.2974761444673,
+          "width": 240,
+          "height": 44,
+          "derived": false,
+          "outline": {
+            "kind": "roundRectangle",
+            "radius": 8
+          }
+        },
+        "content": {
+          "label": "@sue/board-core"
+        },
+        "data": {
+          "shape": "box",
+          "placed": true
+        }
+      },
+      "cell-13": {
+        "id": "cell-13",
+        "kind": "architecture-module",
+        "cellType": "node",
+        "geometry": {
+          "x": 20.0359130448755,
+          "y": 686.572715343406,
+          "width": 240,
+          "height": 44,
+          "derived": false,
+          "outline": {
+            "kind": "roundRectangle",
+            "radius": 8
+          }
+        },
+        "content": {
+          "label": "@sue/board-draw"
+        },
+        "data": {
+          "shape": "box",
+          "placed": true
+        }
+      },
+      "cell-14": {
+        "id": "cell-14",
+        "kind": "architecture-module",
+        "cellType": "node",
+        "geometry": {
+          "x": 606.9463116491899,
+          "y": 682.014571448469,
+          "width": 240,
+          "height": 44,
+          "derived": false,
+          "outline": {
+            "kind": "roundRectangle",
+            "radius": 8
+          }
+        },
+        "content": {
+          "label": "@sue/board-mind"
+        },
+        "data": {
+          "shape": "box",
+          "placed": true
+        }
+      },
+      "cell-15": {
+        "id": "cell-15",
+        "kind": "architecture-module",
+        "cellType": "node",
+        "geometry": {
+          "x": 951.4047295741894,
+          "y": 677.1782731032504,
+          "width": 240,
+          "height": 44,
+          "derived": false,
+          "outline": {
+            "kind": "roundRectangle",
+            "radius": 8
+          }
+        },
+        "content": {
+          "label": "@sue/board-workflow"
+        },
+        "data": {
+          "shape": "box",
+          "placed": true
+        }
+      },
+      "cell-16": {
+        "id": "cell-16",
+        "kind": "architecture-module",
+        "cellType": "node",
+        "geometry": {
+          "x": 1242.367765803098,
+          "y": 682.2523486398388,
+          "width": 240,
+          "height": 44,
+          "derived": false,
+          "outline": {
+            "kind": "roundRectangle",
+            "radius": 8
+          }
+        },
+        "content": {
+          "label": "@sue/board-layouts"
+        },
+        "data": {
+          "shape": "box",
+          "placed": true
+        }
+      },
+      "cell-17": {
+        "id": "cell-17",
+        "kind": "architecture-module",
+        "cellType": "node",
+        "geometry": {
+          "x": 1536.9916735066806,
+          "y": 687.9814330432191,
+          "width": 240,
+          "height": 44,
+          "derived": false,
+          "outline": {
+            "kind": "roundRectangle",
+            "radius": 8
+          }
+        },
+        "content": {
+          "label": "@sue/board-text"
+        },
+        "data": {
+          "shape": "box",
+          "placed": true
+        }
+      },
+      "cell-18": {
+        "id": "cell-18",
+        "kind": "architecture-module",
+        "cellType": "node",
+        "geometry": {
+          "x": 1604,
+          "y": 575.2974761444673,
+          "width": 240,
+          "height": 44,
+          "derived": false,
+          "outline": {
+            "kind": "roundRectangle",
+            "radius": 8
+          }
+        },
+        "content": {
+          "label": "@sue/board-common"
+        },
+        "data": {
+          "shape": "box",
+          "placed": true
+        }
+      },
+      "cell-19": {
+        "id": "cell-19",
+        "kind": "architecture-layer",
+        "cellType": "node",
+        "geometry": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0,
+          "derived": true
+        },
+        "content": {
+          "label": "转换器"
+        },
+        "data": {
+          "order": "0004",
+          "memberIds": ["cell-20", "cell-21"]
+        }
+      },
+      "cell-20": {
+        "id": "cell-20",
+        "kind": "architecture-module",
+        "cellType": "node",
+        "geometry": {
+          "x": 10.96446672794971,
+          "y": 940.9225430807872,
+          "width": 240,
+          "height": 44,
+          "derived": false,
+          "outline": {
+            "kind": "roundRectangle",
+            "radius": 8
+          }
+        },
+        "content": {
+          "label": "markdown-to-board"
+        },
+        "data": {
+          "shape": "box",
+          "placed": true
+        }
+      },
+      "cell-21": {
+        "id": "cell-21",
+        "kind": "architecture-module",
+        "cellType": "node",
+        "geometry": {
+          "x": 298.13292248006405,
+          "y": 935.1148888049197,
+          "width": 240,
+          "height": 44,
+          "derived": false,
+          "outline": {
+            "kind": "roundRectangle",
+            "radius": 8
+          }
+        },
+        "content": {
+          "label": "mermaid-to-board"
+        },
+        "data": {
+          "shape": "box",
+          "placed": true
+        }
+      },
+      "cell-22": {
+        "id": "cell-22",
+        "kind": "architecture-edge",
+        "cellType": "edge",
+        "source": {
+          "cellId": "cell-1"
+        },
+        "target": {
+          "cellId": "cell-4"
+        },
+        "route": {
+          "mode": "orthogonal"
+        }
+      },
+      "cell-23": {
+        "id": "cell-23",
+        "kind": "architecture-edge",
+        "cellType": "edge",
+        "source": {
+          "cellId": "cell-2"
+        },
+        "target": {
+          "cellId": "cell-4"
+        },
+        "route": {
+          "mode": "orthogonal"
+        }
+      },
+      "cell-24": {
+        "id": "cell-24",
+        "kind": "architecture-edge",
+        "cellType": "edge",
+        "source": {
+          "cellId": "cell-4"
+        },
+        "target": {
+          "cellId": "cell-5"
+        },
+        "route": {
+          "mode": "orthogonal"
+        }
+      },
+      "cell-25": {
+        "id": "cell-25",
+        "kind": "architecture-edge",
+        "cellType": "edge",
+        "source": {
+          "cellId": "cell-5"
+        },
+        "target": {
+          "cellId": "cell-7"
+        },
+        "route": {
+          "mode": "orthogonal"
+        }
+      },
+      "cell-26": {
+        "id": "cell-26",
+        "kind": "architecture-edge",
+        "cellType": "edge",
+        "source": {
+          "cellId": "cell-5"
+        },
+        "target": {
+          "cellId": "cell-21"
+        },
+        "route": {
+          "mode": "orthogonal"
+        }
+      },
+      "cell-27": {
+        "id": "cell-27",
+        "kind": "architecture-edge",
+        "cellType": "edge",
+        "source": {
+          "cellId": "cell-5"
+        },
+        "target": {
+          "cellId": "cell-20"
+        },
+        "route": {
+          "mode": "orthogonal"
+        }
+      },
+      "cell-28": {
+        "id": "cell-28",
+        "kind": "architecture-edge",
+        "cellType": "edge",
+        "source": {
+          "cellId": "cell-7"
+        },
+        "target": {
+          "cellId": "cell-12"
+        },
+        "route": {
+          "mode": "orthogonal"
+        }
+      },
+      "cell-29": {
+        "id": "cell-29",
+        "kind": "architecture-edge",
+        "cellType": "edge",
+        "source": {
+          "cellId": "cell-7"
+        },
+        "target": {
+          "cellId": "cell-13"
+        },
+        "route": {
+          "mode": "orthogonal"
+        }
+      },
+      "cell-30": {
+        "id": "cell-30",
+        "kind": "architecture-edge",
+        "cellType": "edge",
+        "source": {
+          "cellId": "cell-7"
+        },
+        "target": {
+          "cellId": "cell-14"
+        },
+        "route": {
+          "mode": "orthogonal"
+        }
+      },
+      "cell-31": {
+        "id": "cell-31",
+        "kind": "architecture-edge",
+        "cellType": "edge",
+        "source": {
+          "cellId": "cell-8"
+        },
+        "target": {
+          "cellId": "cell-17"
+        },
+        "route": {
+          "mode": "orthogonal"
+        }
+      },
+      "cell-32": {
+        "id": "cell-32",
+        "kind": "architecture-edge",
+        "cellType": "edge",
+        "source": {
+          "cellId": "cell-9"
+        },
+        "target": {
+          "cellId": "cell-14"
+        },
+        "route": {
+          "mode": "orthogonal"
+        }
+      },
+      "cell-33": {
+        "id": "cell-33",
+        "kind": "architecture-edge",
+        "cellType": "edge",
+        "source": {
+          "cellId": "cell-10"
+        },
+        "target": {
+          "cellId": "cell-15"
+        },
+        "route": {
+          "mode": "orthogonal"
+        }
+      },
+      "cell-34": {
+        "id": "cell-34",
+        "kind": "architecture-edge",
+        "cellType": "edge",
+        "source": {
+          "cellId": "cell-13"
+        },
+        "target": {
+          "cellId": "cell-12"
+        },
+        "route": {
+          "mode": "orthogonal"
+        }
+      },
+      "cell-35": {
+        "id": "cell-35",
+        "kind": "architecture-edge",
+        "cellType": "edge",
+        "source": {
+          "cellId": "cell-14"
+        },
+        "target": {
+          "cellId": "cell-16"
+        },
+        "route": {
+          "mode": "orthogonal"
+        }
+      },
+      "cell-36": {
+        "id": "cell-36",
+        "kind": "architecture-edge",
+        "cellType": "edge",
+        "source": {
+          "cellId": "cell-14"
+        },
+        "target": {
+          "cellId": "cell-12"
+        },
+        "route": {
+          "mode": "orthogonal"
+        }
+      },
+      "cell-37": {
+        "id": "cell-37",
+        "kind": "architecture-edge",
+        "cellType": "edge",
+        "source": {
+          "cellId": "cell-15"
+        },
+        "target": {
+          "cellId": "cell-12"
+        },
+        "route": {
+          "mode": "orthogonal"
+        }
+      },
+      "cell-38": {
+        "id": "cell-38",
+        "kind": "architecture-edge",
+        "cellType": "edge",
+        "source": {
+          "cellId": "cell-17"
+        },
+        "target": {
+          "cellId": "cell-18"
+        },
+        "route": {
+          "mode": "orthogonal"
+        }
+      },
+      "cell-39": {
+        "id": "cell-39",
+        "kind": "architecture-edge",
+        "cellType": "edge",
+        "source": {
+          "cellId": "cell-12"
+        },
+        "target": {
+          "cellId": "cell-18"
+        },
+        "route": {
+          "mode": "orthogonal"
+        }
+      }
+    }
+  }
+}

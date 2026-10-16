@@ -1,0 +1,215 @@
+{
+  "main_board_content": {
+    "children": [
+      {
+        "id": "shared",
+        "type": "mind",
+        "documentId": "shared",
+        "points": [
+          [80, 100],
+          [320, 280]
+        ]
+      },
+      {
+        "id": "shared",
+        "type": "mind",
+        "documentId": "shared",
+        "points": [
+          [360, 100],
+          [600, 280]
+        ]
+      },
+      {
+        "id": "architecture",
+        "type": "architecture",
+        "documentId": "layers",
+        "points": [
+          [80, 330],
+          [540, 580]
+        ],
+        "borderColor": "#123456",
+        "borderWidth": 3
+      }
+    ],
+    "viewport": {
+      "zoom": 0.8,
+      "origination": [10, 20]
+    },
+    "theme": {
+      "themeColorMode": "soft",
+      "boardBackground": "#f0f4f8"
+    }
+  },
+  "mind/shared": {
+    "version": 2,
+    "root": {
+      "id": "center",
+      "type": "mind",
+      "points": [[40, 60]],
+      "children": [
+        {
+          "id": "topic",
+          "type": "mind_child",
+          "points": [[0, 0]],
+          "children": [],
+          "data": {
+            "topic": "Shared topic"
+          }
+        }
+      ],
+      "data": {
+        "topic": "Shared center"
+      }
+    },
+    "viewport": {
+      "zoom": 0.9,
+      "origination": [5, 6]
+    }
+  },
+  "architecture/layers": {
+    "version": 2,
+    "layers": [
+      {
+        "id": "collision",
+        "label": "Services",
+        "nodes": [
+          {
+            "id": "collision",
+            "label": "API",
+            "kind": "box",
+            "position": {
+              "x": 80,
+              "y": 100
+            }
+          }
+        ]
+      },
+      {
+        "id": "data",
+        "label": "Data",
+        "nodes": [
+          {
+            "id": "db",
+            "label": "Database",
+            "kind": "store",
+            "position": {
+              "x": 360,
+              "y": 310
+            }
+          }
+        ]
+      },
+      {
+        "id": "empty",
+        "label": "Empty",
+        "nodes": []
+      }
+    ],
+    "edges": [
+      {
+        "id": "collision",
+        "source": "collision",
+        "target": "db",
+        "label": "Reads"
+      }
+    ],
+    "viewport": {
+      "zoom": 0.85,
+      "origination": [0, 0]
+    }
+  },
+  "architecture/orphan": {
+    "version": 2,
+    "layers": [],
+    "edges": []
+  },
+  "main_workflow_registry": {
+    "activeId": "process",
+    "documents": {
+      "process": {
+        "version": 1,
+        "graphMode": "process",
+        "start": {
+          "label": "Primary"
+        },
+        "nodes": [
+          {
+            "key": "workflow-root",
+            "kind": "task",
+            "label": "First"
+          },
+          {
+            "key": "b",
+            "kind": "decision",
+            "label": "Second"
+          }
+        ],
+        "edges": [
+          {
+            "key": "workflow-root",
+            "source": {
+              "nodeKey": "__start__",
+              "portId": "out"
+            },
+            "target": {
+              "nodeKey": "workflow-root",
+              "portId": "in"
+            }
+          },
+          {
+            "key": "forward",
+            "source": {
+              "nodeKey": "workflow-root",
+              "portId": "right"
+            },
+            "target": {
+              "nodeKey": "b",
+              "portId": "left"
+            },
+            "label": "Next"
+          },
+          {
+            "key": "return",
+            "source": {
+              "nodeKey": "b",
+              "portId": "bottom"
+            },
+            "target": {
+              "nodeKey": "workflow-root",
+              "portId": "bottom"
+            },
+            "label": "Retry"
+          }
+        ],
+        "layout": {
+          "positions": {
+            "__start__": [40, 80],
+            "workflow-root": [240, 80],
+            "b": [480, 80]
+          }
+        },
+        "graphs": [
+          {
+            "id": "second",
+            "graphMode": "dag",
+            "start": {
+              "label": "Independent"
+            },
+            "nodes": [
+              {
+                "key": "b",
+                "kind": "task",
+                "label": "Other graph"
+              }
+            ],
+            "edges": [],
+            "layout": {
+              "positions": {}
+            },
+            "origin": [40, 340]
+          }
+        ]
+      }
+    }
+  }
+}

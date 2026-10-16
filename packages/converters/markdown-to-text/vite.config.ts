@@ -1,0 +1,31 @@
+import { createLibViteConfig } from '../../../scripts/lib-vite';
+
+export default createLibViteConfig({
+  dirname: __dirname,
+  name: 'markdown-to-text',
+  entry: 'src/index.ts',
+  cacheDir: '../../../node_modules/.vite/packages/markdown-to-text',
+  externals: [
+    'remark-parse',
+    'remark-gfm',
+    'remark-stringify',
+    'unified',
+    /^mdast-/,
+    /^micromark/,
+    /^vfile/,
+    /^unist-/,
+    /^devlop/,
+    /^ccount/,
+    /^zwitch/,
+    /^markdown-table/,
+    /^longest-streak/,
+    /^stringify-entities/,
+    /^character-/,
+    /^decode-/,
+    /^trim-/,
+    /^comma-separated/,
+    /^space-separated/,
+    /^property-information/,
+    /^html-void/,
+  ],
+});

@@ -1,0 +1,125 @@
+.presentation-mode {
+  position: absolute;
+  inset: 0;
+  z-index: 200;
+  overflow: hidden;
+  background: #fff;
+  color: #172033;
+  outline: none;
+  isolation: isolate;
+
+  .presentation-mode-canvas {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+  }
+
+  &.is-laser .presentation-mode-canvas,
+  &.is-laser .presentation-mode-canvas * {
+    cursor:
+      url('data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="24" height="24"%3E%3Ccircle cx="12" cy="12" r="5" fill="%23ef4444" stroke="white" stroke-width="1.5"/%3E%3C/svg%3E')
+        12 12,
+      crosshair !important;
+  }
+
+  .presentation-hud {
+    position: absolute;
+    z-index: 1;
+    left: 50%;
+    bottom: max(20px, env(safe-area-inset-bottom));
+    transform: translateX(-50%);
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    max-width: calc(100% - 24px);
+    padding: 6px;
+    border: 1px solid #e2e8f0;
+    border-radius: 14px;
+    background: #ffffffed;
+    box-shadow: 0 6px 24px #17203324;
+    opacity: 1;
+    transition: opacity 160ms ease;
+
+    &.is-hidden {
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    &:focus-within {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      flex: 0 0 auto;
+      width: 36px;
+      height: 36px;
+      padding: 0;
+      border: 0;
+      border-radius: 8px;
+      background: transparent;
+      color: inherit;
+      cursor: pointer;
+
+      &:hover,
+      &[aria-pressed='true'] {
+        background: #e8edf4;
+      }
+
+      &:focus-visible {
+        outline: 2px solid #2563eb;
+        outline-offset: 1px;
+      }
+
+      &:disabled {
+        opacity: 0.35;
+        cursor: default;
+      }
+    }
+  }
+
+  .presentation-hint {
+    position: absolute;
+    left: 50%;
+    bottom: 82px;
+    transform: translateX(-50%);
+    max-width: calc(100% - 32px);
+    padding: 8px 12px;
+    border-radius: 8px;
+    background: #172033e6;
+    color: #fff;
+    font-size: 12px;
+    text-align: center;
+    pointer-events: none;
+
+    span {
+      display: block;
+      margin-top: 4px;
+    }
+  }
+
+  .presentation-step {
+    min-width: 56px;
+    font-size: 12px;
+    font-variant-numeric: tabular-nums;
+    text-align: center;
+    white-space: nowrap;
+  }
+
+  .presentation-hud-divider {
+    width: 1px;
+    height: 20px;
+    margin: 0 3px;
+    background: #e2e8f0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .presentation-mode .presentation-hud {
+    transition: none;
+  }
+}

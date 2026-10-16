@@ -1,0 +1,9 @@
+dist
+coverage
+release
+out-tsc
+node_modules
+pnpm-lock.yaml
+*.min.js
+# Contract-bound to fenced blocks in doc/guides/ai-canvas-data-spec.md
+doc/examples/ai-canvas/

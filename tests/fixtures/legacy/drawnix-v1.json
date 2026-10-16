@@ -1,0 +1,72 @@
+{
+  "type": "drawnix",
+  "version": 1,
+  "source": "web",
+  "elements": [
+    {
+      "id": "mind-root-1",
+      "type": "mind",
+      "points": [[400, 300]],
+      "children": [
+        {
+          "id": "mind-child-1",
+          "type": "mind_child",
+          "children": [],
+          "data": {
+            "topic": {
+              "id": "topic-1",
+              "type": "line",
+              "raw": {
+                "time": 1710000000000,
+                "version": "2.31.1",
+                "blocks": [
+                  {
+                    "id": "block-1",
+                    "type": "paragraph",
+                    "data": { "text": "<strong>Legacy topic</strong>" }
+                  }
+                ]
+              },
+              "meta": { "plainText": "Legacy topic" }
+            },
+            "note": {
+              "id": "note-1",
+              "type": "paragraph",
+              "raw": {
+                "time": 1710000000000,
+                "version": "2.31.1",
+                "blocks": [
+                  {
+                    "id": "note-block-1",
+                    "type": "paragraph",
+                    "data": { "text": "A legacy mind note" }
+                  }
+                ]
+              },
+              "meta": { "plainText": "A legacy mind note" }
+            }
+          }
+        }
+      ],
+      "data": {
+        "topic": {
+          "id": "root-topic",
+          "type": "line",
+          "raw": {
+            "time": 1710000000000,
+            "version": "2.31.1",
+            "blocks": [
+              {
+                "id": "root-block",
+                "type": "paragraph",
+                "data": { "text": "Root" }
+              }
+            ]
+          },
+          "meta": { "plainText": "Root" }
+        }
+      }
+    }
+  ],
+  "viewport": { "zoom": 1, "origination": [0, 0] }
+}

@@ -1,0 +1,21 @@
+{
+  "id": "legacy-raw-1",
+  "type": "paragraph",
+  "raw": {
+    "time": 1710000000000,
+    "version": "2.28.0",
+    "blocks": [
+      {
+        "id": "p1",
+        "type": "paragraph",
+        "data": { "text": "Hello <em>world</em>" }
+      },
+      {
+        "id": "h1",
+        "type": "header",
+        "data": { "text": "Title", "level": 2 }
+      }
+    ]
+  },
+  "meta": { "plainText": "Hello world Title" }
+}

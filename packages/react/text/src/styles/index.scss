@@ -1,0 +1,47 @@
+.board-container {
+  .text {
+    foreignObject {
+      &::-webkit-scrollbar {
+        display: none;
+      }
+      scrollbar-width: none;
+    }
+  }
+}
+
+.board-text-container {
+  font-size: 14px;
+  min-height: 20px;
+  line-height: 20px;
+  display: block;
+  font-family:
+    'Source Han Sans SC',
+    'Source Han Sans CN',
+    'Noto Sans CJK SC',
+    -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    Roboto,
+    'PingFang SC',
+    'Noto Sans',
+    'Noto Sans CJK SC',
+    'Microsoft Yahei',
+    'Hiragino Sans GB',
+    Arial,
+    sans-serif;
+}
+
+.board-editable-container {
+  outline: none;
+  padding: 0;
+  cursor: default;
+  & .ProseMirror {
+    user-select: none;
+  }
+  &[contenteditable='true'] {
+    cursor: text;
+    & .ProseMirror {
+      user-select: text;
+    }
+  }
+}
