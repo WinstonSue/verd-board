@@ -816,7 +816,6 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
     y: number;
     moved: boolean;
   } | null>(null);
-  const suppressContextMenuRef = useRef(false);
   const presentTapRef = useRef<{
     pointerId: number;
     x: number;
@@ -5333,7 +5332,6 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
               return;
             }
             if (event.button === 2) {
-              suppressContextMenuRef.current = false;
               rightDragRef.current = {
                 pointerId: event.pointerId,
                 x: event.clientX,
@@ -5576,7 +5574,6 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
               ) {
                 cancelInteraction();
                 rightDrag.moved = true;
-                suppressContextMenuRef.current = true;
                 propsRef.current.onCanvasContextMenu?.(null);
                 const point = pointFromEvent(event);
                 gestureRef.current = {
@@ -5805,12 +5802,9 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
             )
               return;
             event.preventDefault();
-            if (rightDragRef.current?.moved || suppressContextMenuRef.current) {
-              suppressContextMenuRef.current = true;
-              rightDragRef.current = null;
-              propsRef.current.onCanvasContextMenu?.(null);
-              return;
-            }
+            // Native right-click menus can fire on press or release. Pointerup
+            // handles mouse menus; keep this path for keyboard invocation.
+            if (event.button === 2 || rightDragRef.current) return;
             propsRef.current.onCanvasContextMenu?.([
               event.clientX,
               event.clientY,
@@ -5845,8 +5839,25 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
             const tap = presentTapRef.current;
             if (tap?.pointerId === event.pointerId)
               presentTapRef.current = null;
-            if (rightDragRef.current?.pointerId === event.pointerId)
+            const rightDrag = rightDragRef.current;
+            if (rightDrag?.pointerId === event.pointerId) {
               rightDragRef.current = null;
+              if (
+                event.button === 2 &&
+                !rightDrag.moved &&
+                Math.hypot(
+                  event.clientX - rightDrag.x,
+                  event.clientY - rightDrag.y,
+                ) <= 6 &&
+                !(event.target as Element).closest(
+                  '[contenteditable="true"], input, textarea',
+                )
+              )
+                propsRef.current.onCanvasContextMenu?.([
+                  event.clientX,
+                  event.clientY,
+                ]);
+            }
             pointersRef.current.delete(event.pointerId);
             if (blockSinglePointerRef.current) {
               if (pointersRef.current.size < 2 && pinchRef.current) {

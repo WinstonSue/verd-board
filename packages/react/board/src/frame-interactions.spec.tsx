@@ -831,6 +831,91 @@ describe('released pointer button state', () => {
       await new Promise((resolve) => setTimeout(resolve, 30));
     });
 
+  it.each(['press', 'release', 'absent'] as const)(
+    'opens a right-click menu only on release when contextmenu is %s',
+    async (timing) => {
+      const onCanvasContextMenu = vi.fn();
+      const test = await mount({ onCanvasContextMenu });
+      await test.fire(test.svg, 'pointerdown', 500, 400, { button: 2 });
+      if (timing === 'press')
+        await test.fire(test.svg, 'contextmenu', 500, 400, { button: 2 });
+      await test.fire(test.svg, 'pointermove', 503, 404, { button: 2 });
+      expect(onCanvasContextMenu).not.toHaveBeenCalled();
+      await test.fire(test.svg, 'pointerup', 503, 404, { button: 2 });
+      expect(onCanvasContextMenu).toHaveBeenCalledExactlyOnceWith([503, 404]);
+      if (timing === 'release')
+        await test.fire(test.svg, 'contextmenu', 503, 404, { button: 2 });
+      expect(onCanvasContextMenu).toHaveBeenCalledExactlyOnceWith([503, 404]);
+    },
+  );
+
+  it.each(['press', 'release'] as const)(
+    'pans without opening a menu when contextmenu fires on %s',
+    async (timing) => {
+      const onCanvasContextMenu = vi.fn();
+      const test = await mount({ onCanvasContextMenu });
+      const original = test.controller.current!.runtime.store;
+      await test.fire(test.svg, 'pointerdown', 500, 400, { button: 2 });
+      if (timing === 'press')
+        await test.fire(test.svg, 'contextmenu', 500, 400, { button: 2 });
+      expect(onCanvasContextMenu).not.toHaveBeenCalled();
+      await test.fire(test.svg, 'pointermove', 510, 410, { button: 2 });
+      await test.fire(test.svg, 'pointermove', 530, 420, { button: 2 });
+      // Returning to the press point still counts as a drag.
+      await test.fire(test.svg, 'pointermove', 500, 400, { button: 2 });
+      await test.fire(test.svg, 'pointerup', 500, 400, { button: 2 });
+      if (timing === 'release')
+        await test.fire(test.svg, 'contextmenu', 500, 400, { button: 2 });
+      expect(onCanvasContextMenu).toHaveBeenCalledExactlyOnceWith(null);
+      expect(worldTransform(test.svg)).toBe('scale(1) translate(-10 -10)');
+      expect(test.controller.current!.runtime.store).toBe(original);
+      expect(test.onChange).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each(['pointercancel', 'lostpointercapture'])(
+    'does not open a right-click menu after %s',
+    async (type) => {
+      const onCanvasContextMenu = vi.fn();
+      const test = await mount({ onCanvasContextMenu });
+      await test.fire(test.svg, 'pointerdown', 500, 400, { button: 2 });
+      await test.fire(test.svg, type, 500, 400, { button: 2 });
+      await test.fire(test.svg, 'pointerup', 500, 400, { button: 2 });
+      await test.fire(test.svg, 'contextmenu', 500, 400, { button: 2 });
+      expect(onCanvasContextMenu).not.toHaveBeenCalled();
+    },
+  );
+
+  it('opens only for the owning pointer and rejects a release beyond the click threshold', async () => {
+    const onCanvasContextMenu = vi.fn();
+    const test = await mount({ onCanvasContextMenu });
+    await test.fire(test.svg, 'pointerdown', 500, 400, { button: 2 });
+    await test.fire(test.svg, 'pointerup', 500, 400, {
+      button: 2,
+      pointerId: 2,
+    });
+    expect(onCanvasContextMenu).not.toHaveBeenCalled();
+    await test.fire(test.svg, 'pointerup', 510, 410, { button: 2 });
+    await test.fire(test.svg, 'contextmenu', 510, 410, { button: 2 });
+    expect(onCanvasContextMenu).not.toHaveBeenCalled();
+    await test.fire(test.svg, 'pointerdown', 500, 400, { button: 2 });
+    await test.fire(test.svg, 'pointerup', 500, 400, { button: 2 });
+    expect(onCanvasContextMenu).toHaveBeenCalledExactlyOnceWith([500, 400]);
+  });
+
+  it('preserves native menus in text inputs and keyboard context menus on the canvas', async () => {
+    const onCanvasContextMenu = vi.fn();
+    const test = await mount({ onCanvasContextMenu });
+    const input = document.createElement('input');
+    test.svg.append(input);
+    await test.fire(input, 'pointerdown', 500, 400, { button: 2 });
+    await test.fire(input, 'contextmenu', 500, 400, { button: 2 });
+    await test.fire(input, 'pointerup', 500, 400, { button: 2 });
+    expect(onCanvasContextMenu).not.toHaveBeenCalled();
+    await test.fire(test.svg, 'contextmenu', 500, 400);
+    expect(onCanvasContextMenu).toHaveBeenCalledExactlyOnceWith([500, 400]);
+  });
+
   it('keeps the node and canvas still when a left click follows a released right click', async () => {
     const onCanvasContextMenu = vi.fn();
     const test = await mount({
