@@ -1,0 +1,267 @@
+{
+  "format": "verd-document",
+  "version": 1,
+  "id": "project-doc:packages/board/NODE_WIDTH_SPECIFICATION",
+  "title": "节点宽度规范",
+  "text": {
+    "schemaVersion": 1,
+    "id": "project-doc:packages/board/NODE_WIDTH_SPECIFICATION",
+    "kind": "block",
+    "content": {
+      "type": "doc",
+      "content": [
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 1
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "节点宽度与内容适配规范"
+            }
+          ]
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 2
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "Mind 自动尺寸"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "Mind 根主题、普通主题和概要都按内容派生显示宽高。默认最大外框宽度为 240 画布单位，长内容到上限后自动换行，高度不设上限。标题、图片、表情与展开笔记共同参与尺寸计算；笔记使用实际内容宽度并计入总高度。"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "设置页提供本设备全局默认，有限整数范围为 80–2000。根节点可跟随默认或设置本图 maxNodeWidth 覆盖；覆盖保存到 MindRootData，参与单次事务、撤销、保存和原生导入导出。应用默认不写入图文件。嵌入、详情与图像导出共用有效配置。"
+            }
+          ]
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 2
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "兼容旧数据"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "Mind 尺寸拖拽关闭。历史 manualWidth 和固定 geometry.width/height 可以被读取，但不参与当前显示尺寸；不再使用旧 NodeSpace、TOPIC_DEFAULT_MAX_WIDTH=200 或旧组件代码。尺寸和布局缓存只存在于运行时，不写入快照。"
+            }
+          ]
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 2
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "文字与笔记"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "标题默认左对齐，笔记默认左对齐且顶部对齐，保留已有明确对齐和格式。React 通过共享 TipTap schema、预览 serializer 和文字样式离屏测量，测量不受当前相机缩放影响；引擎无 DOM 路径提供估算。大字号、换行、图片等比缩放和表情换行均进入尺寸计算。"
+            }
+          ]
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 2
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "普通节点适配"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "普通文本形状、流程节点和架构模块提供“根据内容调整大小”。它只处理当前选中对象，组合展开为当前 Frame 内成员，以修改前宽度为上限，短内容收窄、长内容换行增高，保持位置、旋转和富文本。"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "空内容、锁定对象、图片、表格、泳道、Frame、架构层、线条和 Mind 跳过。批量变化作为一笔事务提交，可一次撤销；重复执行无变化时不产生历史。"
+            }
+          ]
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 2
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "源码与验证"
+            }
+          ]
+        },
+        {
+          "type": "bulletList",
+          "content": [
+            {
+              "type": "listItem",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "packages/engine/mind/src/cell-metrics.ts：主题、图片、表情和笔记尺寸。"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "listItem",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "packages/engine/mind/src/cell-utils.ts：有效配置与布局。"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "listItem",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "packages/react/text/src/measure-text.ts：共享富文本离屏测量。"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "listItem",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "packages/product/ui/src/mind-preferences.ts、frame-settings-page.tsx：全局默认。"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "listItem",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "packages/product/ui/src/frame-mind-properties.tsx：图级 maxNodeWidth。"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "listItem",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "packages/react/board/src/frame-fit-content.ts：普通节点内容适配。"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "验证长标题换行、大字号与展开笔记高度、嵌入/详情一致、图级覆盖优先、保存恢复、单步撤销和无变化命令。完整规则见 "
+            },
+            {
+              "type": "text",
+              "text": "Mind 特性",
+              "marks": [
+                {
+                  "type": "link",
+                  "attrs": {
+                    "href": "verd://file/project-doc%3Apackages%2Fboard%2Fmind-features#%E8%8A%82%E7%82%B9%E5%86%85%E5%AE%B9%E9%80%82%E9%85%8D%E4%B8%8E%E6%9C%80%E5%A4%A7%E5%AE%BD%E5%BA%A6"
+                  }
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "text": "。"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "最后更新：2026-10-16。"
+            }
+          ]
+        }
+      ]
+    },
+    "plainText": "节点宽度与内容适配规范\nMind 自动尺寸\nMind 根主题、普通主题和概要都按内容派生显示宽高。默认最大外框宽度为 240 画布单位，长内容到上限后自动换行，高度不设上限。标题、图片、表情与展开笔记共同参与尺寸计算；笔记使用实际内容宽度并计入总高度。\n设置页提供本设备全局默认，有限整数范围为 80–2000。根节点可跟随默认或设置本图 maxNodeWidth 覆盖；覆盖保存到 MindRootData，参与单次事务、撤销、保存和原生导入导出。应用默认不写入图文件。嵌入、详情与图像导出共用有效配置。\n兼容旧数据\nMind 尺寸拖拽关闭。历史 manualWidth 和固定 geometry.width/height 可以被读取，但不参与当前显示尺寸；不再使用旧 NodeSpace、TOPIC_DEFAULT_MAX_WIDTH=200 或旧组件代码。尺寸和布局缓存只存在于运行时，不写入快照。\n文字与笔记\n标题默认左对齐，笔记默认左对齐且顶部对齐，保留已有明确对齐和格式。React 通过共享 TipTap schema、预览 serializer 和文字样式离屏测量，测量不受当前相机缩放影响；引擎无 DOM 路径提供估算。大字号、换行、图片等比缩放和表情换行均进入尺寸计算。\n普通节点适配\n普通文本形状、流程节点和架构模块提供“根据内容调整大小”。它只处理当前选中对象，组合展开为当前 Frame 内成员，以修改前宽度为上限，短内容收窄、长内容换行增高，保持位置、旋转和富文本。\n空内容、锁定对象、图片、表格、泳道、Frame、架构层、线条和 Mind 跳过。批量变化作为一笔事务提交，可一次撤销；重复执行无变化时不产生历史。\n源码与验证\npackages/engine/mind/src/cell-metrics.ts：主题、图片、表情和笔记尺寸。\npackages/engine/mind/src/cell-utils.ts：有效配置与布局。\npackages/react/text/src/measure-text.ts：共享富文本离屏测量。\npackages/product/ui/src/mind-preferences.ts、frame-settings-page.tsx：全局默认。\npackages/product/ui/src/frame-mind-properties.tsx：图级 maxNodeWidth。\npackages/react/board/src/frame-fit-content.ts：普通节点内容适配。\n验证长标题换行、大字号与展开笔记高度、嵌入/详情一致、图级覆盖优先、保存恢复、单步撤销和无变化命令。完整规则见 Mind 特性。\n最后更新：2026-10-16。",
+    "align": "left"
+  }
+}

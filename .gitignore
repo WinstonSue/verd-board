@@ -48,6 +48,10 @@ Thumbs.db
 # Turborepo
 .turbo
 
+# Project workspace content is versioned; device/session state is local.
+/workspace/.verdboard/
+/workspace/**/*.tmp
+
 # ai-config-manager：正文在 .agents/skills，.cursor/skills 是软链
 /.agents/*
 !/.agents/skills/

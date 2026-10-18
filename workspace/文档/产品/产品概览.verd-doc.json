@@ -1,0 +1,2366 @@
+{
+  "format": "verd-document",
+  "version": 1,
+  "id": "project-doc:product/产品概览",
+  "title": "产品概览",
+  "text": {
+    "schemaVersion": 1,
+    "id": "project-doc:product/产品概览",
+    "kind": "block",
+    "content": {
+      "type": "doc",
+      "content": [
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 1
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "青编（VerdBoard）产品概览"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "本文档从"
+            },
+            {
+              "type": "text",
+              "text": "产品视角",
+              "marks": [
+                {
+                  "type": "bold"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "text": "描述青编（VerdBoard）的定位、能力与使用形态，面向产品/设计评审、新成员 onboarding，以及与架构、开发文档互补阅读。实现细节见 "
+            },
+            {
+              "type": "text",
+              "text": "架构文档",
+              "marks": [
+                {
+                  "type": "link",
+                  "attrs": {
+                    "href": "verd://file/project-doc%3Aarchitecture%2FARCHITECTURE"
+                  }
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "text": " 与 "
+            },
+            {
+              "type": "text",
+              "text": "包文档索引",
+              "marks": [
+                {
+                  "type": "link",
+                  "attrs": {
+                    "href": "verd://file/project-doc%3Apackages%2FREADME"
+                  }
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "text": "。"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "最后更新",
+              "marks": [
+                {
+                  "type": "bold"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "text": ": 2026-10-16"
+            }
+          ]
+        },
+        {
+          "type": "horizontalRule"
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 2
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "1. 产品定位"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "青编（VerdBoard）是一个"
+            },
+            {
+              "type": "text",
+              "text": "画布与文档共存的知识工作区",
+              "marks": [
+                {
+                  "type": "bold"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "text": "，在同一文件树里组织："
+            }
+          ]
+        },
+        {
+          "type": "bulletList",
+          "content": [
+            {
+              "type": "listItem",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "思维导图",
+                      "marks": [
+                        {
+                          "type": "bold"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "text": " — 结构化发散与层级整理"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "listItem",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "流程图",
+                      "marks": [
+                        {
+                          "type": "bold"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "text": " — 流程、关系与图形符号表达"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "listItem",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "自由绘画",
+                      "marks": [
+                        {
+                          "type": "bold"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "text": " — 手绘感线条、箭头等草图能力"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "listItem",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "工作流",
+                      "marks": [
+                        {
+                          "type": "bold"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "text": " — 独占编辑器，以及常规白板上的特殊组件（任务 / 判断）"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "listItem",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "独立文档",
+                      "marks": [
+                        {
+                          "type": "bold"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "text": " — 与画布并列的文字文件，支持标题、列表、表格、图片、代码、查找替换、目录和导出（基于 TipTap）"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "底层由 "
+            },
+            {
+              "type": "text",
+              "text": "Board 引擎（",
+              "marks": [
+                {
+                  "type": "bold"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "text": "@sue/board-*",
+              "marks": [
+                {
+                  "type": "code"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "text": " 分包）",
+              "marks": [
+                {
+                  "type": "bold"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "text": " 驱动，采用 "
+            },
+            {
+              "type": "text",
+              "text": "SVG 渲染",
+              "marks": [
+                {
+                  "type": "bold"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "text": " 与 "
+            },
+            {
+              "type": "text",
+              "text": "Cell 注册和 React 扩展",
+              "marks": [
+                {
+                  "type": "bold"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "text": " 方式，在交互性能与可扩展性之间做平衡。"
+            }
+          ]
+        },
+        {
+          "type": "horizontalRule"
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 2
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "2. 目标用户与典型场景"
+            }
+          ]
+        },
+        {
+          "type": "table",
+          "content": [
+            {
+              "type": "tableRow",
+              "content": [
+                {
+                  "type": "tableHeader",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "用户类型"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "tableHeader",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "典型诉求"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "tableHeader",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "青编提供的价值"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "tableRow",
+              "content": [
+                {
+                  "type": "tableCell",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "个人知识工作者"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "tableCell",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "一屏内完成脑图 + 备注 + 简单图示"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "tableCell",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "单画布多模态，减少工具切换"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "tableRow",
+              "content": [
+                {
+                  "type": "tableCell",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "产品与项目协作"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "tableCell",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "梳理需求、流程、里程碑"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "tableCell",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "流程图与思维导图并存，结构清晰"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "tableRow",
+              "content": [
+                {
+                  "type": "tableCell",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "开发者 / 技术写作者"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "tableCell",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "在自有产品中嵌入白板能力"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "tableCell",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "Monorepo 分包（如 "
+                        },
+                        {
+                          "type": "text",
+                          "text": "@sue/board-react",
+                          "marks": [
+                            {
+                              "type": "code"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "text": "、"
+                        },
+                        {
+                          "type": "text",
+                          "text": "@sue/board-*",
+                          "marks": [
+                            {
+                              "type": "code"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "text": " 各子包）可复用"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "horizontalRule"
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 2
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "3. 核心能力（产品语言）"
+            }
+          ]
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 3
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "3.1 思维导图"
+            }
+          ]
+        },
+        {
+          "type": "bulletList",
+          "content": [
+            {
+              "type": "listItem",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "主题文字与拖拽",
+                      "marks": [
+                        {
+                          "type": "bold"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "text": "：标题默认左对齐，笔记默认左、上对齐，保留显式格式。拖入主题生长方向的隐藏热区可调整父子关系；高亮候选父节点和半透明分支预览提示落位，松手统一提交，支持撤销与保存恢复。"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "listItem",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "多种布局与主题样式，支持节点级自定义。"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "listItem",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "整图选中",
+                      "marks": [
+                        {
+                          "type": "bold"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "text": "：Mind 提供覆盖整棵树的背景包裹区域语义；可单独选中「整张导图」以调整默认样式，也可像普通节点一样选中"
+                    },
+                    {
+                      "type": "text",
+                      "text": "根节点",
+                      "marks": [
+                        {
+                          "type": "bold"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "text": "编辑主题样式与内容，二者在选中框与右侧属性面板上区分明确。"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "listItem",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "框选",
+                      "marks": [
+                        {
+                          "type": "bold"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "text": "：框住整棵 Mind 时表现为选中整体；仅框住部分分支时为多选节点。"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "listItem",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "节点笔记 / 布局 / 图片",
+                      "marks": [
+                        {
+                          "type": "bold"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "text": "：在独占脑图工作区编辑；常规白板上的脑图特殊组件只保留改名、展开收起与整图拖动。"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "listItem",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "独占图文件",
+                      "marks": [
+                        {
+                          "type": "bold"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "text": "：脑图是一份可独立打开的文件，也可以归属于普通画布。从引用进入详情仍编辑源文件中的同一棵树。"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "listItem",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "常规白板上的脑图是有边界的组件（子节点不能离开这棵树独立存在）。双击整图或点「打开」进入独占编辑器。"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "listItem",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "技术落点见 "
+                    },
+                    {
+                      "type": "text",
+                      "text": "Mind 特性说明（技术）",
+                      "marks": [
+                        {
+                          "type": "link",
+                          "attrs": {
+                            "href": "verd://file/project-doc%3Apackages%2Fboard%2Fmind-features"
+                          }
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "text": " 与 "
+                    },
+                    {
+                      "type": "text",
+                      "text": "画布模式",
+                      "marks": [
+                        {
+                          "type": "link",
+                          "attrs": {
+                            "href": "verd://file/project-doc%3Apackages%2Fboard%2Fcanvas-modes"
+                          }
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "text": "。"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 3
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "3.2 流程图"
+            }
+          ]
+        },
+        {
+          "type": "bulletList",
+          "content": [
+            {
+              "type": "listItem",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "几何图形与流程图符号库，用于表达控制流与结构关系"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 3
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "3.3 自由绘画与图形"
+            }
+          ]
+        },
+        {
+          "type": "bulletList",
+          "content": [
+            {
+              "type": "listItem",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "手绘风格线条、箭头、表格等绘图工具，适合快速标注与草图"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "listItem",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "左侧「图表」菜单统一创建思维导图、流程图和架构图；「连线」菜单提供箭头、直线与曲线，直线和曲线默认没有箭头，可在属性中修改端点。"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "listItem",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "独立折线属于图形节点，入口位于「形状」面板；连线可吸附并绑定节点。图表与连线菜单支持方向键选择、Enter 确认、Esc 和点击外部关闭。"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 3
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "3.4 工作区子图"
+            }
+          ]
+        },
+        {
+          "type": "bulletList",
+          "content": [
+            {
+              "type": "listItem",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "只有思维导图、流程图和架构图进入子图管理。子图只能属于一张普通画布，不能属于另一张专业图，层级只有两层。"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "listItem",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "「提升为独立图表」只改变工作区归属，不改变图表类型。一份子图一份内容、一个所有者，可以有任意多处合法引用；删、移、加引用都不会自动改所有者。"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "listItem",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "普通画布引用普通画布是只读预览，预览内部也不能编辑；外壳仍可移动、缩放和删除。双击或「打开原画布」进入原文件。"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "listItem",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "侧边栏按真实路径完整显示画布、专业图和文档，包括已归属和待整理图表。所属画布下另列带标识的图表快捷入口；两处共享源文件、状态和标签页。快捷入口只提供打开和在文件夹中显示，定位会展开全部父目录并聚焦真实文件行。"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "listItem",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "图表库是主内容页，不是文件标签。列表按名称排序，可按名称、类型和归属交叉筛选。整理已有图表只预览还没有 organization 的专业图，确认后整批一次撤销。专业图行还可通过「调整归属…」选择普通画布、独立或待整理，修改支持撤销；只读和选择器模式隐藏调整入口。"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "listItem",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "引用已有图表只插入一个引用壳，不复制内容，也不改变对方的归属。"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "侧边栏每行的 "
+            },
+            {
+              "type": "text",
+              "text": "⋯",
+              "marks": [
+                {
+                  "type": "code"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "text": " 或右键打开操作菜单，包括重命名、副本、导出和移入回收站；图表归属统一在图表库调整。目录里可以新建画布、文档和文件夹。回收站位于「工作区设置」左侧菜单。"
+            }
+          ]
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 3
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "3.5 富文本"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "独立文字稿保存为 .verd-doc.json，和画布共用目录、标签页、保存、回收站与统一撤销历史。正文可以链接到另一份文档的标题或架构画布，项目文档因此直接在当前工作区维护。原生 JSON 是维护真源；Markdown 仅作用户主动导入导出格式。"
+            }
+          ]
+        },
+        {
+          "type": "bulletList",
+          "content": [
+            {
+              "type": "listItem",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "基于 TipTap 的段落与行内编辑，支持常见文档结构（标题、列表、表格等）。"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "listItem",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "思维导图节点的主题行与附属笔记在数据与编辑链路上分离，笔记为段落级能力；详见 "
+                    },
+                    {
+                      "type": "text",
+                      "text": "Mind 特性说明（技术）",
+                      "marks": [
+                        {
+                          "type": "link",
+                          "attrs": {
+                            "href": "verd://file/project-doc%3Apackages%2Fboard%2Fmind-features"
+                          }
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "text": " 第二节。"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 3
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "3.6 工作流"
+            }
+          ]
+        },
+        {
+          "type": "bulletList",
+          "content": [
+            {
+              "type": "listItem",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "独立流程文件",
+                      "marks": [
+                        {
+                          "type": "bold"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "text": "：复用统一画布引擎，规范数据是 FrameFileV2 中的原生 Cell，不保存第二套领域文档。"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "listItem",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "从节点面板拖入或点击添加任务 / 判断节点，支持连线、删除、复制与属性改名。"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "listItem",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "每份文档可在 "
+                    },
+                    {
+                      "type": "text",
+                      "text": "DAG",
+                      "marks": [
+                        {
+                          "type": "bold"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "text": "（默认，禁止回路）与 "
+                    },
+                    {
+                      "type": "text",
+                      "text": "传统流程",
+                      "marks": [
+                        {
+                          "type": "bold"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "text": "（允许多节点回路，仍禁止自环）之间切换。"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "listItem",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "常规白板",
+                      "marks": [
+                        {
+                          "type": "bold"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "text": "：可以插入 workflow 特殊组件。它是整块组件：可移动、可点选内部节点改名，画面与独占详情共用同一场景；连线、端口、Palette 只在独占编辑器中使用。双击引用通过稳定目标 frameId 进入同一源文件的详情编辑；标题栏返回白板。"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "listItem",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "Web 与 Desktop 共用 "
+                    },
+                    {
+                      "type": "text",
+                      "text": "@sue/verd-board-app",
+                      "marks": [
+                        {
+                          "type": "code"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "text": " 的 WorkspaceSession 和 WorkspaceHost；专业图可作为独立文件打开，也可在所属白板下导航。"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "listItem",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "模式约定见 "
+                    },
+                    {
+                      "type": "text",
+                      "text": "画布模式",
+                      "marks": [
+                        {
+                          "type": "link",
+                          "attrs": {
+                            "href": "verd://file/project-doc%3Apackages%2Fboard%2Fcanvas-modes"
+                          }
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "text": "。"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 3
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "3.7 主题与外观"
+            }
+          ]
+        },
+        {
+          "type": "bulletList",
+          "content": [
+            {
+              "type": "listItem",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "内置主题与可扩展的主题系统，保证画布内各类元素视觉一致"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "listItem",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "网格与间距、容器比例预设随 Frame 保存；组合与多选统一调整外观和文字格式"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "listItem",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "右侧与右键菜单提供六向对齐、等距分布和显式自动排列；拖动显示可吸附的智能参考线，Alt 临时关闭。"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "listItem",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "Group 支持嵌套、逐层进入/退出、逐层解组和独立锁定，整体排列保持内部相对位置。白板、流程节点和架构模块支持，Mind 内部保持树布局。详见 "
+                    },
+                    {
+                      "type": "text",
+                      "text": "对齐、自动排列与组合",
+                      "marks": [
+                        {
+                          "type": "link",
+                          "attrs": {
+                            "href": "verd://file/project-doc%3Apackages%2Fboard%2Farrangement"
+                          }
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "text": "。"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "listItem",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "清空先确认，保留必须存在的领域锚点并可一次撤销；白板对象可移动到另一 Frame，关联箭头和坐标同步处理"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 3
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "3.8 性能与扩展"
+            }
+          ]
+        },
+        {
+          "type": "bulletList",
+          "content": [
+            {
+              "type": "listItem",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "SVG 管线下的流畅交互"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "listItem",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "Cell Util、注册器和渲染扩展便于新增节点类型、交互与导入导出能力"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 3
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "3.9 设置与操作偏好"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "左上角「更多」菜单收纳打开、导入、导出、清空与「我的」；撤销、重做和保存状态保持直接可用。全屏设置页提供语言、触控板缩放灵敏度与拖动画布速度，操作偏好即时应用于本设备所有画布，刷新或重启后保留。返回设置前的画布时保留视口、选择与撤销历史。"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "点击侧栏顶部工作区名称打开菜单，其中「工作区设置」的基本设置管理当前工作区名称和思维导图默认宽度（优先于全局值），回收站栏目管理当前工作区回收项；Desktop 还提供打开工作区文件夹与回到内置工作区。侧栏底部仅保留「我的」，与画布「更多 → 我的」打开同一页面；「我的」按通用、思维导图和画布交互展示设备偏好。回收站明确显示当前工作区名称，包含还原、永久删除和清空操作；返回或 Escape 一次关闭并恢复原入口焦点。"
+            }
+          ]
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 3
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "3.10 演示"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "白板、思维导图、流程图和架构图可在独立只读覆盖层中全屏演示当前画布内容，复用编辑画布相同的渲染扩展，从总览开始，点击对象聚焦；思维导图从总览开始，按根主题顺序依次展示各根的一级分支，根主题不单独占一步；架构图按层提供上一步／下一步。"
+            },
+            {
+              "type": "text",
+              "text": "0",
+              "marks": [
+                {
+                  "type": "code"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "text": " 返回总览，"
+            },
+            {
+              "type": "text",
+              "text": "L",
+              "marks": [
+                {
+                  "type": "code"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "text": " 切换激光笔，"
+            },
+            {
+              "type": "text",
+              "text": "Esc",
+              "marks": [
+                {
+                  "type": "code"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "text": " 退出并恢复编辑视口。所有演示状态仅在会话内存中，不写入文档或撤销历史。"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "本轮移除幻灯片生成和编排、标题与备注、临时笔迹、计时、自动播放、演讲者视图和独立观众窗口，不提供双屏同步、远程观众、PPT 导出或跨文件串联。旧文件中的 "
+            },
+            {
+              "type": "text",
+              "text": "presentation",
+              "marks": [
+                {
+                  "type": "code"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "text": " 数据忽略，不新增迁移或主动重写。"
+            }
+          ]
+        },
+        {
+          "type": "horizontalRule"
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 2
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "4. 产品形态与交付"
+            }
+          ]
+        },
+        {
+          "type": "table",
+          "content": [
+            {
+              "type": "tableRow",
+              "content": [
+                {
+                  "type": "tableHeader",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "形态"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "tableHeader",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "说明"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "tableRow",
+              "content": [
+                {
+                  "type": "tableCell",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "桌面应用",
+                          "marks": [
+                            {
+                              "type": "bold"
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "tableCell",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "Electron 打包，适合本地文件与离线使用场景"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "tableRow",
+              "content": [
+                {
+                  "type": "tableCell",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "Web 应用",
+                          "marks": [
+                            {
+                              "type": "bold"
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "tableCell",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "浏览器内使用（能力与桌面端对齐程度以当前里程碑为准）"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "具体安装、启动与构建命令见 "
+            },
+            {
+              "type": "text",
+              "text": "文档中心首页",
+              "marks": [
+                {
+                  "type": "link",
+                  "attrs": {
+                    "href": "verd://file/project-doc%3AREADME#%E5%BF%AB%E9%80%9F%E5%BC%80%E5%A7%8B"
+                  }
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "text": " 与 "
+            },
+            {
+              "type": "text",
+              "text": "安装配置指南",
+              "marks": [
+                {
+                  "type": "link",
+                  "attrs": {
+                    "href": "verd://file/project-doc%3Aguides%2FSETUP"
+                  }
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "text": "。"
+            }
+          ]
+        },
+        {
+          "type": "horizontalRule"
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 2
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "5. 设计原则（摘要）"
+            }
+          ]
+        },
+        {
+          "type": "bulletList",
+          "content": [
+            {
+              "type": "listItem",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "一体化画布",
+                      "marks": [
+                        {
+                          "type": "bold"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "text": "：白板与领域详情共用 FrameCanvas；详情通过 frameId 编辑同一份数据。"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "listItem",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "可扩展",
+                      "marks": [
+                        {
+                          "type": "bold"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "text": "：核心与业务功能通过 Util、注册器和渲染扩展划分，便于迭代与二次开发。"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "listItem",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "文档可读",
+                      "marks": [
+                        {
+                          "type": "bold"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "text": "：文档与代码结构面向团队可读、可导航。"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "horizontalRule"
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 2
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "6. 文档与变更索引"
+            }
+          ]
+        },
+        {
+          "type": "table",
+          "content": [
+            {
+              "type": "tableRow",
+              "content": [
+                {
+                  "type": "tableHeader",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "类型"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "tableHeader",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "路径"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "tableRow",
+              "content": [
+                {
+                  "type": "tableCell",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "架构与技术栈"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "tableCell",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "../architecture/ARCHITECTURE.md",
+                          "marks": [
+                            {
+                              "type": "link",
+                              "attrs": {
+                                "href": "verd://file/project-doc%3Aarchitecture%2FARCHITECTURE"
+                              }
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "tableRow",
+              "content": [
+                {
+                  "type": "tableCell",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "开发环境与规范"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "tableCell",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "../development/README.md",
+                          "marks": [
+                            {
+                              "type": "link",
+                              "attrs": {
+                                "href": "verd://file/project-doc%3Adevelopment%2FREADME"
+                              }
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "tableRow",
+              "content": [
+                {
+                  "type": "tableCell",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "包与 API 索引"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "tableCell",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "../packages/README.md",
+                          "marks": [
+                            {
+                              "type": "link",
+                              "attrs": {
+                                "href": "verd://file/project-doc%3Apackages%2FREADME"
+                              }
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "tableRow",
+              "content": [
+                {
+                  "type": "tableCell",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "安装与配置"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "tableCell",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "../guides/SETUP.md",
+                          "marks": [
+                            {
+                              "type": "link",
+                              "attrs": {
+                                "href": "verd://file/project-doc%3Aguides%2FSETUP"
+                              }
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "tableRow",
+              "content": [
+                {
+                  "type": "tableCell",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "画布 / Mind / 属性源码索引"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "tableCell",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "../guides/配置与源码索引.md",
+                          "marks": [
+                            {
+                              "type": "link",
+                              "attrs": {
+                                "href": "verd://file/project-doc%3Aguides%2F%E9%85%8D%E7%BD%AE%E4%B8%8E%E6%BA%90%E7%A0%81%E7%B4%A2%E5%BC%95"
+                              }
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "tableRow",
+              "content": [
+                {
+                  "type": "tableCell",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "文档维护规范"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "tableCell",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "../DOCUMENTATION_GUIDE.md",
+                          "marks": [
+                            {
+                              "type": "link",
+                              "attrs": {
+                                "href": "verd://file/project-doc%3ADOCUMENTATION_GUIDE"
+                              }
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "tableRow",
+              "content": [
+                {
+                  "type": "tableCell",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "Mind 特性（产品摘要见 §3.1 / §3.4，技术合并说明）"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "tableCell",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "../packages/board/mind-features.md",
+                          "marks": [
+                            {
+                              "type": "link",
+                              "attrs": {
+                                "href": "verd://file/project-doc%3Apackages%2Fboard%2Fmind-features"
+                              }
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "tableRow",
+              "content": [
+                {
+                  "type": "tableCell",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "画布模式（独占 / 常规白板特殊组件）"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "tableCell",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "../packages/board/canvas-modes.md",
+                          "marks": [
+                            {
+                              "type": "link",
+                              "attrs": {
+                                "href": "verd://file/project-doc%3Apackages%2Fboard%2Fcanvas-modes"
+                              }
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "较大功能在 "
+            },
+            {
+              "type": "text",
+              "text": "架构原生文档",
+              "marks": [
+                {
+                  "type": "bold"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "text": " 或 "
+            },
+            {
+              "type": "text",
+              "text": "workspace/文档/包/",
+              "marks": [
+                {
+                  "type": "bold"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "text": " 下维护可长期阅读的说明（目标、交互摘要 + 技术落点），并在本节登记链接，与「整体概览」形成层次关系。"
+            }
+          ]
+        },
+        {
+          "type": "horizontalRule"
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 2
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "7. 非目标（当前阶段）"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "以下不作为本文档承诺的交付范围，具体以路线图为准："
+            }
+          ]
+        },
+        {
+          "type": "bulletList",
+          "content": [
+            {
+              "type": "listItem",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "与某单一竞品的功能逐项对齐说明"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "listItem",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "商业化版本、SLA 或托管服务条款"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "若需对外发布说明，建议在发布说明或独立「路线图」文档中维护。"
+            }
+          ]
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 3
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "属性与节点交互"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "右侧属性栏为画布外 300px 的独立 Sidebar，通高、可滚动和收起；800px 窗口保持右侧布局。属性按位置、外观、文本和排列分组，单选/多选/空选择分别呈现元素、共有属性和画布设置。开关不改变视口和撤销历史。工具与底部控制位于画布内，视图适配使用实际画布尺寸。"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "对象名称与画布正文独立，名称为单行纯文本，正文保留富文本。自动名称在已有正文节点插入或空节点首次完整编辑结束时生成，后续正文修改不改名，显式空名称有效。Port 平时隐藏，悬停、选择或连接时显示；连线在可见 Port 圆周外结束，导出恢复到节点边界。形状菜单打开时进入选择态，选定形状后才创建；连线菜单提供双向箭头。右键菜单固定打开时的目标，外部左击立即关闭并继续原点击或拖动。"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "Mind 主题按内容自动适配，长内容在最大宽度处换行，高度不限。默认最大宽度 240，可在设置页修改，也可在各图根节点配置中覆盖。普通文本形状、流程节点与架构模块可对选中对象执行「根据内容调整大小」，保持位置并支持一次撤销。规则见 "
+            },
+            {
+              "type": "text",
+              "text": "节点内容适配与最大宽度",
+              "marks": [
+                {
+                  "type": "link",
+                  "attrs": {
+                    "href": "verd://file/project-doc%3Apackages%2Fboard%2Fmind-features#%E8%8A%82%E7%82%B9%E5%86%85%E5%AE%B9%E9%80%82%E9%85%8D%E4%B8%8E%E6%9C%80%E5%A4%A7%E5%AE%BD%E5%BA%A6"
+                  }
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "text": "。"
+            }
+          ]
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 2
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "文档 Frame 与只读引用"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "在通用画布中使用“文档 Frame…”新建或选择文档：单击选择外壳，双击正文编辑，Escape 结束编辑。所有画布中的“引用文档（只读）…”用于阅读和关联说明；打开全文后编辑源文件。锁定、演示和嵌套预览不会开放正文编辑。"
+            }
+          ]
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 2
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "文件夹回收、永久删除与我的（2026-10-18）"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "目录支持整体移入回收站，包含全部子目录、画布、文档、普通文件和空目录；回收站中作为一项整体还原。移入前等待保存完成，有冲突则停止。删除后的文件从所有标签分组移除，稳定身份与目录外引用保留。"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "回收站提供单项「永久删除」和「清空回收站」，均需确认；清空只删除确认时看到的条目。永久删除不可撤销，并移除能够恢复相关内容的历史，保留无关文件的撤销记录。普通移入和还原支持一步撤销与重做；还原不会覆盖已有路径。"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "侧栏底部与画布更多菜单统一打开「我的」管理设备偏好。工作区设置位于顶部名称菜单，默认打开基本设置，可切换至回收站；回收站仅管理当前工作区条目，空列表时保留入口。偏好存储和即时生效规则保持原样。"
+            }
+          ]
+        }
+      ]
+    },
+    "plainText": "青编（VerdBoard）产品概览\n本文档从产品视角描述青编（VerdBoard）的定位、能力与使用形态，面向产品/设计评审、新成员 onboarding，以及与架构、开发文档互补阅读。实现细节见 架构文档 与 包文档索引。\n最后更新: 2026-10-16\n\n1. 产品定位\n青编（VerdBoard）是一个画布与文档共存的知识工作区，在同一文件树里组织：\n思维导图 — 结构化发散与层级整理\n流程图 — 流程、关系与图形符号表达\n自由绘画 — 手绘感线条、箭头等草图能力\n工作流 — 独占编辑器，以及常规白板上的特殊组件（任务 / 判断）\n独立文档 — 与画布并列的文字文件，支持标题、列表、表格、图片、代码、查找替换、目录和导出（基于 TipTap）\n底层由 Board 引擎（@sue/board-* 分包） 驱动，采用 SVG 渲染 与 Cell 注册和 React 扩展 方式，在交互性能与可扩展性之间做平衡。\n\n2. 目标用户与典型场景\n用户类型\n典型诉求\n青编提供的价值\n个人知识工作者\n一屏内完成脑图 + 备注 + 简单图示\n单画布多模态，减少工具切换\n产品与项目协作\n梳理需求、流程、里程碑\n流程图与思维导图并存，结构清晰\n开发者 / 技术写作者\n在自有产品中嵌入白板能力\nMonorepo 分包（如 @sue/board-react、@sue/board-* 各子包）可复用\n\n3. 核心能力（产品语言）\n3.1 思维导图\n主题文字与拖拽：标题默认左对齐，笔记默认左、上对齐，保留显式格式。拖入主题生长方向的隐藏热区可调整父子关系；高亮候选父节点和半透明分支预览提示落位，松手统一提交，支持撤销与保存恢复。\n多种布局与主题样式，支持节点级自定义。\n整图选中：Mind 提供覆盖整棵树的背景包裹区域语义；可单独选中「整张导图」以调整默认样式，也可像普通节点一样选中根节点编辑主题样式与内容，二者在选中框与右侧属性面板上区分明确。\n框选：框住整棵 Mind 时表现为选中整体；仅框住部分分支时为多选节点。\n节点笔记 / 布局 / 图片：在独占脑图工作区编辑；常规白板上的脑图特殊组件只保留改名、展开收起与整图拖动。\n独占图文件：脑图是一份可独立打开的文件，也可以归属于普通画布。从引用进入详情仍编辑源文件中的同一棵树。\n常规白板上的脑图是有边界的组件（子节点不能离开这棵树独立存在）。双击整图或点「打开」进入独占编辑器。\n技术落点见 Mind 特性说明（技术） 与 画布模式。\n3.2 流程图\n几何图形与流程图符号库，用于表达控制流与结构关系\n3.3 自由绘画与图形\n手绘风格线条、箭头、表格等绘图工具，适合快速标注与草图\n左侧「图表」菜单统一创建思维导图、流程图和架构图；「连线」菜单提供箭头、直线与曲线，直线和曲线默认没有箭头，可在属性中修改端点。\n独立折线属于图形节点，入口位于「形状」面板；连线可吸附并绑定节点。图表与连线菜单支持方向键选择、Enter 确认、Esc 和点击外部关闭。\n3.4 工作区子图\n只有思维导图、流程图和架构图进入子图管理。子图只能属于一张普通画布，不能属于另一张专业图，层级只有两层。\n「提升为独立图表」只改变工作区归属，不改变图表类型。一份子图一份内容、一个所有者，可以有任意多处合法引用；删、移、加引用都不会自动改所有者。\n普通画布引用普通画布是只读预览，预览内部也不能编辑；外壳仍可移动、缩放和删除。双击或「打开原画布」进入原文件。\n侧边栏按真实路径完整显示画布、专业图和文档，包括已归属和待整理图表。所属画布下另列带标识的图表快捷入口；两处共享源文件、状态和标签页。快捷入口只提供打开和在文件夹中显示，定位会展开全部父目录并聚焦真实文件行。\n图表库是主内容页，不是文件标签。列表按名称排序，可按名称、类型和归属交叉筛选。整理已有图表只预览还没有 organization 的专业图，确认后整批一次撤销。专业图行还可通过「调整归属…」选择普通画布、独立或待整理，修改支持撤销；只读和选择器模式隐藏调整入口。\n引用已有图表只插入一个引用壳，不复制内容，也不改变对方的归属。\n侧边栏每行的 ⋯ 或右键打开操作菜单，包括重命名、副本、导出和移入回收站；图表归属统一在图表库调整。目录里可以新建画布、文档和文件夹。回收站位于「工作区设置」左侧菜单。\n3.5 富文本\n独立文字稿保存为 .verd-doc.json，和画布共用目录、标签页、保存、回收站与统一撤销历史。正文可以链接到另一份文档的标题或架构画布，项目文档因此直接在当前工作区维护。原生 JSON 是维护真源；Markdown 仅作用户主动导入导出格式。\n基于 TipTap 的段落与行内编辑，支持常见文档结构（标题、列表、表格等）。\n思维导图节点的主题行与附属笔记在数据与编辑链路上分离，笔记为段落级能力；详见 Mind 特性说明（技术） 第二节。\n3.6 工作流\n独立流程文件：复用统一画布引擎，规范数据是 FrameFileV2 中的原生 Cell，不保存第二套领域文档。\n从节点面板拖入或点击添加任务 / 判断节点，支持连线、删除、复制与属性改名。\n每份文档可在 DAG（默认，禁止回路）与 传统流程（允许多节点回路，仍禁止自环）之间切换。\n常规白板：可以插入 workflow 特殊组件。它是整块组件：可移动、可点选内部节点改名，画面与独占详情共用同一场景；连线、端口、Palette 只在独占编辑器中使用。双击引用通过稳定目标 frameId 进入同一源文件的详情编辑；标题栏返回白板。\nWeb 与 Desktop 共用 @sue/verd-board-app 的 WorkspaceSession 和 WorkspaceHost；专业图可作为独立文件打开，也可在所属白板下导航。\n模式约定见 画布模式。\n3.7 主题与外观\n内置主题与可扩展的主题系统，保证画布内各类元素视觉一致\n网格与间距、容器比例预设随 Frame 保存；组合与多选统一调整外观和文字格式\n右侧与右键菜单提供六向对齐、等距分布和显式自动排列；拖动显示可吸附的智能参考线，Alt 临时关闭。\nGroup 支持嵌套、逐层进入/退出、逐层解组和独立锁定，整体排列保持内部相对位置。白板、流程节点和架构模块支持，Mind 内部保持树布局。详见 对齐、自动排列与组合。\n清空先确认，保留必须存在的领域锚点并可一次撤销；白板对象可移动到另一 Frame，关联箭头和坐标同步处理\n3.8 性能与扩展\nSVG 管线下的流畅交互\nCell Util、注册器和渲染扩展便于新增节点类型、交互与导入导出能力\n3.9 设置与操作偏好\n左上角「更多」菜单收纳打开、导入、导出、清空与「我的」；撤销、重做和保存状态保持直接可用。全屏设置页提供语言、触控板缩放灵敏度与拖动画布速度，操作偏好即时应用于本设备所有画布，刷新或重启后保留。返回设置前的画布时保留视口、选择与撤销历史。\n点击侧栏顶部工作区名称打开菜单，其中「工作区设置」的基本设置管理当前工作区名称和思维导图默认宽度（优先于全局值），回收站栏目管理当前工作区回收项；Desktop 还提供打开工作区文件夹与回到内置工作区。侧栏底部仅保留「我的」，与画布「更多 → 我的」打开同一页面；「我的」按通用、思维导图和画布交互展示设备偏好。回收站明确显示当前工作区名称，包含还原、永久删除和清空操作；返回或 Escape 一次关闭并恢复原入口焦点。\n3.10 演示\n白板、思维导图、流程图和架构图可在独立只读覆盖层中全屏演示当前画布内容，复用编辑画布相同的渲染扩展，从总览开始，点击对象聚焦；思维导图从总览开始，按根主题顺序依次展示各根的一级分支，根主题不单独占一步；架构图按层提供上一步／下一步。0 返回总览，L 切换激光笔，Esc 退出并恢复编辑视口。所有演示状态仅在会话内存中，不写入文档或撤销历史。\n本轮移除幻灯片生成和编排、标题与备注、临时笔迹、计时、自动播放、演讲者视图和独立观众窗口，不提供双屏同步、远程观众、PPT 导出或跨文件串联。旧文件中的 presentation 数据忽略，不新增迁移或主动重写。\n\n4. 产品形态与交付\n形态\n说明\n桌面应用\nElectron 打包，适合本地文件与离线使用场景\nWeb 应用\n浏览器内使用（能力与桌面端对齐程度以当前里程碑为准）\n具体安装、启动与构建命令见 文档中心首页 与 安装配置指南。\n\n5. 设计原则（摘要）\n一体化画布：白板与领域详情共用 FrameCanvas；详情通过 frameId 编辑同一份数据。\n可扩展：核心与业务功能通过 Util、注册器和渲染扩展划分，便于迭代与二次开发。\n文档可读：文档与代码结构面向团队可读、可导航。\n\n6. 文档与变更索引\n类型\n路径\n架构与技术栈\n../architecture/ARCHITECTURE.md\n开发环境与规范\n../development/README.md\n包与 API 索引\n../packages/README.md\n安装与配置\n../guides/SETUP.md\n画布 / Mind / 属性源码索引\n../guides/配置与源码索引.md\n文档维护规范\n../DOCUMENTATION_GUIDE.md\nMind 特性（产品摘要见 §3.1 / §3.4，技术合并说明）\n../packages/board/mind-features.md\n画布模式（独占 / 常规白板特殊组件）\n../packages/board/canvas-modes.md\n较大功能在 架构原生文档 或 workspace/文档/包/ 下维护可长期阅读的说明（目标、交互摘要 + 技术落点），并在本节登记链接，与「整体概览」形成层次关系。\n\n7. 非目标（当前阶段）\n以下不作为本文档承诺的交付范围，具体以路线图为准：\n与某单一竞品的功能逐项对齐说明\n商业化版本、SLA 或托管服务条款\n若需对外发布说明，建议在发布说明或独立「路线图」文档中维护。\n属性与节点交互\n右侧属性栏为画布外 300px 的独立 Sidebar，通高、可滚动和收起；800px 窗口保持右侧布局。属性按位置、外观、文本和排列分组，单选/多选/空选择分别呈现元素、共有属性和画布设置。开关不改变视口和撤销历史。工具与底部控制位于画布内，视图适配使用实际画布尺寸。\n对象名称与画布正文独立，名称为单行纯文本，正文保留富文本。自动名称在已有正文节点插入或空节点首次完整编辑结束时生成，后续正文修改不改名，显式空名称有效。Port 平时隐藏，悬停、选择或连接时显示；连线在可见 Port 圆周外结束，导出恢复到节点边界。形状菜单打开时进入选择态，选定形状后才创建；连线菜单提供双向箭头。右键菜单固定打开时的目标，外部左击立即关闭并继续原点击或拖动。\nMind 主题按内容自动适配，长内容在最大宽度处换行，高度不限。默认最大宽度 240，可在设置页修改，也可在各图根节点配置中覆盖。普通文本形状、流程节点与架构模块可对选中对象执行「根据内容调整大小」，保持位置并支持一次撤销。规则见 节点内容适配与最大宽度。\n文档 Frame 与只读引用\n在通用画布中使用“文档 Frame…”新建或选择文档：单击选择外壳，双击正文编辑，Escape 结束编辑。所有画布中的“引用文档（只读）…”用于阅读和关联说明；打开全文后编辑源文件。锁定、演示和嵌套预览不会开放正文编辑。\n文件夹回收、永久删除与我的（2026-10-18）\n目录支持整体移入回收站，包含全部子目录、画布、文档、普通文件和空目录；回收站中作为一项整体还原。移入前等待保存完成，有冲突则停止。删除后的文件从所有标签分组移除，稳定身份与目录外引用保留。\n回收站提供单项「永久删除」和「清空回收站」，均需确认；清空只删除确认时看到的条目。永久删除不可撤销，并移除能够恢复相关内容的历史，保留无关文件的撤销记录。普通移入和还原支持一步撤销与重做；还原不会覆盖已有路径。\n侧栏底部与画布更多菜单统一打开「我的」管理设备偏好。工作区设置位于顶部名称菜单，默认打开基本设置，可切换至回收站；回收站仅管理当前工作区条目，空列表时保留入口。偏好存储和即时生效规则保持原样。\n",
+    "align": "left"
+  }
+}

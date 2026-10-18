@@ -1,0 +1,1782 @@
+{
+  "format": "verd-document",
+  "version": 1,
+  "id": "project-doc:packages/README",
+  "title": "包索引",
+  "text": {
+    "schemaVersion": 1,
+    "id": "project-doc:packages/README",
+    "kind": "block",
+    "content": {
+      "type": "doc",
+      "content": [
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 1
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "包文档"
+            }
+          ]
+        },
+        {
+          "type": "frameReference",
+          "attrs": {
+            "targetFrameId": "board/20:architecture-layered"
+          }
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "本文档索引 monorepo 中的 workspace 包。目录按引擎、React 适配、转换器和产品分层。"
+            }
+          ]
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 2
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "应用与产品层"
+            }
+          ]
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 3
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "@sue/verd-board-ui",
+              "marks": [
+                {
+                  "type": "code"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "text": "（目录 "
+            },
+            {
+              "type": "text",
+              "text": "packages/product/ui",
+              "marks": [
+                {
+                  "type": "code"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "text": "）"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "产品入口导出 "
+            },
+            {
+              "type": "text",
+              "text": "VerdFrame",
+              "marks": [
+                {
+                  "type": "code"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "text": " 与 "
+            },
+            {
+              "type": "text",
+              "text": "ProductShell",
+              "marks": [
+                {
+                  "type": "code"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "text": "。"
+            },
+            {
+              "type": "text",
+              "text": "VerdFrame",
+              "marks": [
+                {
+                  "type": "code"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "text": " 按 "
+            },
+            {
+              "type": "text",
+              "text": "frameId",
+              "marks": [
+                {
+                  "type": "code"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "text": " 挂载白板或领域 Frame，工具栏、属性面板和导入预览共用 "
+            },
+            {
+              "type": "text",
+              "text": "FrameCanvas",
+              "marks": [
+                {
+                  "type": "code"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "text": "。画布模式见 "
+            },
+            {
+              "type": "text",
+              "text": "canvas-modes.md",
+              "marks": [
+                {
+                  "type": "link",
+                  "attrs": {
+                    "href": "verd://file/project-doc%3Apackages%2Fboard%2Fcanvas-modes"
+                  }
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "text": "。"
+            }
+          ]
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 3
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "@sue/verd-board-app",
+              "marks": [
+                {
+                  "type": "code"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "text": "（目录 "
+            },
+            {
+              "type": "text",
+              "text": "packages/product/app",
+              "marks": [
+                {
+                  "type": "code"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "text": "）"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "Web/Desktop 共用的应用壳与工作区生命周期，管理 FrameFileV2 画布和 DocumentFileV1 文字文件。"
+            },
+            {
+              "type": "text",
+              "text": "WorkspaceApp",
+              "marks": [
+                {
+                  "type": "code"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "text": " 经 "
+            },
+            {
+              "type": "text",
+              "text": "WorkspaceHost",
+              "marks": [
+                {
+                  "type": "code"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "text": "（Desktop 文件系统 / Web IndexedDB）打开工作区，"
+            },
+            {
+              "type": "text",
+              "text": "WorkspaceSession",
+              "marks": [
+                {
+                  "type": "code"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "text": " 持有各画布文件并组装成单一 CellStore；嵌入与详情编辑同一份 Cell，跨文件嵌入由 "
+            },
+            {
+              "type": "text",
+              "text": "frame-reference",
+              "marks": [
+                {
+                  "type": "code"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "text": " 桥接。专业图可以用 "
+            },
+            {
+              "type": "text",
+              "text": "organization",
+              "marks": [
+                {
+                  "type": "code"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "text": " 归属到一张普通画布，图表库和侧边栏读取单独的归属索引。文档以 .verd-doc.json 保存 BoardTextDocument，使用 DocumentPage/DocumentEditor；两类文件共用历史、文件树、标签页、回收站和条件提交。画布按 "
+            },
+            {
+              "type": "text",
+              "text": ".verd.json",
+              "marks": [
+                {
+                  "type": "code"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "text": " 文件条件提交，冲突显式解决；首次加载旧平铺存储自动迁移。桌面关闭窗口前等待会话 flush。"
+            }
+          ]
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 2
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "React 包"
+            }
+          ]
+        },
+        {
+          "type": "table",
+          "content": [
+            {
+              "type": "tableRow",
+              "content": [
+                {
+                  "type": "tableHeader",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "包名"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "tableHeader",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "目录"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "tableHeader",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "说明"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "tableRow",
+              "content": [
+                {
+                  "type": "tableCell",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "@sue/board-react",
+                          "marks": [
+                            {
+                              "type": "code"
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "tableCell",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "packages/react/board",
+                          "marks": [
+                            {
+                              "type": "code"
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "tableCell",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "统一 "
+                        },
+                        {
+                          "type": "text",
+                          "text": "FrameCanvas",
+                          "marks": [
+                            {
+                              "type": "code"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "text": "、控制器、运行时 Hook、标准 "
+                        },
+                        {
+                          "type": "text",
+                          "text": "value/onChange",
+                          "marks": [
+                            {
+                              "type": "code"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "text": " 与宿主 adapter/onIntent"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "tableRow",
+              "content": [
+                {
+                  "type": "tableCell",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "@sue/board-react-text",
+                          "marks": [
+                            {
+                              "type": "code"
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "tableCell",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "packages/react/text",
+                          "marks": [
+                            {
+                              "type": "code"
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "tableCell",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "TipTap 文本运行时、BoardTextController 与 DocumentEditor"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "tableRow",
+              "content": [
+                {
+                  "type": "tableCell",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "@sue/board-react-mind",
+                          "marks": [
+                            {
+                              "type": "code"
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "tableCell",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "packages/react/mind",
+                          "marks": [
+                            {
+                              "type": "code"
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "tableCell",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "createMindFrameExtensions",
+                          "marks": [
+                            {
+                              "type": "code"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "text": " 注册节点行为、树布局、媒体与概要括号渲染"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "tableRow",
+              "content": [
+                {
+                  "type": "tableCell",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "@sue/board-react-workflow",
+                          "marks": [
+                            {
+                              "type": "code"
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "tableCell",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "packages/react/workflow",
+                          "marks": [
+                            {
+                              "type": "code"
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "tableCell",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "createWorkflowFrameExtensions",
+                          "marks": [
+                            {
+                              "type": "code"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "text": " 注册流程端口、边校验与布局"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "tableRow",
+              "content": [
+                {
+                  "type": "tableCell",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "@sue/board-react-architecture",
+                          "marks": [
+                            {
+                              "type": "code"
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "tableCell",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "packages/react/architecture",
+                          "marks": [
+                            {
+                              "type": "code"
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "tableCell",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "createArchitectureFrameExtensions",
+                          "marks": [
+                            {
+                              "type": "code"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "text": " 注册层、模块与布局"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 2
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "Board 引擎："
+            },
+            {
+              "type": "text",
+              "text": "packages/engine",
+              "marks": [
+                {
+                  "type": "code"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "table",
+          "content": [
+            {
+              "type": "tableRow",
+              "content": [
+                {
+                  "type": "tableHeader",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "包名"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "tableHeader",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "目录"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "tableHeader",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "说明"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "tableRow",
+              "content": [
+                {
+                  "type": "tableCell",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "@sue/board-common",
+                          "marks": [
+                            {
+                              "type": "code"
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "tableCell",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "packages/engine/common",
+                          "marks": [
+                            {
+                              "type": "code"
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "tableCell",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "纯文本模型、编辑器属性、文本转换与测量"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "tableRow",
+              "content": [
+                {
+                  "type": "tableCell",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "@sue/board-core",
+                          "marks": [
+                            {
+                              "type": "code"
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "tableCell",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "packages/engine/core",
+                          "marks": [
+                            {
+                              "type": "code"
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "tableCell",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "CellStore、原子事务、历史、索引、选择、共享几何与 Util 基类"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "tableRow",
+              "content": [
+                {
+                  "type": "tableCell",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "@sue/board-layouts",
+                          "marks": [
+                            {
+                              "type": "code"
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "tableCell",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "packages/engine/layouts",
+                          "marks": [
+                            {
+                              "type": "code"
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "tableCell",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "树布局与通用 DAG 布局"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "tableRow",
+              "content": [
+                {
+                  "type": "tableCell",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "@sue/board-draw",
+                          "marks": [
+                            {
+                              "type": "code"
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "tableCell",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "packages/engine/draw",
+                          "marks": [
+                            {
+                              "type": "code"
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "tableCell",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "几何图形、流程图符号、表格"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "tableRow",
+              "content": [
+                {
+                  "type": "tableCell",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "@sue/board-mind",
+                          "marks": [
+                            {
+                              "type": "code"
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "tableCell",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "packages/engine/mind",
+                          "marks": [
+                            {
+                              "type": "code"
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "tableCell",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "原生中心/子主题、分支和概要边，树布局和事务命令"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "tableRow",
+              "content": [
+                {
+                  "type": "tableCell",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "@sue/board-text",
+                          "marks": [
+                            {
+                              "type": "code"
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "tableCell",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "packages/engine/text",
+                          "marks": [
+                            {
+                              "type": "code"
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "tableCell",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "文本控制器的 mark、对齐、链接与剪贴板工具"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "tableRow",
+              "content": [
+                {
+                  "type": "tableCell",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "@sue/board-workflow",
+                          "marks": [
+                            {
+                              "type": "code"
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "tableCell",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "packages/engine/workflow",
+                          "marks": [
+                            {
+                              "type": "code"
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "tableCell",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "原生开始事件、任务、判断与边，成员索引和 DAG/process 校验"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "tableRow",
+              "content": [
+                {
+                  "type": "tableCell",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "@sue/board-architecture",
+                          "marks": [
+                            {
+                              "type": "code"
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "tableCell",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "packages/engine/architecture",
+                          "marks": [
+                            {
+                              "type": "code"
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "tableCell",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "原生层、模块与依赖边，成员排布和共享正交路由"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "公开包通过 "
+            },
+            {
+              "type": "text",
+              "text": "vite build",
+              "marks": [
+                {
+                  "type": "code"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "text": " 产出 "
+            },
+            {
+              "type": "text",
+              "text": "dist",
+              "marks": [
+                {
+                  "type": "code"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "text": " ESM/CJS/d.ts/CSS；workspace 开发仍走 "
+            },
+            {
+              "type": "text",
+              "text": "exports.development",
+              "marks": [
+                {
+                  "type": "code"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "text": " 源码入口，"
+            },
+            {
+              "type": "text",
+              "text": "publishConfig",
+              "marks": [
+                {
+                  "type": "code"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "text": " 指向 dist。隔离 consumer 见 "
+            },
+            {
+              "type": "text",
+              "text": "scripts/test-consumer.mjs",
+              "marks": [
+                {
+                  "type": "code"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "text": "。"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "领域 React 包只保留 Frame 扩展，旧 Canvas、SceneGraphic 和领域样式入口已删除。标准与宿主 API 见 "
+            },
+            {
+              "type": "text",
+              "text": "React 包文档",
+              "marks": [
+                {
+                  "type": "link",
+                  "attrs": {
+                    "href": "verd://file/project-doc%3Apackages%2Freact%2FREADME"
+                  }
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "text": "。引擎与产品中的旧元素 API、插件和文档 reducer 已删除，旧格式转换移至应用私有迁移边界。"
+            }
+          ]
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 2
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "转换器："
+            },
+            {
+              "type": "text",
+              "text": "packages/converters",
+              "marks": [
+                {
+                  "type": "code"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "table",
+          "content": [
+            {
+              "type": "tableRow",
+              "content": [
+                {
+                  "type": "tableHeader",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "包名"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "tableHeader",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "目录"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "tableHeader",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "说明"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "tableRow",
+              "content": [
+                {
+                  "type": "tableCell",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "@sue/board-markdown-to-board",
+                          "marks": [
+                            {
+                              "type": "code"
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "tableCell",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "packages/converters/markdown-to-board",
+                          "marks": [
+                            {
+                              "type": "code"
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "tableCell",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "parseMarkdownToFrameSnapshot",
+                          "marks": [
+                            {
+                              "type": "code"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "text": " / "
+                        },
+                        {
+                          "type": "text",
+                          "text": "serializeFrameToMarkdown",
+                          "marks": [
+                            {
+                              "type": "code"
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "tableRow",
+              "content": [
+                {
+                  "type": "tableCell",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "@sue/board-mermaid-to-board",
+                          "marks": [
+                            {
+                              "type": "code"
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "tableCell",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "packages/converters/mermaid-to-board",
+                          "marks": [
+                            {
+                              "type": "code"
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "tableCell",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "parseMermaidToFrameSnapshot",
+                          "marks": [
+                            {
+                              "type": "code"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "text": " / "
+                        },
+                        {
+                          "type": "text",
+                          "text": "serializeFrameToMermaid",
+                          "marks": [
+                            {
+                              "type": "code"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "text": "；流程/架构可指定 scene"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "@sue/board-markdown-to-text（packages/converters/markdown-to-text）提供 parseMarkdownToTextDocument / serializeTextDocumentToMarkdown，直接转换独立文档正文。"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "内部依赖一律使用 "
+            },
+            {
+              "type": "text",
+              "text": "workspace:*",
+              "marks": [
+                {
+                  "type": "code"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "text": "。"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "E2E 在 "
+            },
+            {
+              "type": "text",
+              "text": "tests/web-e2e",
+              "marks": [
+                {
+                  "type": "code"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "text": "，用 Playwright 验收 Web 产品路径。Markdown / Mermaid 导入联调走产品文本导入对话框；转换器用例在 "
+            },
+            {
+              "type": "text",
+              "text": "@sue/board-mermaid-to-board",
+              "marks": [
+                {
+                  "type": "code"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "text": " 的 "
+            },
+            {
+              "type": "text",
+              "text": "tests/fixtures",
+              "marks": [
+                {
+                  "type": "code"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "text": "。"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "转换器 API 与数据保留范围见 "
+            },
+            {
+              "type": "text",
+              "text": "Frame 转换器",
+              "marks": [
+                {
+                  "type": "link",
+                  "attrs": {
+                    "href": "verd://file/project-doc%3Apackages%2Fboard%2Fframe-converters"
+                  }
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "text": "。"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "AI 生成可导入画布数据的完整字段表、元素目录、约束与示例见 "
+            },
+            {
+              "type": "text",
+              "text": "面向 AI 的画布数据生成规范",
+              "marks": [
+                {
+                  "type": "link",
+                  "attrs": {
+                    "href": "verd://file/project-doc%3Aguides%2Fai-canvas-data-spec"
+                  }
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "text": "。"
+            }
+          ]
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 2
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "排列与 Group"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "六向对齐、等距分布、拖动参考线、显式自动排列、嵌套组与独立锁定的规则及 API 见 "
+            },
+            {
+              "type": "text",
+              "text": "对齐、自动排列与组合",
+              "marks": [
+                {
+                  "type": "link",
+                  "attrs": {
+                    "href": "verd://file/project-doc%3Apackages%2Fboard%2Farrangement"
+                  }
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "text": "。"
+            }
+          ]
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 2
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "文件夹回收、永久删除与我的（2026-10-18）"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "产品 UI 公开 MyPage 与 VerdFrameProps.onOpenMy；FileTreeProps 保留目录回收回调，回收站数据与还原、永久删除、重试回调迁到 WorkspaceSettings.trash / WorkspaceTrashProps。应用包公开的 WorkspaceCommand 增加 trash-directory、purge-trash，CommitRequest 增加 purge 条目列表；工作区持久文件格式不变。"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "WorkspaceSessionSnapshot.trashUnconfirmed 暴露结果未确认状态，WorkspaceSession.retryTrashOperation 重放保留的原事务（包括撤销/重做）；工作区错误提示提供明确的「重试」入口。"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "WorkspaceMenu 接收工作区名称、宿主可用操作与禁用状态，复用菜单键盘和焦点机制。MyPage 移除 onSettings 回调并直接展示共用 FrameSettingsContent；公开 FrameSettingsPage 包装器保持原参数。WorkspaceSettings 移除跨页偏好跳转回调，偏好存储与工作区数据接口保持不变。"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "WorkspaceSettings.trash 接收当前工作区回收站条目、工作区名、只读状态及会话操作回调。WorkspaceTrash 独立呈现列表与空态，清空仍捕获确认时的条目；提交期间暂停重复操作及页面切换，结果未确认时提供重试。FrameSettingsContent 可指定标题层级；设置和工作区数据的持久化格式不变。"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "FileTreeProps.revealFile / onRevealFile 支持在真实目录中定位源文件；subgraphs 仅派生导航快捷入口，真实路径中的专业图始终可见。FileTree 不再承担归属调整回调；ChartLibraryRow.ownerFrameId 和 ChartLibraryProps.onChangeOrganization 提供单图归属管理，选择普通画布、独立或待整理，支持统一撤销。"
+            }
+          ]
+        }
+      ]
+    },
+    "plainText": "包文档\n打开画布 verd://file/board%2F20%3Aarchitecture-layered\n本文档索引 monorepo 中的 workspace 包。目录按引擎、React 适配、转换器和产品分层。\n应用与产品层\n@sue/verd-board-ui（目录 packages/product/ui）\n产品入口导出 VerdFrame 与 ProductShell。VerdFrame 按 frameId 挂载白板或领域 Frame，工具栏、属性面板和导入预览共用 FrameCanvas。画布模式见 canvas-modes.md。\n@sue/verd-board-app（目录 packages/product/app）\nWeb/Desktop 共用的应用壳与工作区生命周期，管理 FrameFileV2 画布和 DocumentFileV1 文字文件。WorkspaceApp 经 WorkspaceHost（Desktop 文件系统 / Web IndexedDB）打开工作区，WorkspaceSession 持有各画布文件并组装成单一 CellStore；嵌入与详情编辑同一份 Cell，跨文件嵌入由 frame-reference 桥接。专业图可以用 organization 归属到一张普通画布，图表库和侧边栏读取单独的归属索引。文档以 .verd-doc.json 保存 BoardTextDocument，使用 DocumentPage/DocumentEditor；两类文件共用历史、文件树、标签页、回收站和条件提交。画布按 .verd.json 文件条件提交，冲突显式解决；首次加载旧平铺存储自动迁移。桌面关闭窗口前等待会话 flush。\nReact 包\n包名\n目录\n说明\n@sue/board-react\npackages/react/board\n统一 FrameCanvas、控制器、运行时 Hook、标准 value/onChange 与宿主 adapter/onIntent\n@sue/board-react-text\npackages/react/text\nTipTap 文本运行时、BoardTextController 与 DocumentEditor\n@sue/board-react-mind\npackages/react/mind\ncreateMindFrameExtensions 注册节点行为、树布局、媒体与概要括号渲染\n@sue/board-react-workflow\npackages/react/workflow\ncreateWorkflowFrameExtensions 注册流程端口、边校验与布局\n@sue/board-react-architecture\npackages/react/architecture\ncreateArchitectureFrameExtensions 注册层、模块与布局\nBoard 引擎：packages/engine\n包名\n目录\n说明\n@sue/board-common\npackages/engine/common\n纯文本模型、编辑器属性、文本转换与测量\n@sue/board-core\npackages/engine/core\nCellStore、原子事务、历史、索引、选择、共享几何与 Util 基类\n@sue/board-layouts\npackages/engine/layouts\n树布局与通用 DAG 布局\n@sue/board-draw\npackages/engine/draw\n几何图形、流程图符号、表格\n@sue/board-mind\npackages/engine/mind\n原生中心/子主题、分支和概要边，树布局和事务命令\n@sue/board-text\npackages/engine/text\n文本控制器的 mark、对齐、链接与剪贴板工具\n@sue/board-workflow\npackages/engine/workflow\n原生开始事件、任务、判断与边，成员索引和 DAG/process 校验\n@sue/board-architecture\npackages/engine/architecture\n原生层、模块与依赖边，成员排布和共享正交路由\n公开包通过 vite build 产出 dist ESM/CJS/d.ts/CSS；workspace 开发仍走 exports.development 源码入口，publishConfig 指向 dist。隔离 consumer 见 scripts/test-consumer.mjs。\n领域 React 包只保留 Frame 扩展，旧 Canvas、SceneGraphic 和领域样式入口已删除。标准与宿主 API 见 React 包文档。引擎与产品中的旧元素 API、插件和文档 reducer 已删除，旧格式转换移至应用私有迁移边界。\n转换器：packages/converters\n包名\n目录\n说明\n@sue/board-markdown-to-board\npackages/converters/markdown-to-board\nparseMarkdownToFrameSnapshot / serializeFrameToMarkdown\n@sue/board-mermaid-to-board\npackages/converters/mermaid-to-board\nparseMermaidToFrameSnapshot / serializeFrameToMermaid；流程/架构可指定 scene\n@sue/board-markdown-to-text（packages/converters/markdown-to-text）提供 parseMarkdownToTextDocument / serializeTextDocumentToMarkdown，直接转换独立文档正文。\n内部依赖一律使用 workspace:*。\nE2E 在 tests/web-e2e，用 Playwright 验收 Web 产品路径。Markdown / Mermaid 导入联调走产品文本导入对话框；转换器用例在 @sue/board-mermaid-to-board 的 tests/fixtures。\n转换器 API 与数据保留范围见 Frame 转换器。\nAI 生成可导入画布数据的完整字段表、元素目录、约束与示例见 面向 AI 的画布数据生成规范。\n排列与 Group\n六向对齐、等距分布、拖动参考线、显式自动排列、嵌套组与独立锁定的规则及 API 见 对齐、自动排列与组合。\n文件夹回收、永久删除与我的（2026-10-18）\n产品 UI 公开 MyPage 与 VerdFrameProps.onOpenMy；FileTreeProps 保留目录回收回调，回收站数据与还原、永久删除、重试回调迁到 WorkspaceSettings.trash / WorkspaceTrashProps。应用包公开的 WorkspaceCommand 增加 trash-directory、purge-trash，CommitRequest 增加 purge 条目列表；工作区持久文件格式不变。\nWorkspaceSessionSnapshot.trashUnconfirmed 暴露结果未确认状态，WorkspaceSession.retryTrashOperation 重放保留的原事务（包括撤销/重做）；工作区错误提示提供明确的「重试」入口。\nWorkspaceMenu 接收工作区名称、宿主可用操作与禁用状态，复用菜单键盘和焦点机制。MyPage 移除 onSettings 回调并直接展示共用 FrameSettingsContent；公开 FrameSettingsPage 包装器保持原参数。WorkspaceSettings 移除跨页偏好跳转回调，偏好存储与工作区数据接口保持不变。\nWorkspaceSettings.trash 接收当前工作区回收站条目、工作区名、只读状态及会话操作回调。WorkspaceTrash 独立呈现列表与空态，清空仍捕获确认时的条目；提交期间暂停重复操作及页面切换，结果未确认时提供重试。FrameSettingsContent 可指定标题层级；设置和工作区数据的持久化格式不变。\nFileTreeProps.revealFile / onRevealFile 支持在真实目录中定位源文件；subgraphs 仅派生导航快捷入口，真实路径中的专业图始终可见。FileTree 不再承担归属调整回调；ChartLibraryRow.ownerFrameId 和 ChartLibraryProps.onChangeOrganization 提供单图归属管理，选择普通画布、独立或待整理，支持统一撤销。\n",
+    "align": "left"
+  }
+}

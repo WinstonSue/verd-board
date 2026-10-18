@@ -1,0 +1,2947 @@
+{
+  "format": "verd-frame",
+  "version": 2,
+  "frame": {
+    "id": "detached/25:mind/mind-mudf73s2-9hi9x8",
+    "kind": "frame",
+    "cellType": "frame",
+    "geometry": {
+      "x": 2280,
+      "y": 1380,
+      "width": 680,
+      "height": 470,
+      "derived": false
+    },
+    "children": [
+      "demo:development/root",
+      "demo:development/node/0",
+      "demo:development/branch/0",
+      "demo:development/node/0-0",
+      "demo:development/branch/0-0",
+      "demo:development/node/0-1",
+      "demo:development/branch/0-1",
+      "demo:development/node/0-2",
+      "demo:development/branch/0-2",
+      "demo:development/node/0-3",
+      "demo:development/branch/0-3",
+      "demo:development/node/1",
+      "demo:development/branch/1",
+      "demo:development/node/1-0",
+      "demo:development/branch/1-0",
+      "demo:development/node/1-1",
+      "demo:development/branch/1-1",
+      "demo:development/node/1-2",
+      "demo:development/branch/1-2",
+      "demo:development/node/1-3",
+      "demo:development/branch/1-3",
+      "demo:development/node/1-4",
+      "demo:development/branch/1-4",
+      "demo:development/node/2",
+      "demo:development/branch/2",
+      "demo:development/node/2-0",
+      "demo:development/branch/2-0",
+      "demo:development/node/2-1",
+      "demo:development/branch/2-1",
+      "demo:development/node/2-2",
+      "demo:development/branch/2-2",
+      "demo:development/node/2-3",
+      "demo:development/branch/2-3",
+      "demo:development/node/3",
+      "demo:development/branch/3",
+      "demo:development/node/3-0",
+      "demo:development/branch/3-0",
+      "demo:development/node/3-1",
+      "demo:development/branch/3-1",
+      "demo:development/node/3-2",
+      "demo:development/branch/3-2",
+      "demo:development/node/3-3",
+      "demo:development/branch/3-3",
+      "demo:development/node/3-4",
+      "demo:development/branch/3-4",
+      "demo:development/node/4",
+      "demo:development/branch/4",
+      "demo:development/node/4-0",
+      "demo:development/branch/4-0",
+      "demo:development/node/4-1",
+      "demo:development/branch/4-1",
+      "demo:development/node/4-2",
+      "demo:development/branch/4-2",
+      "demo:development/node/4-3",
+      "demo:development/branch/4-3",
+      "demo:development/node/5",
+      "demo:development/branch/5",
+      "demo:development/node/5-0",
+      "demo:development/branch/5-0",
+      "demo:development/node/5-1",
+      "demo:development/branch/5-1",
+      "demo:development/node/5-2",
+      "demo:development/branch/5-2",
+      "demo:development/node/5-3",
+      "demo:development/branch/5-3",
+      "demo:development/node/5-4",
+      "demo:development/branch/5-4",
+      "project:topic/08/document"
+    ],
+    "groups": [],
+    "data": {},
+    "content": {
+      "label": "⑧ 开发与验收",
+      "text": {
+        "schemaVersion": 1,
+        "id": "detached/25:mind/mind-mudf73s2-9hi9x8/text",
+        "kind": "inline",
+        "plainText": "⑧ 开发与验收",
+        "content": {
+          "type": "doc",
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "⑧ 开发与验收",
+                  "marks": [
+                    {
+                      "type": "textStyle",
+                      "attrs": {
+                        "fontSize": "14px",
+                        "color": "#1e293b"
+                      }
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    "appearance": {
+      "fill": "#ffffff",
+      "strokeColor": "#cbd5e1",
+      "strokeWidth": 2
+    },
+    "view": {
+      "theme": {
+        "themeColorMode": "default",
+        "boardBackground": "#ffffff"
+      }
+    },
+    "name": "⑧ 开发与验收"
+  },
+  "cells": {
+    "demo:development/root": {
+      "id": "demo:development/root",
+      "kind": "mind-root",
+      "cellType": "node",
+      "geometry": {
+        "x": 0,
+        "y": 0,
+        "width": 300,
+        "height": 64,
+        "derived": false,
+        "outline": "roundRectangle"
+      },
+      "content": {
+        "label": "开发 → 验收 → 发布",
+        "text": {
+          "schemaVersion": 1,
+          "id": "demo:development/root/text",
+          "kind": "inline",
+          "plainText": "开发 → 验收 → 发布",
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "开发 → 验收 → 发布",
+                    "marks": [
+                      {
+                        "type": "bold"
+                      },
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "24px",
+                          "color": "#ffffff"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "appearance": {
+        "fill": "#0f766e",
+        "strokeColor": "#0f766e"
+      },
+      "data": {
+        "layout": "standard",
+        "rightNodeCount": 3,
+        "note": {
+          "schemaVersion": 1,
+          "id": "demo:development/root/note/text",
+          "kind": "block",
+          "plainText": "命令以根 package.json 为准；说明见左侧「文档」目录。\n项目原生图文位于 workspace/；自动化测试只使用临时工作区。\n历史验收记录只对应所注明的日期与源码。",
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "命令以根 package.json 为准；说明见左侧「文档」目录。",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "16px",
+                          "color": "#475569"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "项目原生图文位于 workspace/；自动化测试只使用临时工作区。",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "16px",
+                          "color": "#475569"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "历史验收记录只对应所注明的日期与源码。",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "16px",
+                          "color": "#475569"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        "noteCollapsed": true
+      }
+    },
+    "demo:development/node/0": {
+      "id": "demo:development/node/0",
+      "kind": "mind-child",
+      "cellType": "node",
+      "geometry": {
+        "x": 0,
+        "y": 0,
+        "width": 240,
+        "height": 48,
+        "derived": true,
+        "outline": "roundRectangle"
+      },
+      "content": {
+        "label": "环境与运行",
+        "text": {
+          "schemaVersion": 1,
+          "id": "demo:development/node/0/text",
+          "kind": "inline",
+          "plainText": "环境与运行",
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "环境与运行",
+                    "marks": [
+                      {
+                        "type": "bold"
+                      },
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "20px",
+                          "color": "#0f766e"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "appearance": {
+        "fill": "#f0fdfa",
+        "strokeColor": "#0f766e",
+        "strokeWidth": 2
+      },
+      "data": {
+        "manualWidth": 137,
+        "collapsed": false,
+        "branchAppearance": {
+          "strokeColor": "#0f766e",
+          "strokeWidth": 2
+        }
+      }
+    },
+    "demo:development/branch/0": {
+      "id": "demo:development/branch/0",
+      "kind": "mind-branch",
+      "cellType": "edge",
+      "source": {
+        "cellId": "demo:development/root"
+      },
+      "target": {
+        "cellId": "demo:development/node/0"
+      },
+      "route": {
+        "mode": "auto"
+      },
+      "data": {
+        "order": "00000000"
+      },
+      "appearance": {
+        "strokeColor": "#0f766e",
+        "strokeWidth": 2
+      }
+    },
+    "demo:development/node/0-0": {
+      "id": "demo:development/node/0-0",
+      "kind": "mind-child",
+      "cellType": "node",
+      "geometry": {
+        "x": 0,
+        "y": 0,
+        "width": 240,
+        "height": 48,
+        "derived": true,
+        "outline": "roundRectangle"
+      },
+      "content": {
+        "label": "Node ≥ 22 · pnpm ≥ 11.18.0",
+        "text": {
+          "schemaVersion": 1,
+          "id": "demo:development/node/0-0/text",
+          "kind": "inline",
+          "plainText": "Node ≥ 22 · pnpm ≥ 11.18.0",
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Node ≥ 22 · pnpm ≥ 11.18.0",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "18px",
+                          "color": "#334155"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "appearance": {
+        "fill": "#ffffff",
+        "strokeColor": "#0f766e",
+        "strokeWidth": 1
+      },
+      "data": {
+        "manualWidth": 373,
+        "collapsed": false,
+        "branchAppearance": {
+          "strokeColor": "#0f766e",
+          "strokeWidth": 2
+        }
+      }
+    },
+    "demo:development/branch/0-0": {
+      "id": "demo:development/branch/0-0",
+      "kind": "mind-branch",
+      "cellType": "edge",
+      "source": {
+        "cellId": "demo:development/node/0"
+      },
+      "target": {
+        "cellId": "demo:development/node/0-0"
+      },
+      "route": {
+        "mode": "auto"
+      },
+      "data": {
+        "order": "00000000"
+      },
+      "appearance": {
+        "strokeColor": "#0f766e",
+        "strokeWidth": 2
+      }
+    },
+    "demo:development/node/0-1": {
+      "id": "demo:development/node/0-1",
+      "kind": "mind-child",
+      "cellType": "node",
+      "geometry": {
+        "x": 0,
+        "y": 0,
+        "width": 240,
+        "height": 48,
+        "derived": true,
+        "outline": "roundRectangle"
+      },
+      "content": {
+        "label": "pnpm install",
+        "text": {
+          "schemaVersion": 1,
+          "id": "demo:development/node/0-1/text",
+          "kind": "inline",
+          "plainText": "pnpm install",
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "pnpm install",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "18px",
+                          "color": "#334155"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "appearance": {
+        "fill": "#ffffff",
+        "strokeColor": "#0f766e",
+        "strokeWidth": 1
+      },
+      "data": {
+        "manualWidth": 184,
+        "collapsed": false,
+        "branchAppearance": {
+          "strokeColor": "#0f766e",
+          "strokeWidth": 2
+        }
+      }
+    },
+    "demo:development/branch/0-1": {
+      "id": "demo:development/branch/0-1",
+      "kind": "mind-branch",
+      "cellType": "edge",
+      "source": {
+        "cellId": "demo:development/node/0"
+      },
+      "target": {
+        "cellId": "demo:development/node/0-1"
+      },
+      "route": {
+        "mode": "auto"
+      },
+      "data": {
+        "order": "00000001"
+      },
+      "appearance": {
+        "strokeColor": "#0f766e",
+        "strokeWidth": 2
+      }
+    },
+    "demo:development/node/0-2": {
+      "id": "demo:development/node/0-2",
+      "kind": "mind-child",
+      "cellType": "node",
+      "geometry": {
+        "x": 0,
+        "y": 0,
+        "width": 240,
+        "height": 48,
+        "derived": true,
+        "outline": "roundRectangle"
+      },
+      "content": {
+        "label": "pnpm start：Desktop",
+        "text": {
+          "schemaVersion": 1,
+          "id": "demo:development/node/0-2/text",
+          "kind": "inline",
+          "plainText": "pnpm start：Desktop",
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "pnpm start：Desktop",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "18px",
+                          "color": "#334155"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "appearance": {
+        "fill": "#ffffff",
+        "strokeColor": "#0f766e",
+        "strokeWidth": 1
+      },
+      "data": {
+        "manualWidth": 266,
+        "collapsed": false,
+        "branchAppearance": {
+          "strokeColor": "#0f766e",
+          "strokeWidth": 2
+        }
+      }
+    },
+    "demo:development/branch/0-2": {
+      "id": "demo:development/branch/0-2",
+      "kind": "mind-branch",
+      "cellType": "edge",
+      "source": {
+        "cellId": "demo:development/node/0"
+      },
+      "target": {
+        "cellId": "demo:development/node/0-2"
+      },
+      "route": {
+        "mode": "auto"
+      },
+      "data": {
+        "order": "00000002"
+      },
+      "appearance": {
+        "strokeColor": "#0f766e",
+        "strokeWidth": 2
+      }
+    },
+    "demo:development/node/0-3": {
+      "id": "demo:development/node/0-3",
+      "kind": "mind-child",
+      "cellType": "node",
+      "geometry": {
+        "x": 0,
+        "y": 0,
+        "width": 240,
+        "height": 48,
+        "derived": true,
+        "outline": "roundRectangle"
+      },
+      "content": {
+        "label": "pnpm dev:web：Web",
+        "text": {
+          "schemaVersion": 1,
+          "id": "demo:development/node/0-3/text",
+          "kind": "inline",
+          "plainText": "pnpm dev:web：Web",
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "pnpm dev:web：Web",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "18px",
+                          "color": "#334155"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "appearance": {
+        "fill": "#ffffff",
+        "strokeColor": "#0f766e",
+        "strokeWidth": 1
+      },
+      "data": {
+        "manualWidth": 240,
+        "collapsed": false,
+        "branchAppearance": {
+          "strokeColor": "#0f766e",
+          "strokeWidth": 2
+        }
+      }
+    },
+    "demo:development/branch/0-3": {
+      "id": "demo:development/branch/0-3",
+      "kind": "mind-branch",
+      "cellType": "edge",
+      "source": {
+        "cellId": "demo:development/node/0"
+      },
+      "target": {
+        "cellId": "demo:development/node/0-3"
+      },
+      "route": {
+        "mode": "auto"
+      },
+      "data": {
+        "order": "00000003"
+      },
+      "appearance": {
+        "strokeColor": "#0f766e",
+        "strokeWidth": 2
+      }
+    },
+    "demo:development/node/1": {
+      "id": "demo:development/node/1",
+      "kind": "mind-child",
+      "cellType": "node",
+      "geometry": {
+        "x": 0,
+        "y": 0,
+        "width": 240,
+        "height": 48,
+        "derived": true,
+        "outline": "roundRectangle"
+      },
+      "content": {
+        "label": "源码入口",
+        "text": {
+          "schemaVersion": 1,
+          "id": "demo:development/node/1/text",
+          "kind": "inline",
+          "plainText": "源码入口",
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "源码入口",
+                    "marks": [
+                      {
+                        "type": "bold"
+                      },
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "20px",
+                          "color": "#2563eb"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "appearance": {
+        "fill": "#f0fdfa",
+        "strokeColor": "#2563eb",
+        "strokeWidth": 2
+      },
+      "data": {
+        "manualWidth": 116,
+        "collapsed": false,
+        "branchAppearance": {
+          "strokeColor": "#2563eb",
+          "strokeWidth": 2
+        }
+      }
+    },
+    "demo:development/branch/1": {
+      "id": "demo:development/branch/1",
+      "kind": "mind-branch",
+      "cellType": "edge",
+      "source": {
+        "cellId": "demo:development/root"
+      },
+      "target": {
+        "cellId": "demo:development/node/1"
+      },
+      "route": {
+        "mode": "auto"
+      },
+      "data": {
+        "order": "00000001"
+      },
+      "appearance": {
+        "strokeColor": "#2563eb",
+        "strokeWidth": 2
+      }
+    },
+    "demo:development/node/1-0": {
+      "id": "demo:development/node/1-0",
+      "kind": "mind-child",
+      "cellType": "node",
+      "geometry": {
+        "x": 0,
+        "y": 0,
+        "width": 240,
+        "height": 48,
+        "derived": true,
+        "outline": "roundRectangle"
+      },
+      "content": {
+        "label": "apps/：应用入口与 WorkspaceHost",
+        "text": {
+          "schemaVersion": 1,
+          "id": "demo:development/node/1-0/text",
+          "kind": "inline",
+          "plainText": "apps/：应用入口与 WorkspaceHost",
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "apps/：应用入口与 WorkspaceHost",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "18px",
+                          "color": "#334155"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "appearance": {
+        "fill": "#ffffff",
+        "strokeColor": "#2563eb",
+        "strokeWidth": 1
+      },
+      "data": {
+        "manualWidth": 385,
+        "collapsed": false,
+        "branchAppearance": {
+          "strokeColor": "#2563eb",
+          "strokeWidth": 2
+        }
+      }
+    },
+    "demo:development/branch/1-0": {
+      "id": "demo:development/branch/1-0",
+      "kind": "mind-branch",
+      "cellType": "edge",
+      "source": {
+        "cellId": "demo:development/node/1"
+      },
+      "target": {
+        "cellId": "demo:development/node/1-0"
+      },
+      "route": {
+        "mode": "auto"
+      },
+      "data": {
+        "order": "00000000"
+      },
+      "appearance": {
+        "strokeColor": "#2563eb",
+        "strokeWidth": 2
+      }
+    },
+    "demo:development/node/1-1": {
+      "id": "demo:development/node/1-1",
+      "kind": "mind-child",
+      "cellType": "node",
+      "geometry": {
+        "x": 0,
+        "y": 0,
+        "width": 240,
+        "height": 48,
+        "derived": true,
+        "outline": "roundRectangle"
+      },
+      "content": {
+        "label": "packages/product/：生命周期与产品工具",
+        "text": {
+          "schemaVersion": 1,
+          "id": "demo:development/node/1-1/text",
+          "kind": "inline",
+          "plainText": "packages/product/：生命周期与产品工具",
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "packages/product/：生命周期与产品工具",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "18px",
+                          "color": "#334155"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "appearance": {
+        "fill": "#ffffff",
+        "strokeColor": "#2563eb",
+        "strokeWidth": 1
+      },
+      "data": {
+        "manualWidth": 436,
+        "collapsed": false,
+        "branchAppearance": {
+          "strokeColor": "#2563eb",
+          "strokeWidth": 2
+        }
+      }
+    },
+    "demo:development/branch/1-1": {
+      "id": "demo:development/branch/1-1",
+      "kind": "mind-branch",
+      "cellType": "edge",
+      "source": {
+        "cellId": "demo:development/node/1"
+      },
+      "target": {
+        "cellId": "demo:development/node/1-1"
+      },
+      "route": {
+        "mode": "auto"
+      },
+      "data": {
+        "order": "00000001"
+      },
+      "appearance": {
+        "strokeColor": "#2563eb",
+        "strokeWidth": 2
+      }
+    },
+    "demo:development/node/1-2": {
+      "id": "demo:development/node/1-2",
+      "kind": "mind-child",
+      "cellType": "node",
+      "geometry": {
+        "x": 0,
+        "y": 0,
+        "width": 240,
+        "height": 48,
+        "derived": true,
+        "outline": "roundRectangle"
+      },
+      "content": {
+        "label": "packages/react/：画布、领域扩展、文本",
+        "text": {
+          "schemaVersion": 1,
+          "id": "demo:development/node/1-2/text",
+          "kind": "inline",
+          "plainText": "packages/react/：画布、领域扩展、文本",
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "packages/react/：画布、领域扩展、文本",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "18px",
+                          "color": "#334155"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "appearance": {
+        "fill": "#ffffff",
+        "strokeColor": "#2563eb",
+        "strokeWidth": 1
+      },
+      "data": {
+        "manualWidth": 429,
+        "collapsed": false,
+        "branchAppearance": {
+          "strokeColor": "#2563eb",
+          "strokeWidth": 2
+        }
+      }
+    },
+    "demo:development/branch/1-2": {
+      "id": "demo:development/branch/1-2",
+      "kind": "mind-branch",
+      "cellType": "edge",
+      "source": {
+        "cellId": "demo:development/node/1"
+      },
+      "target": {
+        "cellId": "demo:development/node/1-2"
+      },
+      "route": {
+        "mode": "auto"
+      },
+      "data": {
+        "order": "00000002"
+      },
+      "appearance": {
+        "strokeColor": "#2563eb",
+        "strokeWidth": 2
+      }
+    },
+    "demo:development/node/1-3": {
+      "id": "demo:development/node/1-3",
+      "kind": "mind-child",
+      "cellType": "node",
+      "geometry": {
+        "x": 0,
+        "y": 0,
+        "width": 240,
+        "height": 48,
+        "derived": true,
+        "outline": "roundRectangle"
+      },
+      "content": {
+        "label": "packages/engine/：模型、事务、几何与领域",
+        "text": {
+          "schemaVersion": 1,
+          "id": "demo:development/node/1-3/text",
+          "kind": "inline",
+          "plainText": "packages/engine/：模型、事务、几何与领域",
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "packages/engine/：模型、事务、几何与领域",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "18px",
+                          "color": "#334155"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "appearance": {
+        "fill": "#ffffff",
+        "strokeColor": "#2563eb",
+        "strokeWidth": 1
+      },
+      "data": {
+        "manualWidth": 461,
+        "collapsed": false,
+        "branchAppearance": {
+          "strokeColor": "#2563eb",
+          "strokeWidth": 2
+        }
+      }
+    },
+    "demo:development/branch/1-3": {
+      "id": "demo:development/branch/1-3",
+      "kind": "mind-branch",
+      "cellType": "edge",
+      "source": {
+        "cellId": "demo:development/node/1"
+      },
+      "target": {
+        "cellId": "demo:development/node/1-3"
+      },
+      "route": {
+        "mode": "auto"
+      },
+      "data": {
+        "order": "00000003"
+      },
+      "appearance": {
+        "strokeColor": "#2563eb",
+        "strokeWidth": 2
+      }
+    },
+    "demo:development/node/1-4": {
+      "id": "demo:development/node/1-4",
+      "kind": "mind-child",
+      "cellType": "node",
+      "geometry": {
+        "x": 0,
+        "y": 0,
+        "width": 240,
+        "height": 48,
+        "derived": true,
+        "outline": "roundRectangle"
+      },
+      "content": {
+        "label": "packages/converters/：导入导出边界",
+        "text": {
+          "schemaVersion": 1,
+          "id": "demo:development/node/1-4/text",
+          "kind": "inline",
+          "plainText": "packages/converters/：导入导出边界",
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "packages/converters/：导入导出边界",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "18px",
+                          "color": "#334155"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "appearance": {
+        "fill": "#ffffff",
+        "strokeColor": "#2563eb",
+        "strokeWidth": 1
+      },
+      "data": {
+        "manualWidth": 417,
+        "collapsed": false,
+        "branchAppearance": {
+          "strokeColor": "#2563eb",
+          "strokeWidth": 2
+        }
+      }
+    },
+    "demo:development/branch/1-4": {
+      "id": "demo:development/branch/1-4",
+      "kind": "mind-branch",
+      "cellType": "edge",
+      "source": {
+        "cellId": "demo:development/node/1"
+      },
+      "target": {
+        "cellId": "demo:development/node/1-4"
+      },
+      "route": {
+        "mode": "auto"
+      },
+      "data": {
+        "order": "00000004"
+      },
+      "appearance": {
+        "strokeColor": "#2563eb",
+        "strokeWidth": 2
+      }
+    },
+    "demo:development/node/2": {
+      "id": "demo:development/node/2",
+      "kind": "mind-child",
+      "cellType": "node",
+      "geometry": {
+        "x": 0,
+        "y": 0,
+        "width": 240,
+        "height": 48,
+        "derived": true,
+        "outline": "roundRectangle"
+      },
+      "content": {
+        "label": "基础检查",
+        "text": {
+          "schemaVersion": 1,
+          "id": "demo:development/node/2/text",
+          "kind": "inline",
+          "plainText": "基础检查",
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "基础检查",
+                    "marks": [
+                      {
+                        "type": "bold"
+                      },
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "20px",
+                          "color": "#7c3aed"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "appearance": {
+        "fill": "#f0fdfa",
+        "strokeColor": "#7c3aed",
+        "strokeWidth": 2
+      },
+      "data": {
+        "manualWidth": 116,
+        "collapsed": false,
+        "branchAppearance": {
+          "strokeColor": "#7c3aed",
+          "strokeWidth": 2
+        }
+      }
+    },
+    "demo:development/branch/2": {
+      "id": "demo:development/branch/2",
+      "kind": "mind-branch",
+      "cellType": "edge",
+      "source": {
+        "cellId": "demo:development/root"
+      },
+      "target": {
+        "cellId": "demo:development/node/2"
+      },
+      "route": {
+        "mode": "auto"
+      },
+      "data": {
+        "order": "00000002"
+      },
+      "appearance": {
+        "strokeColor": "#7c3aed",
+        "strokeWidth": 2
+      }
+    },
+    "demo:development/node/2-0": {
+      "id": "demo:development/node/2-0",
+      "kind": "mind-child",
+      "cellType": "node",
+      "geometry": {
+        "x": 0,
+        "y": 0,
+        "width": 240,
+        "height": 48,
+        "derived": true,
+        "outline": "roundRectangle"
+      },
+      "content": {
+        "label": "pnpm typecheck",
+        "text": {
+          "schemaVersion": 1,
+          "id": "demo:development/node/2-0/text",
+          "kind": "inline",
+          "plainText": "pnpm typecheck",
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "pnpm typecheck",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "18px",
+                          "color": "#334155"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "appearance": {
+        "fill": "#ffffff",
+        "strokeColor": "#7c3aed",
+        "strokeWidth": 1
+      },
+      "data": {
+        "manualWidth": 209,
+        "collapsed": false,
+        "branchAppearance": {
+          "strokeColor": "#7c3aed",
+          "strokeWidth": 2
+        }
+      }
+    },
+    "demo:development/branch/2-0": {
+      "id": "demo:development/branch/2-0",
+      "kind": "mind-branch",
+      "cellType": "edge",
+      "source": {
+        "cellId": "demo:development/node/2"
+      },
+      "target": {
+        "cellId": "demo:development/node/2-0"
+      },
+      "route": {
+        "mode": "auto"
+      },
+      "data": {
+        "order": "00000000"
+      },
+      "appearance": {
+        "strokeColor": "#7c3aed",
+        "strokeWidth": 2
+      }
+    },
+    "demo:development/node/2-1": {
+      "id": "demo:development/node/2-1",
+      "kind": "mind-child",
+      "cellType": "node",
+      "geometry": {
+        "x": 0,
+        "y": 0,
+        "width": 240,
+        "height": 48,
+        "derived": true,
+        "outline": "roundRectangle"
+      },
+      "content": {
+        "label": "pnpm test：Vitest",
+        "text": {
+          "schemaVersion": 1,
+          "id": "demo:development/node/2-1/text",
+          "kind": "inline",
+          "plainText": "pnpm test：Vitest",
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "pnpm test：Vitest",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "18px",
+                          "color": "#334155"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "appearance": {
+        "fill": "#ffffff",
+        "strokeColor": "#7c3aed",
+        "strokeWidth": 1
+      },
+      "data": {
+        "manualWidth": 240,
+        "collapsed": false,
+        "branchAppearance": {
+          "strokeColor": "#7c3aed",
+          "strokeWidth": 2
+        }
+      }
+    },
+    "demo:development/branch/2-1": {
+      "id": "demo:development/branch/2-1",
+      "kind": "mind-branch",
+      "cellType": "edge",
+      "source": {
+        "cellId": "demo:development/node/2"
+      },
+      "target": {
+        "cellId": "demo:development/node/2-1"
+      },
+      "route": {
+        "mode": "auto"
+      },
+      "data": {
+        "order": "00000001"
+      },
+      "appearance": {
+        "strokeColor": "#7c3aed",
+        "strokeWidth": 2
+      }
+    },
+    "demo:development/node/2-2": {
+      "id": "demo:development/node/2-2",
+      "kind": "mind-child",
+      "cellType": "node",
+      "geometry": {
+        "x": 0,
+        "y": 0,
+        "width": 240,
+        "height": 48,
+        "derived": true,
+        "outline": "roundRectangle"
+      },
+      "content": {
+        "label": "pnpm lint",
+        "text": {
+          "schemaVersion": 1,
+          "id": "demo:development/node/2-2/text",
+          "kind": "inline",
+          "plainText": "pnpm lint",
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "pnpm lint",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "18px",
+                          "color": "#334155"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "appearance": {
+        "fill": "#ffffff",
+        "strokeColor": "#7c3aed",
+        "strokeWidth": 1
+      },
+      "data": {
+        "manualWidth": 146,
+        "collapsed": false,
+        "branchAppearance": {
+          "strokeColor": "#7c3aed",
+          "strokeWidth": 2
+        }
+      }
+    },
+    "demo:development/branch/2-2": {
+      "id": "demo:development/branch/2-2",
+      "kind": "mind-branch",
+      "cellType": "edge",
+      "source": {
+        "cellId": "demo:development/node/2"
+      },
+      "target": {
+        "cellId": "demo:development/node/2-2"
+      },
+      "route": {
+        "mode": "auto"
+      },
+      "data": {
+        "order": "00000002"
+      },
+      "appearance": {
+        "strokeColor": "#7c3aed",
+        "strokeWidth": 2
+      }
+    },
+    "demo:development/node/2-3": {
+      "id": "demo:development/node/2-3",
+      "kind": "mind-child",
+      "cellType": "node",
+      "geometry": {
+        "x": 0,
+        "y": 0,
+        "width": 240,
+        "height": 48,
+        "derived": true,
+        "outline": "roundRectangle"
+      },
+      "content": {
+        "label": "pnpm build：公开包与 Web",
+        "text": {
+          "schemaVersion": 1,
+          "id": "demo:development/node/2-3/text",
+          "kind": "inline",
+          "plainText": "pnpm build：公开包与 Web",
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "pnpm build：公开包与 Web",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "18px",
+                          "color": "#334155"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "appearance": {
+        "fill": "#ffffff",
+        "strokeColor": "#7c3aed",
+        "strokeWidth": 1
+      },
+      "data": {
+        "manualWidth": 303,
+        "collapsed": false,
+        "branchAppearance": {
+          "strokeColor": "#7c3aed",
+          "strokeWidth": 2
+        }
+      }
+    },
+    "demo:development/branch/2-3": {
+      "id": "demo:development/branch/2-3",
+      "kind": "mind-branch",
+      "cellType": "edge",
+      "source": {
+        "cellId": "demo:development/node/2"
+      },
+      "target": {
+        "cellId": "demo:development/node/2-3"
+      },
+      "route": {
+        "mode": "auto"
+      },
+      "data": {
+        "order": "00000003"
+      },
+      "appearance": {
+        "strokeColor": "#7c3aed",
+        "strokeWidth": 2
+      }
+    },
+    "demo:development/node/3": {
+      "id": "demo:development/node/3",
+      "kind": "mind-child",
+      "cellType": "node",
+      "geometry": {
+        "x": 0,
+        "y": 0,
+        "width": 240,
+        "height": 48,
+        "derived": true,
+        "outline": "roundRectangle"
+      },
+      "content": {
+        "label": "产品与消费验收",
+        "text": {
+          "schemaVersion": 1,
+          "id": "demo:development/node/3/text",
+          "kind": "inline",
+          "plainText": "产品与消费验收",
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "产品与消费验收",
+                    "marks": [
+                      {
+                        "type": "bold"
+                      },
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "20px",
+                          "color": "#b45309"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "appearance": {
+        "fill": "#f0fdfa",
+        "strokeColor": "#b45309",
+        "strokeWidth": 2
+      },
+      "data": {
+        "manualWidth": 179,
+        "collapsed": false,
+        "branchAppearance": {
+          "strokeColor": "#b45309",
+          "strokeWidth": 2
+        }
+      }
+    },
+    "demo:development/branch/3": {
+      "id": "demo:development/branch/3",
+      "kind": "mind-branch",
+      "cellType": "edge",
+      "source": {
+        "cellId": "demo:development/root"
+      },
+      "target": {
+        "cellId": "demo:development/node/3"
+      },
+      "route": {
+        "mode": "auto"
+      },
+      "data": {
+        "order": "00000003"
+      },
+      "appearance": {
+        "strokeColor": "#b45309",
+        "strokeWidth": 2
+      }
+    },
+    "demo:development/node/3-0": {
+      "id": "demo:development/node/3-0",
+      "kind": "mind-child",
+      "cellType": "node",
+      "geometry": {
+        "x": 0,
+        "y": 0,
+        "width": 240,
+        "height": 48,
+        "derived": true,
+        "outline": "roundRectangle"
+      },
+      "content": {
+        "label": "pnpm build:web · pnpm build:desktop",
+        "text": {
+          "schemaVersion": 1,
+          "id": "demo:development/node/3-0/text",
+          "kind": "inline",
+          "plainText": "pnpm build:web · pnpm build:desktop",
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "pnpm build:web · pnpm build:desktop",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "18px",
+                          "color": "#334155"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "appearance": {
+        "fill": "#ffffff",
+        "strokeColor": "#b45309",
+        "strokeWidth": 1
+      },
+      "data": {
+        "manualWidth": 474,
+        "collapsed": false,
+        "branchAppearance": {
+          "strokeColor": "#b45309",
+          "strokeWidth": 2
+        }
+      }
+    },
+    "demo:development/branch/3-0": {
+      "id": "demo:development/branch/3-0",
+      "kind": "mind-branch",
+      "cellType": "edge",
+      "source": {
+        "cellId": "demo:development/node/3"
+      },
+      "target": {
+        "cellId": "demo:development/node/3-0"
+      },
+      "route": {
+        "mode": "auto"
+      },
+      "data": {
+        "order": "00000000"
+      },
+      "appearance": {
+        "strokeColor": "#b45309",
+        "strokeWidth": 2
+      }
+    },
+    "demo:development/node/3-1": {
+      "id": "demo:development/node/3-1",
+      "kind": "mind-child",
+      "cellType": "node",
+      "geometry": {
+        "x": 0,
+        "y": 0,
+        "width": 240,
+        "height": 48,
+        "derived": true,
+        "outline": "roundRectangle"
+      },
+      "content": {
+        "label": "pnpm test:e2e:prod：最新 Web 产物",
+        "text": {
+          "schemaVersion": 1,
+          "id": "demo:development/node/3-1/text",
+          "kind": "inline",
+          "plainText": "pnpm test:e2e:prod：最新 Web 产物",
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "pnpm test:e2e:prod：最新 Web 产物",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "18px",
+                          "color": "#334155"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "appearance": {
+        "fill": "#ffffff",
+        "strokeColor": "#b45309",
+        "strokeWidth": 1
+      },
+      "data": {
+        "manualWidth": 417,
+        "collapsed": false,
+        "branchAppearance": {
+          "strokeColor": "#b45309",
+          "strokeWidth": 2
+        }
+      }
+    },
+    "demo:development/branch/3-1": {
+      "id": "demo:development/branch/3-1",
+      "kind": "mind-branch",
+      "cellType": "edge",
+      "source": {
+        "cellId": "demo:development/node/3"
+      },
+      "target": {
+        "cellId": "demo:development/node/3-1"
+      },
+      "route": {
+        "mode": "auto"
+      },
+      "data": {
+        "order": "00000001"
+      },
+      "appearance": {
+        "strokeColor": "#b45309",
+        "strokeWidth": 2
+      }
+    },
+    "demo:development/node/3-2": {
+      "id": "demo:development/node/3-2",
+      "kind": "mind-child",
+      "cellType": "node",
+      "geometry": {
+        "x": 0,
+        "y": 0,
+        "width": 240,
+        "height": 48,
+        "derived": true,
+        "outline": "roundRectangle"
+      },
+      "content": {
+        "label": "pnpm test:e2e:desktop：真实 Electron",
+        "text": {
+          "schemaVersion": 1,
+          "id": "demo:development/node/3-2/text",
+          "kind": "inline",
+          "plainText": "pnpm test:e2e:desktop：真实 Electron",
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "pnpm test:e2e:desktop：真实 Electron",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "18px",
+                          "color": "#334155"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "appearance": {
+        "fill": "#ffffff",
+        "strokeColor": "#b45309",
+        "strokeWidth": 1
+      },
+      "data": {
+        "manualWidth": 467,
+        "collapsed": false,
+        "branchAppearance": {
+          "strokeColor": "#b45309",
+          "strokeWidth": 2
+        }
+      }
+    },
+    "demo:development/branch/3-2": {
+      "id": "demo:development/branch/3-2",
+      "kind": "mind-branch",
+      "cellType": "edge",
+      "source": {
+        "cellId": "demo:development/node/3"
+      },
+      "target": {
+        "cellId": "demo:development/node/3-2"
+      },
+      "route": {
+        "mode": "auto"
+      },
+      "data": {
+        "order": "00000002"
+      },
+      "appearance": {
+        "strokeColor": "#b45309",
+        "strokeWidth": 2
+      }
+    },
+    "demo:development/node/3-3": {
+      "id": "demo:development/node/3-3",
+      "kind": "mind-child",
+      "cellType": "node",
+      "geometry": {
+        "x": 0,
+        "y": 0,
+        "width": 240,
+        "height": 48,
+        "derived": true,
+        "outline": "roundRectangle"
+      },
+      "content": {
+        "label": "pnpm test:consumer：隔离消费与严格类型",
+        "text": {
+          "schemaVersion": 1,
+          "id": "demo:development/node/3-3/text",
+          "kind": "inline",
+          "plainText": "pnpm test:consumer：隔离消费与严格类型",
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "pnpm test:consumer：隔离消费与严格类型",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "18px",
+                          "color": "#334155"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "appearance": {
+        "fill": "#ffffff",
+        "strokeColor": "#b45309",
+        "strokeWidth": 1
+      },
+      "data": {
+        "manualWidth": 448,
+        "collapsed": false,
+        "branchAppearance": {
+          "strokeColor": "#b45309",
+          "strokeWidth": 2
+        }
+      }
+    },
+    "demo:development/branch/3-3": {
+      "id": "demo:development/branch/3-3",
+      "kind": "mind-branch",
+      "cellType": "edge",
+      "source": {
+        "cellId": "demo:development/node/3"
+      },
+      "target": {
+        "cellId": "demo:development/node/3-3"
+      },
+      "route": {
+        "mode": "auto"
+      },
+      "data": {
+        "order": "00000003"
+      },
+      "appearance": {
+        "strokeColor": "#b45309",
+        "strokeWidth": 2
+      }
+    },
+    "demo:development/node/3-4": {
+      "id": "demo:development/node/3-4",
+      "kind": "mind-child",
+      "cellType": "node",
+      "geometry": {
+        "x": 0,
+        "y": 0,
+        "width": 240,
+        "height": 48,
+        "derived": true,
+        "outline": "roundRectangle"
+      },
+      "content": {
+        "label": "构建后验收；不使用旧 dist 宣称通过",
+        "text": {
+          "schemaVersion": 1,
+          "id": "demo:development/node/3-4/text",
+          "kind": "inline",
+          "plainText": "构建后验收；不使用旧 dist 宣称通过",
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "构建后验收；不使用旧 dist 宣称通过",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "18px",
+                          "color": "#334155"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "appearance": {
+        "fill": "#ffffff",
+        "strokeColor": "#b45309",
+        "strokeWidth": 1
+      },
+      "data": {
+        "manualWidth": 373,
+        "collapsed": false,
+        "branchAppearance": {
+          "strokeColor": "#b45309",
+          "strokeWidth": 2
+        }
+      }
+    },
+    "demo:development/branch/3-4": {
+      "id": "demo:development/branch/3-4",
+      "kind": "mind-branch",
+      "cellType": "edge",
+      "source": {
+        "cellId": "demo:development/node/3"
+      },
+      "target": {
+        "cellId": "demo:development/node/3-4"
+      },
+      "route": {
+        "mode": "auto"
+      },
+      "data": {
+        "order": "00000004"
+      },
+      "appearance": {
+        "strokeColor": "#b45309",
+        "strokeWidth": 2
+      }
+    },
+    "demo:development/node/4": {
+      "id": "demo:development/node/4",
+      "kind": "mind-child",
+      "cellType": "node",
+      "geometry": {
+        "x": 0,
+        "y": 0,
+        "width": 240,
+        "height": 48,
+        "derived": true,
+        "outline": "roundRectangle"
+      },
+      "content": {
+        "label": "发布与协作",
+        "text": {
+          "schemaVersion": 1,
+          "id": "demo:development/node/4/text",
+          "kind": "inline",
+          "plainText": "发布与协作",
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "发布与协作",
+                    "marks": [
+                      {
+                        "type": "bold"
+                      },
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "20px",
+                          "color": "#0f766e"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "appearance": {
+        "fill": "#f0fdfa",
+        "strokeColor": "#0f766e",
+        "strokeWidth": 2
+      },
+      "data": {
+        "manualWidth": 137,
+        "collapsed": false,
+        "branchAppearance": {
+          "strokeColor": "#0f766e",
+          "strokeWidth": 2
+        }
+      }
+    },
+    "demo:development/branch/4": {
+      "id": "demo:development/branch/4",
+      "kind": "mind-branch",
+      "cellType": "edge",
+      "source": {
+        "cellId": "demo:development/root"
+      },
+      "target": {
+        "cellId": "demo:development/node/4"
+      },
+      "route": {
+        "mode": "auto"
+      },
+      "data": {
+        "order": "00000004"
+      },
+      "appearance": {
+        "strokeColor": "#0f766e",
+        "strokeWidth": 2
+      }
+    },
+    "demo:development/node/4-0": {
+      "id": "demo:development/node/4-0",
+      "kind": "mind-child",
+      "cellType": "node",
+      "geometry": {
+        "x": 0,
+        "y": 0,
+        "width": 240,
+        "height": 48,
+        "derived": true,
+        "outline": "roundRectangle"
+      },
+      "content": {
+        "label": "Conventional Commits · workspace:*",
+        "text": {
+          "schemaVersion": 1,
+          "id": "demo:development/node/4-0/text",
+          "kind": "inline",
+          "plainText": "Conventional Commits · workspace:*",
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Conventional Commits · workspace:*",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "18px",
+                          "color": "#334155"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "appearance": {
+        "fill": "#ffffff",
+        "strokeColor": "#0f766e",
+        "strokeWidth": 1
+      },
+      "data": {
+        "manualWidth": 461,
+        "collapsed": false,
+        "branchAppearance": {
+          "strokeColor": "#0f766e",
+          "strokeWidth": 2
+        }
+      }
+    },
+    "demo:development/branch/4-0": {
+      "id": "demo:development/branch/4-0",
+      "kind": "mind-branch",
+      "cellType": "edge",
+      "source": {
+        "cellId": "demo:development/node/4"
+      },
+      "target": {
+        "cellId": "demo:development/node/4-0"
+      },
+      "route": {
+        "mode": "auto"
+      },
+      "data": {
+        "order": "00000000"
+      },
+      "appearance": {
+        "strokeColor": "#0f766e",
+        "strokeWidth": 2
+      }
+    },
+    "demo:development/node/4-1": {
+      "id": "demo:development/node/4-1",
+      "kind": "mind-child",
+      "cellType": "node",
+      "geometry": {
+        "x": 0,
+        "y": 0,
+        "width": 240,
+        "height": 48,
+        "derived": true,
+        "outline": "roundRectangle"
+      },
+      "content": {
+        "label": "pnpm changeset：记录版本变更",
+        "text": {
+          "schemaVersion": 1,
+          "id": "demo:development/node/4-1/text",
+          "kind": "inline",
+          "plainText": "pnpm changeset：记录版本变更",
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "pnpm changeset：记录版本变更",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "18px",
+                          "color": "#334155"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "appearance": {
+        "fill": "#ffffff",
+        "strokeColor": "#0f766e",
+        "strokeWidth": 1
+      },
+      "data": {
+        "manualWidth": 341,
+        "collapsed": false,
+        "branchAppearance": {
+          "strokeColor": "#0f766e",
+          "strokeWidth": 2
+        }
+      }
+    },
+    "demo:development/branch/4-1": {
+      "id": "demo:development/branch/4-1",
+      "kind": "mind-branch",
+      "cellType": "edge",
+      "source": {
+        "cellId": "demo:development/node/4"
+      },
+      "target": {
+        "cellId": "demo:development/node/4-1"
+      },
+      "route": {
+        "mode": "auto"
+      },
+      "data": {
+        "order": "00000001"
+      },
+      "appearance": {
+        "strokeColor": "#0f766e",
+        "strokeWidth": 2
+      }
+    },
+    "demo:development/node/4-2": {
+      "id": "demo:development/node/4-2",
+      "kind": "mind-child",
+      "cellType": "node",
+      "geometry": {
+        "x": 0,
+        "y": 0,
+        "width": 240,
+        "height": 48,
+        "derived": true,
+        "outline": "roundRectangle"
+      },
+      "content": {
+        "label": "pnpm release → pnpm pub：版本与发布",
+        "text": {
+          "schemaVersion": 1,
+          "id": "demo:development/node/4-2/text",
+          "kind": "inline",
+          "plainText": "pnpm release → pnpm pub：版本与发布",
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "pnpm release → pnpm pub：版本与发布",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "18px",
+                          "color": "#334155"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "appearance": {
+        "fill": "#ffffff",
+        "strokeColor": "#0f766e",
+        "strokeWidth": 1
+      },
+      "data": {
+        "manualWidth": 442,
+        "collapsed": false,
+        "branchAppearance": {
+          "strokeColor": "#0f766e",
+          "strokeWidth": 2
+        }
+      }
+    },
+    "demo:development/branch/4-2": {
+      "id": "demo:development/branch/4-2",
+      "kind": "mind-branch",
+      "cellType": "edge",
+      "source": {
+        "cellId": "demo:development/node/4"
+      },
+      "target": {
+        "cellId": "demo:development/node/4-2"
+      },
+      "route": {
+        "mode": "auto"
+      },
+      "data": {
+        "order": "00000002"
+      },
+      "appearance": {
+        "strokeColor": "#0f766e",
+        "strokeWidth": 2
+      }
+    },
+    "demo:development/node/4-3": {
+      "id": "demo:development/node/4-3",
+      "kind": "mind-child",
+      "cellType": "node",
+      "geometry": {
+        "x": 0,
+        "y": 0,
+        "width": 240,
+        "height": 48,
+        "derived": true,
+        "outline": "roundRectangle"
+      },
+      "content": {
+        "label": "发布由维护者执行；文档工作区不自动发布",
+        "text": {
+          "schemaVersion": 1,
+          "id": "demo:development/node/4-3/text",
+          "kind": "inline",
+          "plainText": "发布由维护者执行；文档工作区不自动发布",
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "发布由维护者执行；文档工作区不自动发布",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "18px",
+                          "color": "#334155"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "appearance": {
+        "fill": "#ffffff",
+        "strokeColor": "#0f766e",
+        "strokeWidth": 1
+      },
+      "data": {
+        "manualWidth": 392,
+        "collapsed": false,
+        "branchAppearance": {
+          "strokeColor": "#0f766e",
+          "strokeWidth": 2
+        }
+      }
+    },
+    "demo:development/branch/4-3": {
+      "id": "demo:development/branch/4-3",
+      "kind": "mind-branch",
+      "cellType": "edge",
+      "source": {
+        "cellId": "demo:development/node/4"
+      },
+      "target": {
+        "cellId": "demo:development/node/4-3"
+      },
+      "route": {
+        "mode": "auto"
+      },
+      "data": {
+        "order": "00000003"
+      },
+      "appearance": {
+        "strokeColor": "#0f766e",
+        "strokeWidth": 2
+      }
+    },
+    "demo:development/node/5": {
+      "id": "demo:development/node/5",
+      "kind": "mind-child",
+      "cellType": "node",
+      "geometry": {
+        "x": 0,
+        "y": 0,
+        "width": 240,
+        "height": 48,
+        "derived": true,
+        "outline": "roundRectangle"
+      },
+      "content": {
+        "label": "项目文档维护",
+        "text": {
+          "schemaVersion": 1,
+          "id": "demo:development/node/5/text",
+          "kind": "inline",
+          "plainText": "项目文档维护",
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "项目文档维护",
+                    "marks": [
+                      {
+                        "type": "bold"
+                      },
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "20px",
+                          "color": "#2563eb"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "appearance": {
+        "fill": "#f0fdfa",
+        "strokeColor": "#2563eb",
+        "strokeWidth": 2
+      },
+      "data": {
+        "manualWidth": 158,
+        "collapsed": false,
+        "branchAppearance": {
+          "strokeColor": "#2563eb",
+          "strokeWidth": 2
+        }
+      }
+    },
+    "demo:development/branch/5": {
+      "id": "demo:development/branch/5",
+      "kind": "mind-branch",
+      "cellType": "edge",
+      "source": {
+        "cellId": "demo:development/root"
+      },
+      "target": {
+        "cellId": "demo:development/node/5"
+      },
+      "route": {
+        "mode": "auto"
+      },
+      "data": {
+        "order": "00000005"
+      },
+      "appearance": {
+        "strokeColor": "#2563eb",
+        "strokeWidth": 2
+      }
+    },
+    "demo:development/node/5-0": {
+      "id": "demo:development/node/5-0",
+      "kind": "mind-child",
+      "cellType": "node",
+      "geometry": {
+        "x": 0,
+        "y": 0,
+        "width": 240,
+        "height": 48,
+        "derived": true,
+        "outline": "roundRectangle"
+      },
+      "content": {
+        "label": "workspace/：正式原生文档与架构图",
+        "text": {
+          "schemaVersion": 1,
+          "id": "demo:development/node/5-0/text",
+          "kind": "inline",
+          "plainText": "workspace/：正式原生文档与架构图",
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "workspace/：正式原生文档与架构图",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "18px",
+                          "color": "#334155"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "appearance": {
+        "fill": "#ffffff",
+        "strokeColor": "#2563eb",
+        "strokeWidth": 1
+      },
+      "data": {
+        "manualWidth": 366,
+        "collapsed": false,
+        "branchAppearance": {
+          "strokeColor": "#2563eb",
+          "strokeWidth": 2
+        }
+      }
+    },
+    "demo:development/branch/5-0": {
+      "id": "demo:development/branch/5-0",
+      "kind": "mind-branch",
+      "cellType": "edge",
+      "source": {
+        "cellId": "demo:development/node/5"
+      },
+      "target": {
+        "cellId": "demo:development/node/5-0"
+      },
+      "route": {
+        "mode": "auto"
+      },
+      "data": {
+        "order": "00000000"
+      },
+      "appearance": {
+        "strokeColor": "#2563eb",
+        "strokeWidth": 2
+      }
+    },
+    "demo:development/node/5-1": {
+      "id": "demo:development/node/5-1",
+      "kind": "mind-child",
+      "cellType": "node",
+      "geometry": {
+        "x": 0,
+        "y": 0,
+        "width": 240,
+        "height": 48,
+        "derived": true,
+        "outline": "roundRectangle"
+      },
+      "content": {
+        "label": "pnpm workspace:check：只读校验",
+        "text": {
+          "schemaVersion": 1,
+          "id": "demo:development/node/5-1/text",
+          "kind": "inline",
+          "plainText": "pnpm workspace:check：只读校验",
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "pnpm workspace:check：只读校验",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "18px",
+                          "color": "#334155"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "appearance": {
+        "fill": "#ffffff",
+        "strokeColor": "#2563eb",
+        "strokeWidth": 1
+      },
+      "data": {
+        "manualWidth": 379,
+        "collapsed": false,
+        "branchAppearance": {
+          "strokeColor": "#2563eb",
+          "strokeWidth": 2
+        }
+      }
+    },
+    "demo:development/branch/5-1": {
+      "id": "demo:development/branch/5-1",
+      "kind": "mind-branch",
+      "cellType": "edge",
+      "source": {
+        "cellId": "demo:development/node/5"
+      },
+      "target": {
+        "cellId": "demo:development/node/5-1"
+      },
+      "route": {
+        "mode": "auto"
+      },
+      "data": {
+        "order": "00000001"
+      },
+      "appearance": {
+        "strokeColor": "#2563eb",
+        "strokeWidth": 2
+      }
+    },
+    "demo:development/node/5-2": {
+      "id": "demo:development/node/5-2",
+      "kind": "mind-child",
+      "cellType": "node",
+      "geometry": {
+        "x": 0,
+        "y": 0,
+        "width": 240,
+        "height": 48,
+        "derived": true,
+        "outline": "roundRectangle"
+      },
+      "content": {
+        "label": "pnpm workspace:refresh：刷新包依赖图",
+        "text": {
+          "schemaVersion": 1,
+          "id": "demo:development/node/5-2/text",
+          "kind": "inline",
+          "plainText": "pnpm workspace:refresh：刷新包依赖图",
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "pnpm workspace:refresh：刷新包依赖图",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "18px",
+                          "color": "#334155"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "appearance": {
+        "fill": "#ffffff",
+        "strokeColor": "#2563eb",
+        "strokeWidth": 1
+      },
+      "data": {
+        "manualWidth": 442,
+        "collapsed": false,
+        "branchAppearance": {
+          "strokeColor": "#2563eb",
+          "strokeWidth": 2
+        }
+      }
+    },
+    "demo:development/branch/5-2": {
+      "id": "demo:development/branch/5-2",
+      "kind": "mind-branch",
+      "cellType": "edge",
+      "source": {
+        "cellId": "demo:development/node/5"
+      },
+      "target": {
+        "cellId": "demo:development/node/5-2"
+      },
+      "route": {
+        "mode": "auto"
+      },
+      "data": {
+        "order": "00000002"
+      },
+      "appearance": {
+        "strokeColor": "#2563eb",
+        "strokeWidth": 2
+      }
+    },
+    "demo:development/node/5-3": {
+      "id": "demo:development/node/5-3",
+      "kind": "mind-child",
+      "cellType": "node",
+      "geometry": {
+        "x": 0,
+        "y": 0,
+        "width": 240,
+        "height": 48,
+        "derived": true,
+        "outline": "roundRectangle"
+      },
+      "content": {
+        "label": "图文直接在工作区编辑并纳入 Git",
+        "text": {
+          "schemaVersion": 1,
+          "id": "demo:development/node/5-3/text",
+          "kind": "inline",
+          "plainText": "图文直接在工作区编辑并纳入 Git",
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "图文直接在工作区编辑并纳入 Git",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "18px",
+                          "color": "#334155"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "appearance": {
+        "fill": "#ffffff",
+        "strokeColor": "#2563eb",
+        "strokeWidth": 1
+      },
+      "data": {
+        "manualWidth": 329,
+        "collapsed": false,
+        "branchAppearance": {
+          "strokeColor": "#2563eb",
+          "strokeWidth": 2
+        }
+      }
+    },
+    "demo:development/branch/5-3": {
+      "id": "demo:development/branch/5-3",
+      "kind": "mind-branch",
+      "cellType": "edge",
+      "source": {
+        "cellId": "demo:development/node/5"
+      },
+      "target": {
+        "cellId": "demo:development/node/5-3"
+      },
+      "route": {
+        "mode": "auto"
+      },
+      "data": {
+        "order": "00000003"
+      },
+      "appearance": {
+        "strokeColor": "#2563eb",
+        "strokeWidth": 2
+      }
+    },
+    "demo:development/node/5-4": {
+      "id": "demo:development/node/5-4",
+      "kind": "mind-child",
+      "cellType": "node",
+      "geometry": {
+        "x": 0,
+        "y": 0,
+        "width": 240,
+        "height": 48,
+        "derived": true,
+        "outline": "roundRectangle"
+      },
+      "content": {
+        "label": "测试使用临时工作区，不修改正式内容",
+        "text": {
+          "schemaVersion": 1,
+          "id": "demo:development/node/5-4/text",
+          "kind": "inline",
+          "plainText": "测试使用临时工作区，不修改正式内容",
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "测试使用临时工作区，不修改正式内容",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "18px",
+                          "color": "#334155"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "appearance": {
+        "fill": "#ffffff",
+        "strokeColor": "#2563eb",
+        "strokeWidth": 1
+      },
+      "data": {
+        "manualWidth": 354,
+        "collapsed": false,
+        "branchAppearance": {
+          "strokeColor": "#2563eb",
+          "strokeWidth": 2
+        }
+      }
+    },
+    "demo:development/branch/5-4": {
+      "id": "demo:development/branch/5-4",
+      "kind": "mind-branch",
+      "cellType": "edge",
+      "source": {
+        "cellId": "demo:development/node/5"
+      },
+      "target": {
+        "cellId": "demo:development/node/5-4"
+      },
+      "route": {
+        "mode": "auto"
+      },
+      "data": {
+        "order": "00000004"
+      },
+      "appearance": {
+        "strokeColor": "#2563eb",
+        "strokeWidth": 2
+      }
+    },
+    "project:topic/08/document": {
+      "id": "project:topic/08/document",
+      "cellType": "node",
+      "kind": "document-reference",
+      "geometry": {
+        "x": -498,
+        "y": 631.75,
+        "width": 680,
+        "height": 480
+      },
+      "data": {
+        "targetDocumentId": "project-doc:development/README"
+      },
+      "content": {
+        "text": {
+          "schemaVersion": 1,
+          "id": "project:topic/08/document/links",
+          "kind": "block",
+          "align": "left",
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "配置与源码索引 · 迁移边界与验收",
+                    "marks": [
+                      {
+                        "type": "link",
+                        "attrs": {
+                          "href": "verd://file/project-doc%3Aguides%2F%E9%85%8D%E7%BD%AE%E4%B8%8E%E6%BA%90%E7%A0%81%E7%B4%A2%E5%BC%95#%E8%BF%81%E7%A7%BB%E8%BE%B9%E7%95%8C%E4%B8%8E%E9%AA%8C%E6%94%B6"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "文档维护指南 · 更新与验收",
+                    "marks": [
+                      {
+                        "type": "link",
+                        "attrs": {
+                          "href": "verd://file/project-doc%3ADOCUMENTATION_GUIDE#%E6%9B%B4%E6%96%B0%E4%B8%8E%E9%AA%8C%E6%94%B6"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          },
+          "plainText": "配置与源码索引 · 迁移边界与验收\n文档维护指南 · 更新与验收"
+        }
+      }
+    }
+  },
+  "organization": {
+    "kind": "subgraph",
+    "ownerFrameId": "board-root"
+  }
+}

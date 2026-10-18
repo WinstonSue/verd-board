@@ -1,72 +1,30 @@
 ---
-description: 引导读取项目文档获取技术栈与开发规范
+description: 引导读取原生项目文档获取技术栈与开发规范
 alwaysApply: true
 ---
 
-# 文档引导规则
+# 原生文档引导
 
-## 项目文档结构
+项目知识的唯一正文位于根 `workspace/文档/`，架构图保存在同一工作区的 `.verd.json` 文件。根 README 和包 README 只保留工程入口，不另建 Markdown 正文或导出兼容树。
 
-本项目采用分层文档管理：Cursor rules 与 `.agents/skills` 提供通用能力，项目具体信息存储在 `doc/` 目录。
+## 阅读入口
 
-## 必读文档
+- 总览：`workspace/文档/文档导航.verd-doc.json`
+- 架构：`workspace/文档/架构/系统架构.verd-doc.json`
+- 开发：`workspace/文档/开发/开发指南.verd-doc.json`
+- 维护：`workspace/文档/开发/文档维护指南.verd-doc.json`
+- 源码：`workspace/文档/指南/配置与源码索引.verd-doc.json`
+- 包索引：`workspace/文档/包/包索引.verd-doc.json`
 
-### 项目概况
+## 原生格式
 
-- **路径**: `doc/README.md`
-- **内容**: 项目简介、快速开始、核心特性、技术栈概览
-- **用途**: 了解项目整体情况和基本信息
+文件为 JSON；快速阅读取 `text.plainText`，完整结构和代码样例取 `text.content`。修改正文后同步 plainText；`id` 与 `text.id` 一致。移动、重命名保持身份，内部链接使用编码后的稳定 ID 与 GitHub 标题 slug，不使用目录相对路径。
 
-### 系统架构
+## 事实与更新
 
-- **路径**: `doc/architecture/ARCHITECTURE.md`
-- **内容**: 技术栈详情、项目结构、系统架构、核心模块、插件机制
-- **用途**: 深入理解项目架构和技术选型
-- **关键信息**:
-  - 使用的框架和版本（React、TypeScript、Vite等）
-  - Monorepo结构和包管理方式（pnpm、Turbo）
-  - 核心引擎和插件系统
-  - 数据流和状态管理
-
-### 开发规范
-
-- **路径**: `doc/development/README.md`
-- **内容**: 环境要求、开发流程、代码规范、Git提交规范、测试要求
-- **用途**: 遵循项目开发标准和最佳实践
-
-### 包文档
-
-- **路径**: `doc/packages/`
-- **内容**: 各个包的详细文档、API说明、使用示例
-- **用途**: 了解具体包的功能和使用方法
-
-## 使用指南
-
-### 接收任务时
-
-1. 首先读取 `doc/README.md` 了解项目基本情况
-2. 根据任务类型读取相关文档：
-   - 架构相关 → `doc/architecture/ARCHITECTURE.md`
-   - 开发规范 → `doc/development/README.md`
-   - 包功能 → `doc/packages/[package-name]/`
-
-### 技术栈判断
-
-- 不要假设技术栈，始终从 `doc/architecture/ARCHITECTURE.md` 获取准确信息
-- 关注项目使用的具体版本号
-- 了解项目特定的工具链配置
-
-### 开发规范遵循
-
-- 代码风格遵循 `doc/development/README.md` 中的规范
-- Git提交遵循项目约定的格式
-- 测试要求按照文档中的标准执行
-
-## 文档优先原则
-
-当 AI 配置与项目文档存在差异时：
-
-- **技术栈信息**: 以 `doc/` 为准
-- **开发规范**: 以 `doc/` 为准
-- **通用质量标准**: 以 `.cursor/rules` 为准
-- **任务流程**: 以 `.agents/skills` 为准
+- 技术版本以 package.json、pnpm-workspace.yaml overrides、pnpm-lock.yaml 为准，命令以 scripts 为准。
+- 工程行为以现行源码和原生架构/开发文档为准；旧验收日期与数量只说明对应历史运行。
+- 修改功能同步相应原生文档与图。新增文档登记导航；重大入口同步中文导航、英文 Documentation 与根 README。
+- AI 数据规范 codeBlock 与 `tests/fixtures/ai-canvas/` 逐字匹配，测试直接读取原生文件。
+- 执行 `pnpm workspace:check` 校验身份、内部目标与锚点；包依赖变化执行 `pnpm workspace:refresh`。
+- 通用质量规则保留在 `.cursor/rules`，任务流程保留在 `.agents/skills`。

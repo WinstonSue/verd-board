@@ -1,0 +1,2582 @@
+{
+  "format": "verd-frame",
+  "version": 2,
+  "frame": {
+    "id": "board/22:architecture-data-flow",
+    "kind": "frame",
+    "cellType": "frame",
+    "geometry": {
+      "x": 760,
+      "y": 630,
+      "width": 680,
+      "height": 470,
+      "derived": false
+    },
+    "children": [
+      "demo:runtime/layer/0",
+      "demo:runtime/module/app",
+      "demo:runtime/module/ui",
+      "demo:runtime/module/document-page",
+      "demo:runtime/layer/1",
+      "demo:runtime/module/canvas",
+      "demo:runtime/module/extensions",
+      "demo:runtime/module/text",
+      "demo:runtime/module/document-editor",
+      "demo:runtime/layer/2",
+      "demo:runtime/module/runtime",
+      "demo:runtime/module/registry",
+      "demo:runtime/module/camera",
+      "demo:runtime/layer/3",
+      "demo:runtime/module/store",
+      "demo:runtime/module/host",
+      "demo:runtime/module/queue",
+      "demo:runtime/module/document-file",
+      "demo:runtime/layer/4",
+      "demo:runtime/module/adapter",
+      "demo:runtime/module/desktop",
+      "demo:runtime/module/web",
+      "demo:runtime/edge/0",
+      "demo:runtime/edge/1",
+      "demo:runtime/edge/2",
+      "demo:runtime/edge/3",
+      "demo:runtime/edge/4",
+      "demo:runtime/edge/5",
+      "demo:runtime/edge/6",
+      "demo:runtime/edge/7",
+      "demo:runtime/edge/8",
+      "demo:runtime/edge/9",
+      "demo:runtime/edge/10",
+      "demo:runtime/edge/11",
+      "demo:runtime/edge/12",
+      "demo:runtime/edge/13",
+      "demo:runtime/edge/14",
+      "demo:runtime/edge/15",
+      "demo:runtime/edge/16",
+      "demo:runtime/edge/17",
+      "demo:runtime/edge/18",
+      "project:topic/02/document"
+    ],
+    "groups": [],
+    "data": {},
+    "content": {
+      "label": "② 运行时协作",
+      "text": {
+        "schemaVersion": 1,
+        "id": "board/22:architecture-data-flow/text",
+        "kind": "inline",
+        "plainText": "② 运行时协作",
+        "content": {
+          "type": "doc",
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "② 运行时协作",
+                  "marks": [
+                    {
+                      "type": "textStyle",
+                      "attrs": {
+                        "fontSize": "14px",
+                        "color": "#1e293b"
+                      }
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    "appearance": {
+      "fill": "#ffffff",
+      "strokeColor": "#cbd5e1",
+      "strokeWidth": 2
+    },
+    "view": {
+      "theme": {
+        "themeColorMode": "default",
+        "boardBackground": "#ffffff"
+      }
+    },
+    "name": "② 运行时协作"
+  },
+  "cells": {
+    "demo:runtime/layer/0": {
+      "id": "demo:runtime/layer/0",
+      "kind": "architecture-layer",
+      "cellType": "node",
+      "geometry": {
+        "x": 0,
+        "y": 0,
+        "width": 1980,
+        "height": 170,
+        "derived": true
+      },
+      "content": {
+        "label": "产品入口 · 两类一等文件",
+        "text": {
+          "schemaVersion": 1,
+          "id": "demo:runtime/layer/0/text",
+          "kind": "inline",
+          "plainText": "产品入口 · 两类一等文件",
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "产品入口 · 两类一等文件",
+                    "marks": [
+                      {
+                        "type": "bold"
+                      },
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "16px",
+                          "color": "#475569"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "data": {
+        "order": "00000000",
+        "fontSize": 24,
+        "memberIds": [
+          "demo:runtime/module/app",
+          "demo:runtime/module/ui",
+          "demo:runtime/module/document-page"
+        ]
+      },
+      "appearance": {
+        "fill": "#f8fafc",
+        "strokeColor": "#e2e8f0",
+        "strokeWidth": 1
+      }
+    },
+    "demo:runtime/module/app": {
+      "id": "demo:runtime/module/app",
+      "kind": "architecture-module",
+      "cellType": "node",
+      "geometry": {
+        "x": 480,
+        "y": 54,
+        "width": 372,
+        "height": 98,
+        "derived": false,
+        "outline": {
+          "kind": "roundRectangle",
+          "radius": 8
+        }
+      },
+      "ports": [
+        {
+          "id": "top",
+          "side": "top",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "right",
+          "side": "right",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "bottom",
+          "side": "bottom",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "left",
+          "side": "left",
+          "direction": "both",
+          "offset": 0.5
+        }
+      ],
+      "content": {
+        "label": "WorkspaceApp\n文件树 · 图文双向引用 · 原生预览",
+        "text": {
+          "schemaVersion": 1,
+          "id": "demo:runtime/module/app/text",
+          "kind": "inline",
+          "plainText": "WorkspaceApp\n文件树 · 图文双向引用 · 原生预览",
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "WorkspaceApp\n文件树 · 图文双向引用 · 原生预览",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "18px",
+                          "color": "#1e293b"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "data": {
+        "shape": "box",
+        "placed": true
+      },
+      "appearance": {
+        "fill": "#f0fdfa",
+        "strokeColor": "#94a3b8",
+        "strokeWidth": 1.5
+      }
+    },
+    "demo:runtime/module/ui": {
+      "id": "demo:runtime/module/ui",
+      "kind": "architecture-module",
+      "cellType": "node",
+      "geometry": {
+        "x": 940,
+        "y": 54,
+        "width": 372,
+        "height": 98,
+        "derived": false,
+        "outline": {
+          "kind": "roundRectangle",
+          "radius": 8
+        }
+      },
+      "ports": [
+        {
+          "id": "top",
+          "side": "top",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "right",
+          "side": "right",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "bottom",
+          "side": "bottom",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "left",
+          "side": "left",
+          "direction": "both",
+          "offset": 0.5
+        }
+      ],
+      "content": {
+        "label": "VerdFrame\n画布工具 · 属性 · 导入导出",
+        "text": {
+          "schemaVersion": 1,
+          "id": "demo:runtime/module/ui/text",
+          "kind": "inline",
+          "plainText": "VerdFrame\n画布工具 · 属性 · 导入导出",
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "VerdFrame",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "18px",
+                          "color": "#1e293b"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "画布工具 · 属性 · 导入导出",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "18px",
+                          "color": "#1e293b"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "data": {
+        "shape": "box",
+        "placed": true
+      },
+      "appearance": {
+        "fill": "#f0fdfa",
+        "strokeColor": "#94a3b8",
+        "strokeWidth": 1.5
+      }
+    },
+    "demo:runtime/module/document-page": {
+      "id": "demo:runtime/module/document-page",
+      "kind": "architecture-module",
+      "cellType": "node",
+      "geometry": {
+        "x": 1400,
+        "y": 54,
+        "width": 372,
+        "height": 98,
+        "derived": false,
+        "outline": {
+          "kind": "roundRectangle",
+          "radius": 8
+        }
+      },
+      "ports": [
+        {
+          "id": "top",
+          "side": "top",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "right",
+          "side": "right",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "bottom",
+          "side": "bottom",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "left",
+          "side": "left",
+          "direction": "both",
+          "offset": 0.5
+        }
+      ],
+      "content": {
+        "label": "DocumentPage / DocumentEditor\n大纲 · 链接 · frameReference 只读图块",
+        "text": {
+          "schemaVersion": 1,
+          "id": "demo:runtime/module/document-page/text",
+          "kind": "inline",
+          "plainText": "DocumentPage / DocumentEditor\n大纲 · 链接 · frameReference 只读图块",
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "DocumentPage / DocumentEditor\n大纲 · 链接 · frameReference 只读图块",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "18px",
+                          "color": "#1e293b"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "data": {
+        "shape": "box",
+        "placed": true
+      },
+      "appearance": {
+        "fill": "#f0fdfa",
+        "strokeColor": "#94a3b8",
+        "strokeWidth": 1.5
+      }
+    },
+    "demo:runtime/layer/1": {
+      "id": "demo:runtime/layer/1",
+      "kind": "architecture-layer",
+      "cellType": "node",
+      "geometry": {
+        "x": 0,
+        "y": 220,
+        "width": 1980,
+        "height": 170,
+        "derived": true
+      },
+      "content": {
+        "label": "编辑视图 · 独立文档与领域画布",
+        "text": {
+          "schemaVersion": 1,
+          "id": "demo:runtime/layer/1/text",
+          "kind": "inline",
+          "plainText": "编辑视图 · 独立文档与领域画布",
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "编辑视图 · 独立文档与领域画布",
+                    "marks": [
+                      {
+                        "type": "bold"
+                      },
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "16px",
+                          "color": "#475569"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "data": {
+        "order": "00000001",
+        "fontSize": 24,
+        "memberIds": [
+          "demo:runtime/module/canvas",
+          "demo:runtime/module/extensions",
+          "demo:runtime/module/text",
+          "demo:runtime/module/document-editor"
+        ]
+      },
+      "appearance": {
+        "fill": "#f8fafc",
+        "strokeColor": "#e2e8f0",
+        "strokeWidth": 1
+      }
+    },
+    "demo:runtime/module/canvas": {
+      "id": "demo:runtime/module/canvas",
+      "kind": "architecture-module",
+      "cellType": "node",
+      "geometry": {
+        "x": 250,
+        "y": 274,
+        "width": 372,
+        "height": 98,
+        "derived": false,
+        "outline": {
+          "kind": "roundRectangle",
+          "radius": 8
+        }
+      },
+      "ports": [
+        {
+          "id": "top",
+          "side": "top",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "right",
+          "side": "right",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "bottom",
+          "side": "bottom",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "left",
+          "side": "left",
+          "direction": "both",
+          "offset": 0.5
+        }
+      ],
+      "content": {
+        "label": "FrameCanvas\n画布编辑 · document-frame 编辑文档 · document-reference 只读引用",
+        "text": {
+          "schemaVersion": 1,
+          "id": "demo:runtime/module/canvas/text",
+          "kind": "inline",
+          "plainText": "FrameCanvas\n画布编辑 · document-frame 编辑文档 · document-reference 只读引用",
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "FrameCanvas\n画布编辑 · document-frame 编辑文档 · document-reference 只读引用",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "18px",
+                          "color": "#1e293b"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "data": {
+        "shape": "box",
+        "placed": true
+      },
+      "appearance": {
+        "fill": "#eff6ff",
+        "strokeColor": "#94a3b8",
+        "strokeWidth": 1.5
+      }
+    },
+    "demo:runtime/module/extensions": {
+      "id": "demo:runtime/module/extensions",
+      "kind": "architecture-module",
+      "cellType": "node",
+      "geometry": {
+        "x": 710,
+        "y": 274,
+        "width": 372,
+        "height": 98,
+        "derived": false,
+        "outline": {
+          "kind": "roundRectangle",
+          "radius": 8
+        }
+      },
+      "ports": [
+        {
+          "id": "top",
+          "side": "top",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "right",
+          "side": "right",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "bottom",
+          "side": "bottom",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "left",
+          "side": "left",
+          "direction": "both",
+          "offset": 0.5
+        }
+      ],
+      "content": {
+        "label": "FrameRenderExtension\nMind / Workflow / Architecture 扩展",
+        "text": {
+          "schemaVersion": 1,
+          "id": "demo:runtime/module/extensions/text",
+          "kind": "inline",
+          "plainText": "FrameRenderExtension\nMind / Workflow / Architecture 扩展",
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "FrameRenderExtension",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "18px",
+                          "color": "#1e293b"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Mind / Workflow / Architecture 扩展",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "18px",
+                          "color": "#1e293b"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "data": {
+        "shape": "box",
+        "placed": true
+      },
+      "appearance": {
+        "fill": "#eff6ff",
+        "strokeColor": "#94a3b8",
+        "strokeWidth": 1.5
+      }
+    },
+    "demo:runtime/module/text": {
+      "id": "demo:runtime/module/text",
+      "kind": "architecture-module",
+      "cellType": "node",
+      "geometry": {
+        "x": 1170,
+        "y": 274,
+        "width": 372,
+        "height": 98,
+        "derived": false,
+        "outline": {
+          "kind": "roundRectangle",
+          "radius": 8
+        }
+      },
+      "ports": [
+        {
+          "id": "top",
+          "side": "top",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "right",
+          "side": "right",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "bottom",
+          "side": "bottom",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "left",
+          "side": "left",
+          "direction": "both",
+          "offset": 0.5
+        }
+      ],
+      "content": {
+        "label": "BoardTextController / TipTap\n画布富文本 → CellTransaction",
+        "text": {
+          "schemaVersion": 1,
+          "id": "demo:runtime/module/text/text",
+          "kind": "inline",
+          "plainText": "BoardTextController / TipTap\n画布富文本 → CellTransaction",
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "BoardTextController / TipTap",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "18px",
+                          "color": "#1e293b"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "画布富文本 → CellTransaction",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "18px",
+                          "color": "#1e293b"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "data": {
+        "shape": "box",
+        "placed": true
+      },
+      "appearance": {
+        "fill": "#eff6ff",
+        "strokeColor": "#94a3b8",
+        "strokeWidth": 1.5
+      }
+    },
+    "demo:runtime/module/document-editor": {
+      "id": "demo:runtime/module/document-editor",
+      "kind": "architecture-module",
+      "cellType": "node",
+      "geometry": {
+        "x": 1630,
+        "y": 274,
+        "width": 372,
+        "height": 98,
+        "derived": false,
+        "outline": {
+          "kind": "roundRectangle",
+          "radius": 8
+        }
+      },
+      "ports": [
+        {
+          "id": "top",
+          "side": "top",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "right",
+          "side": "right",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "bottom",
+          "side": "bottom",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "left",
+          "side": "left",
+          "direction": "both",
+          "offset": 0.5
+        }
+      ],
+      "content": {
+        "label": "DocumentEditor / TipTap\nblock 正文 → 文件命令",
+        "text": {
+          "schemaVersion": 1,
+          "id": "demo:runtime/module/document-editor/text",
+          "kind": "inline",
+          "plainText": "DocumentEditor / TipTap\nblock 正文 → 文件命令",
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "DocumentEditor / TipTap",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "18px",
+                          "color": "#1e293b"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "block 正文 → 文件命令",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "18px",
+                          "color": "#1e293b"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "data": {
+        "shape": "box",
+        "placed": true
+      },
+      "appearance": {
+        "fill": "#eff6ff",
+        "strokeColor": "#94a3b8",
+        "strokeWidth": 1.5
+      }
+    },
+    "demo:runtime/layer/2": {
+      "id": "demo:runtime/layer/2",
+      "kind": "architecture-layer",
+      "cellType": "node",
+      "geometry": {
+        "x": 0,
+        "y": 440,
+        "width": 1980,
+        "height": 170,
+        "derived": true
+      },
+      "content": {
+        "label": "运行时 · 历史、索引、选择不进入快照",
+        "text": {
+          "schemaVersion": 1,
+          "id": "demo:runtime/layer/2/text",
+          "kind": "inline",
+          "plainText": "运行时 · 历史、索引、选择不进入快照",
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "运行时 · 历史、索引、选择不进入快照",
+                    "marks": [
+                      {
+                        "type": "bold"
+                      },
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "16px",
+                          "color": "#475569"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "data": {
+        "order": "00000002",
+        "fontSize": 24,
+        "memberIds": [
+          "demo:runtime/module/runtime",
+          "demo:runtime/module/registry",
+          "demo:runtime/module/camera"
+        ]
+      },
+      "appearance": {
+        "fill": "#f8fafc",
+        "strokeColor": "#e2e8f0",
+        "strokeWidth": 1
+      }
+    },
+    "demo:runtime/module/runtime": {
+      "id": "demo:runtime/module/runtime",
+      "kind": "architecture-module",
+      "cellType": "node",
+      "geometry": {
+        "x": 480,
+        "y": 494,
+        "width": 372,
+        "height": 98,
+        "derived": false,
+        "outline": {
+          "kind": "roundRectangle",
+          "radius": 8
+        }
+      },
+      "ports": [
+        {
+          "id": "top",
+          "side": "top",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "right",
+          "side": "right",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "bottom",
+          "side": "bottom",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "left",
+          "side": "left",
+          "direction": "both",
+          "offset": 0.5
+        }
+      ],
+      "content": {
+        "label": "CellRuntime\n候选操作 → 归一化 → 校验 → 提交",
+        "text": {
+          "schemaVersion": 1,
+          "id": "demo:runtime/module/runtime/text",
+          "kind": "inline",
+          "plainText": "CellRuntime\n候选操作 → 归一化 → 校验 → 提交",
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "CellRuntime",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "18px",
+                          "color": "#1e293b"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "候选操作 → 归一化 → 校验 → 提交",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "18px",
+                          "color": "#1e293b"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "data": {
+        "shape": "box",
+        "placed": true
+      },
+      "appearance": {
+        "fill": "#f5f3ff",
+        "strokeColor": "#94a3b8",
+        "strokeWidth": 1.5
+      }
+    },
+    "demo:runtime/module/registry": {
+      "id": "demo:runtime/module/registry",
+      "kind": "architecture-module",
+      "cellType": "node",
+      "geometry": {
+        "x": 940,
+        "y": 494,
+        "width": 372,
+        "height": 98,
+        "derived": false,
+        "outline": {
+          "kind": "roundRectangle",
+          "radius": 8
+        }
+      },
+      "ports": [
+        {
+          "id": "top",
+          "side": "top",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "right",
+          "side": "right",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "bottom",
+          "side": "bottom",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "left",
+          "side": "left",
+          "direction": "both",
+          "offset": 0.5
+        }
+      ],
+      "content": {
+        "label": "CellRegistry / Util\n领域约束 · 几何 · 移动与复制行为",
+        "text": {
+          "schemaVersion": 1,
+          "id": "demo:runtime/module/registry/text",
+          "kind": "inline",
+          "plainText": "CellRegistry / Util\n领域约束 · 几何 · 移动与复制行为",
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "CellRegistry / Util",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "18px",
+                          "color": "#1e293b"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "领域约束 · 几何 · 移动与复制行为",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "18px",
+                          "color": "#1e293b"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "data": {
+        "shape": "box",
+        "placed": true
+      },
+      "appearance": {
+        "fill": "#f5f3ff",
+        "strokeColor": "#94a3b8",
+        "strokeWidth": 1.5
+      }
+    },
+    "demo:runtime/module/camera": {
+      "id": "demo:runtime/module/camera",
+      "kind": "architecture-module",
+      "cellType": "node",
+      "geometry": {
+        "x": 1400,
+        "y": 494,
+        "width": 372,
+        "height": 98,
+        "derived": false,
+        "outline": {
+          "kind": "roundRectangle",
+          "radius": 8
+        }
+      },
+      "ports": [
+        {
+          "id": "top",
+          "side": "top",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "right",
+          "side": "right",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "bottom",
+          "side": "bottom",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "left",
+          "side": "left",
+          "direction": "both",
+          "offset": 0.5
+        }
+      ],
+      "content": {
+        "label": "FrameCanvas camera\n缩放 / 平移 / fit · 当前会话内存",
+        "text": {
+          "schemaVersion": 1,
+          "id": "demo:runtime/module/camera/text",
+          "kind": "inline",
+          "plainText": "FrameCanvas camera\n缩放 / 平移 / fit · 当前会话内存",
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "FrameCanvas camera",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "18px",
+                          "color": "#1e293b"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "缩放 / 平移 / fit · 当前会话内存",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "18px",
+                          "color": "#1e293b"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "data": {
+        "shape": "box",
+        "placed": true
+      },
+      "appearance": {
+        "fill": "#f5f3ff",
+        "strokeColor": "#94a3b8",
+        "strokeWidth": 1.5
+      }
+    },
+    "demo:runtime/layer/3": {
+      "id": "demo:runtime/layer/3",
+      "kind": "architecture-layer",
+      "cellType": "node",
+      "geometry": {
+        "x": 0,
+        "y": 660,
+        "width": 1980,
+        "height": 170,
+        "derived": true
+      },
+      "content": {
+        "label": "会话与数据 · 文件身份和引用独立管理",
+        "text": {
+          "schemaVersion": 1,
+          "id": "demo:runtime/layer/3/text",
+          "kind": "inline",
+          "plainText": "会话与数据 · 文件身份和引用独立管理",
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "会话与数据 · 文件身份和引用独立管理",
+                    "marks": [
+                      {
+                        "type": "bold"
+                      },
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "16px",
+                          "color": "#475569"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "data": {
+        "order": "00000003",
+        "fontSize": 24,
+        "memberIds": [
+          "demo:runtime/module/store",
+          "demo:runtime/module/host",
+          "demo:runtime/module/queue",
+          "demo:runtime/module/document-file"
+        ]
+      },
+      "appearance": {
+        "fill": "#f8fafc",
+        "strokeColor": "#e2e8f0",
+        "strokeWidth": 1
+      }
+    },
+    "demo:runtime/module/store": {
+      "id": "demo:runtime/module/store",
+      "kind": "architecture-module",
+      "cellType": "node",
+      "geometry": {
+        "x": 250,
+        "y": 714,
+        "width": 372,
+        "height": 98,
+        "derived": false,
+        "outline": {
+          "kind": "roundRectangle",
+          "radius": 8
+        }
+      },
+      "ports": [
+        {
+          "id": "top",
+          "side": "top",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "right",
+          "side": "right",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "bottom",
+          "side": "bottom",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "left",
+          "side": "left",
+          "direction": "both",
+          "offset": 0.5
+        }
+      ],
+      "content": {
+        "label": "FrameSnapshot = { store }\nrootId + cells · children / groups",
+        "text": {
+          "schemaVersion": 1,
+          "id": "demo:runtime/module/store/text",
+          "kind": "inline",
+          "plainText": "FrameSnapshot = { store }\nrootId + cells · children / groups",
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "FrameSnapshot = { store }",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "18px",
+                          "color": "#1e293b"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "rootId + cells · children / groups",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "18px",
+                          "color": "#1e293b"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "data": {
+        "shape": "box",
+        "placed": true
+      },
+      "appearance": {
+        "fill": "#fffbeb",
+        "strokeColor": "#94a3b8",
+        "strokeWidth": 1.5
+      }
+    },
+    "demo:runtime/module/host": {
+      "id": "demo:runtime/module/host",
+      "kind": "architecture-module",
+      "cellType": "node",
+      "geometry": {
+        "x": 710,
+        "y": 714,
+        "width": 372,
+        "height": 98,
+        "derived": false,
+        "outline": {
+          "kind": "roundRectangle",
+          "radius": 8
+        }
+      },
+      "ports": [
+        {
+          "id": "top",
+          "side": "top",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "right",
+          "side": "right",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "bottom",
+          "side": "bottom",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "left",
+          "side": "left",
+          "direction": "both",
+          "offset": 0.5
+        }
+      ],
+      "content": {
+        "label": "第三方宿主\n投影 value · 接受/拒绝意图 · 外部历史",
+        "text": {
+          "schemaVersion": 1,
+          "id": "demo:runtime/module/host/text",
+          "kind": "inline",
+          "plainText": "第三方宿主\n投影 value · 接受/拒绝意图 · 外部历史",
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "第三方宿主",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "18px",
+                          "color": "#1e293b"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "投影 value · 接受/拒绝意图 · 外部历史",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "18px",
+                          "color": "#1e293b"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "data": {
+        "shape": "box",
+        "placed": true
+      },
+      "appearance": {
+        "fill": "#fffbeb",
+        "strokeColor": "#94a3b8",
+        "strokeWidth": 1.5
+      }
+    },
+    "demo:runtime/module/queue": {
+      "id": "demo:runtime/module/queue",
+      "kind": "architecture-module",
+      "cellType": "node",
+      "geometry": {
+        "x": 1170,
+        "y": 714,
+        "width": 372,
+        "height": 98,
+        "derived": false,
+        "outline": {
+          "kind": "roundRectangle",
+          "radius": 8
+        }
+      },
+      "ports": [
+        {
+          "id": "top",
+          "side": "top",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "right",
+          "side": "right",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "bottom",
+          "side": "bottom",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "left",
+          "side": "left",
+          "direction": "both",
+          "offset": 0.5
+        }
+      ],
+      "content": {
+        "label": "WorkspaceSession\n文件命令 · 统一历史 · 保存队列",
+        "text": {
+          "schemaVersion": 1,
+          "id": "demo:runtime/module/queue/text",
+          "kind": "inline",
+          "plainText": "WorkspaceSession\n文件命令 · 统一历史 · 保存队列",
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "WorkspaceSession",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "18px",
+                          "color": "#1e293b"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "文件命令 · 统一历史 · 保存队列",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "18px",
+                          "color": "#1e293b"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "data": {
+        "shape": "box",
+        "placed": true
+      },
+      "appearance": {
+        "fill": "#fffbeb",
+        "strokeColor": "#94a3b8",
+        "strokeWidth": 1.5
+      }
+    },
+    "demo:runtime/module/document-file": {
+      "id": "demo:runtime/module/document-file",
+      "kind": "architecture-module",
+      "cellType": "node",
+      "geometry": {
+        "x": 1630,
+        "y": 714,
+        "width": 372,
+        "height": 98,
+        "derived": false,
+        "outline": {
+          "kind": "roundRectangle",
+          "radius": 8
+        }
+      },
+      "ports": [
+        {
+          "id": "top",
+          "side": "top",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "right",
+          "side": "right",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "bottom",
+          "side": "bottom",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "left",
+          "side": "left",
+          "direction": "both",
+          "offset": 0.5
+        }
+      ],
+      "content": {
+        "label": "DocumentFileV1\n.verd-doc.json · BoardTextDocument",
+        "text": {
+          "schemaVersion": 1,
+          "id": "demo:runtime/module/document-file/text",
+          "kind": "inline",
+          "plainText": "DocumentFileV1\n.verd-doc.json · BoardTextDocument",
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "DocumentFileV1",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "18px",
+                          "color": "#1e293b"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": ".verd-doc.json · BoardTextDocument",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "18px",
+                          "color": "#1e293b"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "data": {
+        "shape": "box",
+        "placed": true
+      },
+      "appearance": {
+        "fill": "#fffbeb",
+        "strokeColor": "#94a3b8",
+        "strokeWidth": 1.5
+      }
+    },
+    "demo:runtime/layer/4": {
+      "id": "demo:runtime/layer/4",
+      "kind": "architecture-layer",
+      "cellType": "node",
+      "geometry": {
+        "x": 0,
+        "y": 880,
+        "width": 1980,
+        "height": 170,
+        "derived": true
+      },
+      "content": {
+        "label": "宿主边界 · expectedVersion + transactionId",
+        "text": {
+          "schemaVersion": 1,
+          "id": "demo:runtime/layer/4/text",
+          "kind": "inline",
+          "plainText": "宿主边界 · expectedVersion + transactionId",
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "宿主边界 · expectedVersion + transactionId",
+                    "marks": [
+                      {
+                        "type": "bold"
+                      },
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "16px",
+                          "color": "#475569"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "data": {
+        "order": "00000004",
+        "fontSize": 24,
+        "memberIds": [
+          "demo:runtime/module/adapter",
+          "demo:runtime/module/desktop",
+          "demo:runtime/module/web"
+        ]
+      },
+      "appearance": {
+        "fill": "#f8fafc",
+        "strokeColor": "#e2e8f0",
+        "strokeWidth": 1
+      }
+    },
+    "demo:runtime/module/adapter": {
+      "id": "demo:runtime/module/adapter",
+      "kind": "architecture-module",
+      "cellType": "node",
+      "geometry": {
+        "x": 480,
+        "y": 934,
+        "width": 372,
+        "height": 98,
+        "derived": false,
+        "outline": {
+          "kind": "roundRectangle",
+          "radius": 8
+        }
+      },
+      "ports": [
+        {
+          "id": "top",
+          "side": "top",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "right",
+          "side": "right",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "bottom",
+          "side": "bottom",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "left",
+          "side": "left",
+          "direction": "both",
+          "offset": 0.5
+        }
+      ],
+      "content": {
+        "label": "WorkspaceHost\nreadSnapshot / commit / subscribe",
+        "text": {
+          "schemaVersion": 1,
+          "id": "demo:runtime/module/adapter/text",
+          "kind": "inline",
+          "plainText": "WorkspaceHost\nreadSnapshot / commit / subscribe",
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "WorkspaceHost",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "18px",
+                          "color": "#1e293b"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "readSnapshot / commit / subscribe",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "18px",
+                          "color": "#1e293b"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "data": {
+        "shape": "box",
+        "placed": true
+      },
+      "appearance": {
+        "fill": "#f0fdfa",
+        "strokeColor": "#94a3b8",
+        "strokeWidth": 1.5
+      }
+    },
+    "demo:runtime/module/desktop": {
+      "id": "demo:runtime/module/desktop",
+      "kind": "architecture-module",
+      "cellType": "node",
+      "geometry": {
+        "x": 940,
+        "y": 934,
+        "width": 372,
+        "height": 98,
+        "derived": false,
+        "outline": "store"
+      },
+      "ports": [
+        {
+          "id": "top",
+          "side": "top",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "right",
+          "side": "right",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "bottom",
+          "side": "bottom",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "left",
+          "side": "left",
+          "direction": "both",
+          "offset": 0.5
+        }
+      ],
+      "content": {
+        "label": "Desktop · preload → IPC\n真实文件 · 条件提交 · 事务日志",
+        "text": {
+          "schemaVersion": 1,
+          "id": "demo:runtime/module/desktop/text",
+          "kind": "inline",
+          "plainText": "Desktop · preload → IPC\n真实文件 · 条件提交 · 事务日志",
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Desktop · preload → IPC",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "18px",
+                          "color": "#1e293b"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "真实文件 · 条件提交 · 事务日志",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "18px",
+                          "color": "#1e293b"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "data": {
+        "shape": "store",
+        "placed": true
+      },
+      "appearance": {
+        "fill": "#f0fdfa",
+        "strokeColor": "#94a3b8",
+        "strokeWidth": 1.5
+      }
+    },
+    "demo:runtime/module/web": {
+      "id": "demo:runtime/module/web",
+      "kind": "architecture-module",
+      "cellType": "node",
+      "geometry": {
+        "x": 1400,
+        "y": 934,
+        "width": 372,
+        "height": 98,
+        "derived": false,
+        "outline": "store"
+      },
+      "ports": [
+        {
+          "id": "top",
+          "side": "top",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "right",
+          "side": "right",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "bottom",
+          "side": "bottom",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "left",
+          "side": "left",
+          "direction": "both",
+          "offset": 0.5
+        }
+      ],
+      "content": {
+        "label": "Web · IndexedDB\n虚拟文件目录 · 原子事务",
+        "text": {
+          "schemaVersion": 1,
+          "id": "demo:runtime/module/web/text",
+          "kind": "inline",
+          "plainText": "Web · IndexedDB\n虚拟文件目录 · 原子事务",
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Web · IndexedDB",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "18px",
+                          "color": "#1e293b"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "虚拟文件目录 · 原子事务",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "18px",
+                          "color": "#1e293b"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "data": {
+        "shape": "store",
+        "placed": true
+      },
+      "appearance": {
+        "fill": "#f0fdfa",
+        "strokeColor": "#94a3b8",
+        "strokeWidth": 1.5
+      }
+    },
+    "demo:runtime/edge/0": {
+      "id": "demo:runtime/edge/0",
+      "kind": "architecture-edge",
+      "cellType": "edge",
+      "source": {
+        "cellId": "demo:runtime/module/app"
+      },
+      "target": {
+        "cellId": "demo:runtime/module/ui"
+      },
+      "route": {
+        "mode": "orthogonal"
+      },
+      "labels": [
+        {
+          "text": "挂载",
+          "position": 0.5
+        }
+      ],
+      "appearance": {
+        "strokeColor": "#64748b",
+        "strokeWidth": 1.5
+      }
+    },
+    "demo:runtime/edge/1": {
+      "id": "demo:runtime/edge/1",
+      "kind": "architecture-edge",
+      "cellType": "edge",
+      "source": {
+        "cellId": "demo:runtime/module/ui"
+      },
+      "target": {
+        "cellId": "demo:runtime/module/canvas"
+      },
+      "route": {
+        "mode": "orthogonal"
+      },
+      "labels": [
+        {
+          "text": "挂载",
+          "position": 0.5
+        }
+      ],
+      "appearance": {
+        "strokeColor": "#64748b",
+        "strokeWidth": 1.5
+      }
+    },
+    "demo:runtime/edge/2": {
+      "id": "demo:runtime/edge/2",
+      "kind": "architecture-edge",
+      "cellType": "edge",
+      "source": {
+        "cellId": "demo:runtime/module/extensions"
+      },
+      "target": {
+        "cellId": "demo:runtime/module/canvas"
+      },
+      "route": {
+        "mode": "orthogonal"
+      },
+      "labels": [
+        {
+          "text": "扩展注入",
+          "position": 0.5
+        }
+      ],
+      "appearance": {
+        "strokeColor": "#64748b",
+        "strokeWidth": 1.5
+      }
+    },
+    "demo:runtime/edge/3": {
+      "id": "demo:runtime/edge/3",
+      "kind": "architecture-edge",
+      "cellType": "edge",
+      "source": {
+        "cellId": "demo:runtime/module/text"
+      },
+      "target": {
+        "cellId": "demo:runtime/module/canvas"
+      },
+      "route": {
+        "mode": "orthogonal"
+      },
+      "labels": [
+        {
+          "text": "编辑事务",
+          "position": 0.5
+        }
+      ],
+      "appearance": {
+        "strokeColor": "#64748b",
+        "strokeWidth": 1.5
+      }
+    },
+    "demo:runtime/edge/4": {
+      "id": "demo:runtime/edge/4",
+      "kind": "architecture-edge",
+      "cellType": "edge",
+      "source": {
+        "cellId": "demo:runtime/module/canvas"
+      },
+      "target": {
+        "cellId": "demo:runtime/module/runtime"
+      },
+      "route": {
+        "mode": "orthogonal"
+      },
+      "labels": [
+        {
+          "text": "标准事务",
+          "position": 0.5
+        }
+      ],
+      "appearance": {
+        "strokeColor": "#64748b",
+        "strokeWidth": 1.5
+      }
+    },
+    "demo:runtime/edge/5": {
+      "id": "demo:runtime/edge/5",
+      "kind": "architecture-edge",
+      "cellType": "edge",
+      "source": {
+        "cellId": "demo:runtime/module/runtime"
+      },
+      "target": {
+        "cellId": "demo:runtime/module/registry"
+      },
+      "route": {
+        "mode": "orthogonal"
+      },
+      "labels": [
+        {
+          "text": "调用",
+          "position": 0.5
+        }
+      ],
+      "appearance": {
+        "strokeColor": "#64748b",
+        "strokeWidth": 1.5
+      }
+    },
+    "demo:runtime/edge/6": {
+      "id": "demo:runtime/edge/6",
+      "kind": "architecture-edge",
+      "cellType": "edge",
+      "source": {
+        "cellId": "demo:runtime/module/runtime"
+      },
+      "target": {
+        "cellId": "demo:runtime/module/store"
+      },
+      "route": {
+        "mode": "orthogonal"
+      },
+      "labels": [
+        {
+          "text": "提交快照",
+          "position": 0.5
+        }
+      ],
+      "appearance": {
+        "strokeColor": "#64748b",
+        "strokeWidth": 1.5
+      }
+    },
+    "demo:runtime/edge/7": {
+      "id": "demo:runtime/edge/7",
+      "kind": "architecture-edge",
+      "cellType": "edge",
+      "source": {
+        "cellId": "demo:runtime/module/canvas"
+      },
+      "target": {
+        "cellId": "demo:runtime/module/host"
+      },
+      "route": {
+        "mode": "orthogonal"
+      },
+      "labels": [
+        {
+          "text": "onIntent",
+          "position": 0.5
+        }
+      ],
+      "appearance": {
+        "strokeColor": "#64748b",
+        "strokeWidth": 1.5
+      }
+    },
+    "demo:runtime/edge/8": {
+      "id": "demo:runtime/edge/8",
+      "kind": "architecture-edge",
+      "cellType": "edge",
+      "source": {
+        "cellId": "demo:runtime/module/host"
+      },
+      "target": {
+        "cellId": "demo:runtime/module/canvas"
+      },
+      "route": {
+        "mode": "orthogonal"
+      },
+      "labels": [
+        {
+          "text": "adapter.toFrameSnapshot",
+          "position": 0.5
+        }
+      ],
+      "appearance": {
+        "strokeColor": "#64748b",
+        "strokeWidth": 1.5
+      }
+    },
+    "demo:runtime/edge/9": {
+      "id": "demo:runtime/edge/9",
+      "kind": "architecture-edge",
+      "cellType": "edge",
+      "source": {
+        "cellId": "demo:runtime/module/canvas"
+      },
+      "target": {
+        "cellId": "demo:runtime/module/camera"
+      },
+      "route": {
+        "mode": "orthogonal"
+      },
+      "labels": [
+        {
+          "text": "视图交互",
+          "position": 0.5
+        }
+      ],
+      "appearance": {
+        "strokeColor": "#64748b",
+        "strokeWidth": 1.5
+      }
+    },
+    "demo:runtime/edge/10": {
+      "id": "demo:runtime/edge/10",
+      "kind": "architecture-edge",
+      "cellType": "edge",
+      "source": {
+        "cellId": "demo:runtime/module/queue"
+      },
+      "target": {
+        "cellId": "demo:runtime/module/adapter"
+      },
+      "route": {
+        "mode": "orthogonal"
+      },
+      "labels": [
+        {
+          "text": "条件提交",
+          "position": 0.5
+        }
+      ],
+      "appearance": {
+        "strokeColor": "#64748b",
+        "strokeWidth": 1.5
+      }
+    },
+    "demo:runtime/edge/11": {
+      "id": "demo:runtime/edge/11",
+      "kind": "architecture-edge",
+      "cellType": "edge",
+      "source": {
+        "cellId": "demo:runtime/module/adapter"
+      },
+      "target": {
+        "cellId": "demo:runtime/module/desktop"
+      },
+      "route": {
+        "mode": "orthogonal"
+      },
+      "appearance": {
+        "strokeColor": "#64748b",
+        "strokeWidth": 1.5
+      }
+    },
+    "demo:runtime/edge/12": {
+      "id": "demo:runtime/edge/12",
+      "kind": "architecture-edge",
+      "cellType": "edge",
+      "source": {
+        "cellId": "demo:runtime/module/adapter"
+      },
+      "target": {
+        "cellId": "demo:runtime/module/web"
+      },
+      "route": {
+        "mode": "orthogonal"
+      },
+      "appearance": {
+        "strokeColor": "#64748b",
+        "strokeWidth": 1.5
+      }
+    },
+    "demo:runtime/edge/13": {
+      "id": "demo:runtime/edge/13",
+      "kind": "architecture-edge",
+      "cellType": "edge",
+      "source": {
+        "cellId": "demo:runtime/module/app"
+      },
+      "target": {
+        "cellId": "demo:runtime/module/document-page"
+      },
+      "route": {
+        "mode": "orthogonal"
+      },
+      "labels": [
+        {
+          "text": "挂载",
+          "position": 0.5
+        }
+      ],
+      "appearance": {
+        "strokeColor": "#64748b",
+        "strokeWidth": 1.5
+      }
+    },
+    "demo:runtime/edge/14": {
+      "id": "demo:runtime/edge/14",
+      "kind": "architecture-edge",
+      "cellType": "edge",
+      "source": {
+        "cellId": "demo:runtime/module/document-page"
+      },
+      "target": {
+        "cellId": "demo:runtime/module/document-editor"
+      },
+      "route": {
+        "mode": "orthogonal"
+      },
+      "labels": [
+        {
+          "text": "受控正文",
+          "position": 0.5
+        }
+      ],
+      "appearance": {
+        "strokeColor": "#64748b",
+        "strokeWidth": 1.5
+      }
+    },
+    "demo:runtime/edge/15": {
+      "id": "demo:runtime/edge/15",
+      "kind": "architecture-edge",
+      "cellType": "edge",
+      "source": {
+        "cellId": "demo:runtime/module/document-editor"
+      },
+      "target": {
+        "cellId": "demo:runtime/module/queue"
+      },
+      "route": {
+        "mode": "orthogonal"
+      },
+      "labels": [
+        {
+          "text": "file 命令",
+          "position": 0.5
+        }
+      ],
+      "appearance": {
+        "strokeColor": "#64748b",
+        "strokeWidth": 1.5
+      }
+    },
+    "demo:runtime/edge/16": {
+      "id": "demo:runtime/edge/16",
+      "kind": "architecture-edge",
+      "cellType": "edge",
+      "source": {
+        "cellId": "demo:runtime/module/store"
+      },
+      "target": {
+        "cellId": "demo:runtime/module/queue"
+      },
+      "route": {
+        "mode": "orthogonal"
+      },
+      "labels": [
+        {
+          "text": "分区画布变化",
+          "position": 0.5
+        }
+      ],
+      "appearance": {
+        "strokeColor": "#64748b",
+        "strokeWidth": 1.5
+      }
+    },
+    "demo:runtime/edge/17": {
+      "id": "demo:runtime/edge/17",
+      "kind": "architecture-edge",
+      "cellType": "edge",
+      "source": {
+        "cellId": "demo:runtime/module/queue"
+      },
+      "target": {
+        "cellId": "demo:runtime/module/document-file"
+      },
+      "route": {
+        "mode": "orthogonal"
+      },
+      "labels": [
+        {
+          "text": "文档快照",
+          "position": 0.5
+        }
+      ],
+      "appearance": {
+        "strokeColor": "#64748b",
+        "strokeWidth": 1.5
+      }
+    },
+    "demo:runtime/edge/18": {
+      "id": "demo:runtime/edge/18",
+      "kind": "architecture-edge",
+      "cellType": "edge",
+      "source": {
+        "cellId": "demo:runtime/module/queue"
+      },
+      "target": {
+        "cellId": "demo:runtime/module/app"
+      },
+      "route": {
+        "mode": "orthogonal"
+      },
+      "labels": [
+        {
+          "text": "订阅状态",
+          "position": 0.5
+        }
+      ],
+      "appearance": {
+        "strokeColor": "#64748b",
+        "strokeWidth": 1.5
+      }
+    },
+    "project:topic/02/document": {
+      "id": "project:topic/02/document",
+      "cellType": "node",
+      "kind": "document-reference",
+      "geometry": {
+        "x": 0,
+        "y": 1146,
+        "width": 680,
+        "height": 480
+      },
+      "data": {
+        "targetDocumentId": "project-doc:architecture/ARCHITECTURE"
+      },
+      "content": {
+        "text": {
+          "schemaVersion": 1,
+          "id": "project:topic/02/document/links",
+          "kind": "block",
+          "align": "left",
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "React接入 · 标准模式",
+                    "marks": [
+                      {
+                        "type": "link",
+                        "attrs": {
+                          "href": "verd://file/project-doc%3Apackages%2Freact%2FREADME#%E6%A0%87%E5%87%86%E6%A8%A1%E5%BC%8F"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "React接入 · 第三方宿主模式",
+                    "marks": [
+                      {
+                        "type": "link",
+                        "attrs": {
+                          "href": "verd://file/project-doc%3Apackages%2Freact%2FREADME#%E7%AC%AC%E4%B8%89%E6%96%B9%E5%AE%BF%E4%B8%BB%E6%A8%A1%E5%BC%8F"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          },
+          "plainText": "React接入 · 标准模式\nReact接入 · 第三方宿主模式"
+        }
+      }
+    }
+  },
+  "organization": {
+    "kind": "subgraph",
+    "ownerFrameId": "board-root"
+  }
+}

@@ -1,0 +1,2141 @@
+{
+  "format": "verd-frame",
+  "version": 2,
+  "frame": {
+    "id": "board/5:wfArc",
+    "kind": "frame",
+    "cellType": "frame",
+    "geometry": {
+      "x": 0,
+      "y": 1380,
+      "width": 680,
+      "height": 470,
+      "derived": false
+    },
+    "children": [
+      "demo:edit/start",
+      "demo:edit/command",
+      "demo:edit/gate",
+      "demo:edit/deny",
+      "demo:edit/mode",
+      "demo:edit/candidate",
+      "demo:edit/valid",
+      "demo:edit/commit",
+      "demo:edit/change",
+      "demo:edit/history",
+      "demo:edit/local",
+      "demo:edit/accept",
+      "demo:edit/reject",
+      "demo:edit/project",
+      "demo:edit/replace",
+      "demo:edit/camera",
+      "demo:edit/document",
+      "demo:edit/edge/0",
+      "demo:edit/edge/1",
+      "demo:edit/edge/2",
+      "demo:edit/edge/3",
+      "demo:edit/edge/4",
+      "demo:edit/edge/5",
+      "demo:edit/edge/6",
+      "demo:edit/edge/7",
+      "demo:edit/edge/8",
+      "demo:edit/edge/9",
+      "demo:edit/edge/10",
+      "demo:edit/edge/11",
+      "demo:edit/edge/12",
+      "demo:edit/edge/13",
+      "demo:edit/edge/14",
+      "demo:edit/edge/15",
+      "demo:edit/edge/16",
+      "demo:edit/edge/17",
+      "demo:edit/edge/18",
+      "project:topic/05/document"
+    ],
+    "groups": [],
+    "data": {},
+    "content": {
+      "label": "⑤ 编辑、事务与历史",
+      "text": {
+        "schemaVersion": 1,
+        "id": "board/5:wfArc/text",
+        "kind": "inline",
+        "plainText": "⑤ 编辑、事务与历史",
+        "content": {
+          "type": "doc",
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "⑤ 编辑、事务与历史",
+                  "marks": [
+                    {
+                      "type": "textStyle",
+                      "attrs": {
+                        "fontSize": "14px",
+                        "color": "#1e293b"
+                      }
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    "appearance": {
+      "fill": "#ffffff",
+      "strokeColor": "#cbd5e1",
+      "strokeWidth": 2
+    },
+    "view": {
+      "theme": {
+        "themeColorMode": "default",
+        "boardBackground": "#ffffff"
+      }
+    },
+    "name": "⑤ 编辑、事务与历史"
+  },
+  "cells": {
+    "demo:edit/start": {
+      "id": "demo:edit/start",
+      "kind": "workflow-start",
+      "cellType": "node",
+      "geometry": {
+        "x": 0,
+        "y": 0,
+        "width": 360,
+        "height": 106,
+        "derived": false,
+        "outline": "terminal"
+      },
+      "ports": [
+        {
+          "id": "top",
+          "side": "top",
+          "direction": "output",
+          "offset": 0.5
+        },
+        {
+          "id": "right",
+          "side": "right",
+          "direction": "output",
+          "offset": 0.5
+        },
+        {
+          "id": "bottom",
+          "side": "bottom",
+          "direction": "output",
+          "offset": 0.5
+        },
+        {
+          "id": "left",
+          "side": "left",
+          "direction": "output",
+          "offset": 0.5
+        }
+      ],
+      "content": {
+        "label": "用户操作",
+        "text": {
+          "schemaVersion": 1,
+          "id": "demo:edit/start/text",
+          "kind": "inline",
+          "plainText": "用户操作",
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "用户操作",
+                    "marks": [
+                      {
+                        "type": "bold"
+                      },
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "20px",
+                          "color": "#ffffff"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "appearance": {
+        "fill": "#0f766e",
+        "strokeColor": "#0f766e",
+        "strokeWidth": 1.5
+      },
+      "data": {
+        "graphMode": "process",
+        "origin": [
+          0,
+          0
+        ],
+        "memberIds": [
+          "demo:edit/start",
+          "demo:edit/command",
+          "demo:edit/gate",
+          "demo:edit/deny",
+          "demo:edit/mode",
+          "demo:edit/candidate",
+          "demo:edit/valid",
+          "demo:edit/commit",
+          "demo:edit/change",
+          "demo:edit/history",
+          "demo:edit/local",
+          "demo:edit/accept",
+          "demo:edit/reject",
+          "demo:edit/project",
+          "demo:edit/replace",
+          "demo:edit/camera",
+          "demo:edit/document"
+        ]
+      }
+    },
+    "demo:edit/command": {
+      "id": "demo:edit/command",
+      "kind": "workflow-task",
+      "cellType": "node",
+      "geometry": {
+        "x": 0,
+        "y": 180,
+        "width": 360,
+        "height": 106,
+        "derived": false,
+        "outline": "roundRectangle"
+      },
+      "ports": [
+        {
+          "id": "top",
+          "side": "top",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "right",
+          "side": "right",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "bottom",
+          "side": "bottom",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "left",
+          "side": "left",
+          "direction": "both",
+          "offset": 0.5
+        }
+      ],
+      "content": {
+        "label": "指针 / 键盘 / 富文本 / 属性\n生成事务，检查只读/锁定/pending",
+        "text": {
+          "schemaVersion": 1,
+          "id": "demo:edit/command/text",
+          "kind": "inline",
+          "plainText": "指针 / 键盘 / 富文本 / 属性\n生成事务，检查只读/锁定/pending",
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "指针 / 键盘 / 富文本 / 属性",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "20px",
+                          "color": "#1e293b"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "生成事务，检查只读/锁定/pending",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "20px",
+                          "color": "#1e293b"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "appearance": {
+        "fill": "#f0fdfa",
+        "strokeColor": "#94a3b8",
+        "strokeWidth": 1.5
+      }
+    },
+    "demo:edit/gate": {
+      "id": "demo:edit/gate",
+      "kind": "workflow-decision",
+      "cellType": "node",
+      "geometry": {
+        "x": 30,
+        "y": 360,
+        "width": 300,
+        "height": 132,
+        "derived": false,
+        "outline": "diamond"
+      },
+      "ports": [
+        {
+          "id": "top",
+          "side": "top",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "right",
+          "side": "right",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "bottom",
+          "side": "bottom",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "left",
+          "side": "left",
+          "direction": "both",
+          "offset": 0.5
+        }
+      ],
+      "content": {
+        "label": "允许编辑？",
+        "text": {
+          "schemaVersion": 1,
+          "id": "demo:edit/gate/text",
+          "kind": "inline",
+          "plainText": "允许编辑？",
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "允许编辑？",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "20px",
+                          "color": "#1e293b"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "appearance": {
+        "fill": "#fffbeb",
+        "strokeColor": "#d97706",
+        "strokeWidth": 1.5
+      }
+    },
+    "demo:edit/deny": {
+      "id": "demo:edit/deny",
+      "kind": "workflow-task",
+      "cellType": "node",
+      "geometry": {
+        "x": 0,
+        "y": 540,
+        "width": 360,
+        "height": 106,
+        "derived": false,
+        "outline": "roundRectangle"
+      },
+      "ports": [
+        {
+          "id": "top",
+          "side": "top",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "right",
+          "side": "right",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "bottom",
+          "side": "bottom",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "left",
+          "side": "left",
+          "direction": "both",
+          "offset": 0.5
+        }
+      ],
+      "content": {
+        "label": "拒绝操作\n保持原快照",
+        "text": {
+          "schemaVersion": 1,
+          "id": "demo:edit/deny/text",
+          "kind": "inline",
+          "plainText": "拒绝操作\n保持原快照",
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "拒绝操作",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "20px",
+                          "color": "#1e293b"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "保持原快照",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "20px",
+                          "color": "#1e293b"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "appearance": {
+        "fill": "#f0fdfa",
+        "strokeColor": "#94a3b8",
+        "strokeWidth": 1.5
+      }
+    },
+    "demo:edit/mode": {
+      "id": "demo:edit/mode",
+      "kind": "workflow-decision",
+      "cellType": "node",
+      "geometry": {
+        "x": 430,
+        "y": 360,
+        "width": 300,
+        "height": 132,
+        "derived": false,
+        "outline": "diamond"
+      },
+      "ports": [
+        {
+          "id": "top",
+          "side": "top",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "right",
+          "side": "right",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "bottom",
+          "side": "bottom",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "left",
+          "side": "left",
+          "direction": "both",
+          "offset": 0.5
+        }
+      ],
+      "content": {
+        "label": "接入模式？",
+        "text": {
+          "schemaVersion": 1,
+          "id": "demo:edit/mode/text",
+          "kind": "inline",
+          "plainText": "接入模式？",
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "接入模式？",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "20px",
+                          "color": "#1e293b"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "appearance": {
+        "fill": "#fffbeb",
+        "strokeColor": "#d97706",
+        "strokeWidth": 1.5
+      }
+    },
+    "demo:edit/candidate": {
+      "id": "demo:edit/candidate",
+      "kind": "workflow-task",
+      "cellType": "node",
+      "geometry": {
+        "x": 800,
+        "y": 180,
+        "width": 360,
+        "height": 106,
+        "derived": false,
+        "outline": "roundRectangle"
+      },
+      "ports": [
+        {
+          "id": "top",
+          "side": "top",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "right",
+          "side": "right",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "bottom",
+          "side": "bottom",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "left",
+          "side": "left",
+          "direction": "both",
+          "offset": 0.5
+        }
+      ],
+      "content": {
+        "label": "标准：候选 operations\n维护关系并归一化",
+        "text": {
+          "schemaVersion": 1,
+          "id": "demo:edit/candidate/text",
+          "kind": "inline",
+          "plainText": "标准：候选 operations\n维护关系并归一化",
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "标准：候选 operations",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "20px",
+                          "color": "#1e293b"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "维护关系并归一化",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "20px",
+                          "color": "#1e293b"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "appearance": {
+        "fill": "#f0fdfa",
+        "strokeColor": "#94a3b8",
+        "strokeWidth": 1.5
+      }
+    },
+    "demo:edit/valid": {
+      "id": "demo:edit/valid",
+      "kind": "workflow-decision",
+      "cellType": "node",
+      "geometry": {
+        "x": 1230,
+        "y": 180,
+        "width": 300,
+        "height": 132,
+        "derived": false,
+        "outline": "diamond"
+      },
+      "ports": [
+        {
+          "id": "top",
+          "side": "top",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "right",
+          "side": "right",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "bottom",
+          "side": "bottom",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "left",
+          "side": "left",
+          "direction": "both",
+          "offset": 0.5
+        }
+      ],
+      "content": {
+        "label": "最终校验通过？",
+        "text": {
+          "schemaVersion": 1,
+          "id": "demo:edit/valid/text",
+          "kind": "inline",
+          "plainText": "最终校验通过？",
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "最终校验通过？",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "20px",
+                          "color": "#1e293b"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "appearance": {
+        "fill": "#fffbeb",
+        "strokeColor": "#d97706",
+        "strokeWidth": 1.5
+      }
+    },
+    "demo:edit/commit": {
+      "id": "demo:edit/commit",
+      "kind": "workflow-task",
+      "cellType": "node",
+      "geometry": {
+        "x": 1200,
+        "y": 0,
+        "width": 360,
+        "height": 106,
+        "derived": false,
+        "outline": "roundRectangle"
+      },
+      "ports": [
+        {
+          "id": "top",
+          "side": "top",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "right",
+          "side": "right",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "bottom",
+          "side": "bottom",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "left",
+          "side": "left",
+          "direction": "both",
+          "offset": 0.5
+        }
+      ],
+      "content": {
+        "label": "原子提交 CellStore\n记录实际前后 diff",
+        "text": {
+          "schemaVersion": 1,
+          "id": "demo:edit/commit/text",
+          "kind": "inline",
+          "plainText": "原子提交 CellStore\n记录实际前后 diff",
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "原子提交 CellStore",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "20px",
+                          "color": "#1e293b"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "记录实际前后 diff",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "20px",
+                          "color": "#1e293b"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "appearance": {
+        "fill": "#f0fdfa",
+        "strokeColor": "#94a3b8",
+        "strokeWidth": 1.5
+      }
+    },
+    "demo:edit/change": {
+      "id": "demo:edit/change",
+      "kind": "workflow-task",
+      "cellType": "node",
+      "geometry": {
+        "x": 1600,
+        "y": 0,
+        "width": 360,
+        "height": 106,
+        "derived": false,
+        "outline": "roundRectangle"
+      },
+      "ports": [
+        {
+          "id": "top",
+          "side": "top",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "right",
+          "side": "right",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "bottom",
+          "side": "bottom",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "left",
+          "side": "left",
+          "direction": "both",
+          "offset": 0.5
+        }
+      ],
+      "content": {
+        "label": "WorkspaceSession.apply\n分区 / 身份 / 引用校验后入队",
+        "text": {
+          "schemaVersion": 1,
+          "id": "demo:edit/change/text",
+          "kind": "inline",
+          "plainText": "WorkspaceSession.apply\n分区 / 身份 / 引用校验后入队",
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "WorkspaceSession.apply",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "20px",
+                          "color": "#1e293b"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "分区 / 身份 / 引用校验后入队",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "20px",
+                          "color": "#1e293b"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "appearance": {
+        "fill": "#f0fdfa",
+        "strokeColor": "#94a3b8",
+        "strokeWidth": 1.5
+      }
+    },
+    "demo:edit/history": {
+      "id": "demo:edit/history",
+      "kind": "workflow-task",
+      "cellType": "node",
+      "geometry": {
+        "x": 1600,
+        "y": 180,
+        "width": 360,
+        "height": 106,
+        "derived": false,
+        "outline": "roundRectangle"
+      },
+      "ports": [
+        {
+          "id": "top",
+          "side": "top",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "right",
+          "side": "right",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "bottom",
+          "side": "bottom",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "left",
+          "side": "left",
+          "direction": "both",
+          "offset": 0.5
+        }
+      ],
+      "content": {
+        "label": "会话统一撤销 / 重做\n恢复画布或文档与编辑选区",
+        "text": {
+          "schemaVersion": 1,
+          "id": "demo:edit/history/text",
+          "kind": "inline",
+          "plainText": "会话统一撤销 / 重做\n恢复画布或文档与编辑选区",
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "会话统一撤销 / 重做",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "20px",
+                          "color": "#1e293b"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "恢复画布或文档与编辑选区",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "20px",
+                          "color": "#1e293b"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "appearance": {
+        "fill": "#f0fdfa",
+        "strokeColor": "#94a3b8",
+        "strokeWidth": 1.5
+      }
+    },
+    "demo:edit/local": {
+      "id": "demo:edit/local",
+      "kind": "workflow-task",
+      "cellType": "node",
+      "geometry": {
+        "x": 800,
+        "y": 540,
+        "width": 360,
+        "height": 106,
+        "derived": false,
+        "outline": "roundRectangle"
+      },
+      "ports": [
+        {
+          "id": "top",
+          "side": "top",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "right",
+          "side": "right",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "bottom",
+          "side": "bottom",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "left",
+          "side": "left",
+          "direction": "both",
+          "offset": 0.5
+        }
+      ],
+      "content": {
+        "label": "宿主先本地校验 → onIntent\n异步等待期间阻止新事务",
+        "text": {
+          "schemaVersion": 1,
+          "id": "demo:edit/local/text",
+          "kind": "inline",
+          "plainText": "宿主先本地校验 → onIntent\n异步等待期间阻止新事务",
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "宿主先本地校验 → onIntent",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "20px",
+                          "color": "#1e293b"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "异步等待期间阻止新事务",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "20px",
+                          "color": "#1e293b"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "appearance": {
+        "fill": "#f0fdfa",
+        "strokeColor": "#94a3b8",
+        "strokeWidth": 1.5
+      }
+    },
+    "demo:edit/accept": {
+      "id": "demo:edit/accept",
+      "kind": "workflow-decision",
+      "cellType": "node",
+      "geometry": {
+        "x": 1230,
+        "y": 540,
+        "width": 300,
+        "height": 132,
+        "derived": false,
+        "outline": "diamond"
+      },
+      "ports": [
+        {
+          "id": "top",
+          "side": "top",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "right",
+          "side": "right",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "bottom",
+          "side": "bottom",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "left",
+          "side": "left",
+          "direction": "both",
+          "offset": 0.5
+        }
+      ],
+      "content": {
+        "label": "宿主接受？",
+        "text": {
+          "schemaVersion": 1,
+          "id": "demo:edit/accept/text",
+          "kind": "inline",
+          "plainText": "宿主接受？",
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "宿主接受？",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "20px",
+                          "color": "#1e293b"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "appearance": {
+        "fill": "#fffbeb",
+        "strokeColor": "#d97706",
+        "strokeWidth": 1.5
+      }
+    },
+    "demo:edit/reject": {
+      "id": "demo:edit/reject",
+      "kind": "workflow-task",
+      "cellType": "node",
+      "geometry": {
+        "x": 1200,
+        "y": 720,
+        "width": 360,
+        "height": 106,
+        "derived": false,
+        "outline": "roundRectangle"
+      },
+      "ports": [
+        {
+          "id": "top",
+          "side": "top",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "right",
+          "side": "right",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "bottom",
+          "side": "bottom",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "left",
+          "side": "left",
+          "direction": "both",
+          "offset": 0.5
+        }
+      ],
+      "content": {
+        "label": "拒绝 / 异常：onReject\n保留宿主原 value",
+        "text": {
+          "schemaVersion": 1,
+          "id": "demo:edit/reject/text",
+          "kind": "inline",
+          "plainText": "拒绝 / 异常：onReject\n保留宿主原 value",
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "拒绝 / 异常：onReject",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "20px",
+                          "color": "#1e293b"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "保留宿主原 value",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "20px",
+                          "color": "#1e293b"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "appearance": {
+        "fill": "#fff1f2",
+        "strokeColor": "#94a3b8",
+        "strokeWidth": 1.5
+      }
+    },
+    "demo:edit/project": {
+      "id": "demo:edit/project",
+      "kind": "workflow-task",
+      "cellType": "node",
+      "geometry": {
+        "x": 1600,
+        "y": 540,
+        "width": 360,
+        "height": 106,
+        "derived": false,
+        "outline": "roundRectangle"
+      },
+      "ports": [
+        {
+          "id": "top",
+          "side": "top",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "right",
+          "side": "right",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "bottom",
+          "side": "bottom",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "left",
+          "side": "left",
+          "direction": "both",
+          "offset": 0.5
+        }
+      ],
+      "content": {
+        "label": "宿主更新业务 value\nadapter.toFrameSnapshot",
+        "text": {
+          "schemaVersion": 1,
+          "id": "demo:edit/project/text",
+          "kind": "inline",
+          "plainText": "宿主更新业务 value\nadapter.toFrameSnapshot",
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "宿主更新业务 value",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "20px",
+                          "color": "#1e293b"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "adapter.toFrameSnapshot",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "20px",
+                          "color": "#1e293b"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "appearance": {
+        "fill": "#f0fdfa",
+        "strokeColor": "#94a3b8",
+        "strokeWidth": 1.5
+      }
+    },
+    "demo:edit/replace": {
+      "id": "demo:edit/replace",
+      "kind": "workflow-task",
+      "cellType": "node",
+      "geometry": {
+        "x": 1600,
+        "y": 360,
+        "width": 360,
+        "height": 106,
+        "derived": false,
+        "outline": "roundRectangle"
+      },
+      "ports": [
+        {
+          "id": "top",
+          "side": "top",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "right",
+          "side": "right",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "bottom",
+          "side": "bottom",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "left",
+          "side": "left",
+          "direction": "both",
+          "offset": 0.5
+        }
+      ],
+      "content": {
+        "label": "runtime.replace → 重绘\n撤销重做使用宿主外部 history",
+        "text": {
+          "schemaVersion": 1,
+          "id": "demo:edit/replace/text",
+          "kind": "inline",
+          "plainText": "runtime.replace → 重绘\n撤销重做使用宿主外部 history",
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "runtime.replace → 重绘",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "20px",
+                          "color": "#1e293b"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "撤销重做使用宿主外部 history",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "20px",
+                          "color": "#1e293b"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "appearance": {
+        "fill": "#f0fdfa",
+        "strokeColor": "#94a3b8",
+        "strokeWidth": 1.5
+      }
+    },
+    "demo:edit/camera": {
+      "id": "demo:edit/camera",
+      "kind": "workflow-task",
+      "cellType": "node",
+      "geometry": {
+        "x": 400,
+        "y": 0,
+        "width": 360,
+        "height": 106,
+        "derived": false,
+        "outline": "roundRectangle"
+      },
+      "ports": [
+        {
+          "id": "top",
+          "side": "top",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "right",
+          "side": "right",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "bottom",
+          "side": "bottom",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "left",
+          "side": "left",
+          "direction": "both",
+          "offset": 0.5
+        }
+      ],
+      "content": {
+        "label": "平移 / 缩放 / fit / 选择\n仅内存变化，不进入保存队列",
+        "text": {
+          "schemaVersion": 1,
+          "id": "demo:edit/camera/text",
+          "kind": "inline",
+          "plainText": "平移 / 缩放 / fit / 选择\n仅内存变化，不进入保存队列",
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "平移 / 缩放 / fit / 选择",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "20px",
+                          "color": "#1e293b"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "仅内存变化，不进入保存队列",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "20px",
+                          "color": "#1e293b"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "appearance": {
+        "fill": "#f0fdfa",
+        "strokeColor": "#94a3b8",
+        "strokeWidth": 1.5
+      }
+    },
+    "demo:edit/document": {
+      "id": "demo:edit/document",
+      "kind": "workflow-task",
+      "cellType": "node",
+      "geometry": {
+        "x": 2000,
+        "y": 0,
+        "width": 360,
+        "height": 106,
+        "derived": false,
+        "outline": "roundRectangle"
+      },
+      "ports": [
+        {
+          "id": "top",
+          "side": "top",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "right",
+          "side": "right",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "bottom",
+          "side": "bottom",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "left",
+          "side": "left",
+          "direction": "both",
+          "offset": 0.5
+        }
+      ],
+      "content": {
+        "label": "DocumentEditor → DocumentPage\nblock 正文与选区 → file 命令",
+        "text": {
+          "schemaVersion": 1,
+          "id": "demo:edit/document/text",
+          "kind": "inline",
+          "plainText": "DocumentEditor → DocumentPage\nblock 正文与选区 → file 命令",
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "DocumentEditor → DocumentPage",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "20px",
+                          "color": "#1e293b"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "block 正文与选区 → file 命令",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "20px",
+                          "color": "#1e293b"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "appearance": {
+        "fill": "#f0fdfa",
+        "strokeColor": "#94a3b8",
+        "strokeWidth": 1.5
+      }
+    },
+    "demo:edit/edge/0": {
+      "id": "demo:edit/edge/0",
+      "kind": "workflow-edge",
+      "cellType": "edge",
+      "source": {
+        "cellId": "demo:edit/start",
+        "portId": "bottom"
+      },
+      "target": {
+        "cellId": "demo:edit/command",
+        "portId": "top"
+      },
+      "route": {
+        "mode": "orthogonal"
+      },
+      "appearance": {
+        "strokeColor": "#64748b",
+        "strokeWidth": 1.5
+      }
+    },
+    "demo:edit/edge/1": {
+      "id": "demo:edit/edge/1",
+      "kind": "workflow-edge",
+      "cellType": "edge",
+      "source": {
+        "cellId": "demo:edit/start",
+        "portId": "right"
+      },
+      "target": {
+        "cellId": "demo:edit/camera",
+        "portId": "left"
+      },
+      "route": {
+        "mode": "orthogonal"
+      },
+      "labels": [
+        {
+          "text": "视图操作",
+          "position": 0.5
+        }
+      ],
+      "appearance": {
+        "strokeColor": "#64748b",
+        "strokeWidth": 1.5
+      }
+    },
+    "demo:edit/edge/2": {
+      "id": "demo:edit/edge/2",
+      "kind": "workflow-edge",
+      "cellType": "edge",
+      "source": {
+        "cellId": "demo:edit/command",
+        "portId": "bottom"
+      },
+      "target": {
+        "cellId": "demo:edit/gate",
+        "portId": "top"
+      },
+      "route": {
+        "mode": "orthogonal"
+      },
+      "appearance": {
+        "strokeColor": "#64748b",
+        "strokeWidth": 1.5
+      }
+    },
+    "demo:edit/edge/3": {
+      "id": "demo:edit/edge/3",
+      "kind": "workflow-edge",
+      "cellType": "edge",
+      "source": {
+        "cellId": "demo:edit/gate",
+        "portId": "bottom"
+      },
+      "target": {
+        "cellId": "demo:edit/deny",
+        "portId": "top"
+      },
+      "route": {
+        "mode": "orthogonal"
+      },
+      "labels": [
+        {
+          "text": "否",
+          "position": 0.5
+        }
+      ],
+      "appearance": {
+        "strokeColor": "#be123c",
+        "strokeWidth": 1.5
+      }
+    },
+    "demo:edit/edge/4": {
+      "id": "demo:edit/edge/4",
+      "kind": "workflow-edge",
+      "cellType": "edge",
+      "source": {
+        "cellId": "demo:edit/gate",
+        "portId": "right"
+      },
+      "target": {
+        "cellId": "demo:edit/mode",
+        "portId": "left"
+      },
+      "route": {
+        "mode": "orthogonal"
+      },
+      "labels": [
+        {
+          "text": "是",
+          "position": 0.5
+        }
+      ],
+      "appearance": {
+        "strokeColor": "#64748b",
+        "strokeWidth": 1.5
+      }
+    },
+    "demo:edit/edge/5": {
+      "id": "demo:edit/edge/5",
+      "kind": "workflow-edge",
+      "cellType": "edge",
+      "source": {
+        "cellId": "demo:edit/mode",
+        "portId": "top"
+      },
+      "target": {
+        "cellId": "demo:edit/candidate",
+        "portId": "left"
+      },
+      "route": {
+        "mode": "orthogonal"
+      },
+      "labels": [
+        {
+          "text": "标准",
+          "position": 0.5
+        }
+      ],
+      "appearance": {
+        "strokeColor": "#64748b",
+        "strokeWidth": 1.5
+      }
+    },
+    "demo:edit/edge/6": {
+      "id": "demo:edit/edge/6",
+      "kind": "workflow-edge",
+      "cellType": "edge",
+      "source": {
+        "cellId": "demo:edit/mode",
+        "portId": "bottom"
+      },
+      "target": {
+        "cellId": "demo:edit/local",
+        "portId": "left"
+      },
+      "route": {
+        "mode": "orthogonal"
+      },
+      "labels": [
+        {
+          "text": "宿主",
+          "position": 0.5
+        }
+      ],
+      "appearance": {
+        "strokeColor": "#64748b",
+        "strokeWidth": 1.5
+      }
+    },
+    "demo:edit/edge/7": {
+      "id": "demo:edit/edge/7",
+      "kind": "workflow-edge",
+      "cellType": "edge",
+      "source": {
+        "cellId": "demo:edit/candidate",
+        "portId": "right"
+      },
+      "target": {
+        "cellId": "demo:edit/valid",
+        "portId": "left"
+      },
+      "route": {
+        "mode": "orthogonal"
+      },
+      "appearance": {
+        "strokeColor": "#64748b",
+        "strokeWidth": 1.5
+      }
+    },
+    "demo:edit/edge/8": {
+      "id": "demo:edit/edge/8",
+      "kind": "workflow-edge",
+      "cellType": "edge",
+      "source": {
+        "cellId": "demo:edit/valid",
+        "portId": "bottom"
+      },
+      "target": {
+        "cellId": "demo:edit/deny",
+        "portId": "right"
+      },
+      "route": {
+        "mode": "orthogonal"
+      },
+      "labels": [
+        {
+          "text": "否",
+          "position": 0.5
+        }
+      ],
+      "appearance": {
+        "strokeColor": "#be123c",
+        "strokeWidth": 1.5
+      }
+    },
+    "demo:edit/edge/9": {
+      "id": "demo:edit/edge/9",
+      "kind": "workflow-edge",
+      "cellType": "edge",
+      "source": {
+        "cellId": "demo:edit/valid",
+        "portId": "top"
+      },
+      "target": {
+        "cellId": "demo:edit/commit",
+        "portId": "bottom"
+      },
+      "route": {
+        "mode": "orthogonal"
+      },
+      "labels": [
+        {
+          "text": "是",
+          "position": 0.5
+        }
+      ],
+      "appearance": {
+        "strokeColor": "#64748b",
+        "strokeWidth": 1.5
+      }
+    },
+    "demo:edit/edge/10": {
+      "id": "demo:edit/edge/10",
+      "kind": "workflow-edge",
+      "cellType": "edge",
+      "source": {
+        "cellId": "demo:edit/commit",
+        "portId": "right"
+      },
+      "target": {
+        "cellId": "demo:edit/change",
+        "portId": "left"
+      },
+      "route": {
+        "mode": "orthogonal"
+      },
+      "appearance": {
+        "strokeColor": "#64748b",
+        "strokeWidth": 1.5
+      }
+    },
+    "demo:edit/edge/11": {
+      "id": "demo:edit/edge/11",
+      "kind": "workflow-edge",
+      "cellType": "edge",
+      "source": {
+        "cellId": "demo:edit/change",
+        "portId": "bottom"
+      },
+      "target": {
+        "cellId": "demo:edit/history",
+        "portId": "top"
+      },
+      "route": {
+        "mode": "orthogonal"
+      },
+      "labels": [
+        {
+          "text": "用户撤销/重做",
+          "position": 0.5
+        }
+      ],
+      "appearance": {
+        "strokeColor": "#64748b",
+        "strokeWidth": 1.5
+      }
+    },
+    "demo:edit/edge/12": {
+      "id": "demo:edit/edge/12",
+      "kind": "workflow-edge",
+      "cellType": "edge",
+      "source": {
+        "cellId": "demo:edit/history",
+        "portId": "right"
+      },
+      "target": {
+        "cellId": "demo:edit/change",
+        "portId": "right"
+      },
+      "route": {
+        "mode": "orthogonal"
+      },
+      "labels": [
+        {
+          "text": "发布变化",
+          "position": 0.5
+        }
+      ],
+      "appearance": {
+        "strokeColor": "#64748b",
+        "strokeWidth": 1.5
+      }
+    },
+    "demo:edit/edge/13": {
+      "id": "demo:edit/edge/13",
+      "kind": "workflow-edge",
+      "cellType": "edge",
+      "source": {
+        "cellId": "demo:edit/local",
+        "portId": "right"
+      },
+      "target": {
+        "cellId": "demo:edit/accept",
+        "portId": "left"
+      },
+      "route": {
+        "mode": "orthogonal"
+      },
+      "appearance": {
+        "strokeColor": "#64748b",
+        "strokeWidth": 1.5
+      }
+    },
+    "demo:edit/edge/14": {
+      "id": "demo:edit/edge/14",
+      "kind": "workflow-edge",
+      "cellType": "edge",
+      "source": {
+        "cellId": "demo:edit/local",
+        "portId": "bottom"
+      },
+      "target": {
+        "cellId": "demo:edit/reject",
+        "portId": "top"
+      },
+      "route": {
+        "mode": "orthogonal"
+      },
+      "labels": [
+        {
+          "text": "校验失败",
+          "position": 0.5
+        }
+      ],
+      "appearance": {
+        "strokeColor": "#64748b",
+        "strokeWidth": 1.5
+      }
+    },
+    "demo:edit/edge/15": {
+      "id": "demo:edit/edge/15",
+      "kind": "workflow-edge",
+      "cellType": "edge",
+      "source": {
+        "cellId": "demo:edit/accept",
+        "portId": "bottom"
+      },
+      "target": {
+        "cellId": "demo:edit/reject",
+        "portId": "top"
+      },
+      "route": {
+        "mode": "orthogonal"
+      },
+      "labels": [
+        {
+          "text": "否",
+          "position": 0.5
+        }
+      ],
+      "appearance": {
+        "strokeColor": "#be123c",
+        "strokeWidth": 1.5
+      }
+    },
+    "demo:edit/edge/16": {
+      "id": "demo:edit/edge/16",
+      "kind": "workflow-edge",
+      "cellType": "edge",
+      "source": {
+        "cellId": "demo:edit/accept",
+        "portId": "right"
+      },
+      "target": {
+        "cellId": "demo:edit/project",
+        "portId": "left"
+      },
+      "route": {
+        "mode": "orthogonal"
+      },
+      "labels": [
+        {
+          "text": "是",
+          "position": 0.5
+        }
+      ],
+      "appearance": {
+        "strokeColor": "#64748b",
+        "strokeWidth": 1.5
+      }
+    },
+    "demo:edit/edge/17": {
+      "id": "demo:edit/edge/17",
+      "kind": "workflow-edge",
+      "cellType": "edge",
+      "source": {
+        "cellId": "demo:edit/project",
+        "portId": "top"
+      },
+      "target": {
+        "cellId": "demo:edit/replace",
+        "portId": "bottom"
+      },
+      "route": {
+        "mode": "orthogonal"
+      },
+      "appearance": {
+        "strokeColor": "#64748b",
+        "strokeWidth": 1.5
+      }
+    },
+    "demo:edit/edge/18": {
+      "id": "demo:edit/edge/18",
+      "kind": "workflow-edge",
+      "cellType": "edge",
+      "source": {
+        "cellId": "demo:edit/document",
+        "portId": "left"
+      },
+      "target": {
+        "cellId": "demo:edit/change",
+        "portId": "right"
+      },
+      "route": {
+        "mode": "orthogonal"
+      },
+      "appearance": {
+        "strokeColor": "#64748b",
+        "strokeWidth": 1.5
+      }
+    },
+    "project:topic/05/document": {
+      "id": "project:topic/05/document",
+      "cellType": "node",
+      "kind": "document-reference",
+      "geometry": {
+        "x": 0,
+        "y": 922,
+        "width": 680,
+        "height": 480
+      },
+      "data": {
+        "targetDocumentId": "project-doc:packages/react/README"
+      },
+      "content": {
+        "text": {
+          "schemaVersion": 1,
+          "id": "project:topic/05/document/links",
+          "kind": "block",
+          "align": "left",
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "系统架构 · 模型和事务",
+                    "marks": [
+                      {
+                        "type": "link",
+                        "attrs": {
+                          "href": "verd://file/project-doc%3Aarchitecture%2FARCHITECTURE#%E6%A8%A1%E5%9E%8B%E5%92%8C%E4%BA%8B%E5%8A%A1"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          },
+          "plainText": "系统架构 · 模型和事务"
+        }
+      }
+    }
+  },
+  "organization": {
+    "kind": "subgraph",
+    "ownerFrameId": "board-root"
+  }
+}

@@ -1,0 +1,680 @@
+{
+  "format": "verd-document",
+  "version": 1,
+  "id": "project-doc:README_en",
+  "title": "Documentation",
+  "text": {
+    "schemaVersion": 1,
+    "id": "project-doc:README_en",
+    "kind": "block",
+    "content": {
+      "type": "doc",
+      "content": [
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 1
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "VerdBoard Documentation"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "VerdBoard (青编) combines whiteboards, mind maps, workflows, architecture diagrams and standalone rich-text documents. Open the repository's root workspace folder in the desktop application to read and edit the project documentation together with its native diagrams."
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "中文导航",
+              "marks": [
+                {
+                  "type": "link",
+                  "attrs": {
+                    "href": "verd://file/project-doc%3AREADME"
+                  }
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "text": " | "
+            },
+            {
+              "type": "text",
+              "text": "Architecture board",
+              "marks": [
+                {
+                  "type": "link",
+                  "attrs": {
+                    "href": "verd://file/board-root"
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 2
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "Documentation"
+            }
+          ]
+        },
+        {
+          "type": "bulletList",
+          "content": [
+            {
+              "type": "listItem",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "Product overview",
+                      "marks": [
+                        {
+                          "type": "link",
+                          "attrs": {
+                            "href": "verd://file/project-doc%3Aproduct%2F%E4%BA%A7%E5%93%81%E6%A6%82%E8%A7%88"
+                          }
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "listItem",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "System architecture",
+                      "marks": [
+                        {
+                          "type": "link",
+                          "attrs": {
+                            "href": "verd://file/project-doc%3Aarchitecture%2FARCHITECTURE"
+                          }
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "listItem",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "Development guide",
+                      "marks": [
+                        {
+                          "type": "link",
+                          "attrs": {
+                            "href": "verd://file/project-doc%3Adevelopment%2FREADME"
+                          }
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "listItem",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "Desktop setup",
+                      "marks": [
+                        {
+                          "type": "link",
+                          "attrs": {
+                            "href": "verd://file/project-doc%3Aguides%2FSETUP"
+                          }
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "listItem",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "Package index",
+                      "marks": [
+                        {
+                          "type": "link",
+                          "attrs": {
+                            "href": "verd://file/project-doc%3Apackages%2FREADME"
+                          }
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "text": " and "
+                    },
+                    {
+                      "type": "text",
+                      "text": "React APIs",
+                      "marks": [
+                        {
+                          "type": "link",
+                          "attrs": {
+                            "href": "verd://file/project-doc%3Apackages%2Freact%2FREADME"
+                          }
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "listItem",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "Documentation maintenance",
+                      "marks": [
+                        {
+                          "type": "link",
+                          "attrs": {
+                            "href": "verd://file/project-doc%3ADOCUMENTATION_GUIDE"
+                          }
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "text": " and "
+                    },
+                    {
+                      "type": "text",
+                      "text": "Source index",
+                      "marks": [
+                        {
+                          "type": "link",
+                          "attrs": {
+                            "href": "verd://file/project-doc%3Aguides%2F%E9%85%8D%E7%BD%AE%E4%B8%8E%E6%BA%90%E7%A0%81%E7%B4%A2%E5%BC%95"
+                          }
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "listItem",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "Canvas modes",
+                      "marks": [
+                        {
+                          "type": "link",
+                          "attrs": {
+                            "href": "verd://file/project-doc%3Apackages%2Fboard%2Fcanvas-modes"
+                          }
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "text": ", "
+                    },
+                    {
+                      "type": "text",
+                      "text": "Converters",
+                      "marks": [
+                        {
+                          "type": "link",
+                          "attrs": {
+                            "href": "verd://file/project-doc%3Apackages%2Fboard%2Fframe-converters"
+                          }
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "text": ", "
+                    },
+                    {
+                      "type": "text",
+                      "text": "Arrangement and groups",
+                      "marks": [
+                        {
+                          "type": "link",
+                          "attrs": {
+                            "href": "verd://file/project-doc%3Apackages%2Fboard%2Farrangement"
+                          }
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "listItem",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "Mind features",
+                      "marks": [
+                        {
+                          "type": "link",
+                          "attrs": {
+                            "href": "verd://file/project-doc%3Apackages%2Fboard%2Fmind-features"
+                          }
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "text": ", "
+                    },
+                    {
+                      "type": "text",
+                      "text": "Node sizing",
+                      "marks": [
+                        {
+                          "type": "link",
+                          "attrs": {
+                            "href": "verd://file/project-doc%3Apackages%2Fboard%2FNODE_WIDTH_SPECIFICATION"
+                          }
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "text": ", "
+                    },
+                    {
+                      "type": "text",
+                      "text": "Mind engine",
+                      "marks": [
+                        {
+                          "type": "link",
+                          "attrs": {
+                            "href": "verd://file/project-doc%3Apackages%2Fboard%2FREADME"
+                          }
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "listItem",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "AI canvas data specification",
+                      "marks": [
+                        {
+                          "type": "link",
+                          "attrs": {
+                            "href": "verd://file/project-doc%3Aguides%2Fai-canvas-data-spec"
+                          }
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "text": ": complete fields, kinds, import rules and 11 validated examples under tests/fixtures/ai-canvas/."
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "listItem",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "Dated acceptance records",
+                      "marks": [
+                        {
+                          "type": "link",
+                          "attrs": {
+                            "href": "verd://file/project-doc%3Aguides%2F%E4%BD%93%E9%AA%8C%E5%9B%9E%E5%BD%92%E9%AA%8C%E6%94%B6"
+                          }
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "The Chinese navigation and this English introduction are maintained together. Detailed engineering documentation is primarily Chinese. Native .verd-doc.json files are the sole maintained documentation source; there is no generated Markdown compatibility tree."
+            }
+          ]
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 2
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "Quick Start"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "Requirements: Node.js >= 22 and pnpm >= 11.18.0. Root package.json, package manifests and pnpm-lock.yaml define the actual commands and dependency versions."
+            }
+          ]
+        },
+        {
+          "type": "codeBlock",
+          "attrs": {
+            "language": "bash"
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "pnpm install\npnpm start\n# Web development\npnpm dev:web\n# Public packages and Web; excludes Desktop\npnpm build\n# Desktop frontend, main process and preload\npnpm build:desktop\npnpm typecheck\npnpm test"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "Desktop development defaults to the root workspace directory. VERDBOARD_WORKSPACE_PATH and a previously selected folder can override this default. Use the folder menu to switch directories or return to the built-in workspace. Packaged builds create a separate initial copy for new users and preserve existing user workspaces."
+            }
+          ]
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 2
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "Workspace Architecture"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "WorkspaceApp opens a WorkspaceHost. WorkspaceSession owns file identities, commands, shared history, validation, external-change conflicts and conditional persistence. Canvas files (.verd.json, FrameFileV2) are assembled into one CellStore and rendered by VerdFrame → FrameCanvas → CellRuntime. Standalone documents (.verd-doc.json, DocumentFileV1) keep a BoardTextDocument body and use DocumentPage/DocumentEditor; they are peer workspace files, rather than Cells in the canvas store."
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "Canvas references target stable file identities. Diagram ownership and canvas references are independent: a diagram may belong to one whiteboard while appearing in multiple references. Documents use verd://file/encoded-file-id#encoded-heading-slug links for workspace navigation. Heading anchors follow GitHub's slug and duplicate-heading rules."
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "Desktop uses real directories, conditional writes and recoverable transaction journals. Web uses an IndexedDB workspace host. The shared session validates candidate file changes before committing them, groups related text edits into one undo step and reports failed saves for retry. Desktop waits for flush on shutdown; browser exit flushing remains best effort."
+            }
+          ]
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 2
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "Features"
+            }
+          ]
+        },
+        {
+          "type": "bulletList",
+          "content": [
+            {
+              "type": "listItem",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "Mind maps: nine layouts, topic reparenting, collapse, images, emoji, rich-text notes, summaries, file-level color schemes and automatic content sizing with a default maximum width of 240."
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "listItem",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "Workflows: native start/task/decision Cells, ports, DAG and process modes, validated connections and explicit layouts."
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "listItem",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "Architecture diagrams: ordered layers, modules, dependencies, placement and shared orthogonal routing."
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "listItem",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "Whiteboard: geometry, hand-drawn paths, connectors, images, tables, swimlanes, freehand and editable polylines."
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "listItem",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "Shared interactions: alignment, equal-gap distribution, drag guides, nested groups, locking, rich-text styling, clipboard and image export."
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "listItem",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "Documents: headings, lists, tables, code, links and images, find/replace, outline navigation, Markdown import/export and native JSON export."
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "listItem",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "Presentation: a separate read-only fullscreen view of the current canvas with overview, object focus, structured mind-map/layer steps and a laser pointer. Use 0 for overview, L for the pointer and Esc to exit. Presentation state remains in memory."
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 2
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "Extension Boundaries"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "Use FrameCanvas with value/onChange for owned FrameSnapshot data, or adapter/onIntent for external host data. Register Cell utilities and React frame extensions for domain behavior; the former domain Canvas components and plugin runtime are removed. DocumentEditor edits BoardTextDocument and supports workspace history through its adapter. Markdown-to-board and Mermaid-to-board convert FrameSnapshot; markdown-to-text converts standalone document text. Product entrypoints import @sue/verd-board-ui/style.css."
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "The current dependency families are React 19, TypeScript 6, Vite 6, pnpm 11, TipTap 3 and Electron 28. For desktop acceptance, build the current desktop application then run pnpm test:e2e:desktop. Dated test counts in historical records describe those runs, not the current checkout."
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "Last updated: 2026-10-16."
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "Document Frames in a general canvas edit the same standalone source document (double-click to edit, Escape to leave). Read-only document references remain available in every canvas. Each project topic diagram includes its related document and stable section links."
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "Workspace folders move to trash as one entry and restore with their nested files and empty directories. Trash supports confirmed permanent deletion and emptying only the selected entries. Open My from the sidebar or canvas More menu. My contains device preferences. Workspace settings default to General and provide a separate Trash section for the current workspace. Open workspace settings and Desktop folder actions from the workspace-name menu at the top of the sidebar. Preferences keep their existing device storage and apply immediately."
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "The file tree shows every canvas, diagram and document at its actual workspace path, including owned and unorganized charts. Owner canvases also provide marked shortcuts with Open and Show in folder actions. Both entries open the same source and reuse its editor and tab. The chart library can change ownership of an existing specialized chart without moving its file."
+            }
+          ]
+        }
+      ]
+    },
+    "plainText": "VerdBoard Documentation\nVerdBoard (青编) combines whiteboards, mind maps, workflows, architecture diagrams and standalone rich-text documents. Open the repository's root workspace folder in the desktop application to read and edit the project documentation together with its native diagrams.\n中文导航 | Architecture board\nDocumentation\nProduct overview\nSystem architecture\nDevelopment guide\nDesktop setup\nPackage index and React APIs\nDocumentation maintenance and Source index\nCanvas modes, Converters, Arrangement and groups\nMind features, Node sizing, Mind engine\nAI canvas data specification: complete fields, kinds, import rules and 11 validated examples under tests/fixtures/ai-canvas/.\nDated acceptance records\nThe Chinese navigation and this English introduction are maintained together. Detailed engineering documentation is primarily Chinese. Native .verd-doc.json files are the sole maintained documentation source; there is no generated Markdown compatibility tree.\nQuick Start\nRequirements: Node.js >= 22 and pnpm >= 11.18.0. Root package.json, package manifests and pnpm-lock.yaml define the actual commands and dependency versions.\npnpm install\npnpm start\n# Web development\npnpm dev:web\n# Public packages and Web; excludes Desktop\npnpm build\n# Desktop frontend, main process and preload\npnpm build:desktop\npnpm typecheck\npnpm test\nDesktop development defaults to the root workspace directory. VERDBOARD_WORKSPACE_PATH and a previously selected folder can override this default. Use the folder menu to switch directories or return to the built-in workspace. Packaged builds create a separate initial copy for new users and preserve existing user workspaces.\nWorkspace Architecture\nWorkspaceApp opens a WorkspaceHost. WorkspaceSession owns file identities, commands, shared history, validation, external-change conflicts and conditional persistence. Canvas files (.verd.json, FrameFileV2) are assembled into one CellStore and rendered by VerdFrame → FrameCanvas → CellRuntime. Standalone documents (.verd-doc.json, DocumentFileV1) keep a BoardTextDocument body and use DocumentPage/DocumentEditor; they are peer workspace files, rather than Cells in the canvas store.\nCanvas references target stable file identities. Diagram ownership and canvas references are independent: a diagram may belong to one whiteboard while appearing in multiple references. Documents use verd://file/encoded-file-id#encoded-heading-slug links for workspace navigation. Heading anchors follow GitHub's slug and duplicate-heading rules.\nDesktop uses real directories, conditional writes and recoverable transaction journals. Web uses an IndexedDB workspace host. The shared session validates candidate file changes before committing them, groups related text edits into one undo step and reports failed saves for retry. Desktop waits for flush on shutdown; browser exit flushing remains best effort.\nFeatures\nMind maps: nine layouts, topic reparenting, collapse, images, emoji, rich-text notes, summaries, file-level color schemes and automatic content sizing with a default maximum width of 240.\nWorkflows: native start/task/decision Cells, ports, DAG and process modes, validated connections and explicit layouts.\nArchitecture diagrams: ordered layers, modules, dependencies, placement and shared orthogonal routing.\nWhiteboard: geometry, hand-drawn paths, connectors, images, tables, swimlanes, freehand and editable polylines.\nShared interactions: alignment, equal-gap distribution, drag guides, nested groups, locking, rich-text styling, clipboard and image export.\nDocuments: headings, lists, tables, code, links and images, find/replace, outline navigation, Markdown import/export and native JSON export.\nPresentation: a separate read-only fullscreen view of the current canvas with overview, object focus, structured mind-map/layer steps and a laser pointer. Use 0 for overview, L for the pointer and Esc to exit. Presentation state remains in memory.\nExtension Boundaries\nUse FrameCanvas with value/onChange for owned FrameSnapshot data, or adapter/onIntent for external host data. Register Cell utilities and React frame extensions for domain behavior; the former domain Canvas components and plugin runtime are removed. DocumentEditor edits BoardTextDocument and supports workspace history through its adapter. Markdown-to-board and Mermaid-to-board convert FrameSnapshot; markdown-to-text converts standalone document text. Product entrypoints import @sue/verd-board-ui/style.css.\nThe current dependency families are React 19, TypeScript 6, Vite 6, pnpm 11, TipTap 3 and Electron 28. For desktop acceptance, build the current desktop application then run pnpm test:e2e:desktop. Dated test counts in historical records describe those runs, not the current checkout.\nLast updated: 2026-10-16.\nDocument Frames in a general canvas edit the same standalone source document (double-click to edit, Escape to leave). Read-only document references remain available in every canvas. Each project topic diagram includes its related document and stable section links.\nWorkspace folders move to trash as one entry and restore with their nested files and empty directories. Trash supports confirmed permanent deletion and emptying only the selected entries. Open My from the sidebar or canvas More menu. My contains device preferences. Workspace settings default to General and provide a separate Trash section for the current workspace. Open workspace settings and Desktop folder actions from the workspace-name menu at the top of the sidebar. Preferences keep their existing device storage and apply immediately.\nThe file tree shows every canvas, diagram and document at its actual workspace path, including owned and unorganized charts. Owner canvases also provide marked shortcuts with Open and Show in folder actions. Both entries open the same source and reuse its editor and tab. The chart library can change ownership of an existing specialized chart without moving its file.\n",
+    "align": "left"
+  }
+}

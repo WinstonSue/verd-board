@@ -1,0 +1,155 @@
+{
+  "format": "verd-document",
+  "version": 1,
+  "id": "project-doc:packages/board/README",
+  "title": "Mind引擎概览（English）",
+  "text": {
+    "schemaVersion": 1,
+    "id": "project-doc:packages/board/README",
+    "kind": "block",
+    "content": {
+      "type": "doc",
+      "content": [
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 1
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "Mind Engine Overview"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "@sue/board-mind provides native mind-root, mind-child, mind-summary, mind-branch and mind-summary-edge Cells, validation, tree transactions and layouts. Product toolbars and property panels belong to @sue/verd-board-ui."
+            }
+          ]
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 2
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "Features"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "Nine layouts, Tab/Enter topic creation, deletion, reparenting and sibling ordering, collapse, clipboard identity remapping, images and emoji, independent rich-text notes, adjustable summary ranges, file-level color schemes and automatic content sizing. Transactions preserve root protection, branch ordering, relationship closure and summary endpoints."
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "@sue/board-react-mind registers behavior, layouts and render extensions through createMindFrameExtensions. Embedded and detail views share FrameCanvas and the same workspace content. The old domain Canvas, plugin runtime and MindElement APIs are removed; legacy conversion stays in the application-private migration boundary."
+            }
+          ]
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 2
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "Dependencies and Usage"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "Read packages/engine/mind/package.json for direct dependencies. The core model uses @sue/board-core, @sue/board-common and @sue/board-layouts. Do not rebuild the former component or document reducer layer."
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "Mind features",
+              "marks": [
+                {
+                  "type": "link",
+                  "attrs": {
+                    "href": "verd://file/project-doc%3Apackages%2Fboard%2Fmind-features"
+                  }
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "text": " | "
+            },
+            {
+              "type": "text",
+              "text": "Sizing rules",
+              "marks": [
+                {
+                  "type": "link",
+                  "attrs": {
+                    "href": "verd://file/project-doc%3Apackages%2Fboard%2FNODE_WIDTH_SPECIFICATION"
+                  }
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "text": " | "
+            },
+            {
+              "type": "text",
+              "text": "React APIs",
+              "marks": [
+                {
+                  "type": "link",
+                  "attrs": {
+                    "href": "verd://file/project-doc%3Apackages%2Freact%2FREADME"
+                  }
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "text": " | "
+            },
+            {
+              "type": "text",
+              "text": "中文",
+              "marks": [
+                {
+                  "type": "link",
+                  "attrs": {
+                    "href": "verd://file/project-doc%3Apackages%2Fboard%2FREADME.zh-CN"
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "plainText": "Mind Engine Overview\n@sue/board-mind provides native mind-root, mind-child, mind-summary, mind-branch and mind-summary-edge Cells, validation, tree transactions and layouts. Product toolbars and property panels belong to @sue/verd-board-ui.\nFeatures\nNine layouts, Tab/Enter topic creation, deletion, reparenting and sibling ordering, collapse, clipboard identity remapping, images and emoji, independent rich-text notes, adjustable summary ranges, file-level color schemes and automatic content sizing. Transactions preserve root protection, branch ordering, relationship closure and summary endpoints.\n@sue/board-react-mind registers behavior, layouts and render extensions through createMindFrameExtensions. Embedded and detail views share FrameCanvas and the same workspace content. The old domain Canvas, plugin runtime and MindElement APIs are removed; legacy conversion stays in the application-private migration boundary.\nDependencies and Usage\nRead packages/engine/mind/package.json for direct dependencies. The core model uses @sue/board-core, @sue/board-common and @sue/board-layouts. Do not rebuild the former component or document reducer layer.\nMind features | Sizing rules | React APIs | 中文",
+    "align": "left"
+  }
+}

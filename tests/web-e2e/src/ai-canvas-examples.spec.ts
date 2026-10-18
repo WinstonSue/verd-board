@@ -1,7 +1,7 @@
 import { test, expect, type Page } from '@playwright/test';
 import path from 'node:path';
 
-const dir = path.resolve(__dirname, '../../../doc/examples/ai-canvas');
+const dir = path.resolve(__dirname, '../../fixtures/ai-canvas');
 // Each open tab mounts its own VerdFrame; only the active tab is visible.
 const canvas = (page: Page) =>
   page.locator('svg[aria-label="Frame canvas"][data-surface="root"]:visible');

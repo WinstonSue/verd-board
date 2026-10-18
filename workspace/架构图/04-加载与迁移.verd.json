@@ -1,0 +1,2054 @@
+{
+  "format": "verd-frame",
+  "version": 2,
+  "frame": {
+    "id": "demo:workspace-load",
+    "kind": "frame",
+    "cellType": "frame",
+    "geometry": {
+      "x": 2280,
+      "y": 630,
+      "width": 680,
+      "height": 470,
+      "derived": false
+    },
+    "children": [
+      "demo:load/start",
+      "demo:load/adapter",
+      "demo:load/format",
+      "demo:load/new",
+      "demo:load/v2",
+      "demo:load/v1",
+      "demo:load/legacy",
+      "demo:load/copy",
+      "demo:load/validate-old",
+      "demo:load/partition",
+      "demo:load/repair",
+      "demo:load/materialize",
+      "demo:load/mount",
+      "demo:load/error",
+      "demo:load/retry",
+      "demo:load/edge/0",
+      "demo:load/edge/1",
+      "demo:load/edge/2",
+      "demo:load/edge/3",
+      "demo:load/edge/4",
+      "demo:load/edge/5",
+      "demo:load/edge/6",
+      "demo:load/edge/7",
+      "demo:load/edge/8",
+      "demo:load/edge/9",
+      "demo:load/edge/10",
+      "demo:load/edge/11",
+      "demo:load/edge/12",
+      "demo:load/edge/13",
+      "demo:load/edge/14",
+      "demo:load/edge/15",
+      "demo:load/edge/16",
+      "demo:load/edge/17",
+      "demo:load/edge/18",
+      "demo:load/edge/19",
+      "demo:load/edge/20",
+      "demo:load/edge/21",
+      "project:topic/04/document"
+    ],
+    "groups": [],
+    "data": {},
+    "content": {
+      "label": "④ 加载与迁移",
+      "text": {
+        "schemaVersion": 1,
+        "id": "demo:workspace-load/text",
+        "kind": "inline",
+        "plainText": "④ 加载与迁移",
+        "content": {
+          "type": "doc",
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "④ 加载与迁移",
+                  "marks": [
+                    {
+                      "type": "textStyle",
+                      "attrs": {
+                        "fontSize": "14px",
+                        "color": "#1e293b"
+                      }
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    "appearance": {
+      "fill": "#ffffff",
+      "strokeColor": "#cbd5e1",
+      "strokeWidth": 2
+    },
+    "view": {
+      "theme": {
+        "themeColorMode": "default",
+        "boardBackground": "#ffffff"
+      }
+    },
+    "name": "④ 加载与迁移"
+  },
+  "cells": {
+    "demo:load/start": {
+      "id": "demo:load/start",
+      "kind": "workflow-start",
+      "cellType": "node",
+      "geometry": {
+        "x": 0,
+        "y": 0,
+        "width": 360,
+        "height": 106,
+        "derived": false,
+        "outline": "terminal"
+      },
+      "ports": [
+        {
+          "id": "top",
+          "side": "top",
+          "direction": "output",
+          "offset": 0.5
+        },
+        {
+          "id": "right",
+          "side": "right",
+          "direction": "output",
+          "offset": 0.5
+        },
+        {
+          "id": "bottom",
+          "side": "bottom",
+          "direction": "output",
+          "offset": 0.5
+        },
+        {
+          "id": "left",
+          "side": "left",
+          "direction": "output",
+          "offset": 0.5
+        }
+      ],
+      "content": {
+        "label": "启动应用",
+        "text": {
+          "schemaVersion": 1,
+          "id": "demo:load/start/text",
+          "kind": "inline",
+          "plainText": "启动应用",
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "启动应用",
+                    "marks": [
+                      {
+                        "type": "bold"
+                      },
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "20px",
+                          "color": "#ffffff"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "appearance": {
+        "fill": "#0f766e",
+        "strokeColor": "#0f766e",
+        "strokeWidth": 1.5
+      },
+      "data": {
+        "graphMode": "process",
+        "origin": [
+          0,
+          0
+        ],
+        "memberIds": [
+          "demo:load/start",
+          "demo:load/adapter",
+          "demo:load/format",
+          "demo:load/new",
+          "demo:load/v2",
+          "demo:load/v1",
+          "demo:load/legacy",
+          "demo:load/copy",
+          "demo:load/validate-old",
+          "demo:load/partition",
+          "demo:load/repair",
+          "demo:load/materialize",
+          "demo:load/mount",
+          "demo:load/error",
+          "demo:load/retry"
+        ]
+      }
+    },
+    "demo:load/adapter": {
+      "id": "demo:load/adapter",
+      "kind": "workflow-task",
+      "cellType": "node",
+      "geometry": {
+        "x": 0,
+        "y": 180,
+        "width": 360,
+        "height": 106,
+        "derived": false,
+        "outline": "roundRectangle"
+      },
+      "ports": [
+        {
+          "id": "top",
+          "side": "top",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "right",
+          "side": "right",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "bottom",
+          "side": "bottom",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "left",
+          "side": "left",
+          "direction": "both",
+          "offset": 0.5
+        }
+      ],
+      "content": {
+        "label": "确定工作区：显式 / 已记住 / 内置\n选择 Desktop 文件或 Web IndexedDB 宿主",
+        "text": {
+          "schemaVersion": 1,
+          "id": "demo:load/adapter/text",
+          "kind": "inline",
+          "plainText": "确定工作区：显式 / 已记住 / 内置\n选择 Desktop 文件或 Web IndexedDB 宿主",
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "确定工作区：显式 / 已记住 / 内置",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "20px",
+                          "color": "#1e293b"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "选择 Desktop 文件或 Web IndexedDB 宿主",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "20px",
+                          "color": "#1e293b"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "appearance": {
+        "fill": "#f0fdfa",
+        "strokeColor": "#94a3b8",
+        "strokeWidth": 1.5
+      }
+    },
+    "demo:load/format": {
+      "id": "demo:load/format",
+      "kind": "workflow-decision",
+      "cellType": "node",
+      "geometry": {
+        "x": 30,
+        "y": 360,
+        "width": 300,
+        "height": 132,
+        "derived": false,
+        "outline": "diamond"
+      },
+      "ports": [
+        {
+          "id": "top",
+          "side": "top",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "right",
+          "side": "right",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "bottom",
+          "side": "bottom",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "left",
+          "side": "left",
+          "direction": "both",
+          "offset": 0.5
+        }
+      ],
+      "content": {
+        "label": "已有工作区或旧资料？",
+        "text": {
+          "schemaVersion": 1,
+          "id": "demo:load/format/text",
+          "kind": "inline",
+          "plainText": "已有工作区或旧资料？",
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "已有工作区或旧资料？",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "20px",
+                          "color": "#1e293b"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "appearance": {
+        "fill": "#fffbeb",
+        "strokeColor": "#d97706",
+        "strokeWidth": 1.5
+      }
+    },
+    "demo:load/new": {
+      "id": "demo:load/new",
+      "kind": "workflow-task",
+      "cellType": "node",
+      "geometry": {
+        "x": 0,
+        "y": 540,
+        "width": 360,
+        "height": 106,
+        "derived": false,
+        "outline": "roundRectangle"
+      },
+      "ports": [
+        {
+          "id": "top",
+          "side": "top",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "right",
+          "side": "right",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "bottom",
+          "side": "bottom",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "left",
+          "side": "left",
+          "direction": "both",
+          "offset": 0.5
+        }
+      ],
+      "content": {
+        "label": "Desktop 全新默认：复制内置内容\nWeb / 自选空目录：创建空白画布",
+        "text": {
+          "schemaVersion": 1,
+          "id": "demo:load/new/text",
+          "kind": "inline",
+          "plainText": "Desktop 全新默认：复制内置内容\nWeb / 自选空目录：创建空白画布",
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Desktop 全新默认：复制内置内容",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "20px",
+                          "color": "#1e293b"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Web / 自选空目录：创建空白画布",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "20px",
+                          "color": "#1e293b"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "appearance": {
+        "fill": "#f0fdfa",
+        "strokeColor": "#94a3b8",
+        "strokeWidth": 1.5
+      }
+    },
+    "demo:load/v2": {
+      "id": "demo:load/v2",
+      "kind": "workflow-task",
+      "cellType": "node",
+      "geometry": {
+        "x": 400,
+        "y": 360,
+        "width": 360,
+        "height": 106,
+        "derived": false,
+        "outline": "roundRectangle"
+      },
+      "ports": [
+        {
+          "id": "top",
+          "side": "top",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "right",
+          "side": "right",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "bottom",
+          "side": "bottom",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "left",
+          "side": "left",
+          "direction": "both",
+          "offset": 0.5
+        }
+      ],
+      "content": {
+        "label": "读取 .verd.json 与 .verd-doc.json\n恢复标签与目录展开",
+        "text": {
+          "schemaVersion": 1,
+          "id": "demo:load/v2/text",
+          "kind": "inline",
+          "plainText": "读取 .verd.json 与 .verd-doc.json\n恢复标签与目录展开",
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "读取 .verd.json 与 .verd-doc.json",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "20px",
+                          "color": "#1e293b"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "恢复标签与目录展开",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "20px",
+                          "color": "#1e293b"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "appearance": {
+        "fill": "#f0fdfa",
+        "strokeColor": "#94a3b8",
+        "strokeWidth": 1.5
+      }
+    },
+    "demo:load/v1": {
+      "id": "demo:load/v1",
+      "kind": "workflow-task",
+      "cellType": "node",
+      "geometry": {
+        "x": 400,
+        "y": 540,
+        "width": 360,
+        "height": 106,
+        "derived": false,
+        "outline": "roundRectangle"
+      },
+      "ports": [
+        {
+          "id": "top",
+          "side": "top",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "right",
+          "side": "right",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "bottom",
+          "side": "bottom",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "left",
+          "side": "left",
+          "direction": "both",
+          "offset": 0.5
+        }
+      ],
+      "content": {
+        "label": "旧工作区清单\n只在迁移边界读取",
+        "text": {
+          "schemaVersion": 1,
+          "id": "demo:load/v1/text",
+          "kind": "inline",
+          "plainText": "旧工作区清单\n只在迁移边界读取",
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "旧工作区清单",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "20px",
+                          "color": "#1e293b"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "只在迁移边界读取",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "20px",
+                          "color": "#1e293b"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "appearance": {
+        "fill": "#f0fdfa",
+        "strokeColor": "#94a3b8",
+        "strokeWidth": 1.5
+      }
+    },
+    "demo:load/legacy": {
+      "id": "demo:load/legacy",
+      "kind": "workflow-task",
+      "cellType": "node",
+      "geometry": {
+        "x": 400,
+        "y": 720,
+        "width": 360,
+        "height": 106,
+        "derived": false,
+        "outline": "roundRectangle"
+      },
+      "ports": [
+        {
+          "id": "top",
+          "side": "top",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "right",
+          "side": "right",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "bottom",
+          "side": "bottom",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "left",
+          "side": "left",
+          "direction": "both",
+          "offset": 0.5
+        }
+      ],
+      "content": {
+        "label": "读取旧存储并原样备份\n转换白板及领域数据",
+        "text": {
+          "schemaVersion": 1,
+          "id": "demo:load/legacy/text",
+          "kind": "inline",
+          "plainText": "读取旧存储并原样备份\n转换白板及领域数据",
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "读取旧存储并原样备份",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "20px",
+                          "color": "#1e293b"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "转换白板及领域数据",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "20px",
+                          "color": "#1e293b"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "appearance": {
+        "fill": "#f0fdfa",
+        "strokeColor": "#94a3b8",
+        "strokeWidth": 1.5
+      }
+    },
+    "demo:load/copy": {
+      "id": "demo:load/copy",
+      "kind": "workflow-task",
+      "cellType": "node",
+      "geometry": {
+        "x": 800,
+        "y": 720,
+        "width": 360,
+        "height": 106,
+        "derived": false,
+        "outline": "roundRectangle"
+      },
+      "ports": [
+        {
+          "id": "top",
+          "side": "top",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "right",
+          "side": "right",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "bottom",
+          "side": "bottom",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "left",
+          "side": "left",
+          "direction": "both",
+          "offset": 0.5
+        }
+      ],
+      "content": {
+        "label": "外置嵌套 Frame 为独立文件\n创建稳定 targetFrameId 引用壳",
+        "text": {
+          "schemaVersion": 1,
+          "id": "demo:load/copy/text",
+          "kind": "inline",
+          "plainText": "外置嵌套 Frame 为独立文件\n创建稳定 targetFrameId 引用壳",
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "外置嵌套 Frame 为独立文件",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "20px",
+                          "color": "#1e293b"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "创建稳定 targetFrameId 引用壳",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "20px",
+                          "color": "#1e293b"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "appearance": {
+        "fill": "#f0fdfa",
+        "strokeColor": "#94a3b8",
+        "strokeWidth": 1.5
+      }
+    },
+    "demo:load/validate-old": {
+      "id": "demo:load/validate-old",
+      "kind": "workflow-task",
+      "cellType": "node",
+      "geometry": {
+        "x": 1200,
+        "y": 720,
+        "width": 360,
+        "height": 106,
+        "derived": false,
+        "outline": "roundRectangle"
+      },
+      "ports": [
+        {
+          "id": "top",
+          "side": "top",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "right",
+          "side": "right",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "bottom",
+          "side": "bottom",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "left",
+          "side": "left",
+          "direction": "both",
+          "offset": 0.5
+        }
+      ],
+      "content": {
+        "label": "校验迁移候选\n条件提交原生文件",
+        "text": {
+          "schemaVersion": 1,
+          "id": "demo:load/validate-old/text",
+          "kind": "inline",
+          "plainText": "校验迁移候选\n条件提交原生文件",
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "校验迁移候选",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "20px",
+                          "color": "#1e293b"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "条件提交原生文件",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "20px",
+                          "color": "#1e293b"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "appearance": {
+        "fill": "#f0fdfa",
+        "strokeColor": "#94a3b8",
+        "strokeWidth": 1.5
+      }
+    },
+    "demo:load/partition": {
+      "id": "demo:load/partition",
+      "kind": "workflow-task",
+      "cellType": "node",
+      "geometry": {
+        "x": 800,
+        "y": 360,
+        "width": 360,
+        "height": 106,
+        "derived": false,
+        "outline": "roundRectangle"
+      },
+      "ports": [
+        {
+          "id": "top",
+          "side": "top",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "right",
+          "side": "right",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "bottom",
+          "side": "bottom",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "left",
+          "side": "left",
+          "direction": "both",
+          "offset": 0.5
+        }
+      ],
+      "content": {
+        "label": "校验文件身份 / 引用 / 归属\n组装 CellStore 与文档集合",
+        "text": {
+          "schemaVersion": 1,
+          "id": "demo:load/partition/text",
+          "kind": "inline",
+          "plainText": "校验文件身份 / 引用 / 归属\n组装 CellStore 与文档集合",
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "校验文件身份 / 引用 / 归属",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "20px",
+                          "color": "#1e293b"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "组装 CellStore 与文档集合",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "20px",
+                          "color": "#1e293b"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "appearance": {
+        "fill": "#f0fdfa",
+        "strokeColor": "#94a3b8",
+        "strokeWidth": 1.5
+      }
+    },
+    "demo:load/repair": {
+      "id": "demo:load/repair",
+      "kind": "workflow-task",
+      "cellType": "node",
+      "geometry": {
+        "x": 800,
+        "y": 540,
+        "width": 360,
+        "height": 106,
+        "derived": false,
+        "outline": "roundRectangle"
+      },
+      "ports": [
+        {
+          "id": "top",
+          "side": "top",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "right",
+          "side": "right",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "bottom",
+          "side": "bottom",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "left",
+          "side": "left",
+          "direction": "both",
+          "offset": 0.5
+        }
+      ],
+      "content": {
+        "label": "迁移旧清单与 Frame 记录\n分区为原生文件",
+        "text": {
+          "schemaVersion": 1,
+          "id": "demo:load/repair/text",
+          "kind": "inline",
+          "plainText": "迁移旧清单与 Frame 记录\n分区为原生文件",
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "迁移旧清单与 Frame 记录",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "20px",
+                          "color": "#1e293b"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "分区为原生文件",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "20px",
+                          "color": "#1e293b"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "appearance": {
+        "fill": "#f0fdfa",
+        "strokeColor": "#94a3b8",
+        "strokeWidth": 1.5
+      }
+    },
+    "demo:load/materialize": {
+      "id": "demo:load/materialize",
+      "kind": "workflow-task",
+      "cellType": "node",
+      "geometry": {
+        "x": 1200,
+        "y": 360,
+        "width": 360,
+        "height": 106,
+        "derived": false,
+        "outline": "roundRectangle"
+      },
+      "ports": [
+        {
+          "id": "top",
+          "side": "top",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "right",
+          "side": "right",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "bottom",
+          "side": "bottom",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "left",
+          "side": "left",
+          "direction": "both",
+          "offset": 0.5
+        }
+      ],
+      "content": {
+        "label": "打开 WorkspaceSession\n准备统一历史、订阅与保存队列",
+        "text": {
+          "schemaVersion": 1,
+          "id": "demo:load/materialize/text",
+          "kind": "inline",
+          "plainText": "打开 WorkspaceSession\n准备统一历史、订阅与保存队列",
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "打开 WorkspaceSession",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "20px",
+                          "color": "#1e293b"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "准备统一历史、订阅与保存队列",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "20px",
+                          "color": "#1e293b"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "appearance": {
+        "fill": "#f0fdfa",
+        "strokeColor": "#94a3b8",
+        "strokeWidth": 1.5
+      }
+    },
+    "demo:load/mount": {
+      "id": "demo:load/mount",
+      "kind": "workflow-task",
+      "cellType": "node",
+      "geometry": {
+        "x": 1200,
+        "y": 180,
+        "width": 360,
+        "height": 106,
+        "derived": false,
+        "outline": "roundRectangle"
+      },
+      "ports": [
+        {
+          "id": "top",
+          "side": "top",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "right",
+          "side": "right",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "bottom",
+          "side": "bottom",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "left",
+          "side": "left",
+          "direction": "both",
+          "offset": 0.5
+        }
+      ],
+      "content": {
+        "label": "按活动文件挂载画布或文档\n无会话的内置工作区打开项目导览",
+        "text": {
+          "schemaVersion": 1,
+          "id": "demo:load/mount/text",
+          "kind": "inline",
+          "plainText": "按活动文件挂载画布或文档\n无会话的内置工作区打开项目导览",
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "按活动文件挂载画布或文档",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "20px",
+                          "color": "#1e293b"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "无会话的内置工作区打开项目导览",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "20px",
+                          "color": "#1e293b"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "appearance": {
+        "fill": "#f0fdfa",
+        "strokeColor": "#94a3b8",
+        "strokeWidth": 1.5
+      }
+    },
+    "demo:load/error": {
+      "id": "demo:load/error",
+      "kind": "workflow-task",
+      "cellType": "node",
+      "geometry": {
+        "x": 0,
+        "y": 900,
+        "width": 360,
+        "height": 106,
+        "derived": false,
+        "outline": "roundRectangle"
+      },
+      "ports": [
+        {
+          "id": "top",
+          "side": "top",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "right",
+          "side": "right",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "bottom",
+          "side": "bottom",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "left",
+          "side": "left",
+          "direction": "both",
+          "offset": 0.5
+        }
+      ],
+      "content": {
+        "label": "读取 / 转换 / 校验失败\n显示加载错误，保留原数据",
+        "text": {
+          "schemaVersion": 1,
+          "id": "demo:load/error/text",
+          "kind": "inline",
+          "plainText": "读取 / 转换 / 校验失败\n显示加载错误，保留原数据",
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "读取 / 转换 / 校验失败",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "20px",
+                          "color": "#1e293b"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "显示加载错误，保留原数据",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "20px",
+                          "color": "#1e293b"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "appearance": {
+        "fill": "#fff1f2",
+        "strokeColor": "#94a3b8",
+        "strokeWidth": 1.5
+      }
+    },
+    "demo:load/retry": {
+      "id": "demo:load/retry",
+      "kind": "workflow-task",
+      "cellType": "node",
+      "geometry": {
+        "x": 400,
+        "y": 900,
+        "width": 360,
+        "height": 106,
+        "derived": false,
+        "outline": "roundRectangle"
+      },
+      "ports": [
+        {
+          "id": "top",
+          "side": "top",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "right",
+          "side": "right",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "bottom",
+          "side": "bottom",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "left",
+          "side": "left",
+          "direction": "both",
+          "offset": 0.5
+        }
+      ],
+      "content": {
+        "label": "用户重新加载\n重新读取工作区",
+        "text": {
+          "schemaVersion": 1,
+          "id": "demo:load/retry/text",
+          "kind": "inline",
+          "plainText": "用户重新加载\n重新读取工作区",
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "用户重新加载",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "20px",
+                          "color": "#1e293b"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "重新读取工作区",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "20px",
+                          "color": "#1e293b"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "appearance": {
+        "fill": "#f0fdfa",
+        "strokeColor": "#94a3b8",
+        "strokeWidth": 1.5
+      }
+    },
+    "demo:load/edge/0": {
+      "id": "demo:load/edge/0",
+      "kind": "workflow-edge",
+      "cellType": "edge",
+      "source": {
+        "cellId": "demo:load/start",
+        "portId": "bottom"
+      },
+      "target": {
+        "cellId": "demo:load/adapter",
+        "portId": "top"
+      },
+      "route": {
+        "mode": "orthogonal"
+      },
+      "appearance": {
+        "strokeColor": "#64748b",
+        "strokeWidth": 1.5
+      }
+    },
+    "demo:load/edge/1": {
+      "id": "demo:load/edge/1",
+      "kind": "workflow-edge",
+      "cellType": "edge",
+      "source": {
+        "cellId": "demo:load/adapter",
+        "portId": "bottom"
+      },
+      "target": {
+        "cellId": "demo:load/format",
+        "portId": "top"
+      },
+      "route": {
+        "mode": "orthogonal"
+      },
+      "appearance": {
+        "strokeColor": "#64748b",
+        "strokeWidth": 1.5
+      }
+    },
+    "demo:load/edge/2": {
+      "id": "demo:load/edge/2",
+      "kind": "workflow-edge",
+      "cellType": "edge",
+      "source": {
+        "cellId": "demo:load/format",
+        "portId": "bottom"
+      },
+      "target": {
+        "cellId": "demo:load/new",
+        "portId": "top"
+      },
+      "route": {
+        "mode": "orthogonal"
+      },
+      "labels": [
+        {
+          "text": "无数据",
+          "position": 0.5
+        }
+      ],
+      "appearance": {
+        "strokeColor": "#64748b",
+        "strokeWidth": 1.5
+      }
+    },
+    "demo:load/edge/3": {
+      "id": "demo:load/edge/3",
+      "kind": "workflow-edge",
+      "cellType": "edge",
+      "source": {
+        "cellId": "demo:load/format",
+        "portId": "right"
+      },
+      "target": {
+        "cellId": "demo:load/v2",
+        "portId": "left"
+      },
+      "route": {
+        "mode": "orthogonal"
+      },
+      "labels": [
+        {
+          "text": "原生文件",
+          "position": 0.5
+        }
+      ],
+      "appearance": {
+        "strokeColor": "#64748b",
+        "strokeWidth": 1.5
+      }
+    },
+    "demo:load/edge/4": {
+      "id": "demo:load/edge/4",
+      "kind": "workflow-edge",
+      "cellType": "edge",
+      "source": {
+        "cellId": "demo:load/format",
+        "portId": "right"
+      },
+      "target": {
+        "cellId": "demo:load/v1",
+        "portId": "left"
+      },
+      "route": {
+        "mode": "orthogonal"
+      },
+      "labels": [
+        {
+          "text": "旧清单",
+          "position": 0.5
+        }
+      ],
+      "appearance": {
+        "strokeColor": "#64748b",
+        "strokeWidth": 1.5
+      }
+    },
+    "demo:load/edge/5": {
+      "id": "demo:load/edge/5",
+      "kind": "workflow-edge",
+      "cellType": "edge",
+      "source": {
+        "cellId": "demo:load/format",
+        "portId": "right"
+      },
+      "target": {
+        "cellId": "demo:load/legacy",
+        "portId": "left"
+      },
+      "route": {
+        "mode": "orthogonal"
+      },
+      "labels": [
+        {
+          "text": "旧格式",
+          "position": 0.5
+        }
+      ],
+      "appearance": {
+        "strokeColor": "#64748b",
+        "strokeWidth": 1.5
+      }
+    },
+    "demo:load/edge/6": {
+      "id": "demo:load/edge/6",
+      "kind": "workflow-edge",
+      "cellType": "edge",
+      "source": {
+        "cellId": "demo:load/new",
+        "portId": "bottom"
+      },
+      "target": {
+        "cellId": "demo:load/materialize",
+        "portId": "top"
+      },
+      "route": {
+        "mode": "orthogonal"
+      },
+      "appearance": {
+        "strokeColor": "#64748b",
+        "strokeWidth": 1.5
+      }
+    },
+    "demo:load/edge/7": {
+      "id": "demo:load/edge/7",
+      "kind": "workflow-edge",
+      "cellType": "edge",
+      "source": {
+        "cellId": "demo:load/v2",
+        "portId": "right"
+      },
+      "target": {
+        "cellId": "demo:load/partition",
+        "portId": "left"
+      },
+      "route": {
+        "mode": "orthogonal"
+      },
+      "appearance": {
+        "strokeColor": "#64748b",
+        "strokeWidth": 1.5
+      }
+    },
+    "demo:load/edge/8": {
+      "id": "demo:load/edge/8",
+      "kind": "workflow-edge",
+      "cellType": "edge",
+      "source": {
+        "cellId": "demo:load/v1",
+        "portId": "right"
+      },
+      "target": {
+        "cellId": "demo:load/repair",
+        "portId": "left"
+      },
+      "route": {
+        "mode": "orthogonal"
+      },
+      "appearance": {
+        "strokeColor": "#64748b",
+        "strokeWidth": 1.5
+      }
+    },
+    "demo:load/edge/9": {
+      "id": "demo:load/edge/9",
+      "kind": "workflow-edge",
+      "cellType": "edge",
+      "source": {
+        "cellId": "demo:load/legacy",
+        "portId": "right"
+      },
+      "target": {
+        "cellId": "demo:load/copy",
+        "portId": "left"
+      },
+      "route": {
+        "mode": "orthogonal"
+      },
+      "appearance": {
+        "strokeColor": "#64748b",
+        "strokeWidth": 1.5
+      }
+    },
+    "demo:load/edge/10": {
+      "id": "demo:load/edge/10",
+      "kind": "workflow-edge",
+      "cellType": "edge",
+      "source": {
+        "cellId": "demo:load/copy",
+        "portId": "right"
+      },
+      "target": {
+        "cellId": "demo:load/validate-old",
+        "portId": "left"
+      },
+      "route": {
+        "mode": "orthogonal"
+      },
+      "appearance": {
+        "strokeColor": "#64748b",
+        "strokeWidth": 1.5
+      }
+    },
+    "demo:load/edge/11": {
+      "id": "demo:load/edge/11",
+      "kind": "workflow-edge",
+      "cellType": "edge",
+      "source": {
+        "cellId": "demo:load/validate-old",
+        "portId": "top"
+      },
+      "target": {
+        "cellId": "demo:load/materialize",
+        "portId": "bottom"
+      },
+      "route": {
+        "mode": "orthogonal"
+      },
+      "appearance": {
+        "strokeColor": "#64748b",
+        "strokeWidth": 1.5
+      }
+    },
+    "demo:load/edge/12": {
+      "id": "demo:load/edge/12",
+      "kind": "workflow-edge",
+      "cellType": "edge",
+      "source": {
+        "cellId": "demo:load/repair",
+        "portId": "bottom"
+      },
+      "target": {
+        "cellId": "demo:load/materialize",
+        "portId": "top"
+      },
+      "route": {
+        "mode": "orthogonal"
+      },
+      "appearance": {
+        "strokeColor": "#64748b",
+        "strokeWidth": 1.5
+      }
+    },
+    "demo:load/edge/13": {
+      "id": "demo:load/edge/13",
+      "kind": "workflow-edge",
+      "cellType": "edge",
+      "source": {
+        "cellId": "demo:load/partition",
+        "portId": "right"
+      },
+      "target": {
+        "cellId": "demo:load/materialize",
+        "portId": "left"
+      },
+      "route": {
+        "mode": "orthogonal"
+      },
+      "appearance": {
+        "strokeColor": "#64748b",
+        "strokeWidth": 1.5
+      }
+    },
+    "demo:load/edge/14": {
+      "id": "demo:load/edge/14",
+      "kind": "workflow-edge",
+      "cellType": "edge",
+      "source": {
+        "cellId": "demo:load/materialize",
+        "portId": "top"
+      },
+      "target": {
+        "cellId": "demo:load/mount",
+        "portId": "bottom"
+      },
+      "route": {
+        "mode": "orthogonal"
+      },
+      "appearance": {
+        "strokeColor": "#64748b",
+        "strokeWidth": 1.5
+      }
+    },
+    "demo:load/edge/15": {
+      "id": "demo:load/edge/15",
+      "kind": "workflow-edge",
+      "cellType": "edge",
+      "source": {
+        "cellId": "demo:load/adapter",
+        "portId": "left"
+      },
+      "target": {
+        "cellId": "demo:load/error",
+        "portId": "left"
+      },
+      "route": {
+        "mode": "orthogonal"
+      },
+      "labels": [
+        {
+          "text": "失败",
+          "position": 0.5
+        }
+      ],
+      "appearance": {
+        "strokeColor": "#be123c",
+        "strokeWidth": 1.5
+      }
+    },
+    "demo:load/edge/16": {
+      "id": "demo:load/edge/16",
+      "kind": "workflow-edge",
+      "cellType": "edge",
+      "source": {
+        "cellId": "demo:load/partition",
+        "portId": "bottom"
+      },
+      "target": {
+        "cellId": "demo:load/error",
+        "portId": "top"
+      },
+      "route": {
+        "mode": "orthogonal"
+      },
+      "labels": [
+        {
+          "text": "失败",
+          "position": 0.5
+        }
+      ],
+      "appearance": {
+        "strokeColor": "#be123c",
+        "strokeWidth": 1.5
+      }
+    },
+    "demo:load/edge/17": {
+      "id": "demo:load/edge/17",
+      "kind": "workflow-edge",
+      "cellType": "edge",
+      "source": {
+        "cellId": "demo:load/repair",
+        "portId": "bottom"
+      },
+      "target": {
+        "cellId": "demo:load/error",
+        "portId": "top"
+      },
+      "route": {
+        "mode": "orthogonal"
+      },
+      "labels": [
+        {
+          "text": "失败",
+          "position": 0.5
+        }
+      ],
+      "appearance": {
+        "strokeColor": "#be123c",
+        "strokeWidth": 1.5
+      }
+    },
+    "demo:load/edge/18": {
+      "id": "demo:load/edge/18",
+      "kind": "workflow-edge",
+      "cellType": "edge",
+      "source": {
+        "cellId": "demo:load/legacy",
+        "portId": "bottom"
+      },
+      "target": {
+        "cellId": "demo:load/error",
+        "portId": "top"
+      },
+      "route": {
+        "mode": "orthogonal"
+      },
+      "labels": [
+        {
+          "text": "失败",
+          "position": 0.5
+        }
+      ],
+      "appearance": {
+        "strokeColor": "#be123c",
+        "strokeWidth": 1.5
+      }
+    },
+    "demo:load/edge/19": {
+      "id": "demo:load/edge/19",
+      "kind": "workflow-edge",
+      "cellType": "edge",
+      "source": {
+        "cellId": "demo:load/validate-old",
+        "portId": "bottom"
+      },
+      "target": {
+        "cellId": "demo:load/error",
+        "portId": "top"
+      },
+      "route": {
+        "mode": "orthogonal"
+      },
+      "labels": [
+        {
+          "text": "失败",
+          "position": 0.5
+        }
+      ],
+      "appearance": {
+        "strokeColor": "#be123c",
+        "strokeWidth": 1.5
+      }
+    },
+    "demo:load/edge/20": {
+      "id": "demo:load/edge/20",
+      "kind": "workflow-edge",
+      "cellType": "edge",
+      "source": {
+        "cellId": "demo:load/error",
+        "portId": "right"
+      },
+      "target": {
+        "cellId": "demo:load/retry",
+        "portId": "left"
+      },
+      "route": {
+        "mode": "orthogonal"
+      },
+      "labels": [
+        {
+          "text": "重试",
+          "position": 0.5
+        }
+      ],
+      "appearance": {
+        "strokeColor": "#64748b",
+        "strokeWidth": 1.5
+      }
+    },
+    "demo:load/edge/21": {
+      "id": "demo:load/edge/21",
+      "kind": "workflow-edge",
+      "cellType": "edge",
+      "source": {
+        "cellId": "demo:load/retry",
+        "portId": "right"
+      },
+      "target": {
+        "cellId": "demo:load/adapter",
+        "portId": "right"
+      },
+      "route": {
+        "mode": "orthogonal"
+      },
+      "appearance": {
+        "strokeColor": "#64748b",
+        "strokeWidth": 1.5
+      }
+    },
+    "project:topic/04/document": {
+      "id": "project:topic/04/document",
+      "cellType": "node",
+      "kind": "document-reference",
+      "geometry": {
+        "x": 0,
+        "y": 1102,
+        "width": 680,
+        "height": 480
+      },
+      "data": {
+        "targetDocumentId": "project-doc:architecture/ARCHITECTURE"
+      },
+      "content": {
+        "text": {
+          "schemaVersion": 1,
+          "id": "project:topic/04/document/links",
+          "kind": "block",
+          "align": "left",
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "桌面安装与使用 · 工作区目录",
+                    "marks": [
+                      {
+                        "type": "link",
+                        "attrs": {
+                          "href": "verd://file/project-doc%3Aguides%2FSETUP#%E5%B7%A5%E4%BD%9C%E5%8C%BA%E7%9B%AE%E5%BD%95"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          },
+          "plainText": "桌面安装与使用 · 工作区目录"
+        }
+      }
+    }
+  },
+  "organization": {
+    "kind": "subgraph",
+    "ownerFrameId": "board-root"
+  }
+}

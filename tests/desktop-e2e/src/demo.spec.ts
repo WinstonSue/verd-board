@@ -4,63 +4,83 @@ import {
   expect,
   type ElectronApplication,
 } from '@playwright/test';
-import { mkdtemp, mkdir, readFile, writeFile, rm } from 'node:fs/promises';
+import {
+  cp,
+  mkdtemp,
+  mkdir,
+  readFile,
+  readdir,
+  writeFile,
+  rm,
+} from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { setAppLanguage } from '../../web-e2e/src/app-actions';
-import { fileWithCell } from './workspace-disk';
+import { canvasFiles } from './workspace-disk';
 
 const root = path.resolve(__dirname, '../../..');
-const topicIds = [
-  'board/20:architecture-layered',
-  'board/22:architecture-data-flow',
-  'board/5:Ybbcn',
-  'demo:workspace-load',
-  'board/5:wfArc',
-  'demo:save-close',
-  'demo:import-export',
-  'detached/25:mind/mind-mudf73s2-9hi9x8',
-];
+const nativeFiles = async (
+  dir: string,
+  prefix = '',
+): Promise<Record<string, string>> => {
+  const files: Record<string, string> = {};
+  for (const entry of await readdir(dir, { withFileTypes: true })) {
+    if (entry.name === '.verdboard') continue;
+    const relative = prefix ? `${prefix}/${entry.name}` : entry.name;
+    if (entry.isDirectory())
+      Object.assign(
+        files,
+        await nativeFiles(path.join(dir, entry.name), relative),
+      );
+    else if (/\.verd(?:-doc)?\.json$/.test(entry.name))
+      files[relative] = await readFile(path.join(dir, entry.name), 'utf8');
+  }
+  return files;
+};
 
-test('demo opens eight editable topics, returns to their shells, and restores an edit after restart', async ({
+test('built-in native workspace opens its diagrams and documents, follows links and preserves edits across an upgrade', async ({
   browserName,
 }, info) => {
   test.setTimeout(120_000);
-  const directory = await mkdtemp(path.join(tmpdir(), 'verd-demo-e2e-'));
+  const directory = await mkdtemp(path.join(tmpdir(), 'verd-builtin-e2e-'));
+  const userData = path.join(directory, 'user-data');
+  const source = path.join(directory, 'builtin-source');
+  const workspace = path.join(userData, 'workspaces', 'default');
   let desktop: ElectronApplication | undefined;
   try {
-    const userData = path.join(directory, 'user-data');
     await mkdir(userData);
-    const storageFile = path.join(userData, 'verdboard-data.json');
-    await writeFile(
-      storageFile,
-      await readFile(
-        path.join(root, 'apps/desktop/verdboard-data.json'),
-        'utf8',
-      ),
-    );
+    await cp(path.join(root, 'workspace'), source, {
+      recursive: true,
+      filter: (file) =>
+        !path
+          .relative(path.join(root, 'workspace'), file)
+          .split(path.sep)
+          .includes('.verdboard'),
+    });
+    const original = await nativeFiles(source);
     const launcher = path.join(directory, 'launch.cjs');
     await writeFile(
       launcher,
-      'const {app} = require("electron");\napp.setPath("userData", ' +
-        JSON.stringify(userData) +
-        ');\nrequire(' +
-        JSON.stringify(path.join(root, 'apps/desktop/dist-electron/main.js')) +
-        ');\n',
+      [
+        "const {app} = require('electron');",
+        `app.setPath('userData', ${JSON.stringify(userData)});`,
+        `require(${JSON.stringify(path.join(root, 'apps/desktop/dist-electron/main.js'))});`,
+      ].join('\n'),
     );
     const env = { ...process.env };
     delete env.ELECTRON_RUN_AS_NODE;
     delete env.VITE_DEV_SERVER_URL;
+    delete env.VERDBOARD_WORKSPACE_PATH;
+    env.VERDBOARD_BUILTIN_WORKSPACE_PATH = source;
     const launch = async () => {
       desktop = await electron.launch({ args: [launcher], env });
       const page = await desktop.firstWindow();
       await desktop.evaluate(({ BrowserWindow }) =>
         BrowserWindow.getAllWindows()[0].setSize(1600, 1100),
       );
-      await expect(
-        page.locator('svg[aria-label="Frame canvas"]'),
-      ).toBeVisible();
-      await setAppLanguage(page, 'zh');
+      await expect(page.locator('.workspace-shell')).toBeVisible();
+      if (await page.locator('svg[data-surface="root"]:visible').count())
+        await setAppLanguage(page, 'zh');
       const skip = page.getByRole('button', { name: '跳过', exact: true });
       if (await skip.isVisible().catch(() => false)) await skip.click();
       return page;
@@ -76,123 +96,91 @@ test('demo opens eight editable topics, returns to their shells, and restores an
       desktop = undefined;
     };
     let page = await launch();
-    const errors: string[] = [];
-    page.on('pageerror', (e) => errors.push(e.message));
-    const canvas = () => page.locator('svg[aria-label="Frame canvas"]');
-    // The eight topic files migrate into frame-reference shells on the board.
-    const refs = () => canvas().locator('[data-cell-kind="frame-reference"]');
-    // The board file's tab is the first tab opened by first-launch migration.
-    const boardTab = () => page.locator('ylib-tabs .tab').first();
-    await expect(refs()).toHaveCount(8);
-    await expect(canvas().locator('[data-cell-id="r:title"]')).toContainText(
-      '青编 VerdBoard',
+    const active = () => page.locator('.workspace-pane.is-active');
+    const canvas = () =>
+      active()
+        .locator('svg[aria-label="Frame canvas"][data-surface="root"]')
+        .first();
+    await expect(canvas()).toBeVisible();
+    await expect(
+      canvas().locator('[data-cell-kind="frame-reference"]'),
+    ).toHaveCount(8);
+    await expect(
+      canvas().locator('[data-cell-kind="document-frame"]'),
+    ).toHaveCount(3);
+    expect(Object.keys(await canvasFiles(userData))).toHaveLength(9);
+    expect(Object.keys(await nativeFiles(workspace))).toHaveLength(
+      Object.keys(original).length,
     );
-    await page.screenshot({ path: info.outputPath('demo-overview.png') });
-    const before = await readFile(storageFile, 'utf8');
-    for (const [index, id] of topicIds.entries()) {
-      const refId = `frame-ref:${id}`;
-      await page.getByTestId('canvas-status-fit').click();
-      const shell = canvas().locator(
-        '[data-cell-id="' + refId + '"] > rect[data-frame-shell]',
-      );
-      await expect(shell).toBeVisible();
-      await canvas()
-        .locator('[data-frame-title-id="' + refId + '"] rect')
-        .click();
-      await page.getByTestId('frame-open').click();
-      // frame-open mounts the reference's target file in its own tab.
-      await expect(refs()).toHaveCount(0);
-      await expect(canvas().locator('foreignObject').first()).toBeVisible();
-      if (index === 2 || index === 7) {
-        const clipped = await canvas()
-          .locator('[data-cell-kind="mind-child"] foreignObject')
-          .evaluateAll((objects) =>
-            objects.flatMap((object) => {
-              const text = object.querySelector('.board-text-content');
-              if (!text) return [];
-              const range = document.createRange();
-              range.selectNodeContents(text);
-              const glyphs = range.getBoundingClientRect();
-              const box = object.getBoundingClientRect();
-              return glyphs.left < box.left - 3 ||
-                glyphs.right > box.right + 3 ||
-                glyphs.top < box.top - 3 ||
-                glyphs.bottom > box.bottom + 3
-                ? [text.textContent]
-                : [];
-            }),
-          );
-        expect(clipped).toEqual([]);
-      }
-      await page.screenshot({
-        path: info.outputPath('demo-topic-' + (index + 1) + '.png'),
-      });
-      await boardTab().click();
-      await expect(refs()).toHaveCount(8);
-      const shellBounds = (await shell.boundingBox())!;
-      const viewport = (await canvas().boundingBox())!;
+    await expect(page.getByTestId('workspace-open-builtin')).toBeDisabled();
+    await page.screenshot({
+      path: info.outputPath(`builtin-${browserName}-overview.png`),
+    });
 
-      expect(shellBounds.x + shellBounds.width / 2).toBeGreaterThan(viewport.x);
-      expect(shellBounds.x + shellBounds.width / 2).toBeLessThan(
-        viewport.x + viewport.width,
-      );
-      expect(shellBounds.y + shellBounds.height / 2).toBeGreaterThan(
-        viewport.y,
-      );
-      expect(shellBounds.y + shellBounds.height / 2).toBeLessThan(
-        viewport.y + viewport.height,
-      );
-      await expect(refs()).toHaveCount(8);
-      if (index === 0) {
-        const plate = canvas().locator(
-          '[data-cell-id="' + refId + '"] [data-frame-content-plate]',
-        );
-        const box = (await plate.boundingBox())!;
-        await plate.dblclick({
-          position: { x: box.width - 4, y: box.height - 4 },
-        });
-        // Double-click on a reference opens its target file tab too.
-        await expect(refs()).toHaveCount(0);
-        await boardTab().click();
-        await expect(refs()).toHaveCount(8);
-      }
-    }
-    expect(await readFile(storageFile, 'utf8')).toBe(before);
-    // Move one native homepage cell; close must flush its actual transaction.
-    await page.getByTestId('canvas-status-fit').click();
-    const title = canvas().locator('[data-cell-id="r:title"]');
-    const bounds = (await title.boundingBox())!;
-    await page.mouse.move(
-      bounds.x + bounds.width / 2,
-      bounds.y + bounds.height / 2,
+    await page
+      .locator('.file-tree-name')
+      .getByText('文档导航', { exact: true })
+      .click();
+    await expect(active().locator('.document-page__title')).toHaveValue(
+      '文档导航',
     );
-    await page.mouse.down();
-    await page.mouse.move(
-      bounds.x + bounds.width / 2 + 24,
-      bounds.y + bounds.height / 2 + 14,
-      { steps: 6 },
+    await page.screenshot({
+      path: info.outputPath(`builtin-${browserName}-documents.png`),
+    });
+    await active()
+      .getByRole('link', { name: '系统架构', exact: true })
+      .click({ modifiers: ['ControlOrMeta'] });
+    await expect(active().locator('.document-page__title')).toHaveValue(
+      '系统架构',
     );
-    await page.mouse.up();
+    await expect(active().locator('.board-document-content')).toContainText(
+      'WorkspaceSession',
+    );
+    await page
+      .locator('.file-tree-name')
+      .getByText('文档导航', { exact: true })
+      .click();
+    const editor = active().locator('.board-document-content');
+    await editor.click();
+    await editor.press('ControlOrMeta+End');
+    await editor.press('Enter');
+    await editor.pressSequentially('Builtin document edit survives upgrades.');
+    await expect(editor).toContainText(
+      'Builtin document edit survives upgrades.',
+    );
     await close();
-    const savedTitle = (await fileWithCell(userData, 'r:title'))!.cells[
-      'r:title'
-    ];
-    const legacyBefore = JSON.parse(before);
-    const legacyTitle =
-      legacyBefore[
-        legacyBefore.main_board_content.frames[
-          legacyBefore.main_board_content.rootId
-        ]
-      ].cells['r:title'];
-    expect(savedTitle.geometry).not.toEqual(legacyTitle.geometry);
+
+    const docPath = Object.keys(original).find(
+      (file) => JSON.parse(original[file]).id === 'project-doc:README',
+    )!;
+    const saved = JSON.parse(
+      await readFile(path.join(workspace, docPath), 'utf8'),
+    );
+    expect(saved.text.plainText).toContain(
+      'Builtin document edit survives upgrades.',
+    );
+    expect(await nativeFiles(source)).toEqual(original);
+    // A newer resource is available on the next launch. The user's copy wins.
+    const newer = JSON.parse(original[docPath]);
+    newer.title = 'A newer bundled title';
+    await writeFile(path.join(source, docPath), JSON.stringify(newer));
     page = await launch();
-    await expect(refs()).toHaveCount(8);
+    await expect(active().locator('.document-page__title')).toHaveValue(
+      '文档导航',
+    );
+    await expect(active().locator('.board-document-content')).toContainText(
+      'Builtin document edit survives upgrades.',
+    );
     await close();
-    const restarted = (await fileWithCell(userData, 'r:title'))!.cells[
-      'r:title'
-    ];
-    expect(restarted).toEqual(savedTitle);
-    expect(errors).toEqual([]);
+    expect(
+      JSON.parse(await readFile(path.join(workspace, docPath), 'utf8')),
+    ).toEqual(saved);
+    expect(
+      await readFile(
+        path.join(userData, 'verdboard-global-config.json'),
+        'utf8',
+      ),
+    ).toContain('desktopWorkspace');
   } finally {
     await desktop?.close();
     await rm(directory, { recursive: true, force: true });

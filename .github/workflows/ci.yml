@@ -33,6 +33,7 @@ jobs:
 
       - run: pnpm lint
       - run: pnpm typecheck
+      - run: pnpm workspace:check
       - run: pnpm test
       - run: pnpm build
       - run: pnpm build:web

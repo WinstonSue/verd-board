@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
@@ -14,6 +14,8 @@ import { registerMindCells } from '@sue/board-mind';
 import { registerWorkflowCells } from '@sue/board-workflow';
 import { registerArchitectureCells } from '@sue/board-architecture';
 import { parseMarkdownToFrameSnapshot } from '@sue/board-markdown-to-board';
+import type { BoardTextNode } from '@sue/board-common';
+import { isDocumentFileV1 } from '../documents/document-files';
 import {
   parseMermaidToArchitectureFrame,
   parseMermaidToWorkflowFrame,
@@ -29,18 +31,18 @@ import {
 } from './frame-files';
 
 /**
- * Contract between `doc/guides/ai-canvas-data-spec.md` and
- * `doc/examples/ai-canvas/`: every fenced block tagged with a file path must
- * match that file byte-for-byte (modulo trailing whitespace), and every
- * example must pass the real validators/parsers used at import time.
+ * The native AI specification embeds every import fixture as a real codeBlock.
+ * Each fixture must match one block byte-for-byte (modulo trailing whitespace)
+ * and pass the real validators/parsers used at import time. No Markdown fence
+ * metadata or exported documentation is needed.
  */
 const examplesDir = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
-  '../../../../../doc/examples/ai-canvas',
+  '../../../../../tests/fixtures/ai-canvas',
 );
 const specPath = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
-  '../../../../../doc/guides/ai-canvas-data-spec.md',
+  '../../../../../workspace/文档/指南/AI画布数据规范.verd-doc.json',
 );
 
 const readExample = (name: string) =>
@@ -80,28 +82,31 @@ const snapshotFile = 'snapshot-nested-frames.frame.json';
 const textFiles = ['mind-map.md', 'workflow-dag.mmd', 'architecture.mmd'];
 const allFiles = [...frameFiles, bundleFile, snapshotFile, ...textFiles];
 
-describe('ai-canvas-data-spec embedded blocks', () => {
-  const spec = readFileSync(specPath, 'utf8');
-  const blocks = new Map<string, string>();
-  const fence = /^```(\w+)\s+(doc\/examples\/ai-canvas\/\S+)\s*$/gm;
-  let match: RegExpExecArray | null;
-  while ((match = fence.exec(spec))) {
-    const start = spec.indexOf('\n', match.index) + 1;
-    const end = spec.indexOf('\n```', start);
-    blocks.set(match[2], spec.slice(start, end));
-  }
-
+describe('native AI specification embedded blocks', () => {
   it('embeds every example file exactly', () => {
-    expect([...blocks.keys()].sort()).toEqual(
-      allFiles.map((name) => `doc/examples/ai-canvas/${name}`).sort(),
-    );
-    for (const [file, content] of blocks)
-      expect(content.trimEnd()).toBe(
-        readFileSync(
-          path.resolve(examplesDir, '..', '..', '..', file),
-          'utf8',
-        ).trimEnd(),
-      );
+    const spec: unknown = JSON.parse(readFileSync(specPath, 'utf8'));
+    expect(isDocumentFileV1(spec)).toBe(true);
+    if (!isDocumentFileV1(spec))
+      throw new Error('Invalid native specification');
+    expect(spec.id).toBe('project-doc:guides/ai-canvas-data-spec');
+    expect(spec.text.id).toBe(spec.id);
+    expect(readdirSync(examplesDir).sort()).toEqual([...allFiles].sort());
+
+    const blocks: string[] = [];
+    const textOf = (node: BoardTextNode): string =>
+      node.text ?? (node.content ?? []).map(textOf).join('');
+    const collect = (node: BoardTextNode) => {
+      if (node.type === 'codeBlock') blocks.push(textOf(node).trimEnd());
+      else node.content?.forEach(collect);
+    };
+    collect(spec.text.content);
+    for (const file of allFiles) {
+      const content = readExample(file).trimEnd();
+      expect(
+        blocks.filter((block) => block === content),
+        file,
+      ).toHaveLength(1);
+    }
   });
 });
 

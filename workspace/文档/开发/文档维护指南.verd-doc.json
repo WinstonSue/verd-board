@@ -1,0 +1,430 @@
+{
+  "format": "verd-document",
+  "version": 1,
+  "id": "project-doc:DOCUMENTATION_GUIDE",
+  "title": "文档维护指南",
+  "text": {
+    "schemaVersion": 1,
+    "id": "project-doc:DOCUMENTATION_GUIDE",
+    "kind": "block",
+    "content": {
+      "type": "doc",
+      "content": [
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 1
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "文档维护指南"
+            }
+          ]
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 2
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "唯一正文来源"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "项目知识保存在仓库根 workspace/文档/ 的 .verd-doc.json 原生文档中，架构图保存在同一工作区的 .verd.json 文件中。直接在桌面端编辑后保存，或修改对应 JSON；不维护第二份 Markdown 或正文生成脚本，不导出兼容文档树。"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "文档文件格式为 DocumentFileV1：format 为 verd-document、version 为 1，id 与 text.id 一致，text.kind 为 block。文件名和 title 使用可读名称；文件移动、重命名保持身份不变，复制时生成新身份。现有项目文档使用 project-doc: 命名空间，后缀是迁移前的逻辑分类标识；这个标识用于稳定引用，不表示文件系统路径。"
+            }
+          ]
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 2
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "导航与分类"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "入口是 "
+            },
+            {
+              "type": "text",
+              "text": "文档导航",
+              "marks": [
+                {
+                  "type": "link",
+                  "attrs": {
+                    "href": "verd://file/project-doc%3AREADME"
+                  }
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "text": "、"
+            },
+            {
+              "type": "text",
+              "text": "Documentation",
+              "marks": [
+                {
+                  "type": "link",
+                  "attrs": {
+                    "href": "verd://file/project-doc%3AREADME_en"
+                  }
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "text": " 和 "
+            },
+            {
+              "type": "text",
+              "text": "架构白板",
+              "marks": [
+                {
+                  "type": "link",
+                  "attrs": {
+                    "href": "verd://file/board-root"
+                  }
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "text": "。正文按产品、架构、开发、指南、包分类，新增内容写入最合适的现有文档；需要独立成篇时创建原生文档，并登记到导航。"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "产品能力摘要维护在 "
+            },
+            {
+              "type": "text",
+              "text": "产品概览",
+              "marks": [
+                {
+                  "type": "link",
+                  "attrs": {
+                    "href": "verd://file/project-doc%3Aproduct%2F%E4%BA%A7%E5%93%81%E6%A6%82%E8%A7%88"
+                  }
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "text": "；设计、数据流与持久化边界维护在 "
+            },
+            {
+              "type": "text",
+              "text": "系统架构",
+              "marks": [
+                {
+                  "type": "link",
+                  "attrs": {
+                    "href": "verd://file/project-doc%3Aarchitecture%2FARCHITECTURE"
+                  }
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "text": "；命令与发布维护在 "
+            },
+            {
+              "type": "text",
+              "text": "开发指南",
+              "marks": [
+                {
+                  "type": "link",
+                  "attrs": {
+                    "href": "verd://file/project-doc%3Adevelopment%2FREADME"
+                  }
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "text": "；细节维护在包说明与 "
+            },
+            {
+              "type": "text",
+              "text": "配置与源码索引",
+              "marks": [
+                {
+                  "type": "link",
+                  "attrs": {
+                    "href": "verd://file/project-doc%3Aguides%2F%E9%85%8D%E7%BD%AE%E4%B8%8E%E6%BA%90%E7%A0%81%E7%B4%A2%E5%BC%95"
+                  }
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "text": "。不再新建按月变更目录；各包 CHANGELOG 仍用于发布说明。"
+            }
+          ]
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 2
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "语言与事实来源"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "中文导航、英文 Documentation 与根 README 的产品定位、启动入口和重大能力同步更新；其他正文以中文为主，Mind 引擎英文概览按需同步。包名与代码标识保持原名。中文产品名为青编，英文产品名为 VerdBoard。"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "技术栈版本以 package.json 和 pnpm-lock.yaml 为准；命令以根与应用/包 scripts 为准。不要使用旧图中的日期、固定测试数量或过去的通过记录推断当前提交已验收。"
+            }
+          ]
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 2
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "文档链接"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "原生文档之间通过稳定身份链接：verd://file/<encodeURIComponent(fileId)>，可追加 #<encodeURIComponent(headingSlug)>。同一文档可使用 #headingSlug；链接到架构总览的 ID 为 board-root。不要把文件名、目录相对路径或物理绝对路径放进原生文档间的 href。"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "标题 slug 由 github-slugger 生成，同一文档按标题顺序计算；重复标题依次带 -1、-2 后缀。编辑标题后检查已有锚点。外部资料使用 HTTP/HTTPS。源码位置与夹具路径作为可复制的仓库相对路径文字呈现。"
+            }
+          ]
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 2
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "数据样例契约"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "AI 画布数据规范",
+              "marks": [
+                {
+                  "type": "link",
+                  "attrs": {
+                    "href": "verd://file/project-doc%3Aguides%2Fai-canvas-data-spec"
+                  }
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "text": " 保存完整字段表、约束和 11 个代码块样例，配套输入位于 tests/fixtures/ai-canvas/。测试直接读取原生规范 JSON，递归查找 codeBlock，逐字核对每个样例后，再运行真实格式校验、转换器、组装和导入路径测试。示例不依赖 Markdown fence 的隐藏 metadata。"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "调整样例时同时更新正文代码块和夹具，保留合法 ID、端口、所有权和引用闭包。夹具保持原字节排版，由 .prettierignore 保护。导入样例中的 .md/.mmd 属于测试数据，不是另一份知识文档。"
+            }
+          ]
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 2
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "更新与验收"
+            }
+          ]
+        },
+        {
+          "type": "bulletList",
+          "content": [
+            {
+              "type": "listItem",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "变更产品入口、文件模型或包职责时，同步修改系统架构、包索引、产品摘要、源码索引与相关架构图。"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "listItem",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "变更命令或发布流程时，同步检查根 README、开发指南、安装指南和双语入口。"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "listItem",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "保持代码块、列表、表格、链接、图片与关键说明完整。CommonMark/GFM 导入可作为一次性迁移手段；HTML 版式应改成原生结构，任务清单应明确显示状态。"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "listItem",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "验证原生文件身份和结构、全部内部目标及锚点；运行相关单测与 E2E。历史验收保留原日期和上下文，新结果另注明日期，不覆盖历史事实。"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "listItem",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "根 README、包 README 和开发规则只做入口或工程约定；长期产品正文写在原生文档中。"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "最后更新：2026-10-16。"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "图文预览使用稳定身份：文档 frameReference.attrs.targetFrameId 引用画布，画布 document-reference.data.targetDocumentId 引用独立文档。正文不复制进引用壳。四类画布都能放文档卡片，正文只读滚动；源文件统一维护。图文循环引用合法，预览仅避免在同一路径无限重复展开；普通文字链接不扩大独立复制与原生导出闭包。不要为图文预览维护图片或 Markdown 正文镜像。"
+            }
+          ]
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 2
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "文档 Frame 与只读引用"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "项目导览的三个入口使用 document-frame；八张专题图各有一张 document-reference 主文档卡，并通过既有 content.text 标注保存稳定章节链接。图文循环合法，不得为消除环路而删掉原文档图块。维护校验必须覆盖两种节点的目标、依赖闭包和导航链接。"
+            }
+          ]
+        }
+      ]
+    },
+    "plainText": "文档维护指南\n唯一正文来源\n项目知识保存在仓库根 workspace/文档/ 的 .verd-doc.json 原生文档中，架构图保存在同一工作区的 .verd.json 文件中。直接在桌面端编辑后保存，或修改对应 JSON；不维护第二份 Markdown 或正文生成脚本，不导出兼容文档树。\n文档文件格式为 DocumentFileV1：format 为 verd-document、version 为 1，id 与 text.id 一致，text.kind 为 block。文件名和 title 使用可读名称；文件移动、重命名保持身份不变，复制时生成新身份。现有项目文档使用 project-doc: 命名空间，后缀是迁移前的逻辑分类标识；这个标识用于稳定引用，不表示文件系统路径。\n导航与分类\n入口是 文档导航、Documentation 和 架构白板。正文按产品、架构、开发、指南、包分类，新增内容写入最合适的现有文档；需要独立成篇时创建原生文档，并登记到导航。\n产品能力摘要维护在 产品概览；设计、数据流与持久化边界维护在 系统架构；命令与发布维护在 开发指南；细节维护在包说明与 配置与源码索引。不再新建按月变更目录；各包 CHANGELOG 仍用于发布说明。\n语言与事实来源\n中文导航、英文 Documentation 与根 README 的产品定位、启动入口和重大能力同步更新；其他正文以中文为主，Mind 引擎英文概览按需同步。包名与代码标识保持原名。中文产品名为青编，英文产品名为 VerdBoard。\n技术栈版本以 package.json 和 pnpm-lock.yaml 为准；命令以根与应用/包 scripts 为准。不要使用旧图中的日期、固定测试数量或过去的通过记录推断当前提交已验收。\n文档链接\n原生文档之间通过稳定身份链接：verd://file/<encodeURIComponent(fileId)>，可追加 #<encodeURIComponent(headingSlug)>。同一文档可使用 #headingSlug；链接到架构总览的 ID 为 board-root。不要把文件名、目录相对路径或物理绝对路径放进原生文档间的 href。\n标题 slug 由 github-slugger 生成，同一文档按标题顺序计算；重复标题依次带 -1、-2 后缀。编辑标题后检查已有锚点。外部资料使用 HTTP/HTTPS。源码位置与夹具路径作为可复制的仓库相对路径文字呈现。\n数据样例契约\nAI 画布数据规范 保存完整字段表、约束和 11 个代码块样例，配套输入位于 tests/fixtures/ai-canvas/。测试直接读取原生规范 JSON，递归查找 codeBlock，逐字核对每个样例后，再运行真实格式校验、转换器、组装和导入路径测试。示例不依赖 Markdown fence 的隐藏 metadata。\n调整样例时同时更新正文代码块和夹具，保留合法 ID、端口、所有权和引用闭包。夹具保持原字节排版，由 .prettierignore 保护。导入样例中的 .md/.mmd 属于测试数据，不是另一份知识文档。\n更新与验收\n变更产品入口、文件模型或包职责时，同步修改系统架构、包索引、产品摘要、源码索引与相关架构图。\n变更命令或发布流程时，同步检查根 README、开发指南、安装指南和双语入口。\n保持代码块、列表、表格、链接、图片与关键说明完整。CommonMark/GFM 导入可作为一次性迁移手段；HTML 版式应改成原生结构，任务清单应明确显示状态。\n验证原生文件身份和结构、全部内部目标及锚点；运行相关单测与 E2E。历史验收保留原日期和上下文，新结果另注明日期，不覆盖历史事实。\n根 README、包 README 和开发规则只做入口或工程约定；长期产品正文写在原生文档中。\n最后更新：2026-10-16。\n图文预览使用稳定身份：文档 frameReference.attrs.targetFrameId 引用画布，画布 document-reference.data.targetDocumentId 引用独立文档。正文不复制进引用壳。四类画布都能放文档卡片，正文只读滚动；源文件统一维护。图文循环引用合法，预览仅避免在同一路径无限重复展开；普通文字链接不扩大独立复制与原生导出闭包。不要为图文预览维护图片或 Markdown 正文镜像。\n文档 Frame 与只读引用\n项目导览的三个入口使用 document-frame；八张专题图各有一张 document-reference 主文档卡，并通过既有 content.text 标注保存稳定章节链接。图文循环合法，不得为消除环路而删掉原文档图块。维护校验必须覆盖两种节点的目标、依赖闭包和导航链接。",
+    "align": "left"
+  }
+}

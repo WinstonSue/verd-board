@@ -52,7 +52,7 @@ export function Editor() {
 
 旧 BoardCanvas、ControlledBoard、Wrapper、元素控制器、事件桥接和样式入口已删除，不提供公开兼容层。领域 React 包注册 Frame 扩展，不另建画布。产品布局和外观由调用方控制，无需引入旧样式文件。
 
-详细模式与迁移状态见 [画布模式](../../../doc/packages/board/canvas-modes.md)，[React 包文档](../../../doc/packages/react/README.md) 和 [源码结构](./doc/STRUCTURE.md)。
+详细模式与迁移状态见 [画布模式](../../../workspace/文档/包/画布模式.verd-doc.json)，[React 包文档](../../../workspace/文档/包/React接入.verd-doc.json) 和 [源码结构](./doc/STRUCTURE.md)。
 
 ## 排列控制器
 

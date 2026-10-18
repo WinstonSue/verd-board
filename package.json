@@ -17,6 +17,8 @@
     "build:web": "turbo run build --filter=web",
     "build:desktop": "turbo run build --filter=desktop",
     "test": "turbo run test",
+    "workspace:check": "node scripts/workspace.mjs check && node --test scripts/workspace.test.mjs",
+    "workspace:refresh": "node scripts/workspace.mjs refresh",
     "test:e2e": "pnpm --filter web-e2e test:e2e",
     "test:e2e:prod": "pnpm --filter web-e2e exec playwright test --config playwright.prod.config.ts",
     "test:e2e:desktop": "playwright test --config tests/desktop-e2e/playwright.config.ts",

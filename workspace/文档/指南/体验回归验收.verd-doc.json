@@ -1,0 +1,3687 @@
+{
+  "format": "verd-document",
+  "version": 1,
+  "id": "project-doc:guides/体验回归验收",
+  "title": "体验回归验收",
+  "text": {
+    "schemaVersion": 1,
+    "id": "project-doc:guides/体验回归验收",
+    "kind": "block",
+    "content": {
+      "type": "doc",
+      "content": [
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 1
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "体验回归验收"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "以下是 2026-10-10 至 2026-10-14 迁移阶段的历史验收记录，保留当时日期、操作、限制和截图/测试上下文。表格中的“当前”均指对应记录当时；后续 Sidebar、工作区和独立文档模型以现行系统架构与源码为准。本文不代表 2026-10-16 工作区文档迁移已运行完整历史回归。"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "2026-10-12 本轮视口规则：平移、缩放与适配仅更新内存，不进入文档事务、历史或保存。重新打开整体适配；从内部 Frame 详情逐层返回时聚焦打开过的外壳。普通编辑和撤销保持内存视口。下面此前走查记录中的「保存/恢复视口」规则已由本轮规则取代，主题和内容的持久化、撤销继续保留。"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "本轮验证：全量 Web 生产 E2E 73 通过，最终构建的相机、宿主、体验与应用导航 30 项复验通过；真实 Electron 5 项通过。类型检查、全量单测、lint、Web/Desktop 构建及隔离 consumer 通过。156 个 Cell 场景中，60 次滚轮与 100 次平移合计约 1.86 秒，无 50 ms 以上长任务；操作和关闭均不改变磁盘内容。Rough 路径用例验证 60 次缩放复用同一绘制结果，选择及几何编辑才重新生成。"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "基准是提交 "
+            },
+            {
+              "type": "text",
+              "text": "8d6b923",
+              "marks": [
+                {
+                  "type": "code"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "text": " 的用户操作。当前 CellStore、FrameCanvas、事务和存储架构保持不变，不恢复旧公开组件或旧元素运行时。视觉分组、间距和面板样式可以微调。已保存文档和用户显式样式不批量重置。本轮不发布。"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "状态：2026-10-12 晚间在 "
+            },
+            {
+              "type": "text",
+              "text": "http://localhost:7200",
+              "marks": [
+                {
+                  "type": "code"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "text": " 上补完原先未关闭的 12 行。锁定对象可以和未锁定对象一起被 Shift 选中，组合后的删除、剪切、对齐和拖动都整笔拒绝。打开文件会替换画布上的锁定对象。残缺粘贴不再写入文档。"
+            },
+            {
+              "type": "text",
+              "text": "pnpm --filter web build",
+              "marks": [
+                {
+                  "type": "code"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "text": " 之后，"
+            },
+            {
+              "type": "text",
+              "text": "pnpm test:e2e:prod",
+              "marks": [
+                {
+                  "type": "code"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "text": " 一次跑完 71 通过、0 失败（2.2 分钟）。截图基线没有为了掩盖失败而更新。"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "2026-10-11 核对记录：Web "
+            },
+            {
+              "type": "text",
+              "text": "pnpm test:e2e",
+              "marks": [
+                {
+                  "type": "code"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "text": " 71 通过、0 失败。体验用例核对了加粗、颜色、链接、改字、撤销和刷新，1440×900、1280×900、768×844、390×844 下画布与编辑区同尺寸且工具不横向溢出，拖动时选中工具栏隐藏并在结束后恢复，折叠父级新增的保存与撤销，双侧概要撤销，Space、中键和右键拖动，以及富文本焦点时 Space 不平移。同一次运行还核对了打开文件后撤销内容、主题和视口并在刷新后保持，导入追加，以及无效文件不改文档。文本粘贴和图片拖放各对应一次撤销。笔记保存、折叠后刷新、概要括号拖动和删除收缩由产品 E2E 覆盖。"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "2026-10-12 核对记录：生产包 "
+            },
+            {
+              "type": "text",
+              "text": "pnpm test:e2e:prod",
+              "marks": [
+                {
+                  "type": "code"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "text": " 71 通过。形状旋转拖动手柄后保存约 90 度，撤销后宽度回到 160，重做后再旋转；加粗在刷新后仍显示，SVG 导出含 "
+            },
+            {
+              "type": "text",
+              "text": "<strong",
+              "marks": [
+                {
+                  "type": "code"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "text": "。流程 Frame 外壳在刷新后可点开，边和开始节点仍在。Desktop E2E 4 通过（关闭保存、损坏存储、磁盘失败重试、旧文件迁移）。严格 consumer 安装、类型检查、构建和浏览器导出通过。下午这次 CSS 修改之后，上述生产包和 Desktop 结果不再覆盖当前源码。"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "2026-10-12 界面走查：空历史时撤销、重做禁用。改主题和加粗的提交过程中，撤销和绘图工具一度全部禁用，提交结束后恢复。1440×900、1280×720 画布与编辑区同尺寸，工具无溢出、无重叠。768×1024 首次加载属性栏 "
+            },
+            {
+              "type": "text",
+              "text": "display: none",
+              "marks": [
+                {
+                  "type": "code"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "text": "，「属性」「更多」可见；打开底部面板后在 y=785、高 174 处把主题改成 dark，背景变为 "
+            },
+            {
+              "type": "text",
+              "text": "#141414",
+              "marks": [
+                {
+                  "type": "code"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "text": "，撤销后回到 default / "
+            },
+            {
+              "type": "text",
+              "text": "#f8fafc",
+              "marks": [
+                {
+                  "type": "code"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "text": "。390×844 画布同样铺满，收起的更多菜单不再挡到工具。新建脑图的布局值是 "
+            },
+            {
+              "type": "text",
+              "text": "right",
+              "marks": [
+                {
+                  "type": "code"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "text": "，根节点计算填充是 "
+            },
+            {
+              "type": "text",
+              "text": "rgb(245, 245, 245)",
+              "marks": [
+                {
+                  "type": "code"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "text": "，属性标题是「中心主题」。加粗、红色 "
+            },
+            {
+              "type": "text",
+              "text": "#ff0000",
+              "marks": [
+                {
+                  "type": "code"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "text": " 和 "
+            },
+            {
+              "type": "text",
+              "text": "https://example.com",
+              "marks": [
+                {
+                  "type": "code"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "text": " 在名称末尾加上 Z 后仍在，宽度从 180 增到 192；撤销去掉 Z 并回到 180；刷新后仍是「Central topic」、加粗、红色和该链接，撤销在刷新后禁用。白板视口放大到 110%（"
+            },
+            {
+              "type": "text",
+              "text": "scale(1.1) translate(-374 -126)",
+              "marks": [
+                {
+                  "type": "code"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "text": "）后刷新保持。进入脑图详情后视口变为 "
+            },
+            {
+              "type": "text",
+              "text": "scale(1) translate(516 420.75)",
+              "marks": [
+                {
+                  "type": "code"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "text": "，返回白板恢复进入前的视口。详情里点击手型后 V 回到选择、H 再回到手型。选中脑图容器后标题是「容器」，Markdown 预览、详情里的预览，以及下载的 "
+            },
+            {
+              "type": "text",
+              "text": "verd-frame.md",
+              "marks": [
+                {
+                  "type": "code"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "text": "（"
+            },
+            {
+              "type": "text",
+              "text": "text/markdown",
+              "marks": [
+                {
+                  "type": "code"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "text": "）都是 "
+            },
+            {
+              "type": "text",
+              "text": "# Central topic\\n",
+              "marks": [
+                {
+                  "type": "code"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "text": "。复制把同一字符串交给剪贴板，这个浏览器返回 "
+            },
+            {
+              "type": "text",
+              "text": "NotAllowedError",
+              "marks": [
+                {
+                  "type": "code"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "text": "，系统剪贴板没有写入。双指没有硬件触屏；在画布上派发两个指针、间距从 200 拉到 400 后，缩放从 110% 一次变为 220%。"
+            },
+            {
+              "type": "text",
+              "text": "pointercancel",
+              "marks": [
+                {
+                  "type": "code"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "text": " 清理只由 "
+            },
+            {
+              "type": "text",
+              "text": "frame-canvas.spec.tsx",
+              "marks": [
+                {
+                  "type": "code"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "text": " 的 two-pointer 用例覆盖，本轮浏览器没有再走。中英文教程全文与打开、导入、Markdown、选择 V、手型 H 的说明一致。菜单修复后 "
+            },
+            {
+              "type": "text",
+              "text": "experience-restore.spec.ts",
+              "marks": [
+                {
+                  "type": "code"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "text": " 1 通过，其中包含四个视口以及收起的更多菜单不可见。"
+            }
+          ]
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 2
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "清单"
+            }
+          ]
+        },
+        {
+          "type": "table",
+          "content": [
+            {
+              "type": "tableRow",
+              "content": [
+                {
+                  "type": "tableHeader",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "旧行为"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "tableHeader",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "当前差异"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "tableHeader",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "修复项"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "tableHeader",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "验收用例"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "tableHeader",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "状态"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "tableRow",
+              "content": [
+                {
+                  "type": "tableCell",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "名称、主题和边标签编辑保留未改动的加粗、颜色、链接和段落"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "tableCell",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "部分路径用 "
+                        },
+                        {
+                          "type": "text",
+                          "text": "createInlineText",
+                          "marks": [
+                            {
+                              "type": "code"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "text": " 重建已有文档"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "tableCell",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "共享 "
+                        },
+                        {
+                          "type": "text",
+                          "text": "FrameRichTextField",
+                          "marks": [
+                            {
+                              "type": "code"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "text": "；"
+                        },
+                        {
+                          "type": "text",
+                          "text": "reviseBoardText",
+                          "marks": [
+                            {
+                              "type": "code"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "text": " 只改动变化字符；拒绝提交时重挂编辑器"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "tableCell",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "加粗/颜色/链接 → 改文字 → 撤销 → 刷新，未编辑格式仍在；宿主拒绝后内容不变"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "tableCell",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "已关闭。2026-10-12 点按：加粗、"
+                        },
+                        {
+                          "type": "text",
+                          "text": "#ff0000",
+                          "marks": [
+                            {
+                              "type": "code"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "text": "、"
+                        },
+                        {
+                          "type": "text",
+                          "text": "https://example.com",
+                          "marks": [
+                            {
+                              "type": "code"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "text": " 后在名称末尾输入 Z，三者仍在，宽度 180→192；撤销去掉 Z 并回到 180；刷新后链接、加粗和红色仍在，刷新后撤销禁用。产品名称走 "
+                        },
+                        {
+                          "type": "text",
+                          "text": "onChange",
+                          "marks": [
+                            {
+                              "type": "code"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "text": "，不能由宿主拒绝。"
+                        },
+                        {
+                          "type": "text",
+                          "text": "?harness=mind&reject=1",
+                          "marks": [
+                            {
+                              "type": "code"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "text": " 上双击 North 打开编辑器，插入 Z 后提示 Denied，宿主 JSON 仍是 North，编辑器从 NorthZ 重挂回 North 且保持打开。回归："
+                        },
+                        {
+                          "type": "text",
+                          "text": "frame-text-editor.spec.tsx",
+                          "marks": [
+                            {
+                              "type": "code"
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "tableRow",
+              "content": [
+                {
+                  "type": "tableCell",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "撤销、重做随历史、只读和提交中状态变化"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "tableCell",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "按钮始终可点"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "tableCell",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "画布上报 "
+                        },
+                        {
+                          "type": "text",
+                          "text": "canUndo",
+                          "marks": [
+                            {
+                              "type": "code"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "text": "、"
+                        },
+                        {
+                          "type": "text",
+                          "text": "canRedo",
+                          "marks": [
+                            {
+                              "type": "code"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "text": "、"
+                        },
+                        {
+                          "type": "text",
+                          "text": "pending",
+                          "marks": [
+                            {
+                              "type": "code"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "text": "、"
+                        },
+                        {
+                          "type": "text",
+                          "text": "readonly",
+                          "marks": [
+                            {
+                              "type": "code"
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "tableCell",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "空历史禁用；提交中禁用；只读禁用；失败不改内容"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "tableCell",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "已关闭。空画布和刷新后撤销、重做禁用。主题和加粗提交过程中撤销与绘图工具全部禁用，结束后恢复；主题撤销后撤销禁用、重做可点。"
+                        },
+                        {
+                          "type": "text",
+                          "text": "?readonly=1",
+                          "marks": [
+                            {
+                              "type": "code"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "text": " 把 "
+                        },
+                        {
+                          "type": "text",
+                          "text": "readonly",
+                          "marks": [
+                            {
+                              "type": "code"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "text": " 传给画布：撤销、重做、绘图工具、打开和导入禁用；主题改成 dark 被拒绝，提示 Canvas is readonly，主题仍是 default，背景仍是 "
+                        },
+                        {
+                          "type": "text",
+                          "text": "#f8fafc",
+                          "marks": [
+                            {
+                              "type": "code"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "text": "。已有历史后再进入只读时撤销保持禁用，点击撤销不恢复旧标题。回归："
+                        },
+                        {
+                          "type": "text",
+                          "text": "shortcut-focus.spec.tsx",
+                          "marks": [
+                            {
+                              "type": "code"
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "tableRow",
+              "content": [
+                {
+                  "type": "tableCell",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "画布铺满编辑区，菜单、绘图、缩放和属性是覆盖层"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "tableCell",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "画布为工具栏预留左右上下空间"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "tableCell",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "画布 "
+                        },
+                        {
+                          "type": "text",
+                          "text": "inset: 0",
+                          "marks": [
+                            {
+                              "type": "code"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "text": "；工具和属性改为覆盖层；适配使用覆盖层安全区"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "tableCell",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "1440×900、1280×720、768×1024、390×844 下画布不被工具栏缩小，工具不截断、不互相遮挡"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "tableCell",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "已关闭。四个尺寸下画布矩形都等于编辑区。1440×900 与 1280×720 工具无溢出、无重叠，宽屏属性栏为侧栏。768×1024 与 390×844 选择、手型和属性都在视口内。收起的「更多」菜单原先因 "
+                        },
+                        {
+                          "type": "text",
+                          "text": "display: flex",
+                          "marks": [
+                            {
+                              "type": "code"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "text": " 盖住工具，现为 "
+                        },
+                        {
+                          "type": "text",
+                          "text": "display: none",
+                          "marks": [
+                            {
+                              "type": "code"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "text": "，点击检测不再落到菜单项上"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "tableRow",
+              "content": [
+                {
+                  "type": "tableCell",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "图标按钮、悬浮说明、快捷键、形状预览，以及直线、折线、曲线入口"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "tableCell",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "顶栏是一排文字按钮，缺少直线和曲线"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "tableCell",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "工具分组；直线/曲线入口；形状选择保留可访问名称"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "tableCell",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "选择对象后出现就近工具栏；拖动时隐藏，结束后恢复；多选显示能力交集"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "tableCell",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "已关闭。形状选择器仍是 65 项，"
+                        },
+                        {
+                          "type": "text",
+                          "text": "Shape",
+                          "marks": [
+                            {
+                              "type": "code"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "text": " 下拉写着 65 total options。锁定星形的删除和剪切禁用。另放一个未锁定矩形，Shift 点星形后两者描边都是 "
+                        },
+                        {
+                          "type": "text",
+                          "text": "#6366f1",
+                          "marks": [
+                            {
+                              "type": "code"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "text": "；复制可点，剪切、删除、编辑、分组和六个对齐都禁用。按 Delete 后两个形状都还在。链接不再吞掉指针："
+                        },
+                        {
+                          "type": "text",
+                          "text": "onPointerDown",
+                          "marks": [
+                            {
+                              "type": "code"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "text": " 只 "
+                        },
+                        {
+                          "type": "text",
+                          "text": "preventDefault",
+                          "marks": [
+                            {
+                              "type": "code"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "text": "，不再 "
+                        },
+                        {
+                          "type": "text",
+                          "text": "stopPropagation",
+                          "marks": [
+                            {
+                              "type": "code"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "text": "。多选里只要有锁定对象，"
+                        },
+                        {
+                          "type": "text",
+                          "text": "translateCellSelection",
+                          "marks": [
+                            {
+                              "type": "code"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "text": " 和 "
+                        },
+                        {
+                          "type": "text",
+                          "text": "alignCells",
+                          "marks": [
+                            {
+                              "type": "code"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "text": " 返回空操作，"
+                        },
+                        {
+                          "type": "text",
+                          "text": "cutSelection",
+                          "marks": [
+                            {
+                              "type": "code"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "text": " 走 "
+                        },
+                        {
+                          "type": "text",
+                          "text": "selectionAllows",
+                          "marks": [
+                            {
+                              "type": "code"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "text": "。拖动隐藏工具栏由当前源码的 "
+                        },
+                        {
+                          "type": "text",
+                          "text": "experience-restore.spec.ts",
+                          "marks": [
+                            {
+                              "type": "code"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "text": " 用真实 "
+                        },
+                        {
+                          "type": "text",
+                          "text": "pointermove",
+                          "marks": [
+                            {
+                              "type": "code"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "text": " 覆盖，该用例 2026-10-12 17:03 重新通过（10.7s）。回归："
+                        },
+                        {
+                          "type": "text",
+                          "text": "commands.spec.ts",
+                          "marks": [
+                            {
+                              "type": "code"
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "tableRow",
+              "content": [
+                {
+                  "type": "tableCell",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "桌面右侧属性；窄于 800px 时默认收起，按需打开底部属性"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "tableCell",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "窄屏仍占固定侧栏"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "tableCell",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "窄屏默认收起，属性按钮打开底部面板"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "tableCell",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "宽度切换后面板和工具不遮挡画布操作"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "tableCell",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "已关闭。768×1024 重新加载后属性栏 "
+                        },
+                        {
+                          "type": "text",
+                          "text": "display: none",
+                          "marks": [
+                            {
+                              "type": "code"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "text": "，「属性」未按下。打开后面板在底部（768 宽、y=785、高 174，视口高 1024），主题改为 dark 后背景是 "
+                        },
+                        {
+                          "type": "text",
+                          "text": "#141414",
+                          "marks": [
+                            {
+                              "type": "code"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "text": "，撤销回到 default / "
+                        },
+                        {
+                          "type": "text",
+                          "text": "#f8fafc",
+                          "marks": [
+                            {
+                              "type": "code"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "text": "。390×844 打开的面板同样贴底，画布仍铺满"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "tableRow",
+              "content": [
+                {
+                  "type": "tableCell",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "每次进入自动适配，详情返回聚焦来源 Frame"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "tableCell",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "视口曾随文档保存并恢复"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "tableCell",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "视口仅内存；导航不进入文档事务、历史或保存"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "tableCell",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "刷新/重启整体适配；详情逐层返回聚焦 Frame；普通编辑保持视口"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "tableCell",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "已关闭。相机单测和 camera-navigation.spec.ts 验证零文档/历史/存储更新、两层详情返回定位及窄屏首次适配；Electron 156 个 Cell 场景验证导航和关闭不写文件，重启自动适配"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "tableRow",
+              "content": [
+                {
+                  "type": "tableCell",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "脑图端口按有效布局方向；白板箭头仍走几何路由"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "tableCell",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "脑图分支曾按几何朝向选端口"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "tableCell",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "mindBranchPorts",
+                          "marks": [
+                            {
+                              "type": "code"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "text": " 按布局、缩进和下划线选择端口"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "tableCell",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "九种布局连接符合旧规则；向右布局的 14 个一级主题使用右出、左入"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "tableCell",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "已关闭。九种布局和右布局下划线仍按上次屏幕记录。这次在右布局上把一级主题加到 14 个，14 条连线的 "
+                        },
+                        {
+                          "type": "text",
+                          "text": "data-mind-source-side",
+                          "marks": [
+                            {
+                              "type": "code"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "text": " / "
+                        },
+                        {
+                          "type": "text",
+                          "text": "data-mind-target-side",
+                          "marks": [
+                            {
+                              "type": "code"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "text": " 全是 "
+                        },
+                        {
+                          "type": "text",
+                          "text": "right",
+                          "marks": [
+                            {
+                              "type": "code"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "text": " → "
+                        },
+                        {
+                          "type": "text",
+                          "text": "left",
+                          "marks": [
+                            {
+                              "type": "code"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "text": "，14 个子主题都在根主题右侧且在视口内。改成 "
+                        },
+                        {
+                          "type": "text",
+                          "text": "standard",
+                          "marks": [
+                            {
+                              "type": "code"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "text": " 后变成左侧 7 条 "
+                        },
+                        {
+                          "type": "text",
+                          "text": "left",
+                          "marks": [
+                            {
+                              "type": "code"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "text": " → "
+                        },
+                        {
+                          "type": "text",
+                          "text": "right",
+                          "marks": [
+                            {
+                              "type": "code"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "text": "、右侧 7 条 "
+                        },
+                        {
+                          "type": "text",
+                          "text": "right",
+                          "marks": [
+                            {
+                              "type": "code"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "text": " → "
+                        },
+                        {
+                          "type": "text",
+                          "text": "left",
+                          "marks": [
+                            {
+                              "type": "code"
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "tableRow",
+              "content": [
+                {
+                  "type": "tableCell",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "新建和缺省布局为 "
+                        },
+                        {
+                          "type": "text",
+                          "text": "right",
+                          "marks": [
+                            {
+                              "type": "code"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "text": "；已保存布局保留"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "tableCell",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "缺省曾落到双侧"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "tableCell",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "缺省 "
+                        },
+                        {
+                          "type": "text",
+                          "text": "right",
+                          "marks": [
+                            {
+                              "type": "code"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "text": "；显式 "
+                        },
+                        {
+                          "type": "text",
+                          "text": "standard",
+                          "marks": [
+                            {
+                              "type": "code"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "text": " 仍双侧"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "tableCell",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "新根向右；旧 "
+                        },
+                        {
+                          "type": "text",
+                          "text": "standard",
+                          "marks": [
+                            {
+                              "type": "code"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "text": " 文档仍跨两侧"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "tableCell",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "已关闭。新建脑图的布局值仍是 "
+                        },
+                        {
+                          "type": "text",
+                          "text": "right",
+                          "marks": [
+                            {
+                              "type": "code"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "text": "，14 个一级主题都在右侧。仓库里没有现成的 "
+                        },
+                        {
+                          "type": "text",
+                          "text": "layout: standard",
+                          "marks": [
+                            {
+                              "type": "code"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "text": " 文件；在界面把布局改成 "
+                        },
+                        {
+                          "type": "text",
+                          "text": "standard",
+                          "marks": [
+                            {
+                              "type": "code"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "text": " 后导出 "
+                        },
+                        {
+                          "type": "text",
+                          "text": "verd-frame.json",
+                          "marks": [
+                            {
+                              "type": "code"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "text": "（根是 "
+                        },
+                        {
+                          "type": "text",
+                          "text": "board-root",
+                          "marks": [
+                            {
+                              "type": "code"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "text": "，中心主题 "
+                        },
+                        {
+                          "type": "text",
+                          "text": "data.layout",
+                          "marks": [
+                            {
+                              "type": "code"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "text": " 为 "
+                        },
+                        {
+                          "type": "text",
+                          "text": "standard",
+                          "marks": [
+                            {
+                              "type": "code"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "text": "），再改回 "
+                        },
+                        {
+                          "type": "text",
+                          "text": "right",
+                          "marks": [
+                            {
+                              "type": "code"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "text": "，用打开替换这份文件。打开后布局是 "
+                        },
+                        {
+                          "type": "text",
+                          "text": "standard",
+                          "marks": [
+                            {
+                              "type": "code"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "text": "，左右各 7。刷新后仍是 "
+                        },
+                        {
+                          "type": "text",
+                          "text": "standard",
+                          "marks": [
+                            {
+                              "type": "code"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "text": "，左右各 7，端口仍是 7 条 "
+                        },
+                        {
+                          "type": "text",
+                          "text": "left",
+                          "marks": [
+                            {
+                              "type": "code"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "text": " → "
+                        },
+                        {
+                          "type": "text",
+                          "text": "right",
+                          "marks": [
+                            {
+                              "type": "code"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "text": " 和 7 条 "
+                        },
+                        {
+                          "type": "text",
+                          "text": "right",
+                          "marks": [
+                            {
+                              "type": "code"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "text": " → "
+                        },
+                        {
+                          "type": "text",
+                          "text": "left",
+                          "marks": [
+                            {
+                              "type": "code"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "text": "。打开原先会因锁定星形抛出 "
+                        },
+                        {
+                          "type": "text",
+                          "text": "Cannot delete locked content",
+                          "marks": [
+                            {
+                              "type": "code"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "text": "，现由 "
+                        },
+                        {
+                          "type": "text",
+                          "text": "deleteCells(..., { ignoreLock: true })",
+                          "marks": [
+                            {
+                              "type": "code"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "text": " 整帧替换。回归："
+                        },
+                        {
+                          "type": "text",
+                          "text": "frame-open.spec.ts",
+                          "marks": [
+                            {
+                              "type": "code"
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "tableRow",
+              "content": [
+                {
+                  "type": "tableCell",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "主题宽高按文字、字号、图片、表情和笔记度量；手动宽度优先"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "tableCell",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "度量忽略部分内容"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "tableCell",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "mindCellMetrics",
+                          "marks": [
+                            {
+                              "type": "code"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "text": " 计入这些区域"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "tableCell",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "长富文本、图片、表情、笔记和手动宽度得到预期尺寸"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "tableCell",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "已关闭。名称末尾加 Z 后宽度 180→192、撤销回到 180 仍保持。这次选中一个主题：字号设为 "
+                        },
+                        {
+                          "type": "text",
+                          "text": "32px",
+                          "marks": [
+                            {
+                              "type": "code"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "text": "，表情 "
+                        },
+                        {
+                          "type": "text",
+                          "text": "🚀",
+                          "marks": [
+                            {
+                              "type": "code"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "text": "，上传 1×1 PNG，笔记区出现，宽度设为 80。节点屏幕盒约 79×150。图片、表情、笔记和文字的盒子都落在节点内；文字节点 "
+                        },
+                        {
+                          "type": "text",
+                          "text": "scrollWidth",
+                          "marks": [
+                            {
+                              "type": "code"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "text": " 与 "
+                        },
+                        {
+                          "type": "text",
+                          "text": "clientWidth",
+                          "marks": [
+                            {
+                              "type": "code"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "text": " 都是 64，没有溢出"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "tableRow",
+              "content": [
+                {
+                  "type": "tableCell",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "节点旁可加子主题、折叠、展开，并显示子孙数量；Tab/Enter 后进入编辑；折叠父级加子节点时同一事务展开"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "tableCell",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "控制层缺失，折叠新增不展开"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "tableCell",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "导出排除的控制层；折叠父级与新增在同一事务"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "tableCell",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "折叠新增可撤销并恢复折叠；刷新后结构仍在"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "tableCell",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "已关闭。Tab 加子主题、Enter 加同级仍按上次记录。这次给一个一级主题先加一个子主题再折叠：折叠标记显示 "
+                        },
+                        {
+                          "type": "text",
+                          "text": "1",
+                          "marks": [
+                            {
+                              "type": "code"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "text": "，屏幕上的主题数回到 14。再点添加后标记消失，屏幕上变成 16，父级已展开。一次撤销后标记回到 "
+                        },
+                        {
+                          "type": "text",
+                          "text": "1",
+                          "marks": [
+                            {
+                              "type": "code"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "text": "，屏幕回到 14。刷新后该主题 "
+                        },
+                        {
+                          "type": "text",
+                          "text": "data.collapsed",
+                          "marks": [
+                            {
+                              "type": "code"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "text": " 仍为真，存储里有 15 个 "
+                        },
+                        {
+                          "type": "text",
+                          "text": "mind-child",
+                          "marks": [
+                            {
+                              "type": "code"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "text": "（14 个可见加 1 个被折叠的子主题），布局仍是 "
+                        },
+                        {
+                          "type": "text",
+                          "text": "standard",
+                          "marks": [
+                            {
+                              "type": "code"
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "tableRow",
+              "content": [
+                {
+                  "type": "tableCell",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "显式样式优先，其次旧继承和主题默认；屏幕与导出共用"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "tableCell",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "根节点在缺省填充时可能白字白底；根分支形状不作用到子节点"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "tableCell",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "mindPresentation",
+                          "marks": [
+                            {
+                              "type": "code"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "text": " 与祖先分支形状解析，不把默认值写回单元格"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "tableCell",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "旧主题迁移后根节点可读；改根分支形状后子分支跟随；撤销恢复"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "tableCell",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "已关闭。新根填充 "
+                        },
+                        {
+                          "type": "text",
+                          "text": "rgb(245, 245, 245)",
+                          "marks": [
+                            {
+                              "type": "code"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "text": "、显式红色 "
+                        },
+                        {
+                          "type": "text",
+                          "text": "rgb(255, 0, 0)",
+                          "marks": [
+                            {
+                              "type": "code"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "text": " 仍按上次记录。这次把根分支形状改成 "
+                        },
+                        {
+                          "type": "text",
+                          "text": "polyline",
+                          "marks": [
+                            {
+                              "type": "code"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "text": "，14 条连线的 "
+                        },
+                        {
+                          "type": "text",
+                          "text": "data-mind-branch-shape",
+                          "marks": [
+                            {
+                              "type": "code"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "text": " 都是 "
+                        },
+                        {
+                          "type": "text",
+                          "text": "polyline",
+                          "marks": [
+                            {
+                              "type": "code"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "text": "。再把一个子主题改成 "
+                        },
+                        {
+                          "type": "text",
+                          "text": "bight",
+                          "marks": [
+                            {
+                              "type": "code"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "text": "，屏幕变成 13 条 "
+                        },
+                        {
+                          "type": "text",
+                          "text": "polyline",
+                          "marks": [
+                            {
+                              "type": "code"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "text": " 和 1 条 "
+                        },
+                        {
+                          "type": "text",
+                          "text": "bight",
+                          "marks": [
+                            {
+                              "type": "code"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "text": "。概要括号的屏幕与 SVG 导出由 "
+                        },
+                        {
+                          "type": "text",
+                          "text": "cell-product.spec.ts",
+                          "marks": [
+                            {
+                              "type": "code"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "text": " 的 “summary brackets adjust sibling ids…” 核对，该用例会随这次生产包全量 E2E 重跑"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "tableRow",
+              "content": [
+                {
+                  "type": "tableCell",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "图片可放大；笔记区直接编辑；标准双侧跨两侧概要按侧拆分"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "tableCell",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "媒体和跨侧概要不完整"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "tableCell",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "图片对话框、笔记编辑器、按侧创建概要"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "tableCell",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "放大、笔记、概要括号、删除收缩和撤销一致，刷新可恢复"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "tableCell",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "已关闭。图片放大：点主题图片后出现 "
+                        },
+                        {
+                          "type": "text",
+                          "text": "aria-label=\"Mind image\"",
+                          "marks": [
+                            {
+                              "type": "code"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "text": " 的对话框，图片地址以 "
+                        },
+                        {
+                          "type": "text",
+                          "text": "data:image/png;base64,iVBORw0K",
+                          "marks": [
+                            {
+                              "type": "code"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "text": " 开头，点对话框后关闭。笔记写入 "
+                        },
+                        {
+                          "type": "text",
+                          "text": "Kept note",
+                          "marks": [
+                            {
+                              "type": "code"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "text": "，刷新后无障碍树里仍能读到这段文字。概要括号拖动、删除收缩和撤销由当前源码的 "
+                        },
+                        {
+                          "type": "text",
+                          "text": "cell-product.spec.ts",
+                          "marks": [
+                            {
+                              "type": "code"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "text": " 覆盖："
+                        },
+                        {
+                          "type": "text",
+                          "text": "summary brackets adjust sibling ids through one transaction and persist in embedded and detail views",
+                          "marks": [
+                            {
+                              "type": "code"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "text": " 拖动手柄、撤销、重做、刷新并核对 SVG 含 "
+                        },
+                        {
+                          "type": "text",
+                          "text": "data-mind-summary-bracket",
+                          "marks": [
+                            {
+                              "type": "code"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "text": "；"
+                        },
+                        {
+                          "type": "text",
+                          "text": "deleting covered topics shrinks the summary and removing its last topic is fully undoable",
+                          "marks": [
+                            {
+                              "type": "code"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "text": " 连续删除后范围从 "
+                        },
+                        {
+                          "type": "text",
+                          "text": "[a,c]",
+                          "marks": [
+                            {
+                              "type": "code"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "text": " 收到 "
+                        },
+                        {
+                          "type": "text",
+                          "text": "[b,c]",
+                          "marks": [
+                            {
+                              "type": "code"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "text": " 再收到 "
+                        },
+                        {
+                          "type": "text",
+                          "text": "[c,c]",
+                          "marks": [
+                            {
+                              "type": "code"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "text": "，三次撤销回到三个主题和原范围。这两则随生产包全量 E2E 重跑"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "tableRow",
+              "content": [
+                {
+                  "type": "tableCell",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "Space 临时手型、中键平移、右键超过阈值平移否则出菜单"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "tableCell",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "Space 曾触发折叠"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "tableCell",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "画布手势；折叠仍用快捷键和折叠按钮"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "tableCell",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "输入框、富文本和弹窗中不触发画布快捷键"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "tableCell",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "已关闭。Space、中键、右键平移，以及属性输入框聚焦时 Space 不平移，由当前源码的 "
+                        },
+                        {
+                          "type": "text",
+                          "text": "experience-restore.spec.ts",
+                          "marks": [
+                            {
+                              "type": "code"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "text": " 覆盖，该用例已重新通过。这次表情输入框聚焦时按 Space，视口保持 "
+                        },
+                        {
+                          "type": "text",
+                          "text": "scale(1) translate(-191 -68.25)",
+                          "marks": [
+                            {
+                              "type": "code"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "text": "。图片放大对话框打开时再按 Space，对话框仍在，视口不变"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "tableRow",
+              "content": [
+                {
+                  "type": "tableCell",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "白板和领域详情都有选择与手型"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "tableCell",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "领域详情强制选择并挡住快捷键"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "tableCell",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "领域场景保留 V/H"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "tableCell",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "流程、架构、脑图详情可切换手型"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "tableCell",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "已关闭。脑图详情：进入前视口 "
+                        },
+                        {
+                          "type": "text",
+                          "text": "scale(1) translate(-191 -68.25)",
+                          "marks": [
+                            {
+                              "type": "code"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "text": "，详情里是 "
+                        },
+                        {
+                          "type": "text",
+                          "text": "scale(1) translate(516 420.75)",
+                          "marks": [
+                            {
+                              "type": "code"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "text": "，有选择、手型和「返回白板」；点手型后 V 回到选择、H 回到手型，返回后视口回到 "
+                        },
+                        {
+                          "type": "text",
+                          "text": "scale(1) translate(-191 -68.25)",
+                          "marks": [
+                            {
+                              "type": "code"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "text": "。流程详情有选择、手型、「返回白板」和「添加流程图」，视口变为 "
+                        },
+                        {
+                          "type": "text",
+                          "text": "scale(1) translate(586 389.25)",
+                          "marks": [
+                            {
+                              "type": "code"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "text": "，H/V 可切换，返回后视口复原。架构详情同样有选择、手型和「返回白板」，H 切到手型、V 切回选择，详情视口 "
+                        },
+                        {
+                          "type": "text",
+                          "text": "scale(1) translate(546 437.25)",
+                          "marks": [
+                            {
+                              "type": "code"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "text": "，返回后仍是 "
+                        },
+                        {
+                          "type": "text",
+                          "text": "scale(1) translate(-191 -68.25)",
+                          "marks": [
+                            {
+                              "type": "code"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "text": "。选中流程或架构容器时标题是「对象」"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "tableRow",
+              "content": [
+                {
+                  "type": "tableCell",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "双指缩放和平移保持手势中心；取消或丢指针后清理"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "tableCell",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "手势状态可能残留"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "tableCell",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "多指状态；pointercancel 清理"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "tableCell",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "手势结束后不误绘图、不误移动节点"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "tableCell",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "已关闭。浏览器没有硬件触屏。在当前画布上用两个指针把间距从 200 拉到 400，缩放从 110% 一次变成 220%，没有新增节点。"
+                        },
+                        {
+                          "type": "text",
+                          "text": "pointercancel",
+                          "marks": [
+                            {
+                              "type": "code"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "text": " 后清理并仍接受随后的单指，由 "
+                        },
+                        {
+                          "type": "text",
+                          "text": "packages/react/board/src/frame-canvas.spec.tsx",
+                          "marks": [
+                            {
+                              "type": "code"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "text": " 的 “commits a two-pointer zoom once and still accepts a later single pointer” 覆盖；本轮没有改这份画布手势代码，也没有在浏览器里再派发 "
+                        },
+                        {
+                          "type": "text",
+                          "text": "pointercancel",
+                          "marks": [
+                            {
+                              "type": "code"
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "tableRow",
+              "content": [
+                {
+                  "type": "tableCell",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "粘贴优先内部格式，其次图片，最后文字；拖放使用落点；上传和粘贴图片使用视口中心；命中主题则附加"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "tableCell",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "粘贴和拖放不完整"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "tableCell",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "统一插入后走现有事务"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "tableCell",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "嵌套 Frame 坐标正确；一次插入或拖放对应一次撤销；失败不留部分内容"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "tableCell",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "已关闭。文本粘贴和图片拖放各对应一次撤销，由重新通过的 "
+                        },
+                        {
+                          "type": "text",
+                          "text": "experience-restore.spec.ts",
+                          "marks": [
+                            {
+                              "type": "code"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "text": " 覆盖。嵌套粘贴：复制含开始节点的流程框，外壳从 "
+                        },
+                        {
+                          "type": "text",
+                          "text": "(311, 227)",
+                          "marks": [
+                            {
+                              "type": "code"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "text": " 贴到 "
+                        },
+                        {
+                          "type": "text",
+                          "text": "(331, 247)",
+                          "marks": [
+                            {
+                              "type": "code"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "text": "（偏移 20, 20），两份开始节点的盒子都保持 "
+                        },
+                        {
+                          "type": "text",
+                          "text": "(35, 75, 130×50)",
+                          "marks": [
+                            {
+                              "type": "code"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "text": "。残缺粘贴 "
+                        },
+                        {
+                          "type": "text",
+                          "text": "{id:'missing'}",
+                          "marks": [
+                            {
+                              "type": "code"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "text": " 原先会写入一个没有 kind 的单元格并让画布空白；现由 "
+                        },
+                        {
+                          "type": "text",
+                          "text": "planCellPaste",
+                          "marks": [
+                            {
+                              "type": "code"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "text": " 抛出 "
+                        },
+                        {
+                          "type": "text",
+                          "text": "Clipboard does not contain Verd cells",
+                          "marks": [
+                            {
+                              "type": "code"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "text": "，单元格 id 列表和撤销禁用状态都不变。回归："
+                        },
+                        {
+                          "type": "text",
+                          "text": "group-nesting.spec.ts",
+                          "marks": [
+                            {
+                              "type": "code"
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "tableRow",
+              "content": [
+                {
+                  "type": "tableCell",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "打开文件替换当前 Frame 并恢复主题，视口自动适配；导入追加，跨场景嵌入 Frame"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "tableCell",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "打开与导入混为追加"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "tableCell",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "openFrameOperations",
+                          "marks": [
+                            {
+                              "type": "code"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "text": " 单次事务替换内容和主题，成功后在内存适配；导入保持追加"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "tableCell",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "旧文件打开、新文件往返、无效文件保留当前文档、撤销恢复内容和主题，保持当前内存视口"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "tableCell",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "已关闭。打开替换主题并自动适配、撤销、刷新、导入追加、无效文件不改文档，由重新通过的 "
+                        },
+                        {
+                          "type": "text",
+                          "text": "experience-restore.spec.ts",
+                          "marks": [
+                            {
+                              "type": "code"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "text": " 覆盖。新文件往返在浏览器里走完：导出显式 "
+                        },
+                        {
+                          "type": "text",
+                          "text": "standard",
+                          "marks": [
+                            {
+                              "type": "code"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "text": " 的 "
+                        },
+                        {
+                          "type": "text",
+                          "text": "verd-frame.json",
+                          "marks": [
+                            {
+                              "type": "code"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "text": "，改回 "
+                        },
+                        {
+                          "type": "text",
+                          "text": "right",
+                          "marks": [
+                            {
+                              "type": "code"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "text": " 后打开该文件，布局回到 "
+                        },
+                        {
+                          "type": "text",
+                          "text": "standard",
+                          "marks": [
+                            {
+                              "type": "code"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "text": " 且左右各 7，刷新后保持。打开会替换锁定对象，见 "
+                        },
+                        {
+                          "type": "text",
+                          "text": "frame-open.spec.ts",
+                          "marks": [
+                            {
+                              "type": "code"
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "tableRow",
+              "content": [
+                {
+                  "type": "tableCell",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "白板选中脑图可导出 Markdown，并预览、复制、下载"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "tableCell",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "仅脑图场景显示导出"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "tableCell",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "选中脑图容器时显示 Markdown"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "tableCell",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "预览、复制、下载内容与当前脑图一致"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "tableCell",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "已关闭。选中脑图容器后标题是「容器」并出现 Markdown。白板预览、脑图详情预览，以及下载的 "
+                        },
+                        {
+                          "type": "text",
+                          "text": "verd-frame.md",
+                          "marks": [
+                            {
+                              "type": "code"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "text": "（"
+                        },
+                        {
+                          "type": "text",
+                          "text": "text/markdown",
+                          "marks": [
+                            {
+                              "type": "code"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "text": "）都是 "
+                        },
+                        {
+                          "type": "text",
+                          "text": "# Central topic\\n",
+                          "marks": [
+                            {
+                              "type": "code"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "text": "。复制把同一字符串交给 "
+                        },
+                        {
+                          "type": "text",
+                          "text": "clipboard.writeText",
+                          "marks": [
+                            {
+                              "type": "code"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "text": "；这个浏览器返回 "
+                        },
+                        {
+                          "type": "text",
+                          "text": "NotAllowedError",
+                          "marks": [
+                            {
+                              "type": "code"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "text": "，系统剪贴板没有落下内容"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "tableRow",
+              "content": [
+                {
+                  "type": "tableCell",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "界面不暴露内部 kind；教程、帮助、菜单和快捷键与操作一致"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "tableCell",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "属性标题曾显示 kind"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "tableCell",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "中英文对象名称"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "tableCell",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "界面不出现 "
+                        },
+                        {
+                          "type": "text",
+                          "text": "mind-root",
+                          "marks": [
+                            {
+                              "type": "code"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "text": " 等内部名称"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "tableCell",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "已关闭。中文教程说明打开替换、导入追加、选中脑图后可预览复制下载 Markdown；英文教程对应 Open / Import / Markdown。属性标题是「画布」「中心主题」「主题」「形状」「容器」。选中星形后图层按钮是「置于顶层」「上移一层」「下移一层」「置于底层」，填充和描边是「无填充」「无描边」。正文里没有 Bring to front、No fill、No stroke、Frame aspect ratio 或 "
+                        },
+                        {
+                          "type": "text",
+                          "text": "mind-root",
+                          "marks": [
+                            {
+                              "type": "code"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "text": "。比例控件的中文文案是「比例」；导出按钮的中文文案是「导出为 Markdown」。当前白板没有嵌套容器，比例下拉和 Markdown 按钮这次没有出现在屏幕上"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "tableRow",
+              "content": [
+                {
+                  "type": "tableCell",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "Web 与 Desktop 样式、返回、保存失败重试和关闭保存可用"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "tableCell",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "尚未按本轮界面重新验收"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "tableCell",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "两端走查"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "tableCell",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "样式加载、详情返回、保存失败重试、关闭保存"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "tableCell",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "已关闭。浏览器里流程和架构详情都能返回白板，视口回到进入前的 "
+                        },
+                        {
+                          "type": "text",
+                          "text": "scale(1) translate(-191 -68.25)",
+                          "marks": [
+                            {
+                              "type": "code"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "text": "。生产预览 "
+                        },
+                        {
+                          "type": "text",
+                          "text": "http://127.0.0.1:4173/",
+                          "marks": [
+                            {
+                              "type": "code"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "text": " 只加载这次构建的 "
+                        },
+                        {
+                          "type": "text",
+                          "text": "apps/web/dist/assets/index-BF7uz5sp.css",
+                          "marks": [
+                            {
+                              "type": "code"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "text": "，没有 Vite 开发脚本；工具栏是绝对定位的白色横条，画布背景是 "
+                        },
+                        {
+                          "type": "text",
+                          "text": "rgb(248, 250, 252)",
+                          "marks": [
+                            {
+                              "type": "code"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "text": "，中文工具和「跳过」教程都在。Desktop E2E 4 通过仍对应这次源码里的关闭保存、损坏存储、磁盘失败重试和重启恢复；这次没有改那几条路径。同一份生产构建上 "
+                        },
+                        {
+                          "type": "text",
+                          "text": "pnpm test:e2e:prod",
+                          "marks": [
+                            {
+                              "type": "code"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "text": " 一次 71 通过、0 失败。"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 2
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "通过条件"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "问题清单全部关闭，并重新通过类型检查、单测、lint、公开包与两端构建、完整产品 E2E 和严格 consumer。测试数量增加不能单独作为通过依据。"
+            }
+          ]
+        }
+      ]
+    },
+    "plainText": "体验回归验收\n以下是 2026-10-10 至 2026-10-14 迁移阶段的历史验收记录，保留当时日期、操作、限制和截图/测试上下文。表格中的“当前”均指对应记录当时；后续 Sidebar、工作区和独立文档模型以现行系统架构与源码为准。本文不代表 2026-10-16 工作区文档迁移已运行完整历史回归。\n2026-10-12 本轮视口规则：平移、缩放与适配仅更新内存，不进入文档事务、历史或保存。重新打开整体适配；从内部 Frame 详情逐层返回时聚焦打开过的外壳。普通编辑和撤销保持内存视口。下面此前走查记录中的「保存/恢复视口」规则已由本轮规则取代，主题和内容的持久化、撤销继续保留。\n本轮验证：全量 Web 生产 E2E 73 通过，最终构建的相机、宿主、体验与应用导航 30 项复验通过；真实 Electron 5 项通过。类型检查、全量单测、lint、Web/Desktop 构建及隔离 consumer 通过。156 个 Cell 场景中，60 次滚轮与 100 次平移合计约 1.86 秒，无 50 ms 以上长任务；操作和关闭均不改变磁盘内容。Rough 路径用例验证 60 次缩放复用同一绘制结果，选择及几何编辑才重新生成。\n基准是提交 8d6b923 的用户操作。当前 CellStore、FrameCanvas、事务和存储架构保持不变，不恢复旧公开组件或旧元素运行时。视觉分组、间距和面板样式可以微调。已保存文档和用户显式样式不批量重置。本轮不发布。\n状态：2026-10-12 晚间在 http://localhost:7200 上补完原先未关闭的 12 行。锁定对象可以和未锁定对象一起被 Shift 选中，组合后的删除、剪切、对齐和拖动都整笔拒绝。打开文件会替换画布上的锁定对象。残缺粘贴不再写入文档。pnpm --filter web build 之后，pnpm test:e2e:prod 一次跑完 71 通过、0 失败（2.2 分钟）。截图基线没有为了掩盖失败而更新。\n2026-10-11 核对记录：Web pnpm test:e2e 71 通过、0 失败。体验用例核对了加粗、颜色、链接、改字、撤销和刷新，1440×900、1280×900、768×844、390×844 下画布与编辑区同尺寸且工具不横向溢出，拖动时选中工具栏隐藏并在结束后恢复，折叠父级新增的保存与撤销，双侧概要撤销，Space、中键和右键拖动，以及富文本焦点时 Space 不平移。同一次运行还核对了打开文件后撤销内容、主题和视口并在刷新后保持，导入追加，以及无效文件不改文档。文本粘贴和图片拖放各对应一次撤销。笔记保存、折叠后刷新、概要括号拖动和删除收缩由产品 E2E 覆盖。\n2026-10-12 核对记录：生产包 pnpm test:e2e:prod 71 通过。形状旋转拖动手柄后保存约 90 度，撤销后宽度回到 160，重做后再旋转；加粗在刷新后仍显示，SVG 导出含 <strong。流程 Frame 外壳在刷新后可点开，边和开始节点仍在。Desktop E2E 4 通过（关闭保存、损坏存储、磁盘失败重试、旧文件迁移）。严格 consumer 安装、类型检查、构建和浏览器导出通过。下午这次 CSS 修改之后，上述生产包和 Desktop 结果不再覆盖当前源码。\n2026-10-12 界面走查：空历史时撤销、重做禁用。改主题和加粗的提交过程中，撤销和绘图工具一度全部禁用，提交结束后恢复。1440×900、1280×720 画布与编辑区同尺寸，工具无溢出、无重叠。768×1024 首次加载属性栏 display: none，「属性」「更多」可见；打开底部面板后在 y=785、高 174 处把主题改成 dark，背景变为 #141414，撤销后回到 default / #f8fafc。390×844 画布同样铺满，收起的更多菜单不再挡到工具。新建脑图的布局值是 right，根节点计算填充是 rgb(245, 245, 245)，属性标题是「中心主题」。加粗、红色 #ff0000 和 https://example.com 在名称末尾加上 Z 后仍在，宽度从 180 增到 192；撤销去掉 Z 并回到 180；刷新后仍是「Central topic」、加粗、红色和该链接，撤销在刷新后禁用。白板视口放大到 110%（scale(1.1) translate(-374 -126)）后刷新保持。进入脑图详情后视口变为 scale(1) translate(516 420.75)，返回白板恢复进入前的视口。详情里点击手型后 V 回到选择、H 再回到手型。选中脑图容器后标题是「容器」，Markdown 预览、详情里的预览，以及下载的 verd-frame.md（text/markdown）都是 # Central topic\\n。复制把同一字符串交给剪贴板，这个浏览器返回 NotAllowedError，系统剪贴板没有写入。双指没有硬件触屏；在画布上派发两个指针、间距从 200 拉到 400 后，缩放从 110% 一次变为 220%。pointercancel 清理只由 frame-canvas.spec.tsx 的 two-pointer 用例覆盖，本轮浏览器没有再走。中英文教程全文与打开、导入、Markdown、选择 V、手型 H 的说明一致。菜单修复后 experience-restore.spec.ts 1 通过，其中包含四个视口以及收起的更多菜单不可见。\n清单\n旧行为\n当前差异\n修复项\n验收用例\n状态\n名称、主题和边标签编辑保留未改动的加粗、颜色、链接和段落\n部分路径用 createInlineText 重建已有文档\n共享 FrameRichTextField；reviseBoardText 只改动变化字符；拒绝提交时重挂编辑器\n加粗/颜色/链接 → 改文字 → 撤销 → 刷新，未编辑格式仍在；宿主拒绝后内容不变\n已关闭。2026-10-12 点按：加粗、#ff0000、https://example.com 后在名称末尾输入 Z，三者仍在，宽度 180→192；撤销去掉 Z 并回到 180；刷新后链接、加粗和红色仍在，刷新后撤销禁用。产品名称走 onChange，不能由宿主拒绝。?harness=mind&reject=1 上双击 North 打开编辑器，插入 Z 后提示 Denied，宿主 JSON 仍是 North，编辑器从 NorthZ 重挂回 North 且保持打开。回归：frame-text-editor.spec.tsx\n撤销、重做随历史、只读和提交中状态变化\n按钮始终可点\n画布上报 canUndo、canRedo、pending、readonly\n空历史禁用；提交中禁用；只读禁用；失败不改内容\n已关闭。空画布和刷新后撤销、重做禁用。主题和加粗提交过程中撤销与绘图工具全部禁用，结束后恢复；主题撤销后撤销禁用、重做可点。?readonly=1 把 readonly 传给画布：撤销、重做、绘图工具、打开和导入禁用；主题改成 dark 被拒绝，提示 Canvas is readonly，主题仍是 default，背景仍是 #f8fafc。已有历史后再进入只读时撤销保持禁用，点击撤销不恢复旧标题。回归：shortcut-focus.spec.tsx\n画布铺满编辑区，菜单、绘图、缩放和属性是覆盖层\n画布为工具栏预留左右上下空间\n画布 inset: 0；工具和属性改为覆盖层；适配使用覆盖层安全区\n1440×900、1280×720、768×1024、390×844 下画布不被工具栏缩小，工具不截断、不互相遮挡\n已关闭。四个尺寸下画布矩形都等于编辑区。1440×900 与 1280×720 工具无溢出、无重叠，宽屏属性栏为侧栏。768×1024 与 390×844 选择、手型和属性都在视口内。收起的「更多」菜单原先因 display: flex 盖住工具，现为 display: none，点击检测不再落到菜单项上\n图标按钮、悬浮说明、快捷键、形状预览，以及直线、折线、曲线入口\n顶栏是一排文字按钮，缺少直线和曲线\n工具分组；直线/曲线入口；形状选择保留可访问名称\n选择对象后出现就近工具栏；拖动时隐藏，结束后恢复；多选显示能力交集\n已关闭。形状选择器仍是 65 项，Shape 下拉写着 65 total options。锁定星形的删除和剪切禁用。另放一个未锁定矩形，Shift 点星形后两者描边都是 #6366f1；复制可点，剪切、删除、编辑、分组和六个对齐都禁用。按 Delete 后两个形状都还在。链接不再吞掉指针：onPointerDown 只 preventDefault，不再 stopPropagation。多选里只要有锁定对象，translateCellSelection 和 alignCells 返回空操作，cutSelection 走 selectionAllows。拖动隐藏工具栏由当前源码的 experience-restore.spec.ts 用真实 pointermove 覆盖，该用例 2026-10-12 17:03 重新通过（10.7s）。回归：commands.spec.ts\n桌面右侧属性；窄于 800px 时默认收起，按需打开底部属性\n窄屏仍占固定侧栏\n窄屏默认收起，属性按钮打开底部面板\n宽度切换后面板和工具不遮挡画布操作\n已关闭。768×1024 重新加载后属性栏 display: none，「属性」未按下。打开后面板在底部（768 宽、y=785、高 174，视口高 1024），主题改为 dark 后背景是 #141414，撤销回到 default / #f8fafc。390×844 打开的面板同样贴底，画布仍铺满\n每次进入自动适配，详情返回聚焦来源 Frame\n视口曾随文档保存并恢复\n视口仅内存；导航不进入文档事务、历史或保存\n刷新/重启整体适配；详情逐层返回聚焦 Frame；普通编辑保持视口\n已关闭。相机单测和 camera-navigation.spec.ts 验证零文档/历史/存储更新、两层详情返回定位及窄屏首次适配；Electron 156 个 Cell 场景验证导航和关闭不写文件，重启自动适配\n脑图端口按有效布局方向；白板箭头仍走几何路由\n脑图分支曾按几何朝向选端口\nmindBranchPorts 按布局、缩进和下划线选择端口\n九种布局连接符合旧规则；向右布局的 14 个一级主题使用右出、左入\n已关闭。九种布局和右布局下划线仍按上次屏幕记录。这次在右布局上把一级主题加到 14 个，14 条连线的 data-mind-source-side / data-mind-target-side 全是 right → left，14 个子主题都在根主题右侧且在视口内。改成 standard 后变成左侧 7 条 left → right、右侧 7 条 right → left\n新建和缺省布局为 right；已保存布局保留\n缺省曾落到双侧\n缺省 right；显式 standard 仍双侧\n新根向右；旧 standard 文档仍跨两侧\n已关闭。新建脑图的布局值仍是 right，14 个一级主题都在右侧。仓库里没有现成的 layout: standard 文件；在界面把布局改成 standard 后导出 verd-frame.json（根是 board-root，中心主题 data.layout 为 standard），再改回 right，用打开替换这份文件。打开后布局是 standard，左右各 7。刷新后仍是 standard，左右各 7，端口仍是 7 条 left → right 和 7 条 right → left。打开原先会因锁定星形抛出 Cannot delete locked content，现由 deleteCells(..., { ignoreLock: true }) 整帧替换。回归：frame-open.spec.ts\n主题宽高按文字、字号、图片、表情和笔记度量；手动宽度优先\n度量忽略部分内容\nmindCellMetrics 计入这些区域\n长富文本、图片、表情、笔记和手动宽度得到预期尺寸\n已关闭。名称末尾加 Z 后宽度 180→192、撤销回到 180 仍保持。这次选中一个主题：字号设为 32px，表情 🚀，上传 1×1 PNG，笔记区出现，宽度设为 80。节点屏幕盒约 79×150。图片、表情、笔记和文字的盒子都落在节点内；文字节点 scrollWidth 与 clientWidth 都是 64，没有溢出\n节点旁可加子主题、折叠、展开，并显示子孙数量；Tab/Enter 后进入编辑；折叠父级加子节点时同一事务展开\n控制层缺失，折叠新增不展开\n导出排除的控制层；折叠父级与新增在同一事务\n折叠新增可撤销并恢复折叠；刷新后结构仍在\n已关闭。Tab 加子主题、Enter 加同级仍按上次记录。这次给一个一级主题先加一个子主题再折叠：折叠标记显示 1，屏幕上的主题数回到 14。再点添加后标记消失，屏幕上变成 16，父级已展开。一次撤销后标记回到 1，屏幕回到 14。刷新后该主题 data.collapsed 仍为真，存储里有 15 个 mind-child（14 个可见加 1 个被折叠的子主题），布局仍是 standard\n显式样式优先，其次旧继承和主题默认；屏幕与导出共用\n根节点在缺省填充时可能白字白底；根分支形状不作用到子节点\nmindPresentation 与祖先分支形状解析，不把默认值写回单元格\n旧主题迁移后根节点可读；改根分支形状后子分支跟随；撤销恢复\n已关闭。新根填充 rgb(245, 245, 245)、显式红色 rgb(255, 0, 0) 仍按上次记录。这次把根分支形状改成 polyline，14 条连线的 data-mind-branch-shape 都是 polyline。再把一个子主题改成 bight，屏幕变成 13 条 polyline 和 1 条 bight。概要括号的屏幕与 SVG 导出由 cell-product.spec.ts 的 “summary brackets adjust sibling ids…” 核对，该用例会随这次生产包全量 E2E 重跑\n图片可放大；笔记区直接编辑；标准双侧跨两侧概要按侧拆分\n媒体和跨侧概要不完整\n图片对话框、笔记编辑器、按侧创建概要\n放大、笔记、概要括号、删除收缩和撤销一致，刷新可恢复\n已关闭。图片放大：点主题图片后出现 aria-label=\"Mind image\" 的对话框，图片地址以 data:image/png;base64,iVBORw0K 开头，点对话框后关闭。笔记写入 Kept note，刷新后无障碍树里仍能读到这段文字。概要括号拖动、删除收缩和撤销由当前源码的 cell-product.spec.ts 覆盖：summary brackets adjust sibling ids through one transaction and persist in embedded and detail views 拖动手柄、撤销、重做、刷新并核对 SVG 含 data-mind-summary-bracket；deleting covered topics shrinks the summary and removing its last topic is fully undoable 连续删除后范围从 [a,c] 收到 [b,c] 再收到 [c,c]，三次撤销回到三个主题和原范围。这两则随生产包全量 E2E 重跑\nSpace 临时手型、中键平移、右键超过阈值平移否则出菜单\nSpace 曾触发折叠\n画布手势；折叠仍用快捷键和折叠按钮\n输入框、富文本和弹窗中不触发画布快捷键\n已关闭。Space、中键、右键平移，以及属性输入框聚焦时 Space 不平移，由当前源码的 experience-restore.spec.ts 覆盖，该用例已重新通过。这次表情输入框聚焦时按 Space，视口保持 scale(1) translate(-191 -68.25)。图片放大对话框打开时再按 Space，对话框仍在，视口不变\n白板和领域详情都有选择与手型\n领域详情强制选择并挡住快捷键\n领域场景保留 V/H\n流程、架构、脑图详情可切换手型\n已关闭。脑图详情：进入前视口 scale(1) translate(-191 -68.25)，详情里是 scale(1) translate(516 420.75)，有选择、手型和「返回白板」；点手型后 V 回到选择、H 回到手型，返回后视口回到 scale(1) translate(-191 -68.25)。流程详情有选择、手型、「返回白板」和「添加流程图」，视口变为 scale(1) translate(586 389.25)，H/V 可切换，返回后视口复原。架构详情同样有选择、手型和「返回白板」，H 切到手型、V 切回选择，详情视口 scale(1) translate(546 437.25)，返回后仍是 scale(1) translate(-191 -68.25)。选中流程或架构容器时标题是「对象」\n双指缩放和平移保持手势中心；取消或丢指针后清理\n手势状态可能残留\n多指状态；pointercancel 清理\n手势结束后不误绘图、不误移动节点\n已关闭。浏览器没有硬件触屏。在当前画布上用两个指针把间距从 200 拉到 400，缩放从 110% 一次变成 220%，没有新增节点。pointercancel 后清理并仍接受随后的单指，由 packages/react/board/src/frame-canvas.spec.tsx 的 “commits a two-pointer zoom once and still accepts a later single pointer” 覆盖；本轮没有改这份画布手势代码，也没有在浏览器里再派发 pointercancel\n粘贴优先内部格式，其次图片，最后文字；拖放使用落点；上传和粘贴图片使用视口中心；命中主题则附加\n粘贴和拖放不完整\n统一插入后走现有事务\n嵌套 Frame 坐标正确；一次插入或拖放对应一次撤销；失败不留部分内容\n已关闭。文本粘贴和图片拖放各对应一次撤销，由重新通过的 experience-restore.spec.ts 覆盖。嵌套粘贴：复制含开始节点的流程框，外壳从 (311, 227) 贴到 (331, 247)（偏移 20, 20），两份开始节点的盒子都保持 (35, 75, 130×50)。残缺粘贴 {id:'missing'} 原先会写入一个没有 kind 的单元格并让画布空白；现由 planCellPaste 抛出 Clipboard does not contain Verd cells，单元格 id 列表和撤销禁用状态都不变。回归：group-nesting.spec.ts\n打开文件替换当前 Frame 并恢复主题，视口自动适配；导入追加，跨场景嵌入 Frame\n打开与导入混为追加\nopenFrameOperations 单次事务替换内容和主题，成功后在内存适配；导入保持追加\n旧文件打开、新文件往返、无效文件保留当前文档、撤销恢复内容和主题，保持当前内存视口\n已关闭。打开替换主题并自动适配、撤销、刷新、导入追加、无效文件不改文档，由重新通过的 experience-restore.spec.ts 覆盖。新文件往返在浏览器里走完：导出显式 standard 的 verd-frame.json，改回 right 后打开该文件，布局回到 standard 且左右各 7，刷新后保持。打开会替换锁定对象，见 frame-open.spec.ts\n白板选中脑图可导出 Markdown，并预览、复制、下载\n仅脑图场景显示导出\n选中脑图容器时显示 Markdown\n预览、复制、下载内容与当前脑图一致\n已关闭。选中脑图容器后标题是「容器」并出现 Markdown。白板预览、脑图详情预览，以及下载的 verd-frame.md（text/markdown）都是 # Central topic\\n。复制把同一字符串交给 clipboard.writeText；这个浏览器返回 NotAllowedError，系统剪贴板没有落下内容\n界面不暴露内部 kind；教程、帮助、菜单和快捷键与操作一致\n属性标题曾显示 kind\n中英文对象名称\n界面不出现 mind-root 等内部名称\n已关闭。中文教程说明打开替换、导入追加、选中脑图后可预览复制下载 Markdown；英文教程对应 Open / Import / Markdown。属性标题是「画布」「中心主题」「主题」「形状」「容器」。选中星形后图层按钮是「置于顶层」「上移一层」「下移一层」「置于底层」，填充和描边是「无填充」「无描边」。正文里没有 Bring to front、No fill、No stroke、Frame aspect ratio 或 mind-root。比例控件的中文文案是「比例」；导出按钮的中文文案是「导出为 Markdown」。当前白板没有嵌套容器，比例下拉和 Markdown 按钮这次没有出现在屏幕上\nWeb 与 Desktop 样式、返回、保存失败重试和关闭保存可用\n尚未按本轮界面重新验收\n两端走查\n样式加载、详情返回、保存失败重试、关闭保存\n已关闭。浏览器里流程和架构详情都能返回白板，视口回到进入前的 scale(1) translate(-191 -68.25)。生产预览 http://127.0.0.1:4173/ 只加载这次构建的 apps/web/dist/assets/index-BF7uz5sp.css，没有 Vite 开发脚本；工具栏是绝对定位的白色横条，画布背景是 rgb(248, 250, 252)，中文工具和「跳过」教程都在。Desktop E2E 4 通过仍对应这次源码里的关闭保存、损坏存储、磁盘失败重试和重启恢复；这次没有改那几条路径。同一份生产构建上 pnpm test:e2e:prod 一次 71 通过、0 失败。\n通过条件\n问题清单全部关闭，并重新通过类型检查、单测、lint、公开包与两端构建、完整产品 E2E 和严格 consumer。测试数量增加不能单独作为通过依据。",
+    "align": "left"
+  }
+}

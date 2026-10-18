@@ -1,0 +1,1666 @@
+{
+  "format": "verd-document",
+  "version": 1,
+  "id": "project-doc:development/README",
+  "title": "开发指南",
+  "text": {
+    "schemaVersion": 1,
+    "id": "project-doc:development/README",
+    "kind": "block",
+    "content": {
+      "type": "doc",
+      "content": [
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 1
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "开发指南"
+            }
+          ]
+        },
+        {
+          "type": "frameReference",
+          "attrs": {
+            "targetFrameId": "detached/25:mind/mind-mudf73s2-9hi9x8"
+          }
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "本文档介绍如何参与 VerdBoard 项目的开发。"
+            }
+          ]
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 2
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "环境要求"
+            }
+          ]
+        },
+        {
+          "type": "bulletList",
+          "content": [
+            {
+              "type": "listItem",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "Node.js",
+                      "marks": [
+                        {
+                          "type": "bold"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "text": ": >= 22.0.0"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "listItem",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "pnpm",
+                      "marks": [
+                        {
+                          "type": "bold"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "text": ": >= 11.18.0"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "listItem",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "Git",
+                      "marks": [
+                        {
+                          "type": "bold"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "text": ": >= 2.0.0"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 2
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "快速开始"
+            }
+          ]
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 3
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "1. 克隆项目"
+            }
+          ]
+        },
+        {
+          "type": "codeBlock",
+          "attrs": {
+            "language": "bash"
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "git clone https://github.com/WinstonSue/verd-board.git\ncd verd-board"
+            }
+          ]
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 3
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "2. 安装依赖"
+            }
+          ]
+        },
+        {
+          "type": "codeBlock",
+          "attrs": {
+            "language": "bash"
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "pnpm install"
+            }
+          ]
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 3
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "3. 启动开发环境"
+            }
+          ]
+        },
+        {
+          "type": "codeBlock",
+          "attrs": {
+            "language": "bash"
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "# 启动桌面应用（根目录脚本）\npnpm start\n\n# 启动 Web\npnpm dev:web\n\n# 构建某个包（示例）\npnpm --filter @sue/board-react-text build"
+            }
+          ]
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 3
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "4. 构建项目"
+            }
+          ]
+        },
+        {
+          "type": "codeBlock",
+          "attrs": {
+            "language": "bash"
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "# 构建公开包和 Web（不含 Desktop）\npnpm build\n\n# 构建特定包\npnpm --filter @sue/board-react-text build\n\n# 类型检查（Desktop、应用与原生 Cell 内核；consumer 另跑）\npnpm typecheck\n\n# Desktop 前端构建（tsc && vite build，不含 electron-builder）\npnpm build:desktop"
+            }
+          ]
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 2
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "项目结构"
+            }
+          ]
+        },
+        {
+          "type": "codeBlock",
+          "attrs": {
+            "language": null
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "verd-board/\n├── apps/              # 应用层（web / desktop）\n├── packages/          # 核心包\n├── tests/             # E2E 与 consumer 验收\n├── workspace/       # 原生项目文档与架构图\n└── scripts/          # 构建脚本"
+            }
+          ]
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 2
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "开发规范"
+            }
+          ]
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 3
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "代码规范"
+            }
+          ]
+        },
+        {
+          "type": "bulletList",
+          "content": [
+            {
+              "type": "listItem",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "TypeScript",
+                      "marks": [
+                        {
+                          "type": "bold"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "text": ": 严格模式，所有函数都要有类型定义"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "listItem",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "ESLint",
+                      "marks": [
+                        {
+                          "type": "bold"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "text": ": 使用项目配置，提交前自动检查"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "listItem",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "Prettier",
+                      "marks": [
+                        {
+                          "type": "bold"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "text": ": 统一代码格式"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "listItem",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "文件命名",
+                      "marks": [
+                        {
+                          "type": "bold"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "text": ": kebab-case for folders, PascalCase for components"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 3
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "Git 提交规范"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "使用 "
+            },
+            {
+              "type": "text",
+              "text": "Conventional Commits",
+              "marks": [
+                {
+                  "type": "link",
+                  "attrs": {
+                    "href": "https://www.conventionalcommits.org/"
+                  }
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "text": " 规范："
+            }
+          ]
+        },
+        {
+          "type": "codeBlock",
+          "attrs": {
+            "language": null
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "feat: 新功能\nfix: 修复 bug\ndocs: 文档更新\nstyle: 代码格式调整\nrefactor: 重构\ntest: 测试相关\nchore: 构建工具、依赖更新"
+            }
+          ]
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 3
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "分支策略"
+            }
+          ]
+        },
+        {
+          "type": "bulletList",
+          "content": [
+            {
+              "type": "listItem",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "main",
+                      "marks": [
+                        {
+                          "type": "bold"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "text": ": 主分支，稳定版本"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "listItem",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "develop",
+                      "marks": [
+                        {
+                          "type": "bold"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "text": ": 开发分支"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "listItem",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "feature/",
+                      "marks": [
+                        {
+                          "type": "bold"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "text": "*: 功能分支"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "listItem",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "hotfix/",
+                      "marks": [
+                        {
+                          "type": "bold"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "text": "*: 热修复分支"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 2
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "包开发"
+            }
+          ]
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 3
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "创建新包"
+            }
+          ]
+        },
+        {
+          "type": "orderedList",
+          "content": [
+            {
+              "type": "listItem",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "在 "
+                    },
+                    {
+                      "type": "text",
+                      "text": "packages/",
+                      "marks": [
+                        {
+                          "type": "code"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "text": " 目录下创建新包"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "listItem",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "添加 "
+                    },
+                    {
+                      "type": "text",
+                      "text": "package.json",
+                      "marks": [
+                        {
+                          "type": "code"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "text": " 配置"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "listItem",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "更新 "
+                    },
+                    {
+                      "type": "text",
+                      "text": "pnpm-workspace.yaml",
+                      "marks": [
+                        {
+                          "type": "code"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "listItem",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "在 workspace/文档/包/ 中维护原生 .verd-doc.json 包说明，并更新包索引"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 3
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "包依赖管理"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "React / React DOM 统一到 19.2.x：在根目录 "
+            },
+            {
+              "type": "text",
+              "text": "pnpm-workspace.yaml",
+              "marks": [
+                {
+                  "type": "code"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "text": " 的 "
+            },
+            {
+              "type": "text",
+              "text": "overrides",
+              "marks": [
+                {
+                  "type": "code"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "text": " 中锁定（pnpm 11 不再读取 "
+            },
+            {
+              "type": "text",
+              "text": "package.json",
+              "marks": [
+                {
+                  "type": "code"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "text": " 的 "
+            },
+            {
+              "type": "text",
+              "text": "pnpm",
+              "marks": [
+                {
+                  "type": "code"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "text": " 字段）。"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "使用 workspace 协议管理内部依赖："
+            }
+          ]
+        },
+        {
+          "type": "codeBlock",
+          "attrs": {
+            "language": "json"
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "{\n  \"dependencies\": {\n    \"@sue/board-common\": \"workspace:*\"\n  }\n}"
+            }
+          ]
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 2
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "测试"
+            }
+          ]
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 3
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "单元测试"
+            }
+          ]
+        },
+        {
+          "type": "codeBlock",
+          "attrs": {
+            "language": "bash"
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "# 运行所有测试\npnpm test\n\n# 运行特定包的测试\npnpm --filter @sue/board-react-text test\n\n# 监听模式\npnpm --filter @sue/verd-board-app exec vitest --watch"
+            }
+          ]
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 3
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "E2E 测试"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "项目使用 Playwright 进行 E2E 测试。"
+            }
+          ]
+        },
+        {
+          "type": "codeBlock",
+          "attrs": {
+            "language": "bash"
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "# 运行 E2E 测试\ncd tests/web-e2e\npnpm exec playwright test\n\n# 以 UI 模式运行\npnpm exec playwright test --ui\n\n# 运行特定测试文件\npnpm exec playwright test src/ai-canvas-examples.spec.ts"
+            }
+          ]
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 3
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "Desktop 产品 E2E"
+            }
+          ]
+        },
+        {
+          "type": "codeBlock",
+          "attrs": {
+            "language": "bash"
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "# 重建公开包与 Desktop 前端后，验证真实 Electron 产品路径\npnpm build:desktop\npnpm test:e2e:desktop"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "测试位于 "
+            },
+            {
+              "type": "text",
+              "text": "tests/desktop-e2e",
+              "marks": [
+                {
+                  "type": "code"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "text": "，每个用例使用临时 userData 目录，覆盖关闭前的绘图/笔记保存、重启恢复、旧文件迁移备份、损坏文件加载错误，以及写入失败后的窗口保留和重试。测试运行构建产物；必须先重建，不能用旧 dist 验收新源码。"
+            }
+          ]
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 2
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "构建和发布"
+            }
+          ]
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 3
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "构建包"
+            }
+          ]
+        },
+        {
+          "type": "codeBlock",
+          "attrs": {
+            "language": "bash"
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "# 构建公开包和 Web（排除 Desktop）\npnpm build\n\n# 构建特定包\npnpm --filter @sue/board-react-text build"
+            }
+          ]
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 3
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "发布流程"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "项目使用 "
+            },
+            {
+              "type": "text",
+              "text": "Changesets",
+              "marks": [
+                {
+                  "type": "link",
+                  "attrs": {
+                    "href": "https://github.com/changesets/changesets"
+                  }
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "text": " 管理版本与 changelog。"
+            }
+          ]
+        },
+        {
+          "type": "codeBlock",
+          "attrs": {
+            "language": "bash"
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "# 1. 记录本次变更\npnpm changeset\n\n# 2. 升版本并生成 changelog\npnpm release\n\n# 3. 构建并发布到 npm\npnpm pub"
+            }
+          ]
+        },
+        {
+          "type": "bulletList",
+          "content": [
+            {
+              "type": "listItem",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "pnpm release",
+                      "marks": [
+                        {
+                          "type": "code"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "text": " 对应 "
+                    },
+                    {
+                      "type": "text",
+                      "text": "changeset version",
+                      "marks": [
+                        {
+                          "type": "code"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "listItem",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "pnpm pub",
+                      "marks": [
+                        {
+                          "type": "code"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "text": " 会先 "
+                    },
+                    {
+                      "type": "text",
+                      "text": "pnpm build",
+                      "marks": [
+                        {
+                          "type": "code"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "text": "，再 "
+                    },
+                    {
+                      "type": "text",
+                      "text": "changeset publish",
+                      "marks": [
+                        {
+                          "type": "code"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "listItem",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "预发布版本使用 "
+                    },
+                    {
+                      "type": "text",
+                      "text": "0.4.0-beta.1",
+                      "marks": [
+                        {
+                          "type": "code"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "text": " 格式，正式版本使用 "
+                    },
+                    {
+                      "type": "text",
+                      "text": "0.4.0",
+                      "marks": [
+                        {
+                          "type": "code"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "发布前应跑通 pnpm typecheck、pnpm lint、pnpm test、pnpm workspace:check、pnpm build、pnpm build:desktop、pnpm test:e2e:prod、pnpm test:e2e:desktop 和 pnpm test:consumer。先重建两端再运行对应 E2E；不能用旧构建验收新源码。"
+            }
+          ]
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 3
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "注意事项"
+            }
+          ]
+        },
+        {
+          "type": "orderedList",
+          "content": [
+            {
+              "type": "listItem",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "发布前确保所有测试通过"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "listItem",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "确保有 npm 发布权限"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "listItem",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "不要使用 Nx release；本仓发布入口只有 Changesets"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 2
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "调试"
+            }
+          ]
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 3
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "VS Code 调试"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "仓库保留 .vscode/settings.json；需要调试主进程时，配置与当前 Electron/Vite 启动方式一致的调试会话。"
+            }
+          ]
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 3
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "浏览器调试"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "开发模式下支持热重载和 Source Map。"
+            }
+          ]
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 2
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "常见问题"
+            }
+          ]
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 3
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "依赖问题"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "如果遇到依赖问题，尝试："
+            }
+          ]
+        },
+        {
+          "type": "codeBlock",
+          "attrs": {
+            "language": "bash"
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "# 检查并清理包缓存\npnpm store prune\n\n# 重新安装\npnpm install"
+            }
+          ]
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 3
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "构建问题"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "如果构建失败，检查："
+            }
+          ]
+        },
+        {
+          "type": "orderedList",
+          "content": [
+            {
+              "type": "listItem",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "TypeScript 类型错误"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "listItem",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "依赖版本冲突"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "listItem",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "环境变量配置"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 2
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "Electron 28.3.3 EOL"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "当前桌面端锁定在 Electron "
+            },
+            {
+              "type": "text",
+              "text": "28.3.3",
+              "marks": [
+                {
+                  "type": "bold"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "text": "（"
+            },
+            {
+              "type": "text",
+              "text": "apps/desktop",
+              "marks": [
+                {
+                  "type": "code"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "text": " 与根依赖均为 "
+            },
+            {
+              "type": "text",
+              "text": "electron@^28.0.0",
+              "marks": [
+                {
+                  "type": "code"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "text": "，解析到 28.x）。Electron 28 已结束官方支持窗口，继续使用的风险主要是 Chromium / Node 安全补丁不再回端口，以及后续原生模块兼容性。"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "本轮"
+            },
+            {
+              "type": "text",
+              "text": "不升级 major",
+              "marks": [
+                {
+                  "type": "bold"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "text": "，原因："
+            }
+          ]
+        },
+        {
+          "type": "orderedList",
+          "content": [
+            {
+              "type": "listItem",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "Electron 29+ 会连带 Chromium 与 Node 大版本，桌面主进程、preload、sandbox 与打包配置都需要单独回归。"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "listItem",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "当前保留已验证的主版本；升级属于独立运行时变更，需要单独完成主进程、preload、sandbox、打包和存储验收。"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "listItem",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "现有桌面边界启用 "
+                    },
+                    {
+                      "type": "text",
+                      "text": "sandbox: true",
+                      "marks": [
+                        {
+                          "type": "code"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "text": "，通过受控 preload/IPC 使用 WorkspaceHost、expectedVersion 条件写入和可恢复事务日志；旧 key/value 存储仅用于迁移。"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "建议下一轮单独排期：先在隔离分支升到仍在 LTS/支持窗口的 Electron，再跑 "
+            },
+            {
+              "type": "text",
+              "text": "pnpm build:desktop",
+              "marks": [
+                {
+                  "type": "code"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "text": "、手动安装包与存储回归。"
+            }
+          ]
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 2
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "贡献流程"
+            }
+          ]
+        },
+        {
+          "type": "orderedList",
+          "content": [
+            {
+              "type": "listItem",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "创建功能分支"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "listItem",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "提交代码"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "listItem",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "发起评审"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "listItem",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "合并代码"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 2
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "原生文档维护"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "长期正文直接编辑 workspace/文档/ 的 .verd-doc.json，系统图直接编辑同一 workspace 的 .verd.json。文档身份保持稳定；内部链接使用 verd://file/ 加编码后的 ID 与标题 slug。详见 "
+            },
+            {
+              "type": "text",
+              "text": "文档维护指南",
+              "marks": [
+                {
+                  "type": "link",
+                  "attrs": {
+                    "href": "verd://file/project-doc%3ADOCUMENTATION_GUIDE"
+                  }
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "text": "。AI 导入夹具位于 tests/fixtures/ai-canvas/，规范测试直接读取原生 codeBlock。"
+            }
+          ]
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 2
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "资源链接"
+            }
+          ]
+        },
+        {
+          "type": "bulletList",
+          "content": [
+            {
+              "type": "listItem",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "项目架构",
+                      "marks": [
+                        {
+                          "type": "link",
+                          "attrs": {
+                            "href": "verd://file/project-doc%3Aarchitecture%2FARCHITECTURE"
+                          }
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "listItem",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "包文档",
+                      "marks": [
+                        {
+                          "type": "link",
+                          "attrs": {
+                            "href": "verd://file/project-doc%3Apackages%2FREADME"
+                          }
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "listItem",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "使用指南",
+                      "marks": [
+                        {
+                          "type": "link",
+                          "attrs": {
+                            "href": "verd://file/project-doc%3AREADME#%E4%BD%BF%E7%94%A8%E4%B8%8E%E8%A7%84%E8%8C%83"
+                          }
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "plainText": "开发指南\n打开画布 verd://file/detached%2F25%3Amind%2Fmind-mudf73s2-9hi9x8\n本文档介绍如何参与 VerdBoard 项目的开发。\n环境要求\nNode.js: >= 22.0.0\npnpm: >= 11.18.0\nGit: >= 2.0.0\n快速开始\n1. 克隆项目\ngit clone https://github.com/WinstonSue/verd-board.git\ncd verd-board\n2. 安装依赖\npnpm install\n3. 启动开发环境\n# 启动桌面应用（根目录脚本）\npnpm start\n\n# 启动 Web\npnpm dev:web\n\n# 构建某个包（示例）\npnpm --filter @sue/board-react-text build\n4. 构建项目\n# 构建公开包和 Web（不含 Desktop）\npnpm build\n\n# 构建特定包\npnpm --filter @sue/board-react-text build\n\n# 类型检查（Desktop、应用与原生 Cell 内核；consumer 另跑）\npnpm typecheck\n\n# Desktop 前端构建（tsc && vite build，不含 electron-builder）\npnpm build:desktop\n项目结构\nverd-board/\n├── apps/              # 应用层（web / desktop）\n├── packages/          # 核心包\n├── tests/             # E2E 与 consumer 验收\n├── workspace/       # 原生项目文档与架构图\n└── scripts/          # 构建脚本\n开发规范\n代码规范\nTypeScript: 严格模式，所有函数都要有类型定义\nESLint: 使用项目配置，提交前自动检查\nPrettier: 统一代码格式\n文件命名: kebab-case for folders, PascalCase for components\nGit 提交规范\n使用 Conventional Commits 规范：\nfeat: 新功能\nfix: 修复 bug\ndocs: 文档更新\nstyle: 代码格式调整\nrefactor: 重构\ntest: 测试相关\nchore: 构建工具、依赖更新\n分支策略\nmain: 主分支，稳定版本\ndevelop: 开发分支\nfeature/*: 功能分支\nhotfix/*: 热修复分支\n包开发\n创建新包\n在 packages/ 目录下创建新包\n添加 package.json 配置\n更新 pnpm-workspace.yaml\n在 workspace/文档/包/ 中维护原生 .verd-doc.json 包说明，并更新包索引\n包依赖管理\nReact / React DOM 统一到 19.2.x：在根目录 pnpm-workspace.yaml 的 overrides 中锁定（pnpm 11 不再读取 package.json 的 pnpm 字段）。\n使用 workspace 协议管理内部依赖：\n{\n  \"dependencies\": {\n    \"@sue/board-common\": \"workspace:*\"\n  }\n}\n测试\n单元测试\n# 运行所有测试\npnpm test\n\n# 运行特定包的测试\npnpm --filter @sue/board-react-text test\n\n# 监听模式\npnpm --filter @sue/verd-board-app exec vitest --watch\nE2E 测试\n项目使用 Playwright 进行 E2E 测试。\n# 运行 E2E 测试\ncd tests/web-e2e\npnpm exec playwright test\n\n# 以 UI 模式运行\npnpm exec playwright test --ui\n\n# 运行特定测试文件\npnpm exec playwright test src/ai-canvas-examples.spec.ts\nDesktop 产品 E2E\n# 重建公开包与 Desktop 前端后，验证真实 Electron 产品路径\npnpm build:desktop\npnpm test:e2e:desktop\n测试位于 tests/desktop-e2e，每个用例使用临时 userData 目录，覆盖关闭前的绘图/笔记保存、重启恢复、旧文件迁移备份、损坏文件加载错误，以及写入失败后的窗口保留和重试。测试运行构建产物；必须先重建，不能用旧 dist 验收新源码。\n构建和发布\n构建包\n# 构建公开包和 Web（排除 Desktop）\npnpm build\n\n# 构建特定包\npnpm --filter @sue/board-react-text build\n发布流程\n项目使用 Changesets 管理版本与 changelog。\n# 1. 记录本次变更\npnpm changeset\n\n# 2. 升版本并生成 changelog\npnpm release\n\n# 3. 构建并发布到 npm\npnpm pub\npnpm release 对应 changeset version\npnpm pub 会先 pnpm build，再 changeset publish\n预发布版本使用 0.4.0-beta.1 格式，正式版本使用 0.4.0\n发布前应跑通 pnpm typecheck、pnpm lint、pnpm test、pnpm workspace:check、pnpm build、pnpm build:desktop、pnpm test:e2e:prod、pnpm test:e2e:desktop 和 pnpm test:consumer。先重建两端再运行对应 E2E；不能用旧构建验收新源码。\n注意事项\n发布前确保所有测试通过\n确保有 npm 发布权限\n不要使用 Nx release；本仓发布入口只有 Changesets\n调试\nVS Code 调试\n仓库保留 .vscode/settings.json；需要调试主进程时，配置与当前 Electron/Vite 启动方式一致的调试会话。\n浏览器调试\n开发模式下支持热重载和 Source Map。\n常见问题\n依赖问题\n如果遇到依赖问题，尝试：\n# 检查并清理包缓存\npnpm store prune\n\n# 重新安装\npnpm install\n构建问题\n如果构建失败，检查：\nTypeScript 类型错误\n依赖版本冲突\n环境变量配置\nElectron 28.3.3 EOL\n当前桌面端锁定在 Electron 28.3.3（apps/desktop 与根依赖均为 electron@^28.0.0，解析到 28.x）。Electron 28 已结束官方支持窗口，继续使用的风险主要是 Chromium / Node 安全补丁不再回端口，以及后续原生模块兼容性。\n本轮不升级 major，原因：\nElectron 29+ 会连带 Chromium 与 Node 大版本，桌面主进程、preload、sandbox 与打包配置都需要单独回归。\n当前保留已验证的主版本；升级属于独立运行时变更，需要单独完成主进程、preload、sandbox、打包和存储验收。\n现有桌面边界启用 sandbox: true，通过受控 preload/IPC 使用 WorkspaceHost、expectedVersion 条件写入和可恢复事务日志；旧 key/value 存储仅用于迁移。\n建议下一轮单独排期：先在隔离分支升到仍在 LTS/支持窗口的 Electron，再跑 pnpm build:desktop、手动安装包与存储回归。\n贡献流程\n创建功能分支\n提交代码\n发起评审\n合并代码\n原生文档维护\n长期正文直接编辑 workspace/文档/ 的 .verd-doc.json，系统图直接编辑同一 workspace 的 .verd.json。文档身份保持稳定；内部链接使用 verd://file/ 加编码后的 ID 与标题 slug。详见 文档维护指南。AI 导入夹具位于 tests/fixtures/ai-canvas/，规范测试直接读取原生 codeBlock。\n资源链接\n项目架构\n包文档\n使用指南",
+    "align": "left"
+  }
+}

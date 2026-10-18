@@ -1,0 +1,3138 @@
+{
+  "format": "verd-frame",
+  "version": 2,
+  "frame": {
+    "id": "board/20:architecture-layered",
+    "kind": "frame",
+    "cellType": "frame",
+    "geometry": {
+      "x": 0,
+      "y": 630,
+      "width": 680,
+      "height": 470,
+      "derived": false
+    },
+    "children": [
+      "demo:packages/layer/0",
+      "demo:packages/module/desktop",
+      "demo:packages/module/web",
+      "demo:packages/layer/1",
+      "demo:packages/module/@sue/verd-board-app",
+      "demo:packages/module/@sue/verd-board-ui",
+      "demo:packages/layer/2",
+      "demo:packages/module/@sue/board-react",
+      "demo:packages/module/@sue/board-react-text",
+      "demo:packages/module/@sue/board-react-mind",
+      "demo:packages/module/@sue/board-react-workflow",
+      "demo:packages/module/@sue/board-react-architecture",
+      "demo:packages/layer/3",
+      "demo:packages/module/@sue/board-core",
+      "demo:packages/module/@sue/board-common",
+      "demo:packages/module/@sue/board-layouts",
+      "demo:packages/module/@sue/board-text",
+      "demo:packages/layer/4",
+      "demo:packages/module/@sue/board-draw",
+      "demo:packages/module/@sue/board-mind",
+      "demo:packages/module/@sue/board-workflow",
+      "demo:packages/module/@sue/board-architecture",
+      "demo:packages/layer/5",
+      "demo:packages/module/@sue/board-markdown-to-board",
+      "demo:packages/module/@sue/board-mermaid-to-board",
+      "demo:packages/module/@sue/board-markdown-to-text",
+      "demo:packages/edge/0",
+      "demo:packages/edge/1",
+      "demo:packages/edge/2",
+      "demo:packages/edge/3",
+      "demo:packages/edge/4",
+      "demo:packages/edge/5",
+      "demo:packages/edge/6",
+      "demo:packages/edge/7",
+      "demo:packages/edge/8",
+      "demo:packages/edge/9",
+      "demo:packages/edge/10",
+      "demo:packages/edge/11",
+      "demo:packages/edge/12",
+      "demo:packages/edge/13",
+      "demo:packages/edge/14",
+      "demo:packages/edge/15",
+      "demo:packages/edge/16",
+      "demo:packages/edge/17",
+      "demo:packages/edge/18",
+      "demo:packages/edge/19",
+      "demo:packages/edge/20",
+      "demo:packages/edge/21",
+      "demo:packages/edge/22",
+      "demo:packages/edge/23",
+      "demo:packages/edge/24",
+      "demo:packages/edge/25",
+      "demo:packages/edge/26",
+      "demo:packages/edge/27",
+      "demo:packages/edge/28",
+      "demo:packages/edge/29",
+      "demo:packages/edge/30",
+      "demo:packages/edge/31",
+      "project:topic/01/document"
+    ],
+    "groups": [],
+    "data": {},
+    "content": {
+      "label": "① 项目分层与依赖",
+      "text": {
+        "schemaVersion": 1,
+        "id": "board/20:architecture-layered/text",
+        "kind": "inline",
+        "plainText": "① 项目分层与依赖",
+        "content": {
+          "type": "doc",
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "① 项目分层与依赖",
+                  "marks": [
+                    {
+                      "type": "textStyle",
+                      "attrs": {
+                        "fontSize": "14px",
+                        "color": "#1e293b"
+                      }
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    "appearance": {
+      "fill": "#ffffff",
+      "strokeColor": "#cbd5e1",
+      "strokeWidth": 2
+    },
+    "view": {
+      "theme": {
+        "themeColorMode": "default",
+        "boardBackground": "#ffffff"
+      }
+    },
+    "name": "① 项目分层与依赖"
+  },
+  "cells": {
+    "demo:packages/layer/0": {
+      "id": "demo:packages/layer/0",
+      "kind": "architecture-layer",
+      "cellType": "node",
+      "geometry": {
+        "x": 0,
+        "y": 0,
+        "width": 1980,
+        "height": 170,
+        "derived": true
+      },
+      "content": {
+        "label": "应用入口",
+        "text": {
+          "schemaVersion": 1,
+          "id": "demo:packages/layer/0/text",
+          "kind": "inline",
+          "plainText": "应用入口",
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "应用入口",
+                    "marks": [
+                      {
+                        "type": "bold"
+                      },
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "16px",
+                          "color": "#475569"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "data": {
+        "order": "00000000",
+        "fontSize": 24,
+        "memberIds": [
+          "demo:packages/module/desktop",
+          "demo:packages/module/web"
+        ]
+      },
+      "appearance": {
+        "fill": "#f8fafc",
+        "strokeColor": "#e2e8f0",
+        "strokeWidth": 1
+      }
+    },
+    "demo:packages/module/desktop": {
+      "id": "demo:packages/module/desktop",
+      "kind": "architecture-module",
+      "cellType": "node",
+      "geometry": {
+        "x": 614,
+        "y": 54,
+        "width": 372,
+        "height": 98,
+        "derived": false,
+        "outline": {
+          "kind": "roundRectangle",
+          "radius": 8
+        }
+      },
+      "ports": [
+        {
+          "id": "top",
+          "side": "top",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "right",
+          "side": "right",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "bottom",
+          "side": "bottom",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "left",
+          "side": "left",
+          "direction": "both",
+          "offset": 0.5
+        }
+      ],
+      "content": {
+        "label": "desktop\napps/desktop",
+        "text": {
+          "schemaVersion": 1,
+          "id": "demo:packages/module/desktop/text",
+          "kind": "inline",
+          "plainText": "desktop\napps/desktop",
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "desktop",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "18px",
+                          "color": "#1e293b"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "apps/desktop",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "18px",
+                          "color": "#1e293b"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "data": {
+        "shape": "box",
+        "placed": true
+      },
+      "appearance": {
+        "fill": "#f0fdfa",
+        "strokeColor": "#94a3b8",
+        "strokeWidth": 1.5
+      }
+    },
+    "demo:packages/module/web": {
+      "id": "demo:packages/module/web",
+      "kind": "architecture-module",
+      "cellType": "node",
+      "geometry": {
+        "x": 1010,
+        "y": 54,
+        "width": 372,
+        "height": 98,
+        "derived": false,
+        "outline": {
+          "kind": "roundRectangle",
+          "radius": 8
+        }
+      },
+      "ports": [
+        {
+          "id": "top",
+          "side": "top",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "right",
+          "side": "right",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "bottom",
+          "side": "bottom",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "left",
+          "side": "left",
+          "direction": "both",
+          "offset": 0.5
+        }
+      ],
+      "content": {
+        "label": "web\napps/web",
+        "text": {
+          "schemaVersion": 1,
+          "id": "demo:packages/module/web/text",
+          "kind": "inline",
+          "plainText": "web\napps/web",
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "web",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "18px",
+                          "color": "#1e293b"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "apps/web",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "18px",
+                          "color": "#1e293b"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "data": {
+        "shape": "box",
+        "placed": true
+      },
+      "appearance": {
+        "fill": "#f0fdfa",
+        "strokeColor": "#94a3b8",
+        "strokeWidth": 1.5
+      }
+    },
+    "demo:packages/layer/1": {
+      "id": "demo:packages/layer/1",
+      "kind": "architecture-layer",
+      "cellType": "node",
+      "geometry": {
+        "x": 0,
+        "y": 220,
+        "width": 1980,
+        "height": 170,
+        "derived": true
+      },
+      "content": {
+        "label": "产品层",
+        "text": {
+          "schemaVersion": 1,
+          "id": "demo:packages/layer/1/text",
+          "kind": "inline",
+          "plainText": "产品层",
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "产品层",
+                    "marks": [
+                      {
+                        "type": "bold"
+                      },
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "16px",
+                          "color": "#475569"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "data": {
+        "order": "00000001",
+        "fontSize": 24,
+        "memberIds": [
+          "demo:packages/module/@sue/verd-board-app",
+          "demo:packages/module/@sue/verd-board-ui"
+        ]
+      },
+      "appearance": {
+        "fill": "#f8fafc",
+        "strokeColor": "#e2e8f0",
+        "strokeWidth": 1
+      }
+    },
+    "demo:packages/module/@sue/verd-board-app": {
+      "id": "demo:packages/module/@sue/verd-board-app",
+      "kind": "architecture-module",
+      "cellType": "node",
+      "geometry": {
+        "x": 614,
+        "y": 274,
+        "width": 372,
+        "height": 98,
+        "derived": false,
+        "outline": {
+          "kind": "roundRectangle",
+          "radius": 8
+        }
+      },
+      "ports": [
+        {
+          "id": "top",
+          "side": "top",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "right",
+          "side": "right",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "bottom",
+          "side": "bottom",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "left",
+          "side": "left",
+          "direction": "both",
+          "offset": 0.5
+        }
+      ],
+      "content": {
+        "label": "@sue/verd-board-app\npackages/product/app",
+        "text": {
+          "schemaVersion": 1,
+          "id": "demo:packages/module/@sue/verd-board-app/text",
+          "kind": "inline",
+          "plainText": "@sue/verd-board-app\npackages/product/app",
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "@sue/verd-board-app",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "18px",
+                          "color": "#1e293b"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "packages/product/app",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "18px",
+                          "color": "#1e293b"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "data": {
+        "shape": "box",
+        "placed": true
+      },
+      "appearance": {
+        "fill": "#eff6ff",
+        "strokeColor": "#94a3b8",
+        "strokeWidth": 1.5
+      }
+    },
+    "demo:packages/module/@sue/verd-board-ui": {
+      "id": "demo:packages/module/@sue/verd-board-ui",
+      "kind": "architecture-module",
+      "cellType": "node",
+      "geometry": {
+        "x": 1010,
+        "y": 274,
+        "width": 372,
+        "height": 98,
+        "derived": false,
+        "outline": {
+          "kind": "roundRectangle",
+          "radius": 8
+        }
+      },
+      "ports": [
+        {
+          "id": "top",
+          "side": "top",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "right",
+          "side": "right",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "bottom",
+          "side": "bottom",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "left",
+          "side": "left",
+          "direction": "both",
+          "offset": 0.5
+        }
+      ],
+      "content": {
+        "label": "@sue/verd-board-ui\npackages/product/ui",
+        "text": {
+          "schemaVersion": 1,
+          "id": "demo:packages/module/@sue/verd-board-ui/text",
+          "kind": "inline",
+          "plainText": "@sue/verd-board-ui\npackages/product/ui",
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "@sue/verd-board-ui",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "18px",
+                          "color": "#1e293b"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "packages/product/ui",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "18px",
+                          "color": "#1e293b"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "data": {
+        "shape": "box",
+        "placed": true
+      },
+      "appearance": {
+        "fill": "#eff6ff",
+        "strokeColor": "#94a3b8",
+        "strokeWidth": 1.5
+      }
+    },
+    "demo:packages/layer/2": {
+      "id": "demo:packages/layer/2",
+      "kind": "architecture-layer",
+      "cellType": "node",
+      "geometry": {
+        "x": 0,
+        "y": 440,
+        "width": 1980,
+        "height": 170,
+        "derived": true
+      },
+      "content": {
+        "label": "React 适配",
+        "text": {
+          "schemaVersion": 1,
+          "id": "demo:packages/layer/2/text",
+          "kind": "inline",
+          "plainText": "React 适配",
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "React 适配",
+                    "marks": [
+                      {
+                        "type": "bold"
+                      },
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "16px",
+                          "color": "#475569"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "data": {
+        "order": "00000002",
+        "fontSize": 24,
+        "memberIds": [
+          "demo:packages/module/@sue/board-react-architecture",
+          "demo:packages/module/@sue/board-react",
+          "demo:packages/module/@sue/board-react-mind",
+          "demo:packages/module/@sue/board-react-text",
+          "demo:packages/module/@sue/board-react-workflow"
+        ]
+      },
+      "appearance": {
+        "fill": "#f8fafc",
+        "strokeColor": "#e2e8f0",
+        "strokeWidth": 1
+      }
+    },
+    "demo:packages/module/@sue/board-react": {
+      "id": "demo:packages/module/@sue/board-react",
+      "kind": "architecture-module",
+      "cellType": "node",
+      "geometry": {
+        "x": 20,
+        "y": 494,
+        "width": 372,
+        "height": 98,
+        "derived": false,
+        "outline": {
+          "kind": "roundRectangle",
+          "radius": 8
+        }
+      },
+      "ports": [
+        {
+          "id": "top",
+          "side": "top",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "right",
+          "side": "right",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "bottom",
+          "side": "bottom",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "left",
+          "side": "left",
+          "direction": "both",
+          "offset": 0.5
+        }
+      ],
+      "content": {
+        "label": "@sue/board-react\npackages/react/board",
+        "text": {
+          "schemaVersion": 1,
+          "id": "demo:packages/module/@sue/board-react/text",
+          "kind": "inline",
+          "plainText": "@sue/board-react\npackages/react/board",
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "@sue/board-react",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "18px",
+                          "color": "#1e293b"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "packages/react/board",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "18px",
+                          "color": "#1e293b"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "data": {
+        "shape": "box",
+        "placed": true
+      },
+      "appearance": {
+        "fill": "#f5f3ff",
+        "strokeColor": "#94a3b8",
+        "strokeWidth": 1.5
+      }
+    },
+    "demo:packages/module/@sue/board-react-text": {
+      "id": "demo:packages/module/@sue/board-react-text",
+      "kind": "architecture-module",
+      "cellType": "node",
+      "geometry": {
+        "x": 416,
+        "y": 494,
+        "width": 372,
+        "height": 98,
+        "derived": false,
+        "outline": {
+          "kind": "roundRectangle",
+          "radius": 8
+        }
+      },
+      "ports": [
+        {
+          "id": "top",
+          "side": "top",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "right",
+          "side": "right",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "bottom",
+          "side": "bottom",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "left",
+          "side": "left",
+          "direction": "both",
+          "offset": 0.5
+        }
+      ],
+      "content": {
+        "label": "@sue/board-react-text\npackages/react/text",
+        "text": {
+          "schemaVersion": 1,
+          "id": "demo:packages/module/@sue/board-react-text/text",
+          "kind": "inline",
+          "plainText": "@sue/board-react-text\npackages/react/text",
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "@sue/board-react-text",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "18px",
+                          "color": "#1e293b"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "packages/react/text",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "18px",
+                          "color": "#1e293b"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "data": {
+        "shape": "box",
+        "placed": true
+      },
+      "appearance": {
+        "fill": "#f5f3ff",
+        "strokeColor": "#94a3b8",
+        "strokeWidth": 1.5
+      }
+    },
+    "demo:packages/module/@sue/board-react-mind": {
+      "id": "demo:packages/module/@sue/board-react-mind",
+      "kind": "architecture-module",
+      "cellType": "node",
+      "geometry": {
+        "x": 812,
+        "y": 494,
+        "width": 372,
+        "height": 98,
+        "derived": false,
+        "outline": {
+          "kind": "roundRectangle",
+          "radius": 8
+        }
+      },
+      "ports": [
+        {
+          "id": "top",
+          "side": "top",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "right",
+          "side": "right",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "bottom",
+          "side": "bottom",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "left",
+          "side": "left",
+          "direction": "both",
+          "offset": 0.5
+        }
+      ],
+      "content": {
+        "label": "@sue/board-react-mind\npackages/react/mind",
+        "text": {
+          "schemaVersion": 1,
+          "id": "demo:packages/module/@sue/board-react-mind/text",
+          "kind": "inline",
+          "plainText": "@sue/board-react-mind\npackages/react/mind",
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "@sue/board-react-mind",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "18px",
+                          "color": "#1e293b"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "packages/react/mind",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "18px",
+                          "color": "#1e293b"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "data": {
+        "shape": "box",
+        "placed": true
+      },
+      "appearance": {
+        "fill": "#f5f3ff",
+        "strokeColor": "#94a3b8",
+        "strokeWidth": 1.5
+      }
+    },
+    "demo:packages/module/@sue/board-react-workflow": {
+      "id": "demo:packages/module/@sue/board-react-workflow",
+      "kind": "architecture-module",
+      "cellType": "node",
+      "geometry": {
+        "x": 1208,
+        "y": 494,
+        "width": 372,
+        "height": 98,
+        "derived": false,
+        "outline": {
+          "kind": "roundRectangle",
+          "radius": 8
+        }
+      },
+      "ports": [
+        {
+          "id": "top",
+          "side": "top",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "right",
+          "side": "right",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "bottom",
+          "side": "bottom",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "left",
+          "side": "left",
+          "direction": "both",
+          "offset": 0.5
+        }
+      ],
+      "content": {
+        "label": "@sue/board-react-workflow\npackages/react/workflow",
+        "text": {
+          "schemaVersion": 1,
+          "id": "demo:packages/module/@sue/board-react-workflow/text",
+          "kind": "inline",
+          "plainText": "@sue/board-react-workflow\npackages/react/workflow",
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "@sue/board-react-workflow",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "18px",
+                          "color": "#1e293b"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "packages/react/workflow",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "18px",
+                          "color": "#1e293b"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "data": {
+        "shape": "box",
+        "placed": true
+      },
+      "appearance": {
+        "fill": "#f5f3ff",
+        "strokeColor": "#94a3b8",
+        "strokeWidth": 1.5
+      }
+    },
+    "demo:packages/module/@sue/board-react-architecture": {
+      "id": "demo:packages/module/@sue/board-react-architecture",
+      "kind": "architecture-module",
+      "cellType": "node",
+      "geometry": {
+        "x": 1604,
+        "y": 494,
+        "width": 372,
+        "height": 98,
+        "derived": false,
+        "outline": {
+          "kind": "roundRectangle",
+          "radius": 8
+        }
+      },
+      "ports": [
+        {
+          "id": "top",
+          "side": "top",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "right",
+          "side": "right",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "bottom",
+          "side": "bottom",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "left",
+          "side": "left",
+          "direction": "both",
+          "offset": 0.5
+        }
+      ],
+      "content": {
+        "label": "@sue/board-react-architecture\npackages/react/architecture",
+        "text": {
+          "schemaVersion": 1,
+          "id": "demo:packages/module/@sue/board-react-architecture/text",
+          "kind": "inline",
+          "plainText": "@sue/board-react-architecture\npackages/react/architecture",
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "@sue/board-react-architecture",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "18px",
+                          "color": "#1e293b"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "packages/react/architecture",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "18px",
+                          "color": "#1e293b"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "data": {
+        "shape": "box",
+        "placed": true
+      },
+      "appearance": {
+        "fill": "#f5f3ff",
+        "strokeColor": "#94a3b8",
+        "strokeWidth": 1.5
+      }
+    },
+    "demo:packages/layer/3": {
+      "id": "demo:packages/layer/3",
+      "kind": "architecture-layer",
+      "cellType": "node",
+      "geometry": {
+        "x": 0,
+        "y": 660,
+        "width": 1980,
+        "height": 170,
+        "derived": true
+      },
+      "content": {
+        "label": "基础引擎",
+        "text": {
+          "schemaVersion": 1,
+          "id": "demo:packages/layer/3/text",
+          "kind": "inline",
+          "plainText": "基础引擎",
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "基础引擎",
+                    "marks": [
+                      {
+                        "type": "bold"
+                      },
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "16px",
+                          "color": "#475569"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "data": {
+        "order": "00000003",
+        "fontSize": 24,
+        "memberIds": [
+          "demo:packages/module/@sue/board-common",
+          "demo:packages/module/@sue/board-core",
+          "demo:packages/module/@sue/board-layouts",
+          "demo:packages/module/@sue/board-text"
+        ]
+      },
+      "appearance": {
+        "fill": "#f8fafc",
+        "strokeColor": "#e2e8f0",
+        "strokeWidth": 1
+      }
+    },
+    "demo:packages/module/@sue/board-core": {
+      "id": "demo:packages/module/@sue/board-core",
+      "kind": "architecture-module",
+      "cellType": "node",
+      "geometry": {
+        "x": 218,
+        "y": 714,
+        "width": 372,
+        "height": 98,
+        "derived": false,
+        "outline": {
+          "kind": "roundRectangle",
+          "radius": 8
+        }
+      },
+      "ports": [
+        {
+          "id": "top",
+          "side": "top",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "right",
+          "side": "right",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "bottom",
+          "side": "bottom",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "left",
+          "side": "left",
+          "direction": "both",
+          "offset": 0.5
+        }
+      ],
+      "content": {
+        "label": "@sue/board-core\npackages/engine/core",
+        "text": {
+          "schemaVersion": 1,
+          "id": "demo:packages/module/@sue/board-core/text",
+          "kind": "inline",
+          "plainText": "@sue/board-core\npackages/engine/core",
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "@sue/board-core",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "18px",
+                          "color": "#1e293b"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "packages/engine/core",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "18px",
+                          "color": "#1e293b"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "data": {
+        "shape": "box",
+        "placed": true
+      },
+      "appearance": {
+        "fill": "#fffbeb",
+        "strokeColor": "#94a3b8",
+        "strokeWidth": 1.5
+      }
+    },
+    "demo:packages/module/@sue/board-common": {
+      "id": "demo:packages/module/@sue/board-common",
+      "kind": "architecture-module",
+      "cellType": "node",
+      "geometry": {
+        "x": 614,
+        "y": 714,
+        "width": 372,
+        "height": 98,
+        "derived": false,
+        "outline": {
+          "kind": "roundRectangle",
+          "radius": 8
+        }
+      },
+      "ports": [
+        {
+          "id": "top",
+          "side": "top",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "right",
+          "side": "right",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "bottom",
+          "side": "bottom",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "left",
+          "side": "left",
+          "direction": "both",
+          "offset": 0.5
+        }
+      ],
+      "content": {
+        "label": "@sue/board-common\npackages/engine/common",
+        "text": {
+          "schemaVersion": 1,
+          "id": "demo:packages/module/@sue/board-common/text",
+          "kind": "inline",
+          "plainText": "@sue/board-common\npackages/engine/common",
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "@sue/board-common",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "18px",
+                          "color": "#1e293b"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "packages/engine/common",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "18px",
+                          "color": "#1e293b"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "data": {
+        "shape": "box",
+        "placed": true
+      },
+      "appearance": {
+        "fill": "#fffbeb",
+        "strokeColor": "#94a3b8",
+        "strokeWidth": 1.5
+      }
+    },
+    "demo:packages/module/@sue/board-layouts": {
+      "id": "demo:packages/module/@sue/board-layouts",
+      "kind": "architecture-module",
+      "cellType": "node",
+      "geometry": {
+        "x": 1010,
+        "y": 714,
+        "width": 372,
+        "height": 98,
+        "derived": false,
+        "outline": {
+          "kind": "roundRectangle",
+          "radius": 8
+        }
+      },
+      "ports": [
+        {
+          "id": "top",
+          "side": "top",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "right",
+          "side": "right",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "bottom",
+          "side": "bottom",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "left",
+          "side": "left",
+          "direction": "both",
+          "offset": 0.5
+        }
+      ],
+      "content": {
+        "label": "@sue/board-layouts\npackages/engine/layouts",
+        "text": {
+          "schemaVersion": 1,
+          "id": "demo:packages/module/@sue/board-layouts/text",
+          "kind": "inline",
+          "plainText": "@sue/board-layouts\npackages/engine/layouts",
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "@sue/board-layouts",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "18px",
+                          "color": "#1e293b"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "packages/engine/layouts",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "18px",
+                          "color": "#1e293b"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "data": {
+        "shape": "box",
+        "placed": true
+      },
+      "appearance": {
+        "fill": "#fffbeb",
+        "strokeColor": "#94a3b8",
+        "strokeWidth": 1.5
+      }
+    },
+    "demo:packages/module/@sue/board-text": {
+      "id": "demo:packages/module/@sue/board-text",
+      "kind": "architecture-module",
+      "cellType": "node",
+      "geometry": {
+        "x": 1406,
+        "y": 714,
+        "width": 372,
+        "height": 98,
+        "derived": false,
+        "outline": {
+          "kind": "roundRectangle",
+          "radius": 8
+        }
+      },
+      "ports": [
+        {
+          "id": "top",
+          "side": "top",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "right",
+          "side": "right",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "bottom",
+          "side": "bottom",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "left",
+          "side": "left",
+          "direction": "both",
+          "offset": 0.5
+        }
+      ],
+      "content": {
+        "label": "@sue/board-text\npackages/engine/text",
+        "text": {
+          "schemaVersion": 1,
+          "id": "demo:packages/module/@sue/board-text/text",
+          "kind": "inline",
+          "plainText": "@sue/board-text\npackages/engine/text",
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "@sue/board-text",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "18px",
+                          "color": "#1e293b"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "packages/engine/text",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "18px",
+                          "color": "#1e293b"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "data": {
+        "shape": "box",
+        "placed": true
+      },
+      "appearance": {
+        "fill": "#fffbeb",
+        "strokeColor": "#94a3b8",
+        "strokeWidth": 1.5
+      }
+    },
+    "demo:packages/layer/4": {
+      "id": "demo:packages/layer/4",
+      "kind": "architecture-layer",
+      "cellType": "node",
+      "geometry": {
+        "x": 0,
+        "y": 880,
+        "width": 1980,
+        "height": 170,
+        "derived": true
+      },
+      "content": {
+        "label": "领域引擎",
+        "text": {
+          "schemaVersion": 1,
+          "id": "demo:packages/layer/4/text",
+          "kind": "inline",
+          "plainText": "领域引擎",
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "领域引擎",
+                    "marks": [
+                      {
+                        "type": "bold"
+                      },
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "16px",
+                          "color": "#475569"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "data": {
+        "order": "00000004",
+        "fontSize": 24,
+        "memberIds": [
+          "demo:packages/module/@sue/board-architecture",
+          "demo:packages/module/@sue/board-draw",
+          "demo:packages/module/@sue/board-mind",
+          "demo:packages/module/@sue/board-workflow"
+        ]
+      },
+      "appearance": {
+        "fill": "#f8fafc",
+        "strokeColor": "#e2e8f0",
+        "strokeWidth": 1
+      }
+    },
+    "demo:packages/module/@sue/board-draw": {
+      "id": "demo:packages/module/@sue/board-draw",
+      "kind": "architecture-module",
+      "cellType": "node",
+      "geometry": {
+        "x": 218,
+        "y": 934,
+        "width": 372,
+        "height": 98,
+        "derived": false,
+        "outline": {
+          "kind": "roundRectangle",
+          "radius": 8
+        }
+      },
+      "ports": [
+        {
+          "id": "top",
+          "side": "top",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "right",
+          "side": "right",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "bottom",
+          "side": "bottom",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "left",
+          "side": "left",
+          "direction": "both",
+          "offset": 0.5
+        }
+      ],
+      "content": {
+        "label": "@sue/board-draw\npackages/engine/draw",
+        "text": {
+          "schemaVersion": 1,
+          "id": "demo:packages/module/@sue/board-draw/text",
+          "kind": "inline",
+          "plainText": "@sue/board-draw\npackages/engine/draw",
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "@sue/board-draw",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "18px",
+                          "color": "#1e293b"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "packages/engine/draw",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "18px",
+                          "color": "#1e293b"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "data": {
+        "shape": "box",
+        "placed": true
+      },
+      "appearance": {
+        "fill": "#f0fdfa",
+        "strokeColor": "#94a3b8",
+        "strokeWidth": 1.5
+      }
+    },
+    "demo:packages/module/@sue/board-mind": {
+      "id": "demo:packages/module/@sue/board-mind",
+      "kind": "architecture-module",
+      "cellType": "node",
+      "geometry": {
+        "x": 614,
+        "y": 934,
+        "width": 372,
+        "height": 98,
+        "derived": false,
+        "outline": {
+          "kind": "roundRectangle",
+          "radius": 8
+        }
+      },
+      "ports": [
+        {
+          "id": "top",
+          "side": "top",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "right",
+          "side": "right",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "bottom",
+          "side": "bottom",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "left",
+          "side": "left",
+          "direction": "both",
+          "offset": 0.5
+        }
+      ],
+      "content": {
+        "label": "@sue/board-mind\npackages/engine/mind",
+        "text": {
+          "schemaVersion": 1,
+          "id": "demo:packages/module/@sue/board-mind/text",
+          "kind": "inline",
+          "plainText": "@sue/board-mind\npackages/engine/mind",
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "@sue/board-mind",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "18px",
+                          "color": "#1e293b"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "packages/engine/mind",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "18px",
+                          "color": "#1e293b"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "data": {
+        "shape": "box",
+        "placed": true
+      },
+      "appearance": {
+        "fill": "#f0fdfa",
+        "strokeColor": "#94a3b8",
+        "strokeWidth": 1.5
+      }
+    },
+    "demo:packages/module/@sue/board-workflow": {
+      "id": "demo:packages/module/@sue/board-workflow",
+      "kind": "architecture-module",
+      "cellType": "node",
+      "geometry": {
+        "x": 1010,
+        "y": 934,
+        "width": 372,
+        "height": 98,
+        "derived": false,
+        "outline": {
+          "kind": "roundRectangle",
+          "radius": 8
+        }
+      },
+      "ports": [
+        {
+          "id": "top",
+          "side": "top",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "right",
+          "side": "right",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "bottom",
+          "side": "bottom",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "left",
+          "side": "left",
+          "direction": "both",
+          "offset": 0.5
+        }
+      ],
+      "content": {
+        "label": "@sue/board-workflow\npackages/engine/workflow",
+        "text": {
+          "schemaVersion": 1,
+          "id": "demo:packages/module/@sue/board-workflow/text",
+          "kind": "inline",
+          "plainText": "@sue/board-workflow\npackages/engine/workflow",
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "@sue/board-workflow",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "18px",
+                          "color": "#1e293b"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "packages/engine/workflow",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "18px",
+                          "color": "#1e293b"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "data": {
+        "shape": "box",
+        "placed": true
+      },
+      "appearance": {
+        "fill": "#f0fdfa",
+        "strokeColor": "#94a3b8",
+        "strokeWidth": 1.5
+      }
+    },
+    "demo:packages/module/@sue/board-architecture": {
+      "id": "demo:packages/module/@sue/board-architecture",
+      "kind": "architecture-module",
+      "cellType": "node",
+      "geometry": {
+        "x": 1406,
+        "y": 934,
+        "width": 372,
+        "height": 98,
+        "derived": false,
+        "outline": {
+          "kind": "roundRectangle",
+          "radius": 8
+        }
+      },
+      "ports": [
+        {
+          "id": "top",
+          "side": "top",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "right",
+          "side": "right",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "bottom",
+          "side": "bottom",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "left",
+          "side": "left",
+          "direction": "both",
+          "offset": 0.5
+        }
+      ],
+      "content": {
+        "label": "@sue/board-architecture\npackages/engine/architecture",
+        "text": {
+          "schemaVersion": 1,
+          "id": "demo:packages/module/@sue/board-architecture/text",
+          "kind": "inline",
+          "plainText": "@sue/board-architecture\npackages/engine/architecture",
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "@sue/board-architecture",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "18px",
+                          "color": "#1e293b"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "packages/engine/architecture",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "18px",
+                          "color": "#1e293b"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "data": {
+        "shape": "box",
+        "placed": true
+      },
+      "appearance": {
+        "fill": "#f0fdfa",
+        "strokeColor": "#94a3b8",
+        "strokeWidth": 1.5
+      }
+    },
+    "demo:packages/layer/5": {
+      "id": "demo:packages/layer/5",
+      "kind": "architecture-layer",
+      "cellType": "node",
+      "geometry": {
+        "x": 0,
+        "y": 1100,
+        "width": 1980,
+        "height": 170,
+        "derived": true
+      },
+      "content": {
+        "label": "导入导出边界",
+        "text": {
+          "schemaVersion": 1,
+          "id": "demo:packages/layer/5/text",
+          "kind": "inline",
+          "plainText": "导入导出边界",
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "导入导出边界",
+                    "marks": [
+                      {
+                        "type": "bold"
+                      },
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "16px",
+                          "color": "#475569"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "data": {
+        "order": "00000005",
+        "fontSize": 24,
+        "memberIds": [
+          "demo:packages/module/@sue/board-markdown-to-board",
+          "demo:packages/module/@sue/board-markdown-to-text",
+          "demo:packages/module/@sue/board-mermaid-to-board"
+        ]
+      },
+      "appearance": {
+        "fill": "#f8fafc",
+        "strokeColor": "#e2e8f0",
+        "strokeWidth": 1
+      }
+    },
+    "demo:packages/module/@sue/board-markdown-to-board": {
+      "id": "demo:packages/module/@sue/board-markdown-to-board",
+      "kind": "architecture-module",
+      "cellType": "node",
+      "geometry": {
+        "x": 416,
+        "y": 1154,
+        "width": 372,
+        "height": 98,
+        "derived": false,
+        "outline": {
+          "kind": "roundRectangle",
+          "radius": 8
+        }
+      },
+      "ports": [
+        {
+          "id": "top",
+          "side": "top",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "right",
+          "side": "right",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "bottom",
+          "side": "bottom",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "left",
+          "side": "left",
+          "direction": "both",
+          "offset": 0.5
+        }
+      ],
+      "content": {
+        "label": "@sue/board-markdown-to-board\npackages/converters/markdown-to-board",
+        "text": {
+          "schemaVersion": 1,
+          "id": "demo:packages/module/@sue/board-markdown-to-board/text",
+          "kind": "inline",
+          "plainText": "@sue/board-markdown-to-board\npackages/converters/markdown-to-board",
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "@sue/board-markdown-to-board",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "18px",
+                          "color": "#1e293b"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "packages/converters/markdown-to-board",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "18px",
+                          "color": "#1e293b"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "data": {
+        "shape": "box",
+        "placed": true
+      },
+      "appearance": {
+        "fill": "#eff6ff",
+        "strokeColor": "#94a3b8",
+        "strokeWidth": 1.5
+      }
+    },
+    "demo:packages/module/@sue/board-mermaid-to-board": {
+      "id": "demo:packages/module/@sue/board-mermaid-to-board",
+      "kind": "architecture-module",
+      "cellType": "node",
+      "geometry": {
+        "x": 812,
+        "y": 1154,
+        "width": 372,
+        "height": 98,
+        "derived": false,
+        "outline": {
+          "kind": "roundRectangle",
+          "radius": 8
+        }
+      },
+      "ports": [
+        {
+          "id": "top",
+          "side": "top",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "right",
+          "side": "right",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "bottom",
+          "side": "bottom",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "left",
+          "side": "left",
+          "direction": "both",
+          "offset": 0.5
+        }
+      ],
+      "content": {
+        "label": "@sue/board-mermaid-to-board\npackages/converters/mermaid-to-board",
+        "text": {
+          "schemaVersion": 1,
+          "id": "demo:packages/module/@sue/board-mermaid-to-board/text",
+          "kind": "inline",
+          "plainText": "@sue/board-mermaid-to-board\npackages/converters/mermaid-to-board",
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "@sue/board-mermaid-to-board",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "18px",
+                          "color": "#1e293b"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "packages/converters/mermaid-to-board",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "18px",
+                          "color": "#1e293b"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "data": {
+        "shape": "box",
+        "placed": true
+      },
+      "appearance": {
+        "fill": "#eff6ff",
+        "strokeColor": "#94a3b8",
+        "strokeWidth": 1.5
+      }
+    },
+    "demo:packages/module/@sue/board-markdown-to-text": {
+      "id": "demo:packages/module/@sue/board-markdown-to-text",
+      "kind": "architecture-module",
+      "cellType": "node",
+      "geometry": {
+        "x": 1208,
+        "y": 1154,
+        "width": 372,
+        "height": 98,
+        "derived": false,
+        "outline": {
+          "kind": "roundRectangle",
+          "radius": 8
+        }
+      },
+      "ports": [
+        {
+          "id": "top",
+          "side": "top",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "right",
+          "side": "right",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "bottom",
+          "side": "bottom",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "left",
+          "side": "left",
+          "direction": "both",
+          "offset": 0.5
+        }
+      ],
+      "content": {
+        "label": "@sue/board-markdown-to-text\npackages/converters/markdown-to-text",
+        "text": {
+          "schemaVersion": 1,
+          "id": "demo:packages/module/@sue/board-markdown-to-text/text",
+          "kind": "inline",
+          "plainText": "@sue/board-markdown-to-text\npackages/converters/markdown-to-text",
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "@sue/board-markdown-to-text",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "18px",
+                          "color": "#1e293b"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "packages/converters/markdown-to-text",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "18px",
+                          "color": "#1e293b"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "data": {
+        "shape": "box",
+        "placed": true
+      },
+      "appearance": {
+        "fill": "#eff6ff",
+        "strokeColor": "#94a3b8",
+        "strokeWidth": 1.5
+      }
+    },
+    "demo:packages/edge/0": {
+      "id": "demo:packages/edge/0",
+      "kind": "architecture-edge",
+      "cellType": "edge",
+      "source": {
+        "cellId": "demo:packages/module/desktop"
+      },
+      "target": {
+        "cellId": "demo:packages/module/@sue/verd-board-app"
+      },
+      "route": {
+        "mode": "orthogonal"
+      },
+      "appearance": {
+        "strokeColor": "#64748b",
+        "strokeWidth": 1.5
+      }
+    },
+    "demo:packages/edge/1": {
+      "id": "demo:packages/edge/1",
+      "kind": "architecture-edge",
+      "cellType": "edge",
+      "source": {
+        "cellId": "demo:packages/module/web"
+      },
+      "target": {
+        "cellId": "demo:packages/module/@sue/verd-board-app"
+      },
+      "route": {
+        "mode": "orthogonal"
+      },
+      "appearance": {
+        "strokeColor": "#64748b",
+        "strokeWidth": 1.5
+      }
+    },
+    "demo:packages/edge/2": {
+      "id": "demo:packages/edge/2",
+      "kind": "architecture-edge",
+      "cellType": "edge",
+      "source": {
+        "cellId": "demo:packages/module/@sue/verd-board-app"
+      },
+      "target": {
+        "cellId": "demo:packages/module/@sue/board-markdown-to-text"
+      },
+      "route": {
+        "mode": "orthogonal"
+      },
+      "appearance": {
+        "strokeColor": "#64748b",
+        "strokeWidth": 1.5
+      }
+    },
+    "demo:packages/edge/3": {
+      "id": "demo:packages/edge/3",
+      "kind": "architecture-edge",
+      "cellType": "edge",
+      "source": {
+        "cellId": "demo:packages/module/@sue/verd-board-app"
+      },
+      "target": {
+        "cellId": "demo:packages/module/@sue/verd-board-ui"
+      },
+      "route": {
+        "mode": "orthogonal"
+      },
+      "appearance": {
+        "strokeColor": "#64748b",
+        "strokeWidth": 1.5
+      }
+    },
+    "demo:packages/edge/4": {
+      "id": "demo:packages/edge/4",
+      "kind": "architecture-edge",
+      "cellType": "edge",
+      "source": {
+        "cellId": "demo:packages/module/@sue/verd-board-ui"
+      },
+      "target": {
+        "cellId": "demo:packages/module/@sue/board-markdown-to-board"
+      },
+      "route": {
+        "mode": "orthogonal"
+      },
+      "appearance": {
+        "strokeColor": "#64748b",
+        "strokeWidth": 1.5
+      }
+    },
+    "demo:packages/edge/5": {
+      "id": "demo:packages/edge/5",
+      "kind": "architecture-edge",
+      "cellType": "edge",
+      "source": {
+        "cellId": "demo:packages/module/@sue/verd-board-ui"
+      },
+      "target": {
+        "cellId": "demo:packages/module/@sue/board-mermaid-to-board"
+      },
+      "route": {
+        "mode": "orthogonal"
+      },
+      "appearance": {
+        "strokeColor": "#64748b",
+        "strokeWidth": 1.5
+      }
+    },
+    "demo:packages/edge/6": {
+      "id": "demo:packages/edge/6",
+      "kind": "architecture-edge",
+      "cellType": "edge",
+      "source": {
+        "cellId": "demo:packages/module/@sue/verd-board-ui"
+      },
+      "target": {
+        "cellId": "demo:packages/module/@sue/board-react-architecture"
+      },
+      "route": {
+        "mode": "orthogonal"
+      },
+      "appearance": {
+        "strokeColor": "#64748b",
+        "strokeWidth": 1.5
+      }
+    },
+    "demo:packages/edge/7": {
+      "id": "demo:packages/edge/7",
+      "kind": "architecture-edge",
+      "cellType": "edge",
+      "source": {
+        "cellId": "demo:packages/module/@sue/verd-board-ui"
+      },
+      "target": {
+        "cellId": "demo:packages/module/@sue/board-react-mind"
+      },
+      "route": {
+        "mode": "orthogonal"
+      },
+      "appearance": {
+        "strokeColor": "#64748b",
+        "strokeWidth": 1.5
+      }
+    },
+    "demo:packages/edge/8": {
+      "id": "demo:packages/edge/8",
+      "kind": "architecture-edge",
+      "cellType": "edge",
+      "source": {
+        "cellId": "demo:packages/module/@sue/verd-board-ui"
+      },
+      "target": {
+        "cellId": "demo:packages/module/@sue/board-react-workflow"
+      },
+      "route": {
+        "mode": "orthogonal"
+      },
+      "appearance": {
+        "strokeColor": "#64748b",
+        "strokeWidth": 1.5
+      }
+    },
+    "demo:packages/edge/9": {
+      "id": "demo:packages/edge/9",
+      "kind": "architecture-edge",
+      "cellType": "edge",
+      "source": {
+        "cellId": "demo:packages/module/@sue/board-react"
+      },
+      "target": {
+        "cellId": "demo:packages/module/@sue/board-core"
+      },
+      "route": {
+        "mode": "orthogonal"
+      },
+      "appearance": {
+        "strokeColor": "#64748b",
+        "strokeWidth": 1.5
+      }
+    },
+    "demo:packages/edge/10": {
+      "id": "demo:packages/edge/10",
+      "kind": "architecture-edge",
+      "cellType": "edge",
+      "source": {
+        "cellId": "demo:packages/module/@sue/board-react"
+      },
+      "target": {
+        "cellId": "demo:packages/module/@sue/board-react-text"
+      },
+      "route": {
+        "mode": "orthogonal"
+      },
+      "appearance": {
+        "strokeColor": "#64748b",
+        "strokeWidth": 1.5
+      }
+    },
+    "demo:packages/edge/11": {
+      "id": "demo:packages/edge/11",
+      "kind": "architecture-edge",
+      "cellType": "edge",
+      "source": {
+        "cellId": "demo:packages/module/@sue/board-react-text"
+      },
+      "target": {
+        "cellId": "demo:packages/module/@sue/board-common"
+      },
+      "route": {
+        "mode": "orthogonal"
+      },
+      "appearance": {
+        "strokeColor": "#64748b",
+        "strokeWidth": 1.5
+      }
+    },
+    "demo:packages/edge/12": {
+      "id": "demo:packages/edge/12",
+      "kind": "architecture-edge",
+      "cellType": "edge",
+      "source": {
+        "cellId": "demo:packages/module/@sue/board-react-mind"
+      },
+      "target": {
+        "cellId": "demo:packages/module/@sue/board-mind"
+      },
+      "route": {
+        "mode": "orthogonal"
+      },
+      "appearance": {
+        "strokeColor": "#64748b",
+        "strokeWidth": 1.5
+      }
+    },
+    "demo:packages/edge/13": {
+      "id": "demo:packages/edge/13",
+      "kind": "architecture-edge",
+      "cellType": "edge",
+      "source": {
+        "cellId": "demo:packages/module/@sue/board-react-mind"
+      },
+      "target": {
+        "cellId": "demo:packages/module/@sue/board-react"
+      },
+      "route": {
+        "mode": "orthogonal"
+      },
+      "appearance": {
+        "strokeColor": "#64748b",
+        "strokeWidth": 1.5
+      }
+    },
+    "demo:packages/edge/14": {
+      "id": "demo:packages/edge/14",
+      "kind": "architecture-edge",
+      "cellType": "edge",
+      "source": {
+        "cellId": "demo:packages/module/@sue/board-react-workflow"
+      },
+      "target": {
+        "cellId": "demo:packages/module/@sue/board-react"
+      },
+      "route": {
+        "mode": "orthogonal"
+      },
+      "appearance": {
+        "strokeColor": "#64748b",
+        "strokeWidth": 1.5
+      }
+    },
+    "demo:packages/edge/15": {
+      "id": "demo:packages/edge/15",
+      "kind": "architecture-edge",
+      "cellType": "edge",
+      "source": {
+        "cellId": "demo:packages/module/@sue/board-react-workflow"
+      },
+      "target": {
+        "cellId": "demo:packages/module/@sue/board-workflow"
+      },
+      "route": {
+        "mode": "orthogonal"
+      },
+      "appearance": {
+        "strokeColor": "#64748b",
+        "strokeWidth": 1.5
+      }
+    },
+    "demo:packages/edge/16": {
+      "id": "demo:packages/edge/16",
+      "kind": "architecture-edge",
+      "cellType": "edge",
+      "source": {
+        "cellId": "demo:packages/module/@sue/board-react-architecture"
+      },
+      "target": {
+        "cellId": "demo:packages/module/@sue/board-architecture"
+      },
+      "route": {
+        "mode": "orthogonal"
+      },
+      "appearance": {
+        "strokeColor": "#64748b",
+        "strokeWidth": 1.5
+      }
+    },
+    "demo:packages/edge/17": {
+      "id": "demo:packages/edge/17",
+      "kind": "architecture-edge",
+      "cellType": "edge",
+      "source": {
+        "cellId": "demo:packages/module/@sue/board-react-architecture"
+      },
+      "target": {
+        "cellId": "demo:packages/module/@sue/board-react"
+      },
+      "route": {
+        "mode": "orthogonal"
+      },
+      "appearance": {
+        "strokeColor": "#64748b",
+        "strokeWidth": 1.5
+      }
+    },
+    "demo:packages/edge/18": {
+      "id": "demo:packages/edge/18",
+      "kind": "architecture-edge",
+      "cellType": "edge",
+      "source": {
+        "cellId": "demo:packages/module/@sue/board-text"
+      },
+      "target": {
+        "cellId": "demo:packages/module/@sue/board-common"
+      },
+      "route": {
+        "mode": "orthogonal"
+      },
+      "appearance": {
+        "strokeColor": "#64748b",
+        "strokeWidth": 1.5
+      }
+    },
+    "demo:packages/edge/19": {
+      "id": "demo:packages/edge/19",
+      "kind": "architecture-edge",
+      "cellType": "edge",
+      "source": {
+        "cellId": "demo:packages/module/@sue/board-draw"
+      },
+      "target": {
+        "cellId": "demo:packages/module/@sue/board-common"
+      },
+      "route": {
+        "mode": "orthogonal"
+      },
+      "appearance": {
+        "strokeColor": "#64748b",
+        "strokeWidth": 1.5
+      }
+    },
+    "demo:packages/edge/20": {
+      "id": "demo:packages/edge/20",
+      "kind": "architecture-edge",
+      "cellType": "edge",
+      "source": {
+        "cellId": "demo:packages/module/@sue/board-draw"
+      },
+      "target": {
+        "cellId": "demo:packages/module/@sue/board-core"
+      },
+      "route": {
+        "mode": "orthogonal"
+      },
+      "appearance": {
+        "strokeColor": "#64748b",
+        "strokeWidth": 1.5
+      }
+    },
+    "demo:packages/edge/21": {
+      "id": "demo:packages/edge/21",
+      "kind": "architecture-edge",
+      "cellType": "edge",
+      "source": {
+        "cellId": "demo:packages/module/@sue/board-mind"
+      },
+      "target": {
+        "cellId": "demo:packages/module/@sue/board-common"
+      },
+      "route": {
+        "mode": "orthogonal"
+      },
+      "appearance": {
+        "strokeColor": "#64748b",
+        "strokeWidth": 1.5
+      }
+    },
+    "demo:packages/edge/22": {
+      "id": "demo:packages/edge/22",
+      "kind": "architecture-edge",
+      "cellType": "edge",
+      "source": {
+        "cellId": "demo:packages/module/@sue/board-mind"
+      },
+      "target": {
+        "cellId": "demo:packages/module/@sue/board-core"
+      },
+      "route": {
+        "mode": "orthogonal"
+      },
+      "appearance": {
+        "strokeColor": "#64748b",
+        "strokeWidth": 1.5
+      }
+    },
+    "demo:packages/edge/23": {
+      "id": "demo:packages/edge/23",
+      "kind": "architecture-edge",
+      "cellType": "edge",
+      "source": {
+        "cellId": "demo:packages/module/@sue/board-mind"
+      },
+      "target": {
+        "cellId": "demo:packages/module/@sue/board-layouts"
+      },
+      "route": {
+        "mode": "orthogonal"
+      },
+      "appearance": {
+        "strokeColor": "#64748b",
+        "strokeWidth": 1.5
+      }
+    },
+    "demo:packages/edge/24": {
+      "id": "demo:packages/edge/24",
+      "kind": "architecture-edge",
+      "cellType": "edge",
+      "source": {
+        "cellId": "demo:packages/module/@sue/board-workflow"
+      },
+      "target": {
+        "cellId": "demo:packages/module/@sue/board-core"
+      },
+      "route": {
+        "mode": "orthogonal"
+      },
+      "appearance": {
+        "strokeColor": "#64748b",
+        "strokeWidth": 1.5
+      }
+    },
+    "demo:packages/edge/25": {
+      "id": "demo:packages/edge/25",
+      "kind": "architecture-edge",
+      "cellType": "edge",
+      "source": {
+        "cellId": "demo:packages/module/@sue/board-workflow"
+      },
+      "target": {
+        "cellId": "demo:packages/module/@sue/board-layouts"
+      },
+      "route": {
+        "mode": "orthogonal"
+      },
+      "appearance": {
+        "strokeColor": "#64748b",
+        "strokeWidth": 1.5
+      }
+    },
+    "demo:packages/edge/26": {
+      "id": "demo:packages/edge/26",
+      "kind": "architecture-edge",
+      "cellType": "edge",
+      "source": {
+        "cellId": "demo:packages/module/@sue/board-architecture"
+      },
+      "target": {
+        "cellId": "demo:packages/module/@sue/board-core"
+      },
+      "route": {
+        "mode": "orthogonal"
+      },
+      "appearance": {
+        "strokeColor": "#64748b",
+        "strokeWidth": 1.5
+      }
+    },
+    "demo:packages/edge/27": {
+      "id": "demo:packages/edge/27",
+      "kind": "architecture-edge",
+      "cellType": "edge",
+      "source": {
+        "cellId": "demo:packages/module/@sue/board-markdown-to-board"
+      },
+      "target": {
+        "cellId": "demo:packages/module/@sue/board-mind"
+      },
+      "route": {
+        "mode": "orthogonal"
+      },
+      "appearance": {
+        "strokeColor": "#64748b",
+        "strokeWidth": 1.5
+      }
+    },
+    "demo:packages/edge/28": {
+      "id": "demo:packages/edge/28",
+      "kind": "architecture-edge",
+      "cellType": "edge",
+      "source": {
+        "cellId": "demo:packages/module/@sue/board-mermaid-to-board"
+      },
+      "target": {
+        "cellId": "demo:packages/module/@sue/board-architecture"
+      },
+      "route": {
+        "mode": "orthogonal"
+      },
+      "appearance": {
+        "strokeColor": "#64748b",
+        "strokeWidth": 1.5
+      }
+    },
+    "demo:packages/edge/29": {
+      "id": "demo:packages/edge/29",
+      "kind": "architecture-edge",
+      "cellType": "edge",
+      "source": {
+        "cellId": "demo:packages/module/@sue/board-mermaid-to-board"
+      },
+      "target": {
+        "cellId": "demo:packages/module/@sue/board-draw"
+      },
+      "route": {
+        "mode": "orthogonal"
+      },
+      "appearance": {
+        "strokeColor": "#64748b",
+        "strokeWidth": 1.5
+      }
+    },
+    "demo:packages/edge/30": {
+      "id": "demo:packages/edge/30",
+      "kind": "architecture-edge",
+      "cellType": "edge",
+      "source": {
+        "cellId": "demo:packages/module/@sue/board-mermaid-to-board"
+      },
+      "target": {
+        "cellId": "demo:packages/module/@sue/board-workflow"
+      },
+      "route": {
+        "mode": "orthogonal"
+      },
+      "appearance": {
+        "strokeColor": "#64748b",
+        "strokeWidth": 1.5
+      }
+    },
+    "demo:packages/edge/31": {
+      "id": "demo:packages/edge/31",
+      "kind": "architecture-edge",
+      "cellType": "edge",
+      "source": {
+        "cellId": "demo:packages/module/@sue/board-markdown-to-text"
+      },
+      "target": {
+        "cellId": "demo:packages/module/@sue/board-common"
+      },
+      "route": {
+        "mode": "orthogonal"
+      },
+      "appearance": {
+        "strokeColor": "#64748b",
+        "strokeWidth": 1.5
+      }
+    },
+    "project:topic/01/document": {
+      "id": "project:topic/01/document",
+      "cellType": "node",
+      "kind": "document-reference",
+      "geometry": {
+        "x": 0,
+        "y": 1366,
+        "width": 680,
+        "height": 480
+      },
+      "data": {
+        "targetDocumentId": "project-doc:packages/README"
+      },
+      "content": {
+        "text": {
+          "schemaVersion": 1,
+          "id": "project:topic/01/document/links",
+          "kind": "block",
+          "align": "left",
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "系统架构 · 包职责与公共接入",
+                    "marks": [
+                      {
+                        "type": "link",
+                        "attrs": {
+                          "href": "verd://file/project-doc%3Aarchitecture%2FARCHITECTURE#%E5%8C%85%E8%81%8C%E8%B4%A3%E4%B8%8E%E5%85%AC%E5%85%B1%E6%8E%A5%E5%85%A5"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          },
+          "plainText": "系统架构 · 包职责与公共接入"
+        }
+      }
+    }
+  },
+  "organization": {
+    "kind": "subgraph",
+    "ownerFrameId": "board-root"
+  }
+}

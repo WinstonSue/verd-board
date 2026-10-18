@@ -1,0 +1,681 @@
+{
+  "format": "verd-document",
+  "version": 1,
+  "id": "project-doc:README",
+  "title": "文档导航",
+  "text": {
+    "schemaVersion": 1,
+    "id": "project-doc:README",
+    "kind": "block",
+    "content": {
+      "type": "doc",
+      "content": [
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 1
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "青编（VerdBoard）文档导航"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "项目说明直接保存在当前工作区的原生文档中。使用桌面端打开仓库根目录的 workspace 文件夹，文档和可编辑架构图可在同一个文件树中阅读、修改与保存。"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "架构白板",
+              "marks": [
+                {
+                  "type": "link",
+                  "attrs": {
+                    "href": "verd://file/board-root"
+                  }
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "text": " | "
+            },
+            {
+              "type": "text",
+              "text": "English",
+              "marks": [
+                {
+                  "type": "link",
+                  "attrs": {
+                    "href": "verd://file/project-doc%3AREADME_en"
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 2
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "产品与架构"
+            }
+          ]
+        },
+        {
+          "type": "bulletList",
+          "content": [
+            {
+              "type": "listItem",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "产品概览",
+                      "marks": [
+                        {
+                          "type": "link",
+                          "attrs": {
+                            "href": "verd://file/project-doc%3Aproduct%2F%E4%BA%A7%E5%93%81%E6%A6%82%E8%A7%88"
+                          }
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "text": "：用户、能力、工作区和交付边界。"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "listItem",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "系统架构",
+                      "marks": [
+                        {
+                          "type": "link",
+                          "attrs": {
+                            "href": "verd://file/project-doc%3Aarchitecture%2FARCHITECTURE"
+                          }
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "text": "：文件工作区、会话、画布、文档与宿主的数据流。"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "listItem",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "包索引",
+                      "marks": [
+                        {
+                          "type": "link",
+                          "attrs": {
+                            "href": "verd://file/project-doc%3Apackages%2FREADME"
+                          }
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "text": "：产品、引擎、React 适配和三个转换器包。"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "listItem",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "React 接入",
+                      "marks": [
+                        {
+                          "type": "link",
+                          "attrs": {
+                            "href": "verd://file/project-doc%3Apackages%2Freact%2FREADME"
+                          }
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "text": "：FrameCanvas、DocumentEditor、控制器与宿主 API。"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 2
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "开发与维护"
+            }
+          ]
+        },
+        {
+          "type": "bulletList",
+          "content": [
+            {
+              "type": "listItem",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "开发指南",
+                      "marks": [
+                        {
+                          "type": "link",
+                          "attrs": {
+                            "href": "verd://file/project-doc%3Adevelopment%2FREADME"
+                          }
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "text": "：安装、构建、测试、提交和 Changesets 发布。"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "listItem",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "文档维护指南",
+                      "marks": [
+                        {
+                          "type": "link",
+                          "attrs": {
+                            "href": "verd://file/project-doc%3ADOCUMENTATION_GUIDE"
+                          }
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "text": "：原生文件真源、链接、样例和更新约定。"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "listItem",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "配置与源码索引",
+                      "marks": [
+                        {
+                          "type": "link",
+                          "attrs": {
+                            "href": "verd://file/project-doc%3Aguides%2F%E9%85%8D%E7%BD%AE%E4%B8%8E%E6%BA%90%E7%A0%81%E7%B4%A2%E5%BC%95"
+                          }
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "text": "：按功能定位具体源码。"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "listItem",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "桌面安装与使用",
+                      "marks": [
+                        {
+                          "type": "link",
+                          "attrs": {
+                            "href": "verd://file/project-doc%3Aguides%2FSETUP"
+                          }
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "text": "：开发和打包运行、目录选择、保存与故障排查。"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 2
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "使用与规范"
+            }
+          ]
+        },
+        {
+          "type": "bulletList",
+          "content": [
+            {
+              "type": "listItem",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "AI 画布数据规范",
+                      "marks": [
+                        {
+                          "type": "link",
+                          "attrs": {
+                            "href": "verd://file/project-doc%3Aguides%2Fai-canvas-data-spec"
+                          }
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "text": "：完整字段、元素、格式约束及 11 个真实导入样例。"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "listItem",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "体验回归验收",
+                      "marks": [
+                        {
+                          "type": "link",
+                          "attrs": {
+                            "href": "verd://file/project-doc%3Aguides%2F%E4%BD%93%E9%AA%8C%E5%9B%9E%E5%BD%92%E9%AA%8C%E6%94%B6"
+                          }
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "text": "：带日期的历史验收记录；不作为当前提交自动通过的证明。"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "listItem",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "画布模式",
+                      "marks": [
+                        {
+                          "type": "link",
+                          "attrs": {
+                            "href": "verd://file/project-doc%3Apackages%2Fboard%2Fcanvas-modes"
+                          }
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "text": "：白板、领域图、嵌入、演示与持久化。"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "listItem",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "格式转换器",
+                      "marks": [
+                        {
+                          "type": "link",
+                          "attrs": {
+                            "href": "verd://file/project-doc%3Apackages%2Fboard%2Fframe-converters"
+                          }
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "text": "：FrameSnapshot 与独立文档的 Markdown/Mermaid 边界。"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "listItem",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "排列与组合",
+                      "marks": [
+                        {
+                          "type": "link",
+                          "attrs": {
+                            "href": "verd://file/project-doc%3Apackages%2Fboard%2Farrangement"
+                          }
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "text": "：对齐、分布、Group、锁定与布局。"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "listItem",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "Mind 特性",
+                      "marks": [
+                        {
+                          "type": "link",
+                          "attrs": {
+                            "href": "verd://file/project-doc%3Apackages%2Fboard%2Fmind-features"
+                          }
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "text": "、"
+                    },
+                    {
+                      "type": "text",
+                      "text": "节点宽度规范",
+                      "marks": [
+                        {
+                          "type": "link",
+                          "attrs": {
+                            "href": "verd://file/project-doc%3Apackages%2Fboard%2FNODE_WIDTH_SPECIFICATION"
+                          }
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "text": "：树关系、配色、笔记和内容适配。"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "listItem",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "Mind 引擎概览",
+                      "marks": [
+                        {
+                          "type": "link",
+                          "attrs": {
+                            "href": "verd://file/project-doc%3Apackages%2Fboard%2FREADME.zh-CN"
+                          }
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "text": " / "
+                    },
+                    {
+                      "type": "text",
+                      "text": "English",
+                      "marks": [
+                        {
+                          "type": "link",
+                          "attrs": {
+                            "href": "verd://file/project-doc%3Apackages%2Fboard%2FREADME"
+                          }
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "text": "、"
+                    },
+                    {
+                      "type": "text",
+                      "text": "Board 变更说明",
+                      "marks": [
+                        {
+                          "type": "link",
+                          "attrs": {
+                            "href": "verd://file/project-doc%3Apackages%2Fboard%2FCHANGELOG"
+                          }
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "text": "。"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 2
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "快速开始"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "要求 Node.js >= 22、pnpm >= 11.18.0；具体版本与命令以根 package.json 和 pnpm-lock.yaml 为准。"
+            }
+          ]
+        },
+        {
+          "type": "codeBlock",
+          "attrs": {
+            "language": "bash"
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "pnpm install\npnpm start\n# Web 开发\npnpm dev:web\n# 公开包和 Web（根 build 排除 Desktop）\npnpm build\n# Desktop 前端、主进程与 preload\npnpm build:desktop\n# 类型检查与单测\npnpm typecheck\npnpm test"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "开发桌面端默认打开仓库根 workspace 文件夹；显式环境变量 VERDBOARD_WORKSPACE_PATH 与此前选择的目录可覆盖默认值。文件夹菜单可以打开其他目录，或返回内置工作区。打包应用为新用户创建独立副本，不把用户编辑写回仓库。"
+            }
+          ]
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 2
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "数据与能力"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "工作区支持两类一等文件：画布 .verd.json 和文字文档 .verd-doc.json。两者共用文件树、标签页、保存状态、回收区与撤销历史；画布内容由 WorkspaceSession 组装为 CellStore，独立文档保留 BoardTextDocument 正文。"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "白板、思维导图、流程图和架构图共用 FrameCanvas。图表可以独立存在，也可以归属于一张普通画布；引用通过稳定目标 ID 共享内容，归属与引用分别管理。文档使用 TipTap 编辑器，支持标题、列表、表格、图片、代码块、查找替换、目录与导出。原生文档链接通过稳定 ID 打开文档或画布，标题锚点遵循 GitHub slug 规则。"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "系统以 React 19、TypeScript 6、Vite 6、pnpm 11、TipTap 3 和 Electron 28 为当前依赖系列。主题、内容与图表归属会保存；画布相机、演示步骤与选择仅保留在会话内存。"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "最后更新：2026-10-16。历史测试数量和验收日期见对应原生文档；验证当前变更应重新运行相关检查。"
+            }
+          ]
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 2
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "文档 Frame 与只读引用"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "项目导览的三个文档 Frame 可双击正文编辑，Escape 返回画布选择；编辑的就是文件树里的源文档。八张专题图下方提供只读关联文档卡和章节入口，可沿图文关系继续阅读。"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "侧栏底部与画布「更多」菜单打开「我的」管理个人偏好；顶部工作区名称菜单打开工作区设置，左侧分为基本设置和当前工作区回收站，Desktop 目录切换也位于顶部菜单。文件夹可整体移入回收站并还原；回收站支持确认后永久删除或清空，详见产品概览和系统架构。"
+            }
+          ]
+        }
+      ]
+    },
+    "plainText": "青编（VerdBoard）文档导航\n项目说明直接保存在当前工作区的原生文档中。使用桌面端打开仓库根目录的 workspace 文件夹，文档和可编辑架构图可在同一个文件树中阅读、修改与保存。\n架构白板 | English\n产品与架构\n产品概览：用户、能力、工作区和交付边界。\n系统架构：文件工作区、会话、画布、文档与宿主的数据流。\n包索引：产品、引擎、React 适配和三个转换器包。\nReact 接入：FrameCanvas、DocumentEditor、控制器与宿主 API。\n开发与维护\n开发指南：安装、构建、测试、提交和 Changesets 发布。\n文档维护指南：原生文件真源、链接、样例和更新约定。\n配置与源码索引：按功能定位具体源码。\n桌面安装与使用：开发和打包运行、目录选择、保存与故障排查。\n使用与规范\nAI 画布数据规范：完整字段、元素、格式约束及 11 个真实导入样例。\n体验回归验收：带日期的历史验收记录；不作为当前提交自动通过的证明。\n画布模式：白板、领域图、嵌入、演示与持久化。\n格式转换器：FrameSnapshot 与独立文档的 Markdown/Mermaid 边界。\n排列与组合：对齐、分布、Group、锁定与布局。\nMind 特性、节点宽度规范：树关系、配色、笔记和内容适配。\nMind 引擎概览 / English、Board 变更说明。\n快速开始\n要求 Node.js >= 22、pnpm >= 11.18.0；具体版本与命令以根 package.json 和 pnpm-lock.yaml 为准。\npnpm install\npnpm start\n# Web 开发\npnpm dev:web\n# 公开包和 Web（根 build 排除 Desktop）\npnpm build\n# Desktop 前端、主进程与 preload\npnpm build:desktop\n# 类型检查与单测\npnpm typecheck\npnpm test\n开发桌面端默认打开仓库根 workspace 文件夹；显式环境变量 VERDBOARD_WORKSPACE_PATH 与此前选择的目录可覆盖默认值。文件夹菜单可以打开其他目录，或返回内置工作区。打包应用为新用户创建独立副本，不把用户编辑写回仓库。\n数据与能力\n工作区支持两类一等文件：画布 .verd.json 和文字文档 .verd-doc.json。两者共用文件树、标签页、保存状态、回收区与撤销历史；画布内容由 WorkspaceSession 组装为 CellStore，独立文档保留 BoardTextDocument 正文。\n白板、思维导图、流程图和架构图共用 FrameCanvas。图表可以独立存在，也可以归属于一张普通画布；引用通过稳定目标 ID 共享内容，归属与引用分别管理。文档使用 TipTap 编辑器，支持标题、列表、表格、图片、代码块、查找替换、目录与导出。原生文档链接通过稳定 ID 打开文档或画布，标题锚点遵循 GitHub slug 规则。\n系统以 React 19、TypeScript 6、Vite 6、pnpm 11、TipTap 3 和 Electron 28 为当前依赖系列。主题、内容与图表归属会保存；画布相机、演示步骤与选择仅保留在会话内存。\n最后更新：2026-10-16。历史测试数量和验收日期见对应原生文档；验证当前变更应重新运行相关检查。\n文档 Frame 与只读引用\n项目导览的三个文档 Frame 可双击正文编辑，Escape 返回画布选择；编辑的就是文件树里的源文档。八张专题图下方提供只读关联文档卡和章节入口，可沿图文关系继续阅读。\n侧栏底部与画布「更多」菜单打开「我的」管理个人偏好；顶部工作区名称菜单打开工作区设置，左侧分为基本设置和当前工作区回收站，Desktop 目录切换也位于顶部菜单。文件夹可整体移入回收站并还原；回收站支持确认后永久删除或清空，详见产品概览和系统架构。\n",
+    "align": "left"
+  }
+}

@@ -1,0 +1,155 @@
+{
+  "format": "verd-document",
+  "version": 1,
+  "id": "project-doc:packages/board/README.zh-CN",
+  "title": "Mind引擎概览",
+  "text": {
+    "schemaVersion": 1,
+    "id": "project-doc:packages/board/README.zh-CN",
+    "kind": "block",
+    "content": {
+      "type": "doc",
+      "content": [
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 1
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "Mind 引擎概览"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "@sue/board-mind 是原生脑图领域引擎。它提供 mind-root、mind-child、mind-summary、mind-branch 和 mind-summary-edge 的工厂、Util、校验、树命令和布局，不包含产品工具栏与属性面板。"
+            }
+          ]
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 2
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "能力"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "支持九种布局、Tab/Enter 创建主题、删除、改父级与同级重排、折叠、复制粘贴、图片与表情、独立富文本笔记、可调整范围的概要、文件级配色和最大宽度。中心主题与最后根节点保护、关系闭包、分支顺序和概要范围由事务统一维护。"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "React 通过 @sue/board-react-mind 的 createMindFrameExtensions 注册行为、布局和渲染，嵌入与详情共用唯一 FrameCanvas。产品属性位于 @sue/verd-board-ui；原领域 Canvas、旧插件运行时和 MindElement API 已删除，旧格式只在应用私有 migration 边界转换。"
+            }
+          ]
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 2
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "依赖与接入"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "直接依赖以 packages/engine/mind/package.json 为准，主要使用 @sue/board-core、@sue/board-common 和 @sue/board-layouts。不要恢复旧组件或私有文档 reducer。"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "Mind 特性",
+              "marks": [
+                {
+                  "type": "link",
+                  "attrs": {
+                    "href": "verd://file/project-doc%3Apackages%2Fboard%2Fmind-features"
+                  }
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "text": " | "
+            },
+            {
+              "type": "text",
+              "text": "节点宽度规范",
+              "marks": [
+                {
+                  "type": "link",
+                  "attrs": {
+                    "href": "verd://file/project-doc%3Apackages%2Fboard%2FNODE_WIDTH_SPECIFICATION"
+                  }
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "text": " | "
+            },
+            {
+              "type": "text",
+              "text": "React 接入",
+              "marks": [
+                {
+                  "type": "link",
+                  "attrs": {
+                    "href": "verd://file/project-doc%3Apackages%2Freact%2FREADME"
+                  }
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "text": " | "
+            },
+            {
+              "type": "text",
+              "text": "English",
+              "marks": [
+                {
+                  "type": "link",
+                  "attrs": {
+                    "href": "verd://file/project-doc%3Apackages%2Fboard%2FREADME"
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "plainText": "Mind 引擎概览\n@sue/board-mind 是原生脑图领域引擎。它提供 mind-root、mind-child、mind-summary、mind-branch 和 mind-summary-edge 的工厂、Util、校验、树命令和布局，不包含产品工具栏与属性面板。\n能力\n支持九种布局、Tab/Enter 创建主题、删除、改父级与同级重排、折叠、复制粘贴、图片与表情、独立富文本笔记、可调整范围的概要、文件级配色和最大宽度。中心主题与最后根节点保护、关系闭包、分支顺序和概要范围由事务统一维护。\nReact 通过 @sue/board-react-mind 的 createMindFrameExtensions 注册行为、布局和渲染，嵌入与详情共用唯一 FrameCanvas。产品属性位于 @sue/verd-board-ui；原领域 Canvas、旧插件运行时和 MindElement API 已删除，旧格式只在应用私有 migration 边界转换。\n依赖与接入\n直接依赖以 packages/engine/mind/package.json 为准，主要使用 @sue/board-core、@sue/board-common 和 @sue/board-layouts。不要恢复旧组件或私有文档 reducer。\nMind 特性 | 节点宽度规范 | React 接入 | English",
+    "align": "left"
+  }
+}

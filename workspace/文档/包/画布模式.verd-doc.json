@@ -1,0 +1,2335 @@
+{
+  "format": "verd-document",
+  "version": 1,
+  "id": "project-doc:packages/board/canvas-modes",
+  "title": "画布模式",
+  "text": {
+    "schemaVersion": 1,
+    "id": "project-doc:packages/board/canvas-modes",
+    "kind": "block",
+    "content": {
+      "type": "doc",
+      "content": [
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 1
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "Cell/Frame 画布模式"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "产品入口是 "
+            },
+            {
+              "type": "text",
+              "text": "WorkspaceApp → WorkspaceSession → VerdFrame → FrameCanvas",
+              "marks": [
+                {
+                  "type": "code"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "text": "。白板、脑图、流程和架构共用组装后的 "
+            },
+            {
+              "type": "text",
+              "text": "CellStore",
+              "marks": [
+                {
+                  "type": "code"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "text": "，通过 "
+            },
+            {
+              "type": "text",
+              "text": "frameId",
+              "marks": [
+                {
+                  "type": "code"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "text": " 挂载根或嵌套 Frame；跨文件嵌入由 "
+            },
+            {
+              "type": "text",
+              "text": "frame-reference",
+              "marks": [
+                {
+                  "type": "code"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "text": " 引用壳桥接到目标文件内容。嵌入视图与详情视图修改同一份 Cell，返回白板后继续看到详情中的变更。"
+            }
+          ]
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 2
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "模型与挂载"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "FrameSnapshot = {store: CellStore}",
+              "marks": [
+                {
+                  "type": "code"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "text": "。Frame 的 "
+            },
+            {
+              "type": "text",
+              "text": "children",
+              "marks": [
+                {
+                  "type": "code"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "text": " 表达直接所有权和绘制顺序，"
+            },
+            {
+              "type": "text",
+              "text": "groups",
+              "marks": [
+                {
+                  "type": "code"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "text": " 保存分组关系。普通节点不保存父级和 children；父级、成员、入出边与场景索引由运行时建立。主题保存在 "
+            },
+            {
+              "type": "text",
+              "text": "FrameCell.view",
+              "marks": [
+                {
+                  "type": "code"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "text": "；视口只保存在当前画布内存，选择、历史、布局缓存与 DOM 引用不写入快照。"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "根 Frame 不绘制外壳。嵌套 Frame 按外壳和内容包围盒计算统一的居中缩小变换；外壳缩放不重写内容坐标。详情挂载嵌套 Frame 后直接使用原内容坐标。Frame 不旋转，删除 Frame 会级联删除其内容，撤销恢复整个子树。"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "嵌套 Frame 的内部内容区域默认绘制 "
+            },
+            {
+              "type": "text",
+              "text": "1px",
+              "marks": [
+                {
+                  "type": "code"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "text": " 浅灰色（"
+            },
+            {
+              "type": "text",
+              "text": "#cbd5e1",
+              "marks": [
+                {
+                  "type": "code"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "text": "）描边，并随画布缩放。显式描边颜色、宽度及无描边设置优先，选中时沿用高亮描边。默认值只用于渲染，不批量改写历史文档。"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "Frame 的场景由内部锚点决定："
+            },
+            {
+              "type": "text",
+              "text": "mind-root",
+              "marks": [
+                {
+                  "type": "code"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "text": "、"
+            },
+            {
+              "type": "text",
+              "text": "workflow-start",
+              "marks": [
+                {
+                  "type": "code"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "text": "、"
+            },
+            {
+              "type": "text",
+              "text": "architecture-layer",
+              "marks": [
+                {
+                  "type": "code"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "text": "，没有领域锚点时是白板。所有领域关系均在同一 Frame 内；领域布局通过 React 扩展计算派生几何。"
+            }
+          ]
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 2
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "标准与第三方接入"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "@sue/board-react",
+              "marks": [
+                {
+                  "type": "code"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "text": " 公开 "
+            },
+            {
+              "type": "text",
+              "text": "FrameCanvas",
+              "marks": [
+                {
+                  "type": "code"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "text": "、控制器与运行时 Hook。标准模式使用 "
+            },
+            {
+              "type": "text",
+              "text": "value/onChange",
+              "marks": [
+                {
+                  "type": "code"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "text": "，变更包含快照和事务。第三方模式使用 "
+            },
+            {
+              "type": "text",
+              "text": "adapter.toFrameSnapshot(value)",
+              "marks": [
+                {
+                  "type": "code"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "text": " 与 "
+            },
+            {
+              "type": "text",
+              "text": "onIntent",
+              "marks": [
+                {
+                  "type": "code"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "text": "，宿主持有业务数据；接受后等待宿主回写 value，拒绝保持当前快照，异步等待期间锁定提交。只读、外部历史、双画布隔离与自定义节点渲染共用此入口。"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "领域包提供 "
+            },
+            {
+              "type": "text",
+              "text": "createMindFrameExtensions",
+              "marks": [
+                {
+                  "type": "code"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "text": "、"
+            },
+            {
+              "type": "text",
+              "text": "createWorkflowFrameExtensions",
+              "marks": [
+                {
+                  "type": "code"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "text": "、"
+            },
+            {
+              "type": "text",
+              "text": "createArchitectureFrameExtensions",
+              "marks": [
+                {
+                  "type": "code"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "text": "，注册 Util 并扩展布局。"
+            },
+            {
+              "type": "text",
+              "text": "FrameRenderExtension.render",
+              "marks": [
+                {
+                  "type": "code"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "text": " 可以接管整个节点，"
+            },
+            {
+              "type": "text",
+              "text": "renderShape",
+              "marks": [
+                {
+                  "type": "code"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "text": " 只接管轮廓并保留共享的文字、选择与编辑行为，"
+            },
+            {
+              "type": "text",
+              "text": "textBounds",
+              "marks": [
+                {
+                  "type": "code"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "text": " 定义内容文字区域，"
+            },
+            {
+              "type": "text",
+              "text": "visible",
+              "marks": [
+                {
+                  "type": "code"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "text": " 控制折叠后的显示。第三方 adapter 只在宿主接入边界转换数据。"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "FrameRenderContext.getGeometry(id)",
+              "marks": [
+                {
+                  "type": "code"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "text": " 返回当前 Frame 中的布局与拖动预览几何，渲染扩展可以用它计算关联节点的位置，无需把派生坐标写入快照。"
+            }
+          ]
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 2
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "几何与编辑"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "白板工具中的全部 65 种形状在 core 中有原生路径、内部线条、文字区域、边界端口和命中轮廓。命中将指针转换到未旋转的节点坐标，擦除按轮廓判断。"
+            },
+            {
+              "type": "text",
+              "text": "@sue/board-draw",
+              "marks": [
+                {
+                  "type": "code"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "text": " 的 "
+            },
+            {
+              "type": "text",
+              "text": "drawCellShapePaths",
+              "marks": [
+                {
+                  "type": "code"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "text": " 从这些几何生成稳定种子的 Rough 路径，支持填充和描边；不构造旧 BoardElement。"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "节点支持八方向缩放和旋转控制点，Frame 只缩放外壳。选中工具栏留在旋转手柄上方，旋转结果始终是有限角度。箭头支持端点绑定和释放、折点与线段拖动以及多个标签；拖动预览不进入历史，完成后提交一笔事务。节点与边标签双击进入共享富文本编辑器，格式工具栏修改同一份文本内容，SVG 导出保留加粗等语义标记。嵌套 Frame 的内容裁在外壳内侧，外壳顶角保持可点，并在进入画布时落在可见区域内。指针移动超过阈值后才捕获给 SVG，避免捕获按下事件后丢失双击。"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "折线工具通过连续点选绘制，首点显示闭合提示；双击、Enter、Escape 或 V 完成当前路径。未形成线段的单点草稿不提交。直线/曲线共用 core 路径计算与命中，闭合路径支持填充。顶点拖动保持闭合首尾同步，曲线插入控制点位于实际曲线上；拖动完成只提交一笔事务，双击顶点删除该顶点并保护至少两个顶点。属性撤销/重做保留仍然有效的选择与焦点路径。"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "脑图扩展为图像、表情、笔记和主题分别预留布局区域，字体大小与换行参与主题尺寸计算；折叠节点的后代及关联边不再渲染。笔记编辑立即提交给宿主保存队列，关闭编辑器或导航不会丢弃延迟任务。产品为画布预留独立操作区域，详情中的原点附近节点不被工具栏遮挡。"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "选中一个或多个同父级子主题后可创建概要。概要使用独立 "
+            },
+            {
+              "type": "text",
+              "text": "mind-summary-edge",
+              "marks": [
+                {
+                  "type": "code"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "text": "，只保存首尾兄弟 id，布局时才转换成范围；不生成普通分支边，也不改变原主题的左右分配。选中概要主题或括号后拖动首尾手柄可调整范围，嵌入和详情共用坐标换算。松开时提交一次事务，只读、锁定及宿主异步等待时禁用手柄。删除覆盖节点后范围收缩，无剩余覆盖节点时移除概要，撤销完整恢复。SVG/PNG/JPEG 导出保留括号并移除手柄。"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "Workflow 节点保存实际位置，普通编辑不触发重新排列。流程开始事件的原有整图拖动保持原点和成员同步，若会破坏 Group 的整体性则拒绝；新排列命令只修改目标集合。自动排列有选择时只处理选择，无选择时处理当前 Frame 的直接对象，Group 作为整体，嵌套 Frame 只移动外壳。旧派生坐标在加载、导入时一次物化。能力、限制和 API 见 "
+            },
+            {
+              "type": "text",
+              "text": "对齐、自动排列与组合",
+              "marks": [
+                {
+                  "type": "link",
+                  "attrs": {
+                    "href": "verd://file/project-doc%3Apackages%2Fboard%2Farrangement"
+                  }
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "text": "。"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "架构模块可通过属性面板或拖到另一层改变归属；来源层和目标层的成员在同一事务中更新。层支持上下排序，层背景通过 Frame.children 排在模块之前绘制，排序、归属修改和级联删除均可撤销。"
+            }
+          ]
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 2
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "选择、剪贴板与快捷键"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "组合和多选共用填充、描边、线宽、线型、透明度和阴影属性，所有选中成员在一笔事务中修改。组合选择展开为成员，锁定成员跳过；嵌套 Frame 只修改外壳。阴影使用独立 SVG 定义，选择控件位于阴影之外，SVG 与栅格导出保留同一效果。置顶、置底、前移和后移按组合整体移动，保持成员在 Frame.children 中连续；Ctrl/Cmd+[ 和 ] 移动一层，增加 Shift 移到最底或最顶。场景 Frame 的结构顺序通过领域命令维护。"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "原生复制、剪切、粘贴事件与 "
+            },
+            {
+              "type": "text",
+              "text": "FrameCanvasController.clipboard('copy' | 'cut' | 'paste')",
+              "marks": [
+                {
+                  "type": "code"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "text": " 共用 Cell 关系闭包。事件写入内部 MIME 和带版本标记的纯文本，控制器使用系统纯文本剪贴板；普通文本不会被当作 Cell 数据。剪切先校验保护锚点，系统剪贴板写入失败或等待期间宿主替换了数据时保留原内容；宿主模式等待 onIntent 接受与后续快照后才移除显示内容。粘贴生成新 CellId，并重映射分支、概要端点和组成员；独立脑图分支提升为根时展开，粘到主题上时转回子节点。"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "多选拖动在一次事务中平移所选对象，Frame 只移动外壳；点选后未拖动则收起多选。组合对齐按整体包围盒平移并保留成员间距，含锁定成员的组合不能移动。双击组合成员逐级进入 Group 聚焦路径，Escape 逐级退出并选中退出的组。框选和全选把组合当作整体。"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "组合和多选支持粗体、斜体、下划线、删除线、字体颜色、字号、段落对齐和链接。修改保留文本身份、内容、段落和未变更的 marks；跳过锁定成员，不穿透嵌套 Frame。"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "FrameCanvasController.moveSelection(targetFrameId)",
+              "marks": [
+                {
+                  "type": "code"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "text": " 将白板选区移动到共享坐标树中的另一白板 Frame，转换坐标并维护闭包关系。跨边界的白板箭头端点释放为自由坐标，其他领域关系不跨 Frame。产品属性面板提供目标选择，复制闭包包含的 Frame 及其后代不能作为目标。宿主模式继续通过 onIntent 接受或拒绝。"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "右键浮层提供剪贴板、批量外观、文本格式和图层操作，右键已选内容保留多选。白板工具支持 H 手型、V 选择、M 脑图、E 擦除、P 画笔、A 箭头、R 矩形、O 椭圆、T 文本；Ctrl/Cmd+S 导出 JSON，Ctrl/Cmd+U 上传图片。输入框和富文本编辑器保留正常输入。脑图支持 Tab 子主题、Enter 兄弟主题、Ctrl/Cmd+/ 展开折叠、输入字符进入主题编辑并保留首字符、Ctrl/Cmd+Shift+N 编辑笔记。Ctrl/Cmd+A 全选，Ctrl/Cmd+D 复制所选闭包并偏移，Ctrl/Cmd+加减号缩放、Ctrl/Cmd+0 恢复 100%，Ctrl/Cmd+Shift+加号适配，Ctrl/Cmd+Delete/Backspace 打开清空确认。清空保留当前 Frame、视图及必须存在的首个脑图根/架构层和全部流程开始事件，删除可一次撤销。普通绘图的完成回调只在事务接受后调用。"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "产品保留空白画布引导、网格和间距、容器比例预设及自动触控笔保护。笔输入后屏蔽画布上的非笔指针，工具栏提供退出；网格和比例保存于 Frame。"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "单选节点时，属性面板 Header 直接编辑对象名称，不再单独显示名称行；空名称以对象类型占位。名称编辑沿用富文本、只读限制和撤销历史，切换对象时重新挂载编辑器。"
+            }
+          ]
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 2
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "演示"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "演示使用独立的只读全屏覆盖层展示当前画布内容，复用编辑画布相同的注册与渲染扩展，并从总览开始。点击对象聚焦其可见范围：脑图主题包含未折叠的后代与相关概要，组合按最外层整体聚焦，架构层包含层内模块，连线包含可见端点；嵌入画布聚焦当前实例外壳。隐藏内容不参与，锁定内容仍可展示。脑图步骤从总览开始，按根主题顺序依次遍历各根的一级分支（先根 1 的一级分支，再根 2 的一级分支；根主题本身不单独占一步），架构图按层序提供步骤导航；白板和流程图通过点击自由聚焦，不再自动生成章节。"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "0",
+              "marks": [
+                {
+                  "type": "code"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "text": " 返回总览，"
+            },
+            {
+              "type": "text",
+              "text": "L",
+              "marks": [
+                {
+                  "type": "code"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "text": " 切换激光笔，"
+            },
+            {
+              "type": "text",
+              "text": "Esc",
+              "marks": [
+                {
+                  "type": "code"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "text": " 退出；有结构步骤时使用上一／下一步按钮或左右方向键。聚焦通过演示画布相机完成平滑适配，并尊重系统减弱动态效果。退出恢复进入前的编辑视口。"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "演示目标、步骤位置、相机与激光笔只保存在会话内存，不修改快照、撤销历史或保存状态。"
+            },
+            {
+              "type": "text",
+              "text": "FrameCell",
+              "marks": [
+                {
+                  "type": "code"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "text": " 不再声明 "
+            },
+            {
+              "type": "text",
+              "text": "presentation",
+              "marks": [
+                {
+                  "type": "code"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "text": "，core 不再公开幻灯片类型与编排工具。旧文件中残留的该字段作为未识别数据忽略，不解释、不重映射，不新增迁移、版本变更或主动重写。渲染扩展中的 "
+            },
+            {
+              "type": "text",
+              "text": "FramePresentation",
+              "marks": [
+                {
+                  "type": "code"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "text": " 节点外观 Hook 保留。"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "本轮不提供幻灯片编排、标题和备注编辑、固定范围页、临时笔迹、计时、自动播放、演讲者视图、观众窗口、双屏通信、远程同步、PPT 导出或跨文件串联。Web 和 Desktop 共用这一独立只读覆盖层的演示模式，启动入口不再分流到观众页面，也不再打包观众 preload 或注册演示 IPC。"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "macOS 桌面端由通用窗口桥接等待原生全屏进入动画完成，再执行退出；父组件和覆盖层卸载共用退出请求，避免快速按 Esc 时遗留 HTML 全屏状态。这不创建观众窗口或演示消息协议。"
+            }
+          ]
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 2
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "图像导出"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "产品的「图像导出」入口与 Ctrl/Cmd+Shift+E 打开导出选项，支持整图或选中内容、SVG/PNG/JPG、分辨率、边距、透明或指定背景。PNG 默认透明，JPG 默认白底且使用 JPEG 编码。"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "FrameCanvasController.exportImage(options)",
+              "marks": [
+                {
+                  "type": "code"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "text": " 导出当前挂载 Frame。也可以调用 "
+            },
+            {
+              "type": "text",
+              "text": "frameSnapshotToImage(snapshot, {frameId, registry, extensions, ...options})",
+              "marks": [
+                {
+                  "type": "code"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "text": "，沿用同一组注册与渲染扩展。导出创建临时的只读 FrameCanvas，保持领域布局、嵌套坐标、Rough 路径、富文本和图片；不会修改运行时数据、选择、历史或视口，也不受当前缩放和滚动影响。选中内容按关系闭包保留，再裁出可见范围。文字样式、图片和可访问的字体资源写入导出文件，端口、命中辅助路径及编辑控件被移除；扩展可通过 "
+            },
+            {
+              "type": "text",
+              "text": "data-frame-export-exclude",
+              "marks": [
+                {
+                  "type": "code"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "text": " 标记不导出的内容。资源不可用时报告错误并清理临时渲染器。"
+            }
+          ]
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 2
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "持久化与迁移"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "磁盘按文件保存画布和独立文档。DocumentFileV1（.verd-doc.json）保留 BoardTextDocument 正文，不进入画布 CellStore；两类文件共用目录、标签、统一历史和保存队列。画布部分：每个可独立打开的 Frame 是一份 "
+            },
+            {
+              "type": "text",
+              "text": ".verd.json",
+              "marks": [
+                {
+                  "type": "code"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "text": "（FrameFileV2），只含自身 Frame 根和直接拥有的非 Frame Cell，嵌套 Frame 外置为独立文件并通过 "
+            },
+            {
+              "type": "text",
+              "text": "frame-reference",
+              "marks": [
+                {
+                  "type": "code"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "text": " 引用壳互链。思维导图、流程图和架构图可以声明 "
+            },
+            {
+              "type": "text",
+              "text": "organization.kind = 'subgraph'",
+              "marks": [
+                {
+                  "type": "code"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "text": " 并指向一张普通画布；缺省 organization 的旧文件保持独立入口。普通画布之间的引用是只读预览。"
+            },
+            {
+              "type": "text",
+              "text": "WorkspaceSession",
+              "marks": [
+                {
+                  "type": "code"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "text": " 的命令统一走候选校验后更新内存与保存队列；写入经 "
+            },
+            {
+              "type": "text",
+              "text": "WorkspaceHost",
+              "marks": [
+                {
+                  "type": "code"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "text": " 条件提交（expectedVersion 不匹配即拒绝），Desktop 用事务日志保证崩溃恢复并在关闭窗口前等待 flush 确认。外部变更与本地脏状态冲突时进入显式解决流程（load-disk / keep-local / save-copy）。生产页面使用相对资源路径；读取、枚举、写入和删除遇到损坏存储时保留原文件及备份并报告错误。实际 Electron E2E 验证关闭前保存、重启、旧文件迁移及磁盘错误后重试。"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "保存成功经会话 "
+            },
+            {
+              "type": "text",
+              "text": "onCommitted",
+              "marks": [
+                {
+                  "type": "code"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "text": " 回调更新左上角状态；保存中、失败与上次成功时间沿用原展示规则。时间跨重启恢复，各 Frame 共用，不进入快照或历史。时间使用本地时区，当天显示时分秒，跨天显示日期，悬浮可查看完整时间。"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "迁移入口接收旧白板、内联与独立脑图、流程、架构文档，以及过渡版 "
+            },
+            {
+              "type": "text",
+              "text": "verd-cells",
+              "marks": [
+                {
+                  "type": "code"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "text": " 信封。首次迁移保留原记录备份，共享旧文档拆成独立容器副本，未挂载文档保留为可打开的独立 Frame。缺失或损坏内容报告加载错误。"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "Markdown/Mermaid 直接导入导出 FrameSnapshot，见 "
+            },
+            {
+              "type": "text",
+              "text": "Frame 转换器",
+              "marks": [
+                {
+                  "type": "link",
+                  "attrs": {
+                    "href": "verd://file/project-doc%3Apackages%2Fboard%2Fframe-converters"
+                  }
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "text": "。"
+            }
+          ]
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 2
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "迁移验收状态"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "Cell/Frame 全量迁移的实现与交付验收已完成，详见 "
+            },
+            {
+              "type": "text",
+              "text": "架构验收记录",
+              "marks": [
+                {
+                  "type": "link",
+                  "attrs": {
+                    "href": "verd://file/project-doc%3Aarchitecture%2FARCHITECTURE#%E8%BF%81%E7%A7%BB%E4%B8%8E%E5%8F%91%E5%B8%83%E9%AA%8C%E6%94%B6"
+                  }
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "text": "。表格及泳道保留单元格选择、富文本、填充、尺寸、结构事务和标题/方向/数量；vector-line 保留多点绘制、闭合、曲线、顶点操作及历史。领域操作、Popover、批量文本、组合交互、清空、跨 Frame 转移、快捷键与旧领域迁移都有实际产品覆盖。React 包中的旧画布、领域 Canvas、SceneGraphic、投影宿主、事件插件和样式入口已删除；引擎插件、文档 reducer、旧产品组件、BoardElement 和 BoardOperation 也已删除；旧文档读取仅保留在应用 migration/legacy 中。"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "cell-product.spec.ts",
+              "marks": [
+                {
+                  "type": "code"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "text": " 覆盖原生入口、嵌入/详情/返回/刷新、容器删除撤销、手绘擦除、文本导入导出、所有形状绘制与自动保存、轮廓擦除和双击编辑，并新增缩放旋转、箭头控制、笔记折叠、表格结构/尺寸撤销和泳道标题/方向/数量保存刷新和折线多点/闭合/顶点历史恢复用例。"
+            },
+            {
+              "type": "text",
+              "text": "provider.spec.ts",
+              "marks": [
+                {
+                  "type": "code"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "text": " 覆盖原生第三方接入。原有 "
+            },
+            {
+              "type": "text",
+              "text": "app.spec.ts",
+              "marks": [
+                {
+                  "type": "code"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "text": " 的 17 个产品用例已迁移，保留保存恢复、详情同步、主题、属性编辑、重命名及重新进入自动适配及详情返回聚焦覆盖。图像用例验证实际文件编码、透明背景与像素、富文本、图片、选中范围、嵌套/详情视图、快捷键和资源失败清理。测试源码存在不代表验收通过；必须实际通过全部产品 E2E、Web/Desktop 构建和隔离 consumer。"
+            }
+          ]
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 2
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "代码落点"
+            }
+          ]
+        },
+        {
+          "type": "table",
+          "content": [
+            {
+              "type": "tableRow",
+              "content": [
+                {
+                  "type": "tableHeader",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "能力"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "tableHeader",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "路径"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "tableRow",
+              "content": [
+                {
+                  "type": "tableCell",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "原子事务、历史、索引、选择、坐标与复制"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "tableCell",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "packages/engine/core/src/cell/",
+                          "marks": [
+                            {
+                              "type": "code"
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "tableRow",
+              "content": [
+                {
+                  "type": "tableCell",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "共享形状、端口、路由、箭头、标签与命中"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "tableCell",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "packages/engine/core/src/geometry/",
+                          "marks": [
+                            {
+                              "type": "code"
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "tableRow",
+              "content": [
+                {
+                  "type": "tableCell",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "Rough 路径生成与绘图 Cell"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "tableCell",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "packages/engine/draw/src/cell-shape.ts",
+                          "marks": [
+                            {
+                              "type": "code"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "text": "、"
+                        },
+                        {
+                          "type": "text",
+                          "text": "cell-commands.ts",
+                          "marks": [
+                            {
+                              "type": "code"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "text": "、"
+                        },
+                        {
+                          "type": "text",
+                          "text": "cell-utils.ts",
+                          "marks": [
+                            {
+                              "type": "code"
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "tableRow",
+              "content": [
+                {
+                  "type": "tableCell",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "唯一 React 画布与交互"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "tableCell",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "packages/react/board/src/frame-canvas.tsx",
+                          "marks": [
+                            {
+                              "type": "code"
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "tableRow",
+              "content": [
+                {
+                  "type": "tableCell",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "脑图概要范围与括号"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "tableCell",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "packages/engine/mind/src/cell-summary.ts",
+                          "marks": [
+                            {
+                              "type": "code"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "text": "、"
+                        },
+                        {
+                          "type": "text",
+                          "text": "cell-commands.ts",
+                          "marks": [
+                            {
+                              "type": "code"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "text": "、"
+                        },
+                        {
+                          "type": "text",
+                          "text": "packages/react/mind/src/mind-summary-edge.tsx",
+                          "marks": [
+                            {
+                              "type": "code"
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "tableRow",
+              "content": [
+                {
+                  "type": "tableCell",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "产品工具、属性和导航"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "tableCell",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "packages/product/ui/src/verd-frame.tsx",
+                          "marks": [
+                            {
+                              "type": "code"
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "tableRow",
+              "content": [
+                {
+                  "type": "tableCell",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "图像导出"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "tableCell",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "packages/react/board/src/frame-export.tsx",
+                          "marks": [
+                            {
+                              "type": "code"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "text": "、"
+                        },
+                        {
+                          "type": "text",
+                          "text": "packages/product/ui/src/frame-image-export-dialog.tsx",
+                          "marks": [
+                            {
+                              "type": "code"
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "tableRow",
+              "content": [
+                {
+                  "type": "tableCell",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "产品绘图渲染扩展"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "tableCell",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "packages/product/ui/src/frame-draw-extension.tsx",
+                          "marks": [
+                            {
+                              "type": "code"
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "tableRow",
+              "content": [
+                {
+                  "type": "tableCell",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "工作区会话、历史与保存生命周期"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "tableCell",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "packages/product/app/src/session/workspace-session.ts",
+                          "marks": [
+                            {
+                              "type": "code"
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "tableRow",
+              "content": [
+                {
+                  "type": "tableCell",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "宿主存储与文件提交"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "tableCell",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "packages/product/app/src/host/",
+                          "marks": [
+                            {
+                              "type": "code"
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "tableRow",
+              "content": [
+                {
+                  "type": "tableCell",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "Frame 文件分区与引用"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "tableCell",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "packages/product/app/src/frames/frame-files.ts",
+                          "marks": [
+                            {
+                              "type": "code"
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "tableRow",
+              "content": [
+                {
+                  "type": "tableCell",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "旧数据迁移"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "tableCell",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "packages/product/app/src/migration/",
+                          "marks": [
+                            {
+                              "type": "code"
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 2
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "视口与返回导航"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "平移、滚轮/双指缩放、缩放按钮和 "
+            },
+            {
+              "type": "text",
+              "text": "fit()",
+              "marks": [
+                {
+                  "type": "code"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "text": " 都只更新内存视口，不调用 "
+            },
+            {
+              "type": "text",
+              "text": "onChange",
+              "marks": [
+                {
+                  "type": "code"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "text": "/"
+            },
+            {
+              "type": "text",
+              "text": "onIntent",
+              "marks": [
+                {
+                  "type": "code"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "text": "，不修改文档 revision、历史或保存状态。旧文件的 "
+            },
+            {
+              "type": "text",
+              "text": "view.viewport",
+              "marks": [
+                {
+                  "type": "code"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "text": " 被忽略，正常保存和导出不再包含该字段；旧数据备份保持原样。"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "触控板及 Ctrl/Meta 滚轮缩放使用 "
+            },
+            {
+              "type": "text",
+              "text": "0.01",
+              "marks": [
+                {
+                  "type": "code"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "text": " 的指数灵敏度，并保持指针下的世界坐标；达到缩放上下限后不会转为平移，范围为 10%–800%；触屏双指仍按指针距离比例缩放。平移和缩放在动画帧内直接更新 SVG 世界层及网格，发布当前画布的相机快照；静态场景复用，手柄、命中区域和扩展回调独立接收最新比例；订阅只在渲染结果或实际外观变化时刷新 React，扩展回调仍按当前比例执行。文档、选择、编辑、悬停和绘图预览变化仍刷新场景，活动草稿随缩放重新计算吸附。缩放读数及选区控件独立订阅视图状态，不重渲染整页。选区世界边界在场景或可见性提交后测量并缓存，画布位置在输入、布局、滚动和尺寸变化时更新；相机帧只按已绘制的相机投影屏幕坐标，不读 DOM。控制器的 "
+            },
+            {
+              "type": "text",
+              "text": "selectionScreenBounds()",
+              "marks": [
+                {
+                  "type": "code"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "text": " 仍即时测量并使用最新输入相机。普通标签文字、内置文字区域和形状内容按实际输入缓存，避免相机变化重复生成或测量。"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "FrameCanvas.interactionSettings",
+              "marks": [
+                {
+                  "type": "code"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "text": " 的 "
+            },
+            {
+              "type": "text",
+              "text": "dragPanSpeed",
+              "marks": [
+                {
+                  "type": "code"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "text": "（默认 "
+            },
+            {
+              "type": "text",
+              "text": "1",
+              "marks": [
+                {
+                  "type": "code"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "text": "）调整手型、Space、中键及右键拖动画布，每次手势开始固定倍率；"
+            },
+            {
+              "type": "text",
+              "text": "zoomSensitivity",
+              "marks": [
+                {
+                  "type": "code"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "text": " 调整触控板 / Ctrl/Meta 滚轮缩放。两项限制到 "
+            },
+            {
+              "type": "text",
+              "text": "0.25–3",
+              "marks": [
+                {
+                  "type": "code"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "text": "，非有限值回退为 "
+            },
+            {
+              "type": "text",
+              "text": "1",
+              "marks": [
+                {
+                  "type": "code"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "text": "。它们属于设备偏好，不写入 Frame、事务、历史或文件；对象拖拽、普通滚轮平移、触屏双指缩放及缩放按钮不使用这两个系数。"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "每次挂载或进入 Frame 自动适配可见内容和 "
+            },
+            {
+              "type": "text",
+              "text": "viewportInsets",
+              "marks": [
+                {
+                  "type": "code"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "text": "，空画布默认 100%。普通编辑、主题修改和撤销重做保持当前视口。产品用内存导航栈逐层返回来源画布，并聚焦打开过的 Frame 外壳；目标消失时整体适配。"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "FrameCanvas",
+              "marks": [
+                {
+                  "type": "code"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "text": " 的 "
+            },
+            {
+              "type": "text",
+              "text": "autoFit",
+              "marks": [
+                {
+                  "type": "code"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "text": " 默认为 "
+            },
+            {
+              "type": "text",
+              "text": "true",
+              "marks": [
+                {
+                  "type": "code"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "text": "；图像导出的临时画布使用 "
+            },
+            {
+              "type": "text",
+              "text": "false",
+              "marks": [
+                {
+                  "type": "code"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "text": "。"
+            },
+            {
+              "type": "text",
+              "text": "initialFocusCellId",
+              "marks": [
+                {
+                  "type": "code"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "text": " 仅指定进入画布时的一次视口目标，不修改选择。状态栏读取 "
+            },
+            {
+              "type": "text",
+              "text": "onViewStateChange",
+              "marks": [
+                {
+                  "type": "code"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "text": " 的 "
+            },
+            {
+              "type": "text",
+              "text": "zoom",
+              "marks": [
+                {
+                  "type": "code"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "text": "。"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "选中普通节点或 Frame 后，产品底部显示「重新居中 / Re-center」浮层；目标移出屏幕时仍可使用。点击通过 "
+            },
+            {
+              "type": "text",
+              "text": "FrameCanvasController.centerSelection()",
+              "marks": [
+                {
+                  "type": "code"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "text": " 保持当前缩放，将节点联合边界移到可用视口中央。组合按节点成员计算，Frame 包含标题，仅选连线时隐藏。拖动期间按钮禁用，只读模式仍可使用；定位不改变选择、保存状态或撤销历史。窄屏底部浮层与缩放控制自动换行，并为属性面板预留空间。首次加载与详情返回继续采用现有适配规则。"
+            }
+          ]
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 2
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "派生连线路由"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "流程、架构及白板的 "
+            },
+            {
+              "type": "text",
+              "text": "auto",
+              "marks": [
+                {
+                  "type": "code"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "text": " 和无显式折点的 "
+            },
+            {
+              "type": "text",
+              "text": "orthogonal",
+              "marks": [
+                {
+                  "type": "code"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "text": " 边在同一 Frame 内自动避开可见节点。路由使用布局及拖动预览后的几何，旋转节点按包围盒处理；架构层框和逻辑分组作为透明容器，内部节点单独参与避障，嵌套 Frame 外壳在父画布中参与避障。明确端口和相对锚点保持原有绑定，手动折点、直线、曲线及固定路径保持原有语义。"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "共享几何的 "
+            },
+            {
+              "type": "text",
+              "text": "createEdgeRoutingContext",
+              "marks": [
+                {
+                  "type": "code"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "text": " 创建每个 Frame 的障碍集合与派生缓存，"
+            },
+            {
+              "type": "text",
+              "text": "edgeRoutePoints",
+              "marks": [
+                {
+                  "type": "code"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "text": "、"
+            },
+            {
+              "type": "text",
+              "text": "edgePolyline",
+              "marks": [
+                {
+                  "type": "code"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "text": " 和 "
+            },
+            {
+              "type": "text",
+              "text": "frameContentBounds",
+              "marks": [
+                {
+                  "type": "code"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "text": " 接受可选上下文；旧调用兼容。绘制、命中、箭头、标签、手柄、擦除、嵌入适配及导出共用派生路径。自动折点不写入快照或历史，移动非端点障碍也会更新拖动预览中的路径，平移缩放复用缓存。"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "同一 Frame 内的自动路线按稳定顺序统一规划。没有明确端口或锚点的连接按对端位置分配出口；寻路同时考虑节点避障、线段重叠、交叉及相邻车道拥挤，允许长边使用外围通道。几何改变时重新规划整个 Frame，数值未变的结果继续复用引用；平移缩放仍复用原上下文。拖动预览可将原上下文传给 "
+            },
+            {
+              "type": "text",
+              "text": "createEdgeRoutingContext",
+              "marks": [
+                {
+                  "type": "code"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "text": " 的第四个参数，松手前后读取同一条派生路线。"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "避障默认保留 12px 空隙，基础代价为长度加每次转弯 24px，再叠加线线冲突代价。默认空隙无法通过时按线宽安全间距重试；节点重叠或端口完全封堵时保留可编辑路径，并在上下文的路由结果中记录 "
+            },
+            {
+              "type": "text",
+              "text": "blocked",
+              "marks": [
+                {
+                  "type": "code"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "text": "，不移动节点或中断渲染。"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "自动标签通过 "
+            },
+            {
+              "type": "text",
+              "text": "edgeLabelLayout",
+              "marks": [
+                {
+                  "type": "code"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "text": " 选择足够长的线段并避开节点、其它标签和连线，标签边界参与 Frame 适配及导出。显式 "
+            },
+            {
+              "type": "text",
+              "text": "label.position",
+              "marks": [
+                {
+                  "type": "code"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "text": " 保留用户指定的沿线位置。架构层标题位于左上角留白，避开模块和居中的主连线。自动连线转为手工折点或线段时，"
+            },
+            {
+              "type": "text",
+              "text": "bindEdgeRouteTerminals",
+              "marks": [
+                {
+                  "type": "code"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "text": " 将实际分流出口固定为相对锚点；坐标取整和后续移动端点仍保持首尾线段正交。"
+            }
+          ]
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 2
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "创建、标题与像素位置"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "产品创建工具完成一次操作后选中新对象并回到选择模式；领域 Frame 只选外壳，手型与擦除保持连续。宿主接受与快照回写共同决定激活，过期请求不会覆盖后续选择。图形选择面板锚定工具按钮，关闭面板不取消待创建工具。"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "嵌入 Frame 的 geometry 包含名称和内容区域：内边距 16px、标题高 24px、间隔 8px，内容缩放并居中到标题下方。普通态显示灰色名称与白色内容区，外容器透明；选中 Frame 或编辑名称时显示浅灰圆角外容器、品牌色名称与内容边框。悬停或选中内部对象不会激活外框；状态切换不改变布局和缩放。新建与拖拽缩放的 Frame 最小尺寸为 80px；旧小尺寸不改数据，区域安全裁剪，内容区为空时不渲染子树。"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "空名称显示 "
+            },
+            {
+              "type": "text",
+              "text": "Frame",
+              "marks": [
+                {
+                  "type": "code"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "text": " 占位，不写入文档。标题双击打开画布覆盖层中的富文本名称编辑器，内容区双击仍进入详情。名称与内容的统一边界用于嵌套适配、坐标换算、返回定位和静态图像导出。查看与编辑共享字体、颜色、行高和单行省略规则，编辑覆盖层使用标题的完整 SVG 变换。标题及外壳均可拖动，移动只修改外壳坐标；锁定、祖先锁定、只读及提交等待期间禁止修改。选区不再显示浮动操作栏，复制、剪切、粘贴、删除和编辑通过右键菜单、快捷键及属性面板使用。"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "新建、粘贴、导入和几何编辑使用所属 Frame 的整数像素，x/y 与 width/height 采用 "
+            },
+            {
+              "type": "text",
+              "text": "Math.round",
+              "marks": [
+                {
+                  "type": "code"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "text": "，预览和提交一致。位置和尺寸分别取整：移动保留原尺寸，尺寸编辑保留未变化的位置；派生布局的坐标与尺寸也取整，但不写回快照。角度、比例锚点、曲线控制点以及节点内部的媒体、表格行列尺寸保留精度。旧工作区与文件打开保留原几何值，名称/外观修改不改变几何值，撤销可精确恢复旧小数坐标与尺寸。"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "interactionSettings.smartGuides",
+              "marks": [
+                {
+                  "type": "code"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "text": " 默认开启节点拖动参考线吸附，Alt 临时绕过；该偏好不写入文档。"
+            }
+          ]
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 2
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "文档 Frame 与只读引用"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "普通画布可放置 document-frame，单击选择，双击正文进入完整文档编辑，Escape 返回外壳选择；外壳锁定或祖先只读时禁止编辑。document-reference 在四类画布中均只读，不参与领域布局。两种窗口均可滚动，正文增长不撑大外壳，删除外壳保留源文件。"
+            }
+          ]
+        }
+      ]
+    },
+    "plainText": "Cell/Frame 画布模式\n产品入口是 WorkspaceApp → WorkspaceSession → VerdFrame → FrameCanvas。白板、脑图、流程和架构共用组装后的 CellStore，通过 frameId 挂载根或嵌套 Frame；跨文件嵌入由 frame-reference 引用壳桥接到目标文件内容。嵌入视图与详情视图修改同一份 Cell，返回白板后继续看到详情中的变更。\n模型与挂载\nFrameSnapshot = {store: CellStore}。Frame 的 children 表达直接所有权和绘制顺序，groups 保存分组关系。普通节点不保存父级和 children；父级、成员、入出边与场景索引由运行时建立。主题保存在 FrameCell.view；视口只保存在当前画布内存，选择、历史、布局缓存与 DOM 引用不写入快照。\n根 Frame 不绘制外壳。嵌套 Frame 按外壳和内容包围盒计算统一的居中缩小变换；外壳缩放不重写内容坐标。详情挂载嵌套 Frame 后直接使用原内容坐标。Frame 不旋转，删除 Frame 会级联删除其内容，撤销恢复整个子树。\n嵌套 Frame 的内部内容区域默认绘制 1px 浅灰色（#cbd5e1）描边，并随画布缩放。显式描边颜色、宽度及无描边设置优先，选中时沿用高亮描边。默认值只用于渲染，不批量改写历史文档。\nFrame 的场景由内部锚点决定：mind-root、workflow-start、architecture-layer，没有领域锚点时是白板。所有领域关系均在同一 Frame 内；领域布局通过 React 扩展计算派生几何。\n标准与第三方接入\n@sue/board-react 公开 FrameCanvas、控制器与运行时 Hook。标准模式使用 value/onChange，变更包含快照和事务。第三方模式使用 adapter.toFrameSnapshot(value) 与 onIntent，宿主持有业务数据；接受后等待宿主回写 value，拒绝保持当前快照，异步等待期间锁定提交。只读、外部历史、双画布隔离与自定义节点渲染共用此入口。\n领域包提供 createMindFrameExtensions、createWorkflowFrameExtensions、createArchitectureFrameExtensions，注册 Util 并扩展布局。FrameRenderExtension.render 可以接管整个节点，renderShape 只接管轮廓并保留共享的文字、选择与编辑行为，textBounds 定义内容文字区域，visible 控制折叠后的显示。第三方 adapter 只在宿主接入边界转换数据。\nFrameRenderContext.getGeometry(id) 返回当前 Frame 中的布局与拖动预览几何，渲染扩展可以用它计算关联节点的位置，无需把派生坐标写入快照。\n几何与编辑\n白板工具中的全部 65 种形状在 core 中有原生路径、内部线条、文字区域、边界端口和命中轮廓。命中将指针转换到未旋转的节点坐标，擦除按轮廓判断。@sue/board-draw 的 drawCellShapePaths 从这些几何生成稳定种子的 Rough 路径，支持填充和描边；不构造旧 BoardElement。\n节点支持八方向缩放和旋转控制点，Frame 只缩放外壳。选中工具栏留在旋转手柄上方，旋转结果始终是有限角度。箭头支持端点绑定和释放、折点与线段拖动以及多个标签；拖动预览不进入历史，完成后提交一笔事务。节点与边标签双击进入共享富文本编辑器，格式工具栏修改同一份文本内容，SVG 导出保留加粗等语义标记。嵌套 Frame 的内容裁在外壳内侧，外壳顶角保持可点，并在进入画布时落在可见区域内。指针移动超过阈值后才捕获给 SVG，避免捕获按下事件后丢失双击。\n折线工具通过连续点选绘制，首点显示闭合提示；双击、Enter、Escape 或 V 完成当前路径。未形成线段的单点草稿不提交。直线/曲线共用 core 路径计算与命中，闭合路径支持填充。顶点拖动保持闭合首尾同步，曲线插入控制点位于实际曲线上；拖动完成只提交一笔事务，双击顶点删除该顶点并保护至少两个顶点。属性撤销/重做保留仍然有效的选择与焦点路径。\n脑图扩展为图像、表情、笔记和主题分别预留布局区域，字体大小与换行参与主题尺寸计算；折叠节点的后代及关联边不再渲染。笔记编辑立即提交给宿主保存队列，关闭编辑器或导航不会丢弃延迟任务。产品为画布预留独立操作区域，详情中的原点附近节点不被工具栏遮挡。\n选中一个或多个同父级子主题后可创建概要。概要使用独立 mind-summary-edge，只保存首尾兄弟 id，布局时才转换成范围；不生成普通分支边，也不改变原主题的左右分配。选中概要主题或括号后拖动首尾手柄可调整范围，嵌入和详情共用坐标换算。松开时提交一次事务，只读、锁定及宿主异步等待时禁用手柄。删除覆盖节点后范围收缩，无剩余覆盖节点时移除概要，撤销完整恢复。SVG/PNG/JPEG 导出保留括号并移除手柄。\nWorkflow 节点保存实际位置，普通编辑不触发重新排列。流程开始事件的原有整图拖动保持原点和成员同步，若会破坏 Group 的整体性则拒绝；新排列命令只修改目标集合。自动排列有选择时只处理选择，无选择时处理当前 Frame 的直接对象，Group 作为整体，嵌套 Frame 只移动外壳。旧派生坐标在加载、导入时一次物化。能力、限制和 API 见 对齐、自动排列与组合。\n架构模块可通过属性面板或拖到另一层改变归属；来源层和目标层的成员在同一事务中更新。层支持上下排序，层背景通过 Frame.children 排在模块之前绘制，排序、归属修改和级联删除均可撤销。\n选择、剪贴板与快捷键\n组合和多选共用填充、描边、线宽、线型、透明度和阴影属性，所有选中成员在一笔事务中修改。组合选择展开为成员，锁定成员跳过；嵌套 Frame 只修改外壳。阴影使用独立 SVG 定义，选择控件位于阴影之外，SVG 与栅格导出保留同一效果。置顶、置底、前移和后移按组合整体移动，保持成员在 Frame.children 中连续；Ctrl/Cmd+[ 和 ] 移动一层，增加 Shift 移到最底或最顶。场景 Frame 的结构顺序通过领域命令维护。\n原生复制、剪切、粘贴事件与 FrameCanvasController.clipboard('copy' | 'cut' | 'paste') 共用 Cell 关系闭包。事件写入内部 MIME 和带版本标记的纯文本，控制器使用系统纯文本剪贴板；普通文本不会被当作 Cell 数据。剪切先校验保护锚点，系统剪贴板写入失败或等待期间宿主替换了数据时保留原内容；宿主模式等待 onIntent 接受与后续快照后才移除显示内容。粘贴生成新 CellId，并重映射分支、概要端点和组成员；独立脑图分支提升为根时展开，粘到主题上时转回子节点。\n多选拖动在一次事务中平移所选对象，Frame 只移动外壳；点选后未拖动则收起多选。组合对齐按整体包围盒平移并保留成员间距，含锁定成员的组合不能移动。双击组合成员逐级进入 Group 聚焦路径，Escape 逐级退出并选中退出的组。框选和全选把组合当作整体。\n组合和多选支持粗体、斜体、下划线、删除线、字体颜色、字号、段落对齐和链接。修改保留文本身份、内容、段落和未变更的 marks；跳过锁定成员，不穿透嵌套 Frame。\nFrameCanvasController.moveSelection(targetFrameId) 将白板选区移动到共享坐标树中的另一白板 Frame，转换坐标并维护闭包关系。跨边界的白板箭头端点释放为自由坐标，其他领域关系不跨 Frame。产品属性面板提供目标选择，复制闭包包含的 Frame 及其后代不能作为目标。宿主模式继续通过 onIntent 接受或拒绝。\n右键浮层提供剪贴板、批量外观、文本格式和图层操作，右键已选内容保留多选。白板工具支持 H 手型、V 选择、M 脑图、E 擦除、P 画笔、A 箭头、R 矩形、O 椭圆、T 文本；Ctrl/Cmd+S 导出 JSON，Ctrl/Cmd+U 上传图片。输入框和富文本编辑器保留正常输入。脑图支持 Tab 子主题、Enter 兄弟主题、Ctrl/Cmd+/ 展开折叠、输入字符进入主题编辑并保留首字符、Ctrl/Cmd+Shift+N 编辑笔记。Ctrl/Cmd+A 全选，Ctrl/Cmd+D 复制所选闭包并偏移，Ctrl/Cmd+加减号缩放、Ctrl/Cmd+0 恢复 100%，Ctrl/Cmd+Shift+加号适配，Ctrl/Cmd+Delete/Backspace 打开清空确认。清空保留当前 Frame、视图及必须存在的首个脑图根/架构层和全部流程开始事件，删除可一次撤销。普通绘图的完成回调只在事务接受后调用。\n产品保留空白画布引导、网格和间距、容器比例预设及自动触控笔保护。笔输入后屏蔽画布上的非笔指针，工具栏提供退出；网格和比例保存于 Frame。\n单选节点时，属性面板 Header 直接编辑对象名称，不再单独显示名称行；空名称以对象类型占位。名称编辑沿用富文本、只读限制和撤销历史，切换对象时重新挂载编辑器。\n演示\n演示使用独立的只读全屏覆盖层展示当前画布内容，复用编辑画布相同的注册与渲染扩展，并从总览开始。点击对象聚焦其可见范围：脑图主题包含未折叠的后代与相关概要，组合按最外层整体聚焦，架构层包含层内模块，连线包含可见端点；嵌入画布聚焦当前实例外壳。隐藏内容不参与，锁定内容仍可展示。脑图步骤从总览开始，按根主题顺序依次遍历各根的一级分支（先根 1 的一级分支，再根 2 的一级分支；根主题本身不单独占一步），架构图按层序提供步骤导航；白板和流程图通过点击自由聚焦，不再自动生成章节。\n0 返回总览，L 切换激光笔，Esc 退出；有结构步骤时使用上一／下一步按钮或左右方向键。聚焦通过演示画布相机完成平滑适配，并尊重系统减弱动态效果。退出恢复进入前的编辑视口。\n演示目标、步骤位置、相机与激光笔只保存在会话内存，不修改快照、撤销历史或保存状态。FrameCell 不再声明 presentation，core 不再公开幻灯片类型与编排工具。旧文件中残留的该字段作为未识别数据忽略，不解释、不重映射，不新增迁移、版本变更或主动重写。渲染扩展中的 FramePresentation 节点外观 Hook 保留。\n本轮不提供幻灯片编排、标题和备注编辑、固定范围页、临时笔迹、计时、自动播放、演讲者视图、观众窗口、双屏通信、远程同步、PPT 导出或跨文件串联。Web 和 Desktop 共用这一独立只读覆盖层的演示模式，启动入口不再分流到观众页面，也不再打包观众 preload 或注册演示 IPC。\nmacOS 桌面端由通用窗口桥接等待原生全屏进入动画完成，再执行退出；父组件和覆盖层卸载共用退出请求，避免快速按 Esc 时遗留 HTML 全屏状态。这不创建观众窗口或演示消息协议。\n图像导出\n产品的「图像导出」入口与 Ctrl/Cmd+Shift+E 打开导出选项，支持整图或选中内容、SVG/PNG/JPG、分辨率、边距、透明或指定背景。PNG 默认透明，JPG 默认白底且使用 JPEG 编码。\nFrameCanvasController.exportImage(options) 导出当前挂载 Frame。也可以调用 frameSnapshotToImage(snapshot, {frameId, registry, extensions, ...options})，沿用同一组注册与渲染扩展。导出创建临时的只读 FrameCanvas，保持领域布局、嵌套坐标、Rough 路径、富文本和图片；不会修改运行时数据、选择、历史或视口，也不受当前缩放和滚动影响。选中内容按关系闭包保留，再裁出可见范围。文字样式、图片和可访问的字体资源写入导出文件，端口、命中辅助路径及编辑控件被移除；扩展可通过 data-frame-export-exclude 标记不导出的内容。资源不可用时报告错误并清理临时渲染器。\n持久化与迁移\n磁盘按文件保存画布和独立文档。DocumentFileV1（.verd-doc.json）保留 BoardTextDocument 正文，不进入画布 CellStore；两类文件共用目录、标签、统一历史和保存队列。画布部分：每个可独立打开的 Frame 是一份 .verd.json（FrameFileV2），只含自身 Frame 根和直接拥有的非 Frame Cell，嵌套 Frame 外置为独立文件并通过 frame-reference 引用壳互链。思维导图、流程图和架构图可以声明 organization.kind = 'subgraph' 并指向一张普通画布；缺省 organization 的旧文件保持独立入口。普通画布之间的引用是只读预览。WorkspaceSession 的命令统一走候选校验后更新内存与保存队列；写入经 WorkspaceHost 条件提交（expectedVersion 不匹配即拒绝），Desktop 用事务日志保证崩溃恢复并在关闭窗口前等待 flush 确认。外部变更与本地脏状态冲突时进入显式解决流程（load-disk / keep-local / save-copy）。生产页面使用相对资源路径；读取、枚举、写入和删除遇到损坏存储时保留原文件及备份并报告错误。实际 Electron E2E 验证关闭前保存、重启、旧文件迁移及磁盘错误后重试。\n保存成功经会话 onCommitted 回调更新左上角状态；保存中、失败与上次成功时间沿用原展示规则。时间跨重启恢复，各 Frame 共用，不进入快照或历史。时间使用本地时区，当天显示时分秒，跨天显示日期，悬浮可查看完整时间。\n迁移入口接收旧白板、内联与独立脑图、流程、架构文档，以及过渡版 verd-cells 信封。首次迁移保留原记录备份，共享旧文档拆成独立容器副本，未挂载文档保留为可打开的独立 Frame。缺失或损坏内容报告加载错误。\nMarkdown/Mermaid 直接导入导出 FrameSnapshot，见 Frame 转换器。\n迁移验收状态\nCell/Frame 全量迁移的实现与交付验收已完成，详见 架构验收记录。表格及泳道保留单元格选择、富文本、填充、尺寸、结构事务和标题/方向/数量；vector-line 保留多点绘制、闭合、曲线、顶点操作及历史。领域操作、Popover、批量文本、组合交互、清空、跨 Frame 转移、快捷键与旧领域迁移都有实际产品覆盖。React 包中的旧画布、领域 Canvas、SceneGraphic、投影宿主、事件插件和样式入口已删除；引擎插件、文档 reducer、旧产品组件、BoardElement 和 BoardOperation 也已删除；旧文档读取仅保留在应用 migration/legacy 中。\ncell-product.spec.ts 覆盖原生入口、嵌入/详情/返回/刷新、容器删除撤销、手绘擦除、文本导入导出、所有形状绘制与自动保存、轮廓擦除和双击编辑，并新增缩放旋转、箭头控制、笔记折叠、表格结构/尺寸撤销和泳道标题/方向/数量保存刷新和折线多点/闭合/顶点历史恢复用例。provider.spec.ts 覆盖原生第三方接入。原有 app.spec.ts 的 17 个产品用例已迁移，保留保存恢复、详情同步、主题、属性编辑、重命名及重新进入自动适配及详情返回聚焦覆盖。图像用例验证实际文件编码、透明背景与像素、富文本、图片、选中范围、嵌套/详情视图、快捷键和资源失败清理。测试源码存在不代表验收通过；必须实际通过全部产品 E2E、Web/Desktop 构建和隔离 consumer。\n代码落点\n能力\n路径\n原子事务、历史、索引、选择、坐标与复制\npackages/engine/core/src/cell/\n共享形状、端口、路由、箭头、标签与命中\npackages/engine/core/src/geometry/\nRough 路径生成与绘图 Cell\npackages/engine/draw/src/cell-shape.ts、cell-commands.ts、cell-utils.ts\n唯一 React 画布与交互\npackages/react/board/src/frame-canvas.tsx\n脑图概要范围与括号\npackages/engine/mind/src/cell-summary.ts、cell-commands.ts、packages/react/mind/src/mind-summary-edge.tsx\n产品工具、属性和导航\npackages/product/ui/src/verd-frame.tsx\n图像导出\npackages/react/board/src/frame-export.tsx、packages/product/ui/src/frame-image-export-dialog.tsx\n产品绘图渲染扩展\npackages/product/ui/src/frame-draw-extension.tsx\n工作区会话、历史与保存生命周期\npackages/product/app/src/session/workspace-session.ts\n宿主存储与文件提交\npackages/product/app/src/host/\nFrame 文件分区与引用\npackages/product/app/src/frames/frame-files.ts\n旧数据迁移\npackages/product/app/src/migration/\n视口与返回导航\n平移、滚轮/双指缩放、缩放按钮和 fit() 都只更新内存视口，不调用 onChange/onIntent，不修改文档 revision、历史或保存状态。旧文件的 view.viewport 被忽略，正常保存和导出不再包含该字段；旧数据备份保持原样。\n触控板及 Ctrl/Meta 滚轮缩放使用 0.01 的指数灵敏度，并保持指针下的世界坐标；达到缩放上下限后不会转为平移，范围为 10%–800%；触屏双指仍按指针距离比例缩放。平移和缩放在动画帧内直接更新 SVG 世界层及网格，发布当前画布的相机快照；静态场景复用，手柄、命中区域和扩展回调独立接收最新比例；订阅只在渲染结果或实际外观变化时刷新 React，扩展回调仍按当前比例执行。文档、选择、编辑、悬停和绘图预览变化仍刷新场景，活动草稿随缩放重新计算吸附。缩放读数及选区控件独立订阅视图状态，不重渲染整页。选区世界边界在场景或可见性提交后测量并缓存，画布位置在输入、布局、滚动和尺寸变化时更新；相机帧只按已绘制的相机投影屏幕坐标，不读 DOM。控制器的 selectionScreenBounds() 仍即时测量并使用最新输入相机。普通标签文字、内置文字区域和形状内容按实际输入缓存，避免相机变化重复生成或测量。\nFrameCanvas.interactionSettings 的 dragPanSpeed（默认 1）调整手型、Space、中键及右键拖动画布，每次手势开始固定倍率；zoomSensitivity 调整触控板 / Ctrl/Meta 滚轮缩放。两项限制到 0.25–3，非有限值回退为 1。它们属于设备偏好，不写入 Frame、事务、历史或文件；对象拖拽、普通滚轮平移、触屏双指缩放及缩放按钮不使用这两个系数。\n每次挂载或进入 Frame 自动适配可见内容和 viewportInsets，空画布默认 100%。普通编辑、主题修改和撤销重做保持当前视口。产品用内存导航栈逐层返回来源画布，并聚焦打开过的 Frame 外壳；目标消失时整体适配。\nFrameCanvas 的 autoFit 默认为 true；图像导出的临时画布使用 false。initialFocusCellId 仅指定进入画布时的一次视口目标，不修改选择。状态栏读取 onViewStateChange 的 zoom。\n选中普通节点或 Frame 后，产品底部显示「重新居中 / Re-center」浮层；目标移出屏幕时仍可使用。点击通过 FrameCanvasController.centerSelection() 保持当前缩放，将节点联合边界移到可用视口中央。组合按节点成员计算，Frame 包含标题，仅选连线时隐藏。拖动期间按钮禁用，只读模式仍可使用；定位不改变选择、保存状态或撤销历史。窄屏底部浮层与缩放控制自动换行，并为属性面板预留空间。首次加载与详情返回继续采用现有适配规则。\n派生连线路由\n流程、架构及白板的 auto 和无显式折点的 orthogonal 边在同一 Frame 内自动避开可见节点。路由使用布局及拖动预览后的几何，旋转节点按包围盒处理；架构层框和逻辑分组作为透明容器，内部节点单独参与避障，嵌套 Frame 外壳在父画布中参与避障。明确端口和相对锚点保持原有绑定，手动折点、直线、曲线及固定路径保持原有语义。\n共享几何的 createEdgeRoutingContext 创建每个 Frame 的障碍集合与派生缓存，edgeRoutePoints、edgePolyline 和 frameContentBounds 接受可选上下文；旧调用兼容。绘制、命中、箭头、标签、手柄、擦除、嵌入适配及导出共用派生路径。自动折点不写入快照或历史，移动非端点障碍也会更新拖动预览中的路径，平移缩放复用缓存。\n同一 Frame 内的自动路线按稳定顺序统一规划。没有明确端口或锚点的连接按对端位置分配出口；寻路同时考虑节点避障、线段重叠、交叉及相邻车道拥挤，允许长边使用外围通道。几何改变时重新规划整个 Frame，数值未变的结果继续复用引用；平移缩放仍复用原上下文。拖动预览可将原上下文传给 createEdgeRoutingContext 的第四个参数，松手前后读取同一条派生路线。\n避障默认保留 12px 空隙，基础代价为长度加每次转弯 24px，再叠加线线冲突代价。默认空隙无法通过时按线宽安全间距重试；节点重叠或端口完全封堵时保留可编辑路径，并在上下文的路由结果中记录 blocked，不移动节点或中断渲染。\n自动标签通过 edgeLabelLayout 选择足够长的线段并避开节点、其它标签和连线，标签边界参与 Frame 适配及导出。显式 label.position 保留用户指定的沿线位置。架构层标题位于左上角留白，避开模块和居中的主连线。自动连线转为手工折点或线段时，bindEdgeRouteTerminals 将实际分流出口固定为相对锚点；坐标取整和后续移动端点仍保持首尾线段正交。\n创建、标题与像素位置\n产品创建工具完成一次操作后选中新对象并回到选择模式；领域 Frame 只选外壳，手型与擦除保持连续。宿主接受与快照回写共同决定激活，过期请求不会覆盖后续选择。图形选择面板锚定工具按钮，关闭面板不取消待创建工具。\n嵌入 Frame 的 geometry 包含名称和内容区域：内边距 16px、标题高 24px、间隔 8px，内容缩放并居中到标题下方。普通态显示灰色名称与白色内容区，外容器透明；选中 Frame 或编辑名称时显示浅灰圆角外容器、品牌色名称与内容边框。悬停或选中内部对象不会激活外框；状态切换不改变布局和缩放。新建与拖拽缩放的 Frame 最小尺寸为 80px；旧小尺寸不改数据，区域安全裁剪，内容区为空时不渲染子树。\n空名称显示 Frame 占位，不写入文档。标题双击打开画布覆盖层中的富文本名称编辑器，内容区双击仍进入详情。名称与内容的统一边界用于嵌套适配、坐标换算、返回定位和静态图像导出。查看与编辑共享字体、颜色、行高和单行省略规则，编辑覆盖层使用标题的完整 SVG 变换。标题及外壳均可拖动，移动只修改外壳坐标；锁定、祖先锁定、只读及提交等待期间禁止修改。选区不再显示浮动操作栏，复制、剪切、粘贴、删除和编辑通过右键菜单、快捷键及属性面板使用。\n新建、粘贴、导入和几何编辑使用所属 Frame 的整数像素，x/y 与 width/height 采用 Math.round，预览和提交一致。位置和尺寸分别取整：移动保留原尺寸，尺寸编辑保留未变化的位置；派生布局的坐标与尺寸也取整，但不写回快照。角度、比例锚点、曲线控制点以及节点内部的媒体、表格行列尺寸保留精度。旧工作区与文件打开保留原几何值，名称/外观修改不改变几何值，撤销可精确恢复旧小数坐标与尺寸。\ninteractionSettings.smartGuides 默认开启节点拖动参考线吸附，Alt 临时绕过；该偏好不写入文档。\n文档 Frame 与只读引用\n普通画布可放置 document-frame，单击选择，双击正文进入完整文档编辑，Escape 返回外壳选择；外壳锁定或祖先只读时禁止编辑。document-reference 在四类画布中均只读，不参与领域布局。两种窗口均可滚动，正文增长不撑大外壳，删除外壳保留源文件。",
+    "align": "left"
+  }
+}

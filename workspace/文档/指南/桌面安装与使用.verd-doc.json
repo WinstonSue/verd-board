@@ -1,0 +1,379 @@
+{
+  "format": "verd-document",
+  "version": 1,
+  "id": "project-doc:guides/SETUP",
+  "title": "桌面安装与使用",
+  "text": {
+    "schemaVersion": 1,
+    "id": "project-doc:guides/SETUP",
+    "kind": "block",
+    "content": {
+      "type": "doc",
+      "content": [
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 1
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "VerdBoard Desktop 安装与使用"
+            }
+          ]
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 2
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "环境和安装"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "在仓库根目录使用 Node.js >= 22、pnpm >= 11.18.0。依赖解析版本以 pnpm-lock.yaml 为准。"
+            }
+          ]
+        },
+        {
+          "type": "codeBlock",
+          "attrs": {
+            "language": "bash"
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "pnpm install\npnpm start\n# Web 开发\npnpm dev:web"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "pnpm install 会执行项目技能同步；CI 跳过同步。桌面开发由 Vite 启动 Electron；前端、主进程和 preload 均来自 apps/desktop。"
+            }
+          ]
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 2
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "构建与打包"
+            }
+          ]
+        },
+        {
+          "type": "codeBlock",
+          "attrs": {
+            "language": "bash"
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "# 公开包和 Web；不构建 Desktop\npnpm build\n# Desktop 前端、主进程与 preload，不生成安装包\npnpm build:desktop\n# electron-builder 目录产物\npnpm --filter desktop build:dir\n# 生成当前平台安装包\npnpm --filter desktop exec electron-builder\n# 使用最新 Desktop 构建验收\npnpm test:e2e:desktop"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "build:dir 先执行 tsc && vite build，再执行 electron-builder --dir；不是“仅前端构建”。完整安装包应先完成 pnpm build:desktop，再调用 electron-builder。"
+            }
+          ]
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 2
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "工作区目录"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "开发内置工作区是仓库根 workspace/，其中包含项目原生文档、架构白板和主题图。生产内置目录位于 Electron app.getPath('userData') 下的 workspaces/default。新安装可从随包资源初始化；已有工作区和旧存储迁移优先，不覆盖用户已编辑文件。"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "无显式打开请求时，目录优先级为 VERDBOARD_WORKSPACE_PATH 环境变量、已记住的自选目录、内置默认目录。通过文件夹菜单打开其他目录，或返回内置工作区；返回内置会清除已记住目录的优先级。全局目录选择等配置位于 userData/verdboard-global-config.json。"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "备份时复制整个所选工作区。正文是 .verd.json 画布和 .verd-doc.json 文档；.verdboard/ 包含配置、会话、回收区、文件版本和可恢复事务日志，不应在应用保存过程中手工删除。"
+            }
+          ]
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 2
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "保存与冲突"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "WorkspaceApp → WorkspaceSession → WorkspaceHost 是工作区读写链路。Desktop host 通过 preload/IPC 访问真实文件夹，Web host 使用 IndexedDB 虚拟目录。会话在候选修改通过身份、引用目标类型和分区校验后更新内存、历史与去抖保存队列。"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "条件提交携带 expectedVersion。外部文件修改与本地未保存内容冲突时，需要显式选择读取磁盘、保留本地或保存副本；失败保留待保存状态并提供重试。Desktop 关闭前等待 flush 成功；Web 页面离开时为尽力保存。原生文档与画布共用保存、重命名、回收与撤销行为。"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "旧单文件 verdboard-data.json、平铺 manifest/frames 与更早领域存储只在私有迁移边界读取。先备份后导入文件工作区；损坏文件报告错误，不自动覆盖为空内容。"
+            }
+          ]
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 2
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "相关源码"
+            }
+          ]
+        },
+        {
+          "type": "bulletList",
+          "content": [
+            {
+              "type": "listItem",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "apps/desktop/electron/main.ts：启动、窗口、目录选择与 IPC。"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "listItem",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "apps/desktop/electron/workspace-host-fs.ts：目录扫描、条件提交、事务日志和崩溃恢复。"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "listItem",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "packages/product/app/src/host/：WorkspaceHost 契约与各端桥接。"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "listItem",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "packages/product/app/src/session/workspace-session.ts：会话命令、历史、保存与冲突。"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "listItem",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "packages/product/app/src/documents/：原生文档格式与身份。"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 2
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "故障排查"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "依赖安装失败先检查 Node/pnpm 版本和日志；需要时运行 pnpm store prune 后重装。应用无法启动时先确认 pnpm build:desktop 或开发命令输出，再检查 Electron 主进程和渲染端日志。"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "工作区内容与预期不一致时先检查当前目录和上述优先级；不要直接删除原有工作区或旧存储。保存失败时保留文件及 .verdboard/，查看错误后重试或保存副本。手动恢复应在关闭应用并完成备份后进行。"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "开发指南",
+              "marks": [
+                {
+                  "type": "link",
+                  "attrs": {
+                    "href": "verd://file/project-doc%3Adevelopment%2FREADME"
+                  }
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "text": " | "
+            },
+            {
+              "type": "text",
+              "text": "系统架构",
+              "marks": [
+                {
+                  "type": "link",
+                  "attrs": {
+                    "href": "verd://file/project-doc%3Aarchitecture%2FARCHITECTURE"
+                  }
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "text": " | "
+            },
+            {
+              "type": "text",
+              "text": "文档导航",
+              "marks": [
+                {
+                  "type": "link",
+                  "attrs": {
+                    "href": "verd://file/project-doc%3AREADME"
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "最后更新：2026-10-16。"
+            }
+          ]
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 2
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "快捷键帮助"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "画布左上角「更多」菜单、文字文档工具栏和演示工具栏均提供「快捷键」入口。帮助以浮层打开，默认显示当前场景及适用的通用操作，可切换白板、脑图、流程图、架构图、文字文档、演示或全部，并按操作名称、按键和使用条件搜索。按键名称随设备平台显示，中英文随应用语言切换。关闭按钮或 Esc 关闭帮助并将焦点返回入口，原画布、文档选区、视口和历史保留；演示中 Esc 先关闭帮助，再按一次退出演示。各画布保留独立的快捷键，帮助仅展示已有操作，不提供改键。画布 Cmd/Ctrl+S 为导出画布文件；空格配合拖动用于临时平移，脑图展开收起使用 / 或 Cmd/Ctrl+/。"
+            }
+          ]
+        }
+      ]
+    },
+    "plainText": "VerdBoard Desktop 安装与使用\n环境和安装\n在仓库根目录使用 Node.js >= 22、pnpm >= 11.18.0。依赖解析版本以 pnpm-lock.yaml 为准。\npnpm install\npnpm start\n# Web 开发\npnpm dev:web\npnpm install 会执行项目技能同步；CI 跳过同步。桌面开发由 Vite 启动 Electron；前端、主进程和 preload 均来自 apps/desktop。\n构建与打包\n# 公开包和 Web；不构建 Desktop\npnpm build\n# Desktop 前端、主进程与 preload，不生成安装包\npnpm build:desktop\n# electron-builder 目录产物\npnpm --filter desktop build:dir\n# 生成当前平台安装包\npnpm --filter desktop exec electron-builder\n# 使用最新 Desktop 构建验收\npnpm test:e2e:desktop\nbuild:dir 先执行 tsc && vite build，再执行 electron-builder --dir；不是“仅前端构建”。完整安装包应先完成 pnpm build:desktop，再调用 electron-builder。\n工作区目录\n开发内置工作区是仓库根 workspace/，其中包含项目原生文档、架构白板和主题图。生产内置目录位于 Electron app.getPath('userData') 下的 workspaces/default。新安装可从随包资源初始化；已有工作区和旧存储迁移优先，不覆盖用户已编辑文件。\n无显式打开请求时，目录优先级为 VERDBOARD_WORKSPACE_PATH 环境变量、已记住的自选目录、内置默认目录。通过文件夹菜单打开其他目录，或返回内置工作区；返回内置会清除已记住目录的优先级。全局目录选择等配置位于 userData/verdboard-global-config.json。\n备份时复制整个所选工作区。正文是 .verd.json 画布和 .verd-doc.json 文档；.verdboard/ 包含配置、会话、回收区、文件版本和可恢复事务日志，不应在应用保存过程中手工删除。\n保存与冲突\nWorkspaceApp → WorkspaceSession → WorkspaceHost 是工作区读写链路。Desktop host 通过 preload/IPC 访问真实文件夹，Web host 使用 IndexedDB 虚拟目录。会话在候选修改通过身份、引用目标类型和分区校验后更新内存、历史与去抖保存队列。\n条件提交携带 expectedVersion。外部文件修改与本地未保存内容冲突时，需要显式选择读取磁盘、保留本地或保存副本；失败保留待保存状态并提供重试。Desktop 关闭前等待 flush 成功；Web 页面离开时为尽力保存。原生文档与画布共用保存、重命名、回收与撤销行为。\n旧单文件 verdboard-data.json、平铺 manifest/frames 与更早领域存储只在私有迁移边界读取。先备份后导入文件工作区；损坏文件报告错误，不自动覆盖为空内容。\n相关源码\napps/desktop/electron/main.ts：启动、窗口、目录选择与 IPC。\napps/desktop/electron/workspace-host-fs.ts：目录扫描、条件提交、事务日志和崩溃恢复。\npackages/product/app/src/host/：WorkspaceHost 契约与各端桥接。\npackages/product/app/src/session/workspace-session.ts：会话命令、历史、保存与冲突。\npackages/product/app/src/documents/：原生文档格式与身份。\n故障排查\n依赖安装失败先检查 Node/pnpm 版本和日志；需要时运行 pnpm store prune 后重装。应用无法启动时先确认 pnpm build:desktop 或开发命令输出，再检查 Electron 主进程和渲染端日志。\n工作区内容与预期不一致时先检查当前目录和上述优先级；不要直接删除原有工作区或旧存储。保存失败时保留文件及 .verdboard/，查看错误后重试或保存副本。手动恢复应在关闭应用并完成备份后进行。\n开发指南 | 系统架构 | 文档导航\n最后更新：2026-10-16。\n快捷键帮助\n画布左上角「更多」菜单、文字文档工具栏和演示工具栏均提供「快捷键」入口。帮助以浮层打开，默认显示当前场景及适用的通用操作，可切换白板、脑图、流程图、架构图、文字文档、演示或全部，并按操作名称、按键和使用条件搜索。按键名称随设备平台显示，中英文随应用语言切换。关闭按钮或 Esc 关闭帮助并将焦点返回入口，原画布、文档选区、视口和历史保留；演示中 Esc 先关闭帮助，再按一次退出演示。各画布保留独立的快捷键，帮助仅展示已有操作，不提供改键。画布 Cmd/Ctrl+S 为导出画布文件；空格配合拖动用于临时平移，脑图展开收起使用 / 或 Cmd/Ctrl+/。\n",
+    "align": "left"
+  }
+}

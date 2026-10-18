@@ -1,0 +1,112 @@
+{
+  "format": "verd-document",
+  "version": 1,
+  "id": "project-doc:packages/board/CHANGELOG",
+  "title": "Board变更说明",
+  "text": {
+    "schemaVersion": 1,
+    "id": "project-doc:packages/board/CHANGELOG",
+    "kind": "block",
+    "content": {
+      "type": "doc",
+      "content": [
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 1
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "Board 变更说明"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "本说明作为原生文档保留维护入口。当前产品行为以 "
+            },
+            {
+              "type": "text",
+              "text": "文档导航",
+              "marks": [
+                {
+                  "type": "link",
+                  "attrs": {
+                    "href": "verd://file/project-doc%3AREADME"
+                  }
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "text": "、"
+            },
+            {
+              "type": "text",
+              "text": "Mind 特性",
+              "marks": [
+                {
+                  "type": "link",
+                  "attrs": {
+                    "href": "verd://file/project-doc%3Apackages%2Fboard%2Fmind-features"
+                  }
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "text": "、"
+            },
+            {
+              "type": "text",
+              "text": "画布模式",
+              "marks": [
+                {
+                  "type": "link",
+                  "attrs": {
+                    "href": "verd://file/project-doc%3Apackages%2Fboard%2Fcanvas-modes"
+                  }
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "text": " 和 "
+            },
+            {
+              "type": "text",
+              "text": "系统架构",
+              "marks": [
+                {
+                  "type": "link",
+                  "attrs": {
+                    "href": "verd://file/project-doc%3Aarchitecture%2FARCHITECTURE"
+                  }
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "text": " 为准。"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "各包根 CHANGELOG.md 继续用于 Changesets 发布说明；历史验收保留日期，不以旧测试数量声明当前提交已通过。较大能力的产品摘要、技术落点与架构图直接更新当前工作区原生文件，不再建立另一份正文源。"
+            }
+          ]
+        }
+      ]
+    },
+    "plainText": "Board 变更说明\n本说明作为原生文档保留维护入口。当前产品行为以 文档导航、Mind 特性、画布模式 和 系统架构 为准。\n各包根 CHANGELOG.md 继续用于 Changesets 发布说明；历史验收保留日期，不以旧测试数量声明当前提交已通过。较大能力的产品摘要、技术落点与架构图直接更新当前工作区原生文件，不再建立另一份正文源。",
+    "align": "left"
+  }
+}
