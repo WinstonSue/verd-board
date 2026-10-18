@@ -7,6 +7,7 @@ import {
   isCanvasPath,
   isDocumentPath,
   normalizeWorkspacePath,
+  normalizeTrashEntryId,
   parentWorkspacePath,
   type ChangeHint,
   type CommitReceipt,
@@ -247,13 +248,17 @@ export const createWebWorkspaceHost = (
       }));
       for (const op of writes)
         writeVersions.set(op.path, await sha256(op.bytes));
+      (request_.purge ?? []).forEach(normalizeTrashEntryId);
       ops = {
         mkdirs: (request_.mkdirs ?? []).map(normalizeWorkspacePath),
         trash: (request_.trash ?? []).map((op) => ({
           ...op,
           path: normalizeWorkspacePath(op.path),
         })),
-        restore: request_.restore ?? [],
+        restore: (request_.restore ?? []).map((op) => ({
+          ...op,
+          entryId: normalizeTrashEntryId(op.entryId),
+        })),
         moves: (request_.moves ?? []).map((op) => ({
           ...op,
           from: normalizeWorkspacePath(op.from),
@@ -404,6 +409,10 @@ export const createWebWorkspaceHost = (
           touched.add(path);
         }
         await request(trashStore.delete(trashKey(wsKey, op.entryId)));
+      }
+      for (const entryId of request_.purge ?? []) {
+        await request(trashStore.delete(trashKey(wsKey, entryId)));
+        touched.add(`.verdboard/trash/${entryId}`);
       }
       for (const op of ops.moves) {
         const node = await get(op.from);

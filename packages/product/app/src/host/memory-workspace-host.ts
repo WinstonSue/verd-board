@@ -6,6 +6,7 @@ import {
   isCanvasPath,
   isDocumentPath,
   normalizeWorkspacePath,
+  normalizeTrashEntryId,
   parentWorkspacePath,
   type ChangeHint,
   type CommitReceipt,
@@ -145,6 +146,7 @@ export const createMemoryWorkspaceHost = (
     };
   };
 
+  let trashSequence = 0;
   const applyCommit = (
     workspace: MemoryWorkspace,
     request: CommitRequest,
@@ -195,7 +197,7 @@ export const createMemoryWorkspaceHost = (
           );
         if (node.kind === 'directory' && op.expectedVersion !== undefined)
           return fail(reject(request.transactionId, 'invalid', { path }));
-        const entryId = `trash-${now().toString(36)}-${trash.size}`;
+        const entryId = `trash-${now().toString(36)}-${++trashSequence}`;
         const removed: Record<string, MemoryNode> = { [path]: node };
         nodes.delete(path);
         [...nodes.keys()]
@@ -213,7 +215,7 @@ export const createMemoryWorkspaceHost = (
         trashEntries.push({ path, entryId });
       }
       for (const op of request.restore ?? []) {
-        const entry = trash.get(op.entryId);
+        const entry = trash.get(normalizeTrashEntryId(op.entryId));
         if (!entry)
           return fail(
             reject(request.transactionId, 'source-missing', {
@@ -308,6 +310,8 @@ export const createMemoryWorkspaceHost = (
         nodes.set(path, { kind: 'file', content, version });
         versions[path] = version;
       }
+      for (const entryId of request.purge ?? [])
+        trash.delete(normalizeTrashEntryId(entryId));
       if (request.config) {
         if (request.config.expectedVersion !== config.version)
           return fail(
@@ -343,7 +347,7 @@ export const createMemoryWorkspaceHost = (
     const touched = Object.keys(versions).concat(
       trashEntries.map((entry) => entry.path),
     );
-    if (touched.length)
+    if (touched.length || request.purge?.length || request.restore?.length)
       workspace.listeners.forEach((listener) => listener({ paths: touched }));
     return receipt;
   };

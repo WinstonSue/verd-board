@@ -24,6 +24,7 @@ export function App() {
   return (
     <WorkspaceApp
       host={host}
+      allowWorkspaceSwitching
       importLegacy={async () => {
         if (!(await legacyAdapter.listKeys()).length) return null;
         return migrateLegacyCellWorkspace(legacyAdapter);

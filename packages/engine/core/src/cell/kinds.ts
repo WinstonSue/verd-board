@@ -2,6 +2,8 @@
 export const CellKind = {
   frame: 'frame',
   frameReference: 'frame-reference',
+  documentReference: 'document-reference',
+  documentFrame: 'document-frame',
   group: 'group',
   arrow: 'arrow',
   geometry: 'geometry',

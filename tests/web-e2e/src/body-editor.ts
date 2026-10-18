@@ -27,7 +27,7 @@ export async function bodyEditor(page: Page) {
               node.contains(hit) &&
               hit.closest('[data-cell-id]') === node &&
               !hit.closest(
-                'a, [data-port-id], [data-selection-handles], [data-mind-add]',
+                'a, [data-port-id], [data-selection-handles], [data-mind-fold]',
               )
             )
               return { x, y };

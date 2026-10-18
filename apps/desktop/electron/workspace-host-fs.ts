@@ -9,6 +9,7 @@ import {
   isCanvasPath,
   isDocumentPath,
   normalizeWorkspacePath,
+  normalizeTrashEntryId,
   normalizeWorkspaceSessionState,
   parentWorkspacePath,
   WORKSPACE_META_DIR,
@@ -121,6 +122,7 @@ type JournalOp =
       directory: boolean;
     }
   | { kind: 'mkdir'; path: string }
+  | { kind: 'purge'; entryId: string }
   | {
       kind: 'trash';
       path: string;
@@ -347,6 +349,12 @@ export const createFsWorkspaceHost = (
       await fs.mkdir(absolute(root, op.path), { recursive: true });
       return;
     }
+    if (op.kind === 'purge') {
+      await removeDir(
+        metaPath(root, TRASH_DIR, normalizeTrashEntryId(op.entryId)),
+      );
+      return;
+    }
     if (op.kind === 'trash') {
       const entryDir = metaPath(root, TRASH_DIR, op.entryId);
       await fs.mkdir(entryDir, { recursive: true });
@@ -461,6 +469,11 @@ export const createFsWorkspaceHost = (
         if (appliedError) return appliedError;
         continue;
       }
+      if (op.kind === 'purge') {
+        const appliedError = await tryApply(op, `purge ${op.entryId}`);
+        if (appliedError) return appliedError;
+        continue;
+      }
       if (op.kind === 'trash') {
         const stat = await fs.stat(absolute(root, op.path)).catch(() => null);
         if (!stat) {
@@ -553,6 +566,9 @@ export const createFsWorkspaceHost = (
         transactionId: journal.transactionId,
         outcome: 'applied',
         versions,
+        trashEntries: journal.ops.flatMap((op) =>
+          op.kind === 'trash' ? [{ path: op.path, entryId: op.entryId }] : [],
+        ),
       } satisfies CommitReceipt);
       await removeDir(stagingDir(root, journal.transactionId));
       await fs.rm(path.join(dir, name), { force: true });
@@ -642,6 +658,11 @@ export const createFsWorkspaceHost = (
             transactionId: request.transactionId,
             outcome: 'applied',
             versions,
+            trashEntries: journal.ops.flatMap((op) =>
+              op.kind === 'trash'
+                ? [{ path: op.path, entryId: op.entryId }]
+                : [],
+            ),
           };
           await writeJsonFile(
             receiptPath(workspace.root, request.transactionId),
@@ -761,7 +782,7 @@ export const createFsWorkspaceHost = (
         planAbsent(relativePath);
       }
       for (const op of request.restore ?? []) {
-        const entryId = op.entryId;
+        const entryId = normalizeTrashEntryId(op.entryId);
         const entryDir = metaPath(workspace.root, TRASH_DIR, entryId);
         const meta = (await readJsonFile(
           path.join(entryDir, 'entry.json'),
@@ -812,6 +833,8 @@ export const createFsWorkspaceHost = (
           subtree,
         });
       }
+      for (const entryId of request.purge ?? [])
+        ops.push({ kind: 'purge', entryId: normalizeTrashEntryId(entryId) });
       for (const op of request.moves ?? []) {
         const from = normalizeWorkspacePath(op.from);
         const to = normalizeWorkspacePath(op.to);
@@ -1055,9 +1078,11 @@ export const createFsWorkspaceHost = (
       ...ops.flatMap((op) =>
         op.kind === 'move'
           ? [op.from, op.to]
-          : op.kind === 'trash'
-            ? [op.path]
-            : [],
+          : op.kind === 'purge'
+            ? [`.verdboard/trash/${op.entryId}`]
+            : op.kind === 'trash'
+              ? [op.path]
+              : [],
       ),
     ];
     if (touched.length)

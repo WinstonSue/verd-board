@@ -11,6 +11,8 @@ import {
   isEdgeCell,
   isFrameCell,
   isFrameReferenceCell,
+  isDocumentReferenceCell,
+  isDocumentCell,
   isGroupCell,
   isNodeCell,
   type CellStore,
@@ -72,7 +74,8 @@ export const validateCellStore = (
         .filter((child) => !isFrameCell(child))
         .forEach((child) => {
           const compatible =
-            anchor === CellKind.mindRoot
+            isDocumentReferenceCell(child) ||
+            (anchor === CellKind.mindRoot
               ? isMindNodeKind(child.kind) ||
                 child.kind === CellKind.mindBranch ||
                 child.kind === CellKind.mindSummaryEdge
@@ -90,7 +93,7 @@ export const validateCellStore = (
                       CellKind.mindSummaryEdge,
                       CellKind.workflowEdge,
                       CellKind.architectureEdge,
-                    ].includes(child.kind as never);
+                    ].includes(child.kind as never));
           if (!compatible)
             report(child.id, 'Cell does not belong to the frame scene');
         });
@@ -98,6 +101,17 @@ export const validateCellStore = (
         report(id, 'Groups are not allowed in mind frames');
     }
     if (isNodeCell(cell)) {
+      if (isDocumentCell(cell)) {
+        if (
+          typeof cell.data?.targetDocumentId !== 'string' ||
+          !cell.data.targetDocumentId
+        )
+          report(id, 'Document reference requires a target');
+        if (cell.geometry.rotation)
+          report(id, 'Document references cannot rotate');
+        if (cell.ports?.length)
+          report(id, 'Document references cannot have ports');
+      }
       if (cell.kind === CellKind.mindRoot) {
         const offset = (cell.data as MindRootData | undefined)?.embeddedOffset;
         if (
@@ -172,6 +186,8 @@ export const validateCellStore = (
           )
             report(cell.id, 'Invalid bound anchor');
           const endpoint = store.cells[terminal.cellId];
+          if (isDocumentCell(endpoint))
+            report(cell.id, 'Document references cannot be connected');
           if (!endpoint || !isNodeCell(endpoint))
             report(cell.id, 'Edge endpoint must be a node');
           if (parents.get(terminal.cellId) !== parents.get(cell.id))

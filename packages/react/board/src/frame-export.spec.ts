@@ -8,6 +8,25 @@ const svg = (contents: string) => {
   return host.querySelector('svg')!;
 };
 describe('native frame image clone', () => {
+  it('freezes document reading offsets without changing the live viewport', () => {
+    const source = svg(
+      '<foreignObject><div data-document-preview-scroll="" style="height:100px;overflow:auto"><p>Full source text</p></div></foreignObject>',
+    );
+    const reader = source.querySelector<HTMLElement>(
+      '[data-document-preview-scroll]',
+    )!;
+    reader.scrollTop = 150;
+    reader.scrollLeft = 12;
+    const cloned = cloneFrameImageSvg(source).querySelector<HTMLElement>(
+      '[data-document-preview-scroll]',
+    )!;
+    expect(cloned.style.overflow).toBe('hidden');
+    expect((cloned.firstElementChild as HTMLElement).style.transform).toBe(
+      'translate(-12px, -150px)',
+    );
+    expect(reader.scrollTop).toBe(150);
+    source.parentElement!.remove();
+  });
   it('rejects invalid export options before mounting a renderer', async () => {
     const snapshot = { store: createCellStore(createFrameCell('root')) };
     const before = document.body.childElementCount;

@@ -214,19 +214,22 @@ test('restores editing, gestures, summaries, and file open', async ({
     'https://example.com',
   );
 
-  await page.locator('[data-mind-add]').last().click();
+  await canvas(page).press('Tab');
   await page.keyboard.press('Escape');
   await expect(cells(page, 'mind-child')).toHaveCount(1);
   await cells(page, 'mind-child').first().click();
-  await page.locator('[data-mind-add]').last().click();
+  await canvas(page).press('Tab');
   await page.keyboard.press('Escape');
   await expect(cells(page, 'mind-child')).toHaveCount(2);
   await cells(page, 'mind-child').first().click();
-  await page.locator('[data-mind-fold]').click();
+  const parentId = await cells(page, 'mind-child')
+    .first()
+    .getAttribute('data-cell-id');
+  await page.locator(`[data-mind-fold="${parentId}"]`).click();
   await expect
     .poll(async () => (await findCell(page, 'mind-child'))?.data?.collapsed)
     .toBe(true);
-  await page.locator('[data-mind-add]').last().click();
+  await canvas(page).press('Tab');
   await page.keyboard.press('Escape');
   await expect
     .poll(async () => {
@@ -260,8 +263,7 @@ test('restores editing, gestures, summaries, and file open', async ({
   await page
     .getByLabel('Mind right node count', { exact: true })
     .press('Enter');
-  const rootId = await cells(page, 'mind-root').getAttribute('data-cell-id');
-  await page.locator(`[data-mind-add="${rootId}"]`).click();
+  await canvas(page).press('Tab');
   const formatting = page.getByRole('toolbar', {
     name: 'Text formatting',
     exact: true,
@@ -426,9 +428,9 @@ test('restores editing, gestures, summaries, and file open', async ({
   const themeBeforeOpen = await page
     .getByLabel('Theme', { exact: true })
     .inputValue();
-  const openInput = page.locator(
-    'input[accept="application/json,.md,.markdown,.mmd,.mermaid"]',
-  );
+  const openInput = page
+    .locator('.workspace-pane.is-active')
+    .locator('input[accept="application/json,.md,.markdown,.mmd,.mermaid"]');
   await openInput
     .nth(1)
     .setInputFiles(snapshotFile('open.json', 'Opened node', 2, 'dark'));

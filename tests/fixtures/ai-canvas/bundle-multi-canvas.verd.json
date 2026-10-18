@@ -1,0 +1,182 @@
+{
+  "format": "verd-canvas-bundle",
+  "version": 1,
+  "files": [
+    {
+      "format": "verd-frame",
+      "version": 2,
+      "frame": {
+        "id": "canvas-overview",
+        "kind": "frame",
+        "cellType": "frame",
+        "name": "总览",
+        "geometry": { "x": 0, "y": 0, "width": 960, "height": 560 },
+        "children": ["ov-title", "ov-tag", "ov-ref", "ov-arrow"],
+        "groups": []
+      },
+      "cells": {
+        "ov-title": {
+          "id": "ov-title",
+          "kind": "geometry",
+          "cellType": "node",
+          "geometry": {
+            "x": 64,
+            "y": 48,
+            "width": 240,
+            "height": 44,
+            "outline": "text"
+          },
+          "appearance": {
+            "fill": "none",
+            "strokeColor": "none",
+            "strokeWidth": 2
+          },
+          "content": { "label": "订单域总览" }
+        },
+        "ov-tag": {
+          "id": "ov-tag",
+          "kind": "geometry",
+          "cellType": "node",
+          "geometry": {
+            "x": 80,
+            "y": 220,
+            "width": 140,
+            "height": 56,
+            "outline": "roundRectangle"
+          },
+          "ports": [
+            { "id": "top", "side": "top", "direction": "both" },
+            { "id": "right", "side": "right", "direction": "both" },
+            { "id": "bottom", "side": "bottom", "direction": "both" },
+            { "id": "left", "side": "left", "direction": "both" }
+          ],
+          "appearance": {
+            "fill": "#eff6ff",
+            "strokeColor": "#2563eb",
+            "strokeWidth": 2
+          },
+          "content": { "label": "订单详情" }
+        },
+        "ov-ref": {
+          "id": "ov-ref",
+          "kind": "frame-reference",
+          "cellType": "node",
+          "name": "订单详情",
+          "geometry": { "x": 320, "y": 120, "width": 560, "height": 340 },
+          "ports": [
+            { "id": "top", "side": "top", "direction": "both" },
+            { "id": "right", "side": "right", "direction": "both" },
+            { "id": "bottom", "side": "bottom", "direction": "both" },
+            { "id": "left", "side": "left", "direction": "both" }
+          ],
+          "appearance": {
+            "fill": "#ffffff",
+            "strokeColor": "#94a3b8",
+            "strokeWidth": 1
+          },
+          "data": { "targetFrameId": "canvas-detail" }
+        },
+        "ov-arrow": {
+          "id": "ov-arrow",
+          "kind": "arrow",
+          "cellType": "edge",
+          "source": { "cellId": "ov-tag", "portId": "right" },
+          "target": { "cellId": "ov-ref", "portId": "left" },
+          "route": { "mode": "orthogonal" },
+          "labels": [{ "text": "进入" }],
+          "data": { "sourceMarker": "none", "targetMarker": "arrow" }
+        }
+      }
+    },
+    {
+      "format": "verd-frame",
+      "version": 2,
+      "frame": {
+        "id": "canvas-detail",
+        "kind": "frame",
+        "cellType": "frame",
+        "name": "订单详情",
+        "geometry": { "x": 0, "y": 0, "width": 960, "height": 480 },
+        "children": ["d-title", "d-create", "d-pay", "d-arrow"],
+        "groups": []
+      },
+      "cells": {
+        "d-title": {
+          "id": "d-title",
+          "kind": "geometry",
+          "cellType": "node",
+          "geometry": {
+            "x": 64,
+            "y": 48,
+            "width": 240,
+            "height": 44,
+            "outline": "text"
+          },
+          "appearance": {
+            "fill": "none",
+            "strokeColor": "none",
+            "strokeWidth": 2
+          },
+          "content": { "label": "订单详情" }
+        },
+        "d-create": {
+          "id": "d-create",
+          "kind": "geometry",
+          "cellType": "node",
+          "geometry": {
+            "x": 80,
+            "y": 160,
+            "width": 160,
+            "height": 64,
+            "outline": "roundRectangle"
+          },
+          "ports": [
+            { "id": "top", "side": "top", "direction": "both" },
+            { "id": "right", "side": "right", "direction": "both" },
+            { "id": "bottom", "side": "bottom", "direction": "both" },
+            { "id": "left", "side": "left", "direction": "both" }
+          ],
+          "appearance": {
+            "fill": "#ffffff",
+            "strokeColor": "#64748b",
+            "strokeWidth": 2
+          },
+          "content": { "label": "创建订单" }
+        },
+        "d-pay": {
+          "id": "d-pay",
+          "kind": "geometry",
+          "cellType": "node",
+          "geometry": {
+            "x": 360,
+            "y": 160,
+            "width": 160,
+            "height": 64,
+            "outline": "roundRectangle"
+          },
+          "ports": [
+            { "id": "top", "side": "top", "direction": "both" },
+            { "id": "right", "side": "right", "direction": "both" },
+            { "id": "bottom", "side": "bottom", "direction": "both" },
+            { "id": "left", "side": "left", "direction": "both" }
+          ],
+          "appearance": {
+            "fill": "#ffffff",
+            "strokeColor": "#64748b",
+            "strokeWidth": 2
+          },
+          "content": { "label": "支付" }
+        },
+        "d-arrow": {
+          "id": "d-arrow",
+          "kind": "arrow",
+          "cellType": "edge",
+          "source": { "cellId": "d-create", "portId": "right" },
+          "target": { "cellId": "d-pay", "portId": "left" },
+          "route": { "mode": "auto" },
+          "data": { "sourceMarker": "none", "targetMarker": "arrow" }
+        }
+      }
+    }
+  ]
+}

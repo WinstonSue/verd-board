@@ -111,11 +111,14 @@ async function expectSelectionCentered(
           top = Math.min(...boxes.map((box) => box.y)),
           bottom = Math.max(...boxes.map((box) => box.y + box.height));
         const svg = (await canvas(page).boundingBox())!;
-        const controls = (await page
+        const active = page.locator('.workspace-pane.is-active');
+        const controls = (await active
           .locator('.frame-bottom-controls')
           .boundingBox())!;
-        const inspector = await page.locator('.frame-inspector').boundingBox();
-        const style = await page.locator('.verd-frame').getAttribute('style');
+        const inspector = await active
+          .locator('.frame-inspector')
+          .boundingBox();
+        const style = await active.locator('.verd-frame').getAttribute('style');
         const toolbar = Number(
           /--frame-app-toolbar-height:\s*([\d.]+)px/.exec(style ?? '')?.[1] ??
             0,
@@ -492,18 +495,14 @@ test('nested details return one level at a time and focus the opened shell', asy
     outerTitle = canvas(page).locator(`[data-frame-title-id="${outerId}"]`),
     marker = canvas(page).locator('[data-cell-kind="geometry"]');
   await outerShell.click({ position: { x: 12, y: 12 } });
-  const recenter = page.getByTestId('canvas-recenter');
+  const recenter = page.getByTestId('canvas-recenter').locator('visible=true');
   await expect(recenter).toBeVisible();
-  await page.getByTestId('canvas-zoom-out').click();
+  await page.getByTestId('canvas-zoom-out').locator('visible=true').click();
   await recenter.click();
   await expectSelectionCentered(page, [outerShell, outerTitle]);
-  await expect(page.getByTestId('canvas-zoom-label')).toHaveText('90%');
-  await marker.click();
-  await recenter.click();
-  await expectSelectionCentered(page, [
-    marker.locator('[data-shape-renderer="rough"]'),
-  ]);
-  await expect(page.getByTestId('canvas-zoom-label')).toHaveText('90%');
+  await expect(
+    page.getByTestId('canvas-zoom-label').locator('visible=true'),
+  ).toHaveText('90%');
   await page.getByTestId('canvas-status-fit').click();
   // The title strip renames on double-click, so opening a frame happens on
   // the shell's bottom margin, the only part left uncovered by content —
@@ -528,6 +527,17 @@ test('nested details return one level at a time and focus the opened shell', asy
       '[data-cell-kind="frame"],[data-cell-kind="frame-reference"]',
     ),
   ).toHaveCount(0);
+  // The marker is editable in its own file. Its appearances in regular
+  // canvas references are read-only previews, with separate local cameras.
+  await marker.click();
+  await page.getByTestId('canvas-zoom-out').locator('visible=true').click();
+  await recenter.click();
+  await expectSelectionCentered(page, [
+    marker.locator('[data-shape-renderer="rough"]'),
+  ]);
+  await expect(
+    page.getByTestId('canvas-zoom-label').locator('visible=true'),
+  ).toHaveText('90%');
   await backToPreviousCanvas(page);
   await expect(
     canvas(page).locator(

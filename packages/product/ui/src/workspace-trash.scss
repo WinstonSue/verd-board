@@ -1,0 +1,105 @@
+.workspace-trash-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  h2 {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 0;
+    font-size: 18px;
+  }
+  .workspace-trash-scope {
+    margin: 8px 0 0;
+    overflow-wrap: anywhere;
+  }
+}
+.workspace-trash-count {
+  padding: 1px 7px;
+  border-radius: 6px;
+  background: var(--vm-fill-hover, #f1f5f9);
+  color: var(--vm-foreground-secondary, #64748b);
+  font-size: 12px;
+  font-weight: 400;
+}
+.workspace-trash-list {
+  list-style: none;
+  margin: 20px 0 0;
+  padding: 0;
+}
+.workspace-trash-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px 16px;
+  align-items: center;
+  padding: 18px 0;
+  border-top: 1px solid var(--vm-border, #e2e8f0);
+}
+.workspace-trash-file {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  svg {
+    flex: none;
+    color: var(--vm-foreground-secondary, #64748b);
+  }
+  > div {
+    min-width: 0;
+  }
+  strong,
+  span {
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  strong {
+    font-weight: 500;
+  }
+  span {
+    margin-top: 4px;
+    font-size: 12px;
+    color: var(--vm-foreground-secondary, #64748b);
+  }
+}
+.workspace-trash-date {
+  color: var(--vm-foreground-secondary, #64748b);
+  font-size: 12px;
+}
+.workspace-trash-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  grid-column: 1 / -1;
+}
+.frame-settings-page .workspace-trash-purge,
+.frame-settings-page .workspace-trash-clear {
+  color: var(--vm-danger, #dc2626);
+}
+.workspace-trash-empty {
+  display: grid;
+  justify-items: center;
+  padding: 56px 8px;
+  color: var(--vm-foreground-tertiary, #94a3b8);
+  p {
+    margin: 16px 0 0;
+  }
+}
+.workspace-trash-error {
+  color: var(--vm-danger, #dc2626);
+  overflow-wrap: anywhere;
+}
+.frame-settings-page .workspace-trash-error p {
+  color: inherit;
+}
+@media (max-width: 600px) {
+  .workspace-trash-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .workspace-trash-date {
+    padding-left: 28px;
+  }
+}

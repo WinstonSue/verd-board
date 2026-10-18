@@ -1002,6 +1002,84 @@ test('edits arrow bindings, route segments and multiple labels through native tr
   await expect(edge).toContainText('Second');
 });
 
+test('mind fold buttons toggle children and preserve nested folding after reload while Tab and Enter create topics', async ({
+  page,
+}) => {
+  await page.goto('/');
+  await createAt(page, '思维导图');
+  await cells(page, 'frame').locator('[data-frame-title-id]').first().click();
+  await page.getByTestId('frame-open').locator('visible=true').click();
+  const root = cells(page, 'mind-root');
+  const rootId = (await root.getAttribute('data-cell-id'))!;
+  const fold = (id: string) => canvas(page).locator(`[data-mind-fold="${id}"]`);
+  await root.click();
+  await expect(canvas(page).locator('[data-mind-controls]')).toHaveCount(0);
+  await canvas(page).press('Tab');
+  const editor = await bodyEditor(page);
+  await editor.fill('Parent');
+  // Tab also commits the current title before inserting a child.
+  await editor.press('Tab');
+  await editBody(page, 'Leaf');
+  const parent = cells(page, 'mind-child').filter({ hasText: 'Parent' });
+  const parentId = (await parent.getAttribute('data-cell-id'))!;
+  await parent.click();
+  await canvas(page).press('Enter');
+  await editBody(page, 'Sibling');
+  const sibling = cells(page, 'mind-child').filter({ hasText: 'Sibling' });
+  await expect(cells(page, 'mind-child')).toHaveCount(3);
+  await expect(canvas(page).locator('[data-mind-add]')).toHaveCount(0);
+  await parent.click();
+  await expect(fold(parentId)).toHaveAttribute('aria-expanded', 'true');
+  await fold(parentId).click();
+  await expect(cells(page, 'mind-child')).toHaveCount(2);
+  await expect(cells(page, 'mind-branch')).toHaveCount(2);
+  await expect(fold(parentId)).toHaveAttribute('aria-expanded', 'false');
+  await sibling.click();
+  await expect(fold(parentId)).toBeVisible();
+  await fold(parentId).click();
+  await expect(cells(page, 'mind-child')).toHaveCount(3);
+  await page.getByRole('button', { name: '撤销', exact: true }).click();
+  await expect(cells(page, 'mind-child')).toHaveCount(2);
+  await page.getByRole('button', { name: '重做', exact: true }).click();
+  await expect(cells(page, 'mind-child')).toHaveCount(3);
+  await parent.click();
+  await fold(parentId).click();
+  await root.click();
+  await fold(rootId).click();
+  await expect(cells(page, 'mind-child')).toHaveCount(0);
+  await expect(cells(page, 'mind-branch')).toHaveCount(0);
+  await canvas(page).click({ position: { x: 40, y: 400 } });
+  await expect(fold(rootId)).toBeVisible();
+  await expect
+    .poll(async () => {
+      const data = await persisted(page);
+      const saved = Object.values(data?.records ?? {}).flatMap((record: any) =>
+        Object.values(record.cells),
+      ) as any[];
+      return [
+        saved.filter((cell) => cell.kind === 'mind-child').length,
+        saved.find((cell) => cell.id === rootId)?.data?.collapsed,
+        saved.find((cell) => cell.id === parentId)?.data?.collapsed,
+      ];
+    })
+    .toEqual([3, true, true]);
+  await page.reload();
+  await expect(cells(page, 'mind-child')).toHaveCount(0);
+  await fold(rootId).click();
+  await expect(cells(page, 'mind-child')).toHaveCount(2);
+  await expect(fold(parentId)).toHaveAttribute('aria-expanded', 'false');
+  await fold(parentId).click();
+  await expect(cells(page, 'mind-child')).toHaveCount(3);
+  await expect(
+    cells(page, 'mind-child').filter({ hasText: 'Leaf' }),
+  ).toHaveCount(1);
+  await fold(parentId).click();
+  await page.keyboard.press('Tab');
+  await expect(cells(page, 'mind-child')).toHaveCount(4);
+  await parent.click();
+  await expect(fold(parentId)).toHaveAttribute('aria-expanded', 'true');
+});
+
 test('saves a mind note before closing its editor and hides collapsed descendants', async ({
   page,
 }) => {
@@ -1646,6 +1724,61 @@ test('context actions retain multi-selection and use system clipboard with histo
   await expect(cells(page, 'geometry')).toHaveCount(2);
 });
 
+for (const viewport of [
+  { width: 1440, height: 900 },
+  { width: 1280, height: 720 },
+])
+  test(`context menu uses viewport click coordinates and stays inside the screen at ${viewport.width}`, async ({
+    page,
+  }) => {
+    await page.setViewportSize(viewport);
+    await page.goto('/');
+    await createAt(page, '形状', 280, 180);
+    const inspectorToggle = page.getByRole('button', {
+      name: '属性',
+      exact: true,
+    });
+    if ((await inspectorToggle.getAttribute('aria-pressed')) === 'true')
+      await inspectorToggle.click();
+    const box = (await canvas(page).boundingBox())!;
+    const nodeBox = (await cells(page, 'geometry').first().boundingBox())!;
+    const menu = page.getByRole('dialog', { name: 'Selection actions' });
+    const world = canvas(page).locator('[data-frame-world]');
+    const transform = await world.getAttribute('transform');
+    for (const point of [
+      { x: nodeBox.x + nodeBox.width / 2, y: nodeBox.y + nodeBox.height / 2 },
+      { x: box.x + 120, y: box.y + 140 },
+      { x: box.x + box.width - 12, y: box.y + box.height - 80 },
+    ]) {
+      await page.mouse.click(point.x, point.y, { button: 'right' });
+      await expect(menu).toBeVisible();
+      await expect
+        .poll(async () => {
+          const rect = (await menu.boundingBox())!;
+          return Math.max(
+            Math.abs(
+              rect.x -
+                Math.max(8, Math.min(point.x, viewport.width - rect.width - 8)),
+            ),
+            Math.abs(
+              rect.y -
+                Math.max(
+                  8,
+                  Math.min(point.y, viewport.height - rect.height - 8),
+                ),
+            ),
+          );
+        })
+        .toBeLessThanOrEqual(1);
+      const rect = (await menu.boundingBox())!;
+      expect(rect.x + rect.width).toBeLessThanOrEqual(viewport.width - 7);
+      expect(rect.y + rect.height).toBeLessThanOrEqual(viewport.height - 7);
+      await page.keyboard.press('Escape');
+      await expect(menu).toBeHidden();
+    }
+    await expect(world).toHaveAttribute('transform', transform!);
+  });
+
 test('right-click then left-click on a shape only selects it, without node or canvas drift', async ({
   page,
 }) => {
@@ -1658,10 +1791,19 @@ test('right-click then left-click on a shape only selects it, without node or ca
   const transform = await world.getAttribute('transform');
   const box = (await node.boundingBox())!;
   const center = { x: box.x + box.width / 2, y: box.y + box.height / 2 };
+  const actions = page.getByRole('dialog', { name: 'Selection actions' });
   await page.mouse.move(center.x, center.y);
   await page.mouse.down({ button: 'right' });
+  await expect(actions).toBeHidden();
+  // Some platforms emit the native contextmenu before the button is released.
+  await node.dispatchEvent('contextmenu', {
+    button: 2,
+    buttons: 2,
+    clientX: center.x,
+    clientY: center.y,
+  });
+  await expect(actions).toBeHidden();
   await page.mouse.up({ button: 'right' });
-  const actions = page.getByRole('dialog', { name: 'Selection actions' });
   await expect(actions).toBeVisible();
   await page.mouse.move(center.x + 8, center.y + 4, { steps: 2 });
   await page.mouse.move(center.x + 12, center.y + 6, { steps: 2 });
@@ -1674,6 +1816,38 @@ test('right-click then left-click on a shape only selects it, without node or ca
   await page.mouse.move(center.x - 30, center.y - 8, { steps: 3 });
   await expect(outline).toHaveAttribute('d', d!);
   await expect(world).toHaveAttribute('transform', transform!);
+});
+
+test('right-button canvas drags keep the context menu hidden through release', async ({
+  page,
+}) => {
+  await page.goto('/');
+  await createAt(page, '形状', 280, 180);
+  const node = cells(page, 'geometry').first();
+  const outline = node.locator('path').first();
+  const world = canvas(page).locator('[data-frame-world]');
+  const d = await outline.getAttribute('d');
+  const transform = await world.getAttribute('transform');
+  const box = (await node.boundingBox())!;
+  const center = { x: box.x + box.width / 2, y: box.y + box.height / 2 };
+  const actions = page.getByRole('dialog', { name: 'Selection actions' });
+  await page.mouse.move(center.x, center.y);
+  await page.mouse.down({ button: 'right' });
+  await node.dispatchEvent('contextmenu', {
+    button: 2,
+    buttons: 2,
+    clientX: center.x,
+    clientY: center.y,
+  });
+  await expect(actions).toBeHidden();
+  await page.mouse.move(center.x + 80, center.y + 40, { steps: 4 });
+  await expect(actions).toBeHidden();
+  await page.mouse.up({ button: 'right' });
+  await expect(actions).toBeHidden();
+  await expect(world).not.toHaveAttribute('transform', transform!);
+  await expect(outline).toHaveAttribute('d', d!);
+  await canvas(page).click({ button: 'right', position: { x: 100, y: 400 } });
+  await expect(actions).toBeVisible();
 });
 
 test('drawing and export shortcuts work on the canvas and preserve typing in inspectors', async ({

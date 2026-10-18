@@ -52,7 +52,7 @@ test('More is the only low-frequency entry on wide and narrow screens and suppor
       '图像导出',
       '文本导入',
       '清空',
-      '设置',
+      '我的',
     ])
       await expect(
         toolbar.getByRole('button', { name: label, exact: true }),
@@ -80,11 +80,12 @@ test('More is the only low-frequency entry on wide and narrow screens and suppor
     ).toBeFocused();
     await page.keyboard.press('End');
     await expect(
-      menu.getByRole('menuitem', { name: '设置', exact: true }),
+      menu.getByRole('menuitem', { name: '我的', exact: true }),
     ).toBeFocused();
     await page.keyboard.press('Enter');
-    await expect(page.getByTestId('settings-page')).toBeVisible();
-    await page.getByTestId('settings-back').click();
+    await expect(page.getByTestId('my-page')).toBeVisible();
+
+    await page.getByTestId('my-back').click();
     await expect(page.getByTestId('app-menu-trigger')).toBeFocused();
   }
 });
@@ -122,7 +123,7 @@ test('settings preserve the mounted canvas, selection, viewport, tool, and undo 
   const bounds = (await settings.boundingBox())!;
   expect(bounds.width).toBe(page.viewportSize()!.width);
   expect(bounds.height).toBe(page.viewportSize()!.height);
-  await settings.getByTestId('settings-back').focus();
+  await settings.getByTestId('my-back').focus();
   for (const key of [
     'h',
     'v',
@@ -133,9 +134,10 @@ test('settings preserve the mounted canvas, selection, viewport, tool, and undo 
   await expect(page.getByRole('dialog')).toHaveCount(1);
   await settings.getByTestId('settings-language').selectOption('en');
   await expect(
-    settings.getByRole('heading', { name: 'Settings', exact: true }),
+    settings.getByRole('heading', { name: 'My', exact: true }),
   ).toBeVisible();
-  await settings.getByTestId('settings-back').click();
+
+  await page.getByTestId('my-back').click();
   await expect(canvas(page)).toHaveAttribute(
     'data-settings-instance',
     'original',
@@ -195,7 +197,8 @@ test('interaction settings update gestures immediately, persist, and reset indep
   await openSettings(page);
   await slider(page, 'zoomSensitivity', '0.5');
   await slider(page, 'dragPanSpeed', '2');
-  await page.getByTestId('settings-back').click();
+
+  await page.getByTestId('my-back').click();
   const before = await camera(page);
   await canvas(page).evaluate((svg) => {
     const rect = svg.getBoundingClientRect();
@@ -273,9 +276,11 @@ for (const [tool, workspace, exportLabel] of [
     await expect(
       menu.getByRole('menuitem', { name: exportLabel, exact: true }),
     ).toBeVisible();
-    await menu.getByRole('menuitem', { name: '设置', exact: true }).click();
+    await menu.getByRole('menuitem', { name: '我的', exact: true }).click();
+
     await slider(page, 'zoomSensitivity', '1.5');
-    await page.getByTestId('settings-back').click();
+
+    await page.getByTestId('my-back').click();
     await expect(world(page)).toHaveAttribute('transform', before!);
     const original = await camera(page);
     await canvas(page).evaluate((svg) =>
@@ -313,13 +318,15 @@ test('readonly allows settings and export while disabling destructive menu actio
     await expect(
       menu.getByRole('menuitem', { name: label, exact: true }),
     ).toBeDisabled();
-  for (const label of ['导出', '图像导出', '设置'])
+  for (const label of ['导出', '图像导出', '我的'])
     await expect(
       menu.getByRole('menuitem', { name: label, exact: true }),
     ).toBeEnabled();
-  await menu.getByRole('menuitem', { name: '设置', exact: true }).click();
+  await menu.getByRole('menuitem', { name: '我的', exact: true }).click();
+
   await slider(page, 'dragPanSpeed', '0.5');
-  await page.getByTestId('settings-back').click();
+
+  await page.getByTestId('my-back').click();
   const download = page.waitForEvent('download');
   await selectAppAction(page, '导出');
   expect((await download).suggestedFilename()).toBe('verd-frame.json');

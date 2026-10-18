@@ -3,7 +3,11 @@ import { selectAppAction, setAppLanguage } from './app-actions';
 import { readFileSync } from 'node:fs';
 import { expect, test, type Page } from '@playwright/test';
 import { selectDrawingTool } from './drawing-tools';
-import { persistedWorkspace } from './workspace-nav';
+import {
+  activateBoardTab,
+  backToPreviousCanvas,
+  persistedWorkspace,
+} from './workspace-nav';
 import { expandPropertyGroup } from './property-group';
 
 const canvas = (page: Page) =>
@@ -16,6 +20,17 @@ const savedCells = async (page: Page) =>
   Object.values((await persistedWorkspace(page))?.records ?? {}).flatMap(
     (record: any) => [...Object.values(record.cells), record.frame],
   );
+const openReferenceSource = async (page: Page, referenceId: string) => {
+  const tabCount = await page.getByRole('tab').count();
+  const shell = canvas(page)
+    .locator(`[data-cell-id="${referenceId}"]`)
+    .locator(':scope > rect[data-frame-shell]');
+  const box = (await shell.boundingBox())!;
+  // The bottom margin opens the source without hitting its title editor or
+  // the reference's read-only content surface.
+  await page.mouse.dblclick(box.x + box.width / 4, box.y + box.height - 4);
+  await expect(page.getByRole('tab')).toHaveCount(tabCount + 1);
+};
 const openSnapshot = async (page: Page, snapshot: object) => {
   const choosing = page.waitForEvent('filechooser');
   await selectAppAction(page, '打开');
@@ -77,6 +92,75 @@ test.beforeEach(async ({ page }) => {
   const skip = page.getByRole('button', { name: '跳过', exact: true });
   if (await skip.isVisible().catch(() => false)) await skip.click();
 });
+
+for (const diagram of ['思维导图', '流程图', '架构图'])
+  test(`${diagram} background taps select its Frame shell and show shell properties`, async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await setAppLanguage(page, 'zh');
+    await draw(page, diagram, [300, 200], [660, 500]);
+    const reference = canvas(page).locator(
+      '[data-cell-kind="frame-reference"]',
+    );
+    const referenceId = (await reference.getAttribute('data-cell-id'))!;
+    const shell = reference.locator(':scope > [data-frame-shell]');
+    const background = reference.locator('svg[data-surface="nested"]').first();
+    await expect(background).toBeVisible();
+    const outerBox = (await canvas(page).boundingBox())!;
+    const clearSelection = () =>
+      page.mouse.click(outerBox.x + 120, outerBox.y + 650);
+    await clearSelection();
+    await expect(shell).toHaveAttribute('data-frame-active', 'false');
+    const blank = await background.evaluate((element) => {
+      const box = element.getBoundingClientRect();
+      for (let y = box.top + 12; y < box.bottom - 12; y += 12)
+        for (let x = box.left + 12; x < box.right - 12; x += 12)
+          if (document.elementFromPoint(x, y) === element) return { x, y };
+      throw new Error('No exposed embedded canvas background');
+    });
+    const geometry = await shell.evaluate((element) =>
+      ['x', 'y', 'width', 'height'].map((name) => element.getAttribute(name)),
+    );
+    await page.mouse.click(blank.x, blank.y);
+    await expect(shell).toHaveAttribute('data-frame-active', 'true');
+    const inspector = page.locator(
+      '.workspace-pane.is-active .frame-inspector',
+    );
+    await expect(inspector).toHaveAttribute(
+      'data-selected-cell-id',
+      referenceId,
+    );
+    await expect(inspector.locator('.frame-inspector__type')).toHaveText(
+      '容器',
+    );
+    await expect(canvas(page)).toBeFocused();
+    expect(
+      await shell.evaluate((element) =>
+        ['x', 'y', 'width', 'height'].map((name) => element.getAttribute(name)),
+      ),
+    ).toEqual(geometry);
+    await clearSelection();
+    await expect(shell).toHaveAttribute('data-frame-active', 'false');
+    await expect(inspector).not.toHaveAttribute(
+      'data-selected-cell-id',
+      referenceId,
+    );
+    await expect(inspector.locator('.frame-inspector__header')).toHaveText(
+      '画布设置',
+    );
+
+    await page.mouse.move(blank.x, blank.y);
+    await page.mouse.down();
+    await page.mouse.move(blank.x + 24, blank.y + 12, { steps: 4 });
+    await page.mouse.up();
+    await expect(shell).toHaveAttribute('data-frame-active', 'false');
+    expect(
+      await shell.evaluate((element) =>
+        ['x', 'y', 'width', 'height'].map((name) => element.getAttribute(name)),
+      ),
+    ).toEqual(geometry);
+  });
 
 test('every toolbar creation selects its outer cell and stops after one gesture', async ({
   page,
@@ -235,6 +319,7 @@ test('Frame title stays inside a stable enclosing shell and preserves edits, mar
   await draw(page, '容器');
   const external = title(page);
   await expect(external).toHaveText('Frame');
+  const referenceId = await external.getAttribute('data-frame-title-id');
   const shell = canvas(page).locator(
     '[data-cell-kind="frame"] > rect, [data-cell-kind="frame-reference"] > rect',
   );
@@ -288,9 +373,8 @@ test('Frame title stays inside a stable enclosing shell and preserves edits, mar
       async () =>
         (await savedCells(page)).find(
           (cell: any) =>
-            cell?.cellType === 'frame' &&
-            cell.content?.label === 'Project AlphaZ',
-        )?.content.label,
+            cell?.kind === 'frame-reference' && cell.id === referenceId,
+        )?.content?.label,
     )
     .toBe('Project AlphaZ');
   await page.reload();
@@ -341,7 +425,7 @@ test('Frame title stays inside a stable enclosing shell and preserves edits, mar
   }
 });
 
-test('positions snap after nested-coordinate conversion while legacy loading and undo retain exact floats', async ({
+test('read-only nested previews preserve floats and source edits snap without changing legacy sizes', async ({
   page,
 }) => {
   await openSnapshot(page, {
@@ -366,7 +450,25 @@ test('positions snap after nested-coordinate conversion while legacy loading and
     )
     .toBe(-10.4);
   const inner = canvas(page).locator(`[data-cell-id="${innerId}"]`);
-  await page.getByTestId('canvas-zoom-in').click();
+  const referenceId = (await title(page).getAttribute('data-frame-title-id'))!;
+  const previewBox = (await inner.boundingBox())!;
+  await page.mouse.move(
+    previewBox.x + previewBox.width / 2,
+    previewBox.y + previewBox.height / 2,
+  );
+  await page.mouse.down();
+  await page.mouse.move(
+    previewBox.x + previewBox.width / 2 + 23.6,
+    previewBox.y + previewBox.height / 2 + 17.3,
+    { steps: 5 },
+  );
+  await page.mouse.up();
+  expect(
+    (await savedCells(page)).find((cell: any) => cell.id === innerId).geometry,
+  ).toMatchObject({ x: -10.4, y: 20.7, width: 600.5, height: 300.25 });
+  await openReferenceSource(page, referenceId);
+  await expect(title(page)).toHaveCount(0);
+  await page.getByTestId('canvas-zoom-in').locator('visible=true').click();
   await inner.click();
   const box = (await inner.boundingBox())!;
   await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
@@ -410,6 +512,7 @@ test('positions snap after nested-coordinate conversion while legacy loading and
     )
     .toBe(-10.4);
   await page.getByRole('spinbutton', { name: 'x', exact: true }).fill('19.6');
+  await page.getByRole('spinbutton', { name: 'x', exact: true }).press('Enter');
   await expect
     .poll(
       async () =>
@@ -420,6 +523,9 @@ test('positions snap after nested-coordinate conversion while legacy loading and
   await page
     .getByRole('spinbutton', { name: 'width', exact: true })
     .fill('619.6');
+  await page
+    .getByRole('spinbutton', { name: 'width', exact: true })
+    .press('Enter');
   await expect
     .poll(
       async () =>
@@ -430,6 +536,9 @@ test('positions snap after nested-coordinate conversion while legacy loading and
   await page
     .getByRole('spinbutton', { name: 'height', exact: true })
     .fill('319.6');
+  await page
+    .getByRole('spinbutton', { name: 'height', exact: true })
+    .press('Enter');
   await expect
     .poll(
       async () =>
@@ -494,7 +603,7 @@ test('image upload selects the image once and failed decoding leaves the documen
   await expect(canvas(page).locator('[data-cell-kind="image"]')).toHaveCount(1);
 });
 
-test('nested titles stay outside content clipping and locked ancestors prevent rename', async ({
+test('nested preview titles stay visible, source shells rename and locked shells prevent editing', async ({
   page,
 }) => {
   await openSnapshot(page, {
@@ -509,28 +618,39 @@ test('nested titles stay outside content clipping and locked ancestors prevent r
   });
   const nestedTitle = title(page).filter({ hasText: 'Inner title' });
   await expect(nestedTitle).toBeVisible();
+  const outerId = (await title(page)
+    .filter({ hasText: 'Outer' })
+    .getAttribute('data-frame-title-id'))!;
   await page.setViewportSize({ width: 800, height: 844 });
   await page.getByTestId('canvas-status-fit').click();
   // The selected frame's top resize handle sits at the title's center, so the
   // double-click lands on the left of the title strip instead.
   await nestedTitle.dblclick({ position: { x: 10, y: 2 } });
   const overlay = page.locator('[data-frame-title-editor]');
+  // A regular-canvas reference is a read-only preview. Editing its nested
+  // shell requires opening the owner file, whose local reference is editable.
+  await expect(overlay).toHaveCount(0);
+  await openReferenceSource(page, outerId);
+  await expect(title(page)).toHaveCount(1);
+  await nestedTitle.dblclick({ position: { x: 10, y: 2 } });
   await expect(overlay).toBeInViewport({ ratio: 1 });
   await overlay.locator('[contenteditable="true"]').fill('Nested renamed');
   await overlay.locator('[contenteditable="true"]').press('Enter');
   await expect(title(page).filter({ hasText: 'Nested renamed' })).toBeVisible();
+  await backToPreviousCanvas(page);
   await page.setViewportSize({ width: 1280, height: 720 });
   const outerTitle = title(page).filter({ hasText: 'Outer' });
   await outerTitle.click();
   await expandPropertyGroup(page);
   await page.getByRole('checkbox', { name: '锁定', exact: true }).check();
+  await outerTitle.dblclick();
+  await expect(overlay).toHaveCount(0);
   const lockedNested = title(page).filter({ hasText: 'Nested renamed' });
   await lockedNested.dblclick();
   await expect(overlay).toHaveCount(0);
-  await expect(page.getByTestId('inspector-name')).toHaveAttribute(
-    'disabled',
-    '',
-  );
+  await expect(
+    page.getByTestId('inspector-name').locator('visible=true'),
+  ).toHaveAttribute('disabled', '');
 });
 
 test('navigation during image decoding prevents a late image insertion', async ({
@@ -617,6 +737,12 @@ test('Frame shells and titles move in local integer pixels, keep descendants unc
     [outerId, 'title'],
     [nestedId, 'title'],
   ] as const) {
+    if (id === nestedId) {
+      // The nested shell belongs to the outer source file; its appearance
+      // inside the root preview is intentionally read-only.
+      await openReferenceSource(page, outerId);
+      await expect(title(page)).toHaveCount(1);
+    }
     const original = await savedCells(page);
     const originalFrame = original.find((cell: any) => cell.id === id);
     const shell = canvas(page)
@@ -674,8 +800,10 @@ test('Frame shells and titles move in local integer pixels, keep descendants unc
       )
       .toEqual(expected);
   }
+  await backToPreviousCanvas(page);
   const persisted = await savedCells(page);
   await page.reload();
+  await activateBoardTab(page);
   await expect(title(page)).toHaveCount(2);
   expect(await savedCells(page)).toEqual(persisted);
   const target = namedTitle('Outer drag').locator(':scope > rect');
@@ -696,10 +824,9 @@ test('Frame shells and titles move in local integer pixels, keep descendants unc
   await namedTitle('Outer drag').click();
   await expandPropertyGroup(page);
   await page.getByRole('checkbox', { name: '锁定', exact: true }).check();
-  await expect(page.getByTestId('save-status')).toHaveAttribute(
-    'data-save-state',
-    'saved',
-  );
+  await expect(
+    page.getByTestId('save-status').locator('visible=true'),
+  ).toHaveAttribute('data-save-state', 'saved');
   const locked = await savedCells(page);
   const nestedBox = (await namedTitle('Nested drag').boundingBox())!;
   await page.mouse.move(

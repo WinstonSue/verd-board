@@ -24,6 +24,7 @@ import {
   type CopyOwnershipMode,
   type FrameOrganization,
 } from './frame-organization';
+import type { WorkspaceFile } from '../documents/document-files';
 
 export type {
   FrameOrganization,
@@ -50,7 +51,7 @@ export {
 
 /**
  * One file holds exactly one root Frame plus the non-Frame cells it directly
- * owns: ordinary nodes, edges, groups and frame-reference instances. A file
+ * owns: ordinary nodes, edges, groups and frame/document reference instances. A file
  * never owns another file's Frame through `children`.
  */
 export interface FrameFileV2 {
@@ -520,7 +521,7 @@ export const findFrameReferenceCycles = (
 /**
  * Per-file structure plus cross-file identity and reference integrity.
  * Unresolved reference targets are legal; targets resolving to a non-root
- * cell and dependency cycles are not.
+ * cell are not. File-reference cycles are legal; preview paths avoid recursive expansion.
  */
 /**
  * Reference dependencies plus subgraphs owned by visited files.
@@ -550,7 +551,7 @@ export const frameClosure = (
  * Reference targets and ids outside the map keep their original value — that
  * is exactly what makes ordinary copies share and independent copies break.
  */
-const remapFrameFileIds = (
+export const remapFrameFileIds = (
   file: FrameFileV2,
   idMap: ReadonlyMap<CellId, CellId>,
 ): FrameFileV2 => {
@@ -723,12 +724,12 @@ export const remapImportedFiles = (
 export interface FrameExportBundle {
   format: 'verd-canvas-bundle';
   version: 1;
-  files: FrameFileV2[];
+  files: WorkspaceFile[];
   rootFileId?: CellId;
 }
 
 export const frameExportBundle = (
-  files: FrameFileV2[],
+  files: WorkspaceFile[],
   rootFileId?: CellId,
 ): FrameExportBundle => ({
   format: 'verd-canvas-bundle',
@@ -740,17 +741,22 @@ export const frameExportBundle = (
 /** Old bundles have no root id; the first file is the entry. */
 export const frameExportRootId = (
   value: unknown,
-  files: FrameFileV2[],
+  files: WorkspaceFile[],
 ): CellId | undefined => {
   const bundle = value as FrameExportBundle;
   if (
     bundle &&
     typeof bundle === 'object' &&
     typeof bundle.rootFileId === 'string' &&
-    files.some((file) => file.frame.id === bundle.rootFileId)
+    files.some(
+      (file) =>
+        (file.format === 'verd-frame' ? file.frame.id : file.id) ===
+        bundle.rootFileId,
+    )
   )
     return bundle.rootFileId;
-  return files[0]?.frame.id;
+  const first = files[0];
+  return first?.format === 'verd-frame' ? first.frame.id : first?.id;
 };
 
 /** Accepts a bundle or a bare FrameFileV2 document. */
@@ -762,7 +768,8 @@ export const parseFrameExport = (value: unknown): FrameFileV2[] | null => {
     typeof bundle === 'object' &&
     bundle.format === 'verd-canvas-bundle' &&
     bundle.version === 1 &&
-    Array.isArray(bundle.files)
+    Array.isArray(bundle.files) &&
+    bundle.files.every(isFrameFileV2)
   )
     return bundle.files;
   return null;
@@ -827,12 +834,6 @@ export const validateFrameFiles = (
         });
     }),
   );
-  findFrameReferenceCycles(graph).forEach((cycle) =>
-    diagnostics.push({
-      frameId: cycle[0],
-      message: `Frame reference cycle: ${cycle.join(' -> ')}`,
-    }),
-  );
   return diagnostics;
 };
 
@@ -862,6 +863,6 @@ export const assessReferencePlace = (
   };
   const issue = validateFrameFiles(
     files.map((file) => (file.frame.id === ownerId ? probe : file)),
-  ).find((item) => item.message.startsWith('Frame reference cycle'));
+  ).find((item) => item.frameId === ownerId);
   return issue?.message ?? null;
 };

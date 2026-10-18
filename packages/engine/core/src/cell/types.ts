@@ -117,6 +117,55 @@ export interface FrameReferenceCell extends NodeCell<FrameReferenceData> {
   aspectRatio?: FrameAspectRatio;
 }
 
+/** A read-only document occurrence. Content belongs to the target file. */
+export interface DocumentReferenceData {
+  targetDocumentId: CellId;
+}
+export interface DocumentReferenceCell extends NodeCell<DocumentReferenceData> {
+  cellType: 'node';
+  kind: 'document-reference';
+  data: DocumentReferenceData;
+}
+export const isDocumentReferenceCell = (
+  cell: Cell | undefined,
+): cell is DocumentReferenceCell =>
+  cell?.cellType === 'node' && cell.kind === 'document-reference';
+
+export const createDocumentReferenceCell = (
+  id: CellId,
+  targetDocumentId: CellId,
+  geometry: NodeGeometry,
+): DocumentReferenceCell => ({
+  id,
+  cellType: 'node',
+  kind: 'document-reference',
+  geometry,
+  data: { targetDocumentId },
+});
+
+/** Editable document shell in a regular canvas; the source remains a file. */
+export interface DocumentFrameCell extends NodeCell<DocumentReferenceData> {
+  cellType: 'node';
+  kind: 'document-frame';
+  data: DocumentReferenceData;
+}
+export const isDocumentFrameCell = (
+  cell: Cell | undefined,
+): cell is DocumentFrameCell =>
+  cell?.cellType === 'node' && cell.kind === 'document-frame';
+export const isDocumentCell = (
+  cell: Cell | undefined,
+): cell is DocumentFrameCell | DocumentReferenceCell =>
+  isDocumentFrameCell(cell) || isDocumentReferenceCell(cell);
+export const createDocumentFrameCell = (
+  id: CellId,
+  targetDocumentId: CellId,
+  geometry: NodeGeometry,
+): DocumentFrameCell => ({
+  ...createDocumentReferenceCell(id, targetDocumentId, geometry),
+  kind: 'document-frame',
+});
+
 export type EdgeTerminal =
   { cellId: CellId; portId?: string; anchor?: Point } | { point: Point };
 

@@ -1,8 +1,11 @@
 // @vitest-environment jsdom
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { Editor } from '@tiptap/react';
 import { createBlockText } from '@sue/board-common';
-import { createDocumentExtensions } from '../../constants/editor-config';
+import {
+  contentExtensions,
+  createDocumentExtensions,
+} from '../../constants/editor-config';
 import { createDocumentController } from './document-controller';
 import { DocumentGroupTracker, INPUT_GROUP_MS } from './document-groups';
 import { findInDocument } from './document-search';
@@ -55,6 +58,55 @@ const heading = (level: number, t: string) => ({
 });
 
 describe('createDocumentExtensions', () => {
+  it('inserts native canvas references, keeps their identity through HTML, and undoes insertion', () => {
+    const editor = makeEditor();
+    const { controller, sources } = makeController(editor);
+    controller.insertFrameReference('board/图:1');
+    expect(
+      editor
+        .getJSON()
+        .content?.some(
+          (node) =>
+            node.type === 'frameReference' &&
+            node.attrs?.['targetFrameId'] === 'board/图:1',
+        ),
+    ).toBe(true);
+    expect(editor.getText()).toContain('verd://file/board%2F');
+    expect(sources).toContain('insert');
+    const html = editor.getHTML();
+    expect(html).toContain('data-target-frame-id="board/图:1"');
+    const pasted = makeEditor();
+    pasted.commands.setContent(html);
+    expect(
+      pasted.getJSON().content?.some((node) => node.type === 'frameReference'),
+    ).toBe(true);
+    controller.undo();
+    expect(
+      editor.getJSON().content?.some((node) => node.type === 'frameReference'),
+    ).toBe(false);
+  });
+  it('permits workspace links only in standalone documents', () => {
+    const content = doc(
+      paragraph(
+        text('Guide', [
+          {
+            type: 'link',
+            attrs: { href: 'verd://file/guide#章节' },
+          },
+        ]),
+      ),
+    );
+    const standalone = makeEditor(content);
+    const canvas = new Editor({ extensions: contentExtensions, content });
+    editors.push(canvas);
+    expect(standalone.getHTML()).toContain('href="verd://file/guide#章节"');
+    expect(canvas.getHTML()).not.toContain('href="verd:');
+    standalone.commands.selectAll();
+    expect(standalone.commands.setLink({ href: 'javascript:alert(1)' })).toBe(
+      false,
+    );
+  });
+
   it('disables the local undo history when a central adapter is used', () => {
     const withHistory = makeEditor(undefined, true);
     const withoutHistory = makeEditor(undefined, false);
@@ -199,6 +251,59 @@ describe('createDocumentController', () => {
     controller.locateHeading(headings[1].pos);
     const { $from } = editor.state.selection;
     expect($from.parent.textContent).toBe('Deep');
+  });
+
+  it('uses visible text and document order for heading anchors', () => {
+    const editor = makeEditor(
+      doc(
+        {
+          type: 'heading',
+          attrs: { level: 2 },
+          content: [text('章节'), text('标题', [{ type: 'bold' }])],
+        },
+        heading(3, '章节标题'),
+      ),
+    );
+    const { controller } = makeController(editor);
+    expect(controller.getHeadings().map((item) => item.anchor)).toEqual([
+      '章节标题',
+      '章节标题-1',
+    ]);
+    expect(controller.getHeadings().map((item) => item.anchor)).toEqual([
+      '章节标题',
+      '章节标题-1',
+    ]);
+  });
+
+  it('scrolls readonly headings and the document start without requiring a DOM caret', () => {
+    const editor = makeEditor(
+      doc(heading(2, 'Read section'), paragraph(text('Body'))),
+    );
+    editor.setEditable(false);
+    const before = editor.getJSON();
+    const { controller } = makeController(editor);
+    const headingScroll = vi.fn();
+    const startScroll = vi.fn();
+    Object.defineProperty(
+      editor.view.dom.querySelector('h2')!,
+      'scrollIntoView',
+      { value: headingScroll },
+    );
+    Object.defineProperty(editor.view.dom, 'scrollIntoView', {
+      value: startScroll,
+    });
+    controller.locateHeading(controller.getHeadings()[0].pos);
+    expect(headingScroll).toHaveBeenCalledWith({
+      block: 'start',
+      inline: 'nearest',
+    });
+    controller.focus('start');
+    expect(startScroll).toHaveBeenCalledWith({
+      block: 'start',
+      inline: 'nearest',
+    });
+    expect(editor.getJSON()).toEqual(before);
+    expect(editor.can().undo()).toBe(false);
   });
 
   it('finds, replaces one match and replaces all in a single undo step', () => {

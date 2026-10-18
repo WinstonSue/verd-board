@@ -19,7 +19,9 @@ export const canvasFiles = async (
       if (entry.isDirectory()) {
         await walk(path.join(dir, entry.name), rel);
       } else if (entry.name.endsWith('.verd.json')) {
-        files[rel] = JSON.parse(await readFile(path.join(dir, rel), 'utf8'));
+        files[rel] = JSON.parse(
+          await readFile(path.join(dir, entry.name), 'utf8'),
+        );
       }
     }
   };

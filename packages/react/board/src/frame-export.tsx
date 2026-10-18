@@ -7,7 +7,11 @@ import {
   type CellRegistry,
   type FrameSnapshot,
 } from '@sue/board-core';
-import { FrameCanvas, type FrameRenderExtension } from './frame-canvas';
+import {
+  FrameCanvas,
+  type FrameRenderExtension,
+  type FrameDocumentReferences,
+} from './frame-canvas';
 
 export interface FrameImageOptions {
   format?: 'svg' | 'png' | 'jpeg';
@@ -19,6 +23,7 @@ export interface FrameImageOptions {
   quality?: number;
 }
 export interface FrameImageRenderOptions extends FrameImageOptions {
+  documentReferences?: FrameDocumentReferences;
   frameId?: string;
   registry?: CellRegistry;
   extensions?: readonly FrameRenderExtension[];
@@ -90,6 +95,18 @@ export function cloneFrameImageSvg(
         ['tabindex', 'contenteditable'].includes(attribute.name)
       )
         target.removeAttribute(attribute.name);
+  });
+  // DOM cloning drops scroll offsets. Freeze each document viewport into its
+  // own clipped, translated content without touching the live reader.
+  originals.forEach((node, index) => {
+    if (!node.hasAttribute('data-document-preview-scroll')) return;
+    const target = copies[index] as HTMLElement;
+    const viewport = node as HTMLElement;
+    const content = document.createElement('div');
+    while (target.firstChild) content.append(target.firstChild);
+    content.style.transform = `translate(${-viewport.scrollLeft}px, ${-viewport.scrollTop}px)`;
+    target.style.overflow = 'hidden';
+    target.append(content);
   });
   clone.querySelectorAll('[data-erase-dim]').forEach((node) => {
     node.setAttribute('opacity', '1');
@@ -277,6 +294,8 @@ export async function frameSnapshotToImage(
     flushSync(() =>
       root.render(
         <FrameCanvas
+          documentReferences={options.documentReferences}
+          exporting
           value={{ store }}
           autoFit={false}
           frameId={frameId}
@@ -292,6 +311,14 @@ export async function frameSnapshotToImage(
     await new Promise<void>((resolve) =>
       requestAnimationFrame(() => resolve()),
     );
+    const started = performance.now();
+    while (host.querySelector('[data-reference-pending="true"]')) {
+      if (performance.now() - started > 10000)
+        throw new Error('Document preview did not finish rendering for export');
+      await new Promise<void>((resolve) =>
+        requestAnimationFrame(() => resolve()),
+      );
+    }
     const source = host.querySelector('svg');
     if (!source) throw new Error('Frame renderer did not produce SVG');
     const included = options.ids?.length

@@ -1119,17 +1119,30 @@ describe('reference instance editing', () => {
     },
   });
 
-  const pointer = (type: string) =>
+  const pointer = (
+    type: string,
+    options: MouseEventInit & { pointerId?: number; isPrimary?: boolean } = {},
+  ) =>
     new (class extends MouseEvent {
-      pointerId = 1;
+      pointerId = options.pointerId ?? 1;
+      isPrimary = options.isPrimary ?? true;
       constructor() {
-        super(type, { bubbles: true, button: 0, clientX: 30, clientY: 30 });
+        super(type, {
+          bubbles: true,
+          button: 0,
+          clientX: 30,
+          clientY: 30,
+          ...options,
+        });
       }
     })();
 
   const mount = async (options?: {
     readonlyPreview?: boolean;
     onExit?: (id: string) => void;
+    suspended?: boolean;
+    inputMode?: 'edit' | 'present';
+    tool?: { mode: 'hand' };
   }) => {
     const left = createCellRuntime({ store: mindStore() });
     const right = createCellRuntime({ store: mindStore() });
@@ -1205,6 +1218,9 @@ describe('reference instance editing', () => {
           value={{ store: boardStore() }}
           frameId="board"
           onChange={() => {}}
+          suspended={options?.suspended}
+          inputMode={options?.inputMode}
+          tool={options?.tool}
           onSelectionChange={parentSelection}
           onActiveInstance={(id) => {
             active.push(id ?? 'parent');
@@ -1217,6 +1233,10 @@ describe('reference instance editing', () => {
       container.querySelector(
         `[data-reference-instance="${instance}"] [data-cell-id="${id}"]`,
       );
+    container.querySelectorAll('svg').forEach((svg) => {
+      svg.setPointerCapture = vi.fn();
+      svg.hasPointerCapture = () => false;
+    });
     return {
       container,
       root,
@@ -1229,6 +1249,106 @@ describe('reference instance editing', () => {
       parentSelection,
     };
   };
+
+  it('selects only the clicked reference shell on a background tap, after releasing the pointer', async () => {
+    const view = await mount();
+    const parent = view.container.querySelector('svg[data-surface="root"]')!;
+    const shell = (id: string) =>
+      view.container.querySelector(
+        `[data-cell-id="${id}"] > [data-frame-shell]`,
+      )!;
+    await act(async () => {
+      view.cell('r1', 'topic')!.dispatchEvent(pointer('pointerdown'));
+      view.cell('r1', 'topic')!.dispatchEvent(pointer('pointerup'));
+    });
+    expect(view.left.selection.ids).toEqual(['topic']);
+    expect(shell('r1').getAttribute('data-frame-active')).toBe('false');
+    for (const id of ['r1', 'r2', 'preview']) {
+      const background = view.container.querySelector(
+        `[data-reference-instance="${id}"] svg[data-surface="nested"]`,
+      )!;
+      await act(async () => {
+        background.dispatchEvent(pointer('pointerdown'));
+      });
+      expect(shell(id).getAttribute('data-frame-active')).toBe('false');
+      await act(async () => {
+        background.dispatchEvent(pointer('pointerup'));
+      });
+      expect(view.parentSelection.mock.calls.at(-1)?.[0].ids).toEqual([id]);
+      expect(shell(id).getAttribute('data-frame-active')).toBe('true');
+      expect(view.active.at(-1)).toBe('parent');
+      expect(document.activeElement).toBe(parent);
+      for (const other of ['r1', 'r2', 'preview'].filter(
+        (other) => other !== id,
+      ))
+        expect(shell(other).getAttribute('data-frame-active')).toBe('false');
+    }
+    expect(view.left.selection.ids).toEqual([]);
+    expect(view.commits).toEqual([]);
+    await act(async () => parent.dispatchEvent(pointer('pointerdown')));
+    expect(shell('preview').getAttribute('data-frame-active')).toBe('false');
+    await act(async () => rootUnmount(view));
+  });
+
+  it.each(['drag', 'release-distance', 'cancel', 'multitouch', 'button'])(
+    'does not select a shell after a background %s',
+    async (gesture) => {
+      const view = await mount();
+      const background = view.container.querySelector(
+        '[data-reference-instance="r1"] svg[data-surface="nested"]',
+      )!;
+      await act(async () => {
+        background.dispatchEvent(
+          pointer('pointerdown', { button: gesture === 'button' ? 2 : 0 }),
+        );
+        if (gesture === 'drag') {
+          // Moving outside and back must still invalidate the tap.
+          window.dispatchEvent(pointer('pointermove', { clientX: 80 }));
+          background.dispatchEvent(pointer('pointermove'));
+        }
+        if (gesture === 'cancel')
+          background.dispatchEvent(pointer('pointercancel'));
+        if (gesture === 'multitouch')
+          background.dispatchEvent(
+            pointer('pointerdown', { pointerId: 2, isPrimary: false }),
+          );
+        background.dispatchEvent(
+          pointer('pointerup', {
+            clientX: gesture === 'release-distance' ? 80 : 30,
+            button: gesture === 'button' ? 2 : 0,
+          }),
+        );
+      });
+      expect(
+        view.container
+          .querySelector('[data-cell-id="r1"] > [data-frame-shell]')!
+          .getAttribute('data-frame-active'),
+      ).toBe('false');
+      expect(view.commits).toEqual([]);
+      await act(async () => rootUnmount(view));
+    },
+  );
+
+  it.each([
+    { suspended: true },
+    { inputMode: 'present' as const },
+    { tool: { mode: 'hand' as const } },
+  ])('keeps background taps passive in %j', async (options) => {
+    const view = await mount(options);
+    const background = view.container.querySelector(
+      '[data-reference-instance="r1"] svg[data-surface="nested"]',
+    )!;
+    await act(async () => {
+      background.dispatchEvent(pointer('pointerdown'));
+      background.dispatchEvent(pointer('pointerup'));
+    });
+    expect(
+      view.container
+        .querySelector('[data-cell-id="r1"] > [data-frame-shell]')!
+        .getAttribute('data-frame-active'),
+    ).toBe('false');
+    await act(async () => rootUnmount(view));
+  });
 
   it('selects and hovers one reference without selecting the other', async () => {
     const view = await mount();
@@ -1416,7 +1536,7 @@ describe('reference instance editing', () => {
     container.remove();
   });
 
-  it('renders a regular-canvas preview by resolving the references inside it', async () => {
+  it('renders a regular-canvas preview and selects only the immediate shell on an inner background tap', async () => {
     const mind = createCellRuntime({ store: mindStore() });
     const page = createCellRuntime({
       store: {
@@ -1474,6 +1594,7 @@ describe('reference instance editing', () => {
     const container = document.createElement('div');
     document.body.append(container);
     const root = createRoot(container);
+    const activate = vi.fn();
     await act(async () =>
       root.render(
         <FrameCanvas
@@ -1481,6 +1602,7 @@ describe('reference instance editing', () => {
           frameId="board"
           onChange={() => {}}
           instanceHost={host}
+          onActiveInstance={activate}
         />,
       ),
     );
@@ -1490,6 +1612,28 @@ describe('reference instance editing', () => {
     expect(preview.textContent).toContain('主题');
     expect(preview.textContent).not.toContain('引用缺失');
     expect(preview.textContent).toContain('打开原画布');
+    const innerBackground = preview.querySelector(
+      '[data-reference-instance="inner"] svg[data-surface="nested"]',
+    )!;
+    await act(async () => {
+      innerBackground.dispatchEvent(pointer('pointerdown'));
+      innerBackground.dispatchEvent(pointer('pointerup'));
+    });
+    expect(page.selection.ids).toEqual(['inner']);
+    expect(activate).toHaveBeenLastCalledWith('preview');
+    expect(
+      preview
+        .querySelector('[data-cell-id="inner"] > [data-frame-shell]')!
+        .getAttribute('data-frame-active'),
+    ).toBe('true');
+    expect(
+      container
+        .querySelector('[data-cell-id="preview"] > [data-frame-shell]')!
+        .getAttribute('data-frame-active'),
+    ).toBe('false');
+    expect(document.activeElement).toBe(
+      preview.querySelector('svg[data-instance-id="preview"]'),
+    );
     await act(async () => root.unmount());
     container.remove();
   });

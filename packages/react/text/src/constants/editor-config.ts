@@ -13,6 +13,7 @@ import { TextStyle, FontSize, FontFamily } from '@tiptap/extension-text-style';
 import { Color } from '@tiptap/extension-color';
 import TextAlign from '@tiptap/extension-text-align';
 import { Highlight, Superscript, Subscript, Image } from './content-extensions';
+import { DocumentFrameReference } from '../components/document/document-frame-reference';
 
 const sharedMarks = [
   Underline,
@@ -100,9 +101,12 @@ export const createDocumentExtensions = ({
 }: DocumentExtensionOptions = {}) => [
   StarterKit.configure({
     ...starterKitOptions,
+    // Workspace links belong to standalone documents, never canvas labels.
+    link: { ...linkOptions, protocols: ['verd'] },
     ...(history ? {} : { undoRedo: false as const }),
   }),
   ...blockContentExtensions,
+  DocumentFrameReference,
   Placeholder.configure({
     placeholder: placeholder ?? DEFAULT_PLACEHOLDERS.document,
   }),

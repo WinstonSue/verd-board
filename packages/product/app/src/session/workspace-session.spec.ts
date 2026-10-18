@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { CellStore, FrameCell, FrameReferenceCell } from '@sue/board-core';
 import { WORKSPACE_ROOT_ID, type FrameFileV2 } from '../frames/frame-files';
+import { createDocumentFile } from '../documents/document-files';
 import { createMemoryWorkspaceHost } from '../host/memory-workspace-host';
 import type {
   CommitRequest,
@@ -101,6 +102,336 @@ const entryPaths = (session: WorkspaceSession) =>
   [...session.getState().files.values()].map((entry) => entry.path);
 
 describe('WorkspaceSession', () => {
+  const directorySession = async () => {
+    const { host, commits, handle } = await openSession();
+    await host.commit(handle, {
+      transactionId: 'seed-directory',
+      mkdirs: ['docs/nested/empty', 'docs-other'],
+      writes: [
+        {
+          path: 'docs/board.verd.json',
+          content: fileJson('inside'),
+          expectedVersion: null,
+        },
+        {
+          path: 'docs/nested/note.verd-doc.json',
+          content: JSON.stringify(createDocumentFile('note', 'Note')),
+          expectedVersion: null,
+        },
+        {
+          path: 'docs/nested/raw.txt',
+          content: 'raw bytes',
+          expectedVersion: null,
+        },
+        {
+          path: 'outside.verd.json',
+          content: JSON.stringify(
+            withRef(fileFor('outside'), 'ref-inside', 'inside'),
+          ),
+          expectedVersion: null,
+        },
+      ],
+    });
+    const session = await openWorkspaceSession(host, handle, {
+      delayMs: 60_000,
+    });
+    return { session, host, commits, handle };
+  };
+
+  it('trashes and restores a mixed subtree as one item, preserving identities, bytes and empty directories', async () => {
+    const { session, host, handle } = await directorySession();
+    const original = (await host.readSnapshot(handle)).entries;
+    expect(
+      (await session.apply({ type: 'trash-directory', path: 'docs' })).ok,
+    ).toBe(true);
+    expect(session.getState().files.has('inside')).toBe(false);
+    expect(session.getState().documents.has('note')).toBe(false);
+    expect(
+      session.getState().entries.some((entry) => entry.path === 'docs-other'),
+    ).toBe(true);
+    expect(session.getState().trash).toHaveLength(1);
+    const entryId = session.getState().trash[0].entryId;
+    expect((await session.apply({ type: 'restore-file', entryId })).ok).toBe(
+      true,
+    );
+    expect(session.getState().files.has('inside')).toBe(true);
+    expect(session.getState().documents.get('note')?.file.id).toBe('note');
+    expect(
+      new TextDecoder().decode(
+        (await host.readFile(handle, 'docs/nested/raw.txt')).content,
+      ),
+    ).toBe('raw bytes');
+    expect((await host.readSnapshot(handle)).entries).toEqual(original);
+    expect(
+      session.getState().files.get('outside')?.file.cells['ref-inside'],
+    ).toEqual(refCell('ref-inside', 'inside'));
+  });
+
+  it('replays folder trash and restore as one undo/redo step, including raw files', async () => {
+    const { session, host, handle } = await directorySession();
+    await session.apply({ type: 'trash-directory', path: 'docs' });
+    expect((await session.undo()).ok).toBe(true);
+    expect(session.getState().files.has('inside')).toBe(true);
+    expect((await session.redo()).ok).toBe(true);
+    expect(session.getState().files.has('inside')).toBe(false);
+    await session.apply({
+      type: 'restore-file',
+      entryId: session.getState().trash[0].entryId,
+    });
+    expect((await session.undo()).ok).toBe(true);
+    expect(session.getState().trash).toHaveLength(1);
+    expect((await session.redo()).ok).toBe(true);
+    expect(
+      (await host.readSnapshot(handle)).entries.some(
+        (entry) => entry.path === 'docs/nested/empty',
+      ),
+    ).toBe(true);
+    expect(
+      new TextDecoder().decode(
+        (await host.readFile(handle, 'docs/nested/raw.txt')).content,
+      ),
+    ).toBe('raw bytes');
+  });
+
+  it('supports empty folders and raw-file restore undo/redo', async () => {
+    const { session, host, handle } = await directorySession();
+    await session.apply({ type: 'trash-directory', path: 'docs/nested/empty' });
+    expect((await session.undo()).ok).toBe(true);
+    expect((await session.redo()).ok).toBe(true);
+    const raw = await host.readFile(handle, 'docs/nested/raw.txt');
+    const receipt = await host.commit(handle, {
+      transactionId: 'trash-raw',
+      trash: [{ path: raw.path, expectedVersion: raw.version }],
+    });
+    await session.syncFromHost();
+    expect(
+      (
+        await session.apply({
+          type: 'restore-file',
+          entryId: receipt.trashEntries![0].entryId,
+        })
+      ).ok,
+    ).toBe(true);
+    expect((await session.undo()).ok).toBe(true);
+    expect((await session.redo()).ok).toBe(true);
+    expect(
+      new TextDecoder().decode((await host.readFile(handle, raw.path)).content),
+    ).toBe('raw bytes');
+  });
+
+  it('flushes new files before folder trash and refuses to delete after a save conflict', async () => {
+    const { session, host, handle } = await directorySession();
+    await session.apply({
+      type: 'create-file',
+      file: fileFor('new'),
+      path: 'docs/new.verd.json',
+    });
+    expect(
+      (await session.apply({ type: 'trash-directory', path: 'docs' })).ok,
+    ).toBe(true);
+    await session.undo();
+    expect(session.getState().files.has('new')).toBe(true);
+    await session.apply({
+      type: 'file',
+      file: fileFor('inside', 'Local edit'),
+    });
+    const raw = await host.readFile(handle, 'docs/board.verd.json');
+    await host.commit(handle, {
+      transactionId: 'external-change',
+      writes: [
+        {
+          path: raw.path,
+          expectedVersion: raw.version,
+          content: fileJson('inside', 'External edit'),
+        },
+      ],
+    });
+    expect(
+      (await session.apply({ type: 'trash-directory', path: 'docs' })).ok,
+    ).toBe(false);
+    expect(
+      (await host.readSnapshot(handle)).entries.some(
+        (entry) => entry.path === 'docs',
+      ),
+    ).toBe(true);
+  });
+
+  it('rejects occupied restore paths, invalid folders and readonly mutations', async () => {
+    const { session } = await directorySession();
+    for (const path of [
+      '',
+      '/',
+      '..',
+      '.verdboard',
+      '.verdboard/trash',
+      'docs/board.verd.json',
+    ])
+      expect((await session.apply({ type: 'trash-directory', path })).ok).toBe(
+        false,
+      );
+    await session.apply({ type: 'trash-directory', path: 'docs' });
+    const entryId = session.getState().trash[0].entryId;
+    session.mkdir('docs');
+    expect((await session.apply({ type: 'restore-file', entryId })).ok).toBe(
+      false,
+    );
+    expect(session.getState().trash).toHaveLength(1);
+    session.setReadonly(true);
+    expect(
+      (await session.apply({ type: 'purge-trash', entryIds: [entryId] })).ok,
+    ).toBe(false);
+    expect(
+      (await session.apply({ type: 'trash-directory', path: 'docs-other' })).ok,
+    ).toBe(false);
+  });
+
+  it('permanent deletion removes related history and keeps unrelated undo', async () => {
+    const { session, host, handle } = await directorySession();
+    await session.apply({ type: 'create-file', file: fileFor('unrelated') });
+    await session.apply({ type: 'file', file: fileFor('inside', 'Edited') });
+    await session.apply({ type: 'trash-directory', path: 'docs' });
+    const entryId = session.getState().trash[0].entryId;
+    expect(
+      (await session.apply({ type: 'purge-trash', entryIds: [entryId] })).ok,
+    ).toBe(true);
+    expect(session.getState().trash).toHaveLength(0);
+    expect((await session.undo()).ok).toBe(true);
+    expect(session.getState().files.has('unrelated')).toBe(false);
+    expect(session.getState().canUndo).toBe(false);
+    expect(session.getState().files.has('inside')).toBe(false);
+    expect((await host.readSnapshot(handle)).trash).toEqual([]);
+  });
+
+  it('permanent deletion also removes single-file resurrection and empty-directory history', async () => {
+    const { session } = await directorySession();
+    await session.apply({ type: 'file', file: fileFor('inside', 'Edited') });
+    await session.apply({ type: 'trash-file', frameId: 'inside' });
+    await session.flush();
+    await session.apply({ type: 'trash-directory', path: 'docs/nested/empty' });
+    await session.apply({
+      type: 'purge-trash',
+      entryIds: session.getState().trash.map((entry) => entry.entryId),
+    });
+    expect(session.getState().canUndo).toBe(false);
+    expect(session.getState().canRedo).toBe(false);
+  });
+
+  it('keeps history for a different file created at a previously trashed path', async () => {
+    const { session } = await directorySession();
+    expect(
+      (await session.apply({ type: 'trash-file', fileId: 'inside' })).ok,
+    ).toBe(true);
+    expect(await session.flush()).toBe(true);
+    const entryId = session.getState().trash[0].entryId;
+    await session.apply({
+      type: 'create-file',
+      file: fileFor('replacement'),
+      path: 'docs/board.verd.json',
+    });
+    expect(
+      (await session.apply({ type: 'purge-trash', entryIds: [entryId] })).ok,
+    ).toBe(true);
+    expect(session.getState().canUndo).toBe(true);
+    expect((await session.undo()).ok).toBe(true);
+    expect(session.getState().files.has('replacement')).toBe(false);
+    expect(session.getState().files.has('inside')).toBe(false);
+    expect(session.getState().canUndo).toBe(false);
+  });
+
+  it('replays an unconfirmed purge without touching trash added after confirmation', async () => {
+    const { session, host, handle } = await directorySession();
+    await session.apply({ type: 'trash-directory', path: 'docs' });
+    const entryIds = session.getState().trash.map((entry) => entry.entryId);
+    const commit = host.commit.bind(host);
+    let loseReceipt = true;
+    const attempts: string[] = [];
+    host.commit = async (handle_, request) => {
+      const receipt = await commit(handle_, request);
+      if (request.purge) {
+        attempts.push(request.transactionId);
+        if (loseReceipt) {
+          loseReceipt = false;
+          throw new Error('Lost purge receipt');
+        }
+      }
+      return receipt;
+    };
+    expect((await session.apply({ type: 'purge-trash', entryIds })).ok).toBe(
+      false,
+    );
+    expect(session.getState().trash).toHaveLength(1);
+    expect((await session.undo()).ok).toBe(false);
+    const later = await host.commit(handle, {
+      transactionId: 'external-later-trash',
+      trash: [{ path: 'docs-other' }],
+    });
+    expect((await session.apply({ type: 'purge-trash', entryIds })).ok).toBe(
+      true,
+    );
+    expect(attempts).toEqual([attempts[0], attempts[0]]);
+    expect(session.getState().trash.map((entry) => entry.entryId)).toEqual([
+      later.trashEntries![0].entryId,
+    ]);
+    expect(session.getState().canUndo).toBe(false);
+  });
+
+  it('can explicitly resume a failed undo without losing the history transition', async () => {
+    const { session, host } = await directorySession();
+    await session.apply({ type: 'trash-directory', path: 'docs' });
+    const commit = host.commit.bind(host);
+    let loseReceipt = true;
+    host.commit = async (handle, request) => {
+      const receipt = await commit(handle, request);
+      if (request.restore && loseReceipt) {
+        loseReceipt = false;
+        throw new Error('Lost undo receipt');
+      }
+      return receipt;
+    };
+    expect((await session.undo()).ok).toBe(false);
+    expect(session.getState().trashUnconfirmed).toBe(true);
+    expect((await session.retryTrashOperation()).ok).toBe(true);
+    expect(session.getState().trashUnconfirmed).toBe(false);
+    expect(session.getState().files.has('inside')).toBe(true);
+    expect(session.getState().canRedo).toBe(true);
+    expect((await session.redo()).ok).toBe(true);
+    expect(session.getState().files.has('inside')).toBe(false);
+  });
+
+  it('retries unknown outcomes with the same transaction and blocks intervening writes', async () => {
+    const { session, host, handle } = await directorySession();
+    const commit = host.commit.bind(host);
+    let loseReceipt = true;
+    const attempts: string[] = [];
+    host.commit = async (handle_, request) => {
+      if (request.trash?.[0]?.path === 'docs') {
+        attempts.push(request.transactionId);
+        const receipt = await commit(handle_, request);
+        if (loseReceipt) {
+          loseReceipt = false;
+          throw new Error('Lost receipt');
+        }
+        return receipt;
+      }
+      return commit(handle_, request);
+    };
+    expect(
+      (await session.apply({ type: 'trash-directory', path: 'docs' })).ok,
+    ).toBe(false);
+    expect(
+      (await session.apply({ type: 'create-file', file: fileFor('blocked') }))
+        .ok,
+    ).toBe(false);
+    expect(await session.flush()).toBe(false);
+    expect(
+      (await session.apply({ type: 'trash-directory', path: 'docs' })).ok,
+    ).toBe(true);
+    expect(attempts).toHaveLength(2);
+    expect(attempts[0]).toBe(attempts[1]);
+    expect((await host.readSnapshot(handle)).trash).toHaveLength(1);
+    expect((await session.undo()).ok).toBe(true);
+  });
+
   it('opens an empty workspace with initialized config', async () => {
     const { session } = await sessionOf();
     const state = session.getState();
@@ -296,7 +627,9 @@ describe('WorkspaceSession', () => {
       ],
     });
 
-    await session.flush();
+    await expect(session.flush()).resolves.toBe(false);
+    // A retry must not report clean merely because its rejected op left the queue.
+    await expect(session.flush()).resolves.toBe(false);
     const entry = session.getState().files.get('board-1');
     expect(entry?.conflicted).toBe(true);
     expect(session.getState().diagnostics.length).toBeGreaterThan(0);
@@ -595,6 +928,64 @@ describe('WorkspaceSession', () => {
     expect(entry?.file.frame.name).toBe('Local dirty');
   });
 
+  it.each([false, true])(
+    'discards a host read overtaken by a local edit (committed: %s)',
+    async (commitBeforeReadReturns) => {
+      const inner = createMemoryWorkspaceHost();
+      let delayNextRead = false;
+      let releaseRead!: () => void;
+      let capturedRead!: () => void;
+      const captured = new Promise<void>((resolve) => {
+        capturedRead = resolve;
+      });
+      const gate = new Promise<void>((resolve) => {
+        releaseRead = resolve;
+      });
+      const host: WorkspaceHost = {
+        ...inner,
+        // Explicit reads below reproduce the watch/read/commit interleaving.
+        subscribe: () => () => {},
+        readSnapshot: async (handle) => {
+          const delay = delayNextRead;
+          delayNextRead = false;
+          const snapshot = await inner.readSnapshot(handle);
+          if (delay) {
+            capturedRead();
+            await gate;
+          }
+          return snapshot;
+        },
+      };
+      const { handle } = await openSession({ host });
+      const session = await openWorkspaceSession(host, handle, {
+        delayMs: 60_000,
+      });
+      await session.apply({ type: 'create-file', file: fileFor('board-1') });
+      await session.flush();
+      delayNextRead = true;
+      const sync = session.syncFromHost();
+      await captured;
+      await session.apply({
+        type: 'file',
+        file: fileFor('board-1', 'Latest local edit'),
+      });
+      if (commitBeforeReadReturns) expect(await session.flush()).toBe(true);
+      releaseRead();
+      await sync;
+      expect(session.getState().files.get('board-1')?.file.frame.name).toBe(
+        'Latest local edit',
+      );
+      expect(session.getState().files.get('board-1')?.conflicted).toBeFalsy();
+      expect(await session.flush()).toBe(true);
+      expect((await session.undo()).ok).toBe(true);
+      expect(session.getState().files.get('board-1')?.file.frame.name).toBe(
+        'board-1',
+      );
+      expect(await session.flush()).toBe(true);
+      session.dispose();
+    },
+  );
+
   it('notifies subscribers on state changes', async () => {
     const { session } = await sessionOf();
     const listener = vi.fn();
@@ -792,6 +1183,7 @@ describe('WorkspaceSession', () => {
 
     const result = await session.resolveConflict('board-1', 'keep-local');
     expect(result.ok).toBe(true);
+    expect(session.getState().saveStatus).toBe('saved');
     const entry = session.getState().files.get('board-1');
     expect(entry?.conflicted).toBeFalsy();
     expect(entry?.dirty).toBe(false);
@@ -809,6 +1201,7 @@ describe('WorkspaceSession', () => {
 
     const result = await session.resolveConflict('board-1', 'load-disk');
     expect(result.ok).toBe(true);
+    expect(session.getState().saveStatus).toBe('saved');
     const entry = session.getState().files.get('board-1');
     expect(entry?.conflicted).toBeFalsy();
     expect(entry?.file.frame.name).toBe('External');

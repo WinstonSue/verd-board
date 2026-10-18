@@ -17,7 +17,10 @@ interface DesktopBridge {
     value: Record<string, unknown>,
     expectedVersion: number,
   ): Promise<{ applied: boolean; snapshot: GlobalConfigSnapshot }>;
-  openWorkspace(request: OpenWorkspaceRequest): Promise<WorkspaceHandle | null>;
+  openWorkspace(
+    request?: OpenWorkspaceRequest,
+  ): Promise<WorkspaceHandle | null>;
+  activateWorkspace(handle: WorkspaceHandle): Promise<void>;
   readSnapshot(handle: WorkspaceHandle): Promise<WorkspaceHostSnapshot>;
   readFile(handle: WorkspaceHandle, path: string): Promise<RawFileRead>;
   commit(
@@ -61,8 +64,8 @@ export const createDesktopWorkspaceHost = (): WorkspaceHost => {
     readGlobalConfig: () => bridge().readGlobalConfig(),
     writeGlobalConfig: (value, expectedVersion) =>
       bridge().writeGlobalConfig(value, expectedVersion),
-    openWorkspace: (request) =>
-      bridge().openWorkspace(request ?? { default: true }),
+    openWorkspace: (request) => bridge().openWorkspace(request),
+    activateWorkspace: (handle) => bridge().activateWorkspace(handle),
     readSnapshot: (handle) => bridge().readSnapshot(handle),
     readFile: (handle, path) => bridge().readFile(handle, path),
     commit: (handle, request) => bridge().commit(handle, request),

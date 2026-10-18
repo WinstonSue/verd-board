@@ -2,6 +2,7 @@ import type { CellOperation, CellStore, CellSelection } from '@sue/board-core';
 import {
   deleteCells,
   isFrameReferenceCell,
+  isDocumentCell,
   selectionAllows,
 } from '@sue/board-core';
 import type { FrameCanvasController } from '@sue/board-react';
@@ -21,7 +22,10 @@ export function selectionCommands(
   onDuplicateReference?: (refIds: string[]) => void,
 ): FrameCommand[] {
   const ids = selection.ids;
-  const refIds = ids.filter((id) => isFrameReferenceCell(store.cells[id]));
+  const refIds = ids.filter(
+    (id) =>
+      isFrameReferenceCell(store.cells[id]) || isDocumentCell(store.cells[id]),
+  );
   const commands: FrameCommand[] = [
     {
       label: '复制',

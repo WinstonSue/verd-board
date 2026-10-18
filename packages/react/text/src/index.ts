@@ -14,6 +14,10 @@ export { ParagraphText } from './components/paragraph/paragraph-text';
 export { LineText } from './components/line/line-text';
 export { DocumentEditor } from './components/document/document-editor';
 export type {
+  DocumentFrameReferenceProps,
+  DocumentFrameReferenceRenderer,
+} from './components/document/document-frame-reference';
+export type {
   DocumentEditorProps,
   DocumentEditorChange,
   DocumentEditorController,
@@ -28,6 +32,7 @@ export type {
   DocumentBlockKind,
 } from './types/document';
 export { findInDocument } from './components/document/document-search';
+export { createDocumentHeadingSlugger } from './utils/heading-slug';
 export { safeFocus, measureContainerSize } from './utils/measure';
 export {
   createBoardTextController,

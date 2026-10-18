@@ -76,6 +76,8 @@ export const deriveBoardTextPlainText = (
   if (!node) return '';
   if (node.type === 'text') return node.text ?? '';
   if (node.type === 'hardBreak') return '\n';
+  if (node.type === 'frameReference')
+    return `打开画布 verd://file/${encodeURIComponent(String(node.attrs?.['targetFrameId'] ?? ''))}`;
   const children = node.content ?? [];
   if (!children.length) return '';
   const parts = children.map((child) => deriveBoardTextPlainText(child));

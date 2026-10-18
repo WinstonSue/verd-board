@@ -80,6 +80,51 @@ describe('fs host transaction recovery', () => {
     return { root, workspace, host, handle };
   };
 
+  it('finishes an interrupted purge and replays its receipt without removing later trash', async () => {
+    const { workspace, handle, host } = await setup();
+    await host.commit(handle, {
+      transactionId: 'seed-purge',
+      mkdirs: ['a', 'b'],
+    });
+    const removed = await host.commit(handle, {
+      transactionId: 'trash-purge',
+      trash: [{ path: 'a' }, { path: 'b' }],
+    });
+    const [first, second] = removed.trashEntries!;
+    await writeJournal(workspace, 'interrupted-purge', {
+      transactionId: 'interrupted-purge',
+      phase: 'applying',
+      createdAt: 1,
+      ops: [
+        { kind: 'purge', entryId: first.entryId },
+        { kind: 'purge', entryId: second.entryId },
+      ],
+    });
+    await fs.rm(path.join(workspace, '.verdboard', 'trash', first.entryId), {
+      recursive: true,
+    });
+    await host.commit(handle, {
+      transactionId: 'later-folder',
+      mkdirs: ['later'],
+    });
+    const later = await host.commit(handle, {
+      transactionId: 'later-trash',
+      trash: [{ path: 'later' }],
+    });
+    expect(await host.recoverWorkspace(workspace)).toEqual([]);
+    const receipt = await host.commit(handle, {
+      transactionId: 'interrupted-purge',
+      purge: [first.entryId, second.entryId],
+    });
+    expect(receipt.outcome).toBe('applied');
+    expect(
+      (await host.readSnapshot(handle)).trash.map((entry) => entry.entryId),
+    ).toEqual([later.trashEntries![0].entryId]);
+    expect(await exists(journalFile(workspace, 'interrupted-purge'))).toBe(
+      false,
+    );
+  });
+
   it('discards `prepared` journals and staging without touching files', async () => {
     const { workspace, handle, host } = await setup();
     await host.commit(handle, {

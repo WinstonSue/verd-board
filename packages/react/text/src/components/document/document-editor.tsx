@@ -1,5 +1,6 @@
-import React, { useCallback, useEffect, useRef } from 'react';
-import { EditorContent, useEditor } from '@tiptap/react';
+import React, { useCallback, useEffect, useMemo, useRef } from 'react';
+import { EditorContent, useEditor, getSchema } from '@tiptap/react';
+import { DocumentFrameReferenceContext } from './document-frame-reference';
 import { Selection, TextSelection } from '@tiptap/pm/state';
 import type { Transaction } from '@tiptap/pm/state';
 import type { BoardTextDocument } from '@sue/board-common';
@@ -33,7 +34,19 @@ export const DocumentEditor: React.FC<DocumentEditorProps> = ({
   autoFocus = true,
   className,
   onImageFile,
+  renderFrameReference,
 }) => {
+  const schema = useMemo(() => getSchema(createDocumentExtensions()), []);
+  const contentError = useMemo(() => {
+    try {
+      schema.nodeFromJSON(value.content).check();
+      return null;
+    } catch (error) {
+      return error instanceof Error ? error.message : String(error);
+    }
+  }, [schema, value.content]);
+  const contentErrorRef = useRef(contentError);
+  contentErrorRef.current = contentError;
   const containerRef = useRef<HTMLDivElement>(null);
   const originalElementRef = useRef<BoardTextDocument>(value);
   /** JSON of the content the editor currently reflects (echo suppression). */
@@ -58,8 +71,9 @@ export const DocumentEditor: React.FC<DocumentEditorProps> = ({
   if (!groupTrackerRef.current)
     groupTrackerRef.current = new DocumentGroupTracker();
   const composingRef = useRef(false);
+  const historyScope = useRef(crypto.randomUUID());
   const compositionEndedAtRef = useRef(0);
-  const lastRestoreRef = useRef(restore?.revision ?? 0);
+  const lastRestoreRef = useRef(-1);
 
   /** Source-tagged commands keep their label across appended transactions. */
   const withSource = (source: DocumentChangeSource, run: () => void) => {
@@ -120,7 +134,7 @@ export const DocumentEditor: React.FC<DocumentEditorProps> = ({
     transaction: Transaction,
   ) => {
     const oc = onChangeRef.current;
-    if (!oc) return;
+    if (!oc || contentErrorRef.current) return;
     const newText: BoardTextDocument = {
       ...documentFromEditor(editor_, originalElementRef.current),
       kind: 'block',
@@ -138,7 +152,7 @@ export const DocumentEditor: React.FC<DocumentEditorProps> = ({
       value: newText,
       changeId: nextChangeId(),
       source,
-      historyGroup: groupFor(source, transaction),
+      historyGroup: `${historyScope.current}:${groupFor(source, transaction)}`,
       selectionBefore: lastSelectionRef.current,
       selectionAfter,
     });
@@ -164,8 +178,14 @@ export const DocumentEditor: React.FC<DocumentEditorProps> = ({
         tr.setMeta('addToHistory', false);
         tr.setMeta(RESTORE_META, true);
         const max = tr.doc.content.size;
-        const from = Math.max(0, Math.min(selection?.from ?? 0, max));
-        const to = Math.max(from, Math.min(selection?.to ?? from, max));
+        const from = Math.max(
+          0,
+          Math.min(selection?.from ?? editor_.state.selection.from, max),
+        );
+        const to = Math.max(
+          from,
+          Math.min(selection?.to ?? editor_.state.selection.to, max),
+        );
         try {
           tr.setSelection(TextSelection.create(tr.doc, from, to));
         } catch {
@@ -189,8 +209,10 @@ export const DocumentEditor: React.FC<DocumentEditorProps> = ({
         history: !history,
         placeholder,
       }),
-      content: originalElementRef.current.content,
-      editable: !readonly,
+      content: contentError
+        ? { type: 'doc', content: [{ type: 'paragraph' }] }
+        : originalElementRef.current.content,
+      editable: !readonly && !contentError,
       editorProps: {
         attributes: { class: 'board-document-content' },
         handleKeyDown: (view, event) => {
@@ -327,8 +349,8 @@ export const DocumentEditor: React.FC<DocumentEditorProps> = ({
   }, [value, editor, applyExternal]);
 
   useEffect(() => {
-    if (editor) editor.setEditable(!readonly, false);
-  }, [readonly, editor]);
+    if (editor) editor.setEditable(!readonly && !contentError, false);
+  }, [readonly, editor, contentError]);
 
   useEffect(() => {
     if (!readonly && autoFocus && editor) {
@@ -340,6 +362,12 @@ export const DocumentEditor: React.FC<DocumentEditorProps> = ({
     return undefined;
   }, [readonly, autoFocus, editor]);
 
+  if (contentError)
+    return (
+      <div className="board-document-error" role="alert">
+        无法打开文档正文：{contentError}
+      </div>
+    );
   if (!editor) {
     return (
       <div ref={containerRef} className="board-document-editor loading">
@@ -355,7 +383,9 @@ export const DocumentEditor: React.FC<DocumentEditorProps> = ({
         className ? ` ${className}` : ''
       }`}
     >
-      <EditorContent editor={editor} />
+      <DocumentFrameReferenceContext.Provider value={renderFrameReference}>
+        <EditorContent editor={editor} />
+      </DocumentFrameReferenceContext.Provider>
     </div>
   );
 };

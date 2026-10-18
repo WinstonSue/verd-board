@@ -55,6 +55,97 @@ export const describeWorkspaceHostContract = (
   createContext: () => Promise<WorkspaceHostContractContext>,
 ) => {
   describe(`${name} contract`, () => {
+    it('purges only captured trash entries, replays receipts and notifies subscribers', async () => {
+      const { host, open } = await createContext();
+      const handle = await open();
+      applied(
+        await host.commit(handle, {
+          transactionId: tx(),
+          mkdirs: ['folder/empty'],
+          writes: [
+            { path: 'folder/raw.txt', content: 'raw', expectedVersion: null },
+            { path: 'keep.txt', content: 'keep', expectedVersion: null },
+          ],
+        }),
+      );
+      const snapshot = await host.readSnapshot(handle);
+      const removed = applied(
+        await host.commit(handle, {
+          transactionId: tx(),
+          trash: [
+            { path: 'folder' },
+            {
+              path: 'keep.txt',
+              expectedVersion: fileVersion(snapshot, 'keep.txt'),
+            },
+          ],
+        }),
+      );
+      const captured = removed.trashEntries![0].entryId;
+      const later = removed.trashEntries![1].entryId;
+      let hints = 0;
+      const unsubscribe = host.subscribe(handle, () => {
+        hints += 1;
+      });
+      const purge = { transactionId: tx(), purge: [captured] };
+      const receipt = applied(await host.commit(handle, purge));
+      expect(await host.commit(handle, purge)).toEqual(receipt);
+      expect(
+        (await host.readSnapshot(handle)).trash.map((entry) => entry.entryId),
+      ).toEqual([later]);
+      expect(hints).toBeGreaterThan(0);
+      unsubscribe();
+      expect(
+        (
+          await host.commit(handle, {
+            transactionId: tx(),
+            restore: [{ entryId: captured }],
+          })
+        ).outcome,
+      ).toBe('rejected');
+      applied(
+        await host.commit(handle, {
+          transactionId: tx(),
+          purge: [later, captured],
+        }),
+      );
+      expect((await host.readSnapshot(handle)).trash).toEqual([]);
+      applied(
+        await host.commit(handle, { transactionId: tx(), mkdirs: ['fresh'] }),
+      );
+      const fresh = applied(
+        await host.commit(handle, {
+          transactionId: tx(),
+          trash: [{ path: 'fresh' }],
+        }),
+      );
+      expect(fresh.trashEntries![0].entryId).not.toBe(captured);
+      expect(fresh.trashEntries![0].entryId).not.toBe(later);
+    });
+
+    it('rejects invalid trash identifiers atomically', async () => {
+      const { host, open } = await createContext();
+      const handle = await open();
+      for (const entryId of [
+        '../config',
+        '..',
+        '/tmp',
+        'nested/path',
+        'a\\b',
+        '',
+      ]) {
+        const receipt = await host.commit(handle, {
+          transactionId: tx(),
+          purge: [entryId],
+          writes: [
+            { path: 'untouched.txt', content: 'bad', expectedVersion: null },
+          ],
+        });
+        expect(receipt.outcome).toBe('rejected');
+      }
+      expect((await host.readSnapshot(handle)).entries).toEqual([]);
+    });
+
     it('creates a default workspace with initialized config', async () => {
       const { host, open } = await createContext();
       const handle = await open();

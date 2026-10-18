@@ -299,3 +299,48 @@
     background: var(--board-hover, #f3f4f6);
   }
 }
+.doc-frame-picker {
+  position: absolute;
+  inset: 100px 15% auto;
+  max-height: 65vh;
+  overflow: auto;
+  z-index: 50;
+  padding: 16px;
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+  background: white;
+  box-shadow: 0 16px 48px #0002;
+  button {
+    display: block;
+    width: 100%;
+    text-align: left;
+    padding: 10px;
+  }
+  small {
+    color: #64748b;
+  }
+}
+
+.document-page--compact {
+  .document-page__header {
+    padding: 4px;
+  }
+  .document-page__title {
+    display: none;
+  }
+  .doc-toolbar {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    justify-content: flex-start;
+  }
+  .document-page__status {
+    padding: 2px 8px;
+  }
+  .board-document-editor {
+    padding: 12px;
+    min-height: 100%;
+  }
+  .document-page__toc {
+    width: 140px;
+  }
+}

@@ -8,6 +8,9 @@ export function SettingsPageShell({
   testId,
   backTestId,
   children,
+  className,
+  contentClassName,
+  backDisabled = false,
 }: {
   title: string;
   backLabel: string;
@@ -15,6 +18,9 @@ export function SettingsPageShell({
   testId: string;
   backTestId: string;
   children: ReactNode;
+  className?: string;
+  contentClassName?: string;
+  backDisabled?: boolean;
 }) {
   const dialog = useRef<HTMLDialogElement>(null);
   const titleId = useId();
@@ -26,22 +32,34 @@ export function SettingsPageShell({
   return (
     <dialog
       ref={dialog}
-      className="frame-settings-page"
+      className={['frame-settings-page', className].filter(Boolean).join(' ')}
       aria-labelledby={titleId}
       data-testid={testId}
       onCancel={(event) => {
+        if (event.target !== event.currentTarget) return;
         event.preventDefault();
-        onBack();
+        if (!backDisabled) onBack();
       }}
     >
       <header>
-        <button type="button" onClick={onBack} data-testid={backTestId}>
+        <button
+          type="button"
+          onClick={onBack}
+          data-testid={backTestId}
+          disabled={backDisabled}
+        >
           <ArrowLeft size={18} aria-hidden />
           {backLabel}
         </button>
         <h1 id={titleId}>{title}</h1>
       </header>
-      <div className="frame-settings-content">{children}</div>
+      <div
+        className={['frame-settings-content', contentClassName]
+          .filter(Boolean)
+          .join(' ')}
+      >
+        {children}
+      </div>
     </dialog>
   );
 }

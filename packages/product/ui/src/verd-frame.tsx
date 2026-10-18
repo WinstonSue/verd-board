@@ -113,11 +113,14 @@ import { FrameIconButton } from './frame-icon-button';
 import { FrameShapePicker } from './frame-shape-picker';
 import { FrameToolMenu } from './frame-tool-menu';
 import { FrameAppMenu, type FrameAppMenuItem } from './frame-app-menu';
-import { FrameSettingsPage } from './frame-settings-page';
+import { MyPage } from './my-page';
+import { ShortcutHelp } from './shortcut-help';
+import { shortcutLabels } from './shortcut-catalog';
 import { useInteractionPreferences } from './interaction-preferences';
 import { useMindMaxWidth } from './mind-preferences';
 import {
   ArrowRight,
+  Keyboard,
   BringToFront,
   SendToBack,
   ArrowUp,
@@ -141,7 +144,7 @@ import {
   Presentation,
   Pencil,
   Redo2,
-  Settings,
+  UserRound,
   Spline,
   Square,
   Table2,
@@ -164,6 +167,11 @@ import { createFrameDrawingTool } from './frame-drawing-tool';
 import './styles/frame.scss';
 
 export interface VerdFrameProps {
+  documentReferences?: import('@sue/board-react').FrameDocumentReferences;
+  onReferenceDocument?(): void;
+  onCreateDocumentFrame?(): void;
+  onExportNative?(): void;
+  onOpenMy?(): void;
   value: FrameSnapshot;
   frameId: string;
   initialFocusCellId?: string;
@@ -289,6 +297,11 @@ export function VerdFrame({
   onPlace,
   onCancelPlace,
   onReferenceExisting,
+  onReferenceDocument,
+  onCreateDocumentFrame,
+  documentReferences,
+  onExportNative,
+  onOpenMy,
   revealCellId,
   revealNonce = 0,
 }: VerdFrameProps) {
@@ -304,7 +317,8 @@ export function VerdFrame({
     return () =>
       document.removeEventListener('board-text-fonts-changed', changed);
   }, []);
-  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [myOpen, setMyOpen] = useState(false);
+  const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const menuButton = useRef<HTMLButtonElement>(null);
   const [selection, setSelection] = useState<CellSelection>({
     focus: [frameId],
@@ -518,6 +532,9 @@ export function VerdFrame({
           image: language === 'zh' ? '图片' : 'Image',
           frame: language === 'zh' ? '容器' : 'Frame',
           'frame-reference': language === 'zh' ? '容器' : 'Frame',
+          'document-frame': language === 'zh' ? '文档 Frame' : 'Document Frame',
+          'document-reference':
+            language === 'zh' ? '文档 Frame' : 'Document frame',
           group: language === 'zh' ? '组合' : 'Group',
           text: language === 'zh' ? '文本' : 'Text',
           'workflow-start': language === 'zh' ? '工作流' : 'Workflow',
@@ -994,7 +1011,20 @@ export function VerdFrame({
     targetId = frameId,
   ) => {
     try {
+      if (format === 'json' && onExportNative) {
+        onExportNative();
+        return;
+      }
       const snapshot = await mountedSnapshot(targetId);
+      if (
+        format !== 'json' &&
+        Object.values(snapshot.store.cells).some((cell) =>
+          ['document-reference', 'document-frame'].includes(cell.kind),
+        )
+      )
+        throw new Error(
+          '文档引用无法导出为 Markdown/Mermaid，请使用原生或图片导出。',
+        );
       if (format === 'markdown') {
         const { serializeFrameToMarkdown } =
           await import('@sue/board-markdown-to-board');
@@ -1261,6 +1291,27 @@ export function VerdFrame({
       disabled: editDisabled || placing,
       onSelect: onReferenceExisting,
     });
+  if (onCreateDocumentFrame && !frameScene(store, frameId))
+    appMenuItems.push({
+      id: 'document-frame',
+      label: language === 'zh' ? '文档 Frame…' : 'Document Frame…',
+      icon: FileText,
+      group: 'import',
+      disabled: editDisabled || placing,
+      onSelect: onCreateDocumentFrame,
+    });
+  if (onReferenceDocument)
+    appMenuItems.push({
+      id: 'reference-document',
+      label:
+        language === 'zh'
+          ? '引用文档（只读）…'
+          : 'Reference document (read-only)…',
+      icon: FileText,
+      group: 'import',
+      disabled: editDisabled || placing,
+      onSelect: onReferenceDocument,
+    });
   appMenuItems.push(
     {
       id: 'clear',
@@ -1271,11 +1322,18 @@ export function VerdFrame({
       onSelect: () => setClearConfirm(true),
     },
     {
-      id: 'settings',
-      label: t('settings.title'),
-      icon: Settings,
+      id: 'shortcuts',
+      label: shortcutLabels[language].title,
+      icon: Keyboard,
       group: 'settings',
-      onSelect: () => setSettingsOpen(true),
+      onSelect: () => setShortcutsOpen(true),
+    },
+    {
+      id: 'my',
+      label: language === 'zh' ? '我的' : 'My',
+      icon: UserRound,
+      group: 'settings',
+      onSelect: () => (onOpenMy ? onOpenMy() : setMyOpen(true)),
     },
   );
   return (
@@ -1323,12 +1381,13 @@ export function VerdFrame({
       onKeyDownCapture={(event) => {
         if (presenting) return;
         if (
-          settingsOpen ||
+          myOpen ||
+          shortcutsOpen ||
           event.defaultPrevented ||
           event.nativeEvent.isComposing ||
           event.key === 'Process' ||
           (event.target as Element).closest(
-            '[contenteditable="true"], input, textarea, select, [role="dialog"], [role="menu"], [aria-label="Mind note"], [data-frame-text-toolbar]',
+            '[contenteditable="true"], input, textarea, select, dialog, [role="dialog"], [role="menu"], [aria-label="Mind note"], [data-frame-text-toolbar]',
           )
         )
           return;
@@ -1401,6 +1460,7 @@ export function VerdFrame({
       <div className="frame-canvas-area">
         <div className="frame-canvas-fill">
           <FrameCanvas
+            documentReferences={documentReferences}
             ref={controller}
             value={value}
             frameId={frameId}
@@ -1430,7 +1490,7 @@ export function VerdFrame({
             onSelectionChange={setSelection}
             onOpenFrame={onOpenFrame}
             instanceHost={instanceHost}
-            suspended={suspended || settingsOpen || presenting}
+            suspended={suspended || myOpen || shortcutsOpen || presenting}
             placing={placing}
             onPlace={onPlace}
             onCancelPlace={onCancelPlace}
@@ -2800,10 +2860,26 @@ export function VerdFrame({
           </button>
         ))}
       </FramePropertyPanel>
-      {settingsOpen && (
-        <FrameSettingsPage
+      {shortcutsOpen && (
+        <ShortcutHelp
+          scene={
+            scene === 'mind-root'
+              ? 'mind'
+              : scene === 'workflow-start'
+                ? 'workflow'
+                : scene === 'architecture-layer'
+                  ? 'architecture'
+                  : 'whiteboard'
+          }
+          locale={language}
+          returnFocusRef={menuButton}
+          onClose={() => setShortcutsOpen(false)}
+        />
+      )}
+      {myOpen && (
+        <MyPage
           onBack={() => {
-            setSettingsOpen(false);
+            setMyOpen(false);
             requestAnimationFrame(() => menuButton.current?.focus());
           }}
         />
@@ -2917,6 +2993,7 @@ export function VerdFrame({
       )}
       {presenting && (
         <PresentationMode
+          documentReferences={documentReferences}
           value={value}
           frameId={frameId}
           registry={registry}

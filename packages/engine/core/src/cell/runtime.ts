@@ -11,7 +11,13 @@ import {
   type CellSelection,
 } from './index';
 import { createCellRegistry } from './index';
-import { FrameUtil, FrameReferenceUtil, GroupUtil } from './util';
+import {
+  FrameUtil,
+  FrameReferenceUtil,
+  DocumentReferenceUtil,
+  DocumentFrameUtil,
+  GroupUtil,
+} from './util';
 import {
   isFrameCell,
   isFrameReferenceCell,
@@ -72,6 +78,10 @@ export const createCellRuntime = (
   if (!registry.get('frame')) registry.register(new FrameUtil());
   if (!registry.get('frame-reference'))
     registry.register(new FrameReferenceUtil());
+  if (!registry.get('document-reference'))
+    registry.register(new DocumentReferenceUtil());
+  if (!registry.get('document-frame'))
+    registry.register(new DocumentFrameUtil());
   if (!registry.get('group')) registry.register(new GroupUtil());
   const issues = validateCellStore(snapshot.store, registry);
   if (issues.length)

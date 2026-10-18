@@ -19,6 +19,7 @@ import {
   Highlighter,
   Image as ImageIcon,
   Italic,
+  Keyboard,
   Link as LinkIcon,
   ListOrdered,
   ListTree,
@@ -44,12 +45,15 @@ import {
   type DocumentEditorChange,
   type DocumentEditorController,
   type DocumentHistoryAdapter,
+  type DocumentHeading,
   type DocumentSearchMatch,
   type DocumentSelection,
   type DocumentToolbarState,
 } from '@sue/board-react-text';
 import type { BoardTextDocument } from '@sue/board-common';
 import './document-page.scss';
+import { ShortcutHelp } from './shortcut-help';
+import { shortcutLabels } from './shortcut-catalog';
 
 export type {
   DocumentEditorChange,
@@ -62,6 +66,9 @@ export type DocumentSaveState =
   'saved' | 'unsaved' | 'saving' | 'error' | 'conflicted';
 
 export interface DocumentPageProps {
+  compact?: boolean;
+  frameChoices?: readonly { frameId: string; title: string; path: string }[];
+  renderFrameReference?: import('@sue/board-react-text').DocumentFrameReferenceRenderer;
   value: BoardTextDocument;
   title: string;
   readonly?: boolean;
@@ -78,7 +85,14 @@ export interface DocumentPageProps {
   /** Resolves a picked image file to an insertable src; null cancels. */
   onInsertImage?(file: File): Promise<string | null>;
   onReady?(controller: DocumentEditorController | null): void;
+  /** Receives explicit link activation; the workspace resolves the target. */
+  onOpenLink?(href: string): void;
+  /** A fresh request also navigates an already mounted document. */
+  navigation?: { anchor: string | null; requestId: number };
 }
+
+// The page manages navigation/embedded focus explicitly; passive tabs must not steal it.
+const managedEditorFocus = { autoFocus: false };
 
 const labels = {
   zh: {
@@ -106,6 +120,8 @@ const labels = {
     linkPlaceholder: 'https://…',
     linkApply: '确定',
     linkRemove: '移除链接',
+    openLink: '打开链接',
+    headingNotFound: '未找到目标章节，已返回文档开头',
     image: '图片',
     table: '插入表格',
     clearFormat: '清除格式',
@@ -172,6 +188,8 @@ const labels = {
     linkPlaceholder: 'https://…',
     linkApply: 'Apply',
     linkRemove: 'Remove link',
+    openLink: 'Open link',
+    headingNotFound: 'Section not found. Returned to the document start.',
     image: 'Image',
     table: 'Insert table',
     clearFormat: 'Clear formatting',
@@ -263,21 +281,26 @@ export function DocumentPage({
   history,
   restore,
   autoFocusTitle = false,
+  compact = false,
   onChange,
   onTitleCommit,
   onExport,
   onInsertImage,
   onReady,
+  onOpenLink,
+  navigation,
+  frameChoices,
+  renderFrameReference,
 }: DocumentPageProps) {
   const t = labels[locale];
+  const [shortcutsOpen, setShortcutsOpen] = useState(false);
+  const shortcutsButton = useRef<HTMLButtonElement>(null);
   const [controller, setController] = useState<DocumentEditorController | null>(
     null,
   );
   const [toolbar, setToolbar] = useState<DocumentToolbarState | null>(null);
-  const [tocOpen, setTocOpen] = useState(true);
-  const [headings, setHeadings] = useState<
-    { level: number; text: string; pos: number }[]
-  >([]);
+  const [tocOpen, setTocOpen] = useState(!compact);
+  const [headings, setHeadings] = useState<DocumentHeading[]>([]);
   const [findOpen, setFindOpen] = useState<false | 'find' | 'replace'>(false);
   const [query, setQuery] = useState('');
   const [matchCase, setMatchCase] = useState(false);
@@ -288,12 +311,16 @@ export function DocumentPage({
   const [linkDraft, setLinkDraft] = useState('');
   const [notice, setNotice] = useState<string | null>(null);
   const [exportOpen, setExportOpen] = useState(false);
+  const [framePickerOpen, setFramePickerOpen] = useState(false);
   const [titleDraft, setTitleDraft] = useState<string | null>(null);
   const [charCount, setCharCount] = useState(0);
   const titleInputRef = useRef<HTMLInputElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
   const findInputRef = useRef<HTMLInputElement>(null);
   const controllerRef = useRef<DocumentEditorController | null>(null);
+  const lastNavigationRef = useRef<number | null>(null);
+  const navigationAnchor = navigation?.anchor;
+  const navigationRequestId = navigation?.requestId;
   controllerRef.current = controller;
 
   const refreshToolbar = useCallback(() => {
@@ -317,6 +344,31 @@ export function DocumentPage({
     },
     [onReady],
   );
+
+  useEffect(() => {
+    if (
+      !controller ||
+      navigationRequestId === undefined ||
+      lastNavigationRef.current === navigationRequestId
+    )
+      return;
+    // WorkspaceApp activates the pane in the same render as this request.
+    const frame = requestAnimationFrame(() => {
+      lastNavigationRef.current = navigationRequestId;
+      const heading = navigationAnchor
+        ? controller
+            .getHeadings()
+            .find((item) => item.anchor === navigationAnchor)
+        : undefined;
+      setNotice(null);
+      if (heading) controller.locateHeading(heading.pos);
+      else {
+        controller.focus('start');
+        if (navigationAnchor) setNotice(t.headingNotFound);
+      }
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [controller, navigationAnchor, navigationRequestId, t.headingNotFound]);
 
   // ------- title -------
   useEffect(() => {
@@ -406,6 +458,7 @@ export function DocumentPage({
   };
 
   const pageKeyDown = (event: React.KeyboardEvent) => {
+    if (shortcutsOpen) return;
     const mod = event.metaKey || event.ctrlKey;
     if (mod && !event.shiftKey && event.key.toLowerCase() === 'f') {
       event.preventDefault();
@@ -418,8 +471,31 @@ export function DocumentPage({
       return;
     }
     if (event.key === 'Escape' && findOpen) {
+      event.preventDefault();
       closeFind();
       return;
+    }
+    if (event.key === 'Escape' && (framePickerOpen || linkOpen || exportOpen)) {
+      event.preventDefault();
+      setFramePickerOpen(false);
+      setLinkOpen(false);
+      setExportOpen(false);
+    }
+  };
+
+  const linkInEditor = (target: EventTarget | null) => {
+    const link = target instanceof Element ? target.closest('a[href]') : null;
+    return link?.closest('.board-document-editor') ? link : null;
+  };
+
+  const openEditorLink = (event: React.MouseEvent) => {
+    const link = linkInEditor(event.target);
+    if (!link) return;
+    // Never let the browser or OS navigate the document's editing surface.
+    event.preventDefault();
+    if (event.button === 0 && (readonly || event.metaKey || event.ctrlKey)) {
+      const href = link.getAttribute('href');
+      if (href) onOpenLink?.(href);
     }
   };
 
@@ -429,9 +505,29 @@ export function DocumentPage({
     toolbar?.block === 'heading'
       ? `h${toolbar.headingLevel ?? 1}`
       : (toolbar?.block ?? 'paragraph');
+  const shortcutsTrigger = (
+    <button
+      type="button"
+      ref={shortcutsButton}
+      className="doc-toolbar__btn"
+      aria-label={shortcutLabels[locale].title}
+      title={shortcutLabels[locale].title}
+      onMouseDown={(event) => event.preventDefault()}
+      onClick={() => setShortcutsOpen(true)}
+    >
+      <Keyboard size={16} aria-hidden />
+    </button>
+  );
 
   return (
-    <div className="document-page" onKeyDown={pageKeyDown}>
+    <div
+      className={`document-page${compact ? ' document-page--compact' : ''}`}
+      onKeyDown={pageKeyDown}
+      onClickCapture={openEditorLink}
+      onAuxClickCapture={(event) => {
+        if (linkInEditor(event.target)) event.preventDefault();
+      }}
+    >
       <header className="document-page__header">
         <input
           ref={titleInputRef}
@@ -598,6 +694,13 @@ export function DocumentPage({
               onClick={() => imageInputRef.current?.click()}
               icon={ImageIcon}
             />
+            {frameChoices && (
+              <ToolbarButton
+                title={locale === 'zh' ? '插入图表' : 'Insert canvas'}
+                icon={Columns3}
+                onClick={() => setFramePickerOpen(true)}
+              />
+            )}
             <ToolbarButton
               title={t.table}
               onClick={() => controllerRef.current?.insertTable()}
@@ -639,6 +742,7 @@ export function DocumentPage({
               onClick={() => setTocOpen((v) => !v)}
               icon={ListTree}
             />
+            {shortcutsTrigger}
             {onExport && (
               <span className="doc-export">
                 <ToolbarButton
@@ -688,6 +792,37 @@ export function DocumentPage({
             />
           </div>
         )}
+        {readonly && shortcutsTrigger}
+        {framePickerOpen && !readonly && (
+          <div
+            className="doc-frame-picker"
+            role="dialog"
+            aria-label={locale === 'zh' ? '插入图表' : 'Insert canvas'}
+          >
+            <button type="button" onClick={() => setFramePickerOpen(false)}>
+              {locale === 'zh' ? '取消' : 'Cancel'}
+            </button>
+            {frameChoices?.map((frame) => (
+              <button
+                type="button"
+                key={frame.frameId}
+                onClick={() => {
+                  controllerRef.current?.insertFrameReference(frame.frameId);
+                  setFramePickerOpen(false);
+                }}
+              >
+                {frame.title} <small>{frame.path}</small>
+              </button>
+            ))}
+            {!frameChoices?.length && (
+              <p>
+                {locale === 'zh'
+                  ? '工作区中没有画布'
+                  : 'No canvases in this workspace'}
+              </p>
+            )}
+          </div>
+        )}
         {linkOpen && (
           <div className="doc-linkbar">
             <input
@@ -703,6 +838,18 @@ export function DocumentPage({
             <button type="button" onClick={applyLink}>
               {t.linkApply}
             </button>
+            {onOpenLink && (
+              <button
+                type="button"
+                disabled={!linkDraft.trim()}
+                onClick={() => {
+                  const href = linkDraft.trim();
+                  if (href) onOpenLink(href);
+                }}
+              >
+                {t.openLink}
+              </button>
+            )}
             {toolbar?.link && (
               <button
                 type="button"
@@ -877,6 +1024,8 @@ export function DocumentPage({
         )}
         <div className="document-page__content">
           <DocumentEditor
+            {...managedEditorFocus}
+            renderFrameReference={renderFrameReference}
             value={value}
             readonly={readonly}
             history={history}
@@ -895,6 +1044,14 @@ export function DocumentPage({
           {t.save[saveState]}
         </span>
       </footer>
+      {shortcutsOpen && (
+        <ShortcutHelp
+          scene="document"
+          locale={locale}
+          returnFocusRef={shortcutsButton}
+          onClose={() => setShortcutsOpen(false)}
+        />
+      )}
       {notice && (
         <div className="document-page__notice" role="status">
           {notice}

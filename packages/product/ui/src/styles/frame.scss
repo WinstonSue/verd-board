@@ -139,7 +139,10 @@
 }
 .verd-frame button,
 .verd-frame select,
-.verd-frame input {
+.verd-frame input,
+.frame-actions-popover button,
+.frame-actions-popover select,
+.frame-actions-popover input {
   font: inherit;
   border: 1px solid #e2e8f0;
   border-radius: 6px;
@@ -147,13 +150,16 @@
   background: #fff;
   color: inherit;
 }
-.verd-frame button {
+.verd-frame button,
+.frame-actions-popover button {
   cursor: pointer;
 }
-.verd-frame button:hover {
+.verd-frame button:hover,
+.frame-actions-popover button:hover {
   background: #f1f5f9;
 }
-.verd-frame button[aria-pressed='true'] {
+.verd-frame button[aria-pressed='true'],
+.frame-actions-popover button[aria-pressed='true'] {
   color: #4f46e5;
   border-color: #6366f1;
   background: #eef2ff;
@@ -299,7 +305,9 @@
 .frame-actions-popover {
   position: fixed;
   z-index: 40;
-  width: 280px;
+  box-sizing: border-box;
+  width: 306px;
+  max-width: calc(100vw - 16px);
   max-height: calc(100vh - 16px);
   overflow: auto;
   padding: 12px;
@@ -307,6 +315,9 @@
   border-radius: 10px;
   background: white;
   color: #172033;
+  font:
+    13px system-ui,
+    sans-serif;
   box-shadow: 0 8px 24px #0f172a26;
 
   label {

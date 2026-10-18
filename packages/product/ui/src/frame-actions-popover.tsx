@@ -1,4 +1,10 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useLayoutEffect, useRef } from 'react';
+import {
+  autoUpdate,
+  FloatingPortal,
+  shift,
+  useFloating,
+} from '@floating-ui/react';
 import {
   frameScene,
   isFrameCell,
@@ -35,13 +41,35 @@ export function FrameActionsPopover({
   onDuplicateReference?(refIds: string[]): void;
 }) {
   const { t } = useI18n();
-  const ref = useRef<HTMLDivElement>(null);
+  const { refs, elements, floatingStyles } = useFloating({
+    open: true,
+    placement: 'bottom-start',
+    strategy: 'fixed',
+    middleware: [shift({ padding: 8, crossAxis: true })],
+    whileElementsMounted: autoUpdate,
+  });
+  useLayoutEffect(() => {
+    refs.setPositionReference({
+      getBoundingClientRect: () => ({
+        x: point[0],
+        y: point[1],
+        left: point[0],
+        right: point[0],
+        top: point[1],
+        bottom: point[1],
+        width: 0,
+        height: 0,
+      }),
+    });
+  }, [point, refs]);
   const closeRef = useRef(onClose);
   closeRef.current = onClose;
   useEffect(() => {
-    ref.current?.querySelector<HTMLButtonElement>('button')?.focus();
+    const element = elements.floating;
+    if (!element) return;
+    element.querySelector<HTMLButtonElement>('button')?.focus();
     const dismiss = (event: PointerEvent) => {
-      if (!ref.current?.contains(event.target as Node)) closeRef.current();
+      if (!element.contains(event.target as Node)) closeRef.current();
     };
     document.addEventListener('pointerdown', dismiss, true);
     const escape = (event: KeyboardEvent) => {
@@ -56,7 +84,7 @@ export function FrameActionsPopover({
       document.removeEventListener('pointerdown', dismiss, true);
       document.removeEventListener('keydown', escape);
     };
-  }, []);
+  }, [elements.floating]);
   const frameId =
     [...selection.focus].reverse().find((id) => isFrameCell(store.cells[id])) ??
     store.rootId;
@@ -93,111 +121,110 @@ export function FrameActionsPopover({
     }
   };
   return (
-    <div
-      ref={ref}
-      role="dialog"
-      aria-label="Selection actions"
-      className="frame-actions-popover"
-      style={{
-        left: Math.max(8, Math.min(point[0], window.innerWidth - 300)),
-        top: Math.max(8, Math.min(point[1], window.innerHeight - 460)),
-      }}
-    >
-      <div className="frame-actions-row">
-        {selectionCommands(
-          store,
-          selection,
-          controller,
-          dispatch,
-          onDuplicateReference,
-        ).map((command) => (
-          <button
-            key={command.label}
-            disabled={command.disabled}
-            onClick={() => void run(() => command.run())}
-          >
-            {command.label}
-          </button>
-        ))}
-      </div>
-      <FrameArrangement
-        store={store}
-        selection={selection}
-        controller={controller}
-      />
-      <FrameSelectionAppearance
-        store={store}
-        ids={selection.ids}
-        single={false}
-        dispatch={dispatch}
-        getStore={() =>
-          valid() &&
-          selectionAllows(
-            controller.runtime.store,
-            selection.ids,
-            controller.runtime.registry,
-            'edit',
-            frameId,
-          )
-            ? controller.runtime.store
-            : undefined
-        }
-      />
-      <FrameSelectionText
-        store={store}
-        ids={selection.ids}
-        dispatch={dispatch}
-        getStore={() =>
-          valid() &&
-          selectionAllows(
-            controller.runtime.store,
-            selection.ids,
-            controller.runtime.registry,
-            'edit',
-            frameId,
-          )
-            ? controller.runtime.store
-            : undefined
-        }
-      />
-      {!!selection.ids.length && !frameScene(store, frameId) && (
+    <FloatingPortal>
+      <div
+        ref={refs.setFloating}
+        role="dialog"
+        aria-label="Selection actions"
+        className="frame-actions-popover"
+        style={floatingStyles}
+      >
         <div className="frame-actions-row">
-          {(['front', 'forward', 'backward', 'back'] as const).map(
-            (direction, index) => (
-              <button
-                key={direction}
-                aria-label={
-                  [
-                    t('layer.toTop'),
-                    t('layer.moveUp'),
-                    t('layer.moveDown'),
-                    t('layer.toBottom'),
-                  ][index]
-                }
-                onClick={() =>
-                  void run(() =>
-                    dispatch(
-                      reorderCells(store, frameId, selection.ids, direction),
-                    ),
-                  )
-                }
-              >
-                {
-                  [
-                    t('layer.toTop'),
-                    t('layer.moveUp'),
-                    t('layer.moveDown'),
-                    t('layer.toBottom'),
-                  ][index]
-                }
-              </button>
-            ),
-          )}
+          {selectionCommands(
+            store,
+            selection,
+            controller,
+            dispatch,
+            onDuplicateReference,
+          ).map((command) => (
+            <button
+              key={command.label}
+              disabled={command.disabled}
+              onClick={() => void run(() => command.run())}
+            >
+              {command.label}
+            </button>
+          ))}
         </div>
-      )}
-      <button aria-label="Close selection actions" onClick={onClose}>
-        关闭
-      </button>
-    </div>
+        <FrameArrangement
+          store={store}
+          selection={selection}
+          controller={controller}
+        />
+        <FrameSelectionAppearance
+          store={store}
+          ids={selection.ids}
+          single={false}
+          dispatch={dispatch}
+          getStore={() =>
+            valid() &&
+            selectionAllows(
+              controller.runtime.store,
+              selection.ids,
+              controller.runtime.registry,
+              'edit',
+              frameId,
+            )
+              ? controller.runtime.store
+              : undefined
+          }
+        />
+        <FrameSelectionText
+          store={store}
+          ids={selection.ids}
+          dispatch={dispatch}
+          getStore={() =>
+            valid() &&
+            selectionAllows(
+              controller.runtime.store,
+              selection.ids,
+              controller.runtime.registry,
+              'edit',
+              frameId,
+            )
+              ? controller.runtime.store
+              : undefined
+          }
+        />
+        {!!selection.ids.length && !frameScene(store, frameId) && (
+          <div className="frame-actions-row">
+            {(['front', 'forward', 'backward', 'back'] as const).map(
+              (direction, index) => (
+                <button
+                  key={direction}
+                  aria-label={
+                    [
+                      t('layer.toTop'),
+                      t('layer.moveUp'),
+                      t('layer.moveDown'),
+                      t('layer.toBottom'),
+                    ][index]
+                  }
+                  onClick={() =>
+                    void run(() =>
+                      dispatch(
+                        reorderCells(store, frameId, selection.ids, direction),
+                      ),
+                    )
+                  }
+                >
+                  {
+                    [
+                      t('layer.toTop'),
+                      t('layer.moveUp'),
+                      t('layer.moveDown'),
+                      t('layer.toBottom'),
+                    ][index]
+                  }
+                </button>
+              ),
+            )}
+          </div>
+        )}
+        <button aria-label="Close selection actions" onClick={onClose}>
+          关闭
+        </button>
+      </div>
+    </FloatingPortal>
   );
 }

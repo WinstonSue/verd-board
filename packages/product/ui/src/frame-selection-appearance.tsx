@@ -2,6 +2,7 @@ import {
   appearanceCells,
   isFrameCell,
   isFrameReferenceCell,
+  isDocumentCell,
   isNodeCell,
   updateCellAppearance,
   type CellStore,
@@ -32,7 +33,7 @@ export function FrameSelectionAppearance({
   const cells = appearanceCells(store, ids);
   if (!cells.length) return null;
   const frameLike = (cell: (typeof cells)[number]) =>
-    isFrameCell(cell) || isFrameReferenceCell(cell);
+    isFrameCell(cell) || isFrameReferenceCell(cell) || isDocumentCell(cell);
   const defaultStroke = cells.every(frameLike) ? '#cbd5e1' : '#64748b';
   const common = <K extends keyof NodeAppearance>(
     key: K,

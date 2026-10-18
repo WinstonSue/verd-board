@@ -17,6 +17,10 @@
     line-height: 1.75;
     outline: none;
 
+    .document-frame-reference {
+      margin: 1em 0;
+    }
+
     h1,
     h2,
     h3,
@@ -160,5 +164,16 @@
     a.board-link {
       cursor: pointer;
     }
+  }
+}
+
+[data-document-preview-body] .board-document-content {
+  user-select: text;
+  max-width: none;
+  margin: 0;
+  padding: 4px 8px 24px;
+  font-size: 14px;
+  * {
+    user-select: text;
   }
 }

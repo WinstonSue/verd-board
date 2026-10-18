@@ -12,6 +12,8 @@ export interface WorkspaceHandle {
   /** Host-private key; renderers never resolve it to a real location. */
   key: WorkspaceKey;
   name: string;
+  /** Desktop's editable built-in default; absent on other hosts. */
+  isDefault?: boolean;
 }
 
 export interface GlobalConfigSnapshot {
@@ -30,11 +32,21 @@ export interface WorkspaceTabRef {
   fileId: CellId;
 }
 
+export interface WorkspaceTabGroupState {
+  id: string;
+  /** Empty for the localized default group name. */
+  name: string;
+  tabs: WorkspaceTabRef[];
+  activeTabId: CellId | null;
+}
+
 export interface WorkspaceSessionState {
-  /** Tab order by stable file identity. */
+  /** Current group projection, retained for hosts predating tab groups. */
   tabs: WorkspaceTabRef[];
   activeTabId: CellId | null;
   expandedDirs: string[];
+  groups?: WorkspaceTabGroupState[];
+  activeGroupId?: string;
 }
 
 /**
@@ -49,18 +61,24 @@ export const normalizeWorkspaceSessionState = (
     tabs?: { fileId?: unknown; frameId?: unknown }[];
   };
   if (!Array.isArray(candidate.tabs)) return null;
-  const tabs: WorkspaceTabRef[] = [];
-  for (const tab of candidate.tabs) {
-    const fileId =
-      typeof tab?.fileId === 'string'
-        ? tab.fileId
-        : typeof tab?.frameId === 'string'
-          ? tab.frameId
-          : null;
-    if (fileId === null) return null;
-    tabs.push({ fileId });
-  }
-  return {
+  const readTabs = (rawTabs: unknown): WorkspaceTabRef[] | null => {
+    if (!Array.isArray(rawTabs)) return null;
+    const tabs: WorkspaceTabRef[] = [];
+    for (const tab of rawTabs) {
+      const fileId =
+        typeof tab?.fileId === 'string'
+          ? tab.fileId
+          : typeof tab?.frameId === 'string'
+            ? tab.frameId
+            : null;
+      if (fileId === null) return null;
+      if (!tabs.some((item) => item.fileId === fileId)) tabs.push({ fileId });
+    }
+    return tabs;
+  };
+  const tabs = readTabs(candidate.tabs);
+  if (!tabs) return null;
+  const state: WorkspaceSessionState = {
     tabs,
     activeTabId:
       typeof candidate.activeTabId === 'string' ? candidate.activeTabId : null,
@@ -70,6 +88,39 @@ export const normalizeWorkspaceSessionState = (
         )
       : [],
   };
+  if (Array.isArray(candidate.groups)) {
+    const groups: WorkspaceTabGroupState[] = [];
+    for (const group of candidate.groups) {
+      if (
+        !group ||
+        typeof group.id !== 'string' ||
+        !group.id ||
+        typeof group.name !== 'string' ||
+        groups.some((item) => item.id === group.id)
+      )
+        continue;
+      const groupTabs = readTabs(group.tabs);
+      if (!groupTabs) continue;
+      groups.push({
+        id: group.id,
+        name: group.name.trim(),
+        tabs: groupTabs,
+        activeTabId: groupTabs.some((tab) => tab.fileId === group.activeTabId)
+          ? group.activeTabId
+          : (groupTabs[0]?.fileId ?? null),
+      });
+    }
+    if (groups.length) {
+      const active =
+        groups.find((group) => group.id === candidate.activeGroupId) ??
+        groups[0];
+      state.groups = groups;
+      state.activeGroupId = active.id;
+      state.tabs = active.tabs;
+      state.activeTabId = active.activeTabId;
+    }
+  }
+  return state;
 };
 
 export interface WorkspaceEntryMeta {
@@ -178,6 +229,8 @@ export interface CommitRequest {
   trash?: TrashOp[];
   /** Restore a trashed entry to its original or a given path. */
   restore?: RestoreOp[];
+  /** Permanently remove only these trash entries; missing entries are no-ops. */
+  purge?: string[];
   config?: WorkspaceConfigWrite;
   /** Navigation state; last-write-wins and never a document timestamp. */
   session?: WorkspaceSessionState;
@@ -241,6 +294,8 @@ export interface WorkspaceHost {
   openWorkspace(
     request?: OpenWorkspaceRequest,
   ): Promise<WorkspaceHandle | null>;
+  /** Remember a successfully loaded workspace; paths remain host-private. */
+  activateWorkspace?(handle: WorkspaceHandle): Promise<void>;
   readSnapshot(handle: WorkspaceHandle): Promise<WorkspaceHostSnapshot>;
   /** Read raw bytes for plain (non-canvas) files on demand. */
   readFile(handle: WorkspaceHandle, path: string): Promise<RawFileRead>;
@@ -292,6 +347,16 @@ export const normalizeWorkspacePath = (path: string): string => {
   )
     throw new Error(`Workspace path escapes the root: ${path}`);
   return normalized;
+};
+
+/** Trash identifiers are single internal directory names, never paths. */
+export const normalizeTrashEntryId = (entryId: string): string => {
+  if (
+    typeof entryId !== 'string' ||
+    !/^[a-zA-Z0-9][a-zA-Z0-9_-]*$/.test(entryId)
+  )
+    throw new Error('Invalid trash entry identifier');
+  return entryId;
 };
 
 export const parentWorkspacePath = (path: string): string | null => {

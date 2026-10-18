@@ -1,0 +1,15 @@
+flowchart TB
+  %% verd:{"positions":{"gw":{"x":60,"y":64},"order":{"x":60,"y":220},"route":{"x":360,"y":198},"db":{"x":60,"y":360}}}
+  subgraph access["接入层"]
+    gw["API 网关"]
+  end
+  subgraph service["服务层"]
+    order["订单服务"]
+    route{"支付路由"}
+  end
+  subgraph data["数据层"]
+    db[("订单库")]
+  end
+  gw --> order
+  order --> route
+  order --> db

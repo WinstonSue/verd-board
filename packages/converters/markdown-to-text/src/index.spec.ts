@@ -8,6 +8,45 @@ import { Alignment } from '@sue/board-common';
 const parse = (md: string) => parseMarkdownToTextDocument(md).document;
 
 describe('parseMarkdownToTextDocument', () => {
+  it('exports a canvas atom as a readable source link with an explicit warning', () => {
+    const document = parse('Before');
+    document.content.content?.push({
+      type: 'frameReference',
+      attrs: { targetFrameId: 'board/图:1' },
+    });
+    const before = JSON.stringify(document);
+    const result = serializeTextDocumentToMarkdown(document);
+    expect(result.markdown).toContain('[打开画布](verd://file/board%2F');
+    expect(
+      result.warnings.some((warning) =>
+        warning.message.includes('source-file link'),
+      ),
+    ).toBe(true);
+    expect(JSON.stringify(document)).toBe(before);
+    expect(
+      parse(result.markdown).content.content?.some(
+        (node) => node.type === 'frameReference',
+      ),
+    ).toBe(false);
+  });
+  it('keeps inline code schema-valid and reports discarded surrounding marks', () => {
+    const { document, warnings } = parseMarkdownToTextDocument(
+      '**`strong code`** and [linked `code`](https://example.com).',
+    );
+    const code = document.content.content![0].content!.filter((node) =>
+      node.marks?.some((mark) => mark.type === 'code'),
+    );
+    expect(code.map((node) => [node.text, node.marks])).toEqual([
+      ['strong code', [{ type: 'code' }]],
+      ['code', [{ type: 'code' }]],
+    ]);
+    expect(document.plainText).toBe('strong code and linked code.');
+    expect(warnings.map((warning) => warning.message)).toEqual([
+      'Formatting around inline code was removed: bold',
+      'Formatting around inline code was removed: link',
+    ]);
+  });
+
   it('parses paragraphs, headings, blockquote, lists and code', () => {
     const doc = parse(
       [

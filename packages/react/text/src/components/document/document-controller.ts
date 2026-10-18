@@ -15,6 +15,7 @@ import type {
 } from '../../types/document';
 import { documentFromEditor } from '../../utils/controller';
 import { findInDocument } from './document-search';
+import { createDocumentHeadingSlugger } from '../../utils/heading-slug';
 
 interface ControllerOptions {
   /** Tags the next emitted change (format/insert/replace) for history. */
@@ -44,13 +45,24 @@ export function createDocumentController(
 ): DocumentEditorController {
   const { withSource } = options;
   const editable = () => !editor.isDestroyed && editor.isEditable;
+  const scrollTo = (element: Node | null) => {
+    if (
+      element instanceof HTMLElement &&
+      typeof element.scrollIntoView === 'function'
+    )
+      element.scrollIntoView({ block: 'start', inline: 'nearest' });
+  };
   const format = (run: () => void) => {
     if (editable()) withSource('format', run);
   };
 
   const controller: DocumentEditorController = {
     focus(position = 'end') {
-      if (!editor.isDestroyed) editor.commands.focus(position);
+      if (!editor.isDestroyed) {
+        editor.commands.focus(position === 'preserve' ? undefined : position);
+        if (!editor.isEditable && position === 'start')
+          scrollTo(editor.view.dom);
+      }
     },
     commit() {
       const base = options.getBaseDocument();
@@ -133,6 +145,16 @@ export function createDocumentController(
             .chain()
             .focus()
             .insertContent({ type: 'image', attrs: { ...image } })
+            .run(),
+        );
+    },
+    insertFrameReference(targetFrameId) {
+      if (editable() && targetFrameId)
+        withSource('insert', () =>
+          editor
+            .chain()
+            .focus()
+            .insertContent({ type: 'frameReference', attrs: { targetFrameId } })
             .run(),
         );
     },
@@ -284,12 +306,14 @@ export function createDocumentController(
 
     getHeadings(): DocumentHeading[] {
       const headings: DocumentHeading[] = [];
+      const slug = createDocumentHeadingSlugger();
       if (!editor.isDestroyed) {
         editor.state.doc.descendants((node, pos) => {
           if (node.type.name !== 'heading') return true;
           headings.push({
             level: node.attrs['level'],
             text: node.textContent,
+            anchor: slug(node.textContent),
             pos,
           });
           return false;
@@ -305,6 +329,9 @@ export function createDocumentController(
         .setTextSelection(Math.min(pos + 1, editor.state.doc.content.size))
         .scrollIntoView()
         .run();
+      // Readonly views may have no DOM caret, so ProseMirror skips its own
+      // selection scrolling. The heading remains a usable navigation target.
+      scrollTo(editor.view.nodeDOM(pos));
     },
 
     find(query, options: DocumentSearchOptions = {}) {

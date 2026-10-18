@@ -247,6 +247,22 @@ const open = async (page: Page, snapshot: FrameSnapshot) => {
   await clearWorkspaceStorage(page);
   await page.reload();
   await expect(canvas(page)).toBeVisible();
+  // Startup imports the legacy fixture as an undoable command (also in HEAD).
+  // Reopen the saved workspace so editor-entry checks start with empty history.
+  await expect
+    .poll(
+      async () =>
+        (await persistedWorkspace(page))?.records[snapshot.store.rootId]?.frame
+          .id,
+    )
+    .toBe(snapshot.store.rootId);
+  await page.reload();
+  await expect(canvas(page)).toBeVisible();
+  await expect(
+    page
+      .getByRole('button', { name: '撤销', exact: true })
+      .locator('visible=true'),
+  ).toBeDisabled();
   const skip = page.getByRole('button', { name: '跳过', exact: true });
   if (await skip.isVisible()) await skip.click();
   await page.getByRole('button', { name: '适配画布', exact: true }).click();

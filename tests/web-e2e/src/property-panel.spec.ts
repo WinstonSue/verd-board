@@ -1,3 +1,4 @@
+import { selectWorkspaceAction } from './app-actions';
 import { test, expect, type Page, type Locator } from '@playwright/test';
 import {
   createFrameCell,
@@ -100,7 +101,7 @@ async function hit(target: Locator, modifiers: 'Shift'[] = []) {
         if (
           hit?.closest('[data-cell-id]') === element &&
           !hit.closest(
-            '[data-mind-add], [data-port-id], [data-selection-handles]',
+            '[data-mind-fold], [data-port-id], [data-selection-handles]',
           )
         )
           return { x, y };
@@ -294,9 +295,10 @@ for (const viewport of [
         addMindChild(snapshot.store, 'topic', child, 'branch'),
       );
       await selectDomain(page, snapshot, 'mind', viewport, language);
-      await page
-        .getByRole('button', { name: /^(工作区设置|Workspace settings)$/ })
-        .click();
+      await selectWorkspaceAction(
+        page,
+        language === 'zh' ? '工作区设置' : 'Workspace settings',
+      );
       await page.getByTestId('workspace-settings-mind-width').fill('336');
       await page.getByTestId('workspace-settings-back').click();
       await hit(node(page, 'topic'));

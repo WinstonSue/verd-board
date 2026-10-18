@@ -46,6 +46,7 @@ export interface DocumentHistoryAdapter {
 }
 
 export interface DocumentEditorProps {
+  renderFrameReference?: import('../components/document/document-frame-reference').DocumentFrameReferenceRenderer;
   value: BoardTextDocument;
   readonly?: boolean;
   history?: DocumentHistoryAdapter;
@@ -127,6 +128,8 @@ export interface DocumentHeading {
   level: number;
   /** Visible text; empty when the heading has no text. */
   text: string;
+  /** GitHub-compatible fragment, derived in document order; never persisted. */
+  anchor: string;
   /** Runtime position inside the editor; never persisted. */
   pos: number;
 }
@@ -146,7 +149,7 @@ export interface DocumentSearchOptions {
  * types so the workspace layer stays schema-agnostic.
  */
 export interface DocumentEditorController {
-  focus(position?: 'start' | 'end'): void;
+  focus(position?: 'start' | 'end' | 'preserve'): void;
   /** Emits any pending change and returns the current document. */
   commit(): BoardTextDocument;
   getDocument(): BoardTextDocument;
@@ -177,6 +180,7 @@ export interface DocumentEditorController {
   insertHorizontalRule(): void;
 
   insertImage(image: { src: string; alt?: string; title?: string }): void;
+  insertFrameReference(targetFrameId: string): void;
   insertTable(options?: {
     rows?: number;
     cols?: number;

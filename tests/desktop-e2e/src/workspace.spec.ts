@@ -1,4 +1,14 @@
-import { openSettings, setAppLanguage } from '../../web-e2e/src/app-actions';
+import {
+  createFolder,
+  directoryRow,
+  folderAction,
+  trashFolder,
+} from '../../web-e2e/src/workspace-file-actions';
+import {
+  openSettings,
+  openTrash,
+  setAppLanguage,
+} from '../../web-e2e/src/app-actions';
 import {
   _electron as electron,
   test,
@@ -23,7 +33,10 @@ let desktop: ElectronApplication | undefined;
 let launcher: string;
 let storageFile: string;
 let userData: string;
-const canvas = (page: Page) => page.locator('svg[aria-label="Frame canvas"]');
+const canvas = (page: Page) =>
+  page.locator(
+    '.workspace-pane.is-active svg[aria-label="Frame canvas"][data-surface="root"]',
+  );
 const cells = (page: Page, kind: string) =>
   canvas(page).locator(`[data-cell-kind="${kind}"]`);
 const workspaceDir = () => path.join(userData, 'workspaces', 'default');
@@ -35,12 +48,26 @@ const launch = async () => {
   const env = { ...process.env };
   delete env.ELECTRON_RUN_AS_NODE;
   delete env.VITE_DEV_SERVER_URL;
+  // Legacy fixtures exercise the default migration path; ordinary lifecycle
+  // tests request an isolated empty folder instead of the built-in content.
+  const hasLegacy = await readFile(storageFile, 'utf8').then(
+    (text) => text !== '{}',
+    () => false,
+  );
+  if (!hasLegacy) env.VERDBOARD_WORKSPACE_PATH = workspaceDir();
+  else delete env.VERDBOARD_WORKSPACE_PATH;
   desktop = await electron.launch({ args: [launcher], env });
   const page = await desktop.firstWindow();
   await expect(canvas(page)).toBeVisible();
   await setAppLanguage(page, 'zh');
   const skip = page.getByRole('button', { name: '跳过', exact: true });
   if (await skip.isVisible().catch(() => false)) await skip.click();
+  await expect(
+    page.getByTestId('save-status').locator('visible=true'),
+  ).toHaveAttribute('data-save-state', /^(saved|idle)$/);
+  await expect
+    .poll(async () => Object.keys(await canvasFiles()).length)
+    .toBeGreaterThan(0);
   return page;
 };
 const closeWindow = async (page: Page) => {
@@ -52,6 +79,57 @@ const closeWindow = async (page: Page) => {
   await desktop!.close();
   desktop = undefined;
 };
+
+test('Desktop trashes complete folders, restores on disk and permanently deletes across restart', async () => {
+  let page = await launch();
+  await createFolder(page, '待归档');
+  await createFolder(page, '空子目录', '待归档');
+  await folderAction(page, '待归档', '在此新建画布');
+  await expect
+    .poll(async () =>
+      Object.keys(await canvasFiles()).some((file) =>
+        file.startsWith('待归档/'),
+      ),
+    )
+    .toBe(true);
+  await trashFolder(page, '待归档');
+  await expect
+    .poll(async () =>
+      Object.keys(await canvasFiles()).some((file) =>
+        file.startsWith('待归档/'),
+      ),
+    )
+    .toBe(false);
+  await closeWindow(page);
+  page = await launch();
+  await openTrash(page);
+  await page.getByRole('button', { name: '还原 待归档', exact: true }).click();
+  await page.getByTestId('workspace-settings-back').click();
+  await expect(directoryRow(page, '空子目录')).toBeVisible();
+  await expect
+    .poll(async () =>
+      Object.keys(await canvasFiles()).some((file) =>
+        file.startsWith('待归档/'),
+      ),
+    )
+    .toBe(true);
+  await trashFolder(page, '待归档');
+  await openTrash(page);
+  await page.getByRole('button', { name: '清空回收站', exact: true }).click();
+  await page
+    .getByTestId('workspace-action-confirmation')
+    .getByRole('button', { name: '确定', exact: true })
+    .click();
+  await expect(page.getByTestId('workspace-trash')).toContainText('回收站为空');
+  await page.getByTestId('workspace-settings-back').click();
+  await closeWindow(page);
+  page = await launch();
+  await openTrash(page);
+  await expect(page.getByTestId('workspace-trash')).toContainText('回收站为空');
+  await page.getByTestId('workspace-settings-back').click();
+  await expect(directoryRow(page, '待归档')).toHaveCount(0);
+  await closeWindow(page);
+});
 
 test('Desktop preserves embedded Mind placement without replacing the enclosing Frame geometry', async () => {
   const snapshot = JSON.parse(
@@ -135,7 +213,8 @@ test('Desktop preserves device interaction preferences across a restart without 
     '0.25',
   );
   await expect(page.getByTestId('settings-dragPanSpeed')).toHaveValue('3');
-  await page.getByTestId('settings-back').click();
+
+  await page.getByTestId('my-back').click();
   await closeWindow(page);
   expect(await workspaceDigest()).toBe(before);
   page = await launch();
@@ -223,6 +302,14 @@ test('production Desktop reports corrupt storage without replacing it with an em
   const env = { ...process.env };
   delete env.ELECTRON_RUN_AS_NODE;
   delete env.VITE_DEV_SERVER_URL;
+  // Legacy fixtures exercise the default migration path; ordinary lifecycle
+  // tests request an isolated empty folder instead of the built-in content.
+  const hasLegacy = await readFile(storageFile, 'utf8').then(
+    (text) => text !== '{}',
+    () => false,
+  );
+  if (!hasLegacy) env.VERDBOARD_WORKSPACE_PATH = workspaceDir();
+  else delete env.VERDBOARD_WORKSPACE_PATH;
   desktop = await electron.launch({ args: [launcher], env });
   const page = await desktop.firstWindow();
   await expect(page.getByRole('alert')).toContainText('Corrupt storage file');
@@ -241,10 +328,9 @@ test('Desktop surfaces an external file conflict and keep-local resolves it', as
   const box = (await canvas(page).boundingBox())!;
   await page.mouse.click(box.x + box.width * 0.3, box.y + box.height * 0.3);
   await expect(cells(page, 'geometry')).toHaveCount(1);
-  await expect(page.getByTestId('save-status')).toHaveAttribute(
-    'data-save-state',
-    'saved',
-  );
+  await expect(
+    page.getByTestId('save-status').locator('visible=true'),
+  ).toHaveAttribute('data-save-state', 'saved');
   // An external writer replaces the canvas file while the app holds local
   // edits: the conflict surfaces instead of a silent overwrite.
   const [boardPath] = Object.keys(await canvasFiles());
@@ -261,9 +347,13 @@ test('Desktop surfaces an external file conflict and keep-local resolves it', as
     },
     cells: {},
   });
-  await writeFile(path.join(workspaceDir(), boardPath), damaged);
+  await selectDrawingTool(page, '形状');
+  await page.getByTestId('shape-rectangle').click();
+  // Make the session dirty first, then let the external writer race its
+  // pending conditional commit. A clean session would correctly adopt disk.
   await page.mouse.click(box.x + box.width * 0.65, box.y + box.height * 0.6);
   await expect(cells(page, 'geometry')).toHaveCount(2);
+  await writeFile(path.join(workspaceDir(), boardPath), damaged);
   await expect
     .poll(async () => {
       const banner = await page
@@ -280,10 +370,9 @@ test('Desktop surfaces an external file conflict and keep-local resolves it', as
   // keep-local writes the session's version back over the external one.
   const keepLocal = page.getByRole('button', { name: /保留本地|Keep local/ });
   if (await keepLocal.isVisible().catch(() => false)) await keepLocal.click();
-  await expect(page.getByTestId('save-status')).toHaveAttribute(
-    'data-save-state',
-    'saved',
-  );
+  await expect(
+    page.getByTestId('save-status').locator('visible=true'),
+  ).toHaveAttribute('data-save-state', 'saved');
   await closeWindow(page);
   const board = Object.values(await canvasFiles()).find((file) =>
     Object.values(file.cells ?? {}).some(
@@ -391,9 +480,12 @@ test('Desktop camera navigation leaves a 156-cell workspace untouched and reopen
   page.on('pageerror', (error) => errors.push(error.message));
   await expect(cells(page, 'geometry')).toHaveCount(150);
   const initial = await canvas(page)
-    .locator('[data-frame-world]')
+    .locator(':scope > [data-frame-world]')
     .getAttribute('transform');
   const before = await workspaceDigest();
+  const undoWasDisabled = await page
+    .getByRole('button', { name: '撤销', exact: true })
+    .isDisabled();
   const tasks: number[] = [];
   await page.evaluate(() => {
     (window as any).cameraLongTasks = [];
@@ -416,9 +508,9 @@ test('Desktop camera navigation leaves a 156-cell workspace untouched and reopen
   await page.mouse.up();
   const elapsed = Date.now() - start;
   tasks.push(...(await page.evaluate(() => (window as any).cameraLongTasks)));
-  await expect(
-    page.getByRole('button', { name: '撤销', exact: true }),
-  ).toBeDisabled();
+  expect(
+    await page.getByRole('button', { name: '撤销', exact: true }).isDisabled(),
+  ).toBe(undoWasDisabled);
   await expect.poll(async () => await workspaceDigest()).toBe(before);
   console.log(
     JSON.stringify({
@@ -435,10 +527,9 @@ test('Desktop camera navigation leaves a 156-cell workspace untouched and reopen
   await closeWindow(page);
   expect(await workspaceDigest()).toBe(before);
   const reopened = await launch();
-  await expect(canvas(reopened).locator('[data-frame-world]')).toHaveAttribute(
-    'transform',
-    initial!,
-  );
+  await expect(
+    canvas(reopened).locator(':scope > [data-frame-world]'),
+  ).toHaveAttribute('transform', initial!);
   expect(errors).toEqual([]);
 });
 

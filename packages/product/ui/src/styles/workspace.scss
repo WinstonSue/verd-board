@@ -48,22 +48,55 @@
   box-sizing: border-box;
   height: 39px;
   flex: none;
-  padding: 9px 14px;
+  padding: 4px 6px;
   border-bottom: 1px solid var(--vm-border);
   font-weight: 600;
+}
+.workspace-menu-trigger {
+  box-sizing: border-box;
+  width: 100%;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: var(--vm-radius-sm);
+  background: transparent;
+  color: var(--vm-foreground);
+  font: inherit;
+  cursor: pointer;
+  &:hover:not(:disabled),
+  &[aria-expanded='true'] {
+    background: var(--vm-fill-hover);
+  }
+  &:disabled {
+    opacity: 0.5;
+    cursor: default;
+  }
+  svg {
+    flex: none;
+    color: var(--vm-foreground-secondary);
+  }
+}
+.workspace-menu-name {
+  flex: 1;
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  text-align: left;
 }
 .workspace-sidebar-footer {
-  padding: 8px 6px;
+  flex: none;
+  padding: 6px;
   border-top: 1px solid var(--vm-border);
   button {
     width: 100%;
     display: flex;
     align-items: center;
     gap: 8px;
-    height: 32px;
+    height: 36px;
     padding: 0 10px;
     border: 0;
     border-radius: var(--vm-radius-sm);
@@ -72,6 +105,7 @@
     font: inherit;
     cursor: pointer;
     &:hover {
+      color: var(--vm-foreground);
       background: var(--vm-fill-hover);
     }
   }
@@ -82,6 +116,29 @@
   flex-direction: column;
   min-width: 0;
   min-height: 0;
+}
+button.workspace-reference-action,
+.verd-frame button.workspace-reference-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  flex: none;
+  padding: 0;
+  border: 0;
+  border-radius: 5px;
+  color: var(--vm-foreground-secondary, #64748b);
+  background: transparent;
+  cursor: pointer;
+  &:hover:not(:disabled) {
+    color: var(--vm-primary, #4f46e5);
+    background: var(--vm-fill-active, #eef2ff);
+  }
+  &:disabled {
+    opacity: 0.4;
+    cursor: default;
+  }
 }
 .workspace-shell :focus-visible,
 .workspace-menu :focus-visible,
@@ -101,8 +158,7 @@
   font: inherit;
   cursor: pointer;
 }
-.file-tree-nav,
-.file-tree-trash-toggle {
+.file-tree-nav {
   display: flex;
   align-items: center;
   gap: 6px;
@@ -213,8 +269,7 @@
   background: transparent;
   color: var(--vm-foreground-secondary);
 }
-.file-tree-more,
-.file-tree-restore {
+.file-tree-more {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -255,43 +310,6 @@
   padding: 16px 12px;
   color: var(--vm-foreground-tertiary);
 }
-.file-tree-trash {
-  flex: none;
-  max-height: 40%;
-  overflow: auto;
-  border-top: 1px solid var(--vm-border);
-  padding-bottom: 6px;
-}
-.file-tree-trash-toggle {
-  width: calc(100% - 12px);
-}
-.file-tree-count {
-  margin-left: auto;
-  padding: 0 6px;
-  border-radius: 6px;
-  color: var(--vm-foreground-secondary);
-  background: var(--vm-border);
-  font-size: 11px;
-}
-.file-tree-trash .file-tree-row {
-  height: 40px;
-}
-.file-tree-trash-name {
-  flex: 1;
-  min-width: 0;
-  display: grid;
-  span,
-  small {
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-  small {
-    font-size: 11px;
-    color: var(--vm-foreground-tertiary);
-  }
-}
-
 .workspace-menu {
   z-index: 1100;
   min-width: 190px;
@@ -318,9 +336,14 @@
     font: inherit;
     cursor: pointer;
     text-align: left;
-    &:hover,
+    &:hover:not(:disabled),
     &:focus {
       background: var(--vm-fill-hover);
+    }
+    &:disabled {
+      color: var(--vm-foreground-tertiary);
+      cursor: not-allowed;
+      background: transparent;
     }
     &[data-danger] {
       color: var(--vm-danger);
@@ -643,4 +666,28 @@
   justify-content: flex-end;
   gap: 8px;
   margin-top: 16px;
+}
+
+.file-tree-operation-error {
+  padding: 0 12px;
+  color: var(--vm-danger);
+  overflow-wrap: anywhere;
+}
+.file-tree-prompt__actions button {
+  padding: 6px 12px;
+  border: 1px solid var(--vm-border);
+  border-radius: 6px;
+  background: var(--vm-background);
+  color: var(--vm-foreground);
+  font: inherit;
+  cursor: pointer;
+  &[data-danger] {
+    border-color: var(--vm-danger);
+    color: var(--vm-danger);
+    background: var(--vm-danger-bg);
+  }
+}
+.file-tree button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }

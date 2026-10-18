@@ -154,7 +154,7 @@ import { createCellRegistry, createCellRuntime, type FrameSnapshot } from '@sue/
 import { createInlineText, type TextEditorProps } from '@sue/board-common';
 import { createGeometryCell, registerDrawCells } from '@sue/board-draw';
 import { LineText } from '@sue/board-react-text';
-import { VerdFrame, type VerdFrameProps } from '@sue/verd-board-ui';
+import { VerdFrame, MyPage, WorkspaceSettings, FileTree, ChartLibrary, type VerdFrameProps, type MyPageProps, type WorkspaceSettingsProps, type FileTreeProps, type ChartLibraryProps } from '@sue/verd-board-ui';
 import '@sue/verd-board-ui/style.css';
 import { WorkspaceApp, type StorageAdapter } from '@sue/verd-board-app';
 import { parseMarkdownToFrameSnapshot } from '@sue/board-markdown-to-board';
@@ -166,7 +166,7 @@ import { createWorkflowFrameExtensions } from '@sue/board-react-workflow';
 import { createArchitectureFrameExtensions } from '@sue/board-react-architecture';
 if (['Board', 'BoardElement', 'BoardOperation', 'Transforms'].some(name => name in core)) throw new Error('Legacy core API is still exported');
 if (['mindDocumentToStore', 'withMind'].some(name => name in mind) || 'workflowDocumentToStore' in workflow || 'architectureDocumentToStore' in architecture) throw new Error('Legacy domain API is still exported');
-if (![createGeometryCell, registerDrawCells, LineText, VerdFrame, WorkspaceApp, parseMarkdownToFrameSnapshot, parseMermaidToFrameSnapshot].every(Boolean)) throw new Error('A native public package entry is missing');
+if (![createGeometryCell, registerDrawCells, LineText, VerdFrame, MyPage, WorkspaceSettings, FileTree, ChartLibrary, WorkspaceApp, parseMarkdownToFrameSnapshot, parseMermaidToFrameSnapshot].every(Boolean)) throw new Error('A native public package entry is missing');
 const textProps: TextEditorProps = { text: createInlineText('Consumer topic'), onChange: ({ newText }) => { if (!newText.plainText) throw new Error('Text change is missing'); } };
 const registry = createCellRegistry();
 const extensions = [...createMindFrameExtensions(registry), ...createWorkflowFrameExtensions(registry), ...createArchitectureFrameExtensions(registry)];
@@ -183,7 +183,21 @@ const standardProps: FrameCanvasProps = { value, onChange: ({snapshot, transacti
 const hostProps: FrameCanvasProps<{ snapshot: FrameSnapshot }> = { value: {snapshot: value}, adapter: { toFrameSnapshot: host => host.snapshot }, onIntent: async () => ({status: 'accepted'}), history: { undo() {}, redo() {} } };
 const productProps: VerdFrameProps = { value, frameId: value.store.rootId, onChange() {}, onOpenFrame() {} };
 const storage: StorageAdapter = { async listKeys() { return []; }, async getItem() { return null; }, async setItem() {}, async removeItem() {} };
-void [textProps, standardProps, hostProps, productProps, storage];
+const myProps: MyPageProps = { onBack() {} };
+const workspaceSettingsProps: WorkspaceSettingsProps = {
+  config: {}, defaultName: 'Consumer', onConfig() {}, onBack() {},
+  trash: { entries: [], workspaceName: 'Consumer', onRestore() {}, async onPurge() {} },
+};
+const fileTreeProps: FileTreeProps = {
+  entries: [], canvases: [], expandedDirs: [], onToggleDir() {}, onOpenFile() {}, onCreateCanvas() {}, onTrash() {},
+  revealFile: { fileId: 'chart', nonce: 1 }, onRevealFile() {},
+};
+const libraryProps: ChartLibraryProps = {
+  rows: [{ frameId: 'chart', name: 'Chart', path: 'charts/chart.verd.json', diagram: 'mind', placement: 'owned', ownerFrameId: 'board', referenceLabel: '' }],
+  owners: [{ frameId: 'board', name: 'Board' }], onOpen() {}, onBack() {},
+  onChangeOrganization(_id, organization) { if (organization.kind === 'subgraph') void organization.ownerFrameId; },
+};
+void [textProps, standardProps, hostProps, productProps, storage, myProps, workspaceSettingsProps, fileTreeProps, libraryProps];
 const canvas = React.createRef<FrameCanvasController>();
 const transfer: (() => Promise<import('@sue/board-react').FrameIntentResult> | undefined) = () => canvas.current?.moveSelection('consumer-target');
 void transfer;
@@ -327,7 +341,9 @@ try {
   await page.getByTestId('export').click();
   await page.getByTestId('status').filter({ hasText: 'exported' }).waitFor();
   const styled = await page.evaluate(
-    () => getComputedStyle(document.body).fontFamily.length > 0,
+    () =>
+      globalThis.getComputedStyle(globalThis.document.body).fontFamily.length >
+      0,
   );
   if (!styled) throw new Error('consumer styles did not apply');
   const reported = await page.getByTestId('errors').innerText();

@@ -33,9 +33,6 @@ const setup = async (patch: Partial<FileTreeProps> = {}) => {
       { frameId: 'a', name: 'Alpha', path: 'docs/a.verd.json' },
       { frameId: 'b', name: 'Beta', path: 'b.verd.json' },
     ],
-    trash: [
-      { entryId: 'trash-a', originalPath: 'gone.verd.json', trashedAt: 1 },
-    ],
     activeFileId: 'a',
     expandedDirs: ['docs'],
     onOpenFile: vi.fn(),
@@ -44,7 +41,6 @@ const setup = async (patch: Partial<FileTreeProps> = {}) => {
     onCreateDocument: vi.fn(),
     onCreateFolder: vi.fn(),
     onTrash: vi.fn(),
-    onRestore: vi.fn(),
     onMove: vi.fn(),
     onDuplicate: vi.fn(),
     onExport: vi.fn(),
@@ -66,8 +62,7 @@ const setup = async (patch: Partial<FileTreeProps> = {}) => {
 const button = (name: string) =>
   [...document.querySelectorAll<HTMLButtonElement>('button')].find(
     (element) =>
-      element.getAttribute('aria-label') === name ||
-      element.textContent === name,
+      (element.getAttribute('aria-label') ?? element.textContent) === name,
   )!;
 const click = async (element: HTMLElement) => act(async () => element.click());
 afterEach(async () => {
@@ -76,8 +71,34 @@ afterEach(async () => {
 });
 
 describe('FileTree', () => {
-  it('opens files, marks the current file and indents owned subgraphs', async () => {
+  it('confirms folder trash and allows cancellation', async () => {
+    const onTrashDirectory = vi.fn(async () => {});
+    await setup({ onTrashDirectory });
+    await click(button('「docs」的操作'));
+    await click(button('移入回收站'));
+    expect(document.querySelector('dialog')?.textContent).toContain(
+      '文件夹及全部内容',
+    );
+    await click(button('取消'));
+    expect(onTrashDirectory).not.toHaveBeenCalled();
+    await click(button('「docs」的操作'));
+    await click(button('移入回收站'));
+    await click(button('确定'));
+    expect(onTrashDirectory).toHaveBeenCalledWith('docs');
+    expect(document.querySelector('dialog')).toBeNull();
+  });
+
+  it('keeps owned files at their real paths and also indents shortcuts', async () => {
     const props = await setup({
+      canvases: [
+        { frameId: 'a', name: 'Alpha', path: 'docs/a.verd.json' },
+        {
+          frameId: 'c',
+          name: 'Child',
+          path: 'c.verd.json',
+          diagram: 'workflow',
+        },
+      ],
       subgraphs: [
         {
           frameId: 'c',
@@ -99,10 +120,12 @@ describe('FileTree', () => {
         ?.style.getPropertyValue('--depth'),
     ).toBe('1');
     expect(
-      button('Child')
+      button('Child (快捷入口)')
         .closest<HTMLElement>('.file-tree-row')
         ?.style.getPropertyValue('--depth'),
     ).toBe('2');
+    expect(button('Child').getAttribute('title')).toBe('c.verd.json');
+    expect(container.querySelectorAll('[data-file-id="c"]')).toHaveLength(2);
     expect(container.querySelector('details, summary')).toBeNull();
     expect(container.textContent).not.toContain('更多');
   });
@@ -114,8 +137,8 @@ describe('FileTree', () => {
       [...menu.querySelectorAll('[role="menuitem"]')].map(
         (item) => item.textContent,
       ),
-    ).toEqual(['重命名/移动', '创建独立副本', '导出(含依赖)', '移入回收区']);
-    await click(button('移入回收区'));
+    ).toEqual(['重命名/移动', '创建独立副本', '导出(含依赖)', '移入回收站']);
+    await click(button('移入回收站'));
     expect(props.onTrash).toHaveBeenCalledWith('a');
     expect(document.querySelector('[role="menu"]')).toBeNull();
   });
@@ -146,44 +169,119 @@ describe('FileTree', () => {
       ),
     ).toEqual(['导出(含依赖)']);
   });
-  it('changes ownership through a dialog and disables the current owner', async () => {
+  it('limits shortcut menus to navigation and keeps canonical file menus independent', async () => {
     const props = await setup({
+      canvases: [
+        { frameId: 'a', name: 'Alpha', path: 'a.verd.json' },
+        {
+          frameId: 'c',
+          name: 'Child',
+          path: 'docs/c.verd.json',
+          diagram: 'mind',
+          dirty: true,
+        },
+      ],
       subgraphs: [
         {
           frameId: 'c',
           name: 'Child',
-          path: 'c.verd.json',
+          path: 'docs/c.verd.json',
           diagram: 'mind',
           placement: 'owned',
           ownerFrameId: 'a',
         },
       ],
       expandedOwners: ['a'],
-      owners: [
-        { frameId: 'a', name: 'Alpha' },
-        { frameId: 'b', name: 'Beta' },
+      onRevealFile: vi.fn(),
+      activeFileId: 'c',
+    });
+    const source = container.querySelector<HTMLElement>(
+      '[data-entry-kind="file"][data-file-id="c"]',
+    )!;
+    const shortcut = container.querySelector<HTMLElement>(
+      '[data-entry-kind="shortcut"]',
+    )!;
+    expect(source.classList.contains('is-active')).toBe(true);
+    expect(shortcut.classList.contains('is-active')).toBe(true);
+    expect(source.querySelector('.file-tree-dirty')).toBeTruthy();
+    expect(shortcut.querySelector('.file-tree-dirty')).toBeTruthy();
+    await click(shortcut.querySelector<HTMLButtonElement>('.file-tree-more')!);
+    expect(
+      [...document.querySelectorAll('[role="menuitem"]')].map(
+        (item) => item.textContent,
+      ),
+    ).toEqual(['打开', '在文件夹中显示']);
+    expect(source.classList.contains('is-menu-open')).toBe(false);
+    await click(button('在文件夹中显示'));
+    expect(props.onRevealFile).toHaveBeenCalledWith('c');
+    expect(props.onOpenFile).not.toHaveBeenCalled();
+    await click(button('Child (快捷入口)'));
+    expect(props.onOpenFile).toHaveBeenCalledWith('c');
+    await click(source.querySelector<HTMLButtonElement>('.file-tree-more')!);
+    expect(
+      [...document.querySelectorAll('[role="menuitem"]')].map(
+        (item) => item.textContent,
+      ),
+    ).toEqual(['重命名/移动', '创建独立副本', '导出(含依赖)', '移入回收站']);
+    expect(shortcut.classList.contains('is-menu-open')).toBe(false);
+  });
+  it('shows unorganized files at real paths even when their former owner is missing', async () => {
+    await setup({
+      canvases: [
+        {
+          frameId: 'c',
+          name: 'Child',
+          path: 'docs/c.verd.json',
+          diagram: 'mind',
+        },
       ],
-      onChangeOwner: vi.fn(),
+      subgraphs: [
+        {
+          frameId: 'c',
+          name: 'Child',
+          path: 'docs/c.verd.json',
+          diagram: 'mind',
+          placement: 'unorganized',
+        },
+      ],
     });
-    await click(button('「Child」的操作'));
-    await click(button('更改所属画布…'));
-    expect(button('确定').disabled).toBe(true);
-    const select = container.querySelector(
-      'dialog select',
-    ) as HTMLSelectElement;
-    await act(async () => {
-      select.value = 'b';
-      select.dispatchEvent(new Event('change', { bubbles: true }));
+    expect(button('Child').getAttribute('title')).toBe('docs/c.verd.json');
+    expect(container.querySelector('[data-entry-kind="shortcut"]')).toBeNull();
+  });
+  it('focuses the canonical row after its full directory path is expanded and can reveal it again', async () => {
+    const request = { fileId: 'c', nonce: 1 };
+    const props = await setup({
+      canvases: [
+        { frameId: 'c', name: 'Child', path: 'docs/deep/c.verd.json' },
+      ],
+      expandedDirs: [],
+      revealFile: request,
     });
-    await act(async () => {
-      container
-        .querySelector('form')!
-        .dispatchEvent(
-          new Event('submit', { bubbles: true, cancelable: true }),
-        );
-    });
-    expect(props.onChangeOwner).toHaveBeenCalledWith('c', 'b');
-    expect(container.querySelector('dialog')).toBeNull();
+    expect(container.querySelector('[data-file-id="c"]')).toBeNull();
+    await act(async () =>
+      root.render(<FileTree {...props} expandedDirs={['docs', 'docs/deep']} />),
+    );
+    await act(
+      async () =>
+        new Promise<void>((resolve) => requestAnimationFrame(() => resolve())),
+    );
+    expect(document.activeElement).toBe(button('Child'));
+    button('新建画布').focus();
+    await act(async () =>
+      root.render(
+        <FileTree
+          {...props}
+          expandedDirs={['docs', 'docs/deep']}
+          revealFile={{ fileId: 'c', nonce: 2 }}
+        />,
+      ),
+    );
+    await act(
+      async () =>
+        new Promise<void>((resolve) => requestAnimationFrame(() => resolve())),
+    );
+    expect(document.activeElement).toBe(button('Child'));
+    expect(props.onOpenFile).not.toHaveBeenCalled();
   });
   it('creates in a collapsed directory and expands it', async () => {
     const props = await setup({ expandedDirs: [] });
@@ -191,14 +289,6 @@ describe('FileTree', () => {
     await click(button('在此新建画布'));
     expect(props.onCreateCanvas).toHaveBeenCalledWith('docs');
     expect(props.onToggleDir).toHaveBeenCalledWith('docs');
-  });
-  it('collapses trash by default and restores an expanded entry', async () => {
-    const props = await setup();
-    expect(container.querySelector('.file-tree-trash-name')).toBeNull();
-    expect(container.querySelector('.file-tree-count')?.textContent).toBe('1');
-    await click(container.querySelector('.file-tree-trash-toggle')!);
-    await click(button('还原 gone.verd.json'));
-    expect(props.onRestore).toHaveBeenCalledWith('trash-a');
   });
   it('highlights the library navigation and localizes menus', async () => {
     await setup({ libraryActive: true, locale: 'en' });

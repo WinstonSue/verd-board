@@ -1,3 +1,4 @@
+import { useId } from 'react';
 import { SettingsPageShell } from './settings-page-shell';
 import { useI18n } from './i18n';
 import { useMindMaxWidth, setMindMaxWidth } from './mind-preferences';
@@ -9,26 +10,18 @@ import {
   useInteractionPreferences,
 } from './interaction-preferences';
 
-export function FrameSettingsPage({
-  onBack,
-  backLabel,
-}: {
-  onBack(): void;
-  backLabel?: string;
-}) {
+export function FrameSettingsContent({
+  headingLevel = 2,
+}: { headingLevel?: 2 | 3 } = {}) {
+  const Heading = headingLevel === 3 ? 'h3' : 'h2';
+  const id = useId();
   const { t, language, setLanguage } = useI18n();
   const preferences = useInteractionPreferences();
   const mindMaxWidth = useMindMaxWidth();
   return (
-    <SettingsPageShell
-      title={t('settings.title')}
-      backLabel={backLabel ?? t('settings.back')}
-      onBack={onBack}
-      testId="settings-page"
-      backTestId="settings-back"
-    >
-      <section aria-labelledby="frame-settings-general">
-        <h2 id="frame-settings-general">{t('settings.general')}</h2>
+    <>
+      <section aria-labelledby={`${id}-general`}>
+        <Heading id={`${id}-general`}>{t('settings.general')}</Heading>
         <label className="frame-settings-row">
           <span>{t('language.switcher')}</span>
           <select
@@ -42,8 +35,8 @@ export function FrameSettingsPage({
           </select>
         </label>
       </section>
-      <section aria-labelledby="frame-settings-mind">
-        <h2 id="frame-settings-mind">{t('settings.mind')}</h2>
+      <section aria-labelledby={`${id}-mind`}>
+        <Heading id={`${id}-mind`}>{t('settings.mind')}</Heading>
         <label className="frame-settings-row">
           <span>{t('settings.mindMaxWidth')}</span>
           <FrameMindWidthInput
@@ -61,20 +54,20 @@ export function FrameSettingsPage({
           {t('settings.resetMindWidth')}
         </button>
       </section>
-      <section aria-labelledby="frame-settings-interaction">
-        <h2 id="frame-settings-interaction">{t('settings.interaction')}</h2>
+      <section aria-labelledby={`${id}-interaction`}>
+        <Heading id={`${id}-interaction`}>{t('settings.interaction')}</Heading>
         <p>{t('settings.interactionDescription')}</p>
         {(['zoomSensitivity', 'dragPanSpeed'] as const).map((key) => (
           <div className="frame-settings-control" key={key}>
-            <label htmlFor={`settings-${key}`}>
+            <label htmlFor={`${id}-${key}`}>
               {t(`settings.${key}`)}
-              <output htmlFor={`settings-${key}`}>
+              <output htmlFor={`${id}-${key}`}>
                 {Number(preferences[key].toFixed(2))}×
               </output>
             </label>
             <p>{t(`settings.${key}Description`)}</p>
             <input
-              id={`settings-${key}`}
+              id={`${id}-${key}`}
               data-testid={`settings-${key}`}
               type="range"
               min={0.25}
@@ -123,6 +116,27 @@ export function FrameSettingsPage({
           {t('settings.resetInteraction')}
         </button>
       </section>
+    </>
+  );
+}
+
+export function FrameSettingsPage({
+  onBack,
+  backLabel,
+}: {
+  onBack(): void;
+  backLabel?: string;
+}) {
+  const { t } = useI18n();
+  return (
+    <SettingsPageShell
+      title={t('settings.title')}
+      backLabel={backLabel ?? t('settings.back')}
+      onBack={onBack}
+      testId="settings-page"
+      backTestId="settings-back"
+    >
+      <FrameSettingsContent />
     </SettingsPageShell>
   );
 }

@@ -50,6 +50,7 @@ test('Desktop numeric inspector commits one history step, cancels locked drafts 
   const env = { ...process.env };
   delete env.ELECTRON_RUN_AS_NODE;
   delete env.VITE_DEV_SERVER_URL;
+  env.VERDBOARD_WORKSPACE_PATH = path.join(userData, 'workspaces', 'default');
   let desktop = await electron.launch({ args: [launcher], env });
   try {
     let page = await desktop.firstWindow();

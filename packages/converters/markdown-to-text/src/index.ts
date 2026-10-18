@@ -92,7 +92,13 @@ function phrasingToNodes(
         pushText(node.value.replace(SOFT_BREAK, ' '));
         break;
       case 'inlineCode':
-        out.push(text(node.value, [...marks, { type: 'code' }]));
+        if (marks.length)
+          ctx.warn(
+            `Formatting around inline code was removed: ${marks.map((mark) => mark.type).join(', ')}`,
+          );
+        // TipTap's code mark excludes other marks. Inheriting bold/link here
+        // creates a document that the actual editor schema cannot validate.
+        out.push(text(node.value, [{ type: 'code' }]));
         break;
       case 'strong':
         phrasingToNodes(node.children, [...marks, { type: 'bold' }], ctx, out);
@@ -572,6 +578,20 @@ function nodeToBlocks(
       ];
     case 'horizontalRule':
       return [{ type: 'thematicBreak' }];
+    case 'frameReference':
+      ctx.warn('Embedded canvas exported as a source-file link');
+      return [
+        {
+          type: 'paragraph',
+          children: [
+            {
+              type: 'link',
+              url: `verd://file/${encodeURIComponent(String(node.attrs?.['targetFrameId'] ?? ''))}`,
+              children: [{ type: 'text', value: '打开画布' }],
+            },
+          ],
+        },
+      ];
     case 'image':
       return [
         {

@@ -21,6 +21,8 @@ export interface FileTreeMenuItem {
   icon: LucideIcon;
   danger?: boolean;
   groupStart?: boolean;
+  disabled?: boolean;
+  testId?: string;
   onSelect(): void;
 }
 
@@ -29,11 +31,13 @@ export function FileTreeMenu({
   anchor,
   items,
   onClose,
+  placement,
 }: {
   label: string;
   anchor: HTMLElement | { x: number; y: number };
   items: FileTreeMenuItem[];
   onClose(): void;
+  placement?: 'bottom-start' | 'bottom-end';
 }) {
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
   const [returnFocus, setReturnFocus] = useState(true);
@@ -44,7 +48,7 @@ export function FileTreeMenu({
     onOpenChange: (open) => {
       if (!open) onClose();
     },
-    placement: elementAnchor ? 'bottom-end' : 'bottom-start',
+    placement: placement ?? (elementAnchor ? 'bottom-end' : 'bottom-start'),
     strategy: 'fixed',
     middleware: [
       offset(4),
@@ -82,6 +86,9 @@ export function FileTreeMenu({
     activeIndex,
     onNavigate: setActiveIndex,
     loop: true,
+    disabledIndices: items.flatMap((item, index) =>
+      item.disabled ? [index] : [],
+    ),
     focusItemOnOpen: true,
   });
   const { getFloatingProps, getItemProps } = useInteractions([
@@ -108,6 +115,8 @@ export function FileTreeMenu({
               type="button"
               role="menuitem"
               key={item.id}
+              disabled={item.disabled}
+              data-testid={item.testId}
               ref={(node) => {
                 listRef.current[index] = node;
               }}
@@ -116,6 +125,7 @@ export function FileTreeMenu({
               data-group-start={item.groupStart ? '' : undefined}
               {...getItemProps({
                 onClick: () => {
+                  if (item.disabled) return;
                   setReturnFocus(false);
                   onClose();
                   item.onSelect();

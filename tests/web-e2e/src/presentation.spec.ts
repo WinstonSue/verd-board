@@ -77,7 +77,7 @@ async function pointIn(cell: Locator) {
           hit &&
           hit.closest('[data-cell-id]') === element &&
           !hit.closest(
-            '[data-port-id], [data-selection-handles], [data-mind-add]',
+            '[data-port-id], [data-selection-handles], [data-mind-fold]',
           )
         )
           return { x, y };

@@ -182,7 +182,7 @@ const zhTranslations: Translations = {
   'settings.title': '设置',
   'settings.back': '返回画布',
   'settings.general': '通用',
-  'settings.interaction': '画布操作',
+  'settings.interaction': '画布交互',
   'settings.interactionDescription':
     '应用于此设备上的所有画布，调整后立即生效。',
   'settings.zoomSensitivity': '触控板缩放灵敏度',

@@ -268,12 +268,13 @@ describe('reference instances, place mode, and return source', () => {
     expect(session.getState().canUndo).toBe(beforeUndo);
   });
 
-  it('refuses a missing target or a cycle before a reference shell is inserted', async () => {
+  it('refuses missing targets and incompatible scenes while allowing reference cycles', async () => {
     const files = [boardA, boardB, mind];
     expect(assessReferencePlace(files, 'B', 'missing')).toBe(
       '引用目标已不存在',
     );
-    expect(assessReferencePlace(files, 'C', 'A')).toMatch(/cycle/i);
+    expect(assessReferencePlace(files, 'C', 'A')).toMatch(/scene/i);
+    expect(assessReferencePlace(files, 'A', 'A')).toBeNull();
     const { session } = await sessionFor(files);
     const undo = session.getState().canUndo;
     const cells = session.getState().files.get('C')!.file.cells;

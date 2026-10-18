@@ -28,6 +28,7 @@ test('desktop lectures in the same fullscreen window and one Esc restores the ed
   );
   delete env.ELECTRON_RUN_AS_NODE;
   delete env.VITE_DEV_SERVER_URL;
+  env.VERDBOARD_WORKSPACE_PATH = path.join(userData, 'workspaces', 'default');
   const desktop = await electron.launch({ args: [launcher], env });
   try {
     const page = await desktop.firstWindow();

@@ -1,6 +1,6 @@
 import { createShutdownCoordinator } from './shutdown';
 import { createFullscreenTransition } from './fullscreen-transition';
-import { app, BrowserWindow, ipcMain, session, dialog } from 'electron';
+import { app, BrowserWindow, ipcMain, session, dialog, shell } from 'electron';
 import * as path from 'path';
 import {
   contentSecurityPolicy,
@@ -17,6 +17,7 @@ import {
   setStorageValue,
 } from './storage-file';
 import { createFsWorkspaceHost } from './workspace-host-fs';
+import { createDesktopWorkspaceManager } from './workspace-startup';
 
 let mainWindow: BrowserWindow | null = null;
 let fullscreenReady = (): Promise<void> => Promise.resolve();
@@ -31,24 +32,40 @@ const enqueueStorageWrite = createSerialQueue();
  * File-per-workspace host shared by every window; the renderer only ever
  * holds opaque handle keys and workspace-relative paths.
  */
+const development = !!process.env['VITE_DEV_SERVER_URL'];
+const defaultWorkspaceRoot = () =>
+  development
+    ? path.resolve(__dirname, '../../../workspace')
+    : path.join(app.getPath('userData'), 'workspaces', 'default');
+const pickWorkspaceDirectory = async () => {
+  const options: Electron.OpenDialogOptions = {
+    properties: ['openDirectory', 'createDirectory'],
+    title: '选择工作区文件夹',
+  };
+  const result = mainWindow
+    ? await dialog.showOpenDialog(mainWindow, options)
+    : await dialog.showOpenDialog(options);
+  return result.canceled || !result.filePaths[0] ? null : result.filePaths[0];
+};
 const workspaceHost = createFsWorkspaceHost({
-  // Dev keeps the workspace next to the app like the old verdboard-data.json
-  // did; packaged builds keep it under userData.
-  defaultRoot: () =>
-    process.env['VITE_DEV_SERVER_URL']
-      ? path.join(__dirname, '..', 'workspace')
-      : path.join(app.getPath('userData'), 'workspaces', 'default'),
-  pickDirectory: async () => {
-    const window = mainWindow;
-    const options: Electron.OpenDialogOptions = {
-      properties: ['openDirectory', 'createDirectory'],
-      title: '选择工作区文件夹',
-    };
-    const result = window
-      ? await dialog.showOpenDialog(window, options)
-      : await dialog.showOpenDialog(options);
-    return result.canceled || !result.filePaths[0] ? null : result.filePaths[0];
-  },
+  defaultRoot: defaultWorkspaceRoot,
+  globalConfigPath: () =>
+    path.join(app.getPath('userData'), 'verdboard-global-config.json'),
+  pickDirectory: pickWorkspaceDirectory,
+});
+const workspaceManager = createDesktopWorkspaceManager({
+  host: workspaceHost,
+  defaultRoot: defaultWorkspaceRoot,
+  builtinSource: () =>
+    !app.isPackaged && process.env['VERDBOARD_BUILTIN_WORKSPACE_PATH']
+      ? path.resolve(process.env['VERDBOARD_BUILTIN_WORKSPACE_PATH'])
+      : app.isPackaged
+        ? path.join(process.resourcesPath, 'workspace')
+        : path.resolve(__dirname, '../../../workspace'),
+  legacyStorage: () => storagePath,
+  development,
+  explicitRoot: process.env['VERDBOARD_WORKSPACE_PATH'],
+  pickDirectory: pickWorkspaceDirectory,
 });
 
 const workspaceSubscriptions = new Map<number, Map<string, () => void>>();
@@ -63,7 +80,10 @@ function registerWorkspaceHostIpc() {
       workspaceHost.writeGlobalConfig(value, expectedVersion),
   );
   ipcMain.handle('workspace-host:open', (_, request) =>
-    workspaceHost.openWorkspace(request),
+    workspaceManager.open(request),
+  );
+  ipcMain.handle('workspace-host:activate', (_, handle) =>
+    workspaceManager.activate(handle),
   );
   ipcMain.handle('workspace-host:snapshot', (_, handle) =>
     workspaceHost.readSnapshot(handle),
@@ -171,6 +191,15 @@ function createWindow() {
     mainWindow.loadFile(path.join(__dirname, '../dist/index.html'));
   }
 
+  mainWindow.webContents.setWindowOpenHandler(({ url }) => {
+    if (/^https?:\/\//i.test(url)) void shell.openExternal(url);
+    return { action: 'deny' };
+  });
+  mainWindow.webContents.on('will-navigate', (event, url) => {
+    if (url === mainWindow?.webContents.getURL()) return;
+    event.preventDefault();
+    if (/^https?:\/\//i.test(url)) void shell.openExternal(url);
+  });
   const window = mainWindow;
   const shutdown = createShutdownCoordinator(
     (requestId) =>

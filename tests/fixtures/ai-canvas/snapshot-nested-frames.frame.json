@@ -1,0 +1,118 @@
+{
+  "store": {
+    "rootId": "snap-root",
+    "cells": {
+      "snap-root": {
+        "id": "snap-root",
+        "kind": "frame",
+        "cellType": "frame",
+        "name": "Snapshot 示例",
+        "geometry": { "x": 0, "y": 0, "width": 960, "height": 560 },
+        "children": ["snap-title", "outer-frame", "shape-top", "snap-arrow"],
+        "groups": []
+      },
+      "snap-title": {
+        "id": "snap-title",
+        "kind": "geometry",
+        "cellType": "node",
+        "geometry": {
+          "x": 64,
+          "y": 48,
+          "width": 320,
+          "height": 44,
+          "outline": "text"
+        },
+        "appearance": {
+          "fill": "none",
+          "strokeColor": "none",
+          "strokeWidth": 2
+        },
+        "content": { "label": "FrameSnapshot 可携带嵌套 Frame" }
+      },
+      "outer-frame": {
+        "id": "outer-frame",
+        "kind": "frame",
+        "cellType": "frame",
+        "name": "子画布",
+        "geometry": { "x": 120, "y": 140, "width": 420, "height": 280 },
+        "children": ["inner-shape", "inner-text"],
+        "groups": []
+      },
+      "inner-shape": {
+        "id": "inner-shape",
+        "kind": "geometry",
+        "cellType": "node",
+        "geometry": {
+          "x": 48,
+          "y": 72,
+          "width": 160,
+          "height": 64,
+          "outline": "roundRectangle"
+        },
+        "ports": [
+          { "id": "top", "side": "top", "direction": "both" },
+          { "id": "right", "side": "right", "direction": "both" },
+          { "id": "bottom", "side": "bottom", "direction": "both" },
+          { "id": "left", "side": "left", "direction": "both" }
+        ],
+        "appearance": {
+          "fill": "#ecfdf5",
+          "strokeColor": "#059669",
+          "strokeWidth": 2
+        },
+        "content": { "label": "嵌套内容" }
+      },
+      "inner-text": {
+        "id": "inner-text",
+        "kind": "geometry",
+        "cellType": "node",
+        "geometry": {
+          "x": 48,
+          "y": 168,
+          "width": 220,
+          "height": 40,
+          "outline": "text"
+        },
+        "appearance": {
+          "fill": "none",
+          "strokeColor": "none",
+          "strokeWidth": 2
+        },
+        "content": { "label": "子画布坐标系独立" }
+      },
+      "shape-top": {
+        "id": "shape-top",
+        "kind": "geometry",
+        "cellType": "node",
+        "geometry": {
+          "x": 680,
+          "y": 200,
+          "width": 160,
+          "height": 80,
+          "outline": "ellipse"
+        },
+        "ports": [
+          { "id": "top", "side": "top", "direction": "both" },
+          { "id": "right", "side": "right", "direction": "both" },
+          { "id": "bottom", "side": "bottom", "direction": "both" },
+          { "id": "left", "side": "left", "direction": "both" }
+        ],
+        "appearance": {
+          "fill": "#fff7ed",
+          "strokeColor": "#ea580c",
+          "strokeWidth": 2
+        },
+        "content": { "label": "顶层元素" }
+      },
+      "snap-arrow": {
+        "id": "snap-arrow",
+        "kind": "arrow",
+        "cellType": "edge",
+        "source": { "cellId": "shape-top", "portId": "left" },
+        "target": { "cellId": "outer-frame", "anchor": [1, 0.5] },
+        "route": { "mode": "auto" },
+        "data": { "sourceMarker": "none", "targetMarker": "arrow" }
+      }
+    }
+  }
+}

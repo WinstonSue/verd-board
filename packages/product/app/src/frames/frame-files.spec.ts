@@ -332,7 +332,7 @@ describe('frame reference graph and validation', () => {
     expect(validateCellStore(next)).toEqual([]);
   });
 
-  it('reports file-level reference cycles including self references', () => {
+  it('indexes file-level reference cycles without rejecting valid references', () => {
     const files = [
       fileOf('ca', { r1: ref('r1', 'cb') }),
       fileOf('cb', { r2: ref('r2', 'ca') }),
@@ -342,7 +342,7 @@ describe('frame reference graph and validation', () => {
     expect(cycles).toContainEqual(['ca', 'cb', 'ca']);
     expect(cycles).toContainEqual(['sc', 'sc']);
     const messages = validateFrameFiles(files).map((d) => d.message);
-    expect(messages.some((m) => m.includes('cycle'))).toBe(true);
+    expect(messages).toEqual([]);
   });
 
   it('allows unresolved targets but rejects targets that are not file roots', () => {

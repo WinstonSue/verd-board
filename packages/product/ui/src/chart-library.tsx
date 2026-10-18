@@ -22,10 +22,14 @@ export interface ChartLibraryRow {
   diagram: 'canvas' | 'mind' | 'workflow' | 'architecture';
   placement: 'owned' | 'unorganized' | 'standalone' | 'legacy';
   ownerName?: string;
+  ownerFrameId?: string;
   referenceLabel: string;
   dirty?: boolean;
   conflicted?: boolean;
 }
+
+export type ChartOrganization =
+  { kind: 'standalone' } | { kind: 'subgraph'; ownerFrameId?: string };
 
 export interface ChartLibraryProps {
   rows: ChartLibraryRow[];
@@ -34,6 +38,10 @@ export interface ChartLibraryProps {
   locale?: 'zh' | 'en';
   onOpen(frameId: string): void;
   onOrganize?(): void;
+  onChangeOrganization?(
+    fileId: string,
+    organization: ChartOrganization,
+  ): void | Promise<void>;
   onBack(): void;
   query?: string;
   diagram?: 'all' | ChartLibraryRow['diagram'];
@@ -85,6 +93,7 @@ export function ChartLibrary({
   locale = 'zh',
   onOpen,
   onOrganize,
+  onChangeOrganization,
   onBack,
   query: queryProp,
   diagram: diagramProp,
@@ -98,6 +107,10 @@ export function ChartLibrary({
   onPickerMode,
   onPick,
 }: ChartLibraryProps) {
+  const [editingFile, setEditingFile] = useState<string | null>(null);
+  const editTrigger = useRef<HTMLButtonElement | null>(null);
+  const editingRow = rows.find((row) => row.frameId === editingFile);
+  const canEdit = !readonly && !picker && !!onChangeOrganization;
   const [localQuery, setLocalQuery] = useState('');
   const [localDiagram, setLocalDiagram] = useState<
     'all' | ChartLibraryRow['diagram']
@@ -346,6 +359,19 @@ export function ChartLibrary({
                             ? '打开'
                             : 'Open'}
                       </button>
+                      {canEdit && row.diagram !== 'canvas' && (
+                        <button
+                          type="button"
+                          className="workspace-button-ghost"
+                          aria-label={`${locale === 'zh' ? '调整归属' : 'Change ownership'} ${row.name}`}
+                          onClick={(event) => {
+                            editTrigger.current = event.currentTarget;
+                            setEditingFile(row.frameId);
+                          }}
+                        >
+                          {locale === 'zh' ? '调整归属…' : 'Change ownership…'}
+                        </button>
+                      )}
                     </td>
                   </tr>
                 );
@@ -354,7 +380,131 @@ export function ChartLibrary({
           </table>
         </div>
       )}
+      {canEdit && editingRow && onChangeOrganization && (
+        <ChartOrganizationDialog
+          key={editingRow.frameId}
+          row={editingRow}
+          owners={owners}
+          locale={locale}
+          onConfirm={(organization) =>
+            onChangeOrganization(editingRow.frameId, organization)
+          }
+          onClose={() => {
+            setEditingFile(null);
+            requestAnimationFrame(() => editTrigger.current?.focus());
+          }}
+        />
+      )}
     </section>
+  );
+}
+
+function ChartOrganizationDialog({
+  row,
+  owners,
+  locale,
+  onConfirm,
+  onClose,
+}: {
+  row: ChartLibraryRow;
+  owners: ChartLibraryProps['owners'];
+  locale: 'zh' | 'en';
+  onConfirm(organization: ChartOrganization): void | Promise<void>;
+  onClose(): void;
+}) {
+  const zh = locale === 'zh';
+  const title = zh ? '调整归属' : 'Change ownership';
+  const initial =
+    row.placement === 'owned' && row.ownerFrameId
+      ? `owner:${row.ownerFrameId}`
+      : row.placement === 'legacy'
+        ? ''
+        : row.placement;
+  const [value, setValue] = useState(initial);
+  const [busy, setBusy] = useState(false);
+  const pending = useRef(false);
+  const [error, setError] = useState('');
+  const dialog = useRef<HTMLDialogElement>(null);
+  const select = useRef<HTMLSelectElement>(null);
+  useEffect(() => {
+    const element = dialog.current!;
+    element.showModal();
+    select.current?.focus();
+    return () => element.close();
+  }, []);
+  const valid =
+    value === 'standalone' ||
+    value === 'unorganized' ||
+    (value.startsWith('owner:') &&
+      owners.some((owner) => `owner:${owner.frameId}` === value));
+  const save = async () => {
+    if (pending.current || !valid || value === initial) return;
+    pending.current = true;
+    setBusy(true);
+    setError('');
+    try {
+      await onConfirm(
+        value === 'standalone'
+          ? { kind: 'standalone' }
+          : value === 'unorganized'
+            ? { kind: 'subgraph' }
+            : { kind: 'subgraph', ownerFrameId: value.slice('owner:'.length) },
+      );
+      onClose();
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : String(cause));
+    } finally {
+      pending.current = false;
+      setBusy(false);
+    }
+  };
+  return (
+    <dialog
+      ref={dialog}
+      className="file-tree-prompt"
+      aria-label={title}
+      onCancel={(event) => {
+        event.preventDefault();
+        if (!pending.current) onClose();
+      }}
+    >
+      <form
+        onSubmit={(event) => {
+          event.preventDefault();
+          void save();
+        }}
+      >
+        <h2 className="file-tree-prompt__title">{title}</h2>
+        <p>{row.name}</p>
+        <select
+          ref={select}
+          aria-label={zh ? '归属' : 'Ownership'}
+          value={value}
+          disabled={busy}
+          onChange={(event) => setValue(event.target.value)}
+        >
+          <option value="" disabled>
+            {zh ? '未标记' : 'Unmarked'}
+          </option>
+          <option value="standalone">{zh ? '独立' : 'Standalone'}</option>
+          <option value="unorganized">{zh ? '待整理' : 'Unorganized'}</option>
+          {owners.map((owner) => (
+            <option key={owner.frameId} value={`owner:${owner.frameId}`}>
+              {owner.name}
+            </option>
+          ))}
+        </select>
+        {error && <p role="alert">{error}</p>}
+        <div className="file-tree-prompt__actions">
+          <button type="button" disabled={busy} onClick={onClose}>
+            {zh ? '取消' : 'Cancel'}
+          </button>
+          <button type="submit" disabled={busy || !valid || value === initial}>
+            {busy ? (zh ? '处理中…' : 'Processing…') : zh ? '确定' : 'OK'}
+          </button>
+        </div>
+      </form>
+    </dialog>
   );
 }
 

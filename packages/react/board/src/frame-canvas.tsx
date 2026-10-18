@@ -83,6 +83,8 @@ import {
   moveGroup,
   isFrameCell,
   isFrameReferenceCell,
+  isDocumentCell,
+  isDocumentFrameCell,
   isNodeCell,
   isMindNodeKind,
   isEdgeCell,
@@ -357,7 +359,29 @@ export type FrameCanvasTool =
         context?: FrameCanvasDrawingContext,
       ): CellOperation[];
     };
+export interface FrameDocumentReferenceProps {
+  kind: 'document-frame' | 'document-reference';
+  annotation?: import('@sue/board-common').BoardTextDocument;
+  ownerFrameId: string;
+  cellId: string;
+  readonly: boolean;
+  editing: boolean;
+  onExitEdit(): void;
+  targetDocumentId: string;
+  instanceId: string;
+  suspended: boolean;
+  exporting: boolean;
+}
+export interface FrameDocumentReferences {
+  editRequest?: { instanceId: string; nonce: number };
+  title(targetDocumentId: string): string | undefined;
+  /** Product controls rendered in the shell title bar, outside its document body. */
+  renderHeaderActions?(props: FrameDocumentReferenceProps): ReactNode;
+  render(props: FrameDocumentReferenceProps): ReactNode;
+}
 interface FrameCanvasCommon {
+  documentReferences?: FrameDocumentReferences;
+  exporting?: boolean;
   /** Device interaction preferences; camera-only, never written to the document. */
   interactionSettings?: FrameCanvasInteractionSettings;
   frameId?: string;
@@ -776,6 +800,7 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
   const connectingRef = useRef<ConnectionDraft | null>(null);
   const [connectionPreview, setConnectionPreview] =
     useState<ConnectionDraft | null>(null);
+  const [documentEditing, setDocumentEditing] = useState<string | null>(null);
   const [editing, setEditingState] = useState<string | null>(null);
   const editingCellRef = useRef<string | null>(null);
   const textCommitRef = useRef<Promise<FrameIntentResult> | null>(null);
@@ -1640,6 +1665,7 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
           frameId,
           registry: runtime.registry,
           extensions: propsRef.current.extensions,
+          documentReferences: propsRef.current.documentReferences,
           className: propsRef.current.className,
           renderStyle: svgRef.current
             ? {
@@ -2226,11 +2252,12 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
     [],
   );
   useLayoutEffect(() => {
-    if (props.surface === 'nested') return undefined;
+    if (props.surface === 'nested' || props.suspended || props.exporting)
+      return undefined;
     const svg = svgRef.current;
     if (svg) return wheelOwner.register(svg);
     return undefined;
-  }, [wheelOwner, props.surface]);
+  }, [wheelOwner, props.surface, props.suspended, props.exporting]);
   useEffect(() => {
     const refreshViewport = () => {
       captureViewportRect();
@@ -2515,6 +2542,27 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
   const cancelInteractionRef = useRef(cancelInteraction);
   cancelInteractionRef.current = cancelInteraction;
   const activeToolKey = props.tool?.key ?? props.tool?.mode ?? 'select';
+  useEffect(() => {
+    setDocumentEditing(null);
+  }, [activeToolKey, props.readonly, props.suspended]);
+  const documentEditRequest = props.documentReferences?.editRequest;
+  useEffect(() => {
+    if (documentEditRequest) setDocumentEditing(documentEditRequest.instanceId);
+  }, [documentEditRequest?.nonce, documentEditRequest?.instanceId]);
+  useEffect(() => {
+    if (!documentEditing) return;
+    const leave = (event: PointerEvent) => {
+      const target = event.target as Element;
+      if (
+        target
+          .closest?.('[data-document-frame-instance]')
+          ?.getAttribute('data-document-frame-instance') !== documentEditing
+      )
+        setDocumentEditing(null);
+    };
+    document.addEventListener('pointerdown', leave, true);
+    return () => document.removeEventListener('pointerdown', leave, true);
+  }, [documentEditing]);
   useLayoutEffect(() => {
     cancelInteractionRef.current();
     const request = keyboardSelectionRef.current;
@@ -3433,6 +3481,207 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
             };
           }
         };
+        if (isDocumentCell(cell)) {
+          const shell = bounds ?? cell.geometry;
+          const instanceId = `${occurrence?.scope ?? propsRef.current.instanceId ?? frameId}/${cellId}`;
+          const documentReadonly =
+            !isDocumentFrameCell(cell) ||
+            !renderEditable ||
+            !!cell.locked ||
+            lockedByAncestor(store, cell.id) ||
+            !!propsRef.current.exporting ||
+            !!propsRef.current.suspended;
+          const documentIsEditing =
+            !documentReadonly && documentEditing === instanceId;
+          const exitDocumentEdit = () => {
+            setDocumentEditing(null);
+            sceneActions.select(cellId, focus, false);
+            svgRef.current?.focus({ preventScroll: true });
+          };
+          const title =
+            cell.name ??
+            propsRef.current.documentReferences?.title(
+              cell.data.targetDocumentId,
+            ) ??
+            '文档引用';
+          const referenceProps: FrameDocumentReferenceProps = {
+            kind: cell.kind,
+            ownerFrameId: id,
+            cellId,
+            annotation: isBoardTextDocument(cell.content?.text)
+              ? cell.content.text
+              : undefined,
+            readonly: documentReadonly,
+            editing: documentIsEditing,
+            onExitEdit: exitDocumentEdit,
+            targetDocumentId: cell.data.targetDocumentId,
+            instanceId,
+            suspended: !!propsRef.current.suspended,
+            exporting: !!propsRef.current.exporting,
+          };
+          const headerActions = propsRef.current.exporting
+            ? null
+            : propsRef.current.documentReferences?.renderHeaderActions?.(
+                referenceProps,
+              );
+          return (
+            <g
+              key={cellId}
+              data-cell-id={cellId}
+              data-cell-kind={cell.kind}
+              data-document-frame-instance={instanceId}
+              opacity={cell.appearance?.opacity}
+            >
+              <FrameCellShadow shadow={cell.appearance?.shadow} bounds={shell}>
+                {(filter) => (
+                  <rect
+                    {...shell}
+                    filter={filter}
+                    rx={8}
+                    fill={cell.appearance?.fill ?? '#fff'}
+                    stroke={
+                      selected
+                        ? '#6366f1'
+                        : (cell.appearance?.strokeColor ?? '#cbd5e1')
+                    }
+                    strokeWidth={cell.appearance?.strokeWidth ?? 1}
+                    strokeDasharray={
+                      cell.appearance?.strokeStyle === 'dashed'
+                        ? '8 4'
+                        : cell.appearance?.strokeStyle === 'dotted'
+                          ? '2 4'
+                          : undefined
+                    }
+                    onPointerDown={beginFrameMove}
+                  />
+                )}
+              </FrameCellShadow>
+              <rect
+                x={shell.x}
+                y={shell.y}
+                width={shell.width}
+                height={32}
+                rx={8}
+                fill="#f1f5f9"
+                onPointerDown={beginFrameMove}
+              />
+              <foreignObject
+                x={shell.x + 12}
+                y={shell.y}
+                width={Math.max(0, shell.width - (headerActions ? 84 : 24))}
+                height={32}
+                onPointerDown={beginFrameMove}
+              >
+                <div
+                  title={title}
+                  style={{
+                    cursor: 'move',
+                    font: '14px/32px system-ui, sans-serif',
+                    color: '#334155',
+                    whiteSpace: 'nowrap',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                  }}
+                >
+                  {title}
+                </div>
+              </foreignObject>
+              {headerActions && (
+                <foreignObject
+                  x={shell.x + Math.max(0, shell.width - 68)}
+                  y={shell.y + 2}
+                  width={Math.min(64, shell.width)}
+                  height={28}
+                  data-frame-export-exclude
+                  data-document-header-actions
+                >
+                  <div
+                    style={{
+                      height: '100%',
+                      display: 'flex',
+                      justifyContent: 'flex-end',
+                      alignItems: 'center',
+                      gap: 4,
+                      pointerEvents: 'auto',
+                    }}
+                    onPointerDown={(event) => event.stopPropagation()}
+                    onPointerUp={(event) => event.stopPropagation()}
+                    onClick={(event) => event.stopPropagation()}
+                    onDoubleClick={(event) => event.stopPropagation()}
+                    onKeyDown={(event) => event.stopPropagation()}
+                    onKeyUp={(event) => event.stopPropagation()}
+                  >
+                    {headerActions}
+                  </div>
+                </foreignObject>
+              )}
+              <foreignObject
+                x={shell.x + 4}
+                y={shell.y + 34}
+                width={Math.max(0, shell.width - 8)}
+                height={Math.max(0, shell.height - 38)}
+                style={{ overflow: 'hidden' }}
+              >
+                <div
+                  style={{ height: '100%' }}
+                  data-document-preview-body={
+                    documentIsEditing ||
+                    !isDocumentFrameCell(cell) ||
+                    documentReadonly
+                      ? ''
+                      : undefined
+                  }
+                  onPointerDown={(event) => {
+                    if (
+                      !isDocumentFrameCell(cell) ||
+                      documentIsEditing ||
+                      documentReadonly ||
+                      (event.target as Element).closest(
+                        'button, input, select, [data-frame-text-toolbar]',
+                      )
+                    )
+                      return;
+                    event.preventDefault();
+                    beginFrameMove(
+                      event as unknown as React.PointerEvent<SVGElement>,
+                    );
+                  }}
+                  onDoubleClick={(event) => {
+                    if (
+                      documentReadonly ||
+                      (event.target as Element).closest('button')
+                    )
+                      return;
+                    event.preventDefault();
+                    event.stopPropagation();
+                    sceneActions.select(cellId, focus, false);
+                    setDocumentEditing(instanceId);
+                  }}
+                  onClickCapture={(event) => {
+                    if (
+                      documentIsEditing ||
+                      documentReadonly ||
+                      (event.target as Element).closest('button') ||
+                      event.metaKey ||
+                      event.ctrlKey
+                    )
+                      return;
+                    event.preventDefault();
+                    event.stopPropagation();
+                  }}
+                >
+                  {propsRef.current.documentReferences?.render(
+                    referenceProps,
+                  ) ?? (
+                    <div style={{ padding: 12 }}>
+                      文档未解析 · {cell.data.targetDocumentId}
+                    </div>
+                  )}
+                </div>
+              </foreignObject>
+            </g>
+          );
+        }
         if (isFrameCell(cell)) {
           const shellBounds = bounds ?? cell.geometry;
           const contentBounds = frameContentViewport(shellBounds);
@@ -3744,6 +3993,8 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
                 contentBounds.width > 0 &&
                 contentBounds.height > 0 ? (
                   <FrameReferenceSurface
+                    documentReferences={propsRef.current.documentReferences}
+                    exporting={propsRef.current.exporting}
                     host={propsRef.current.instanceHost}
                     ownerFileId={id}
                     refId={cellId}
@@ -3773,6 +4024,15 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
                     onActivate={(occurrenceId) =>
                       propsRef.current.onActiveInstance?.(occurrenceId)
                     }
+                    onBackgroundTap={() => {
+                      propsRef.current.onActiveInstance?.(
+                        propsRef.current.surface === 'nested'
+                          ? (propsRef.current.instanceId ?? null)
+                          : null,
+                      );
+                      sceneActions.selectContextCell(cellId, focus);
+                      svgRef.current?.focus({ preventScroll: true });
+                    }}
                     onSelection={(selection) =>
                       propsRef.current.onInstanceSelection?.(selection)
                     }
@@ -3828,7 +4088,9 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
                         fontSize={13}
                         pointerEvents="none"
                       >
-                        引用缺失
+                        {isFrameCell(target) && seen.has(targetId)
+                          ? '已在当前预览路径中展示，可打开原图'
+                          : '引用缺失'}
                       </text>
                     </g>
                   )}
@@ -5145,6 +5407,7 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
       edgePreview,
       editing,
       labelEditing,
+      documentEditing,
       activeToolKey,
       shapeGeometry,
       connectionScene,
@@ -5176,7 +5439,7 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
           }
         : undefined,
     );
-  }, [renderFrame, frameId]);
+  }, [renderFrame, frameId, props.documentReferences, props.exporting]);
   useLayoutEffect(() => {
     captureViewportRect();
     refreshSelectionWorldBoundsRef.current = refreshSelectionWorldBounds;
@@ -5206,12 +5469,24 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
           data-surface={props.surface ?? 'root'}
           tabIndex={props.suspended || props.surface === 'nested' ? -1 : 0}
           onClickCapture={(event) => {
+            if (
+              (event.target as Element).closest?.(
+                '[data-document-preview-body]',
+              )
+            )
+              return;
             if (propsRef.current.inputMode === 'present') {
               event.preventDefault();
               event.stopPropagation();
             }
           }}
           onPointerDownCapture={(event) => {
+            if (
+              (event.target as Element).closest?.(
+                '[data-document-preview-body]',
+              )
+            )
+              return;
             if (propsRef.current.suspended) return;
             if (
               propsRef.current.placing &&
@@ -6930,6 +7205,8 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
 ) => React.ReactElement;
 
 function FrameReferenceSurface({
+  documentReferences,
+  exporting,
   host,
   ownerFileId,
   refId,
@@ -6948,9 +7225,12 @@ function FrameReferenceSurface({
   onOpen,
   onOpenFrame,
   onActivate,
+  onBackgroundTap,
   onSelection,
   onExit,
 }: {
+  documentReferences?: FrameDocumentReferences;
+  exporting?: boolean;
   host: FrameInstanceHost;
   ownerFileId: string;
   refId: string;
@@ -6969,20 +7249,22 @@ function FrameReferenceSurface({
   onOpen(): void;
   onOpenFrame?: FrameCanvasCommon['onOpenFrame'];
   onActivate(occurrenceId: string): void;
+  onBackgroundTap(): void;
   onSelection(selection: CellSelection): void;
   onExit(): void;
 }) {
   const appearanceKey = appearance.join('/');
-  const seenKey = seen.join('/');
+  const appearanceIdentity = JSON.stringify(appearance);
+  const seenKey = JSON.stringify(seen);
   const query = useMemo<FrameInstanceQuery>(
     () => ({
       ownerFileId,
       refId,
       targetFrameId,
-      appearance: appearanceKey.split('/'),
+      appearance: JSON.parse(appearanceIdentity) as string[],
       parentOccurrenceId,
     }),
-    [ownerFileId, refId, targetFrameId, appearanceKey, parentOccurrenceId],
+    [ownerFileId, refId, targetFrameId, appearanceIdentity, parentOccurrenceId],
   );
   const [mounted, setMounted] = useState(false);
   useEffect(() => {
@@ -6991,6 +7273,27 @@ function FrameReferenceSurface({
     return typeof release === 'function' ? release : () => host.release(query);
   }, [host, query]);
   const binding = mounted ? host.get(query) : null;
+  const backgroundTap = useRef<{
+    pointerId: number;
+    x: number;
+    y: number;
+    target: Element;
+    dispose(): void;
+  } | null>(null);
+  const cancelBackgroundTap = useCallback(() => {
+    backgroundTap.current?.dispose();
+    backgroundTap.current = null;
+  }, []);
+  useEffect(
+    () => cancelBackgroundTap,
+    [
+      cancelBackgroundTap,
+      binding?.occurrenceId,
+      suspended,
+      exporting,
+      inputMode,
+    ],
+  );
   const offsetMap = useMemo(
     () => new Map(Object.entries(offsets ?? {})),
     [offsets],
@@ -7010,14 +7313,88 @@ function FrameReferenceSurface({
     >
       <div
         data-reference-instance={binding?.occurrenceId ?? appearanceKey}
-        onPointerDownCapture={() => {
+        onPointerDownCapture={(event) => {
+          cancelBackgroundTap();
+          if (
+            suspended ||
+            exporting ||
+            (event.target as Element).closest?.('[data-document-preview-body]')
+          )
+            return;
           if (binding && inputMode !== 'present')
             onActivate(binding.occurrenceId);
+          const target = event.target as Element;
+          if (
+            !binding ||
+            inputMode === 'present' ||
+            event.button !== 0 ||
+            event.isPrimary === false ||
+            !target.matches('svg[data-surface="nested"]') ||
+            target.getAttribute('data-instance-id') !== binding.occurrenceId ||
+            target.closest('[data-reference-instance]') !== event.currentTarget
+          )
+            return;
+          const moved = (next: PointerEvent) =>
+            Math.hypot(next.clientX - tap.x, next.clientY - tap.y) > 4;
+          const move = (next: PointerEvent) => {
+            if (next.pointerId === tap.pointerId && moved(next))
+              cancelBackgroundTap();
+          };
+          const release = (next: PointerEvent) => {
+            if (next.pointerId !== tap.pointerId) return;
+            if (moved(next) || next.target !== target) cancelBackgroundTap();
+            // Let the nested canvas settle its gesture before selecting the
+            // owner shell. Clean up even when another surface consumes up.
+            window.setTimeout(() => {
+              if (backgroundTap.current === tap) cancelBackgroundTap();
+            }, 0);
+          };
+          const tap = {
+            pointerId: event.pointerId,
+            x: event.clientX,
+            y: event.clientY,
+            target,
+            dispose() {
+              window.removeEventListener(
+                'pointerdown',
+                cancelBackgroundTap,
+                true,
+              );
+              window.removeEventListener('pointermove', move, true);
+              window.removeEventListener('pointerup', release, true);
+              window.removeEventListener(
+                'pointercancel',
+                cancelBackgroundTap,
+                true,
+              );
+              window.removeEventListener('blur', cancelBackgroundTap);
+            },
+          };
+          backgroundTap.current = tap;
+          // Window capture also observes movement outside the reference and
+          // extra fingers intercepted by the parent canvas's pinch handler.
+          window.addEventListener('pointerdown', cancelBackgroundTap, true);
+          window.addEventListener('pointermove', move, true);
+          window.addEventListener('pointerup', release, true);
+          window.addEventListener('pointercancel', cancelBackgroundTap, true);
+          window.addEventListener('blur', cancelBackgroundTap);
+        }}
+        onPointerUp={(event) => {
+          const tap = backgroundTap.current;
+          cancelBackgroundTap();
+          if (
+            tap?.pointerId === event.pointerId &&
+            tap.target === event.target &&
+            event.button === 0
+          )
+            onBackgroundTap();
         }}
         style={{ width: '100%', height: '100%', position: 'relative' }}
       >
         {binding ? (
           <FrameCanvas
+            documentReferences={documentReferences}
+            exporting={exporting}
             runtime={binding.runtime}
             value={{ store: binding.runtime.store }}
             adapter={{ toFrameSnapshot: (value) => value }}
@@ -7034,7 +7411,7 @@ function FrameReferenceSurface({
             extensions={extensions}
             autoFit={false}
             viewportOrigin={[bounds.x, bounds.y]}
-            referenceSeen={seenKey ? seenKey.split('/') : seen}
+            referenceSeen={JSON.parse(seenKey) as string[]}
             referenceAppearance={query.appearance}
             instanceHost={host}
             onActiveInstance={(occurrenceId) => {

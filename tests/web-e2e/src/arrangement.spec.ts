@@ -98,6 +98,13 @@ test('localized alignment, distribution and partial/all layouts save exact scope
 }) => {
   await openFixture(page);
   const original = await saved(page);
+  // Import partitions the nested Frame into a source file and a movable
+  // reference. Layout changes the reference, never the source Frame's origin.
+  const nestedReference = Object.values(original).find(
+    (cell) =>
+      cell.kind === 'frame-reference' && cell.content?.label === 'Nested',
+  );
+  expect(nestedReference).toBeDefined();
   await node(page, 'A').click();
   await node(page, 'B').click({ modifiers: ['Shift'] });
   await node(page, 'C').click({ modifiers: ['Shift'] });
@@ -153,8 +160,11 @@ test('localized alignment, distribution and partial/all layouts save exact scope
     .getByRole('button', { name: '自动排列', exact: true })
     .click();
   await expect
-    .poll(async () => byLabel(await saved(page), 'Nested').geometry)
-    .not.toEqual(byLabel(before, 'Nested').geometry);
+    .poll(async () => (await saved(page))[nestedReference.id].geometry)
+    .not.toEqual(before[nestedReference.id].geometry);
+  expect((await saved(page))[nestedReference.data.targetFrameId]).toEqual(
+    original[nestedReference.data.targetFrameId],
+  );
   expect(byLabel(await saved(page), 'Inside')).toEqual(
     byLabel(original, 'Inside'),
   );
@@ -286,7 +296,8 @@ test('real drag guides snap the final position and the local setting disables th
     .toBe(0);
   const settings = await openSettings(page);
   await settings.getByTestId('settings-smart-guides').uncheck();
-  await settings.getByTestId('settings-back').click();
+
+  await page.getByTestId('my-back').click();
   await dragNearB();
   await expect(canvas(page).locator('[data-alignment-guides]')).toHaveCount(0);
   await page.mouse.up();

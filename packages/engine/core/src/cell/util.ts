@@ -132,7 +132,7 @@ export class FrameUtil extends NodeUtil {
 
 /** Reference shells behave like embedded frames: movable/resizable/deletable, never rotated or connected. */
 export class FrameReferenceUtil extends NodeUtil {
-  readonly kind = 'frame-reference';
+  readonly kind: string = 'frame-reference';
   override capabilities(
     store: CellStore,
     cell: Cell,
@@ -144,6 +144,19 @@ export class FrameReferenceUtil extends NodeUtil {
       connect: false,
     };
   }
+}
+export class DocumentReferenceUtil extends FrameReferenceUtil {
+  override readonly kind = 'document-reference';
+  override capabilities(
+    store: CellStore,
+    cell: Cell,
+    mount: FrameMount,
+  ): CellCapabilities {
+    return { ...super.capabilities(store, cell, mount), edit: false };
+  }
+}
+export class DocumentFrameUtil extends FrameReferenceUtil {
+  override readonly kind = 'document-frame';
 }
 export const nodeBounds = (cell: Cell): RectangleClient | undefined =>
   isNodeCell(cell) ? { ...cell.geometry } : undefined;

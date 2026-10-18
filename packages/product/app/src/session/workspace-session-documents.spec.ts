@@ -53,6 +53,103 @@ const docFile = (id: string, title = id): DocumentFileV1 =>
   createDocumentFile(id, title);
 
 describe('WorkspaceSession documents', () => {
+  it.each(['rename', 'move'] as const)(
+    'saves a dirty document when a %s changes its path before the save queue flushes',
+    async (kind) => {
+      const { session, host, handle } = await openSession();
+      await session.apply({
+        type: 'create-file',
+        file: docFile('draft', 'Original'),
+      });
+      expect(await session.flush()).toBe(true);
+      const edited = docFile('draft', 'Original');
+      edited.text.content = {
+        type: 'doc',
+        content: [
+          {
+            type: 'paragraph',
+            content: [{ type: 'text', text: 'Unsaved body' }],
+          },
+        ],
+      };
+      edited.text.plainText = 'Unsaved body';
+      await session.apply({ type: 'file', file: edited });
+      await session.apply(
+        kind === 'rename'
+          ? { type: 'rename-document', fileId: 'draft', title: 'Renamed' }
+          : {
+              type: 'move-file',
+              fileId: 'draft',
+              toPath: 'Renamed.verd-doc.json',
+            },
+      );
+      expect(await session.flush()).toBe(true);
+      const snapshot = await host.readSnapshot(handle);
+      expect(snapshot.documents?.map((entry) => entry.path)).toEqual([
+        'Renamed.verd-doc.json',
+      ]);
+      expect(snapshot.documents?.[0].file?.text.plainText).toBe('Unsaved body');
+      expect(snapshot.trash).toEqual([]);
+      session.dispose();
+    },
+  );
+
+  it('keeps queued renames separate from a move already in flight', async () => {
+    const inner = createMemoryWorkspaceHost();
+    const handle = (await inner.openWorkspace({ path: 'rename-in-flight' }))!;
+    let hold = false;
+    let entered!: () => void;
+    let release!: () => void;
+    const started = new Promise<void>((resolve) => {
+      entered = resolve;
+    });
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const host: WorkspaceHost = {
+      ...inner,
+      commit: async (workspace, request) => {
+        if (hold && request.moves?.length) {
+          hold = false;
+          entered();
+          await gate;
+          expect(request.moves).toHaveLength(1);
+        }
+        return inner.commit(workspace, request);
+      },
+    };
+    const session = await openWorkspaceSession(host, handle, {
+      delayMs: 60_000,
+    });
+    await session.apply({
+      type: 'create-file',
+      file: docFile('draft', 'Original'),
+    });
+    expect(await session.flush()).toBe(true);
+    await session.apply({
+      type: 'rename-document',
+      fileId: 'draft',
+      title: 'Second',
+    });
+    hold = true;
+    const flushing = session.flush();
+    await started;
+    await session.apply({
+      type: 'rename-document',
+      fileId: 'draft',
+      title: 'Final',
+    });
+    release();
+    expect(await flushing).toBe(true);
+    const snapshot = await host.readSnapshot(handle);
+    expect(snapshot.documents?.map((entry) => entry.path)).toEqual([
+      'Final.verd-doc.json',
+    ]);
+    expect(snapshot.documents?.[0].file?.title).toBe('Final');
+    expect(snapshot.trash).toEqual([]);
+    session.dispose();
+  });
+
   it('creates a document file, persists it and exposes it via documents', async () => {
     const { session, host, handle } = await openSession();
     const result = await session.apply({

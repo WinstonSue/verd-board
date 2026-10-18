@@ -20,6 +20,7 @@ import {
   isFrameCell,
   isGroupCell,
   isNodeCell,
+  isDocumentCell,
   type ArchitectureLayerData,
   type CellId,
   type CellStore,
@@ -49,8 +50,7 @@ export function collectArrangementBlocks(
   ids: readonly CellId[] = [],
 ): ArrangementBlock[] {
   const frame = store.cells[frameId];
-  if (!isFrameCell(frame) || frameScene(store, frameId) === 'mind-root')
-    return [];
+  if (!isFrameCell(frame)) return [];
   const index = indexCells(store);
   const candidates = [
     ...new Set(
@@ -76,6 +76,8 @@ export function collectArrangementBlocks(
       cell.kind === 'architecture-layer' ||
       cell.kind.startsWith('mind-')
     )
+      return [];
+    if (frameScene(store, frameId) === 'mind-root' && !isDocumentCell(cell))
       return [];
     if (groupAncestors(store, id).some((owner) => selected.has(owner)))
       return [];
@@ -296,7 +298,10 @@ export function arrangeCells(
   )
     throw new Error('Layout does not match the frame');
   const blocks = collectArrangementBlocks(store, frameId, ids).filter(
-    (block) => !block.locked,
+    (block) =>
+      !block.locked &&
+      (!(style === 'flow' || style === 'layers') ||
+        !block.members.some((id) => isDocumentCell(store.cells[id]))),
   );
   if (style === 'flow' || style === 'layers')
     blocks.sort((a, b) => a.id.localeCompare(b.id));

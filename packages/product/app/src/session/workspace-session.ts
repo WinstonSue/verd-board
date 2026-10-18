@@ -1,16 +1,21 @@
 import type { CellId, CellRegistry, CellStore } from '@sue/board-core';
 import type { SaveStatus } from '../storage-adapter';
 import {
+  workspaceFileClosure,
+  remapWorkspaceFiles,
+  validateWorkspaceReferences,
+  buildWorkspaceReferenceGraph,
+  type WorkspaceReferenceGraph,
+} from '../documents/workspace-references';
+import {
   assembleWorkspaceStore,
   buildFrameReferenceGraph,
   buildOrganizationIndex,
-  duplicateFrameClosure,
   frameClosure,
   isFrameFileV2,
   organizationChangeError,
   partitionCellStore,
   referenceSourcesOf,
-  remapImportedFiles,
   sameFrameFile,
   validateFrameFiles,
   type FrameFileDiagnostic,
@@ -19,13 +24,17 @@ import {
   type FrameOrganizationIndex,
   type FrameReferenceGraph,
 } from '../frames/frame-files';
-import { isFrameReferenceCell, type FrameReferenceCell } from '@sue/board-core';
+import {
+  isFrameReferenceCell,
+  isDocumentCell,
+  type FrameReferenceCell,
+  type DocumentReferenceCell,
+  type DocumentFrameCell,
+} from '@sue/board-core';
 import {
   documentPathFor,
-  duplicateDocumentFile,
   isDocumentFileV1,
   isWorkspaceFile,
-  remapImportedDocument,
   renameDocumentFile,
   workspaceFileId,
   type DocumentFileV1,
@@ -36,6 +45,8 @@ import {
   isCanvasPath,
   isDocumentPath,
   normalizeWorkspaceSessionState,
+  normalizeWorkspacePath,
+  normalizeTrashEntryId,
   parentWorkspacePath,
   CANVAS_FILE_SUFFIX,
   DOCUMENT_FILE_SUFFIX,
@@ -70,6 +81,8 @@ type FileRefInput = { fileId?: CellId; frameId?: CellId };
 
 /** Extra history metadata document editors attach to one commit. */
 export interface HistoryMeta {
+  /** Runtime view/occurrence that authored this edit; never serialized. */
+  origin?: DocumentEditOrigin;
   /** Consecutive entries sharing this key merge into one undo step. */
   group?: string;
   /** Opaque editor selection before/after the edit, restored on undo. */
@@ -78,9 +91,21 @@ export interface HistoryMeta {
   /** Operation name shown in undo UI (input, format, move…). */
   name?: string;
 }
+export interface DocumentEditOrigin {
+  canvasId: CellId;
+  cellId: CellId;
+  instanceId: string;
+}
 
 /** Every content and file mutation funnels through these commands. */
 export type WorkspaceCommand =
+  | {
+      type: 'create-document-frame';
+      ownerFrameId: CellId;
+      document: DocumentFileV1;
+      cell: DocumentFrameCell;
+      label?: string;
+    }
   | {
       type: 'store';
       /** Canvas-authored assembled store (workspace virtual root). */
@@ -111,6 +136,8 @@ export type WorkspaceCommand =
   | { type: 'rename-document'; fileId: CellId; title: string; label?: string }
   | ({ type: 'trash-file'; label?: string } & FileRefInput)
   | { type: 'restore-file'; entryId: string; toPath?: string; label?: string }
+  | { type: 'trash-directory'; path: string; label?: string }
+  | { type: 'purge-trash'; entryIds: string[] }
   /**
    * Independent copy: clones the file plus its dependency closure and owned
    * subgraphs. `keep-owner` is the subgraph-list copy (still belongs to the
@@ -194,7 +221,11 @@ export interface CommandResult {
    * Set by undo/redo when the replayed entry should surface a file:
    * the app activates its tab and restores any editor selection.
    */
-  restored?: { fileId: CellId; selection?: unknown };
+  restored?: {
+    fileId: CellId;
+    selection?: unknown;
+    origin?: DocumentEditOrigin;
+  };
 }
 
 interface PendingSave {
@@ -213,6 +244,9 @@ interface FileSnapshot {
 }
 
 interface HistoryEntry {
+  /** Whole-subtree operations replay via host trash/restore, including raw files. */
+  subtree?: { action: 'trash' | 'restore'; path: string; entryId: string };
+  origin?: DocumentEditOrigin;
   label?: string;
   /** Operation name for undo UI; falls back to `label`. */
   name?: string;
@@ -240,12 +274,15 @@ export interface WorkspaceSessionSnapshot {
   documents: ReadonlyMap<CellId, WorkspaceFileEntry<DocumentFileV1>>;
   fileIdByPath: ReadonlyMap<string, CellId>;
   graph: FrameReferenceGraph;
+  references: WorkspaceReferenceGraph;
   /** Owners, owned subgraphs, standalone diagrams, and the unorganized set. */
   organization: FrameOrganizationIndex;
   /** Content and file commands are paused while an organization batch commits. */
   mutationsPaused: boolean;
   /** An organization publish has not been confirmed yet. */
   organizeUnconfirmed: boolean;
+  /** Retry the retained trash transaction before allowing more edits. */
+  trashUnconfirmed: boolean;
   session: WorkspaceSessionState;
   /** Raw host entries (directories, non-canvas files) for the tree view. */
   entries: WorkspaceEntryMeta[];
@@ -282,6 +319,7 @@ export interface WorkspaceSession {
   ): Promise<CommandResult>;
   /** The file plus its transitive dependency closure, for export. */
   exportFiles(frameId: CellId): FrameFileV2[];
+  exportWorkspaceFiles(fileId: CellId): WorkspaceFile[];
   /** One document file for export; `null` when unknown or not a document. */
   exportDocument(fileId: CellId): DocumentFileV1 | null;
   /**
@@ -299,6 +337,7 @@ export interface WorkspaceSession {
   organize(changes: OrganizeChange[]): Promise<OrganizeResult>;
   /** Replays an unconfirmed organization transaction. Installs at most once. */
   confirmOrganize(): Promise<OrganizeResult>;
+  retryTrashOperation(): Promise<CommandResult>;
   /**
    * Blocks new content commands (desktop close). The save queue keeps
    * draining; `unfreeze` restores editing after a failed close.
@@ -430,9 +469,20 @@ export const createWorkspaceSession = (options: {
   let diagnostics = [...options.diagnostics];
   let store: CellStore;
   let graph: FrameReferenceGraph;
+  let references: WorkspaceReferenceGraph;
   let organization: FrameOrganizationIndex;
   const undoStack: HistoryEntry[] = [];
   const redoStack: HistoryEntry[] = [];
+  // Track identities at the actual removal, so reusing a path for a different
+  // live file does not make its unrelated history a purge target.
+  const trashIdentities = new Map<string, Set<CellId>>();
+  const trashOpIdentities = new WeakMap<TrashOp, Set<CellId>>();
+  const rebaseTrash = (op: TrashOp, expectedVersion: FileVersion): TrashOp => {
+    const next = { ...op, expectedVersion };
+    const identities = trashOpIdentities.get(op);
+    if (identities) trashOpIdentities.set(next, identities);
+    return next;
+  };
   const pending: PendingSave = {
     writes: new Map(),
     mkdirs: [],
@@ -444,6 +494,7 @@ export const createWorkspaceSession = (options: {
   let retryCommit: CommitRequest | null = null;
   /** External sync is deferred while commits or restores are in flight. */
   let syncQueued = false;
+  let syncReadId = 0;
   let suspendSync = 0;
   let saveStatus: SaveStatus = 'idle';
   let timer: ReturnType<typeof setTimeout> | undefined;
@@ -461,6 +512,19 @@ export const createWorkspaceSession = (options: {
     baselines: Map<CellId, FileSnapshot>;
     installed: boolean;
   } | null = null;
+  type StorageCommand =
+    | Extract<
+        WorkspaceCommand,
+        { type: 'trash-directory' | 'restore-file' | 'purge-trash' }
+      >
+    | { type: 'trash-path'; path: string; label?: string };
+  let storageRetry: {
+    key: string;
+    request: CommitRequest;
+    paths: string[];
+    before: HistoryEntry['before'];
+    resume(): Promise<CommandResult>;
+  } | null = null;
   const listeners = new Set<() => void>();
 
   const rebuildDerived = () => {
@@ -471,6 +535,9 @@ export const createWorkspaceSession = (options: {
       .filter((file): file is FrameFileV2 => file.format === 'verd-frame');
     store = assembleWorkspaceStore(frameList, registry).store;
     graph = buildFrameReferenceGraph(frameList);
+    references = buildWorkspaceReferenceGraph(
+      [...files.values()].map((entry) => entry.file),
+    );
     organization = buildOrganizationIndex(frameList);
   };
   rebuildDerived();
@@ -574,7 +641,7 @@ export const createWorkspaceSession = (options: {
         );
         pending.trash = pending.trash.map((op) =>
           op.path === path && op.expectedVersion === expected
-            ? { ...op, expectedVersion: version }
+            ? rebaseTrash(op, version)
             : op,
         );
       });
@@ -589,17 +656,23 @@ export const createWorkspaceSession = (options: {
       }
       // A rename queued mid-flight already moved this entry to its new
       // path — the committed version still belongs to that file.
-      const moved = pending.moves.find((op) => op.from === path);
-      const movedEntry = moved
-        ? files.get(byPath.get(moved.to) ?? '')
-        : undefined;
-      if (moved && movedEntry) {
-        files.set(byPath.get(moved.to)!, { ...movedEntry, version });
+      let destination = path;
+      for (const move of pending.moves) {
+        if (move.from === destination) destination = move.to;
+      }
+      const movedId =
+        destination !== path ? byPath.get(destination) : undefined;
+      const movedEntry = movedId ? files.get(movedId) : undefined;
+      if (movedId && movedEntry) {
+        files.set(movedId, { ...movedEntry, version });
         return;
       }
       pending.trash.push({ path, expectedVersion: version });
     });
     (receipt.trashEntries ?? []).forEach(({ path, entryId }) => {
+      const op = request.trash?.find((item) => item.path === path);
+      if (op)
+        trashIdentities.set(entryId, trashOpIdentities.get(op) ?? new Set());
       if (!trash.some((entry) => entry.entryId === entryId))
         trash.push({ entryId, originalPath: path, trashedAt: Date.now() });
     });
@@ -615,7 +688,7 @@ export const createWorkspaceSession = (options: {
     // them onto what was just applied or the next commit is rejected.
     Object.entries(receipt.versions ?? {}).forEach(([path, version]) => {
       pending.trash = pending.trash.map((op) =>
-        op.path === path ? { ...op, expectedVersion: version } : op,
+        op.path === path ? rebaseTrash(op, version) : op,
       );
     });
     const restores = settled(request.restore);
@@ -725,10 +798,10 @@ export const createWorkspaceSession = (options: {
     return {
       transactionId,
       writes: pending.writes.size ? [...pending.writes.values()] : undefined,
-      mkdirs: pending.mkdirs.length ? pending.mkdirs : undefined,
-      moves: pending.moves.length ? pending.moves : undefined,
-      trash: pending.trash.length ? pending.trash : undefined,
-      restore: pending.restore.length ? pending.restore : undefined,
+      mkdirs: pending.mkdirs.length ? [...pending.mkdirs] : undefined,
+      moves: pending.moves.length ? [...pending.moves] : undefined,
+      trash: pending.trash.length ? [...pending.trash] : undefined,
+      restore: pending.restore.length ? [...pending.restore] : undefined,
       config: pending.config,
       session: pending.session,
     };
@@ -741,6 +814,7 @@ export const createWorkspaceSession = (options: {
    * for I/O failures so close paths can retry the same transactions.
    */
   const flush = (): Promise<boolean> => {
+    if (storageRetry) return Promise.resolve(false);
     if (timer) clearTimeout(timer);
     timer = undefined;
     if (inflight) return inflight;
@@ -775,9 +849,12 @@ export const createWorkspaceSession = (options: {
         if (!receipt.path) dropRequestOps(request);
         setStatus(hasPending() ? 'saving' : 'error');
       }
+      const unresolved = [...files.values()].some(
+        (entry) => entry.conflicted || entry.dirty,
+      );
       if (!hasPending() && !disposed && saveStatus === 'saving')
-        setStatus('saved');
-      return !failed && !hasPending();
+        setStatus(unresolved ? 'error' : 'saved');
+      return !failed && !hasPending() && !unresolved;
     })().finally(() => {
       inflight = null;
       drainSync();
@@ -900,7 +977,7 @@ export const createWorkspaceSession = (options: {
           message: 'Document body identity drifted from the file identity',
         });
     });
-    return diagnostics;
+    return [...diagnostics, ...validateWorkspaceReferences(fileList)];
   };
 
   /**
@@ -946,8 +1023,21 @@ export const createWorkspaceSession = (options: {
         diagnostic: prev?.diagnostic,
       });
     });
-    plan.trashes.forEach(({ op }) => pending.trash.push(op));
-    plan.moves.forEach(({ op }) => pending.moves.push(op));
+    plan.trashes.forEach(({ op, frameId }) => {
+      trashOpIdentities.set(op, new Set([frameId]));
+      pending.trash.push(op);
+    });
+    plan.moves.forEach(({ op }) => {
+      // Hosts execute moves before writes. A dirty file's queued write must
+      // follow its new path; otherwise it asserts a version at the now-empty
+      // old path and the entire save batch is rejected.
+      const write = pending.writes.get(op.from);
+      if (write) {
+        pending.writes.delete(op.from);
+        pending.writes.set(op.to, { ...write, path: op.to });
+      }
+      pending.moves.push(op);
+    });
     plan.writes.forEach(({ op }) => pending.writes.set(op.path, op));
     // Keep the entry index in step for the tree; the next host sync
     // reconciles versions.
@@ -1000,6 +1090,7 @@ export const createWorkspaceSession = (options: {
         last.name = meta?.name ?? last.name;
       } else {
         undoStack.push({
+          origin: meta?.origin,
           label,
           name: meta?.name,
           primaryFileId,
@@ -1034,6 +1125,40 @@ export const createWorkspaceSession = (options: {
     files.forEach((entry, id) =>
       candidate.set(id, { file: clone(entry.file), path: entry.path }),
     );
+    if (command.type === 'create-document-frame') {
+      const owner = files.get(command.ownerFrameId);
+      const document = command.document;
+      if (
+        !owner ||
+        owner.file.format !== 'verd-frame' ||
+        !isDocumentFileV1(document) ||
+        files.has(document.id) ||
+        command.cell.data.targetDocumentId !== document.id ||
+        store.cells[command.cell.id]
+      )
+        return invalid('Invalid document Frame creation');
+      const path = documentPathFor(
+        document,
+        parentWorkspacePath(owner.path) ?? '',
+        takenPaths(),
+      );
+      candidate.set(document.id, { file: clone(document), path });
+      candidate.set(command.ownerFrameId, {
+        path: owner.path,
+        file: {
+          ...clone(owner.file),
+          frame: {
+            ...owner.file.frame,
+            children: [...owner.file.frame.children, command.cell.id],
+          },
+          cells: {
+            ...owner.file.cells,
+            [command.cell.id]: clone(command.cell),
+          },
+        },
+      });
+      return { candidate };
+    }
     if (command.type === 'file' || command.type === 'create-file') {
       if (!isWorkspaceFile(command.file))
         return invalid('Invalid workspace file', workspaceFileId(command.file));
@@ -1106,25 +1231,27 @@ export const createWorkspaceSession = (options: {
       if (!entry || !id) return invalid(`Unknown file: ${id ?? ''}`, id);
       const dir = command.dir ?? parentWorkspacePath(entry.path) ?? '';
       const taken = takenPaths();
-      if (entry.file.format === 'verd-document') {
-        const cloneFile = duplicateDocumentFile(entry.file, createId);
-        const path = documentPathFor(cloneFile, dir, taken);
-        taken.add(path);
-        candidate.set(cloneFile.id, { file: cloneFile, path });
-        return { candidate };
-      }
-      const { files: clones } = duplicateFrameClosure(
-        [...files.values()]
-          .map((item) => item.file)
-          .filter((file): file is FrameFileV2 => file.format === 'verd-frame'),
-        id,
+      const originals = [...files.values()].map((item) => item.file);
+      const claimed = new Set(
+        originals.flatMap((file) =>
+          file.format === 'verd-frame'
+            ? [file.frame.id, ...Object.keys(file.cells)]
+            : [file.id],
+        ),
+      );
+      const { files: clones } = remapWorkspaceFiles(
+        workspaceFileClosure(originals, id),
+        (value) => claimed.has(value),
         createId,
-        { mode: command.ownership ?? 'retarget' },
+        { rootId: id, mode: command.ownership ?? 'retarget' },
       );
       clones.forEach((file) => {
-        const path = canvasPathFor(file, dir, taken);
+        const path =
+          file.format === 'verd-document'
+            ? documentPathFor(file, dir, taken)
+            : canvasPathFor(file, dir, taken);
         taken.add(path);
-        candidate.set(file.frame.id, { file: clone(file), path });
+        candidate.set(workspaceFileId(file), { file, path });
       });
       return { candidate };
     }
@@ -1136,7 +1263,7 @@ export const createWorkspaceSession = (options: {
           command.ownerFrameId,
         );
       const source = owner.file.cells[command.refId];
-      if (!isFrameReferenceCell(source))
+      if (!isFrameReferenceCell(source) && !isDocumentCell(source))
         return invalid(
           `Not a frame reference: ${command.refId}`,
           command.ownerFrameId,
@@ -1153,7 +1280,9 @@ export const createWorkspaceSession = (options: {
           `Reference is not owned by this frame: ${command.refId}`,
           command.ownerFrameId,
         );
-      const targetId = source.data.targetFrameId;
+      const targetId = isFrameReferenceCell(source)
+        ? source.data.targetFrameId
+        : source.data.targetDocumentId;
       if (!files.has(targetId))
         return invalid(
           `Unresolved reference target: ${targetId}`,
@@ -1161,20 +1290,34 @@ export const createWorkspaceSession = (options: {
         );
       const dir = parentWorkspacePath(owner.path) ?? '';
       const taken = takenPaths();
-      const { files: clones, rootId } = duplicateFrameClosure(
-        [...files.values()]
-          .map((item) => item.file)
-          .filter((file): file is FrameFileV2 => file.format === 'verd-frame'),
-        targetId,
-        createId,
-        { mode: 'assign-owner', assignOwnerId: command.ownerFrameId },
+      const originals = [...files.values()].map((item) => item.file);
+      const claimed = new Set(
+        originals.flatMap((file) =>
+          file.format === 'verd-frame'
+            ? [file.frame.id, ...Object.keys(file.cells)]
+            : [file.id],
+        ),
       );
+      const { files: clones, idMap } = remapWorkspaceFiles(
+        workspaceFileClosure(originals, targetId),
+        (id) => claimed.has(id),
+        createId,
+        {
+          rootId: targetId,
+          mode: 'assign-owner',
+          assignOwnerId: command.ownerFrameId,
+        },
+      );
+      const rootId = idMap.get(targetId)!;
       clones.forEach((file) => {
-        const path = canvasPathFor(file, dir, taken);
+        const path =
+          file.format === 'verd-document'
+            ? documentPathFor(file, dir, taken)
+            : canvasPathFor(file, dir, taken);
         taken.add(path);
-        candidate.set(file.frame.id, { file: clone(file), path });
+        candidate.set(workspaceFileId(file), { file: clone(file), path });
       });
-      const duplicate: FrameReferenceCell = {
+      const duplicate = {
         ...clone(source),
         id: createId(),
         geometry: {
@@ -1182,8 +1325,10 @@ export const createWorkspaceSession = (options: {
           x: source.geometry.x + 24,
           y: source.geometry.y + 24,
         },
-        data: { ...clone(source.data), targetFrameId: rootId },
-      };
+        data: isFrameReferenceCell(source)
+          ? { ...clone(source.data), targetFrameId: rootId }
+          : { ...clone(source.data), targetDocumentId: rootId },
+      } as FrameReferenceCell | DocumentReferenceCell | DocumentFrameCell;
       const file = clone(owner.file);
       if (directIndex >= 0) {
         file.frame = {
@@ -1220,33 +1365,24 @@ export const createWorkspaceSession = (options: {
         if (entry.file.format === 'verd-frame')
           Object.keys(entry.file.cells).forEach((id) => claimed.add(id));
       });
-      const frames = command.files.filter(
-        (file): file is FrameFileV2 => file.format === 'verd-frame',
-      );
-      const remappedFrames = remapImportedFiles(
-        frames,
-        (id) => claimed.has(id),
-        createId,
-      );
-      const remappedDocs = command.files
-        .filter(
-          (file): file is DocumentFileV1 => file.format === 'verd-document',
-        )
-        .map((file) =>
-          remapImportedDocument(file, (id) => claimed.has(id), createId),
-        );
+      let imported: WorkspaceFile[];
+      try {
+        imported = remapWorkspaceFiles(
+          command.files,
+          (id) => claimed.has(id),
+          createId,
+        ).files;
+      } catch (error) {
+        return invalid(error instanceof Error ? error.message : String(error));
+      }
       const taken = takenPaths();
-      remappedFrames.forEach((file) => {
-        if (!isFrameFileV2(file)) return;
-        const path = canvasPathFor(file, command.dir ?? '', taken);
+      imported.forEach((file) => {
+        const path =
+          file.format === 'verd-document'
+            ? documentPathFor(file, command.dir ?? '', taken)
+            : canvasPathFor(file, command.dir ?? '', taken);
         taken.add(path);
-        candidate.set(file.frame.id, { file: clone(file), path });
-      });
-      remappedDocs.forEach((file) => {
-        if (!isDocumentFileV1(file)) return;
-        const path = documentPathFor(file, command.dir ?? '', taken);
-        taken.add(path);
-        candidate.set(file.id, { file: clone(file), path });
+        candidate.set(workspaceFileId(file), { file: clone(file), path });
       });
       return { candidate };
     }
@@ -1386,10 +1522,28 @@ export const createWorkspaceSession = (options: {
     command: WorkspaceCommand,
     recordHistory: boolean,
   ): Promise<CommandResult> => {
-    if (command.type === 'restore-file')
-      return recordHistory
-        ? restoreFile(command)
-        : { ok: true, diagnostics: [] };
+    if (
+      command.type === 'restore-file' ||
+      command.type === 'trash-directory' ||
+      command.type === 'purge-trash'
+    )
+      return storageCommand(command, recordHistory);
+    // A dirty file must reach disk before the host moves its bytes to trash.
+    // Otherwise a queued write would target the now-absent original path.
+    if (command.type === 'trash-file') {
+      mutationsPaused = true;
+      suspendSync += 1;
+      emit();
+      try {
+        if (!(await flush()))
+          return invalid('Save pending changes before deleting the file');
+      } finally {
+        mutationsPaused = false;
+        suspendSync -= 1;
+        emit();
+        drainSync();
+      }
+    }
     const planned = candidateFor(command);
     if ('diagnostics' in planned) return planned;
     const plan = planDiff(planned.candidate);
@@ -1417,83 +1571,209 @@ export const createWorkspaceSession = (options: {
     return { ok: true, diagnostics: [] };
   };
 
-  /**
-   * Restores are host-side subtree moves: commit the restore, re-read the
-   * path, and register the recovered file so its identity resolves
-   * references again. The inverse in history is an ordinary trash.
-   */
-  const restoreFile = async (command: {
-    type: 'restore-file';
-    entryId: string;
-    toPath?: string;
-    label?: string;
-  }): Promise<CommandResult> => {
-    const meta = trash.find((entry) => entry.entryId === command.entryId);
-    if (!meta) return invalid(`Unknown trash entry: ${command.entryId}`);
-    const target = command.toPath ?? meta.originalPath;
-    if (fileIdByPath().has(target))
-      return invalid(`Path is occupied: ${target}`);
+  const within = (path: string, root: string) =>
+    path === root || path.startsWith(`${root}/`);
+  const storageKey = (command: StorageCommand) => JSON.stringify(command);
+
+  /** Keep the exact request after an unknown outcome; only replay may proceed. */
+  const storageCommand = async (
+    command: StorageCommand,
+    recordHistory: boolean,
+    replay?: HistoryEntry,
+  ): Promise<CommandResult> => {
+    const key = storageKey(command);
+    if (storageRetry && storageRetry.key !== key)
+      return invalid(
+        'Retry the previous trash operation before making changes',
+      );
+    mutationsPaused = true;
     suspendSync += 1;
+    emit();
     try {
-      const receipt = await host.commit(handle, {
-        transactionId: `${createId()}-restore`,
-        restore: [{ entryId: command.entryId, toPath: command.toPath }],
-      });
-      if (receipt.outcome !== 'applied') {
-        markConflict(receipt);
-        emit();
-        return invalid(`Restore rejected: ${receipt.reason ?? 'unknown'}`);
-      }
-      const raw = await host.readFile(handle, target);
-      const parsed: unknown = JSON.parse(new TextDecoder().decode(raw.content));
-      const isDocPath = isDocumentPath(target);
-      const file: WorkspaceFile = isDocPath
-        ? (() => {
-            if (!isDocumentFileV1(parsed))
-              throw new Error('Not a v1 document file');
-            return parsed;
-          })()
-        : (() => {
-            if (!isFrameFileV2(parsed)) throw new Error('Not a v2 frame file');
-            return parsed;
-          })();
-      const id = workspaceFileId(file);
-      const existing = files.get(id);
-      if (existing && existing.path !== target)
-        return invalid('Restored file id already exists', id);
-      // A queued host sync may already have registered the merged file —
-      // identical content, so registering again is a no-op.
-      if (!existing)
-        files.set(id, {
-          file,
-          path: target,
-          version: raw.version,
-          dirty: false,
+      if (!storageRetry) {
+        if (!(await flush()))
+          return invalid(
+            'Save pending changes and resolve conflicts before continuing',
+          );
+        let paths: string[];
+        const request: CommitRequest = {
+          transactionId: `${createId()}-trash-operation`,
+        };
+        if (
+          command.type === 'trash-directory' ||
+          command.type === 'trash-path'
+        ) {
+          const path = normalizeWorkspacePath(command.path);
+          const source = entries.find((entry) => entry.path === path);
+          if (
+            !source ||
+            (command.type === 'trash-directory' && source.kind !== 'directory')
+          )
+            return invalid('Directory does not exist');
+          paths = [path];
+          request.trash = [
+            {
+              path,
+              expectedVersion:
+                source.kind === 'file' ? source.version : undefined,
+            },
+          ];
+        } else if (command.type === 'restore-file') {
+          normalizeTrashEntryId(command.entryId);
+          const meta = trash.find((entry) => entry.entryId === command.entryId);
+          if (!meta) return invalid('Trash entry does not exist');
+          paths = [normalizeWorkspacePath(command.toPath ?? meta.originalPath)];
+          if (entries.some((entry) => within(entry.path, paths[0])))
+            return invalid('Restore destination is occupied');
+          request.restore = [
+            { entryId: command.entryId, toPath: command.toPath },
+          ];
+        } else {
+          request.purge = [
+            ...new Set(command.entryIds.map(normalizeTrashEntryId)),
+          ];
+          paths = trash
+            .filter((entry) => request.purge!.includes(entry.entryId))
+            .map((entry) => entry.originalPath);
+        }
+        const before: HistoryEntry['before'] = new Map();
+        files.forEach((entry, id) => {
+          if (paths.some((path) => within(entry.path, path)))
+            before.set(id, { file: clone(entry.file), path: entry.path });
         });
-      trash = trash.filter((entry) => entry.entryId !== command.entryId);
-      rebuildDerived();
-      undoStack.push({
-        label: command.label,
-        primaryFileId: id,
-        before: new Map([[id, undefined]]),
-        after: new Map([[id, { file: clone(file), path: target }]]),
-      });
-      redoStack.length = 0;
+        const direction =
+          replay &&
+          (command.type === 'restore-file') ===
+            (replay.subtree!.action === 'trash')
+            ? 'undo'
+            : 'redo';
+        storageRetry = {
+          key,
+          request,
+          paths,
+          before,
+          resume: () =>
+            replay
+              ? replayHistory(direction)
+              : storageCommand(command, recordHistory),
+        };
+      }
+      const operation = storageRetry;
+      const receipt = await host.commit(handle, operation.request);
+      if (receipt.outcome !== 'applied') {
+        if (receipt.reason !== 'io-error') storageRetry = null;
+        else setStatus('error');
+        return invalid(
+          `Trash operation rejected: ${receipt.reason ?? 'unknown'}`,
+        );
+      }
+      const snapshot = await host.readSnapshot(handle);
+      if (command.type === 'purge-trash') {
+        const affectedIds = new Set<CellId>(
+          operation.request.purge!.flatMap((entryId) => [
+            ...(trashIdentities.get(entryId) ?? []),
+          ]),
+        );
+        const touches = (entry: HistoryEntry) =>
+          [...entry.before.keys(), ...entry.after.keys()].some((id) =>
+            affectedIds.has(id),
+          ) ||
+          (entry.subtree &&
+            operation.request.purge!.includes(entry.subtree.entryId));
+        for (const stack of [undoStack, redoStack])
+          for (let at = stack.length - 1; at >= 0; at -= 1)
+            if (touches(stack[at])) stack.splice(at, 1);
+        operation.request.purge!.forEach((entryId) =>
+          trashIdentities.delete(entryId),
+        );
+      } else {
+        const path = operation.paths[0];
+        const recovered = [
+          ...snapshot.canvases.map((payload) => ({
+            ...payload,
+            file: payload.file as WorkspaceFile | null,
+          })),
+          ...(snapshot.documents ?? []).map((payload) => ({
+            ...payload,
+            file: payload.file as WorkspaceFile | null,
+          })),
+        ].filter(
+          (payload) => within(payload.path, path) && payload.file !== null,
+        );
+        // Host commit succeeded: install its subtree without classifying our own
+        // removals as external changes (which would invalidate undo history).
+        files.forEach((entry, id) => {
+          if (within(entry.path, path)) files.delete(id);
+        });
+        const after: HistoryEntry['after'] = new Map();
+        operation.before.forEach((_, id) => after.set(id, undefined));
+        for (const payload of recovered) {
+          const file = payload.file!;
+          const id = workspaceFileId(file);
+          if (files.has(id)) {
+            diagnostics.push({
+              path: payload.path,
+              frameId: id,
+              message: 'Restored file identity already exists',
+            });
+            continue;
+          }
+          files.set(id, {
+            file: clone(file),
+            path: payload.path,
+            version: payload.version,
+            dirty: false,
+          });
+          after.set(id, { file: clone(file), path: payload.path });
+          if (!operation.before.has(id)) operation.before.set(id, undefined);
+        }
+        const entryId =
+          command.type === 'trash-directory' || command.type === 'trash-path'
+            ? receipt.trashEntries?.find((entry) => entry.path === path)
+                ?.entryId
+            : command.entryId;
+        if (!entryId)
+          throw new Error('Trash receipt is missing its entry identifier');
+        trashIdentities.set(
+          entryId,
+          new Set([...operation.before.keys(), ...after.keys()]),
+        );
+        if (replay) replay.subtree!.entryId = entryId;
+        if (recordHistory) {
+          undoStack.push({
+            label: command.label,
+            primaryFileId:
+              recovered.length === 1 &&
+              snapshot.entries.find((entry) => entry.path === path)?.kind ===
+                'file'
+                ? workspaceFileId(recovered[0].file!)
+                : undefined,
+            before: operation.before,
+            after,
+            subtree: {
+              action: command.type === 'restore-file' ? 'restore' : 'trash',
+              path,
+              entryId,
+            },
+          });
+          redoStack.length = 0;
+        }
+        rebuildDerived();
+      }
+      entries = snapshot.entries;
+      trash = snapshot.trash;
+      storageRetry = null;
+      if (hasPending()) schedule();
+      else setStatus('saved');
       emit();
       return { ok: true, diagnostics: [] };
     } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      diagnostics = [
-        ...diagnostics,
-        {
-          path: target,
-          message: `Restored file could not be loaded: ${message}`,
-        },
-      ];
-      emit();
-      return invalid(`Restored file could not be loaded: ${message}`);
+      if (storageRetry) setStatus('error');
+      return invalid(error instanceof Error ? error.message : String(error));
     } finally {
+      mutationsPaused = false;
       suspendSync -= 1;
+      emit();
       drainSync();
     }
   };
@@ -1505,7 +1785,7 @@ export const createWorkspaceSession = (options: {
    */
   const requestSync = () => {
     if (disposed) return;
-    if (suspendSync > 0 || inflight || hasPending()) {
+    if (suspendSync > 0 || storageRetry || inflight || hasPending()) {
       syncQueued = true;
       return;
     }
@@ -1513,7 +1793,14 @@ export const createWorkspaceSession = (options: {
   };
 
   const drainSync = () => {
-    if (disposed || !syncQueued || suspendSync > 0 || inflight || hasPending())
+    if (
+      disposed ||
+      !syncQueued ||
+      suspendSync > 0 ||
+      storageRetry ||
+      inflight ||
+      hasPending()
+    )
       return;
     syncQueued = false;
     void syncFromHost().catch(() => {});
@@ -1527,7 +1814,27 @@ export const createWorkspaceSession = (options: {
    * through the same path and merge as no-ops.
    */
   const syncFromHost = async () => {
+    const readId = ++syncReadId;
+    const baseFiles = new Map(files);
+    const baseConfig = config;
     const snapshot = await host.readSnapshot(handle);
+    if (disposed || readId !== syncReadId) return;
+    // A read can start while idle and finish after an edit or commit. Its
+    // versions then describe our own earlier state, not an external change.
+    // Re-read once the local queue drains instead of rolling content back or
+    // flagging a phantom conflict. Entries are replaced on every mutation.
+    if (
+      suspendSync > 0 ||
+      storageRetry ||
+      inflight ||
+      config !== baseConfig ||
+      files.size !== baseFiles.size ||
+      [...files].some(([id, entry]) => baseFiles.get(id) !== entry)
+    ) {
+      syncQueued = true;
+      drainSync();
+      return;
+    }
     const diskById = new Map<
       CellId,
       { file: WorkspaceFile; path: string; version: FileVersion }
@@ -1615,6 +1922,9 @@ export const createWorkspaceSession = (options: {
         if (touches(undoStack[at])) undoStack.splice(at, 1);
       redoStack.length = 0;
     }
+    changed ||=
+      JSON.stringify(entries) !== JSON.stringify(snapshot.entries) ||
+      JSON.stringify(trash) !== JSON.stringify(snapshot.trash);
     entries = snapshot.entries;
     trash = snapshot.trash;
     if (!pending.config) config = clone(snapshot.config);
@@ -1632,6 +1942,28 @@ export const createWorkspaceSession = (options: {
     entry: HistoryEntry,
     direction: 'undo' | 'redo',
   ): Promise<CommandResult> => {
+    if (storageRetry && !entry.subtree)
+      return invalid(
+        'Retry the previous trash operation before replaying history',
+      );
+    if (entry.subtree) {
+      const subtree = entry.subtree;
+      const restore = (direction === 'undo') === (subtree.action === 'trash');
+      const result = await storageCommand(
+        restore
+          ? {
+              type: 'restore-file',
+              entryId: subtree.entryId,
+              toPath: subtree.path,
+            }
+          : { type: 'trash-path', path: subtree.path },
+        false,
+        entry,
+      );
+      return result.ok && restore && entry.primaryFileId
+        ? { ...result, restored: { fileId: entry.primaryFileId } }
+        : result;
+    }
     // A file waiting on a conflict decision must not be rewritten by
     // replaying history around it.
     const blocked = [...entry.before.keys(), ...entry.after.keys()].find(
@@ -1718,6 +2050,7 @@ export const createWorkspaceSession = (options: {
       restored: entry.primaryFileId
         ? {
             fileId: entry.primaryFileId,
+            origin: entry.origin,
             selection:
               entry.selection && entry.selection.fileId === entry.primaryFileId
                 ? selection
@@ -1725,6 +2058,22 @@ export const createWorkspaceSession = (options: {
           }
         : undefined,
     };
+  };
+
+  const replayHistory = async (
+    direction: 'undo' | 'redo',
+  ): Promise<CommandResult> => {
+    if (workspaceReadonly || mutationsPaused || frozen)
+      return invalid('Workspace is unavailable');
+    const source = direction === 'undo' ? undoStack : redoStack;
+    const destination = direction === 'undo' ? redoStack : undoStack;
+    const entry = source.pop();
+    if (!entry) return { ok: true, diagnostics: [] };
+    const result = await applyInverse(entry, direction);
+    if (result.ok) destination.push(entry);
+    else source.push(entry);
+    emit();
+    return result;
   };
 
   const frameMap = () => {
@@ -1803,6 +2152,8 @@ export const createWorkspaceSession = (options: {
     changes: OrganizeChange[],
   ): Promise<OrganizeResult> => {
     if (workspaceReadonly) return invalid('Workspace is read-only');
+    if (storageRetry || mutationsPaused || frozen)
+      return invalid('Workspace is unavailable');
     if (organizePending && !organizePending.installed)
       return {
         ok: false,
@@ -1956,9 +2307,11 @@ export const createWorkspaceSession = (options: {
         documents,
         fileIdByPath: fileIdByPath(),
         graph,
+        references,
         organization,
-        mutationsPaused,
+        mutationsPaused: mutationsPaused || storageRetry !== null,
         organizeUnconfirmed: !!organizePending && !organizePending.installed,
+        trashUnconfirmed: storageRetry !== null && !mutationsPaused,
         session: clone(session),
         entries: [...entries],
         trash: [...trash],
@@ -1968,7 +2321,10 @@ export const createWorkspaceSession = (options: {
         diagnostics: [...diagnostics, ...organization.diagnostics],
         canUndo: undoStack.length > 0,
         canRedo: redoStack.length > 0,
-        dirty: [...files.values()].some((entry) => entry.dirty) || hasPending(),
+        dirty:
+          [...files.values()].some((entry) => entry.dirty) ||
+          hasPending() ||
+          storageRetry !== null,
         saveStatus,
       };
     },
@@ -1976,9 +2332,12 @@ export const createWorkspaceSession = (options: {
       if (workspaceReadonly)
         return Promise.resolve(invalid('Workspace is read-only'));
       if (mutationsPaused)
-        return Promise.resolve(invalid('Organization commit in progress'));
-      if (frozen && command.type !== 'restore-file')
-        return Promise.resolve(invalid('Workspace is closing'));
+        return Promise.resolve(invalid('Workspace operation in progress'));
+      if (storageRetry && storageRetry.key !== JSON.stringify(command))
+        return Promise.resolve(
+          invalid('Retry the previous trash operation before making changes'),
+        );
+      if (frozen) return Promise.resolve(invalid('Workspace is closing'));
       return runCommand(
         command,
         !('recordHistory' in command) || command.recordHistory !== false,
@@ -1989,23 +2348,14 @@ export const createWorkspaceSession = (options: {
       emit();
     },
     syncFromHost,
-    async undo() {
-      const entry = undoStack.pop();
-      if (!entry) return { ok: true, diagnostics: [] };
-      const result = await applyInverse(entry, 'undo');
-      if (result.ok) redoStack.push(entry);
-      else undoStack.push(entry);
-      emit();
-      return result;
-    },
-    async redo() {
-      const entry = redoStack.pop();
-      if (!entry) return { ok: true, diagnostics: [] };
-      const result = await applyInverse(entry, 'redo');
-      if (result.ok) undoStack.push(entry);
-      else redoStack.push(entry);
-      emit();
-      return result;
+    undo: () => replayHistory('undo'),
+    redo: () => replayHistory('redo'),
+    retryTrashOperation: () => {
+      if (workspaceReadonly || mutationsPaused || frozen)
+        return Promise.resolve(invalid('Workspace is unavailable'));
+      return (
+        storageRetry?.resume() ?? Promise.resolve({ ok: true, diagnostics: [] })
+      );
     },
     setSessionState(next) {
       session = clone(next);
@@ -2014,6 +2364,8 @@ export const createWorkspaceSession = (options: {
       emit();
     },
     setWorkspaceConfig(value) {
+      if (workspaceReadonly || mutationsPaused || storageRetry || frozen)
+        return;
       pending.config = {
         value: clone(value),
         expectedVersion: config.version,
@@ -2022,6 +2374,8 @@ export const createWorkspaceSession = (options: {
       emit();
     },
     mkdir(path) {
+      if (workspaceReadonly || mutationsPaused || frozen || storageRetry)
+        return invalid('Workspace is unavailable');
       const normalized = path.replace(/\/+$/, '');
       if (!normalized || entries.some((entry) => entry.path === normalized))
         return invalid(`Path is occupied or invalid: ${normalized}`);
@@ -2035,6 +2389,8 @@ export const createWorkspaceSession = (options: {
       return { ok: true, diagnostics: [] };
     },
     async resolveConflict(fileId, action) {
+      if (workspaceReadonly || mutationsPaused || frozen || storageRetry)
+        return invalid('Workspace is unavailable');
       const entry = files.get(fileId);
       if (!entry) return invalid(`Unknown file: ${fileId}`, fileId);
       suspendSync += 1;
@@ -2074,6 +2430,11 @@ export const createWorkspaceSession = (options: {
               });
           });
           refreshDirty();
+          if (
+            !hasPending() &&
+            ![...files.values()].some((file) => file.conflicted)
+          )
+            setStatus('saved');
           emit();
           return { ok: true, diagnostics: [] };
         }
@@ -2114,6 +2475,11 @@ export const createWorkspaceSession = (options: {
         });
         rebuildDerived();
         refreshDirty();
+        if (
+          !hasPending() &&
+          ![...files.values()].some((file) => file.conflicted)
+        )
+          setStatus('saved');
         emit();
         return {
           ok: true,
@@ -2145,6 +2511,12 @@ export const createWorkspaceSession = (options: {
       return frameClosure([...byId.values()], frameId).map((id) =>
         clone(byId.get(id)!),
       );
+    },
+    exportWorkspaceFiles(fileId) {
+      return workspaceFileClosure(
+        [...files.values()].map((entry) => entry.file),
+        fileId,
+      ).map((file) => clone(file));
     },
     exportDocument(fileId) {
       const entry = files.get(fileId);
@@ -2310,5 +2682,4 @@ export const canvasDisplayName = (path: string) =>
 
 export const isDocumentEntry = (path: string) => isDocumentPath(path);
 
-export const documentDisplayName = (path: string) =>
-  baseName(path).replace(/\.verd-doc\.json$/, '');
+export { documentDisplayName } from '../documents/document-files';

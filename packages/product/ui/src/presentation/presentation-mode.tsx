@@ -18,10 +18,13 @@ import {
   ChevronLeft,
   ChevronRight,
   Expand,
+  Keyboard,
   LogOut,
   Pointer,
 } from 'lucide-react';
 import { useI18n } from '../i18n';
+import { ShortcutHelp } from '../shortcut-help';
+import { shortcutLabels } from '../shortcut-catalog';
 import { exitPresentationFullscreen } from './fullscreen-owner';
 import {
   clampPresentationIndex,
@@ -37,6 +40,7 @@ export interface PresentationModeProps {
   registry?: FrameCanvasProps['registry'];
   extensions?: FrameCanvasProps['extensions'];
   instanceHost?: FrameCanvasProps['instanceHost'];
+  documentReferences?: FrameCanvasProps['documentReferences'];
   interactionSettings?: FrameCanvasProps['interactionSettings'];
   scene?:
     PresentationScene | 'mind-root' | 'workflow-start' | 'architecture-layer';
@@ -62,7 +66,11 @@ export function PresentationMode(props: PresentationModeProps) {
         : sourceScene === 'architecture-layer'
           ? 'architecture'
           : (sourceScene ?? 'whiteboard');
-  const { t } = useI18n();
+  const { t, language } = useI18n();
+  const [shortcutsOpen, setShortcutsOpen] = useState(false);
+  const shortcutsButton = useRef<HTMLButtonElement>(null);
+  const shortcutsVisible = useRef(false);
+  shortcutsVisible.current = shortcutsOpen;
   const steps = useMemo(
     () => presentationSteps(value.store, frameId, scene),
     [value, frameId, scene],
@@ -129,6 +137,7 @@ export function PresentationMode(props: PresentationModeProps) {
     }
     clearTimeout(hudTimer.current);
     hudTimer.current = setTimeout(() => {
+      if (shortcutsVisible.current) return;
       if (hud.current?.contains(document.activeElement)) return;
       hudShown.current = false;
       setHudVisible(false);
@@ -262,6 +271,12 @@ export function PresentationMode(props: PresentationModeProps) {
   }, []);
 
   const onKeyDownCapture = (event: ReactKeyboardEvent<HTMLDivElement>) => {
+    if (shortcutsOpen) return;
+    if (
+      event.key !== 'Escape' &&
+      (event.target as Element).closest?.('[data-document-preview-body]')
+    )
+      return;
     if (event.code === 'Space' || event.key === ' ') return;
     event.stopPropagation();
     showHud();
@@ -344,9 +359,20 @@ export function PresentationMode(props: PresentationModeProps) {
       aria-modal="true"
       aria-label={overviewLabel}
       tabIndex={-1}
+      onClickCapture={(event) => {
+        const target = event.target as Element;
+        if (!target.closest?.('[data-document-preview-body]')) return;
+        const link = target.closest('a[href]');
+        if (
+          target.closest('button') ||
+          (link && !link.getAttribute('href')?.startsWith('#'))
+        )
+          exit();
+      }}
       onKeyDownCapture={onKeyDownCapture}
       onKeyDown={(event) => event.stopPropagation()}
       onKeyUpCapture={(event) => {
+        if (shortcutsOpen) return;
         if (event.code !== 'Space' && event.key !== ' ')
           event.stopPropagation();
       }}
@@ -355,6 +381,7 @@ export function PresentationMode(props: PresentationModeProps) {
       onPointerDown={showHud}
     >
       <FrameCanvas
+        documentReferences={props.documentReferences}
         ref={canvas}
         value={value}
         frameId={frameId}
@@ -363,6 +390,7 @@ export function PresentationMode(props: PresentationModeProps) {
         instanceHost={instanceHost}
         interactionSettings={interactionSettings}
         readonly
+        suspended={shortcutsOpen}
         inputMode="present"
         tool={hand}
         autoFit={false}
@@ -378,7 +406,7 @@ export function PresentationMode(props: PresentationModeProps) {
       )}
       <div
         ref={hud}
-        className={`presentation-hud${hudVisible ? '' : ' is-hidden'}`}
+        className={`presentation-hud${hudVisible || shortcutsOpen ? '' : ' is-hidden'}`}
         data-testid="presentation-hud"
         role="toolbar"
         aria-label={overviewLabel}
@@ -435,6 +463,15 @@ export function PresentationMode(props: PresentationModeProps) {
           <Pointer size={18} aria-hidden="true" />
         </button>
         <button
+          ref={shortcutsButton}
+          type="button"
+          title={shortcutLabels[language].title}
+          aria-label={shortcutLabels[language].title}
+          onClick={() => setShortcutsOpen(true)}
+        >
+          <Keyboard size={18} aria-hidden />
+        </button>
+        <button
           type="button"
           title={`${exitLabel} (Esc)`}
           aria-label={exitLabel}
@@ -443,6 +480,14 @@ export function PresentationMode(props: PresentationModeProps) {
           <LogOut size={18} aria-hidden="true" />
         </button>
       </div>
+      {shortcutsOpen && (
+        <ShortcutHelp
+          scene="presentation"
+          locale={language}
+          returnFocusRef={shortcutsButton}
+          onClose={() => setShortcutsOpen(false)}
+        />
+      )}
     </div>
   );
 }

@@ -38,7 +38,7 @@ async function selectRoot(page: Page) {
         if (
           hit?.closest('[data-cell-id]') === element &&
           !hit.closest(
-            '[data-mind-add], [data-port-id], [data-selection-handles]',
+            '[data-mind-fold], [data-port-id], [data-selection-handles]',
           )
         )
           return { x, y };
@@ -131,7 +131,8 @@ test('Mind width inherits settings, supports a saved map override and keeps long
   await expect(topic.locator('[data-resize-handle]')).toHaveCount(0);
   await openSettings(page);
   await page.getByTestId('settings-mind-max-width').fill('320');
-  await page.getByTestId('settings-back').click();
+
+  await page.getByTestId('my-back').click();
   await expect.poll(() => width(topic)).toBe(320);
   await fits(topic);
   await selectRoot(page);
@@ -146,7 +147,8 @@ test('Mind width inherits settings, supports a saved map override and keeps long
   await expect.poll(() => width(topic)).toBe(160);
   await openSettings(page);
   await page.getByTestId('settings-mind-max-width').fill('400');
-  await page.getByTestId('settings-back').click();
+
+  await page.getByTestId('my-back').click();
   await expect.poll(() => width(topic)).toBe(160);
   await expect(page.getByTestId('save-status')).toHaveAttribute(
     'data-save-state',

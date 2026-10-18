@@ -1,9 +1,14 @@
 import React, { act, useState } from 'react';
 import { createRoot } from 'react-dom/client';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { createMindFrameSnapshot } from '@sue/board-mind';
 import { I18nProvider } from './i18n';
 import { VerdFrame } from './verd-frame';
+
+vi.mock('@floating-ui/react', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@floating-ui/react')>();
+  return { ...actual, autoUpdate: () => () => {} };
+});
 
 (
   globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }
@@ -23,6 +28,63 @@ window.matchMedia = (query: string) =>
   }) as MediaQueryList;
 
 describe('tool shortcuts and real focus', () => {
+  it('opens preferences directly in standalone My and closes once without remounting the canvas', async () => {
+    HTMLDialogElement.prototype.showModal ??= function (
+      this: HTMLDialogElement,
+    ) {
+      this.open = true;
+    };
+    HTMLDialogElement.prototype.close ??= function (this: HTMLDialogElement) {
+      this.open = false;
+    };
+    const container = document.createElement('div');
+    document.body.append(container);
+    const root = createRoot(container);
+    await act(async () =>
+      root.render(
+        <I18nProvider defaultLanguage="zh" persistLanguage={false}>
+          <VerdFrame
+            value={createMindFrameSnapshot('frame', 'topic')}
+            frameId="frame"
+            onChange={() => {}}
+            onOpenFrame={() => {}}
+          />
+        </I18nProvider>,
+      ),
+    );
+    const canvas = container.querySelector('svg[aria-label="Frame canvas"]');
+    const trigger = container.querySelector<HTMLButtonElement>(
+      '[data-testid="app-menu-trigger"]',
+    )!;
+    await act(async () => trigger.click());
+    await act(async () =>
+      [...document.querySelectorAll<HTMLButtonElement>('[role="menuitem"]')]
+        .find((item) => item.textContent === '我的')!
+        .click(),
+    );
+    expect(
+      container.querySelector(
+        '[data-testid="my-page"] [data-testid="settings-language"]',
+      ),
+    ).toBeTruthy();
+    expect(container.querySelector('[data-testid="settings-page"]')).toBeNull();
+    await act(async () =>
+      container
+        .querySelector<HTMLDialogElement>('[data-testid="my-page"]')!
+        .dispatchEvent(new Event('cancel', { cancelable: true })),
+    );
+    await new Promise<void>((resolve) =>
+      requestAnimationFrame(() => resolve()),
+    );
+    expect(container.querySelector('dialog')).toBeNull();
+    expect(container.querySelector('svg[aria-label="Frame canvas"]')).toBe(
+      canvas,
+    );
+    expect(document.activeElement).toBe(trigger);
+    await act(async () => root.unmount());
+    container.remove();
+  });
+
   it('does not rename a topic when H or V is sent to the focused element after the autofocus window', async () => {
     const container = document.createElement('div');
     document.body.append(container);
