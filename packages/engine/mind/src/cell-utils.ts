@@ -101,8 +101,6 @@ export class MindRootNodeUtil extends MindNodeUtil {
       )
     )
       return 'Mind roots cannot have incoming branches';
-    if ((cell as NodeCell<MindChildData>).data?.collapsed)
-      return 'Mind roots cannot collapse';
     return undefined;
   }
 }

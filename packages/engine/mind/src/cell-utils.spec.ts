@@ -662,36 +662,86 @@ describe('native mind rules', () => {
       positions.get('root')!.x,
     );
   });
-  it('expands a collapsed parent in the same transaction as a new child', () => {
+  it.each(['a', 'root'])(
+    'expands collapsed %s in the same transaction as a new child',
+    (parentId) => {
+      const r = runtime();
+      const child = r.store.cells[parentId] as NodeCell;
+      r.transact({
+        id: 'collapse',
+        operations: [
+          {
+            type: 'replace_cell',
+            cell: { ...child, data: { collapsed: true } },
+          },
+        ],
+      });
+      r.transact({
+        id: 'add',
+        operations: addMindChild(
+          r.store,
+          parentId,
+          createMindChildCell('added'),
+          'added-edge',
+        ),
+      });
+      expect(
+        (r.store.cells[parentId] as NodeCell<{ collapsed?: boolean }>).data
+          ?.collapsed,
+      ).toBe(false);
+      expect(r.store.cells.added).toBeDefined();
+      expect(layoutMindCells(r.store, 'frame').has('added')).toBe(true);
+      r.undo();
+      expect(
+        (r.store.cells[parentId] as NodeCell<{ collapsed?: boolean }>).data
+          ?.collapsed,
+      ).toBe(true);
+      expect(r.store.cells.added).toBeUndefined();
+    },
+  );
+  it('expands a collapsed root on reparenting without losing the new side allocation', () => {
     const r = runtime();
-    const child = r.store.cells.a as NodeCell;
     r.transact({
-      id: 'collapse',
-      operations: [
-        {
-          type: 'replace_cell',
-          cell: { ...child, data: { collapsed: true } },
-        },
-      ],
-    });
-    r.transact({
-      id: 'add',
+      id: 'leaf',
       operations: addMindChild(
         r.store,
         'a',
-        createMindChildCell('added'),
-        'added-edge',
+        createMindChildCell('leaf'),
+        'leaf-edge',
       ),
     });
-    expect(
-      (r.store.cells.a as NodeCell<{ collapsed?: boolean }>).data?.collapsed,
-    ).toBe(false);
-    expect(r.store.cells.added).toBeDefined();
+    const root = r.store.cells.root as NodeCell;
+    r.transact({
+      id: 'collapse-root',
+      operations: [
+        {
+          type: 'replace_cell',
+          cell: {
+            ...root,
+            data: { layout: 'standard', rightNodeCount: 1, collapsed: true },
+          },
+        },
+      ],
+    });
+    const before = r.store;
+    r.transact({
+      id: 'move-leaf',
+      operations: reparentMindChild(
+        r.store,
+        'leaf',
+        'root',
+        undefined,
+        'right',
+      ),
+    });
+    expect((r.store.cells.root as NodeCell).data).toMatchObject({
+      collapsed: false,
+      rightNodeCount: 2,
+    });
+    expect(mindChildIds(r.store, 'root')).toEqual(['a', 'leaf', 'b', 'c']);
+    expect(layoutMindCells(r.store, 'frame').has('leaf')).toBe(true);
     r.undo();
-    expect(
-      (r.store.cells.a as NodeCell<{ collapsed?: boolean }>).data?.collapsed,
-    ).toBe(true);
-    expect(r.store.cells.added).toBeUndefined();
+    expect(r.store).toEqual(before);
   });
   it('splits a standard summary that crosses both sides', () => {
     const r = runtime();

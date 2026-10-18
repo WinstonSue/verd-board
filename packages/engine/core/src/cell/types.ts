@@ -201,6 +201,7 @@ export interface MindNodeData {
   branchShape?: 'bight' | 'polyline';
 }
 export interface MindRootData extends MindNodeData {
+  collapsed?: boolean;
   /** Maximum outer topic width; absent inherits the application default. */
   maxNodeWidth?: number;
   /** Presentation offset inside an embedded Frame; detail layout stays canonical. */

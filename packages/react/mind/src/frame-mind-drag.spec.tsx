@@ -562,3 +562,76 @@ describe('embedded Mind root dragging', () => {
     }
   });
 });
+
+describe('Mind fold controls', () => {
+  it.each(['mind', 'board'])(
+    '%s folds and unfolds branches and roots without inserting or deleting topics',
+    async (frameId) => {
+      const t = await mount();
+      await act(async () => {
+        await t.ref.current!.dispatch({
+          id: 'grandchild',
+          operations: addMindChild(
+            t.ref.current!.runtime.store,
+            'a',
+            createMindChildCell('leaf'),
+            'edge-leaf',
+          ),
+        });
+        t.render(frameId);
+      });
+      const ids = Object.keys(t.ref.current!.runtime.store.cells);
+      expect(t.host.querySelector('[data-mind-add]')).toBeNull();
+      await t.fire(t.cell('leaf'), 'pointerdown', 300, 300);
+      await t.fire(t.svg, 'pointerup', 300, 300);
+      expect(t.host.querySelector('[data-mind-controls="leaf"]')).toBeNull();
+
+      for (const id of ['a', 'topic']) {
+        await t.fire(t.cell(id), 'pointerdown', 300, 300);
+        await t.fire(t.svg, 'pointerup', 300, 300);
+        const button = () => t.host.querySelector(`[data-mind-fold="${id}"]`)!;
+        const hiddenIds =
+          id === 'a'
+            ? ['leaf', 'edge-leaf']
+            : [
+                'a',
+                'b',
+                'summary',
+                'leaf',
+                'edge-a',
+                'edge-b',
+                'edge-leaf',
+                'range',
+              ];
+        const before = t.ref.current!.runtime.history.undos.length;
+        expect(button().getAttribute('aria-expanded')).toBe('true');
+        await t.fire(button(), 'pointerdown', 300, 300);
+        expect(button().getAttribute('aria-expanded')).toBe('false');
+        expect(button().querySelector('path')!.getAttribute('d')).toContain(
+          ' V ',
+        );
+        hiddenIds.forEach((hidden) => expect(t.cell(hidden)).toBeNull());
+        expect(t.cell('other')).not.toBeNull();
+        expect(Object.keys(t.ref.current!.runtime.store.cells)).toEqual(ids);
+        expect(t.ref.current!.runtime.selection.ids).toEqual([id]);
+        expect(t.ref.current!.runtime.history.undos.length).toBe(before + 1);
+        await act(async () => t.ref.current!.undo());
+        hiddenIds.forEach((hidden) => expect(t.cell(hidden)).not.toBeNull());
+        await act(async () => t.ref.current!.redo());
+        hiddenIds.forEach((hidden) => expect(t.cell(hidden)).toBeNull());
+
+        // The expand button stays discoverable after selecting another tree.
+        await t.fire(t.cell('other'), 'pointerdown', 500, 300);
+        await t.fire(t.svg, 'pointerup', 500, 300);
+        expect(button()).not.toBeNull();
+        await t.fire(button(), 'pointerdown', 300, 300);
+        expect(button().getAttribute('aria-expanded')).toBe('true');
+        expect(button().querySelector('path')!.getAttribute('d')).not.toContain(
+          ' V ',
+        );
+        hiddenIds.forEach((hidden) => expect(t.cell(hidden)).not.toBeNull());
+        expect(Object.keys(t.ref.current!.runtime.store.cells)).toEqual(ids);
+      }
+    },
+  );
+});

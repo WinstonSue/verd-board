@@ -180,7 +180,6 @@ export const addMindChild = (
   });
   if (
     isNodeCell(parent) &&
-    parent.kind === CellKind.mindChild &&
     (parent.data as { collapsed?: boolean } | undefined)?.collapsed
   )
     operations.push({
@@ -341,17 +340,24 @@ export const reparentMindChild = (
   if (oldParentId !== parentId)
     partition(oldParent, oldRight - Number(wasRight), oldSiblings.length - 1);
   partition(parent, remainingRight + Number(right), nextSiblings.length);
-  if (
-    parent.kind === CellKind.mindChild &&
-    (parent.data as { collapsed?: boolean } | undefined)?.collapsed
-  )
+  if ((parent.data as { collapsed?: boolean } | undefined)?.collapsed) {
+    const updatedParent = operations.reduce(
+      (cell, operation) =>
+        operation.type === 'replace_cell' &&
+        isNodeCell(operation.cell) &&
+        operation.cell.id === parentId
+          ? operation.cell
+          : cell,
+      parent,
+    );
     operations.push({
       type: 'replace_cell',
       cell: {
-        ...parent,
-        data: { ...(parent.data as object), collapsed: false },
+        ...updatedParent,
+        data: { ...(updatedParent.data as object), collapsed: false },
       },
     });
+  }
   return operations;
 };
 export const createMindSummary = (

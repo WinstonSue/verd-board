@@ -1,7 +1,5 @@
 import { isNodeCell } from '@sue/board-core';
 import {
-  addMindChild,
-  createMindChildCell,
   mindChildIds,
   mindDescendantCount,
   mindGrowthSide,
@@ -14,9 +12,13 @@ export const renderMindControls = (context: FrameRenderContext) => {
     !isNodeCell(cell) ||
     !geometry ||
     context.readonly ||
-    (!context.hovered && !context.selected) ||
     !['mind-root', 'mind-child'].includes(cell.kind)
   )
+    return null;
+  const children = mindChildIds(store, cell.id);
+  const collapsed = !!(cell.data as { collapsed?: boolean } | undefined)
+    ?.collapsed;
+  if (!children.length || (!collapsed && !context.hovered && !context.selected))
     return null;
   const side = mindGrowthSide(store, cell.id);
   const pad = 22 / Math.max(0.02, context.scale);
@@ -32,12 +34,12 @@ export const renderMindControls = (context: FrameRenderContext) => {
               geometry.y + geometry.height + pad,
             ];
   const radius = 11 / Math.max(0.02, context.scale);
-  const children = mindChildIds(store, cell.id);
-  const collapsed = !!(cell.data as { collapsed?: boolean } | undefined)
-    ?.collapsed;
+  const label = collapsed ? 'Expand child topics' : 'Collapse child topics';
   const toggle = () => {
+    if (context.pending) return;
     const latest = store.cells[cell.id];
     if (!isNodeCell(latest)) return;
+    context.select();
     void context.dispatch({
       id: crypto.randomUUID(),
       operations: [
@@ -47,7 +49,8 @@ export const renderMindControls = (context: FrameRenderContext) => {
             ...latest,
             data: {
               ...(latest.data as object),
-              collapsed: !collapsed,
+              collapsed: !(latest.data as { collapsed?: boolean } | undefined)
+                ?.collapsed,
             },
           },
         },
@@ -57,28 +60,31 @@ export const renderMindControls = (context: FrameRenderContext) => {
   return (
     <g data-mind-controls={cell.id}>
       <g
-        data-mind-add={cell.id}
+        data-mind-fold={cell.id}
+        role="button"
+        tabIndex={0}
+        aria-label={label}
+        aria-expanded={!collapsed}
+        aria-disabled={context.pending}
         style={{ cursor: 'pointer' }}
         onPointerDown={(event) => {
           event.preventDefault();
           event.stopPropagation();
-          if (context.pending) return;
-          const child = createMindChildCell(crypto.randomUUID());
-          void context
-            .dispatch({
-              id: crypto.randomUUID(),
-              operations: addMindChild(
-                store,
-                cell.id,
-                child,
-                crypto.randomUUID(),
-              ),
-            })
-            .then((result) => {
-              if (result.status === 'accepted') context.edit?.(child.id);
-            });
+          event.currentTarget.ownerSVGElement?.focus();
+          toggle();
+        }}
+        onKeyDown={(event) => {
+          if (event.key !== 'Enter' && event.key !== ' ') return;
+          event.preventDefault();
+          event.stopPropagation();
+          toggle();
         }}
       >
+        <title>
+          {collapsed
+            ? `${label} (${mindDescendantCount(store, cell.id)})`
+            : label}
+        </title>
         <circle
           cx={point[0]}
           cy={point[1]}
@@ -87,43 +93,11 @@ export const renderMindControls = (context: FrameRenderContext) => {
           stroke="#6366f1"
         />
         <path
-          d={`M ${point[0] - radius / 2} ${point[1]} H ${point[0] + radius / 2} M ${point[0]} ${point[1] - radius / 2} V ${point[1] + radius / 2}`}
+          d={`M ${point[0] - radius / 2} ${point[1]} H ${point[0] + radius / 2}${collapsed ? ` M ${point[0]} ${point[1] - radius / 2} V ${point[1] + radius / 2}` : ''}`}
           stroke="#6366f1"
           strokeWidth={1.5 / Math.max(0.02, context.scale)}
         />
       </g>
-      {!!children.length && (
-        <g
-          data-mind-fold={cell.id}
-          style={{ cursor: 'pointer' }}
-          onPointerDown={(event) => {
-            event.preventDefault();
-            event.stopPropagation();
-            toggle();
-          }}
-        >
-          <circle
-            cx={geometry.x + geometry.width - radius}
-            cy={geometry.y + radius}
-            r={radius * 0.8}
-            fill="#fff"
-            stroke="#64748b"
-          />
-          {collapsed && (
-            <text
-              x={geometry.x + geometry.width - radius}
-              y={geometry.y + radius}
-              textAnchor="middle"
-              dominantBaseline="middle"
-              fontSize={10 / Math.max(0.02, context.scale)}
-              fill="#334155"
-              stroke="none"
-            >
-              {mindDescendantCount(store, cell.id)}
-            </text>
-          )}
-        </g>
-      )}
     </g>
   );
 };
