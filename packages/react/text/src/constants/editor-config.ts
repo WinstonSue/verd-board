@@ -1,17 +1,17 @@
-import StarterKit from '@tiptap/starter-kit';
-import Heading from '@tiptap/extension-heading';
-import BulletList from '@tiptap/extension-bullet-list';
-import OrderedList from '@tiptap/extension-ordered-list';
-import ListItem from '@tiptap/extension-list-item';
+import { StarterKit } from '@tiptap/starter-kit';
+import { Heading } from '@tiptap/extension-heading';
+import { BulletList } from '@tiptap/extension-bullet-list';
+import { OrderedList } from '@tiptap/extension-ordered-list';
+import { ListItem } from '@tiptap/extension-list-item';
 import { Table } from '@tiptap/extension-table';
 import { TableRow } from '@tiptap/extension-table-row';
 import { TableCell } from '@tiptap/extension-table-cell';
 import { TableHeader } from '@tiptap/extension-table-header';
-import Underline from '@tiptap/extension-underline';
-import Placeholder from '@tiptap/extension-placeholder';
+import { Underline } from '@tiptap/extension-underline';
+import { Placeholder } from '@tiptap/extension-placeholder';
 import { TextStyle, FontSize, FontFamily } from '@tiptap/extension-text-style';
 import { Color } from '@tiptap/extension-color';
-import TextAlign from '@tiptap/extension-text-align';
+import { TextAlign } from '@tiptap/extension-text-align';
 import { Highlight, Superscript, Subscript, Image } from './content-extensions';
 import { DocumentFrameReference } from '../components/document/document-frame-reference';
 

@@ -1,0 +1,969 @@
+{
+  "format": "verd-document",
+  "version": 1,
+  "id": "project-doc:packages/release-2",
+  "title": "VerdBoard 2.0 接入与迁移",
+  "text": {
+    "schemaVersion": 1,
+    "id": "project-doc:packages/release-2",
+    "kind": "block",
+    "content": {
+      "type": "doc",
+      "content": [
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 1
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "VerdBoard 2.0 接入与迁移"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "本次发布 20 个 2.0.0 正式包，使用阿里云 latest。与实际已发布 1.0.0 的 tarball 声明比较；FrameCanvas 与 Cell/Frame 已属于 1.0.0，不能重复记为 2.0 新能力。首次发布包为 Markdown 文档转换器和两个 UML 包。"
+            }
+          ]
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 2
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "安装与交付边界"
+            }
+          ]
+        },
+        {
+          "type": "codeBlock",
+          "attrs": {
+            "language": "ini"
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "@sue:registry=https://packages.aliyun.com/69f800449b7ce0afb00bda0e/npm/npm-registry/\n@ylib:registry=https://packages.aliyun.com/6141c43fdd62cdb60fbbdbda/npm/npm-registry/"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "仓库管理员需授予第三方两个仓库的读权限；本机令牌保存在用户 .npmrc，CI 使用 secret。产品传递依赖 @ylib/tabs 不在 npmjs.org，需保留 @ylib scope。对外提供 ESM、CJS、d.ts 和明确 CSS 出口，禁止依赖 src/development/未声明深层路径。React 18/19 在真实 tarball consumer 中验证，仓库开发要求 Node >=22、pnpm >=11.18.0。"
+            }
+          ]
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 2
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "应用从 1.0.0 迁移"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "旧入口 VerdBoardApp({adapter}) 已移除，使用 WorkspaceApp({host})。Web 创建 createWebWorkspaceHost，自定义桌面/后端实现 WorkspaceHost；StorageAdapter 仅保留于旧数据迁移边界，不能直接作为新 host。"
+            }
+          ]
+        },
+        {
+          "type": "codeBlock",
+          "attrs": {
+            "language": "tsx"
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "import { useMemo } from 'react';\nimport { WorkspaceApp, createWebWorkspaceHost, createWebStorageAdapter, migrateLegacyCellWorkspace } from '@sue/verd-board-app';\nimport '@sue/verd-board-ui/style.css';\nexport function App() {\n  const host = useMemo(() => createWebWorkspaceHost(), []);\n  return <WorkspaceApp host={host} importLegacy={async () => {\n    const adapter = createWebStorageAdapter();\n    return (await adapter.listKeys()).length ? migrateLegacyCellWorkspace(adapter) : null;\n  }} />;\n}"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "createWorkspaceSaveQueue → openWorkspaceSession(host, handle) 后由 session.apply/undo/redo/flush/dispose 管理；collectWorkspaceRevisions 不再由第三方调用，文件生命周期由工作区会话处理；createEmptyWorkspaceRecord → host.openWorkspace 与应用初始化，或 session.apply 创建明确文件。loadCellWorkspace/saveCellWorkspace 仍公开，但只用于旧平铺存储，不替代新文件提交。"
+            }
+          ]
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 2
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "数据、保存与冲突"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "FrameFileV2 是 format: verd-frame、version:2 的 .verd.json 画布文件；DocumentFileV1 是 format:verd-document、version:1 的 .verd-doc.json 独立正文，id 与 text.id 相同，正文为 BoardTextDocument。主题属于 Frame.view；相机、选择与布局缓存留在内存。新文件不能交给旧 1.0 应用回写。"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "WorkspaceSession 组装文件、统一历史、保存和冲突；全部内容/文件修改经 session.apply。WorkspaceHost.readSnapshot/readFile 读取宿主数据，commit 使用 FileVersion/expectedVersion 和稳定 transactionId 条件提交。相同事务 ID 的重试必须幂等；版本冲突不能无条件覆盖。"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "await session.flush() 返回 true 才表示调用时排队的内容已落盘；false 表示错误或冲突仍存在，关闭前保留本地内容，修复故障后再次 flush。通过 session.resolveConflict(fileId, \"keep-local\" | \"load-disk\") 明确解决冲突；回收站结果未确认时使用 retryTrashOperation 重放原事务。不可将 flush 调用完成误认为保存成功。"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "importLegacy 只对尚未初始化、无现有文件的可写默认工作区生效；显式目录不读取无关设备数据。已有自定义 StorageAdapter 可在回调中调用 migrateLegacyCellWorkspace。保留旧存储和迁移备份，先验证新文件保存、刷新恢复，再切换第三方业务入口。"
+            }
+          ]
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 2
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "受控画布"
+            }
+          ]
+        },
+        {
+          "type": "codeBlock",
+          "attrs": {
+            "language": "tsx"
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "import { useState } from 'react';\nimport { createCellRegistry } from '@sue/board-core';\nimport { createMindFrameSnapshot } from '@sue/board-mind';\nimport { FrameCanvas } from '@sue/board-react';\nimport { createMindFrameExtensions } from '@sue/board-react-mind';\nimport '@sue/board-react-text/style.css';\nconst registry = createCellRegistry();\nconst extensions = createMindFrameExtensions(registry);\nexport function MindEditor() {\n  const [value, setValue] = useState(() => createMindFrameSnapshot('frame', 'root'));\n  return <div style={{height: 600}}><FrameCanvas registry={registry} extensions={extensions} value={value} onChange={({snapshot}) => setValue(snapshot)} /></div>;\n}"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "value 是 FrameSnapshot={store:CellStore}，onChange 返回 snapshot 和 transaction，由调用方回写 value。扩展在 registry 注册领域 Util。不要在渲染过程中重新创建 registry；画布需要明确容器高度。"
+            }
+          ]
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 2
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "第三方业务宿主"
+            }
+          ]
+        },
+        {
+          "type": "codeBlock",
+          "attrs": {
+            "language": "tsx"
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "import { applyCellOperations, type FrameSnapshot } from '@sue/board-core';\nimport { FrameCanvas, type FrameCanvasProps } from '@sue/board-react';\nimport { useState } from 'react';\nexport function HostEditor({ initial }: { initial: FrameSnapshot }) {\n  const [value, setValue] = useState({ snapshot: initial });\n  const props: FrameCanvasProps<typeof value> = {\n    value, adapter: { toFrameSnapshot: v => v.snapshot },\n    onIntent: transaction => {\n      const store = applyCellOperations(value.snapshot.store, transaction.operations);\n      setValue({ snapshot: { store } });\n      return { status: 'accepted' };\n    },\n  };\n  return <div style={{height: 600}}><FrameCanvas {...props} /></div>;\n}"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "业务宿主可以异步校验事务后返回 accepted/rejected；接受后必须写回新 value，拒绝保留原值。示例同步提交，真实业务可等待服务器。与 onChange 模式互斥，等待期间阻止重复提交；撤销重做由 history 适配，错误通过 rejected.message 或 onReject 呈现。"
+            }
+          ]
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 2
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "独立文档、UML 与转换器"
+            }
+          ]
+        },
+        {
+          "type": "codeBlock",
+          "attrs": {
+            "language": "tsx"
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "import { useState } from 'react';\nimport { createBlockText } from '@sue/board-common';\nimport { DocumentEditor } from '@sue/board-react-text';\nimport '@sue/board-react-text/style.css';\nexport function Editor() {\n  const [value, setValue] = useState(() => createBlockText('Hello'));\n  return <DocumentEditor value={value} onChange={change => setValue(change.value)} />;\n}"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "DocumentEditor 的 change.value 是完整 BoardTextDocument，区别于画布 change.snapshot。文字文件不混入 CellStore。文档中的画布引用通过宿主解析；文件身份保持稳定。"
+            }
+          ]
+        },
+        {
+          "type": "codeBlock",
+          "attrs": {
+            "language": "tsx"
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "import { createCellRegistry } from '@sue/board-core';\nimport { createUmlClassFrameSnapshot } from '@sue/board-uml';\nimport { FrameCanvas } from '@sue/board-react';\nimport { createUmlFrameExtensions } from '@sue/board-react-uml';\nimport '@sue/board-react-text/style.css';\nconst registry = createCellRegistry();\nconst extensions = createUmlFrameExtensions(registry);\nconst value = createUmlClassFrameSnapshot('frame', 'uml-root');\nexport function Preview() {\n  return <div style={{height: 600}}><FrameCanvas readonly value={value} registry={registry} extensions={extensions} /></div>;\n}"
+            }
+          ]
+        },
+        {
+          "type": "codeBlock",
+          "attrs": {
+            "language": "ts"
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "import { parseMarkdownToTextDocument, serializeTextDocumentToMarkdown } from '@sue/board-markdown-to-text';\nconst { document, warnings } = parseMarkdownToTextDocument('# Title\\n\\nBody', { id: 'doc' });\nconst result = serializeTextDocumentToMarkdown(document);\nconsole.log(result.markdown, warnings, result.warnings);"
+            }
+          ]
+        },
+        {
+          "type": "codeBlock",
+          "attrs": {
+            "language": "ts"
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "import { parseMermaidToFrameSnapshot, serializeFrameToMermaid } from '@sue/board-mermaid-to-board';\nexport async function convert() {\n  const snapshot = await parseMermaidToFrameSnapshot('classDiagram\\nclass User', { scene: 'uml-class' });\n  return serializeFrameToMermaid(snapshot);\n}"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "parseMarkdownToFrameSnapshot(definition, mainTopic?, options?) 保留原前两个参数；新增 fallbackTitle 等第三参数。文档 Markdown 使用另一个包并返回 warnings。Mermaid 默认 whiteboard，uml-class/uml-sequence 为新场景；样式/富文本等有损字段不能依赖文本格式完整保留，完整保存使用原生文件。"
+            }
+          ]
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 2
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "逐包发布说明"
+            }
+          ]
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 3
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "@sue/board-markdown-to-board"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "Markdown 与 Mind FrameSnapshot 双向转换。保留前两个参数，新增第三个 MarkdownParseOptions；改进多根、深层列表、笔记与富文本往返。"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "删除导出：无。新增导出：MarkdownParseOptions。声明变化：parseMarkdownToFrameSnapshot。"
+            }
+          ]
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 3
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "@sue/board-markdown-to-text"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "首次发布：Markdown 与独立 BoardTextDocument 双向转换，支持 CommonMark/GFM 并返回有损转换 warnings；修正发布后的声明入口。"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "删除导出：无。新增导出：parseMarkdownToTextDocument、serializeTextDocumentToMarkdown、MarkdownConversionWarning、MarkdownParseResult、MarkdownSerializeResult。声明变化：无。"
+            }
+          ]
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 3
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "@sue/board-mermaid-to-board"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "Mermaid 与 FrameSnapshot 双向转换。新增 uml-class/uml-sequence 场景、parseMermaidToUmlFrame 与 serializeUmlToMermaid；默认场景仍为 whiteboard。"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "删除导出：无。新增导出：parseMermaidToUmlFrame、serializeUmlToMermaid。声明变化：MermaidFrameImportConfig。"
+            }
+          ]
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 3
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "@sue/board-architecture"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "原生架构层、模块、依赖与布局。新增 architectureLayerIds，模块 Util 移动支持新的上下文；现有画布工厂保留。"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "删除导出：无。新增导出：architectureLayerIds。声明变化：ArchitectureModuleNodeUtil。"
+            }
+          ]
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 3
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "@sue/board-common"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "BoardTextDocument 与纯文本工具。新增结构校验、纯文本派生与批量格式工具；BoardTextController 新增可选 getActiveAlign，现有实现无需补齐必需方法。"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "删除导出：无。新增导出：isBoardTextNode、isBoardTextDocumentShape、deriveBoardTextPlainText、BoardTextFormatDefaults、BoardTextMarkState、BoardTextFormatState、BoardTextFormatPatch、boardTextLeaves、boardTextAlignments、boardTextFormatState、formatBoardText、textWithDefaultAlignment、textWithoutDefaultAlignment。声明变化：BoardTextController。"
+            }
+          ]
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 3
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "@sue/board-core"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "CellStore、事务、历史、注册表与共享几何。新增 Frame/文档引用、NodeCell.name、UML 类型及命令支持；CellKind、Cell 等联合类型扩展，穷尽分支需更新。"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "删除导出：无。新增导出：edgeDisplayGeometry、MindColorScheme、MindViewSettings、FrameReferenceData、FrameReferenceCell、DocumentReferenceData、DocumentReferenceCell、isDocumentReferenceCell、createDocumentReferenceCell、DocumentFrameCell、isDocumentFrameCell、isDocumentCell、createDocumentFrameCell、isFrameReferenceCell、createFrameReferenceCell、nodeContentName、initializeNodeName、FrameReferenceUtil、DocumentReferenceUtil、DocumentFrameUtil、umlRoot、umlEvents、umlReferences、remapUmlCell、normalizeUmlRelations、umlClipboardSequence、planUmlPaste、UmlClassifier、UmlClassData、UmlRelation、UmlRelationData、UmlEvent、UmlSequenceData、UmlParticipantData、UmlFragmentData、UmlNoteData、UmlMessageData、UML_ROOT_KINDS、isUmlRoot、isUmlSequenceCell、UmlClipboardSequence。声明变化：CellKind、sceneAnchorKind、NodeCell、FrameView、Cell、MindRootData、CellOperation、frameScene、CellMoveContext、CellFragment。"
+            }
+          ]
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 3
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "@sue/board-draw"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "几何、笔迹、表格与泳道 Cell 工厂和 Util。公开名称保持不变，表格与笔迹 Util 的移动行为与新的 CellMoveContext 对齐。"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "删除导出：无。新增导出：无。声明变化：TableNodeUtil、FreehandNodeUtil。"
+            }
+          ]
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 3
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "@sue/board-layouts"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "树与 DAG 布局。新增 abstractStandardSide；已有公开签名保持不变，本次统一发布为 2.0.0。"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "删除导出：无。新增导出：abstractStandardSide。声明变化：无。"
+            }
+          ]
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 3
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "@sue/board-mind"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "原生 Mind 模型、命令与树布局。新增分支移动规划、多根树布局、配色和节点最大宽度选项；扩展布局/Util 时检查新增上下文。"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "删除导出：无。新增导出：resolveMindChildMove、MindMovePlan、MIND_NOTE_FONT_SIZE、DEFAULT_MIND_MAX_WIDTH、MIN_MIND_MAX_WIDTH、MAX_MIND_MAX_WIDTH、validMindMaxWidth、MindMetricsOptions、MindPalette、mindFrameColorScheme、mindNoteColor、mindTreeRootId、mindTreeNodeIds、mindTreeLayout、mindTreeLayoutOverrides、setMindTreeLayout、setMindTreeRightNodeCount、mindLayoutBounds、stackMindTreeRoots、offsetMindTreeRoots。声明变化：MindNodeUtil、MindChildNodeUtil、layoutMindCells、mindCellMetrics、mindTheme、mindPresentation。"
+            }
+          ]
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 3
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "@sue/board-text"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "文字格式、对齐、链接与剪贴板辅助。与 1.0.0 相比公开导出及声明签名无变化，本次统一发布为 2.0.0。"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "删除导出：无。新增导出：无。声明变化：无。"
+            }
+          ]
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 3
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "@sue/board-uml"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "首次发布：UML 类图与时序图模型、工厂、命令、布局、关系校验和注册。首次发布版本随整套包为 2.0.0。"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "删除导出：无。新增导出：UmlClassifier、UmlClassData、UmlRelation、UmlRelationData、UmlEvent、UmlSequenceData、UmlParticipantData、UmlFragmentData、UmlNoteData、UmlMessageData、createUmlClassCell、createUmlParticipantCell、createUmlFrameSnapshot、createUmlRelationCell、umlRelationMarkers、createUmlMessageCell、createUmlNoteCell、createUmlFragmentCell、addUmlCell、insertUmlEvent、moveUmlEvent、reorderUmlParticipant、addUmlActivation、sequenceEventLocations、umlFrameOf、umlPorts、createUmlClassFrameSnapshot、createUmlSequenceFrameSnapshot、layoutUmlSequence、layoutUmlCells、layoutUmlEdges、umlClassMetrics、UmlActivationBounds、UmlSequenceLayout、validateUmlSequence、registerUmlCells。声明变化：无。"
+            }
+          ]
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 3
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "@sue/board-workflow"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "原生 Workflow 工厂、端口、DAG/process 校验和布局。与 1.0.0 相比公开导出及声明签名无变化，本次统一发布为 2.0.0。"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "删除导出：无。新增导出：无。声明变化：无。"
+            }
+          ]
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 3
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "@sue/verd-board-app"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "文件工作区与会话。VerdBoardApp 改为 WorkspaceApp({host})；WorkspaceHost、WorkspaceSession 统一保存/历史/冲突，支持 FrameFileV2 与 DocumentFileV1。旧 StorageAdapter 仍作为迁移边界保留。"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "删除导出：VerdBoardApp、createWorkspaceSaveQueue、collectWorkspaceRevisions、createEmptyWorkspaceRecord。新增导出：createMemoryWorkspaceHost、createWebWorkspaceHost、createDesktopWorkspaceHost、migrateLegacyCellWorkspace、parseLegacyFrameDocument、WorkspaceApp、WorkspaceAppProps、FrameOrganization、DiagramKind、FrameOrganizationIndex、OrganizeRecommendation、buildOrganizationIndex、diagramKindOf、isRegularCanvas、isSpecializedDiagram、organizationChangeError、organizationForCopy、parseFrameOrganization、organizePreviewIsStale、recommendOrganization、referenceSourceKey、referenceSourcesOf、sameFrameContent、sameFrameFile、settleImportedOrganization、FrameFileV2、FrameFileDiagnostic、isFrameFileV2、createFrameFile、frameFileFor、MIGRATION_REFERENCE_PREFIX、ExternalizeResult、externalizeOwnedFrames、PartitionOptions、partitionCellStore、WORKSPACE_ROOT_ID、AssembledFiles、assembleFrameFiles、assembleWorkspaceStore、FrameReferenceInstance、FrameReferenceGraph、buildFrameReferenceGraph、findFrameReferenceCycles、frameClosure、remapFrameFileIds、duplicateFrameClosure、remapImportedFiles、FrameExportBundle、frameExportBundle、frameExportRootId、parseFrameExport、validateFrameFiles、assessReferencePlace、DocumentFileV1、WorkspaceFile、isDocumentFileV1、isWorkspaceFile、documentFileDiagnostic、createDocumentText、createDocumentFile、workspaceFileId、workspaceFileTitle、renameDocumentFile、duplicateDocumentFile、remapImportedDocument、documentPathFor、documentDisplayName、DocumentLink、createDocumentLink、parseDocumentLink、buildWorkspaceReferenceGraph、workspaceExportBundle、parseWorkspaceExport、workspaceReferences、workspaceFileClosure、validateWorkspaceReferences、remapWorkspaceFiles、WorkspaceReference、WorkspaceReferenceGraph、FileVersion、WorkspaceKey、WorkspaceHandle、GlobalConfigSnapshot、WorkspaceConfigSnapshot、WorkspaceTabRef、WorkspaceTabGroupState、WorkspaceSessionState、normalizeWorkspaceSessionState、WorkspaceEntryMeta、WorkspaceCanvasPayload、WorkspaceDocumentPayload、WorkspaceTrashMeta、WorkspaceHostSnapshot、RawFileRead、FileWriteOp、FileMoveOp、TrashOp、RestoreOp、WorkspaceConfigWrite、CommitRequest、CommitRejection、CommitReceipt、OpenWorkspaceRequest、ConflictResolution、ChangeHint、WorkspaceHost、WORKSPACE_META_DIR、CANVAS_FILE_SUFFIX、DOCUMENT_FILE_SUFFIX、isCanvasPath、isDocumentPath、normalizeWorkspacePath、normalizeTrashEntryId、parentWorkspacePath、baseName、conflictCommit、WorkspaceFileEntry、HistoryMeta、DocumentEditOrigin、WorkspaceCommand、OrganizeChange、OrganizeResult、CommandResult、WorkspaceSessionSnapshot、WorkspaceSession、WorkspaceSessionOptions、createWorkspaceSession、openWorkspaceSession、canvasFrameIdAt、isCanvasEntry、canvasParentDir、canvasDisplayName、isDocumentEntry、OccurrenceId、rootOccurrenceId、refOccurrenceId、OccurrenceViewState、OccurrenceSession、OccurrenceOpenResult、createCanvasSession、CanvasSession。声明变化：无。"
+            }
+          ]
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 3
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "@sue/verd-board-ui"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "VerdFrame 产品界面。新增 DocumentPage、文件树、标签组、图表库、工作区设置、回收站和外观偏好；VerdFrame 增加引用、工作区历史与宿主回调。"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "删除导出：无。新增导出：CanvasPreview、DocumentEditor、DocumentPreview、DocumentPreviewController、FrameDocumentReferences、PreviewMountProvider、usePreviewMount、FrameInstanceHost、FrameOpenSource、EditorKind、WorkspaceTabs、WorkspaceTabItem、WorkspaceTabsProps、FileTree、FileTreeEntry、FileTreeCanvas、FileTreeSubgraph、FileTreeDocument、FileTreeProps、ChartLibrary、OrganizePreview、ChartLibraryRow、ChartOrganization、ChartLibraryProps、OrganizePreviewRow、DocumentPage、DocumentEditorChange、DocumentEditorController、DocumentHistoryAdapter、DocumentSelection、DocumentSaveState、DocumentPageProps、WorkspaceEmpty、WorkspaceEmptyProps、WorkspaceSettings、WorkspaceSettingsProps、readAppearancePreference、initializeAppearance、setAppearancePreference、AppearancePreference、ResolvedAppearance、AppearanceState、appearancePreferencesKey、useAppearancePreference、FrameSettingsContent、FrameSettingsPage、MyPage、MyPageProps、WorkspaceMenu、WorkspaceMenuProps、WorkspaceTrash、WorkspaceTrashEntry、WorkspaceTrashProps。声明变化：VerdFrame、VerdFrameProps、WorkspaceId、ExclusiveEditorBar、ProductShell、Translations。"
+            }
+          ]
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 3
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "@sue/board-react-architecture"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "createArchitectureFrameExtensions 注册架构图扩展。与 1.0.0 相比公开导出及声明签名无变化，继续与 FrameCanvas 共用入口。"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "删除导出：无。新增导出：无。声明变化：无。"
+            }
+          ]
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 3
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "@sue/board-react"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "统一 FrameCanvas；1.0.0 已提供此入口。新增引用宿主、文档窗口、移动预览和控制器能力；保留 value/onChange 与 adapter/onIntent 两种模式。右键菜单改在松开鼠标后显示。"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "删除导出：无。新增导出：PreviewMountProvider、usePreviewMount、measureBoardText、FrameMovePreviewContext、FrameMovePreview、FrameOpenSource、FrameInstanceQuery、FrameInstanceBinding、FrameInstanceHost、FrameDocumentReferenceProps、FrameDocumentReferences。声明变化：FrameRichText、FrameTextEditor、FrameRichTextField、FrameImageRenderOptions、FramePresentation、FrameRenderExtension、FrameHistoryAdapter、FrameSelectionCommand、FrameCanvasController。"
+            }
+          ]
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 3
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "@sue/board-react-mind"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "createMindFrameExtensions 注册脑图渲染、树布局与交互；新增可选 MindMetricsOptions（maxNodeWidth、measureText），支持分支移动预览。"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "删除导出：无。新增导出：无。声明变化：createMindFrameExtensions。"
+            }
+          ]
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 3
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "@sue/board-react-text"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "TipTap React 文本层。新增独立 DocumentEditor/DocumentPreview、查找与标题锚点、正文度量；DocumentEditor 的 onChange 通过 change.value 返回正文。"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "删除导出：无。新增导出：DocumentEditor、DocumentPreview、DocumentPreviewController、DocumentPreviewProps、DocumentFrameReferenceProps、DocumentFrameReferenceRenderer、DocumentEditorProps、DocumentEditorChange、DocumentEditorController、DocumentHistoryAdapter、DocumentSelection、DocumentChangeSource、DocumentToolbarState、DocumentCommandName、DocumentHeading、DocumentSearchMatch、DocumentSearchOptions、DocumentBlockKind、findInDocument、createDocumentHeadingSlugger、createDocumentExtensions、measureBoardText、TextMeasurement。声明变化：paragraphExtensions、lineExtensions、DEFAULT_PLACEHOLDERS。"
+            }
+          ]
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 3
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "@sue/board-react-uml"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "首次发布：createUmlFrameExtensions，为 FrameCanvas 注册类图和时序图渲染与交互。"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "删除导出：无。新增导出：createUmlFrameExtensions。声明变化：无。"
+            }
+          ]
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 3
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "@sue/board-react-workflow"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "createWorkflowFrameExtensions 注册流程图扩展。与 1.0.0 相比公开导出及声明签名无变化，继续与 FrameCanvas 共用入口。"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "删除导出：无。新增导出：无。声明变化：无。"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "声明变化统计包含新增可选参数、接口扩展与函数内部类型变化，不意味着每项都是破坏性变更；适配时以相应公开声明、上文迁移步骤和 consumer 示例为准。"
+            }
+          ]
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 2
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "维护与发布验收"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "README 中标记 consumer-example 的 TypeScript/TSX 示例由隔离 consumer 提取编译；同时验证 React18/19、真实 tarball 的类型和运行时、宿主接受/拒绝、IndexedDB 保存重开、文档/脑图/UML 转换与图片导出。发布后 VERD_CONSUMER_SOURCE=registry pnpm test:consumer 重验真实阿里云安装。所有结果以本次日志为准，不能继承历史通过记录。"
+            }
+          ]
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 2
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "2026-10-19 发布前验收"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "类型检查、lint、全部单测、原生工作区校验、Web 与 Desktop 构建通过；20 个真实 tarball 的 ESM/CJS、22 段 README 示例及 React 18/19 浏览器消费者验证通过。Web 生产 E2E 共覆盖 215 项，初跑 211 项通过，4 项旧用例适配当前内嵌编辑、分帧预览和标题交互后复验通过；Desktop E2E 17 项通过。此处记录发布前检查，发布后仍需验证阿里云 latest 和全新安装。"
+            }
+          ]
+        }
+      ]
+    },
+    "plainText": "VerdBoard 2.0 接入与迁移\n本次发布 20 个 2.0.0 正式包，使用阿里云 latest。与实际已发布 1.0.0 的 tarball 声明比较；FrameCanvas 与 Cell/Frame 已属于 1.0.0，不能重复记为 2.0 新能力。首次发布包为 Markdown 文档转换器和两个 UML 包。\n安装与交付边界\n@sue:registry=https://packages.aliyun.com/69f800449b7ce0afb00bda0e/npm/npm-registry/\n@ylib:registry=https://packages.aliyun.com/6141c43fdd62cdb60fbbdbda/npm/npm-registry/\n仓库管理员需授予第三方两个仓库的读权限；本机令牌保存在用户 .npmrc，CI 使用 secret。产品传递依赖 @ylib/tabs 不在 npmjs.org，需保留 @ylib scope。对外提供 ESM、CJS、d.ts 和明确 CSS 出口，禁止依赖 src/development/未声明深层路径。React 18/19 在真实 tarball consumer 中验证，仓库开发要求 Node >=22、pnpm >=11.18.0。\n应用从 1.0.0 迁移\n旧入口 VerdBoardApp({adapter}) 已移除，使用 WorkspaceApp({host})。Web 创建 createWebWorkspaceHost，自定义桌面/后端实现 WorkspaceHost；StorageAdapter 仅保留于旧数据迁移边界，不能直接作为新 host。\nimport { useMemo } from 'react';\nimport { WorkspaceApp, createWebWorkspaceHost, createWebStorageAdapter, migrateLegacyCellWorkspace } from '@sue/verd-board-app';\nimport '@sue/verd-board-ui/style.css';\nexport function App() {\n  const host = useMemo(() => createWebWorkspaceHost(), []);\n  return <WorkspaceApp host={host} importLegacy={async () => {\n    const adapter = createWebStorageAdapter();\n    return (await adapter.listKeys()).length ? migrateLegacyCellWorkspace(adapter) : null;\n  }} />;\n}\ncreateWorkspaceSaveQueue → openWorkspaceSession(host, handle) 后由 session.apply/undo/redo/flush/dispose 管理；collectWorkspaceRevisions 不再由第三方调用，文件生命周期由工作区会话处理；createEmptyWorkspaceRecord → host.openWorkspace 与应用初始化，或 session.apply 创建明确文件。loadCellWorkspace/saveCellWorkspace 仍公开，但只用于旧平铺存储，不替代新文件提交。\n数据、保存与冲突\nFrameFileV2 是 format: verd-frame、version:2 的 .verd.json 画布文件；DocumentFileV1 是 format:verd-document、version:1 的 .verd-doc.json 独立正文，id 与 text.id 相同，正文为 BoardTextDocument。主题属于 Frame.view；相机、选择与布局缓存留在内存。新文件不能交给旧 1.0 应用回写。\nWorkspaceSession 组装文件、统一历史、保存和冲突；全部内容/文件修改经 session.apply。WorkspaceHost.readSnapshot/readFile 读取宿主数据，commit 使用 FileVersion/expectedVersion 和稳定 transactionId 条件提交。相同事务 ID 的重试必须幂等；版本冲突不能无条件覆盖。\nawait session.flush() 返回 true 才表示调用时排队的内容已落盘；false 表示错误或冲突仍存在，关闭前保留本地内容，修复故障后再次 flush。通过 session.resolveConflict(fileId, \"keep-local\" | \"load-disk\") 明确解决冲突；回收站结果未确认时使用 retryTrashOperation 重放原事务。不可将 flush 调用完成误认为保存成功。\nimportLegacy 只对尚未初始化、无现有文件的可写默认工作区生效；显式目录不读取无关设备数据。已有自定义 StorageAdapter 可在回调中调用 migrateLegacyCellWorkspace。保留旧存储和迁移备份，先验证新文件保存、刷新恢复，再切换第三方业务入口。\n受控画布\nimport { useState } from 'react';\nimport { createCellRegistry } from '@sue/board-core';\nimport { createMindFrameSnapshot } from '@sue/board-mind';\nimport { FrameCanvas } from '@sue/board-react';\nimport { createMindFrameExtensions } from '@sue/board-react-mind';\nimport '@sue/board-react-text/style.css';\nconst registry = createCellRegistry();\nconst extensions = createMindFrameExtensions(registry);\nexport function MindEditor() {\n  const [value, setValue] = useState(() => createMindFrameSnapshot('frame', 'root'));\n  return <div style={{height: 600}}><FrameCanvas registry={registry} extensions={extensions} value={value} onChange={({snapshot}) => setValue(snapshot)} /></div>;\n}\nvalue 是 FrameSnapshot={store:CellStore}，onChange 返回 snapshot 和 transaction，由调用方回写 value。扩展在 registry 注册领域 Util。不要在渲染过程中重新创建 registry；画布需要明确容器高度。\n第三方业务宿主\nimport { applyCellOperations, type FrameSnapshot } from '@sue/board-core';\nimport { FrameCanvas, type FrameCanvasProps } from '@sue/board-react';\nimport { useState } from 'react';\nexport function HostEditor({ initial }: { initial: FrameSnapshot }) {\n  const [value, setValue] = useState({ snapshot: initial });\n  const props: FrameCanvasProps<typeof value> = {\n    value, adapter: { toFrameSnapshot: v => v.snapshot },\n    onIntent: transaction => {\n      const store = applyCellOperations(value.snapshot.store, transaction.operations);\n      setValue({ snapshot: { store } });\n      return { status: 'accepted' };\n    },\n  };\n  return <div style={{height: 600}}><FrameCanvas {...props} /></div>;\n}\n业务宿主可以异步校验事务后返回 accepted/rejected；接受后必须写回新 value，拒绝保留原值。示例同步提交，真实业务可等待服务器。与 onChange 模式互斥，等待期间阻止重复提交；撤销重做由 history 适配，错误通过 rejected.message 或 onReject 呈现。\n独立文档、UML 与转换器\nimport { useState } from 'react';\nimport { createBlockText } from '@sue/board-common';\nimport { DocumentEditor } from '@sue/board-react-text';\nimport '@sue/board-react-text/style.css';\nexport function Editor() {\n  const [value, setValue] = useState(() => createBlockText('Hello'));\n  return <DocumentEditor value={value} onChange={change => setValue(change.value)} />;\n}\nDocumentEditor 的 change.value 是完整 BoardTextDocument，区别于画布 change.snapshot。文字文件不混入 CellStore。文档中的画布引用通过宿主解析；文件身份保持稳定。\nimport { createCellRegistry } from '@sue/board-core';\nimport { createUmlClassFrameSnapshot } from '@sue/board-uml';\nimport { FrameCanvas } from '@sue/board-react';\nimport { createUmlFrameExtensions } from '@sue/board-react-uml';\nimport '@sue/board-react-text/style.css';\nconst registry = createCellRegistry();\nconst extensions = createUmlFrameExtensions(registry);\nconst value = createUmlClassFrameSnapshot('frame', 'uml-root');\nexport function Preview() {\n  return <div style={{height: 600}}><FrameCanvas readonly value={value} registry={registry} extensions={extensions} /></div>;\n}\nimport { parseMarkdownToTextDocument, serializeTextDocumentToMarkdown } from '@sue/board-markdown-to-text';\nconst { document, warnings } = parseMarkdownToTextDocument('# Title\\n\\nBody', { id: 'doc' });\nconst result = serializeTextDocumentToMarkdown(document);\nconsole.log(result.markdown, warnings, result.warnings);\nimport { parseMermaidToFrameSnapshot, serializeFrameToMermaid } from '@sue/board-mermaid-to-board';\nexport async function convert() {\n  const snapshot = await parseMermaidToFrameSnapshot('classDiagram\\nclass User', { scene: 'uml-class' });\n  return serializeFrameToMermaid(snapshot);\n}\nparseMarkdownToFrameSnapshot(definition, mainTopic?, options?) 保留原前两个参数；新增 fallbackTitle 等第三参数。文档 Markdown 使用另一个包并返回 warnings。Mermaid 默认 whiteboard，uml-class/uml-sequence 为新场景；样式/富文本等有损字段不能依赖文本格式完整保留，完整保存使用原生文件。\n逐包发布说明\n@sue/board-markdown-to-board\nMarkdown 与 Mind FrameSnapshot 双向转换。保留前两个参数，新增第三个 MarkdownParseOptions；改进多根、深层列表、笔记与富文本往返。\n删除导出：无。新增导出：MarkdownParseOptions。声明变化：parseMarkdownToFrameSnapshot。\n@sue/board-markdown-to-text\n首次发布：Markdown 与独立 BoardTextDocument 双向转换，支持 CommonMark/GFM 并返回有损转换 warnings；修正发布后的声明入口。\n删除导出：无。新增导出：parseMarkdownToTextDocument、serializeTextDocumentToMarkdown、MarkdownConversionWarning、MarkdownParseResult、MarkdownSerializeResult。声明变化：无。\n@sue/board-mermaid-to-board\nMermaid 与 FrameSnapshot 双向转换。新增 uml-class/uml-sequence 场景、parseMermaidToUmlFrame 与 serializeUmlToMermaid；默认场景仍为 whiteboard。\n删除导出：无。新增导出：parseMermaidToUmlFrame、serializeUmlToMermaid。声明变化：MermaidFrameImportConfig。\n@sue/board-architecture\n原生架构层、模块、依赖与布局。新增 architectureLayerIds，模块 Util 移动支持新的上下文；现有画布工厂保留。\n删除导出：无。新增导出：architectureLayerIds。声明变化：ArchitectureModuleNodeUtil。\n@sue/board-common\nBoardTextDocument 与纯文本工具。新增结构校验、纯文本派生与批量格式工具；BoardTextController 新增可选 getActiveAlign，现有实现无需补齐必需方法。\n删除导出：无。新增导出：isBoardTextNode、isBoardTextDocumentShape、deriveBoardTextPlainText、BoardTextFormatDefaults、BoardTextMarkState、BoardTextFormatState、BoardTextFormatPatch、boardTextLeaves、boardTextAlignments、boardTextFormatState、formatBoardText、textWithDefaultAlignment、textWithoutDefaultAlignment。声明变化：BoardTextController。\n@sue/board-core\nCellStore、事务、历史、注册表与共享几何。新增 Frame/文档引用、NodeCell.name、UML 类型及命令支持；CellKind、Cell 等联合类型扩展，穷尽分支需更新。\n删除导出：无。新增导出：edgeDisplayGeometry、MindColorScheme、MindViewSettings、FrameReferenceData、FrameReferenceCell、DocumentReferenceData、DocumentReferenceCell、isDocumentReferenceCell、createDocumentReferenceCell、DocumentFrameCell、isDocumentFrameCell、isDocumentCell、createDocumentFrameCell、isFrameReferenceCell、createFrameReferenceCell、nodeContentName、initializeNodeName、FrameReferenceUtil、DocumentReferenceUtil、DocumentFrameUtil、umlRoot、umlEvents、umlReferences、remapUmlCell、normalizeUmlRelations、umlClipboardSequence、planUmlPaste、UmlClassifier、UmlClassData、UmlRelation、UmlRelationData、UmlEvent、UmlSequenceData、UmlParticipantData、UmlFragmentData、UmlNoteData、UmlMessageData、UML_ROOT_KINDS、isUmlRoot、isUmlSequenceCell、UmlClipboardSequence。声明变化：CellKind、sceneAnchorKind、NodeCell、FrameView、Cell、MindRootData、CellOperation、frameScene、CellMoveContext、CellFragment。\n@sue/board-draw\n几何、笔迹、表格与泳道 Cell 工厂和 Util。公开名称保持不变，表格与笔迹 Util 的移动行为与新的 CellMoveContext 对齐。\n删除导出：无。新增导出：无。声明变化：TableNodeUtil、FreehandNodeUtil。\n@sue/board-layouts\n树与 DAG 布局。新增 abstractStandardSide；已有公开签名保持不变，本次统一发布为 2.0.0。\n删除导出：无。新增导出：abstractStandardSide。声明变化：无。\n@sue/board-mind\n原生 Mind 模型、命令与树布局。新增分支移动规划、多根树布局、配色和节点最大宽度选项；扩展布局/Util 时检查新增上下文。\n删除导出：无。新增导出：resolveMindChildMove、MindMovePlan、MIND_NOTE_FONT_SIZE、DEFAULT_MIND_MAX_WIDTH、MIN_MIND_MAX_WIDTH、MAX_MIND_MAX_WIDTH、validMindMaxWidth、MindMetricsOptions、MindPalette、mindFrameColorScheme、mindNoteColor、mindTreeRootId、mindTreeNodeIds、mindTreeLayout、mindTreeLayoutOverrides、setMindTreeLayout、setMindTreeRightNodeCount、mindLayoutBounds、stackMindTreeRoots、offsetMindTreeRoots。声明变化：MindNodeUtil、MindChildNodeUtil、layoutMindCells、mindCellMetrics、mindTheme、mindPresentation。\n@sue/board-text\n文字格式、对齐、链接与剪贴板辅助。与 1.0.0 相比公开导出及声明签名无变化，本次统一发布为 2.0.0。\n删除导出：无。新增导出：无。声明变化：无。\n@sue/board-uml\n首次发布：UML 类图与时序图模型、工厂、命令、布局、关系校验和注册。首次发布版本随整套包为 2.0.0。\n删除导出：无。新增导出：UmlClassifier、UmlClassData、UmlRelation、UmlRelationData、UmlEvent、UmlSequenceData、UmlParticipantData、UmlFragmentData、UmlNoteData、UmlMessageData、createUmlClassCell、createUmlParticipantCell、createUmlFrameSnapshot、createUmlRelationCell、umlRelationMarkers、createUmlMessageCell、createUmlNoteCell、createUmlFragmentCell、addUmlCell、insertUmlEvent、moveUmlEvent、reorderUmlParticipant、addUmlActivation、sequenceEventLocations、umlFrameOf、umlPorts、createUmlClassFrameSnapshot、createUmlSequenceFrameSnapshot、layoutUmlSequence、layoutUmlCells、layoutUmlEdges、umlClassMetrics、UmlActivationBounds、UmlSequenceLayout、validateUmlSequence、registerUmlCells。声明变化：无。\n@sue/board-workflow\n原生 Workflow 工厂、端口、DAG/process 校验和布局。与 1.0.0 相比公开导出及声明签名无变化，本次统一发布为 2.0.0。\n删除导出：无。新增导出：无。声明变化：无。\n@sue/verd-board-app\n文件工作区与会话。VerdBoardApp 改为 WorkspaceApp({host})；WorkspaceHost、WorkspaceSession 统一保存/历史/冲突，支持 FrameFileV2 与 DocumentFileV1。旧 StorageAdapter 仍作为迁移边界保留。\n删除导出：VerdBoardApp、createWorkspaceSaveQueue、collectWorkspaceRevisions、createEmptyWorkspaceRecord。新增导出：createMemoryWorkspaceHost、createWebWorkspaceHost、createDesktopWorkspaceHost、migrateLegacyCellWorkspace、parseLegacyFrameDocument、WorkspaceApp、WorkspaceAppProps、FrameOrganization、DiagramKind、FrameOrganizationIndex、OrganizeRecommendation、buildOrganizationIndex、diagramKindOf、isRegularCanvas、isSpecializedDiagram、organizationChangeError、organizationForCopy、parseFrameOrganization、organizePreviewIsStale、recommendOrganization、referenceSourceKey、referenceSourcesOf、sameFrameContent、sameFrameFile、settleImportedOrganization、FrameFileV2、FrameFileDiagnostic、isFrameFileV2、createFrameFile、frameFileFor、MIGRATION_REFERENCE_PREFIX、ExternalizeResult、externalizeOwnedFrames、PartitionOptions、partitionCellStore、WORKSPACE_ROOT_ID、AssembledFiles、assembleFrameFiles、assembleWorkspaceStore、FrameReferenceInstance、FrameReferenceGraph、buildFrameReferenceGraph、findFrameReferenceCycles、frameClosure、remapFrameFileIds、duplicateFrameClosure、remapImportedFiles、FrameExportBundle、frameExportBundle、frameExportRootId、parseFrameExport、validateFrameFiles、assessReferencePlace、DocumentFileV1、WorkspaceFile、isDocumentFileV1、isWorkspaceFile、documentFileDiagnostic、createDocumentText、createDocumentFile、workspaceFileId、workspaceFileTitle、renameDocumentFile、duplicateDocumentFile、remapImportedDocument、documentPathFor、documentDisplayName、DocumentLink、createDocumentLink、parseDocumentLink、buildWorkspaceReferenceGraph、workspaceExportBundle、parseWorkspaceExport、workspaceReferences、workspaceFileClosure、validateWorkspaceReferences、remapWorkspaceFiles、WorkspaceReference、WorkspaceReferenceGraph、FileVersion、WorkspaceKey、WorkspaceHandle、GlobalConfigSnapshot、WorkspaceConfigSnapshot、WorkspaceTabRef、WorkspaceTabGroupState、WorkspaceSessionState、normalizeWorkspaceSessionState、WorkspaceEntryMeta、WorkspaceCanvasPayload、WorkspaceDocumentPayload、WorkspaceTrashMeta、WorkspaceHostSnapshot、RawFileRead、FileWriteOp、FileMoveOp、TrashOp、RestoreOp、WorkspaceConfigWrite、CommitRequest、CommitRejection、CommitReceipt、OpenWorkspaceRequest、ConflictResolution、ChangeHint、WorkspaceHost、WORKSPACE_META_DIR、CANVAS_FILE_SUFFIX、DOCUMENT_FILE_SUFFIX、isCanvasPath、isDocumentPath、normalizeWorkspacePath、normalizeTrashEntryId、parentWorkspacePath、baseName、conflictCommit、WorkspaceFileEntry、HistoryMeta、DocumentEditOrigin、WorkspaceCommand、OrganizeChange、OrganizeResult、CommandResult、WorkspaceSessionSnapshot、WorkspaceSession、WorkspaceSessionOptions、createWorkspaceSession、openWorkspaceSession、canvasFrameIdAt、isCanvasEntry、canvasParentDir、canvasDisplayName、isDocumentEntry、OccurrenceId、rootOccurrenceId、refOccurrenceId、OccurrenceViewState、OccurrenceSession、OccurrenceOpenResult、createCanvasSession、CanvasSession。声明变化：无。\n@sue/verd-board-ui\nVerdFrame 产品界面。新增 DocumentPage、文件树、标签组、图表库、工作区设置、回收站和外观偏好；VerdFrame 增加引用、工作区历史与宿主回调。\n删除导出：无。新增导出：CanvasPreview、DocumentEditor、DocumentPreview、DocumentPreviewController、FrameDocumentReferences、PreviewMountProvider、usePreviewMount、FrameInstanceHost、FrameOpenSource、EditorKind、WorkspaceTabs、WorkspaceTabItem、WorkspaceTabsProps、FileTree、FileTreeEntry、FileTreeCanvas、FileTreeSubgraph、FileTreeDocument、FileTreeProps、ChartLibrary、OrganizePreview、ChartLibraryRow、ChartOrganization、ChartLibraryProps、OrganizePreviewRow、DocumentPage、DocumentEditorChange、DocumentEditorController、DocumentHistoryAdapter、DocumentSelection、DocumentSaveState、DocumentPageProps、WorkspaceEmpty、WorkspaceEmptyProps、WorkspaceSettings、WorkspaceSettingsProps、readAppearancePreference、initializeAppearance、setAppearancePreference、AppearancePreference、ResolvedAppearance、AppearanceState、appearancePreferencesKey、useAppearancePreference、FrameSettingsContent、FrameSettingsPage、MyPage、MyPageProps、WorkspaceMenu、WorkspaceMenuProps、WorkspaceTrash、WorkspaceTrashEntry、WorkspaceTrashProps。声明变化：VerdFrame、VerdFrameProps、WorkspaceId、ExclusiveEditorBar、ProductShell、Translations。\n@sue/board-react-architecture\ncreateArchitectureFrameExtensions 注册架构图扩展。与 1.0.0 相比公开导出及声明签名无变化，继续与 FrameCanvas 共用入口。\n删除导出：无。新增导出：无。声明变化：无。\n@sue/board-react\n统一 FrameCanvas；1.0.0 已提供此入口。新增引用宿主、文档窗口、移动预览和控制器能力；保留 value/onChange 与 adapter/onIntent 两种模式。右键菜单改在松开鼠标后显示。\n删除导出：无。新增导出：PreviewMountProvider、usePreviewMount、measureBoardText、FrameMovePreviewContext、FrameMovePreview、FrameOpenSource、FrameInstanceQuery、FrameInstanceBinding、FrameInstanceHost、FrameDocumentReferenceProps、FrameDocumentReferences。声明变化：FrameRichText、FrameTextEditor、FrameRichTextField、FrameImageRenderOptions、FramePresentation、FrameRenderExtension、FrameHistoryAdapter、FrameSelectionCommand、FrameCanvasController。\n@sue/board-react-mind\ncreateMindFrameExtensions 注册脑图渲染、树布局与交互；新增可选 MindMetricsOptions（maxNodeWidth、measureText），支持分支移动预览。\n删除导出：无。新增导出：无。声明变化：createMindFrameExtensions。\n@sue/board-react-text\nTipTap React 文本层。新增独立 DocumentEditor/DocumentPreview、查找与标题锚点、正文度量；DocumentEditor 的 onChange 通过 change.value 返回正文。\n删除导出：无。新增导出：DocumentEditor、DocumentPreview、DocumentPreviewController、DocumentPreviewProps、DocumentFrameReferenceProps、DocumentFrameReferenceRenderer、DocumentEditorProps、DocumentEditorChange、DocumentEditorController、DocumentHistoryAdapter、DocumentSelection、DocumentChangeSource、DocumentToolbarState、DocumentCommandName、DocumentHeading、DocumentSearchMatch、DocumentSearchOptions、DocumentBlockKind、findInDocument、createDocumentHeadingSlugger、createDocumentExtensions、measureBoardText、TextMeasurement。声明变化：paragraphExtensions、lineExtensions、DEFAULT_PLACEHOLDERS。\n@sue/board-react-uml\n首次发布：createUmlFrameExtensions，为 FrameCanvas 注册类图和时序图渲染与交互。\n删除导出：无。新增导出：createUmlFrameExtensions。声明变化：无。\n@sue/board-react-workflow\ncreateWorkflowFrameExtensions 注册流程图扩展。与 1.0.0 相比公开导出及声明签名无变化，继续与 FrameCanvas 共用入口。\n删除导出：无。新增导出：无。声明变化：无。\n声明变化统计包含新增可选参数、接口扩展与函数内部类型变化，不意味着每项都是破坏性变更；适配时以相应公开声明、上文迁移步骤和 consumer 示例为准。\n维护与发布验收\nREADME 中标记 consumer-example 的 TypeScript/TSX 示例由隔离 consumer 提取编译；同时验证 React18/19、真实 tarball 的类型和运行时、宿主接受/拒绝、IndexedDB 保存重开、文档/脑图/UML 转换与图片导出。发布后 VERD_CONSUMER_SOURCE=registry pnpm test:consumer 重验真实阿里云安装。所有结果以本次日志为准，不能继承历史通过记录。\n2026-10-19 发布前验收\n类型检查、lint、全部单测、原生工作区校验、Web 与 Desktop 构建通过；20 个真实 tarball 的 ESM/CJS、22 段 README 示例及 React 18/19 浏览器消费者验证通过。Web 生产 E2E 共覆盖 215 项，初跑 211 项通过，4 项旧用例适配当前内嵌编辑、分帧预览和标题交互后复验通过；Desktop E2E 17 项通过。此处记录发布前检查，发布后仍需验证阿里云 latest 和全新安装。",
+    "align": "left"
+  }
+}

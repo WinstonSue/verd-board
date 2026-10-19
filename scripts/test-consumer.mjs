@@ -3,76 +3,62 @@ import os from 'node:os';
 import path from 'node:path';
 import { spawn, spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
+import { publicPackages, packPublicPackages } from './pack-public.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'verd-consumer-'));
 
-const publicPackages = [
-  'packages/engine/common',
-  'packages/engine/core',
-  'packages/engine/layouts',
-  'packages/engine/text',
-  'packages/engine/draw',
-  'packages/engine/mind',
-  'packages/engine/workflow',
-  'packages/react/text',
-  'packages/react/board',
-  'packages/engine/architecture',
-  'packages/engine/uml',
-  'packages/react/uml',
-  'packages/react/mind',
-  'packages/react/workflow',
-  'packages/react/architecture',
-  'packages/converters/markdown-to-board',
-  'packages/converters/markdown-to-text',
-  'packages/converters/mermaid-to-board',
-  'packages/product/ui',
-  'packages/product/app',
-];
-
-const pkgsDir = path.join(tmp, 'pkgs');
-fs.mkdirSync(pkgsDir);
-
-for (const rel of publicPackages) {
-  const source = path.join(root, rel);
-  const pkg = JSON.parse(
-    fs.readFileSync(path.join(source, 'package.json'), 'utf8'),
-  );
-  const dest = path.join(pkgsDir, pkg.name.replace('@', '').replace('/', '-'));
-  fs.cpSync(source, dest, {
-    recursive: true,
-    filter: (current) => {
-      const rel = path.relative(source, current);
-      if (!rel) {
-        return true;
-      }
-      const top = rel.split(path.sep)[0];
-      return ['dist', 'package.json', 'README.md'].includes(top);
-    },
-  });
-  const destPkgPath = path.join(dest, 'package.json');
-  const destPkg = JSON.parse(fs.readFileSync(destPkgPath, 'utf8'));
-  destPkg.exports = destPkg.publishConfig?.exports ?? destPkg.exports;
-  destPkg.main = destPkg.publishConfig?.main ?? destPkg.main;
-  destPkg.module = destPkg.publishConfig?.module ?? destPkg.module;
-  destPkg.types = destPkg.publishConfig?.types ?? destPkg.types;
-  delete destPkg.devDependencies;
-  delete destPkg.scripts;
-  if (destPkg.exports?.['.']?.development) {
-    delete destPkg.exports['.'].development;
+// Each run has its own outside-repository install; no source aliases are used.
+if (!process.env.VERD_CONSUMER_REACT) {
+  for (const major of ['18', '19']) {
+    const result = spawnSync(
+      process.execPath,
+      [fileURLToPath(import.meta.url)],
+      {
+        cwd: root,
+        stdio: 'inherit',
+        env: { ...process.env, VERD_CONSUMER_REACT: major },
+      },
+    );
+    if (result.status !== 0) process.exit(result.status ?? 1);
   }
-  fs.writeFileSync(destPkgPath, `${JSON.stringify(destPkg, null, 2)}\n`);
+  process.exit(0);
 }
+const react19 = process.env.VERD_CONSUMER_REACT === '19';
+const fromRegistry = process.env.VERD_CONSUMER_SOURCE === 'registry';
+const packages = fromRegistry
+  ? publicPackages.map(({ pkg }) => ({ name: pkg.name, version: pkg.version }))
+  : packPublicPackages(path.join(tmp, 'tarballs'));
+const packageDependencies = Object.fromEntries(
+  packages.map((pkg) => [
+    pkg.name,
+    fromRegistry ? pkg.version : `file:${pkg.archive}`,
+  ]),
+);
+// The overrides bind transitive @sue dependencies to the same real archives before
+// publication. Their original packed semver ranges are checked by packPublicPackages.
+const overrides = fromRegistry ? {} : packageDependencies;
+const registryConfig = fs
+  .readFileSync(path.join(root, '.npmrc'), 'utf8')
+  .split('\n')
+  .filter((line) => /^(registry|@sue:registry|@ylib:registry)=/.test(line))
+  .join('\n');
+fs.writeFileSync(path.join(tmp, '.npmrc'), registryConfig + '\n');
+console.log(
+  `Consumer: React ${react19 ? '19' : '18'}, ${fromRegistry ? 'Aliyun registry' : 'pnpm tarballs'}, ${tmp}`,
+);
 
 const appDir = path.join(tmp, 'app');
 fs.mkdirSync(appDir);
 fs.writeFileSync(
   path.join(tmp, 'pnpm-workspace.yaml'),
   `packages:
-  - pkgs/*
   - app
 allowBuilds:
   esbuild: true
+minimumReleaseAgeExclude:
+  - '@sue/*'
+overrides: ${JSON.stringify(overrides)}
 `,
 );
 fs.writeFileSync(
@@ -82,8 +68,8 @@ fs.writeFileSync(
       name: 'consumer-workspace',
       private: true,
       devDependencies: {
-        '@types/react': '^18.3.12',
-        '@types/react-dom': '^18.3.1',
+        '@types/react': react19 ? '19.2.2' : '^18.3.12',
+        '@types/react-dom': react19 ? '19.2.2' : '^18.3.1',
       },
     },
     null,
@@ -99,31 +85,16 @@ fs.writeFileSync(
       type: 'module',
       scripts: { build: 'vite build' },
       dependencies: {
-        '@sue/board-architecture': 'workspace:*',
-        '@sue/board-uml': 'workspace:*',
-        '@sue/board-react-uml': 'workspace:*',
-        '@sue/board-core': 'workspace:*',
-        '@sue/board-common': 'workspace:*',
-        '@sue/board-draw': 'workspace:*',
-        '@sue/board-react-text': 'workspace:*',
-        '@sue/verd-board-ui': 'workspace:*',
-        '@sue/verd-board-app': 'workspace:*',
-        '@sue/board-markdown-to-board': 'workspace:*',
-        '@sue/board-mermaid-to-board': 'workspace:*',
-        '@sue/board-mind': 'workspace:*',
-        '@sue/board-react': 'workspace:*',
-        '@sue/board-react-architecture': 'workspace:*',
-        '@sue/board-react-mind': 'workspace:*',
-        '@sue/board-react-workflow': 'workspace:*',
-        '@sue/board-workflow': 'workspace:*',
-        react: '18.3.1',
-        'react-dom': '18.3.1',
+        ...packageDependencies,
+        react: react19 ? '19.2.0' : '18.3.1',
+        'react-dom': react19 ? '19.2.0' : '18.3.1',
       },
       devDependencies: {
-        '@types/react': '^18.3.12',
-        '@types/react-dom': '^18.3.1',
+        '@types/react': react19 ? '19.2.2' : '^18.3.12',
+        '@types/react-dom': react19 ? '19.2.2' : '^18.3.1',
         '@vitejs/plugin-react': '^4.3.4',
         typescript: '^5.6.3',
+        jsdom: '22.1.0',
         vite: '^5.4.11',
       },
     },
@@ -150,6 +121,7 @@ fs.writeFileSync(
   path.join(appDir, 'src/main.tsx'),
   `import React from 'react';
 import { createRoot } from 'react-dom/client';
+import { verifyReleaseExamples } from './release-examples';
 import * as core from '@sue/board-core';
 import * as mind from '@sue/board-mind';
 import * as workflow from '@sue/board-workflow';
@@ -209,6 +181,7 @@ const libraryProps: ChartLibraryProps = {
 };
 void [textProps, standardProps, hostProps, productProps, storage, myProps, workspaceSettingsProps, fileTreeProps, libraryProps];
 const canvas = React.createRef<FrameCanvasController>();
+const hostCanvas = React.createRef<FrameCanvasController>();
 const transfer: (() => Promise<import('@sue/board-react').FrameIntentResult> | undefined) = () => canvas.current?.moveSelection('consumer-target');
 void transfer;
 const exportOptions: FrameImageOptions = { format: 'svg', padding: 20, ids: ['consumer-center'] };
@@ -218,6 +191,7 @@ function ConsumerHarness() {
   const [snapshot, setSnapshot] = React.useState(value);
   const [hostStatus, setHostStatus] = React.useState('accepted');
   const [log, setLog] = React.useState('ready');
+  const [intentResult, setIntentResult] = React.useState('none');
   const history = React.useRef({
     undo() {
       setLog('undo');
@@ -233,6 +207,12 @@ function ConsumerHarness() {
       <p data-testid="label">{label}</p>
       <p data-testid="errors">{errors.join('|')}</p>
       <p data-testid="host-status">{hostStatus}</p>
+      <p data-testid="intent-result">{intentResult}</p>
+      <button data-testid="dispatch-intent" onClick={() => {
+        const cell = snapshot.store.cells['consumer-center'];
+        if (cell.cellType !== 'node') throw new Error('Missing host topic');
+        void hostCanvas.current?.dispatch({ id: crypto.randomUUID(), operations: [{ type: 'replace_cell', cell: { ...cell, content: { ...cell.content, label: 'Host edit' } } }] }).then(result => setIntentResult(result.status));
+      }}>Dispatch intent</button>
       <button data-testid="rename" onClick={() => {
         const next = structuredClone(snapshot);
         const cell = next.store.cells['consumer-center'] as { content?: { label?: string } };
@@ -245,13 +225,40 @@ function ConsumerHarness() {
       <button data-testid="undo" onClick={() => history.current.undo()}>Undo</button>
       <button data-testid="export" onClick={() => void canvas.current?.exportImage(exportOptions).then(() => setLog('exported'), (error) => errors.push(String(error)))}>Export frame</button>
       <FrameCanvas ref={canvas} value={snapshot} registry={registry} extensions={extensions} onChange={({ snapshot: next }) => setSnapshot(next)} />
-      <FrameCanvas value={{ snapshot }} adapter={{ toFrameSnapshot: (host) => host.snapshot }} onIntent={async () => ({ status: hostStatus === 'rejected' ? 'rejected' : 'accepted' })} history={history.current} />
+      <FrameCanvas ref={hostCanvas} value={{ snapshot }} adapter={{ toFrameSnapshot: (host) => host.snapshot }} onIntent={async transaction => {
+        if (hostStatus === 'rejected') return { status: 'rejected' };
+        setSnapshot(current => ({ store: core.applyCellOperations(current.store, transaction.operations, registry) }));
+        return { status: 'accepted' };
+      }} history={history.current} />
     </div>
   );
 }
+verifyReleaseExamples().then(() => { document.documentElement.dataset.releaseExamples = 'passed'; }, error => { errors.push(String(error)); document.documentElement.dataset.releaseExamples = 'failed'; document.documentElement.dataset.releaseError = String(error); });
 createRoot(document.getElementById('root')!).render(<ConsumerHarness />);
 `,
 );
+
+fs.copyFileSync(
+  path.join(root, 'tests/consumer/src/release-examples.tsx'),
+  path.join(appDir, 'src/release-examples.tsx'),
+);
+let snippetId = 0;
+for (const file of [
+  path.join(root, 'README.md'),
+  ...publicPackages.map(({ directory }) => path.join(directory, 'README.md')),
+]) {
+  if (!fs.existsSync(file)) continue;
+  const readme = fs.readFileSync(file, 'utf8');
+  for (const match of readme.matchAll(
+    /<!-- consumer-example -->\s*```(tsx?|jsx?)\n([^]*?)```/g,
+  )) {
+    fs.writeFileSync(
+      path.join(appDir, `src/readme-${snippetId++}.${match[1]}`),
+      match[2] + '\nexport {};\n',
+    );
+  }
+}
+console.log(`Typechecking ${snippetId} published README examples`);
 
 fs.writeFileSync(
   path.join(appDir, 'tsconfig.json'),
@@ -283,6 +290,32 @@ const install = spawnSync(
 );
 if (install.status !== 0) {
   throw new Error('consumer install failed');
+}
+// Load both published entry conditions with a DOM, as product packages target browsers.
+fs.writeFileSync(
+  path.join(appDir, 'entry-smoke.mjs'),
+  `
+import { JSDOM } from 'jsdom';
+import { createRequire } from 'node:module';
+const dom = new JSDOM('<!doctype html><html><body></body></html>', { url: 'http://localhost' });
+for (const key of ['window', 'document', 'HTMLElement', 'Element', 'Node', 'navigator', 'customElements', 'CustomEvent'])
+  Object.defineProperty(globalThis, key, { value: dom.window[key], configurable: true });
+const require = createRequire(import.meta.url);
+for (const name of ${JSON.stringify(packages.map((pkg) => pkg.name))}) {
+  const entry = process.argv[2] === 'esm' ? await import(name) : require(name);
+  if (!Object.keys(entry).length) throw new Error(name + ' has no runtime exports');
+}
+dom.window.close();
+console.log(process.argv[2] + ': all public package entries loaded');
+`,
+);
+for (const format of ['esm', 'cjs']) {
+  const smoke = spawnSync(process.execPath, ['entry-smoke.mjs', format], {
+    cwd: appDir,
+    stdio: 'inherit',
+  });
+  if (smoke.status !== 0)
+    throw new Error(`Consumer ${format} entry check failed`);
 }
 const typecheck = spawnSync(
   'pnpm',
@@ -338,6 +371,18 @@ try {
   const pageErrors = [];
   page.on('pageerror', (error) => pageErrors.push(String(error)));
   await page.goto(consumerUrl, { waitUntil: 'networkidle' });
+  await page.waitForFunction(
+    () =>
+      ['passed', 'failed'].includes(
+        globalThis.document.documentElement.dataset.releaseExamples ?? '',
+      ),
+    undefined,
+    { timeout: 30_000 },
+  );
+  const releaseError = await page.evaluate(
+    () => globalThis.document.documentElement.dataset.releaseError,
+  );
+  if (releaseError) throw new Error(releaseError);
   await page.getByTestId('rename').click();
   await page.getByTestId('label').filter({ hasText: 'Edited topic' }).waitFor();
   await page.getByTestId('undo').click();
@@ -347,7 +392,19 @@ try {
     .getByTestId('host-status')
     .filter({ hasText: 'rejected' })
     .waitFor();
+  await page.getByTestId('dispatch-intent').click();
+  await page
+    .getByTestId('intent-result')
+    .filter({ hasText: 'rejected' })
+    .waitFor();
+  await page.getByTestId('label').filter({ hasText: 'Edited topic' }).waitFor();
   await page.getByTestId('accept').click();
+  await page.getByTestId('dispatch-intent').click();
+  await page
+    .getByTestId('intent-result')
+    .filter({ hasText: 'accepted' })
+    .waitFor();
+  await page.getByTestId('label').filter({ hasText: 'Host edit' }).waitFor();
   await page.getByTestId('export').click();
   await page.getByTestId('status').filter({ hasText: 'exported' }).waitFor();
   const styled = await page.evaluate(

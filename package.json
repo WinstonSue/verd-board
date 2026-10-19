@@ -23,7 +23,7 @@
     "test:e2e:prod": "pnpm --filter web-e2e exec playwright test --config playwright.prod.config.ts",
     "test:e2e:desktop": "playwright test --config tests/desktop-e2e/playwright.config.ts",
     "test:consumer": "pnpm --filter consumer-vite build && node scripts/test-consumer.mjs",
-    "pack:dry": "pnpm --filter \"./packages/**\" exec npm pack --dry-run",
+    "pack:dry": "node scripts/pack-public.mjs --dry-run",
     "format": "prettier --write .",
     "release": "pnpm changeset version",
     "pub": "pnpm run build && pnpm changeset publish",
@@ -61,5 +61,6 @@
     "vite": "^6.2.2",
     "vite-plugin-dts": "^4.5.3",
     "vitest": "^3.0.8"
-  }
+  },
+  "private": true
 }

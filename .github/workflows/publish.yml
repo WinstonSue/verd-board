@@ -10,7 +10,9 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      id-token: write
+    env:
+      NODE_AUTH_TOKEN: ${{ secrets.ALIYUN_SUE_NPM_TOKEN }}
+      YLIB_NPM_TOKEN: ${{ secrets.ALIYUN_YLIB_NPM_TOKEN }}
     steps:
       - uses: actions/checkout@v4
 
@@ -22,17 +24,23 @@ jobs:
         with:
           node-version: 22
           cache: 'pnpm'
-          registry-url: 'https://registry.npmjs.org'
+          registry-url: 'https://packages.aliyun.com/69f800449b7ce0afb00bda0e/npm/npm-registry/'
+          scope: '@sue'
 
+      - name: Configure @ylib authentication
+        env:
+          YLIB_NPM_TOKEN: ${{ secrets.ALIYUN_YLIB_NPM_TOKEN }}
+        run: |
+          printf '%s\n' '//packages.aliyun.com/6141c43fdd62cdb60fbbdbda/npm/npm-registry/:_authToken=${YLIB_NPM_TOKEN}' >> "$NPM_CONFIG_USERCONFIG"
       - run: pnpm install --frozen-lockfile
       - run: pnpm lint
+      - run: pnpm typecheck
       - run: pnpm workspace:check
       - run: pnpm test
       - run: pnpm build
       - run: pnpm build:web
       - run: pnpm pack:dry
+      - run: pnpm exec playwright install --with-deps chromium
       - run: pnpm test:consumer
-      - run: pnpm test:e2e
+      - run: pnpm test:e2e:prod
       - run: pnpm changeset publish
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

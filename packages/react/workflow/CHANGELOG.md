@@ -1,5 +1,32 @@
 # @sue/board-react-workflow
 
+## 2.0.0
+
+### Major Changes
+
+- createWorkflowFrameExtensions 注册流程图扩展。与 1.0.0 相比公开导出及声明签名无变化，继续与 FrameCanvas 共用入口。
+
+  统一发布 2.0.0；对比基线为阿里云实际发布的 1.0.0。安装、CSS 入口和可编译示例见随包 README。
+
+### Patch Changes
+
+- Updated dependencies
+- Updated dependencies
+- Updated dependencies
+- Updated dependencies [ba40661]
+- Updated dependencies [b556617]
+- Updated dependencies [6da91da]
+- Updated dependencies [a587c8c]
+- Updated dependencies [b556617]
+- Updated dependencies [6da91da]
+- Updated dependencies [40e4077]
+- Updated dependencies [b556617]
+- Updated dependencies [bb0fd66]
+- Updated dependencies [b556617]
+  - @sue/board-core@2.0.0
+  - @sue/board-react@2.0.0
+  - @sue/board-workflow@2.0.0
+
 ## 1.0.0
 
 ### Major Changes

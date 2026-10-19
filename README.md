@@ -15,6 +15,54 @@
 
 Open the root `workspace/` folder in Desktop to read and edit native documentation and architecture diagrams. Native files are the maintained source; Markdown remains an optional import/export format.
 
+<a id="npm-2"></a>
+
+## npm 2.0.0：第三方接入
+
+20 个公开包统一为 `2.0.0`，发布到阿里云，保持独立包和原有包名。3 个首次发布包：`@sue/board-markdown-to-text`、`@sue/board-uml`、`@sue/board-react-uml`。各包 README 附安装和可编译示例，CHANGELOG 说明相对已发布 `1.0.0` 的变化。
+
+```ini
+@sue:registry=https://packages.aliyun.com/69f800449b7ce0afb00bda0e/npm/npm-registry/
+@ylib:registry=https://packages.aliyun.com/6141c43fdd62cdb60fbbdbda/npm/npm-registry/
+```
+
+将上述配置放入消费项目 `.npmrc`，向仓库管理员申请两个仓库的读权限并在用户配置或 CI secret 中提供令牌。产品包还依赖 `@ylib/tabs`，因此需要两个 scope 的配置。不要提交访问令牌。
+
+- 完整文件工作区：安装 `@sue/verd-board-app@2.0.0`、`@sue/verd-board-ui@2.0.0`、React/React DOM，使用 `WorkspaceApp`。
+- 嵌入产品画布：使用 `@sue/verd-board-ui` 的 `VerdFrame`；仅需底层画布则使用 `@sue/board-react` 的 `FrameCanvas` 及场景引擎/扩展。
+- 独立文字：使用 `@sue/board-react-text` 的 `DocumentEditor`；Markdown 文档使用 `@sue/board-markdown-to-text`，Mind Markdown 使用 `@sue/board-markdown-to-board`。
+- UML：`@sue/board-uml` + `@sue/board-react-uml` 注册到同一个 `FrameCanvas`，Mermaid 转换器新增 `uml-class`/`uml-sequence` 场景。
+
+**1.0 → 2.0 主要破坏性变更：** `VerdBoardApp({adapter})` 改为 `WorkspaceApp({host})`；`createWorkspaceSaveQueue`、`collectWorkspaceRevisions`、`createEmptyWorkspaceRecord` 已删除。新工作区由 `WorkspaceSession` 经 `WorkspaceHost` 提交 `.verd.json` 与 `.verd-doc.json` 文件。`BoardTextController` 仅新增可选 `getActiveAlign`；依赖穷尽类型分支的宿主需适配扩展后的 Cell 联合类型。
+
+`FrameCanvas` 在已发布的 1.0.0 中已经存在，两种受控模式仍保留；不要把更早的 BoardCanvas 重构当作本次新增变更。Markdown 转换器保留旧前两个参数，第三个选项为兼容新增。其他各包的新增/签名变化与统一发版原因见各包 changelog。
+
+<!-- consumer-example -->
+
+```tsx
+import { useMemo } from 'react';
+import { WorkspaceApp, createWebWorkspaceHost, createWebStorageAdapter, migrateLegacyCellWorkspace } from '@sue/verd-board-app';
+import '@sue/verd-board-ui/style.css';
+export function App() {
+  const host = useMemo(() => createWebWorkspaceHost(), []);
+  return (
+    <WorkspaceApp
+      host={host}
+      importLegacy={async () => {
+        const adapter = createWebStorageAdapter();
+        return (await adapter.listKeys()).length ? migrateLegacyCellWorkspace(adapter) : null;
+      }}
+    />
+  );
+}
+```
+
+组件面向浏览器，React 18/19。产品入口必须加载 `@sue/verd-board-ui/style.css`；底层画布/独立文本加载 `@sue/board-react-text/style.css`。`importLegacy` 仅用于未初始化的可写默认工作区；自定义旧 adapter 可在此回调交给 `migrateLegacyCellWorkspace`。不要假定新建 host 会自动读取旧应用数据。`flush()` 返回 `false` 表示仍有未保存内容或冲突。
+
+完整指南：[2.0 接入与迁移](workspace/文档/包/2.0接入与迁移.verd-doc.json)，以及 [应用包接入](packages/product/app/README.md)、[画布接入](packages/react/board/README.md)、[独立文档](packages/react/text/README.md)、[UML](packages/react/uml/README.md)。
+
+The 2.0 release replaces `VerdBoardApp(adapter)` with `WorkspaceApp(host)`, adds file workspaces, standalone documents and native UML. `FrameCanvas` already shipped in 1.0. Both private registries require read access; see each package README for installable examples and CSS entrypoints.
+
 ## 🚀 快速开始
 
 ```bash

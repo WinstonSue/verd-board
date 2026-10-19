@@ -19,7 +19,10 @@ test('project content validates, package facts are current, refresh is idempoten
     model = await readPackageModel();
   assert.equal(
     entries.filter((e) => e.file.format === 'verd-document').length,
-    20,
+    21,
+  );
+  assert.ok(
+    entries.some((e) => e.file.id === 'project-doc:packages/release-2'),
   );
   assert.equal(entries.filter((e) => e.file.format === 'verd-frame').length, 9);
   const home = entries.find((e) => e.file.frame?.id === 'board-root').file;

@@ -1,5 +1,21 @@
 # Changelog
 
+## 2.0.0
+
+### Major Changes
+
+- 文字格式、对齐、链接与剪贴板辅助。与 1.0.0 相比公开导出及声明签名无变化，本次统一发布为 2.0.0。
+
+  统一发布 2.0.0；对比基线为阿里云实际发布的 1.0.0。安装、CSS 入口和可编译示例见随包 README。
+
+### Patch Changes
+
+- Updated dependencies
+- Updated dependencies [b556617]
+- Updated dependencies [6da91da]
+- Updated dependencies [b556617]
+  - @sue/board-common@2.0.0
+
 ## 1.0.0
 
 ### Major Changes

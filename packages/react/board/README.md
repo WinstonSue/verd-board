@@ -1,5 +1,80 @@
 # @sue/board-react
 
+## 2.0.0 接入与变更
+
+统一 FrameCanvas；1.0.0 已提供此入口。新增引用宿主、文档窗口、移动预览和控制器能力；保留 value/onChange 与 adapter/onIntent 两种模式。右键菜单改在松开鼠标后显示。
+
+在项目 `.npmrc` 配置两个 scope：
+
+```ini
+@sue:registry=https://packages.aliyun.com/69f800449b7ce0afb00bda0e/npm/npm-registry/
+@ylib:registry=https://packages.aliyun.com/6141c43fdd62cdb60fbbdbda/npm/npm-registry/
+```
+
+两个仓库都需要获得访问授权。令牌放在用户级 `.npmrc` 或 CI secret，通过仓库管理员获取；不要提交令牌。`@ylib/tabs` 是产品包的传递依赖，只有 `@sue` 配置不足以安装完整产品。
+
+```bash
+pnpm add @sue/board-core@2.0.0 @sue/board-mind@2.0.0 @sue/board-react@2.0.0 @sue/board-react-mind@2.0.0 @sue/board-react-text@2.0.0 react react-dom
+```
+
+React 组件面向浏览器，支持 React 18/19；TypeScript 使用现代 Bundler 模块解析。ESM、CJS 与声明从 `dist` 加载，不导入 `src` 或未声明的深层路径。仓库开发的 Node/pnpm 要求不等同于浏览器运行时要求。
+
+<!-- consumer-example -->
+
+```tsx
+import { useState } from 'react';
+import { createCellRegistry } from '@sue/board-core';
+import { createMindFrameSnapshot } from '@sue/board-mind';
+import { FrameCanvas } from '@sue/board-react';
+import { createMindFrameExtensions } from '@sue/board-react-mind';
+import '@sue/board-react-text/style.css';
+const registry = createCellRegistry();
+const extensions = createMindFrameExtensions(registry);
+export function MindEditor() {
+  const [value, setValue] = useState(() => createMindFrameSnapshot('frame', 'root'));
+  return (
+    <div style={{ height: 600 }}>
+      <FrameCanvas registry={registry} extensions={extensions} value={value} onChange={({ snapshot }) => setValue(snapshot)} />
+    </div>
+  );
+}
+```
+
+画布容器必须有明确高度。独立文本/画布加载 `@sue/board-react-text/style.css`；`VerdFrame`/`WorkspaceApp` 加载 `@sue/verd-board-ui/style.css`（已包含文本样式）。
+
+### 第三方宿主
+
+`adapter.toFrameSnapshot(value)` 只负责读取业务值。`onIntent(transaction)` 返回 `{status:'accepted'}` 或 `{status:'rejected', message?}`；接受后宿主必须回写新 `value`，画布不会代替宿主保存。异步等待期间阻止重复提交；外部撤销通过 `history` 接入。标准 `onChange` 模式与宿主模式互斥。
+
+<!-- consumer-example -->
+
+```tsx
+import { applyCellOperations, type FrameSnapshot } from '@sue/board-core';
+import { FrameCanvas, type FrameCanvasProps } from '@sue/board-react';
+import { useState } from 'react';
+export function HostEditor({ initial }: { initial: FrameSnapshot }) {
+  const [value, setValue] = useState({ snapshot: initial });
+  const props: FrameCanvasProps<typeof value> = {
+    value,
+    adapter: { toFrameSnapshot: (v) => v.snapshot },
+    onIntent: (transaction) => {
+      const store = applyCellOperations(value.snapshot.store, transaction.operations);
+      setValue({ snapshot: { store } });
+      return { status: 'accepted' };
+    },
+  };
+  return (
+    <div style={{ height: 600 }}>
+      <FrameCanvas {...props} />
+    </div>
+  );
+}
+```
+
+完整发布摘要与迁移入口见 [VerdBoard 2.0](https://github.com/WinstonSue/verd-board#npm-2)；逐包变更见本包随附的 `CHANGELOG.md`。`FrameCanvas` 已存在于 1.0.0，早期 BoardCanvas/领域 Canvas 的删除不是本次新增变更。
+
+## API 与使用细节
+
 统一 Cell/Frame React 画布，提供标准受控快照、第三方宿主意图、控制器和渲染扩展。白板与领域画布共用 `FrameCanvas`，通过 `frameId` 打开根或嵌套 Frame。
 
 ## 安装与使用

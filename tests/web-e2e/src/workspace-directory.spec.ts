@@ -38,7 +38,7 @@ const createChart = async (page: Page) => {
   );
   await page.getByRole('button', { name: '选择', exact: true }).click();
   await canvas(page)
-    .locator('[data-cell-kind="frame-reference"] > rect')
+    .locator('[data-cell-kind="frame-reference"] > [data-frame-header] > rect')
     .first()
     .click({ position: { x: 12, y: 12 } });
   await page.getByTestId('frame-open').click();

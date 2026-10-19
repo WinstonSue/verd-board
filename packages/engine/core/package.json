@@ -1,9 +1,8 @@
 {
   "name": "@sue/board-core",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "main": "./dist/index.cjs",
   "types": "./src/public-api.ts",
-  "source": "./src/public-api.ts",
   "private": false,
   "scripts": {
     "build": "vite build",
@@ -28,7 +27,8 @@
   "type": "module",
   "module": "./dist/index.js",
   "files": [
-    "dist"
+    "dist",
+    "CHANGELOG.md"
   ],
   "publishConfig": {
     "main": "./dist/index.cjs",
@@ -41,6 +41,13 @@
         "require": "./dist/index.cjs",
         "default": "./dist/index.js"
       }
-    }
+    },
+    "registry": "https://packages.aliyun.com/69f800449b7ce0afb00bda0e/npm/npm-registry/",
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/WinstonSue/verd-board.git",
+    "directory": "packages/engine/core"
   }
 }

@@ -133,7 +133,8 @@ test('text grids container content and pen styles preview their final appearance
       const box = (await canvas(page).boundingBox())!;
       await page.mouse.click(box.x + 100, box.y + 120);
     }
-    expect(await contour(committed)).toEqual(paths);
+    // Reference shells mount before their staged preview content.
+    await expect.poll(() => contour(committed)).toEqual(paths);
     await page.getByRole('button', { name: '撤销', exact: true }).click();
   }
   await selectDrawingTool(page, '画笔');

@@ -28,9 +28,9 @@ const documents = documentPaths(workspace)
   }));
 
 describe('built-in workspace native documents', () => {
-  it('contains all 20 documents with distinct file and matching body identities', () => {
-    expect(documents).toHaveLength(20);
-    expect(new Set(documents.map(({ file }) => file.id)).size).toBe(20);
+  it('contains all 21 documents with distinct file and matching body identities', () => {
+    expect(documents).toHaveLength(21);
+    expect(new Set(documents.map(({ file }) => file.id)).size).toBe(21);
     for (const { file } of documents) {
       expect(file.format).toBe('verd-document');
       expect(file.version).toBe(1);

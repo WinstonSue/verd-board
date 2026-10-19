@@ -884,10 +884,48 @@
               "text": "图表菜单新增 UML 类图与 UML 时序图。类图支持类、接口、抽象类、枚举、属性、方法及六类关系；时序图支持参与者、Actor、消息、自调用、注释、激活和嵌套 alt/opt/loop。两者共用 FrameCanvas、原生文件保存、撤销重做、嵌入预览与图片导出，并支持 Mermaid 双向转换。"
             }
           ]
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 2
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "npm 2.0.0 发布与第三方接入"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "2.0 接入与迁移",
+              "marks": [
+                {
+                  "type": "link",
+                  "attrs": {
+                    "href": "verd://file/project-doc%3Apackages%2Frelease-2"
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "以实际发布的 1.0.0 包为基线，包含应用入口/存储迁移、受控与宿主画布、独立文档、UML、转换器和逐包 API 变化。安装与代码示例同时随包 README 发布。"
+            }
+          ]
         }
       ]
     },
-    "plainText": "青编（VerdBoard）文档导航\n\n项目说明直接保存在当前工作区的原生文档中。使用桌面端打开仓库根目录的 workspace 文件夹，文档和可编辑架构图可在同一个文件树中阅读、修改与保存。\n\n架构白板 | English\n\n产品与架构\n\n\n\n\n\n产品概览：用户、能力、工作区和交付边界。\n\n\n\n系统架构：文件工作区、会话、画布、文档与宿主的数据流。\n\n\n\n包索引：产品、引擎、React 适配和三个转换器包。\n\n\n\nReact 接入：FrameCanvas、DocumentEditor、控制器与宿主 API。\n\n开发与维护\n\n\n\n\n\n开发指南：安装、构建、测试、提交和 Changesets 发布。\n\n\n\n文档维护指南：原生文件真源、链接、样例和更新约定。\n\n\n\n配置与源码索引：按功能定位具体源码。\n\n\n\n桌面安装与使用：开发和打包运行、目录选择、保存与故障排查。\n\n使用与规范\n\n\n\n\n\nAI 画布数据规范：完整字段、元素、格式约束及 11 个真实导入样例。\n\n\n\n体验回归验收：带日期的历史验收记录；不作为当前提交自动通过的证明。\n\n\n\n画布模式：白板、领域图、嵌入、演示与持久化。\n\n\n\n格式转换器：FrameSnapshot 与独立文档的 Markdown/Mermaid 边界。\n\n\n\n排列与组合：对齐、分布、Group、锁定与布局。\n\n\n\nMind 特性、节点宽度规范：树关系、配色、笔记和内容适配。\n\n\n\nMind 引擎概览 / English、Board 变更说明。\n\n快速开始\n\n要求 Node.js >= 22、pnpm >= 11.18.0；具体版本与命令以根 package.json 和 pnpm-lock.yaml 为准。\n\npnpm install\npnpm start\n# Web 开发\npnpm dev:web\n# 公开包和 Web（根 build 排除 Desktop）\npnpm build\n# Desktop 前端、主进程与 preload\npnpm build:desktop\n# 类型检查与单测\npnpm typecheck\npnpm test\n\n开发桌面端默认打开仓库根 workspace 文件夹；显式环境变量 VERDBOARD_WORKSPACE_PATH 与此前选择的目录可覆盖默认值。文件夹菜单可以打开其他目录，或返回内置工作区。打包应用为新用户创建独立副本，不把用户编辑写回仓库。\n\n数据与能力\n\n工作区支持两类一等文件：画布 .verd.json 和文字文档 .verd-doc.json。两者共用文件树、标签页、保存状态、回收区与撤销历史；画布内容由 WorkspaceSession 组装为 CellStore，独立文档保留 BoardTextDocument 正文。\n\n白板、思维导图、流程图和架构图共用 FrameCanvas。图表可以独立存在，也可以归属于一张普通画布；引用通过稳定目标 ID 共享内容，归属与引用分别管理。文档使用 TipTap 编辑器，支持标题、列表、表格、图片、代码块、查找替换、目录与导出。原生文档链接通过稳定 ID 打开文档或画布，标题锚点遵循 GitHub slug 规则。\n\n系统以 React 19、TypeScript 6、Vite 6、pnpm 11、TipTap 3 和 Electron 28 为当前依赖系列。主题、内容与图表归属会保存；画布相机、演示步骤与选择仅保留在会话内存。\n\n最后更新：2026-10-16。历史测试数量和验收日期见对应原生文档；验证当前变更应重新运行相关检查。\n\n文档 Frame 与只读引用\n\n项目导览的三个文档 Frame 可双击正文编辑，Escape 返回画布选择；编辑的就是文件树里的源文档。八张专题图下方提供只读关联文档卡和章节入口，可沿图文关系继续阅读。\n\n侧栏底部与画布「更多」菜单打开「我的」管理个人偏好；顶部工作区名称菜单打开工作区设置，左侧分为基本设置和当前工作区回收站，Desktop 目录切换也位于顶部菜单。文件夹可整体移入回收站并还原；回收站支持确认后永久删除或清空，详见产品概览和系统架构。\n\n应用外观\n\n「我的 → 设置 → 通用」可选择浅色、深色或跟随系统，默认跟随系统。Web 与 Desktop 共用本机偏好；独立文档适配深色，画布和其中的文档保持原有外观。\n\nUML 图表\n\n图表菜单新增 UML 类图与 UML 时序图。类图支持类、接口、抽象类、枚举、属性、方法及六类关系；时序图支持参与者、Actor、消息、自调用、注释、激活和嵌套 alt/opt/loop。两者共用 FrameCanvas、原生文件保存、撤销重做、嵌入预览与图片导出，并支持 Mermaid 双向转换。",
+    "plainText": "青编（VerdBoard）文档导航\n项目说明直接保存在当前工作区的原生文档中。使用桌面端打开仓库根目录的 workspace 文件夹，文档和可编辑架构图可在同一个文件树中阅读、修改与保存。\n架构白板 | English\n产品与架构\n产品概览：用户、能力、工作区和交付边界。\n系统架构：文件工作区、会话、画布、文档与宿主的数据流。\n包索引：产品、引擎、React 适配和三个转换器包。\nReact 接入：FrameCanvas、DocumentEditor、控制器与宿主 API。\n开发与维护\n开发指南：安装、构建、测试、提交和 Changesets 发布。\n文档维护指南：原生文件真源、链接、样例和更新约定。\n配置与源码索引：按功能定位具体源码。\n桌面安装与使用：开发和打包运行、目录选择、保存与故障排查。\n使用与规范\nAI 画布数据规范：完整字段、元素、格式约束及 11 个真实导入样例。\n体验回归验收：带日期的历史验收记录；不作为当前提交自动通过的证明。\n画布模式：白板、领域图、嵌入、演示与持久化。\n格式转换器：FrameSnapshot 与独立文档的 Markdown/Mermaid 边界。\n排列与组合：对齐、分布、Group、锁定与布局。\nMind 特性、节点宽度规范：树关系、配色、笔记和内容适配。\nMind 引擎概览 / English、Board 变更说明。\n快速开始\n要求 Node.js >= 22、pnpm >= 11.18.0；具体版本与命令以根 package.json 和 pnpm-lock.yaml 为准。\npnpm install\npnpm start\n# Web 开发\npnpm dev:web\n# 公开包和 Web（根 build 排除 Desktop）\npnpm build\n# Desktop 前端、主进程与 preload\npnpm build:desktop\n# 类型检查与单测\npnpm typecheck\npnpm test\n开发桌面端默认打开仓库根 workspace 文件夹；显式环境变量 VERDBOARD_WORKSPACE_PATH 与此前选择的目录可覆盖默认值。文件夹菜单可以打开其他目录，或返回内置工作区。打包应用为新用户创建独立副本，不把用户编辑写回仓库。\n数据与能力\n工作区支持两类一等文件：画布 .verd.json 和文字文档 .verd-doc.json。两者共用文件树、标签页、保存状态、回收区与撤销历史；画布内容由 WorkspaceSession 组装为 CellStore，独立文档保留 BoardTextDocument 正文。\n白板、思维导图、流程图和架构图共用 FrameCanvas。图表可以独立存在，也可以归属于一张普通画布；引用通过稳定目标 ID 共享内容，归属与引用分别管理。文档使用 TipTap 编辑器，支持标题、列表、表格、图片、代码块、查找替换、目录与导出。原生文档链接通过稳定 ID 打开文档或画布，标题锚点遵循 GitHub slug 规则。\n系统以 React 19、TypeScript 6、Vite 6、pnpm 11、TipTap 3 和 Electron 28 为当前依赖系列。主题、内容与图表归属会保存；画布相机、演示步骤与选择仅保留在会话内存。\n最后更新：2026-10-16。历史测试数量和验收日期见对应原生文档；验证当前变更应重新运行相关检查。\n文档 Frame 与只读引用\n项目导览的三个文档 Frame 可双击正文编辑，Escape 返回画布选择；编辑的就是文件树里的源文档。八张专题图下方提供只读关联文档卡和章节入口，可沿图文关系继续阅读。\n侧栏底部与画布「更多」菜单打开「我的」管理个人偏好；顶部工作区名称菜单打开工作区设置，左侧分为基本设置和当前工作区回收站，Desktop 目录切换也位于顶部菜单。文件夹可整体移入回收站并还原；回收站支持确认后永久删除或清空，详见产品概览和系统架构。\n应用外观\n「我的 → 设置 → 通用」可选择浅色、深色或跟随系统，默认跟随系统。Web 与 Desktop 共用本机偏好；独立文档适配深色，画布和其中的文档保持原有外观。\nUML 图表\n图表菜单新增 UML 类图与 UML 时序图。类图支持类、接口、抽象类、枚举、属性、方法及六类关系；时序图支持参与者、Actor、消息、自调用、注释、激活和嵌套 alt/opt/loop。两者共用 FrameCanvas、原生文件保存、撤销重做、嵌入预览与图片导出，并支持 Mermaid 双向转换。\nnpm 2.0.0 发布与第三方接入\n2.0 接入与迁移\n以实际发布的 1.0.0 包为基线，包含应用入口/存储迁移、受控与宿主画布、独立文档、UML、转换器和逐包 API 变化。安装与代码示例同时随包 README 发布。",
     "align": "left"
   }
 }

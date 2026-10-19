@@ -1,14 +1,14 @@
 {
   "name": "@sue/board-react-architecture",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "type": "module",
   "main": "./dist/index.cjs",
   "module": "./dist/index.js",
   "types": "./src/index.ts",
-  "source": "./src/index.ts",
   "private": false,
   "files": [
-    "dist"
+    "dist",
+    "CHANGELOG.md"
   ],
   "scripts": {
     "build": "vite build",
@@ -54,6 +54,13 @@
         "require": "./dist/index.cjs",
         "default": "./dist/index.js"
       }
-    }
+    },
+    "registry": "https://packages.aliyun.com/69f800449b7ce0afb00bda0e/npm/npm-registry/",
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/WinstonSue/verd-board.git",
+    "directory": "packages/react/architecture"
   }
 }

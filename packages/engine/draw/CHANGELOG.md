@@ -1,5 +1,26 @@
 # Changelog
 
+## 2.0.0
+
+### Major Changes
+
+- 几何、笔迹、表格与泳道 Cell 工厂和 Util。公开名称保持不变，表格与笔迹 Util 的移动行为与新的 CellMoveContext 对齐。
+
+  统一发布 2.0.0；对比基线为阿里云实际发布的 1.0.0。安装、CSS 入口和可编译示例见随包 README。
+
+### Patch Changes
+
+- Updated dependencies
+- Updated dependencies
+- Updated dependencies [a587c8c]
+- Updated dependencies [b556617]
+- Updated dependencies [6da91da]
+- Updated dependencies [b556617]
+- Updated dependencies [bb0fd66]
+- Updated dependencies [b556617]
+  - @sue/board-common@2.0.0
+  - @sue/board-core@2.0.0
+
 ## 1.0.0
 
 ### Major Changes

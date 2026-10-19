@@ -299,7 +299,7 @@ test('canvas, embedded documents, camera, exported images and content writes are
     .locator('[data-cell-id="appearance-card-0"]')
     .first();
   await card.getByText('Appearance body', { exact: true }).dblclick();
-  const embedded = card.locator('.document-page');
+  const embedded = card.locator('[data-document-editing]');
   await expect(embedded).toBeVisible();
   const original = await colors(embedded);
   await card.locator('.ProseMirror').press('Escape');

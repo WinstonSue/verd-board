@@ -1,9 +1,8 @@
 {
   "name": "@sue/verd-board-ui",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "main": "./dist/index.cjs",
   "types": "./src/index.ts",
-  "source": "./src/index.ts",
   "private": false,
   "scripts": {
     "build": "vite build",
@@ -57,7 +56,8 @@
   "type": "module",
   "module": "./dist/index.js",
   "files": [
-    "dist"
+    "dist",
+    "CHANGELOG.md"
   ],
   "publishConfig": {
     "main": "./dist/index.cjs",
@@ -71,11 +71,18 @@
         "default": "./dist/index.js"
       },
       "./style.css": "./dist/style.css"
-    }
+    },
+    "registry": "https://packages.aliyun.com/69f800449b7ce0afb00bda0e/npm/npm-registry/",
+    "access": "public"
   },
   "sideEffects": [
     "**/*.css",
     "**/*.scss",
     "./src/style.ts"
-  ]
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/WinstonSue/verd-board.git",
+    "directory": "packages/product/ui"
+  }
 }

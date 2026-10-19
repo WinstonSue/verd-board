@@ -1,5 +1,29 @@
 # @sue/board-architecture
 
+## 2.0.0
+
+### Major Changes
+
+- 原生架构层、模块、依赖与布局。新增 architectureLayerIds，模块 Util 移动支持新的上下文；现有画布工厂保留。
+
+  统一发布 2.0.0；对比基线为阿里云实际发布的 1.0.0。安装、CSS 入口和可编译示例见随包 README。
+
+### Minor Changes
+
+- b556617: Add fullscreen presentation of current canvas content in an independent read-only overlay using the same registry and render extensions with click-to-focus, overview, a laser pointer, and structural steps for mind maps and architecture layers. Exit restores the editing viewport; presentation state stays in memory without changing document history or saved files.
+
+  Remove obsolete slide generation, persisted decks, speaker notes, ink, timers, autoplay, and audience-window protocols and preload/IPC plumbing. Ignore stale imported presentation fields without migration or proactive rewrites, and preserve node appearance FramePresentation hooks.
+
+### Patch Changes
+
+- Updated dependencies
+- Updated dependencies [a587c8c]
+- Updated dependencies [b556617]
+- Updated dependencies [6da91da]
+- Updated dependencies [bb0fd66]
+- Updated dependencies [b556617]
+  - @sue/board-core@2.0.0
+
 ## 1.0.0
 
 ### Major Changes

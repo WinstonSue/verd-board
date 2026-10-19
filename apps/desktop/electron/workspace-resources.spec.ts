@@ -72,7 +72,7 @@ it('electron-builder includes every native document and nested diagram while exc
     expect(await listing(path.join(output, 'workspace'))).toEqual(native);
     expect(
       native.filter((file) => file.endsWith('.verd-doc.json')),
-    ).toHaveLength(20);
+    ).toHaveLength(21);
     expect(native.filter((file) => file.endsWith('.verd.json'))).toHaveLength(
       9,
     );
