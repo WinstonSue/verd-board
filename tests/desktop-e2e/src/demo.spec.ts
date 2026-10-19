@@ -15,7 +15,10 @@ import {
 } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { setAppLanguage } from '../../web-e2e/src/app-actions';
+import {
+  openWorkspaceMenu,
+  setAppLanguage,
+} from '../../web-e2e/src/app-actions';
 import { canvasFiles } from './workspace-disk';
 
 const root = path.resolve(__dirname, '../../..');
@@ -112,7 +115,9 @@ test('built-in native workspace opens its diagrams and documents, follows links 
     expect(Object.keys(await nativeFiles(workspace))).toHaveLength(
       Object.keys(original).length,
     );
+    await openWorkspaceMenu(page);
     await expect(page.getByTestId('workspace-open-builtin')).toBeDisabled();
+    await page.keyboard.press('Escape');
     await page.screenshot({
       path: info.outputPath(`builtin-${browserName}-overview.png`),
     });

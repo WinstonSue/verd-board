@@ -306,38 +306,38 @@ if (build.status !== 0) {
   throw new Error('consumer build failed');
 }
 console.log('isolated consumer build passed at', tmp);
+const consumerPort = process.env.VERD_CONSUMER_PORT ?? '4175';
+const consumerUrl = `http://127.0.0.1:${consumerPort}`;
 const preview = spawn(
-  'pnpm',
+  process.execPath,
   [
-    '--filter',
-    'consumer-app',
-    'exec',
-    'vite',
+    path.join(appDir, 'node_modules/vite/bin/vite.js'),
     'preview',
     '--host',
     '127.0.0.1',
     '--port',
-    '4175',
+    consumerPort,
     '--strictPort',
   ],
-  { cwd: tmp, stdio: 'ignore' },
+  { cwd: appDir, stdio: 'ignore' },
 );
 const ready = Date.now();
 while (Date.now() - ready < 20_000) {
   try {
-    const response = await fetch('http://127.0.0.1:4175');
+    const response = await fetch(consumerUrl);
     if (response.ok) break;
   } catch {
     await new Promise((resolve) => setTimeout(resolve, 200));
   }
 }
 const { chromium } = await import('@playwright/test');
-const browser = await chromium.launch({ headless: true });
+let browser;
 try {
+  browser = await chromium.launch({ headless: true });
   const page = await browser.newPage();
   const pageErrors = [];
   page.on('pageerror', (error) => pageErrors.push(String(error)));
-  await page.goto('http://127.0.0.1:4175', { waitUntil: 'networkidle' });
+  await page.goto(consumerUrl, { waitUntil: 'networkidle' });
   await page.getByTestId('rename').click();
   await page.getByTestId('label').filter({ hasText: 'Edited topic' }).waitFor();
   await page.getByTestId('undo').click();
@@ -361,6 +361,6 @@ try {
     throw new Error(reported || pageErrors.join('\n'));
   console.log('isolated consumer browser runtime passed');
 } finally {
-  await browser.close();
+  await browser?.close();
   preview.kill();
 }
