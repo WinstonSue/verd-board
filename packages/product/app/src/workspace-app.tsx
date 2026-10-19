@@ -44,6 +44,7 @@ import {
   PreviewMountProvider,
   VerdFrame,
   useI18n,
+  useAppearancePreference,
   type DocumentEditorChange,
   type DocumentSelection,
   type DocumentSaveState,
@@ -165,6 +166,7 @@ const initializedWorkspaces = new Set<string>();
  * selection, tool — survives tab switches without persistence.
  */
 export function WorkspaceApp(props: WorkspaceAppProps) {
+  useAppearancePreference();
   return (
     <I18nProvider>
       <PreviewMountProvider>
@@ -1425,12 +1427,9 @@ function WorkspaceAppShell({
             position: 'fixed',
             inset: '15% 20%',
             zIndex: 100,
-            background: 'white',
-            border: '1px solid #cbd5e1',
             borderRadius: 12,
             padding: 20,
             overflow: 'auto',
-            boxShadow: '0 20px 80px #0003',
           }}
         >
           <h2>

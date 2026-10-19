@@ -655,10 +655,11 @@ export function FrameMindProperties({
         <div
           role="region"
           aria-label="Mind note"
+          className="frame-note-content"
           style={{
             minHeight: 100,
             padding: 8,
-            border: '1px solid #cbd5e1',
+            border: '1px solid var(--vm-border-strong, #cbd5e1)',
             // Explicit note defaults: the editor must not inherit the sidebar.
             fontSize: 13,
             lineHeight: 1.5,

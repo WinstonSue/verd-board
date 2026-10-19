@@ -51,9 +51,10 @@ const referenceButtonStyle: React.CSSProperties = {
   padding: '3px 8px',
   font: '13px/20px system-ui, sans-serif',
   whiteSpace: 'nowrap',
-  border: '1px solid #cbd5e1',
+  border: '1px solid var(--vm-border-strong, #cbd5e1)',
   borderRadius: 6,
-  background: '#f8fafc',
+  background: 'var(--vm-background-subtle, #f8fafc)',
+  color: 'var(--vm-foreground, #172033)',
 };
 
 const documentScrollStyle: React.CSSProperties = {
@@ -286,10 +287,11 @@ export function WorkspaceCanvasReference({
     <section
       className="workspace-canvas-reference"
       style={{
-        border: '1px solid #cbd5e1',
+        border: '1px solid var(--vm-border-strong, #cbd5e1)',
         borderRadius: 8,
         overflow: 'hidden',
-        background: '#fff',
+        background: 'var(--vm-background, #fff)',
+        color: 'var(--vm-foreground, #172033)',
       }}
     >
       <div

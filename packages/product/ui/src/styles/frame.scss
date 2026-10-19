@@ -1,3 +1,4 @@
+@use './appearance.scss';
 @use '../../../../react/text/src/style.scss';
 @use '../../../../react/text/src/components/document/document-editor.scss';
 @use './workspace.scss';
@@ -9,7 +10,7 @@
   height: 100%;
   width: 100%;
   overflow: hidden;
-  color: #172033;
+  color: var(--vm-foreground);
   font:
     13px system-ui,
     sans-serif;
@@ -20,10 +21,10 @@
 .frame-status-bar {
   position: absolute;
   z-index: 4;
-  background: #fff;
-  border: 1px solid #e2e8f0;
+  background: var(--vm-background);
+  border: 1px solid var(--vm-border);
   border-radius: 12px;
-  box-shadow: 0 4px 18px #1e293b12;
+  box-shadow: var(--vm-shadow-card);
   padding: 4px;
 }
 .frame-app-toolbar {
@@ -72,10 +73,10 @@
   box-sizing: border-box;
   overflow: auto;
   padding: 8px;
-  background: #fff;
-  border: 1px solid #e2e8f0;
+  background: var(--vm-background);
+  border: 1px solid var(--vm-border);
   border-radius: 12px;
-  box-shadow: 0 8px 24px #1e293b22;
+  box-shadow: var(--vm-shadow-menu);
 }
 .frame-tools > select {
   position: absolute;
@@ -145,10 +146,10 @@
 .frame-actions-popover select,
 .frame-actions-popover input {
   font: inherit;
-  border: 1px solid #e2e8f0;
+  border: 1px solid var(--vm-border);
   border-radius: 6px;
   padding: 6px 8px;
-  background: #fff;
+  background: var(--vm-background);
   color: inherit;
 }
 .verd-frame button,
@@ -157,13 +158,13 @@
 }
 .verd-frame button:hover,
 .frame-actions-popover button:hover {
-  background: #f1f5f9;
+  background: var(--vm-fill-hover);
 }
 .verd-frame button[aria-pressed='true'],
 .frame-actions-popover button[aria-pressed='true'] {
-  color: #4f46e5;
-  border-color: #6366f1;
-  background: #eef2ff;
+  color: var(--vm-primary);
+  border-color: var(--vm-focus);
+  background: var(--vm-fill-active);
 }
 .frame-markdown-preview {
   position: absolute;
@@ -173,9 +174,9 @@
   width: min(420px, calc(100% - 32px));
   padding: 12px;
   border-radius: 12px;
-  background: #fff;
-  border: 1px solid #e2e8f0;
-  box-shadow: 0 8px 24px #1e293b22;
+  background: var(--vm-background);
+  border: 1px solid var(--vm-border);
+  box-shadow: var(--vm-shadow-menu);
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
@@ -191,8 +192,8 @@
   left: 140px;
   padding: 12px;
   border-radius: 8px;
-  background: #fff1f2;
-  color: #9f1239;
+  background: var(--vm-danger-bg);
+  color: var(--vm-danger-strong);
 }
 .frame-error button {
   margin-left: 12px;
@@ -206,10 +207,10 @@
   transform: translate(-50%, -50%);
   width: 320px;
   padding: 24px;
-  border: 1px solid #cbd5e1;
+  border: 1px solid var(--vm-border-strong);
   border-radius: 12px;
-  background: white;
-  box-shadow: 0 12px 60px #17203333;
+  background: var(--vm-background);
+  box-shadow: 0 12px 60px var(--vm-shadow-tint);
   button {
     margin-right: 8px;
   }
@@ -218,14 +219,14 @@
   width: min(1000px, calc(100vw - 48px));
   max-height: calc(100vh - 48px);
   padding: 20px;
-  border: 1px solid #e2e8f0;
+  border: 1px solid var(--vm-border);
   border-radius: 16px;
-  color: #172033;
-  background: white;
-  box-shadow: 0 12px 60px #17203333;
+  color: var(--vm-foreground);
+  background: var(--vm-background);
+  box-shadow: 0 12px 60px var(--vm-shadow-tint);
 }
 .frame-import-dialog::backdrop {
-  background: #17203366;
+  background: var(--vm-backdrop);
 }
 .frame-import-dialog header,
 .frame-import-dialog footer {
@@ -253,17 +254,17 @@
   resize: none;
   font: 14px monospace;
   padding: 12px;
-  border: 1px solid #e2e8f0;
+  border: 1px solid var(--vm-border);
   border-radius: 8px;
 }
 .frame-import-preview {
   position: relative;
   overflow: hidden;
-  border: 1px solid #e2e8f0;
+  border: 1px solid var(--vm-border);
   border-radius: 8px;
 }
 .frame-import-dialog [role='alert'] {
-  color: #9f1239;
+  color: var(--vm-danger-strong);
   max-height: 80px;
   overflow: auto;
 }
@@ -275,14 +276,14 @@
 .frame-image-export-dialog {
   width: 360px;
   max-width: calc(100vw - 48px);
-  border: 1px solid #cbd5e1;
+  border: 1px solid var(--vm-border-strong);
   border-radius: 12px;
   padding: 24px;
-  color: #172033;
-  background: #fff;
+  color: var(--vm-foreground);
+  background: var(--vm-background);
 }
 .frame-image-export-dialog::backdrop {
-  background: #0f172a66;
+  background: var(--vm-backdrop);
 }
 .frame-image-export-dialog h2 {
   margin: 0 0 16px;
@@ -312,14 +313,14 @@
   max-height: calc(100vh - 16px);
   overflow: auto;
   padding: 12px;
-  border: 1px solid #cbd5e1;
+  border: 1px solid var(--vm-border-strong);
   border-radius: 10px;
-  background: white;
-  color: #172033;
+  background: var(--vm-background);
+  color: var(--vm-foreground);
   font:
     13px system-ui,
     sans-serif;
-  box-shadow: 0 8px 24px #0f172a26;
+  box-shadow: 0 8px 24px var(--vm-shadow-tint);
 
   label {
     display: flex;
@@ -343,7 +344,7 @@
 }
 
 .frame-clear-confirm::backdrop {
-  background: #0f172a66;
+  background: var(--vm-backdrop);
 }
 
 .frame-tool-control {
@@ -355,13 +356,13 @@
   max-width: 260px;
   padding: 6px 9px;
   border-radius: 6px;
-  background: #172033;
-  color: #fff;
+  background: var(--vm-tooltip-bg);
+  color: var(--vm-tooltip-text);
   font:
     12px/1.4 system-ui,
     sans-serif;
   pointer-events: none;
-  box-shadow: 0 4px 12px #17203333;
+  box-shadow: 0 4px 12px var(--vm-shadow-tint);
 }
 
 .frame-tool-menu-caret {
@@ -377,11 +378,11 @@
   min-width: 170px;
   max-width: calc(100vw - 16px);
   padding: 6px;
-  color: #172033;
-  background: #fff;
-  border: 1px solid #e2e8f0;
+  color: var(--vm-foreground);
+  background: var(--vm-background);
+  border: 1px solid var(--vm-border);
   border-radius: 12px;
-  box-shadow: 0 8px 24px #1e293b22;
+  box-shadow: var(--vm-shadow-menu);
   button {
     display: flex;
     align-items: center;
@@ -394,12 +395,12 @@
     &[aria-checked='true'],
     &:hover,
     &:focus-visible {
-      background: #f1f5f9;
+      background: var(--vm-fill-hover);
     }
   }
   kbd {
     margin-left: auto;
-    color: #64748b;
+    color: var(--vm-foreground-secondary);
     font: inherit;
   }
 }
@@ -416,11 +417,11 @@
   width: min(248px, calc(100vw - 16px));
   overflow-y: auto;
   padding: 6px;
-  color: #172033;
-  background: #fff;
-  border: 1px solid #e2e8f0;
+  color: var(--vm-foreground);
+  background: var(--vm-background);
+  border: 1px solid var(--vm-border);
   border-radius: 12px;
-  box-shadow: 0 8px 24px #1e293b22;
+  box-shadow: var(--vm-shadow-menu);
   font:
     13px system-ui,
     sans-serif;
@@ -439,13 +440,13 @@
     text-align: left;
     cursor: pointer;
     &[data-group-start] {
-      border-top: 1px solid #e2e8f0;
+      border-top: 1px solid var(--vm-border);
       margin-top: 5px;
       padding-top: 12px;
     }
     &:hover:not(:disabled),
     &:focus-visible {
-      background: #f1f5f9;
+      background: var(--vm-fill-hover);
     }
     &:disabled {
       opacity: 0.45;
@@ -455,7 +456,7 @@
   kbd {
     margin-left: auto;
     font: inherit;
-    color: #64748b;
+    color: var(--vm-foreground-secondary);
   }
 }
 .frame-settings-page {
@@ -472,21 +473,21 @@
   border-radius: 0;
   overflow-y: auto;
   overscroll-behavior: contain;
-  color: #172033;
-  background: #f8fafc;
+  color: var(--vm-foreground);
+  background: var(--vm-background-subtle);
   font:
     14px system-ui,
     sans-serif;
   &::backdrop {
-    background: #f8fafc;
+    background: var(--vm-background-subtle);
   }
   header {
     display: flex;
     align-items: center;
     gap: 24px;
     padding: 16px 24px;
-    border-bottom: 1px solid #e2e8f0;
-    background: #fff;
+    border-bottom: 1px solid var(--vm-border);
+    background: var(--vm-background);
   }
   h1 {
     margin: 0;
@@ -502,10 +503,10 @@
   input[type='number'],
   select {
     padding: 8px 12px;
-    border: 1px solid #e2e8f0;
+    border: 1px solid var(--vm-border);
     border-radius: 8px;
     color: inherit;
-    background: #fff;
+    background: var(--vm-background);
     font: inherit;
   }
   button {
@@ -514,11 +515,11 @@
     gap: 8px;
     cursor: pointer;
     &:hover {
-      background: #f1f5f9;
+      background: var(--vm-fill-hover);
     }
   }
   :focus-visible {
-    outline: 2px solid #6366f1;
+    outline: 2px solid var(--vm-focus);
     outline-offset: 3px;
   }
 }
@@ -528,12 +529,12 @@
   section {
     margin-bottom: 24px;
     padding: 24px;
-    border: 1px solid #e2e8f0;
+    border: 1px solid var(--vm-border);
     border-radius: 12px;
-    background: #fff;
+    background: var(--vm-background);
   }
   p {
-    color: #64748b;
+    color: var(--vm-foreground-secondary);
     line-height: 1.6;
   }
 }
@@ -550,7 +551,7 @@
     font-size: 13px;
   }
   output {
-    color: #4f46e5;
+    color: var(--vm-primary);
     font-variant-numeric: tabular-nums;
   }
   input[type='range'] {
@@ -559,14 +560,14 @@
     width: 100%;
     margin: 8px 0;
     padding: 0;
-    accent-color: #4f46e5;
+    accent-color: var(--vm-primary);
     cursor: pointer;
   }
 }
 .frame-settings-range {
   display: flex;
   justify-content: space-between;
-  color: #64748b;
+  color: var(--vm-foreground-secondary);
   font-size: 12px;
 }
 @media (max-width: 800px) {
@@ -611,7 +612,7 @@
 }
 .frame-settings-page {
   input[aria-invalid='true'] {
-    border-color: #dc2626;
+    border-color: var(--vm-danger);
   }
   button:disabled {
     opacity: 0.5;
@@ -620,7 +621,7 @@
 }
 .frame-settings-hint {
   font-size: 13px;
-  color: #64748b;
+  color: var(--vm-foreground-secondary);
 }
 .frame-settings-actions {
   display: flex;

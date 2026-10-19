@@ -5,6 +5,11 @@ import { useMindMaxWidth, setMindMaxWidth } from './mind-preferences';
 import { FrameMindWidthInput } from './frame-mind-width-input';
 import { DEFAULT_MIND_MAX_WIDTH } from '@sue/board-mind';
 import {
+  useAppearancePreference,
+  setAppearancePreference,
+  type AppearancePreference,
+} from './appearance-preferences';
+import {
   defaultInteractionPreferences,
   setInteractionPreferences,
   useInteractionPreferences,
@@ -18,10 +23,29 @@ export function FrameSettingsContent({
   const { t, language, setLanguage } = useI18n();
   const preferences = useInteractionPreferences();
   const mindMaxWidth = useMindMaxWidth();
+  const { preference } = useAppearancePreference();
   return (
     <>
       <section aria-labelledby={`${id}-general`}>
         <Heading id={`${id}-general`}>{t('settings.general')}</Heading>
+        <label className="frame-settings-row">
+          <span>{t('settings.appearance')}</span>
+          <select
+            aria-label={t('settings.appearance')}
+            data-testid="settings-appearance"
+            value={preference}
+            onChange={(event) =>
+              setAppearancePreference(
+                event.target.value as AppearancePreference,
+              )
+            }
+          >
+            <option value="system">{t('settings.appearance.system')}</option>
+            <option value="light">{t('settings.appearance.light')}</option>
+            <option value="dark">{t('settings.appearance.dark')}</option>
+          </select>
+        </label>
+        <p>{t('settings.appearance.description')}</p>
         <label className="frame-settings-row">
           <span>{t('language.switcher')}</span>
           <select

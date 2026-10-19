@@ -1,6 +1,12 @@
 import { Translations } from '../types';
 
 const zhTranslations: Translations = {
+  'settings.appearance': '外观',
+  'settings.appearance.system': '跟随系统',
+  'settings.appearance.light': '浅色',
+  'settings.appearance.dark': '深色',
+  'settings.appearance.description':
+    '调整界面和独立文档的配色。画布及其中的文档保持原有外观。',
   'arrange.fitContent': '根据内容调整大小',
   'settings.mind': '思维导图',
   'settings.mindMaxWidth': 'Mind 默认最大宽度',

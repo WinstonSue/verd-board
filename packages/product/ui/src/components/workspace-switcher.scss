@@ -13,7 +13,7 @@
   margin: 8px 12px 0;
   padding: 6px 10px;
   border-radius: 8px;
-  background: var(--floating-panel-bg-color, #fff);
+  background: var(--vm-background);
   box-shadow: 0 1px 4px rgba(15, 23, 42, 0.12);
   z-index: 20;
 }
@@ -33,7 +33,7 @@
 }
 
 .exclusive-editor-bar__back:hover {
-  background: var(--color-surface-primary-container, #e2e8f0);
+  background: var(--vm-fill-hover);
 }
 
 .exclusive-editor-bar__title {
@@ -55,10 +55,10 @@
 }
 
 .workflow-graph-mode select {
-  border: 1px solid #cbd5e1;
+  border: 1px solid var(--vm-border-strong);
   border-radius: 6px;
   padding: 4px 8px;
-  background: #fff;
+  background: var(--vm-background);
 }
 
 .verd-product-shell__body {

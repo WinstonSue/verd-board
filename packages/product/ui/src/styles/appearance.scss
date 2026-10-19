@@ -1,0 +1,79 @@
+@use './appearance-tokens' as tokens;
+
+:where(:root) {
+  @include tokens.light;
+}
+:root[data-verd-appearance='dark'] {
+  @include tokens.dark;
+}
+// Chromium shipped in Desktop does not inherit custom properties into
+// ::backdrop. Declare its two paint tokens directly on the pseudo-element.
+:where(dialog)::backdrop {
+  @include tokens.backdrop-light;
+}
+:root[data-verd-appearance='dark'] :where(dialog)::backdrop {
+  @include tokens.backdrop-dark;
+}
+html[data-verd-appearance] {
+  background: var(--vm-background-subtle);
+  color: var(--vm-foreground);
+  accent-color: var(--vm-primary);
+}
+
+.document-page:not(.document-page--compact) {
+  @include tokens.document;
+}
+
+// A canvas is authored content, including its document cards and compact
+// editors. Do not inherit the surrounding application's appearance into it.
+svg[data-surface][aria-label='Frame canvas'] {
+  @include tokens.light;
+  // An invalid custom-property value restores each text component's original
+  // fallback, rather than imposing document-page colors on canvas text.
+  --board-bg: initial;
+  --board-surface: initial;
+  --board-text: initial;
+  --board-text-secondary: initial;
+  --board-text-placeholder: initial;
+  --board-border: initial;
+  --board-hover: initial;
+  --board-active: initial;
+  --board-primary: initial;
+  --board-danger: initial;
+  --board-danger-bg: initial;
+  --board-code-bg: initial;
+  --board-table-head: initial;
+  color-scheme: light;
+  color: #172033;
+  accent-color: var(--vm-primary);
+}
+
+// HUDs are interface chrome; the presentation canvas retains its file theme.
+.presentation-hud {
+  color: var(--vm-foreground);
+}
+
+.frame-note-content {
+  background: #fff;
+  color-scheme: light;
+}
+
+.verd-board-tutorial .tutorial-content {
+  background: var(--vm-background);
+}
+
+.workspace-document-picker {
+  background: var(--vm-background);
+  border: 1px solid var(--vm-border-strong);
+  box-shadow: var(--vm-shadow-menu);
+  button {
+    color: var(--vm-foreground);
+    background: var(--vm-background);
+    border: 1px solid var(--vm-border);
+    border-radius: var(--vm-radius-sm);
+    cursor: pointer;
+    &:hover {
+      background: var(--vm-fill-hover);
+    }
+  }
+}

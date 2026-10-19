@@ -1,0 +1,93 @@
+@mixin backdrop-light {
+  --vm-background-subtle: #f8fafc;
+  --vm-backdrop: #17203366;
+}
+
+@mixin backdrop-dark {
+  --vm-background-subtle: #0f172a;
+  --vm-backdrop: #02061799;
+}
+
+@mixin light {
+  @include backdrop-light;
+  --vm-font: system-ui, sans-serif;
+  --vm-foreground: #172033;
+  --vm-foreground-secondary: #64748b;
+  --vm-foreground-tertiary: #94a3b8;
+  --vm-background: #fff;
+  --vm-border: #e2e8f0;
+  --vm-border-strong: #cbd5e1;
+  --vm-fill-hover: #f1f5f9;
+  --vm-fill-active: #eef2ff;
+  --vm-primary: #4f46e5;
+  --vm-primary-hover: #4338ca;
+  --vm-focus: #6366f1;
+  --vm-focus-border: #a5b4fc;
+  --vm-info: #3730a3;
+  --vm-info-bg: #eef2ff;
+  --vm-warning: #92400e;
+  --vm-warning-bg: #fffbeb;
+  --vm-warning-border: #fde68a;
+  --vm-danger: #dc2626;
+  --vm-danger-strong: #9f1239;
+  --vm-danger-bg: #fef2f2;
+  --vm-danger-border: #fecaca;
+  --vm-on-primary: #fff;
+  --vm-tooltip-bg: #172033;
+  --vm-tooltip-text: #fff;
+  --vm-shadow-tint: #17203333;
+  --vm-shadow-card: 0 4px 18px #1e293b12;
+  --vm-shadow-menu: 0 8px 24px #1e293b22;
+  --vm-radius-sm: 6px;
+  --vm-radius: 8px;
+  --vm-radius-lg: 12px;
+}
+
+@mixin dark {
+  @include backdrop-dark;
+  --vm-foreground: #e2e8f0;
+  --vm-foreground-secondary: #a8b5c9;
+  --vm-foreground-tertiary: #94a3b8;
+  --vm-background: #1e293b;
+  --vm-border: #334155;
+  --vm-border-strong: #475569;
+  --vm-fill-hover: #334155;
+  --vm-fill-active: #312e58;
+  --vm-primary: #a5b4fc;
+  --vm-primary-hover: #c7d2fe;
+  --vm-focus: #a5b4fc;
+  --vm-focus-border: #818cf8;
+  --vm-info: #c7d2fe;
+  --vm-info-bg: #312e58;
+  --vm-warning: #fcd34d;
+  --vm-warning-bg: #382a16;
+  --vm-warning-border: #785b26;
+  --vm-danger: #fda4af;
+  --vm-danger-strong: #fecdd3;
+  --vm-danger-bg: #3b202d;
+  --vm-danger-border: #7f3347;
+  --vm-on-primary: #0f172a;
+  --vm-tooltip-bg: #e2e8f0;
+  --vm-tooltip-text: #172033;
+  --vm-shadow-tint: #0008;
+  --vm-shadow-card: 0 4px 18px #0004;
+  --vm-shadow-menu: 0 8px 24px #0006;
+}
+
+// Keep the text package independent of product UI. These aliases are inherited
+// only by document pages, and are reset again at each canvas boundary.
+@mixin document {
+  --board-bg: var(--vm-background);
+  --board-surface: var(--vm-background);
+  --board-text: var(--vm-foreground);
+  --board-text-secondary: var(--vm-foreground-secondary);
+  --board-text-placeholder: var(--vm-foreground-tertiary);
+  --board-border: var(--vm-border);
+  --board-hover: var(--vm-fill-hover);
+  --board-active: var(--vm-fill-active);
+  --board-primary: var(--vm-primary);
+  --board-danger: var(--vm-danger);
+  --board-danger-bg: var(--vm-danger-bg);
+  --board-code-bg: var(--vm-background-subtle);
+  --board-table-head: var(--vm-background-subtle);
+}

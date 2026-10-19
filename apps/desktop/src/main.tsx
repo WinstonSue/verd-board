@@ -4,6 +4,9 @@ import './styles.scss';
 import '@sue/verd-board-ui/style.css';
 
 import App from './app/app';
+import { initializeAppearance } from '@sue/verd-board-ui';
+
+initializeAppearance();
 
 // Stylesheets in the document head block this module until fonts.googleapis.com
 // responds. Attach them after startup so the local bundle can paint first.

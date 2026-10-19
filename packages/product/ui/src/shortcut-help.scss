@@ -3,11 +3,11 @@
   max-height: calc(100dvh - 32px);
   box-sizing: border-box;
   padding: 24px;
-  border: 1px solid #e2e8f0;
+  border: 1px solid var(--vm-border);
   border-radius: 16px;
-  color: #172033;
-  background: #fff;
-  box-shadow: 0 16px 64px #17203333;
+  color: var(--vm-foreground);
+  background: var(--vm-background);
+  box-shadow: 0 16px 64px var(--vm-shadow-tint);
   font:
     14px/1.5 system-ui,
     sans-serif;
@@ -19,7 +19,7 @@
     gap: 16px;
   }
   &::backdrop {
-    background: #17203366;
+    background: var(--vm-backdrop);
   }
   button,
   input {
@@ -30,7 +30,7 @@
   }
   button:focus-visible,
   input:focus-visible {
-    outline: 2px solid #6366f1;
+    outline: 2px solid var(--vm-focus);
     outline-offset: 2px;
   }
   &__header {
@@ -58,11 +58,11 @@
     min-height: 38px;
     box-sizing: border-box;
     padding: 8px 12px;
-    border: 1px solid #cbd5e1;
+    border: 1px solid var(--vm-border-strong);
     border-radius: 8px;
     flex-shrink: 0;
     color: inherit;
-    background: #fff;
+    background: var(--vm-background);
   }
   &__categories {
     display: flex;
@@ -71,16 +71,16 @@
     flex-shrink: 0;
   }
   &__categories button {
-    border: 1px solid #e2e8f0;
+    border: 1px solid var(--vm-border);
     border-radius: 8px;
     padding: 6px 10px;
-    color: #475569;
-    background: #f8fafc;
+    color: var(--vm-foreground-secondary);
+    background: var(--vm-background-subtle);
   }
   &__categories button[aria-pressed='true'] {
-    border-color: #6366f1;
-    background: #eef2ff;
-    color: #4338ca;
+    border-color: var(--vm-focus);
+    background: var(--vm-fill-active);
+    color: var(--vm-primary-hover);
   }
   &__content {
     overflow-y: auto;
@@ -90,7 +90,7 @@
   }
   &__hint {
     margin: 0 0 12px;
-    color: #64748b;
+    color: var(--vm-foreground-secondary);
   }
   h3 {
     font-size: 14px;
@@ -105,13 +105,13 @@
     gap: 12px;
     align-items: center;
     padding: 10px 0;
-    border-bottom: 1px solid #f1f5f9;
+    border-bottom: 1px solid var(--vm-fill-hover);
   }
   dt small {
     display: block;
     margin-top: 3px;
     font-size: 12px;
-    color: #64748b;
+    color: var(--vm-foreground-secondary);
   }
   dd {
     margin: 0;
@@ -129,17 +129,17 @@
   }
   &__or {
     font-size: 12px;
-    color: #64748b;
+    color: var(--vm-foreground-secondary);
     margin-right: 3px;
   }
   kbd {
     font:
       12px/1.4 ui-monospace,
       monospace;
-    border: 1px solid #cbd5e1;
+    border: 1px solid var(--vm-border-strong);
     border-bottom-width: 2px;
     border-radius: 5px;
-    background: #f8fafc;
+    background: var(--vm-background-subtle);
     padding: 3px 5px;
     white-space: nowrap;
   }

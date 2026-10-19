@@ -5,6 +5,11 @@ export type Language = 'zh' | 'en';
 
 // Define translation keys and their corresponding values
 export interface Translations {
+  'settings.appearance': string;
+  'settings.appearance.system': string;
+  'settings.appearance.light': string;
+  'settings.appearance.dark': string;
+  'settings.appearance.description': string;
   'arrange.fitContent': string;
   'settings.mind': string;
   'settings.mindMaxWidth': string;

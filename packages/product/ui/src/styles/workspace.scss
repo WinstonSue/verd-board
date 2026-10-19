@@ -1,30 +1,3 @@
-:where(:root) {
-  --vm-font: system-ui, sans-serif;
-  --vm-foreground: #172033;
-  --vm-foreground-secondary: #64748b;
-  --vm-foreground-tertiary: #94a3b8;
-  --vm-background: #fff;
-  --vm-background-subtle: #f8fafc;
-  --vm-border: #e2e8f0;
-  --vm-fill-hover: #f1f5f9;
-  --vm-fill-active: #eef2ff;
-  --vm-primary: #4f46e5;
-  --vm-primary-hover: #4338ca;
-  --vm-focus: #6366f1;
-  --vm-info: #3730a3;
-  --vm-info-bg: #eef2ff;
-  --vm-warning: #92400e;
-  --vm-warning-bg: #fffbeb;
-  --vm-warning-border: #fde68a;
-  --vm-danger: #dc2626;
-  --vm-danger-bg: #fef2f2;
-  --vm-radius-sm: 6px;
-  --vm-radius: 8px;
-  --vm-radius-lg: 12px;
-  --vm-shadow-card: 0 4px 18px #1e293b12;
-  --vm-shadow-menu: 0 8px 24px #1e293b22;
-}
-
 .workspace-shell {
   position: relative;
   display: flex;
@@ -376,13 +349,19 @@ button.workspace-reference-action,
   --tab-active-text-color: var(--vm-foreground);
   --tab-hover-background: var(--vm-fill-hover);
   --tab-active-background: var(--vm-background);
+  --tab-background: var(--vm-background);
   --tab-divider-color: var(--vm-border);
   --tab-close-hover-background: var(--vm-border);
   --tabs-menu-background: var(--vm-background);
+  --tabs-menu-text-color: var(--vm-foreground);
+  --tabs-menu-icon-background: var(--vm-background);
+  --tabs-menu-icon-color: var(--vm-foreground-secondary);
   --tabs-menu-border-color: var(--vm-border);
   --tabs-menu-hover-background: var(--vm-fill-hover);
   --tabs-menu-shadow: var(--vm-shadow-menu);
   --tabs-tooltip-border-color: var(--vm-border);
+  --tabs-tooltip-background: var(--vm-background);
+  --tabs-tooltip-text-color: var(--vm-foreground);
   --tabs-tooltip-shadow: var(--vm-shadow-card);
 }
 .workspace-content {
@@ -488,7 +467,7 @@ button.workspace-reference-action,
 }
 .workspace-button-primary {
   background: var(--vm-primary);
-  color: #fff;
+  color: var(--vm-on-primary);
   &:hover:not(:disabled) {
     background: var(--vm-primary-hover);
   }

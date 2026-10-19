@@ -133,6 +133,7 @@ test('settings preserve the mounted canvas, selection, viewport, tool, and undo 
     await page.keyboard.press(key);
   await expect(page.getByRole('dialog')).toHaveCount(1);
   await settings.getByTestId('settings-language').selectOption('en');
+  await settings.getByTestId('settings-appearance').selectOption('dark');
   await expect(
     settings.getByRole('heading', { name: 'My', exact: true }),
   ).toBeVisible();

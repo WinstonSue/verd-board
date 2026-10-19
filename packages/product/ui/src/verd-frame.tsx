@@ -119,6 +119,7 @@ import { MyPage } from './my-page';
 import { ShortcutHelp } from './shortcut-help';
 import { shortcutLabels } from './shortcut-catalog';
 import { useInteractionPreferences } from './interaction-preferences';
+import { useAppearancePreference } from './appearance-preferences';
 import { useMindMaxWidth } from './mind-preferences';
 import {
   ArrowRight,
@@ -307,6 +308,7 @@ export function VerdFrame({
   revealCellId,
   revealNonce = 0,
 }: VerdFrameProps) {
+  useAppearancePreference();
   const controller = useRef<FrameCanvasController>(null);
   const { t, language } = useI18n();
   const interactionSettings = useInteractionPreferences();

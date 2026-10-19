@@ -1,6 +1,12 @@
 import { Translations } from '../types';
 
 const enTranslations: Translations = {
+  'settings.appearance': 'Appearance',
+  'settings.appearance.system': 'System',
+  'settings.appearance.light': 'Light',
+  'settings.appearance.dark': 'Dark',
+  'settings.appearance.description':
+    'Change the interface and standalone document colors. Canvases and their embedded documents keep their original appearance.',
   'arrange.fitContent': 'Fit size to content',
   'settings.mind': 'Mind maps',
   'settings.mindMaxWidth': 'Default Mind maximum width',
