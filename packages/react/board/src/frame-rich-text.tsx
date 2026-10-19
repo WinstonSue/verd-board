@@ -22,6 +22,8 @@ export const FrameRichText = memo(
         className="board-text-layout"
         style={{
           pointerEvents: 'none',
+          userSelect: 'none',
+          WebkitUserSelect: 'none',
           textAlign: text.align ?? defaultAlign ?? 'center',
           ...style,
         }}

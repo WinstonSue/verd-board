@@ -287,7 +287,7 @@ test('production Desktop saves pending drawing and a focused mind note before cl
     .click();
   await expect(cells(page, 'geometry')).toHaveCount(1);
   await cells(page, 'frame-reference')
-    .locator(':scope > rect')
+    .locator(':scope > [data-frame-header] > rect')
     .first()
     .click({ position: { x: 12, y: 12 } });
   await page.getByTestId('frame-open').click();

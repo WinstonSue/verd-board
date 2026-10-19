@@ -122,10 +122,10 @@ test('Desktop previews documents in every canvas, adopts external edits and pres
         .click();
       if (index === 0) await setAppLanguage(page, 'zh');
       const reader = active.locator('[data-document-preview-scroll]').first();
-      await expect(reader.locator('.tiptap').first()).toHaveAttribute(
-        'contenteditable',
-        'false',
-      );
+      await expect(
+        reader.locator('.board-document-content').first(),
+      ).toHaveAttribute('contenteditable', 'false');
+      await expect(reader.locator('.ProseMirror')).toHaveCount(0);
       await expect(reader).toContainText('Desktop source body');
       await reader.hover();
       await page.mouse.wheel(0, 400);

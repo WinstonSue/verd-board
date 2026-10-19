@@ -3,6 +3,11 @@
 .board-document-editor {
   width: 100%;
 
+  .board-document-preview-content {
+    white-space: pre-wrap;
+    overflow-wrap: break-word;
+  }
+
   &.loading {
     padding: 24px;
     color: var(--board-text-secondary, #6b7280);
@@ -175,5 +180,9 @@
   font-size: 14px;
   * {
     user-select: text;
+  }
+
+  &:focus-visible {
+    outline: none;
   }
 }

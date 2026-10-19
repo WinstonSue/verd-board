@@ -5,7 +5,14 @@ import {
   UserRound,
   TriangleAlert,
 } from 'lucide-react';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  startTransition,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import {
   createCellRegistry,
   createFrameCell,
@@ -34,6 +41,7 @@ import {
   WorkspaceMenu,
   MyPage,
   WorkspaceTabs,
+  PreviewMountProvider,
   VerdFrame,
   useI18n,
   type DocumentEditorChange,
@@ -60,7 +68,7 @@ import {
 } from './documents/document-files';
 import { parseDocumentLink } from './documents/document-links';
 import {
-  workspaceDocumentPreviews,
+  createWorkspaceDocumentPreviewCache,
   WorkspaceCanvasReference,
   type PreviewOptions,
 } from './documents/workspace-previews';
@@ -129,7 +137,7 @@ export interface WorkspaceAppProps {
 }
 
 const sameFile = (left: FrameFileV2, right: FrameFileV2) =>
-  JSON.stringify(left) === JSON.stringify(right);
+  left === right || JSON.stringify(left) === JSON.stringify(right);
 
 const download = (name: string, blob: Blob) => {
   const url = URL.createObjectURL(blob);
@@ -159,7 +167,9 @@ const initializedWorkspaces = new Set<string>();
 export function WorkspaceApp(props: WorkspaceAppProps) {
   return (
     <I18nProvider>
-      <WorkspaceAppShell {...props} />
+      <PreviewMountProvider>
+        <WorkspaceAppShell {...props} />
+      </PreviewMountProvider>
     </I18nProvider>
   );
 }
@@ -177,6 +187,9 @@ function WorkspaceAppShell({
   const { language } = useI18n();
   const locale = language === 'en' ? 'en' : 'zh';
   const [session, setSession] = useState<WorkspaceSession | null>(null);
+  const documentPreviews = useMemo(createWorkspaceDocumentPreviewCache, [
+    session,
+  ]);
   const [snapshot, setSnapshot] = useState<WorkspaceSessionSnapshot | null>(
     null,
   );
@@ -367,7 +380,8 @@ function WorkspaceAppShell({
       const raw = await host.readSnapshot(handle);
       const opened = await openWorkspaceSession(host, handle, {
         registry: registryRef.current ?? undefined,
-        onCommitted: (savedAt) => setLastSavedAt(savedAt),
+        onCommitted: (savedAt) =>
+          startTransition(() => setLastSavedAt(savedAt)),
       });
       candidate = opened;
       if (sequence !== requestSequence.current) return;
@@ -492,10 +506,26 @@ function WorkspaceAppShell({
         session: opened,
         registry: registryRef.current ?? undefined,
       });
+      let observed = opened.getState();
       activeWorkspace.current = {
         handle,
         session: opened,
-        unsubscribe: opened.subscribe(() => setSnapshot(opened.getState())),
+        unsubscribe: opened.subscribe(() => {
+          const next = opened.getState();
+          const urgent =
+            next.store !== observed.store ||
+            next.documents.size !== observed.documents.size ||
+            [...next.documents].some(
+              ([id, entry]) => observed.documents.get(id)?.file !== entry.file,
+            ) ||
+            JSON.stringify(next.session) !== JSON.stringify(observed.session) ||
+            next.mutationsPaused !== observed.mutationsPaused;
+          observed = next;
+          // Content and navigation must commit with edit/restore requests.
+          // Pure save notifications can yield to ongoing canvas gestures.
+          if (urgent) setSnapshot(next);
+          else startTransition(() => setSnapshot(next));
+        }),
       };
       candidate = null;
       setHandleName(handle.name);
@@ -567,7 +597,14 @@ function WorkspaceAppShell({
   const tabs = snapshot?.session.tabs ?? [];
   const activeTabId = snapshot?.session.activeTabId ?? null;
   const groups = snapshot ? workspaceTabGroups(snapshot.session) : [];
-  const mountedTabs = snapshot ? retainedWorkspaceTabs(snapshot.session) : [];
+  const sessionNavigation = snapshot?.session;
+  const mountedTabs = useMemo(
+    () => (sessionNavigation ? retainedWorkspaceTabs(sessionNavigation) : []),
+    [sessionNavigation],
+  );
+  useEffect(() => {
+    documentPreviews.retain(mountedTabs.map((tab) => tab.fileId));
+  }, [documentPreviews, mountedTabs]);
 
   const persistNav = useCallback(
     (patch: Partial<WorkspaceSessionSnapshot['session']>) => {
@@ -679,7 +716,7 @@ function WorkspaceAppShell({
         const occurrence = canvas?.get(
           refOccurrenceId(query.ownerFileId, query.refId, query.appearance),
         );
-        if (!occurrence) return null;
+        if (!occurrence || occurrence.missing) return null;
         const file = session?.getState().files.get(occurrence.fileId)?.file;
         return {
           occurrenceId: occurrence.id,
@@ -1025,6 +1062,19 @@ function WorkspaceAppShell({
           (file) => !existing.has(file.frame.id),
         );
         if (!updated.length && !created) return;
+        // Session persistence clones files. Hold the runtime's committed
+        // snapshot for its exact content echo so FrameCanvas does not replace
+        // the same edit with a second, fully cloned store. A rejection, undo or
+        // external update differs from these files and takes the normal path.
+        // Promoted owned Frames change the store's structure: their canonical
+        // reference shells must replace the raw import/creation snapshot.
+        if (!partitioned.references.size)
+          emittedRef.current = {
+            files: new Map(
+              partitioned.files.map((file) => [file.frame.id, file]),
+            ),
+            snapshot: change.snapshot,
+          };
         if (updated.length <= 1) {
           const sourceId = updated[0]?.frame.id ?? mountedFrameId;
           void session
@@ -1946,7 +1996,7 @@ function WorkspaceAppShell({
                         );
                       }}
                       value={canvasValue(snapshot)}
-                      documentReferences={workspaceDocumentPreviews(
+                      documentReferences={documentPreviews(
                         previewOptions(tab.fileId),
                       )}
                       onReferenceDocument={() => {

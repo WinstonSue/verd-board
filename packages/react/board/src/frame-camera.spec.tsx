@@ -127,6 +127,7 @@ const mount = async (
   ) => {
     const event = new MouseEvent(type, {
       bubbles: true,
+      cancelable: true,
       button,
       buttons:
         type === 'pointerdown' || type === 'pointermove'
@@ -141,6 +142,7 @@ const mount = async (
     });
     Object.defineProperty(event, 'pointerId', { value: pointerId });
     target.dispatchEvent(event);
+    return event;
   };
   const paint = () =>
     act(async () => {
@@ -193,6 +195,56 @@ const viewport = (transform: string | null) => {
   return { zoom, origin: [-x, -y] };
 };
 describe('memory-only canvas camera', () => {
+  it.each([false, true])(
+    'cancels native text selection only when an ordinary shape move is allowed (readonly=%s)',
+    async (readonly) => {
+      const test = await mount(sample(), { readonly });
+      const node = test.svg.querySelector('[data-cell-id="a"]')!;
+      let prevented: boolean | undefined;
+      await act(async () => {
+        prevented = test.fire(
+          'pointerdown',
+          40,
+          30,
+          0,
+          1,
+          node,
+        ).defaultPrevented;
+      });
+      expect(prevented).toBe(!readonly);
+      const label = node.querySelector<HTMLElement>('[data-frame-rich-text]')!;
+      expect(label.style.userSelect).toBe('none');
+      await act(async () => test.fire('pointerup', 40, 30));
+      if (!readonly) {
+        await act(async () =>
+          node.dispatchEvent(new MouseEvent('dblclick', { bubbles: true })),
+        );
+        expect(
+          test.svg.querySelector('[data-frame-text-editor]'),
+        ).not.toBeNull();
+      }
+    },
+  );
+  it('cancels native title selection when starting an allowed Frame move', async () => {
+    const value = sample();
+    (value.store.cells.root as Core.FrameCell).children.push('nested');
+    value.store.cells.nested = createFrameCell('nested');
+    const test = await mount(value);
+    const title = test.svg.querySelector('[data-frame-title-id="nested"]')!;
+    let prevented: boolean | undefined;
+    await act(async () => {
+      prevented = test.fire(
+        'pointerdown',
+        40,
+        30,
+        0,
+        1,
+        title,
+      ).defaultPrevented;
+    });
+    expect(prevented).toBe(true);
+    await act(async () => test.fire('pointerup', 40, 30));
+  });
   it('reports primary present taps without changing the document or selection', async () => {
     const tap = vi.fn();
     const test = await mount(sample(), {
@@ -429,7 +481,7 @@ describe('memory-only canvas camera', () => {
     },
   );
 
-  it('defaults nested content plates to a scaling 1px border and respects explicit appearances', async () => {
+  it('defaults shared Frame outlines to a scaling 1px border and respects explicit appearances', async () => {
     const value = sample();
     const nested = createFrameCell('nested');
     (
@@ -437,7 +489,7 @@ describe('memory-only canvas camera', () => {
     ).children.push('nested');
     value.store.cells.nested = nested;
     const test = await mount(value);
-    const plate = () => test.svg.querySelector('[data-frame-content-plate]')!;
+    const plate = () => test.svg.querySelector('[data-frame-outline]')!;
     expect(plate().getAttribute('stroke')).toBe('#cbd5e1');
     expect(plate().getAttribute('stroke-width')).toBe('1');
     expect(plate().hasAttribute('vector-effect')).toBe(false);
@@ -1565,6 +1617,154 @@ describe('memory-only canvas camera', () => {
         .getAttribute('data-extension-scale'),
     ).toBe('1');
     expect(test.onChange).not.toHaveBeenCalled();
+  });
+  it.each([false, true])(
+    'reuses unrelated geometry outlines during a node drag only with an explicit cache key (cached=%s)',
+    async (cached) => {
+      const frames = controlledFrames();
+      const value = sample();
+      (value.store.cells.root as Core.FrameCell).children.push('b');
+      value.store.cells.b = {
+        ...value.store.cells.a,
+        id: 'b',
+        geometry: { x: 200, y: 10, width: 100, height: 50 },
+      } as Core.NodeCell;
+      const renderShape = vi.fn<
+        NonNullable<FrameRenderExtension['renderShape']>
+      >(({ cell, geometry, selected }) => (
+        <rect
+          x={geometry?.x}
+          y={geometry?.y}
+          width={geometry?.width}
+          height={geometry?.height}
+          data-cached-outline={cell.id}
+          data-outline-selected={String(selected)}
+        />
+      ));
+      const test = await mount(value, {
+        extensions: [
+          {
+            kind: 'geometry',
+            renderShape,
+            ...(cached
+              ? {
+                  renderShapeCacheKey: ({
+                    cell,
+                    geometry,
+                    selected,
+                  }: Parameters<
+                    NonNullable<FrameRenderExtension['renderShape']>
+                  >[0]) => [cell, geometry, selected],
+                }
+              : {}),
+          },
+        ],
+      });
+      const otherRenders = () =>
+        renderShape.mock.calls.filter(([context]) => context.cell.id === 'b')
+          .length;
+      const initial = otherRenders();
+      const a = test.svg.querySelector('[data-cell-id="a"]')!;
+      await act(async () => test.fire('pointerdown', 40, 30, 0, 1, a));
+      for (const x of [60, 80, 100]) {
+        await act(async () => test.fire('pointermove', x, 30));
+        await frames.paint();
+      }
+      await act(async () => test.fire('pointerup', 100, 30));
+      if (cached) expect(otherRenders()).toBe(initial);
+      else expect(otherRenders()).toBeGreaterThan(initial);
+      expect(test.controller.current!.runtime.store.cells.a).toMatchObject({
+        geometry: { x: 70, y: 10 },
+      });
+      await act(async () =>
+        test.controller.current!.runtime.select({
+          focus: ['root'],
+          ids: ['b'],
+        }),
+      );
+      expect(
+        test.svg
+          .querySelector('[data-cached-outline="b"]')!
+          .getAttribute('data-outline-selected'),
+      ).toBe('true');
+      expect(otherRenders()).toBeGreaterThan(initial);
+    },
+  );
+  it('refreshes cached shape content, geometry, native hit events and camera subscriptions', async () => {
+    const frames = controlledFrames();
+    const renderShape = vi.fn<NonNullable<FrameRenderExtension['renderShape']>>(
+      ({ cell, geometry, scale, hovered }) => (
+        <rect
+          x={geometry?.x}
+          y={geometry?.y}
+          width={geometry?.width}
+          height={geometry?.height}
+          data-cached-scale={scale}
+          data-cached-hover={String(hovered)}
+          data-cached-label={(cell as Core.NodeCell).content?.label}
+        />
+      ),
+    );
+    const test = await mount(sample(), {
+      extensions: [
+        {
+          kind: 'geometry',
+          renderShape,
+          renderShapeCacheKey: ({
+            cell,
+            geometry,
+            selected,
+            scale,
+            hovered,
+          }) => [cell, geometry, selected, scale, hovered],
+        },
+      ],
+    });
+    const node = test.svg.querySelector('[data-cell-id="a"]')!;
+    await act(async () =>
+      node.dispatchEvent(new MouseEvent('pointerover', { bubbles: true })),
+    );
+    expect(
+      test.svg
+        .querySelector('[data-cached-hover]')!
+        .getAttribute('data-cached-hover'),
+    ).toBe('true');
+    await act(async () => test.controller.current!.setZoom(2));
+    await frames.paint();
+    expect(
+      test.svg
+        .querySelector('[data-cached-scale]')!
+        .getAttribute('data-cached-scale'),
+    ).toBe('2');
+    await act(async () => {
+      const cell = test.controller.current!.runtime.store.cells
+        .a as Core.NodeCell;
+      await test.controller.current!.dispatch({
+        id: 'update-shape',
+        operations: [
+          {
+            type: 'replace_cell',
+            cell: {
+              ...cell,
+              content: { label: 'Latest' },
+              geometry: { ...cell.geometry, x: 120, width: 150 },
+            },
+          },
+        ],
+      });
+    });
+    const shape = test.svg.querySelector('[data-cached-label]')!;
+    expect(shape.getAttribute('data-cached-label')).toBe('Latest');
+    expect(shape.getAttribute('x')).toBe('120');
+    expect(shape.getAttribute('width')).toBe('150');
+    await act(async () => test.controller.current!.setZoom(1));
+    await frames.paint();
+    await act(async () => test.fire('pointerdown', 140, 30, 0, 1, node));
+    await act(async () => test.fire('pointermove', 160, 30));
+    await act(async () => test.fire('pointerup', 160, 30));
+    expect(test.controller.current!.runtime.store.cells.a).toMatchObject({
+      geometry: { x: 140, width: 150 },
+    });
   });
   it('keeps native edge hit strokes fixed across zoom and nested frame transforms', async () => {
     const frames = controlledFrames();

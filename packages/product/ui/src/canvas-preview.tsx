@@ -12,6 +12,7 @@ import { createWorkflowFrameExtensions } from '@sue/board-react-workflow';
 import { createArchitectureFrameExtensions } from '@sue/board-react-architecture';
 import { measureBoardText } from '@sue/board-react-text';
 import { frameDrawExtensions } from './frame-draw-extension';
+import { canvasPreviewSnapshot } from './canvas-preview-snapshot';
 
 /** A private read-only runtime: never mounts a workspace editing occurrence. */
 export function CanvasPreview({
@@ -28,6 +29,12 @@ export function CanvasPreview({
   const controller = useRef<FrameCanvasController>(null);
   const container = useRef<HTMLDivElement>(null);
   const [ready, setReady] = useState(false);
+  const previousSnapshot = useRef<FrameSnapshot | undefined>(undefined);
+  const preview = useMemo(
+    () => canvasPreviewSnapshot(value.store, frameId, previousSnapshot.current),
+    [value.store, frameId],
+  );
+  previousSnapshot.current = preview;
   const registry = useMemo(() => {
     const result = createCellRegistry();
     registerDrawCells(result);
@@ -68,7 +75,7 @@ export function CanvasPreview({
       cancelAnimationFrame(raf);
       observer?.disconnect();
     };
-  }, [value, frameId]);
+  }, [preview, frameId]);
   return (
     <div
       ref={container}
@@ -77,7 +84,7 @@ export function CanvasPreview({
     >
       <FrameCanvas
         ref={controller}
-        value={value}
+        value={preview}
         frameId={frameId}
         registry={registry}
         extensions={extensions}

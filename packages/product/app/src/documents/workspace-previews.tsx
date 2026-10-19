@@ -3,11 +3,13 @@ import { Check, ExternalLink } from 'lucide-react';
 import {
   CanvasPreview,
   DocumentEditor,
-  DocumentPage,
+  DocumentPreview,
+  usePreviewMount,
   type DocumentEditorChange,
   type DocumentHistoryAdapter,
   type DocumentSelection,
   type DocumentEditorController,
+  type DocumentPreviewController,
   type FrameDocumentReferences,
 } from '@sue/verd-board-ui';
 import type {
@@ -15,6 +17,7 @@ import type {
   WorkspaceSessionSnapshot,
 } from '../session/workspace-session';
 import { parseDocumentLink } from './document-links';
+import { createPreviewRevisions } from './preview-revisions';
 
 export interface PreviewOptions {
   snapshot: WorkspaceSessionSnapshot;
@@ -53,6 +56,129 @@ const referenceButtonStyle: React.CSSProperties = {
   background: '#f8fafc',
 };
 
+const documentScrollStyle: React.CSSProperties = {
+  height: '100%',
+  overflow: 'auto',
+  padding: 12,
+  boxSizing: 'border-box',
+  userSelect: 'text',
+  background: '#fff',
+  color: '#0f172a',
+  font: '14px/1.65 system-ui, sans-serif',
+};
+const embeddedEditorFocus = { autoFocus: false };
+
+/** Keep a canvas occurrence's adapter stable while its callbacks follow the session. */
+export function createWorkspaceDocumentPreviewCache() {
+  const entries = new Map<
+    string,
+    { options: PreviewOptions; adapter: FrameDocumentReferences }
+  >();
+  const get = (options: PreviewOptions): FrameDocumentReferences => {
+    const key = JSON.stringify([options.instance, options.path]);
+    const previous = entries.get(key);
+    if (previous) {
+      previous.options = options;
+      return previous.adapter;
+    }
+    const dependencies = createPreviewRevisions();
+    const versions = new WeakMap<
+      object,
+      { inputs: readonly unknown[]; token: object }
+    >();
+    const entry = { options, adapter: null! as FrameDocumentReferences };
+    let sceneRevision:
+      { inputs: readonly unknown[]; token: object } | undefined;
+    const optionInputs = () => {
+      const latest = entry.options;
+      return [
+        latest.active,
+        latest.locale,
+        latest.exporting,
+        latest.history,
+        latest.scroll,
+        latest.editRequest,
+        !!latest.edit,
+        ...[...(latest.restore ?? [])].flat(),
+      ];
+    };
+    const sameInputs = (a: readonly unknown[], b: readonly unknown[]) =>
+      a.length === b.length && a.every((value, index) => value === b[index]);
+    const current = (): PreviewOptions => ({
+      ...entry.options,
+      open: (...args) => entry.options.open(...args),
+      openLink: (...args) => entry.options.openLink(...args),
+      edit: entry.options.edit
+        ? (...args) => entry.options.edit?.(...args)
+        : undefined,
+      rename: entry.options.rename
+        ? (...args) => entry.options.rename?.(...args)
+        : undefined,
+    });
+    entry.adapter = {
+      // The root scene observes session changes; individual bodies below only
+      // change when their reachable sources or editing options have changed.
+      get revision() {
+        const { files, documents } = entry.options.snapshot;
+        const inputs = [
+          ...[...files].flatMap(([id, value]) => [id, value.file]),
+          ...[...documents].flatMap(([id, value]) => [id, value.file]),
+          ...optionInputs(),
+        ];
+        if (!sceneRevision || !sameInputs(sceneRevision.inputs, inputs))
+          sceneRevision = { inputs, token: {} };
+        return sceneRevision.token;
+      },
+      get editRequest() {
+        return entry.options.editRequest;
+      },
+      getRevision(targetId, referenceSeen) {
+        const latest = entry.options;
+        const source = dependencies(
+          latest.snapshot,
+          latest.path,
+          targetId,
+          referenceSeen,
+        );
+        const inputs = optionInputs();
+        const held = versions.get(source);
+        if (held && sameInputs(held.inputs, inputs)) return held.token;
+        const token = {};
+        versions.set(source, { inputs, token });
+        return token;
+      },
+      title: (id) => entry.options.snapshot.documents.get(id)?.file.title,
+      render: (props) => workspaceDocumentPreviews(current()).render(props),
+      renderHeaderActions: (props) =>
+        workspaceDocumentPreviews(current()).renderHeaderActions?.(props),
+    };
+    entries.set(key, entry);
+    return entry.adapter;
+  };
+  get.retain = (instances: Iterable<string>) => {
+    const retained = new Set(instances);
+    for (const [key, entry] of entries)
+      if (!retained.has(entry.options.instance)) entries.delete(key);
+  };
+  return get;
+}
+
+const readDocumentImage = (file: File): Promise<string | null> => {
+  if (
+    !['image/png', 'image/jpeg', 'image/webp', 'image/gif'].includes(
+      file.type,
+    ) ||
+    file.size > 10 * 1024 * 1024
+  )
+    return Promise.resolve(null);
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result));
+    reader.onerror = reader.onabort = () => resolve(null);
+    reader.readAsDataURL(file);
+  });
+};
+
 function VisiblePreview({
   active,
   force,
@@ -65,24 +191,14 @@ function VisiblePreview({
   viewport?: React.RefObject<HTMLElement | null>;
 }) {
   const root = useRef<HTMLDivElement>(null);
-  const [visible, setVisible] = useState(false);
-  useEffect(() => {
-    if (force || !active) return;
-    if (typeof IntersectionObserver === 'undefined') {
-      setVisible(true);
-      return;
-    }
-    const observer = new IntersectionObserver(
-      ([entry]) => setVisible(entry.isIntersecting),
-      { rootMargin: '400px' },
-    );
-    const target = viewport?.current ?? root.current;
-    if (target) observer.observe(target);
-    return () => observer.disconnect();
-  }, [active, force, viewport]);
+  const admitted = usePreviewMount({
+    active,
+    force,
+    viewport: viewport ?? root,
+  });
   return (
     <div ref={root} style={{ height: '100%', minHeight: 0 }}>
-      {force || (active && visible) ? children : null}
+      {admitted ? children : null}
     </div>
   );
 }
@@ -228,7 +344,7 @@ function DocumentReferencePreview({
 }) {
   const file = options.snapshot.documents.get(targetId)?.file;
   const body = useRef<HTMLDivElement>(null);
-  const ctl = useRef<DocumentEditorController | null>(null);
+  const ctl = useRef<DocumentPreviewController | null>(null);
   const restoring = useRef(true);
   const [ready, setReady] = useState(false);
   const repeated = options.path.includes(targetId);
@@ -257,7 +373,7 @@ function DocumentReferencePreview({
   };
   return (
     <div
-      data-document-preview-body={shell ? undefined : ''}
+      data-document-preview-body
       data-reference-pending={
         options.exporting && file && !repeated && !ready ? 'true' : undefined
       }
@@ -315,25 +431,15 @@ function DocumentReferencePreview({
             boxSizing: 'border-box',
           }}
         >
-          <DocumentEditor
-            value={annotation}
-            readonly
-            onChange={() => undefined}
-          />
+          <DocumentPreview value={annotation} />
         </div>
       )}
       <div
         ref={body}
         data-document-preview-scroll
         style={{
+          ...documentScrollStyle,
           height: annotation ? 'calc(100% - 64px)' : '100%',
-          overflow: 'auto',
-          padding: 12,
-          boxSizing: 'border-box',
-          userSelect: 'text',
-          background: '#fff',
-          color: '#0f172a',
-          font: '14px/1.65 system-ui, sans-serif',
         }}
         onScroll={() => {
           if (
@@ -359,10 +465,9 @@ function DocumentReferencePreview({
             force={options.exporting}
             viewport={body}
           >
-            <DocumentEditor
+            <DocumentPreview
               value={file.text}
-              readonly
-              onChange={() => undefined}
+              onError={() => setReady(true)}
               onReady={(controller) => {
                 ctl.current = controller;
                 restoring.current = true;
@@ -410,18 +515,62 @@ function DocumentFrameEditor({
 }) {
   const file = options.snapshot.documents.get(targetId)?.file;
   const root = useRef<HTMLDivElement>(null);
+  const body = useRef<HTMLDivElement>(null);
   const controller = useRef<DocumentEditorController | null>(null);
+  const restoring = useRef(true);
+  const restoreFrame = useRef<number | null>(null);
+  const findInput = useRef<HTMLInputElement>(null);
+  const [findOpen, setFindOpen] = useState<false | 'find' | 'replace'>(false);
+  const [query, setQuery] = useState('');
+  const [replacement, setReplacement] = useState('');
+  const [matches, setMatches] = useState<
+    ReturnType<DocumentEditorController['find']>
+  >([]);
+  const [matchIndex, setMatchIndex] = useState(-1);
   const scope = useRef(crypto.randomUUID());
   const appearance = JSON.stringify([options.instance, instanceId]);
   const scrollKey = appearance;
   const stop = (event: React.SyntheticEvent) => event.stopPropagation();
+  const english = options.locale === 'en';
+  const search = (value: string) => {
+    const found = controller.current?.find(value) ?? [];
+    setQuery(value);
+    setMatches(found);
+    setMatchIndex(found.length ? 0 : -1);
+    if (found[0]) controller.current?.selectMatch(found[0]);
+  };
+  const closeFind = () => {
+    setFindOpen(false);
+    controller.current?.focus('preserve');
+  };
+  const stepMatch = (delta: number) => {
+    if (!matches.length) return;
+    const index = (matchIndex + delta + matches.length) % matches.length;
+    setMatchIndex(index);
+    controller.current?.selectMatch(matches[index]);
+  };
+  useEffect(() => {
+    if (findOpen) findInput.current?.select();
+  }, [findOpen]);
+  useEffect(
+    () => () => {
+      if (restoreFrame.current !== null)
+        cancelAnimationFrame(restoreFrame.current);
+    },
+    [],
+  );
   if (!file) return <p>文档引用缺失 · {targetId}</p>;
   return (
     <div
       ref={root}
       data-document-preview-body
       data-document-editing={instanceId}
-      style={{ height: '100%', display: 'flex', flexDirection: 'column' }}
+      style={{
+        height: '100%',
+        width: '100%',
+        position: 'relative',
+        pointerEvents: 'auto',
+      }}
       onPointerDown={stop}
       onPointerUp={stop}
       onPointerMove={stop}
@@ -430,14 +579,52 @@ function DocumentFrameEditor({
       onCut={stop}
       onPaste={stop}
       onContextMenu={stop}
+      onKeyUp={stop}
+      onClick={stop}
+      onClickCapture={(event) => {
+        const anchor = (event.target as Element).closest('a[href]');
+        if (!anchor) return;
+        event.preventDefault();
+        if (event.button !== 0 || (!event.metaKey && !event.ctrlKey)) return;
+        const href = anchor.getAttribute('href') ?? '';
+        const link = href.startsWith('#')
+          ? parseDocumentLink(href, targetId)
+          : null;
+        const heading =
+          link?.kind === 'file'
+            ? controller.current
+                ?.getHeadings()
+                .find((item) => item.anchor === link.anchor)
+            : null;
+        if (heading) controller.current?.locateHeading(heading.pos);
+        else options.openLink(href, targetId);
+      }}
+      onAuxClickCapture={(event) => {
+        if ((event.target as Element).closest('a[href]'))
+          event.preventDefault();
+      }}
       onKeyDownCapture={(event) => {
+        if (event.nativeEvent.isComposing) return;
+        const mod = event.metaKey || event.ctrlKey;
+        if (
+          mod &&
+          ((!event.shiftKey && event.key.toLowerCase() === 'f') ||
+            (event.shiftKey && event.key.toLowerCase() === 'h'))
+        ) {
+          event.preventDefault();
+          event.stopPropagation();
+          setFindOpen(event.shiftKey ? 'replace' : 'find');
+          return;
+        }
+        if (event.key === 'Escape' && findOpen) {
+          event.preventDefault();
+          event.stopPropagation();
+          closeFind();
+          return;
+        }
         if (
           event.key !== 'Escape' ||
-          event.nativeEvent.isComposing ||
-          (event.target as Element).closest('input, select, textarea') ||
-          root.current?.querySelector(
-            '.doc-findbar, .doc-linkbar, .doc-frame-picker, .doc-export__menu',
-          )
+          (event.target as Element).closest('input, select, textarea')
         )
           return;
         event.preventDefault();
@@ -445,64 +632,123 @@ function DocumentFrameEditor({
         controller.current?.commit();
         onExit();
       }}
-      onKeyDown={(event) => {
-        event.stopPropagation();
-        if (
-          event.key === 'Escape' &&
-          !event.defaultPrevented &&
-          !event.nativeEvent.isComposing &&
-          !(event.target as Element).closest('input, select, textarea')
-        ) {
-          event.preventDefault();
-          controller.current?.commit();
-          onExit();
-        }
-      }}
-      onScrollCapture={(event) => {
-        const node = event.target as HTMLElement;
-        if (node.classList.contains('document-page__content'))
-          options.scroll.set(scrollKey, {
-            top: node.scrollTop,
-            left: node.scrollLeft,
-          });
-      }}
+      onKeyDown={stop}
     >
-      <div style={{ flex: 1, minHeight: 0 }}>
-        <DocumentPage
-          compact
-          locale={options.locale}
+      {findOpen && (
+        <div
+          className="doc-findbar"
+          style={{
+            position: 'absolute',
+            inset: '8px 8px auto',
+            zIndex: 1,
+            margin: 0,
+            padding: 6,
+            background: '#fff',
+            border: '1px solid #cbd5e1',
+            borderRadius: 6,
+            boxShadow: '0 2px 8px #0002',
+            font: '13px/20px system-ui, sans-serif',
+          }}
+        >
+          <input
+            ref={findInput}
+            value={query}
+            placeholder={english ? 'Find…' : '查找…'}
+            onChange={(event) => search(event.target.value)}
+          />
+          <span className="doc-findbar__count">
+            {matches.length ? `${matchIndex + 1}/${matches.length}` : '0/0'}
+          </span>
+          <button
+            type="button"
+            disabled={!matches.length}
+            aria-label={english ? 'Previous' : '上一个'}
+            onClick={() => stepMatch(-1)}
+          >
+            ↑
+          </button>
+          <button
+            type="button"
+            disabled={!matches.length}
+            aria-label={english ? 'Next' : '下一个'}
+            onClick={() => stepMatch(1)}
+          >
+            ↓
+          </button>
+          {findOpen === 'replace' && (
+            <>
+              <input
+                value={replacement}
+                placeholder={english ? 'Replace with…' : '替换为…'}
+                onChange={(event) => setReplacement(event.target.value)}
+              />
+              <button
+                type="button"
+                disabled={matchIndex < 0}
+                onClick={() => {
+                  if (matches[matchIndex])
+                    controller.current?.replace(
+                      matches[matchIndex],
+                      replacement,
+                    );
+                  search(query);
+                }}
+              >
+                {english ? 'Replace' : '替换'}
+              </button>
+              <button
+                type="button"
+                disabled={!matches.length}
+                onClick={() => {
+                  controller.current?.replaceAll(query, replacement);
+                  search(query);
+                }}
+              >
+                {english ? 'Replace all' : '全部替换'}
+              </button>
+            </>
+          )}
+          <button
+            type="button"
+            aria-label={english ? 'Close' : '关闭'}
+            onClick={closeFind}
+          >
+            ×
+          </button>
+        </div>
+      )}
+      <div
+        ref={body}
+        data-document-preview-scroll
+        style={documentScrollStyle}
+        onScroll={() => {
+          if (body.current && !restoring.current && options.active)
+            options.scroll.set(scrollKey, {
+              top: body.current.scrollTop,
+              left: body.current.scrollLeft,
+            });
+        }}
+      >
+        <DocumentEditor
+          {...embeddedEditorFocus}
           value={file.text}
-          title={file.title}
-          saveState={
-            options.snapshot.documents.get(targetId)?.conflicted
-              ? 'conflicted'
-              : options.snapshot.documents.get(targetId)?.dirty
-                ? options.snapshot.saveStatus === 'saving'
-                  ? 'saving'
-                  : 'unsaved'
-                : 'saved'
-          }
           history={options.history}
           restore={options.restore?.get(instanceId)}
-          frameChoices={[...options.snapshot.files.values()].map(
-            ({ file: canvas, path }) => ({
-              frameId: canvas.frame.id,
-              title: canvas.frame.name ?? path,
-              path,
-            }),
-          )}
+          onImageFile={readDocumentImage}
           renderFrameReference={({ targetFrameId, instanceId: blockId }) => (
             <WorkspaceCanvasReference
               targetFrameId={targetFrameId}
               options={{
                 ...options,
                 path: [...options.path, targetId],
-                instance: JSON.stringify([appearance, 'block', blockId]),
+                instance: JSON.stringify([
+                  `${appearance}/document:${targetId}`,
+                  'block',
+                  blockId,
+                ]),
               }}
             />
           )}
-          onOpenLink={(href) => options.openLink(href, targetId)}
-          onTitleCommit={(title) => options.rename?.(targetId, title)}
           onChange={(change) =>
             options.edit?.(
               targetId,
@@ -515,19 +761,22 @@ function DocumentFrameEditor({
           }
           onReady={(ctl) => {
             controller.current = ctl;
+            restoring.current = true;
+            if (restoreFrame.current !== null)
+              cancelAnimationFrame(restoreFrame.current);
             if (ctl) {
               ctl.focus(
                 options.restore?.has(instanceId) ? 'preserve' : 'start',
               );
-              requestAnimationFrame(() => {
-                const element = root.current?.querySelector(
-                  '.document-page__content',
-                );
+              restoreFrame.current = requestAnimationFrame(() => {
+                const element = body.current;
                 const pos = options.scroll.get(scrollKey);
                 if (element && pos) {
                   element.scrollTop = pos.top;
                   element.scrollLeft = pos.left;
                 }
+                restoring.current = false;
+                restoreFrame.current = null;
               });
             }
           }}

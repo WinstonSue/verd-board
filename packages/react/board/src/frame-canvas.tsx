@@ -67,7 +67,6 @@ import {
   normalizeCellPositionOperations,
   roundNodePosition,
   roundNodeGeometry,
-  frameTitleBounds,
   frameVisualBounds,
   frameContentViewport,
   frameMinimumSize,
@@ -137,6 +136,8 @@ import {
 } from '@sue/board-core';
 import { FrameRichText, FrameRichTextPreviewContext } from './frame-rich-text';
 import { FrameSelectionHandles } from './frame-selection-handles';
+import { FrameShell } from './frame-shell';
+import { PreviewMountProvider, usePreviewMount } from './preview-mount';
 import { frameSelectionWorldBounds } from './frame-selection-camera';
 import { FrameTextEditor } from './frame-text-editor';
 import {
@@ -203,6 +204,11 @@ export interface FrameRenderExtension {
   render?: (context: FrameRenderContext) => ReactNode;
   /** Override only the outline, retaining native text, selection and editing. */
   renderShape?: (context: FrameRenderContext) => ReactNode;
+  /**
+   * Opt in to immutable outline caching. Include every renderShape dependency;
+   * values are compared with Object.is. Camera/hover subscriptions remain live.
+   */
+  renderShapeCacheKey?: (context: FrameRenderContext) => readonly unknown[];
   textBounds?: (
     context: FrameRenderContext,
   ) => import('@sue/board-core').RectangleClient;
@@ -380,6 +386,10 @@ export interface FrameDocumentReferenceProps {
 }
 export interface FrameDocumentReferences {
   editRequest?: { instanceId: string; nonce: number };
+  /** Changes when preview dependencies change, including on a stable adapter. */
+  readonly revision?: unknown;
+  /** Stable dependency token for one occurrence, respecting its expansion path. */
+  getRevision?(targetId: string, referenceSeen?: readonly string[]): unknown;
   title(targetDocumentId: string): string | undefined;
   /** Product controls rendered in the shell title bar, outside its document body. */
   renderHeaderActions?(props: FrameDocumentReferenceProps): ReactNode;
@@ -482,7 +492,7 @@ function FrameCanvasProviders({
   return (
     <RuntimeContext.Provider value={runtime}>
       <FrameWheelContext.Provider value={wheelOwner}>
-        {children}
+        <PreviewMountProvider>{children}</PreviewMountProvider>
       </FrameWheelContext.Provider>
     </RuntimeContext.Provider>
   );
@@ -1853,15 +1863,19 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
       zoom: scale,
       origination: [offset[0], offset[1]],
     };
-    worldRef.current?.setAttribute(
-      'transform',
-      `scale(${scale}) translate(${-offset[0]} ${-offset[1]})`,
-    );
-    if (svgRef.current) {
-      svgRef.current.style.backgroundPosition = `${-offset[0] * scale}px ${-offset[1] * scale}px`;
+    const transform = `scale(${scale}) translate(${-offset[0]} ${-offset[1]})`;
+    if (worldRef.current?.getAttribute('transform') !== transform)
+      worldRef.current?.setAttribute('transform', transform);
+    const svg = svgRef.current;
+    if (svg) {
+      const position = `${-offset[0] * scale}px ${-offset[1] * scale}px`;
+      if (svg.style.backgroundPosition !== position)
+        svg.style.backgroundPosition = position;
       if (view?.theme?.gridEnabled) {
         const size = Math.max(4, view.theme.gridSize ?? 20) * scale;
-        svgRef.current.style.backgroundSize = `${size}px ${size}px`;
+        const backgroundSize = `${size}px ${size}px`;
+        if (svg.style.backgroundSize !== backgroundSize)
+          svg.style.backgroundSize = backgroundSize;
       }
     }
   };
@@ -3486,6 +3500,7 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
             bounds &&
             parentScale * placement.scale > 0
           ) {
+            event.preventDefault();
             setDragging(true);
             setPreview(null);
             dragRef.current = {
@@ -3515,6 +3530,7 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
         };
         if (isDocumentCell(cell)) {
           const shell = bounds ?? cell.geometry;
+          const contentBounds = frameContentViewport(shell);
           const instanceId = `${occurrence?.scope ?? propsRef.current.instanceId ?? frameId}/${cellId}`;
           const documentReadonly =
             !isDocumentFrameCell(cell) ||
@@ -3556,161 +3572,118 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
             : propsRef.current.documentReferences?.renderHeaderActions?.(
                 referenceProps,
               );
+          const documentBody = nativeContent(
+            cellId,
+            [
+              ...(propsRef.current.documentReferences?.getRevision
+                ? [
+                    propsRef.current.documentReferences.getRevision(
+                      cell.data.targetDocumentId,
+                    ),
+                  ]
+                : [
+                    runtime.store,
+                    propsRef.current.documentReferences,
+                    propsRef.current.documentReferences?.revision,
+                  ]),
+              cell.kind,
+              cell.data.targetDocumentId,
+              referenceProps.annotation,
+              documentReadonly,
+              documentIsEditing,
+              instanceId,
+              id,
+              propsRef.current.suspended,
+              propsRef.current.exporting,
+              JSON.stringify(focus),
+            ],
+            () =>
+              propsRef.current.documentReferences?.render(referenceProps) ?? (
+                <div style={{ padding: 12 }}>
+                  文档未解析 · {cell.data.targetDocumentId}
+                </div>
+              ),
+            `document-body:${instanceId}`,
+          );
           return (
             <g
               key={cellId}
               data-cell-id={cellId}
               data-cell-kind={cell.kind}
               data-document-frame-instance={instanceId}
-              opacity={cell.appearance?.opacity}
             >
-              <FrameCellShadow shadow={cell.appearance?.shadow} bounds={shell}>
-                {(filter) => (
-                  <rect
-                    {...shell}
-                    filter={filter}
-                    rx={8}
-                    fill={cell.appearance?.fill ?? '#fff'}
-                    stroke={
-                      selected
-                        ? '#6366f1'
-                        : (cell.appearance?.strokeColor ?? '#cbd5e1')
-                    }
-                    strokeWidth={cell.appearance?.strokeWidth ?? 1}
-                    strokeDasharray={
-                      cell.appearance?.strokeStyle === 'dashed'
-                        ? '8 4'
-                        : cell.appearance?.strokeStyle === 'dotted'
-                          ? '2 4'
-                          : undefined
-                    }
-                    onPointerDown={beginFrameMove}
-                  />
-                )}
-              </FrameCellShadow>
-              <rect
-                x={shell.x}
-                y={shell.y}
-                width={shell.width}
-                height={32}
-                rx={8}
-                fill="#f1f5f9"
-                onPointerDown={beginFrameMove}
-              />
-              <foreignObject
-                x={shell.x + 12}
-                y={shell.y}
-                width={Math.max(0, shell.width - (headerActions ? 84 : 24))}
-                height={32}
+              <FrameShell
+                geometry={shell}
+                appearance={cell.appearance}
+                active={!drawingPreview && (selected || documentIsEditing)}
+                titleId={drawingPreview ? undefined : cellId}
+                title={
+                  <div title={title} style={{ height: '100%' }}>
+                    <FrameRichText
+                      text={plainTextDocument(cell, title)}
+                      style={frameTitleStyle(selected || documentIsEditing)}
+                    />
+                  </div>
+                }
+                actions={headerActions}
                 onPointerDown={beginFrameMove}
               >
-                <div
-                  title={title}
-                  style={{
-                    cursor: 'move',
-                    font: '14px/32px system-ui, sans-serif',
-                    color: '#334155',
-                    whiteSpace: 'nowrap',
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
-                  }}
-                >
-                  {title}
-                </div>
-              </foreignObject>
-              {headerActions && (
                 <foreignObject
-                  x={shell.x + Math.max(0, shell.width - 68)}
-                  y={shell.y + 2}
-                  width={Math.min(64, shell.width)}
-                  height={28}
-                  data-frame-export-exclude
-                  data-document-header-actions
+                  {...contentBounds}
+                  style={{ overflow: 'hidden' }}
                 >
                   <div
-                    style={{
-                      height: '100%',
-                      display: 'flex',
-                      justifyContent: 'flex-end',
-                      alignItems: 'center',
-                      gap: 4,
-                      pointerEvents: 'auto',
+                    style={{ height: '100%' }}
+                    data-document-preview-body={
+                      documentIsEditing ||
+                      !isDocumentFrameCell(cell) ||
+                      documentReadonly
+                        ? ''
+                        : undefined
+                    }
+                    onPointerDown={(event) => {
+                      if (
+                        !isDocumentFrameCell(cell) ||
+                        documentIsEditing ||
+                        documentReadonly ||
+                        (event.target as Element).closest(
+                          'button, input, select, [data-frame-text-toolbar]',
+                        )
+                      )
+                        return;
+                      event.preventDefault();
+                      beginFrameMove(
+                        event as unknown as React.PointerEvent<SVGElement>,
+                      );
                     }}
-                    onPointerDown={(event) => event.stopPropagation()}
-                    onPointerUp={(event) => event.stopPropagation()}
-                    onClick={(event) => event.stopPropagation()}
-                    onDoubleClick={(event) => event.stopPropagation()}
-                    onKeyDown={(event) => event.stopPropagation()}
-                    onKeyUp={(event) => event.stopPropagation()}
+                    onDoubleClick={(event) => {
+                      if (
+                        documentReadonly ||
+                        (event.target as Element).closest('button')
+                      )
+                        return;
+                      event.preventDefault();
+                      event.stopPropagation();
+                      sceneActions.select(cellId, focus, false);
+                      setDocumentEditing(instanceId);
+                    }}
+                    onClickCapture={(event) => {
+                      if (
+                        documentIsEditing ||
+                        documentReadonly ||
+                        (event.target as Element).closest('button') ||
+                        event.metaKey ||
+                        event.ctrlKey
+                      )
+                        return;
+                      event.preventDefault();
+                      event.stopPropagation();
+                    }}
                   >
-                    {headerActions}
+                    {documentBody}
                   </div>
                 </foreignObject>
-              )}
-              <foreignObject
-                x={shell.x + 4}
-                y={shell.y + 34}
-                width={Math.max(0, shell.width - 8)}
-                height={Math.max(0, shell.height - 38)}
-                style={{ overflow: 'hidden' }}
-              >
-                <div
-                  style={{ height: '100%' }}
-                  data-document-preview-body={
-                    documentIsEditing ||
-                    !isDocumentFrameCell(cell) ||
-                    documentReadonly
-                      ? ''
-                      : undefined
-                  }
-                  onPointerDown={(event) => {
-                    if (
-                      !isDocumentFrameCell(cell) ||
-                      documentIsEditing ||
-                      documentReadonly ||
-                      (event.target as Element).closest(
-                        'button, input, select, [data-frame-text-toolbar]',
-                      )
-                    )
-                      return;
-                    event.preventDefault();
-                    beginFrameMove(
-                      event as unknown as React.PointerEvent<SVGElement>,
-                    );
-                  }}
-                  onDoubleClick={(event) => {
-                    if (
-                      documentReadonly ||
-                      (event.target as Element).closest('button')
-                    )
-                      return;
-                    event.preventDefault();
-                    event.stopPropagation();
-                    sceneActions.select(cellId, focus, false);
-                    setDocumentEditing(instanceId);
-                  }}
-                  onClickCapture={(event) => {
-                    if (
-                      documentIsEditing ||
-                      documentReadonly ||
-                      (event.target as Element).closest('button') ||
-                      event.metaKey ||
-                      event.ctrlKey
-                    )
-                      return;
-                    event.preventDefault();
-                    event.stopPropagation();
-                  }}
-                >
-                  {propsRef.current.documentReferences?.render(
-                    referenceProps,
-                  ) ?? (
-                    <div style={{ padding: 12 }}>
-                      文档未解析 · {cell.data.targetDocumentId}
-                    </div>
-                  )}
-                </div>
-              </foreignObject>
+              </FrameShell>
             </g>
           );
         }
@@ -3726,100 +3699,24 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
               data-cell-kind={drawingPreview ? undefined : 'frame'}
               data-draft-cell-kind={drawingPreview ? 'frame' : undefined}
             >
-              <rect
-                x={shellBounds.x}
-                y={shellBounds.y}
-                width={shellBounds.width}
-                height={shellBounds.height}
-                rx={12}
-                data-frame-shell
-                data-frame-active={active ? 'true' : 'false'}
-                fill={active ? '#f1f5f9' : 'transparent'}
-                stroke={active ? '#cbd5e1' : 'none'}
-                vectorEffect="non-scaling-stroke"
-                onPointerDown={beginFrameMove}
-                onDoubleClick={(event) => {
-                  event.stopPropagation();
-                  if (!sceneActions.enterSelectedGroup(cellId))
-                    propsRef.current.onOpenFrame?.(cellId);
-                }}
-              />
-              <g>
-                <FrameCellShadow
-                  shadow={cell.appearance?.shadow}
-                  bounds={contentBounds}
-                >
-                  {(filter) => (
-                    <rect
-                      {...contentBounds}
-                      data-frame-content-plate
-                      filter={filter}
-                      opacity={cell.appearance?.opacity}
-                      strokeWidth={cell.appearance?.strokeWidth ?? 1}
-                      strokeDasharray={
-                        cell.appearance?.strokeStyle === 'dashed'
-                          ? '8 4'
-                          : cell.appearance?.strokeStyle === 'dotted'
-                            ? '2 4'
-                            : undefined
-                      }
-                      fill={cell.appearance?.fill ?? '#fff'}
-                      stroke={
-                        active
-                          ? '#6366f1'
-                          : (cell.appearance?.strokeColor ?? '#cbd5e1')
-                      }
-                      onPointerDown={beginFrameMove}
-                      onDoubleClick={(event) => {
-                        event.stopPropagation();
-                        if (!sceneActions.enterSelectedGroup(cellId))
-                          propsRef.current.onOpenFrame?.(cellId);
-                      }}
-                    />
-                  )}
-                </FrameCellShadow>
-              </g>
-              <g
-                data-frame-title-id={drawingPreview ? undefined : cellId}
-                style={{ cursor: 'move' }}
-                onPointerDown={beginFrameMove}
-                onDoubleClick={(event) => {
-                  event.stopPropagation();
-                  if (
-                    !drawingPreview &&
-                    !sceneActions.enterSelectedGroup(cellId)
+              <FrameShell
+                geometry={shellBounds}
+                appearance={cell.appearance}
+                active={active}
+                titleId={drawingPreview ? undefined : cellId}
+                titleHidden={
+                  !drawingPreview &&
+                  editing === cellId &&
+                  renderEditable &&
+                  selectionAllows(
+                    runtime.store,
+                    [cellId],
+                    runtime.registry,
+                    'edit',
+                    runtime.mountedRootId,
                   )
-                    sceneActions.editText(cellId);
-                }}
-              >
-                <rect
-                  {...frameTitleBounds(bounds ?? cell.geometry)}
-                  fill="transparent"
-                  stroke="none"
-                  pointerEvents="all"
-                />
-                <foreignObject
-                  {...frameTitleBounds(bounds ?? cell.geometry)}
-                  stroke="none"
-                  data-frame-title-text
-                  style={{
-                    visibility:
-                      !drawingPreview &&
-                      editing === cellId &&
-                      renderEditable &&
-                      selectionAllows(
-                        runtime.store,
-                        [cellId],
-                        runtime.registry,
-                        'edit',
-                        runtime.mountedRootId,
-                      )
-                        ? 'hidden'
-                        : undefined,
-                    overflow: 'hidden',
-                    pointerEvents: 'none',
-                  }}
-                >
+                }
+                title={
                   <FrameRichText
                     text={
                       isBoardTextDocument(cell.content?.text) &&
@@ -3832,16 +3729,22 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
                     }
                     style={frameTitleStyle(active)}
                   />
-                </foreignObject>
-              </g>
-              <g
-                clipPath={`url(#frame-content-${renderScope}-${occurrence?.scope ?? propsRef.current.instanceId ?? frameId}-${cellId})`}
+                }
+                onPointerDown={beginFrameMove}
+                onDoubleClick={(event) => {
+                  event.stopPropagation();
+                  if (!sceneActions.enterSelectedGroup(cellId))
+                    propsRef.current.onOpenFrame?.(cellId);
+                }}
+                onTitleDoubleClick={(event) => {
+                  event.stopPropagation();
+                  if (
+                    !drawingPreview &&
+                    !sceneActions.enterSelectedGroup(cellId)
+                  )
+                    sceneActions.editText(cellId);
+                }}
               >
-                <clipPath
-                  id={`frame-content-${renderScope}-${occurrence?.scope ?? propsRef.current.instanceId ?? frameId}-${cellId}`}
-                >
-                  <rect {...contentBounds} />
-                </clipPath>
                 {contentBounds.width > 0 &&
                   contentBounds.height > 0 &&
                   renderFrame(
@@ -3853,7 +3756,7 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
                     bounds,
                     occurrence,
                   )}
-              </g>
+              </FrameShell>
               {selected && renderEditable && !cell.locked && bounds && (
                 <FrameScaleContent
                   camera={cameraStore}
@@ -3881,7 +3784,10 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
           const active = !drawingPreview && (selected || editing === cellId);
           const targetId = cell.data.targetFrameId;
           const target = laidOut.cells[targetId];
-          const seen = new Set(occurrence?.seen ?? [id]);
+          const seen = new Set(
+            occurrence?.seen ?? propsRef.current.referenceSeen ?? [id],
+          );
+          seen.add(id);
           const resolved = isFrameCell(target) && !seen.has(targetId);
           const title =
             cell.name ?? (isFrameCell(target) ? target.name : undefined);
@@ -3890,6 +3796,109 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
             (isFrameCell(target) || propsRef.current.instanceHost
               ? 'Frame'
               : '引用缺失');
+          const appearance = [
+            ...(propsRef.current.referenceAppearance ?? [id]),
+            cellId,
+          ];
+          const referenceSeen = [...seen, targetId];
+          const host = propsRef.current.instanceHost;
+          const referenceRevision =
+            propsRef.current.documentReferences?.getRevision?.(
+              targetId,
+              referenceSeen,
+            );
+          const instanceSurface =
+            host && !drawingPreview && !seen.has(targetId)
+              ? nativeContent(
+                  cellId,
+                  [
+                    ...(propsRef.current.documentReferences?.getRevision
+                      ? [referenceRevision]
+                      : [
+                          runtime.store,
+                          propsRef.current.documentReferences,
+                          propsRef.current.documentReferences?.revision,
+                        ]),
+                    host,
+                    propsRef.current.exporting,
+                    id,
+                    targetId,
+                    propsRef.current.instanceId,
+                    JSON.stringify(appearance),
+                    JSON.stringify(referenceSeen),
+                    JSON.stringify(focus),
+                    contentBounds.x,
+                    contentBounds.y,
+                    contentBounds.width,
+                    contentBounds.height,
+                    shellBounds.x,
+                    shellBounds.y,
+                    shellBounds.width,
+                    shellBounds.height,
+                    cell.data.mindOffsets,
+                    propsRef.current.suspended,
+                    propsRef.current.readonly,
+                    propsRef.current.inputMode,
+                    runtime.registry,
+                    propsRef.current.extensions,
+                  ],
+                  () => (
+                    <FrameReferenceSurface
+                      documentReferences={propsRef.current.documentReferences}
+                      exporting={propsRef.current.exporting}
+                      host={host}
+                      ownerFileId={id}
+                      refId={cellId}
+                      targetFrameId={targetId}
+                      parentOccurrenceId={propsRef.current.instanceId}
+                      appearance={[
+                        ...(propsRef.current.referenceAppearance ?? [id]),
+                        cellId,
+                      ]}
+                      seen={referenceSeen}
+                      bounds={contentBounds}
+                      shellGeometry={shellBounds}
+                      offsets={cell.data.mindOffsets}
+                      suspended={propsRef.current.suspended}
+                      readonly={propsRef.current.readonly}
+                      inputMode={propsRef.current.inputMode}
+                      registry={runtime.registry}
+                      extensions={propsRef.current.extensions}
+                      onOpen={() =>
+                        propsRef.current.onOpenFrame?.(targetId, {
+                          sourceFileId: id,
+                          refId: cellId,
+                          occurrenceId: `${id}/${cellId}`,
+                        })
+                      }
+                      onOpenFrame={(...args) =>
+                        propsRef.current.onOpenFrame?.(...args)
+                      }
+                      onActivate={(occurrenceId) =>
+                        propsRef.current.onActiveInstance?.(occurrenceId)
+                      }
+                      onBackgroundTap={() => {
+                        propsRef.current.onActiveInstance?.(
+                          propsRef.current.surface === 'nested'
+                            ? (propsRef.current.instanceId ?? null)
+                            : null,
+                        );
+                        sceneActions.selectContextCell(cellId, focus);
+                        svgRef.current?.focus({ preventScroll: true });
+                      }}
+                      onSelection={(selection) =>
+                        propsRef.current.onInstanceSelection?.(selection)
+                      }
+                      onExit={() => {
+                        propsRef.current.onActiveInstance?.(null);
+                        sceneActions.selectContextCell(cellId, focus);
+                        svgRef.current?.focus();
+                      }}
+                    />
+                  ),
+                  `reference-surface:${JSON.stringify(appearance)}`,
+                )
+              : null;
           return (
             <g
               key={cellId}
@@ -3898,17 +3907,35 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
               data-cell-kind={drawingPreview ? undefined : 'frame-reference'}
               data-draft-cell-kind={drawingPreview ? 'frame' : undefined}
             >
-              <rect
-                x={shellBounds.x}
-                y={shellBounds.y}
-                width={shellBounds.width}
-                height={shellBounds.height}
-                rx={12}
-                data-frame-shell
-                data-frame-active={active ? 'true' : 'false'}
-                fill={active ? '#f1f5f9' : 'transparent'}
-                stroke={active ? '#cbd5e1' : 'none'}
-                vectorEffect="non-scaling-stroke"
+              <FrameShell
+                geometry={shellBounds}
+                appearance={cell.appearance}
+                active={active}
+                unresolved={!resolved && !propsRef.current.instanceHost}
+                titleId={drawingPreview ? undefined : cellId}
+                titleHidden={
+                  !drawingPreview &&
+                  editing === cellId &&
+                  renderEditable &&
+                  selectionAllows(
+                    runtime.store,
+                    [cellId],
+                    runtime.registry,
+                    'edit',
+                    runtime.mountedRootId,
+                  )
+                }
+                title={
+                  <FrameRichText
+                    text={
+                      isBoardTextDocument(cell.content?.text) &&
+                      cell.content.text.plainText
+                        ? cell.content.text
+                        : plainTextDocument(cell, label)
+                    }
+                    style={frameTitleStyle(active)}
+                  />
+                }
                 onPointerDown={beginFrameMove}
                 onDoubleClick={(event) => {
                   event.stopPropagation();
@@ -3919,51 +3946,7 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
                       occurrenceId: `${occurrence?.scope ?? propsRef.current.instanceId ?? id}/${cellId}`,
                     });
                 }}
-              />
-              <g>
-                <FrameCellShadow
-                  shadow={cell.appearance?.shadow}
-                  bounds={contentBounds}
-                >
-                  {(filter) => (
-                    <rect
-                      {...contentBounds}
-                      data-frame-content-plate
-                      filter={filter}
-                      opacity={cell.appearance?.opacity}
-                      strokeWidth={cell.appearance?.strokeWidth ?? 1}
-                      strokeDasharray={
-                        !resolved || cell.appearance?.strokeStyle === 'dashed'
-                          ? '8 4'
-                          : cell.appearance?.strokeStyle === 'dotted'
-                            ? '2 4'
-                            : undefined
-                      }
-                      fill={cell.appearance?.fill ?? '#fff'}
-                      stroke={
-                        active
-                          ? '#6366f1'
-                          : (cell.appearance?.strokeColor ?? '#cbd5e1')
-                      }
-                      onPointerDown={beginFrameMove}
-                      onDoubleClick={(event) => {
-                        event.stopPropagation();
-                        if (!sceneActions.enterSelectedGroup(cellId))
-                          propsRef.current.onOpenFrame?.(targetId, {
-                            sourceFileId: id,
-                            refId: cellId,
-                            occurrenceId: `${occurrence?.scope ?? propsRef.current.instanceId ?? id}/${cellId}`,
-                          });
-                      }}
-                    />
-                  )}
-                </FrameCellShadow>
-              </g>
-              <g
-                data-frame-title-id={drawingPreview ? undefined : cellId}
-                style={{ cursor: 'move' }}
-                onPointerDown={beginFrameMove}
-                onDoubleClick={(event) => {
+                onTitleDoubleClick={(event) => {
                   event.stopPropagation();
                   if (
                     !drawingPreview &&
@@ -3972,129 +3955,31 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
                     sceneActions.editText(cellId);
                 }}
               >
-                <rect
-                  {...frameTitleBounds(bounds ?? cell.geometry)}
-                  fill="transparent"
-                  stroke="none"
-                  pointerEvents="all"
-                />
-                <foreignObject
-                  {...frameTitleBounds(bounds ?? cell.geometry)}
-                  stroke="none"
-                  data-frame-title-text
-                  style={{
-                    visibility:
-                      !drawingPreview &&
-                      editing === cellId &&
-                      renderEditable &&
-                      selectionAllows(
-                        runtime.store,
-                        [cellId],
-                        runtime.registry,
-                        'edit',
-                        runtime.mountedRootId,
-                      )
-                        ? 'hidden'
-                        : undefined,
-                    overflow: 'hidden',
-                    pointerEvents: 'none',
-                  }}
-                >
-                  <FrameRichText
-                    text={
-                      isBoardTextDocument(cell.content?.text) &&
-                      cell.content.text.plainText
-                        ? cell.content.text
-                        : plainTextDocument(cell, label)
-                    }
-                    style={frameTitleStyle(active)}
-                  />
-                </foreignObject>
-              </g>
-              <g
-                clipPath={`url(#frame-content-${renderScope}-${occurrence?.scope ?? propsRef.current.instanceId ?? frameId}-${cellId})`}
-              >
-                <clipPath
-                  id={`frame-content-${renderScope}-${occurrence?.scope ?? propsRef.current.instanceId ?? frameId}-${cellId}`}
-                >
-                  <rect {...contentBounds} />
-                </clipPath>
                 {propsRef.current.instanceHost &&
                 !drawingPreview &&
                 !seen.has(targetId) &&
                 contentBounds.width > 0 &&
-                contentBounds.height > 0 ? (
-                  <FrameReferenceSurface
-                    documentReferences={propsRef.current.documentReferences}
-                    exporting={propsRef.current.exporting}
-                    host={propsRef.current.instanceHost}
-                    ownerFileId={id}
-                    refId={cellId}
-                    targetFrameId={targetId}
-                    parentOccurrenceId={propsRef.current.instanceId}
-                    appearance={[
-                      ...(propsRef.current.referenceAppearance ?? [id]),
-                      cellId,
-                    ]}
-                    seen={[...(propsRef.current.referenceSeen ?? []), targetId]}
-                    bounds={contentBounds}
-                    shellGeometry={shellBounds}
-                    offsets={cell.data.mindOffsets}
-                    suspended={propsRef.current.suspended}
-                    readonly={propsRef.current.readonly}
-                    inputMode={propsRef.current.inputMode}
-                    registry={runtime.registry}
-                    extensions={propsRef.current.extensions}
-                    onOpen={() =>
-                      propsRef.current.onOpenFrame?.(targetId, {
-                        sourceFileId: id,
+                contentBounds.height > 0
+                  ? instanceSurface
+                  : resolved &&
+                    contentBounds.width > 0 &&
+                    contentBounds.height > 0 &&
+                    renderFrame(
+                      targetId,
+                      [...focus, cellId],
+                      true,
+                      parentScale * placement.scale,
+                      scene ? { ...scene, children: undefined } : undefined,
+                      shellBounds,
+                      {
                         refId: cellId,
-                        occurrenceId: `${id}/${cellId}`,
-                      })
-                    }
-                    onOpenFrame={propsRef.current.onOpenFrame}
-                    onActivate={(occurrenceId) =>
-                      propsRef.current.onActiveInstance?.(occurrenceId)
-                    }
-                    onBackgroundTap={() => {
-                      propsRef.current.onActiveInstance?.(
-                        propsRef.current.surface === 'nested'
-                          ? (propsRef.current.instanceId ?? null)
-                          : null,
-                      );
-                      sceneActions.selectContextCell(cellId, focus);
-                      svgRef.current?.focus({ preventScroll: true });
-                    }}
-                    onSelection={(selection) =>
-                      propsRef.current.onInstanceSelection?.(selection)
-                    }
-                    onExit={() => {
-                      propsRef.current.onActiveInstance?.(null);
-                      sceneActions.selectContextCell(cellId, focus);
-                      svgRef.current?.focus();
-                    }}
-                  />
-                ) : (
-                  resolved &&
-                  contentBounds.width > 0 &&
-                  contentBounds.height > 0 &&
-                  renderFrame(
-                    targetId,
-                    [...focus, cellId],
-                    true,
-                    parentScale * placement.scale,
-                    scene ? { ...scene, children: undefined } : undefined,
-                    shellBounds,
-                    {
-                      refId: cellId,
-                      offsets: new Map(
-                        Object.entries(cell.data.mindOffsets ?? {}),
-                      ),
-                      seen: new Set([...seen, targetId]),
-                      scope: `${occurrence?.scope ?? propsRef.current.instanceId ?? id}/${cellId}`,
-                    },
-                  )
-                )}
+                        offsets: new Map(
+                          Object.entries(cell.data.mindOffsets ?? {}),
+                        ),
+                        seen: new Set([...seen, targetId]),
+                        scope: `${occurrence?.scope ?? propsRef.current.instanceId ?? id}/${cellId}`,
+                      },
+                    )}
                 {!(
                   propsRef.current.instanceHost &&
                   !drawingPreview &&
@@ -4120,13 +4005,13 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
                         fontSize={13}
                         pointerEvents="none"
                       >
-                        {isFrameCell(target) && seen.has(targetId)
+                        {seen.has(targetId)
                           ? '已在当前预览路径中展示，可打开原图'
                           : '引用缺失'}
                       </text>
                     </g>
                   )}
-              </g>
+              </FrameShell>
               {selected && renderEditable && !cell.locked && bounds && (
                 <FrameScaleContent
                   camera={cameraStore}
@@ -4667,6 +4552,7 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
             (!extension.kind || extension.kind === cell.kind) &&
             extension.renderShape,
         );
+        const shapeCacheKey = shapeExtension?.renderShapeCacheKey?.(context);
         const label = cell.content?.label ?? '';
         const presentationExtensions = props.extensions?.filter(
           (extension) =>
@@ -4767,13 +4653,15 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
               </>
             );
           const fallback =
-            drawingPreview || shapeExtension
+            drawingPreview || (shapeExtension && !shapeCacheKey)
               ? createFallback()
               : nativeContent(
                   cellId,
                   [
-                    cell,
+                    context.cell,
                     bounds,
+                    shapeExtension,
+                    ...(shapeCacheKey ?? []),
                     shapeParts,
                     text,
                     textBounds.x,
@@ -4890,6 +4778,7 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
                     (embedded && cell.kind === 'mind-root')) &&
                   parentScale * placement.scale > 0
                 ) {
+                  event.preventDefault();
                   setDragging(true);
                   setPreview(null);
                   dragRef.current = {
@@ -5185,7 +5074,7 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
           editing !== cellId &&
           !textExtension &&
           !presentationExtensions?.length &&
-          !shapeExtension &&
+          (!shapeExtension || shapeCacheKey) &&
           !extension?.render
         ) {
           const render = () =>
@@ -5194,12 +5083,19 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
           return nativeContent(
             cellId,
             [
-              cell,
+              context.cell,
               bounds,
+              shapeExtension,
+              ...(shapeCacheKey ?? []),
               renderEditable,
+              context.readonly,
               pending,
               snapTerminals,
               connectionPreview,
+              activeToolKey,
+              id,
+              JSON.stringify(focus),
+              parentScale * placement.scale,
             ],
             () => nativeEvents.update(cellId, render()),
             'shell',
@@ -5499,7 +5395,15 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
           }
         : undefined,
     );
-  }, [renderFrame, frameId, props.documentReferences, props.exporting]);
+  }, [
+    renderFrame,
+    frameId,
+    props.documentReferences,
+    props.documentReferences?.revision,
+    props.exporting,
+    props.embedShell,
+    props.referenceSeen,
+  ]);
   useLayoutEffect(() => {
     captureViewportRect();
     refreshSelectionWorldBoundsRef.current = refreshSelectionWorldBounds;
@@ -7326,13 +7230,20 @@ function FrameReferenceSurface({
     }),
     [ownerFileId, refId, targetFrameId, appearanceIdentity, parentOccurrenceId],
   );
+  const bodyRef = useRef<HTMLDivElement>(null);
+  const admitted = usePreviewMount({
+    force: exporting,
+    viewport: bodyRef,
+    retain: true,
+  });
   const [mounted, setMounted] = useState(false);
-  useEffect(() => {
+  useLayoutEffect(() => {
+    if (!admitted) return undefined;
     const release = host.acquire(query);
     setMounted(true);
     return typeof release === 'function' ? release : () => host.release(query);
-  }, [host, query]);
-  const binding = mounted ? host.get(query) : null;
+  }, [host, query, admitted]);
+  const binding = admitted && mounted ? host.get(query) : null;
   const backgroundTap = useRef<{
     pointerId: number;
     x: number;
@@ -7369,9 +7280,11 @@ function FrameReferenceSurface({
       width={bounds.width}
       height={bounds.height}
       data-instance-host={appearanceKey}
+      data-reference-pending={exporting && !mounted ? 'true' : undefined}
       style={{ overflow: 'hidden' }}
     >
       <div
+        ref={bodyRef}
         data-reference-instance={binding?.occurrenceId ?? appearanceKey}
         onPointerDownCapture={(event) => {
           cancelBackgroundTap();

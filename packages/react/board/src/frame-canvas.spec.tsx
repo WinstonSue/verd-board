@@ -15,6 +15,16 @@ import {
   type FrameSnapshot,
 } from '@sue/board-core';
 import { FrameCanvas, type FrameCanvasController } from './frame-canvas';
+// Admission is intentionally deferred; let each admitted tree commit before
+// advancing the shared queue to the next reference.
+const waitForReference = async (ready: () => boolean) => {
+  for (let frame = 0; frame < 30 && !ready(); frame++)
+    await act(
+      async () =>
+        new Promise<void>((resolve) => requestAnimationFrame(() => resolve())),
+    );
+  expect(ready()).toBe(true);
+};
 const snapshot = (): FrameSnapshot => ({
   store: applyCellOperations(createCellStore(createFrameCell('root')), [
     {
@@ -101,6 +111,7 @@ describe('FrameCanvas', () => {
           />,
         ),
       );
+      await waitForReference(() => paths.length === 4);
       expect(paths).toContainEqual(['board', 'r1', 'inner']);
       expect(paths).toContainEqual(['board', 'r2', 'inner']);
       expect(runtimes.size).toBe(4);
@@ -177,9 +188,17 @@ describe('FrameCanvas', () => {
       );
     try {
       await act(async () => render(false));
+      await waitForReference(
+        () =>
+          container.querySelectorAll('svg[data-surface="nested"]').length === 1,
+      );
       await act(async () => runtime.select({ focus: ['root'], ids: ['a'] }));
       const selection = runtime.selection;
       await act(async () => render(true));
+      await waitForReference(
+        () =>
+          container.querySelectorAll('svg[data-surface="nested"]').length === 2,
+      );
       expect(runtime.selection).toBe(selection);
       const ids = [...container.querySelectorAll('clipPath')].map(
         (node) => node.id,
@@ -1059,6 +1078,9 @@ describe('FrameCanvas', () => {
         />,
       ),
     );
+    await waitForReference(
+      () => calls.filter((call) => call.startsWith('acquire')).length === 2,
+    );
     expect(calls.filter((call) => call.startsWith('acquire')).sort()).toEqual([
       'acquire:r1',
       'acquire:r2',
@@ -1228,6 +1250,10 @@ describe('reference instance editing', () => {
           instanceHost={host}
         />,
       ),
+    );
+    await waitForReference(
+      () =>
+        container.querySelectorAll('svg[data-surface="nested"]').length === 3,
     );
     const cell = (instance: string, id: string) =>
       container.querySelector(
@@ -1518,6 +1544,12 @@ describe('reference instance editing', () => {
         />,
       ),
     );
+    await waitForReference(
+      () =>
+        !!container.querySelector(
+          '[data-reference-instance="r1"] [data-cell-id="topic"]',
+        ),
+    );
     const viewport = frameContentViewport(shell);
     const world = container.querySelector(
       '[data-reference-instance="r1"] [data-frame-world]',
@@ -1605,6 +1637,12 @@ describe('reference instance editing', () => {
           onActiveInstance={activate}
         />,
       ),
+    );
+    await waitForReference(
+      () =>
+        !!container.querySelector(
+          '[data-reference-instance="inner"] svg[data-surface="nested"]',
+        ),
     );
     const preview = container.querySelector(
       '[data-reference-instance="preview"]',

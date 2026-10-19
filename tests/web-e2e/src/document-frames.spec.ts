@@ -5,7 +5,7 @@ const canvas = (page: Page) =>
   active(page).locator('svg[data-surface="root"]').first();
 const shell = (page: Page, id: string) =>
   active(page).locator(`[data-cell-id="${id}"]`).first();
-async function seed(page: Page) {
+async function seed(page: Page, longDocument = false) {
   await page.goto('/');
   await setAppLanguage(page, 'zh');
   const cards = [
@@ -62,6 +62,24 @@ async function seed(page: Page) {
                       type: 'paragraph',
                       content: [{ type: 'text', text: 'Initial body' }],
                     },
+                    ...(longDocument
+                      ? [
+                          {
+                            type: 'heading',
+                            attrs: { level: 2 },
+                            content: [{ type: 'text', text: 'Shared layout' }],
+                          },
+                          ...Array.from({ length: 36 }, (_, index) => ({
+                            type: 'paragraph',
+                            content: [
+                              {
+                                type: 'text',
+                                text: `Layout paragraph ${index}: reading and editing use the same typography, content width, and spacing.`,
+                              },
+                            ],
+                          })),
+                        ]
+                      : []),
                   ],
                 },
               },
@@ -89,6 +107,7 @@ async function edit(page: Page, id: string) {
   await expect(editor).toBeVisible();
   return editor;
 }
+
 test('document Frames edit one source, restore the originating occurrence and leave read-only references and locked Frames passive', async ({
   page,
 }) => {
@@ -175,6 +194,7 @@ test('document Frames edit one source, restore the originating occurrence and le
     shell(page, 'reader').locator('[contenteditable="true"]'),
   ).toHaveCount(0);
 });
+
 test('document header actions support keyboard navigation on locked and read-only shells and finish inline editing', async ({
   page,
 }) => {
@@ -210,6 +230,75 @@ test('document header actions support keyboard navigation on locked and read-onl
     }),
   ).toBeVisible();
 });
+
+test('inline document reading and editing retain typography, content width and scroll without an embedded toolbar', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await seed(page, true);
+  const card = shell(page, 'editor-a');
+  const reader = card.locator('[data-document-preview-scroll]');
+  const metrics = () =>
+    card
+      .locator('.board-document-content')
+      .first()
+      .evaluate((content) => {
+        const viewport = content.closest('[data-document-preview-scroll]')!;
+        const body = getComputedStyle(content);
+        const scroll = getComputedStyle(viewport);
+        const paragraph = getComputedStyle(content.querySelector('p')!);
+        const heading = getComputedStyle(content.querySelector('h2')!);
+        return {
+          body: {
+            fontFamily: body.fontFamily,
+            fontSize: body.fontSize,
+            lineHeight: body.lineHeight,
+            padding: body.padding,
+            width: body.width,
+            boxSizing: body.boxSizing,
+            outlineStyle: body.outlineStyle,
+            outlineWidth: body.outlineWidth,
+          },
+          viewport: { padding: scroll.padding, font: scroll.font },
+          paragraph: {
+            fontSize: paragraph.fontSize,
+            lineHeight: paragraph.lineHeight,
+            margin: paragraph.margin,
+          },
+          heading: {
+            fontSize: heading.fontSize,
+            lineHeight: heading.lineHeight,
+            margin: heading.margin,
+          },
+        };
+      });
+  const before = await metrics();
+  const paragraph = reader.getByText(/^Layout paragraph 12:/);
+  await paragraph.scrollIntoViewIfNeeded();
+  const offset = await reader.evaluate((node) => node.scrollTop);
+  expect(offset).toBeGreaterThan(0);
+  await card.screenshot({ path: test.info().outputPath('inline-reading.png') });
+  await paragraph.dblclick();
+  const editing = card.locator('[data-document-editing]');
+  await expect(
+    editing.locator('.ProseMirror[contenteditable="true"]'),
+  ).toBeVisible();
+  await expect(
+    editing.locator('.doc-toolbar, .document-page__toolbar'),
+  ).toHaveCount(0);
+  await expect.poll(metrics).toEqual(before);
+  await expect
+    .poll(() => reader.evaluate((node) => node.scrollTop))
+    .toBeCloseTo(offset, 0);
+  await card.screenshot({ path: test.info().outputPath('inline-editing.png') });
+  await card.getByRole('button', { name: '结束编辑', exact: true }).click();
+  await expect(editing).toHaveCount(0);
+  await expect.poll(metrics).toEqual(before);
+  await expect
+    .poll(() => reader.evaluate((node) => node.scrollTop))
+    .toBeCloseTo(offset, 0);
+});
+
 test('new document Frame placement creates its source atomically and cancellation creates neither file nor shell', async ({
   page,
 }) => {

@@ -118,8 +118,8 @@ for (const name of ['layered', 'data-flow']) {
     const panel = page
       .getByRole('complementary')
       .getByTestId('frame-arrangement');
-    await expect(panel.locator('select')).toHaveValue('layers');
     await expandPropertyGroup(page);
+    await expect(panel.locator('select')).toHaveValue('layers');
     await panel.getByTestId('frame-auto-layout').click();
     await expect
       .poll(async () => moduleGeometry(await savedCells(page)))

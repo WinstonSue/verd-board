@@ -91,6 +91,10 @@ export function FramePropertyGroup({
     if (reveal) expand(id);
   }, [expand, id, reveal]);
   const collapsed = groups.collapsed[id] ?? defaultCollapsed;
+  const [hasExpanded, setHasExpanded] = useState(!collapsed);
+  useEffect(() => {
+    if (!collapsed && !hasExpanded) setHasExpanded(true);
+  }, [collapsed, hasExpanded]);
   return (
     <section
       className="frame-property-group"
@@ -112,7 +116,7 @@ export function FramePropertyGroup({
         className="frame-property-group__content"
         hidden={collapsed}
       >
-        {children}
+        {hasExpanded || !collapsed ? children : null}
       </div>
     </section>
   );

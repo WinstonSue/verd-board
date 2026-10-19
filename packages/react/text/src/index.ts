@@ -13,6 +13,11 @@ export type {
 export { ParagraphText } from './components/paragraph/paragraph-text';
 export { LineText } from './components/line/line-text';
 export { DocumentEditor } from './components/document/document-editor';
+export { DocumentPreview } from './components/document/document-preview';
+export type {
+  DocumentPreviewController,
+  DocumentPreviewProps,
+} from './components/document/document-preview';
 export type {
   DocumentFrameReferenceProps,
   DocumentFrameReferenceRenderer,

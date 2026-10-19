@@ -1,6 +1,6 @@
 import { cloneElement, isValidElement, type ReactNode } from 'react';
 
-/** Only callback-free native bodies use this bridge; extensions/editors stay live. */
+/** Native bodies and explicitly pure outlines reuse their shell with fresh events. */
 export function createFrameNativeEvents() {
   const renders = new Map<string, { render(): ReactNode; dirty: boolean }>();
   const cells = new Map<

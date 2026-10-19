@@ -321,7 +321,7 @@ test('Frame title stays inside a stable enclosing shell and preserves edits, mar
   await expect(external).toHaveText('Frame');
   const referenceId = await external.getAttribute('data-frame-title-id');
   const shell = canvas(page).locator(
-    '[data-cell-kind="frame"] > rect, [data-cell-kind="frame-reference"] > rect',
+    '[data-cell-kind="frame"] > [data-frame-shell], [data-cell-kind="frame-reference"] > [data-frame-shell]',
   );
   const plate = canvas(page).locator('[data-frame-content-plate]');
   const titleBox = (await external.boundingBox())!,
@@ -684,7 +684,9 @@ test('navigation during image decoding prevents a late image insertion', async (
   const frame = canvas(page)
     .locator('[data-cell-kind="frame"], [data-cell-kind="frame-reference"]')
     .first();
-  const box = (await frame.locator(':scope > rect').boundingBox())!;
+  const box = (await frame
+    .locator(':scope > [data-frame-shell]')
+    .boundingBox())!;
   await page.mouse.dblclick(box.x + box.width / 4, box.y + box.height - 4);
   await expect(
     canvas(page).locator(
@@ -747,7 +749,7 @@ test('Frame shells and titles move in local integer pixels, keep descendants unc
     const originalFrame = original.find((cell: any) => cell.id === id);
     const shell = canvas(page)
       .locator(`[data-cell-id="${id}"]`)
-      .locator(':scope > rect');
+      .locator(':scope > [data-frame-shell]');
     const target =
       handle === 'shell' ? shell : title(page, id).locator(':scope > rect');
     const box = (await target.boundingBox())!;

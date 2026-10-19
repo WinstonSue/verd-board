@@ -119,7 +119,7 @@ test('owned subgraphs indent and the breadcrumb stays above the canvas', async (
   await page.getByRole('button', { name: '选择', exact: true }).click();
   await canvas(page)
     .locator('[data-cell-kind="frame-reference"]')
-    .locator(':scope > rect')
+    .locator(':scope > [data-frame-header] > rect')
     .first()
     .click({ position: { x: 12, y: 12 } });
   await page.getByTestId('frame-open').click();

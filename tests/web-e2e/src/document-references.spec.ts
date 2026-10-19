@@ -127,11 +127,52 @@ for (const scene of [
     const cardNode = active(page)
       .locator('[data-cell-kind="document-reference"]')
       .first();
+    const plate = cardNode.locator(':scope > rect[data-frame-shell]');
+    const outline = cardNode.locator(':scope > rect[data-frame-outline]');
+    await expect(plate).toHaveCount(1);
+    await expect(outline).toHaveCount(1);
+    for (const attribute of ['x', 'y', 'width', 'height', 'rx'])
+      await expect(outline).toHaveAttribute(
+        attribute,
+        (await plate.getAttribute(attribute))!,
+      );
+    await expect(outline).toHaveAttribute('fill', 'none');
+    await expect(outline).toHaveAttribute('pointer-events', 'none');
+    expect(
+      await cardNode.evaluate((node) => {
+        const border = node.querySelector(':scope > [data-frame-outline]')!;
+        const title = node.querySelector('[data-frame-title-text]')!;
+        const contents = node.querySelector('[data-frame-contents]')!;
+        const plate = node.querySelector(':scope > [data-frame-shell]')!;
+        const x = Number(plate.getAttribute('x'));
+        const y = Number(plate.getAttribute('y'));
+        const titleX = Number(title.getAttribute('x'));
+        const titleY = Number(title.getAttribute('y'));
+        return {
+          titleInsetX: titleX - x,
+          titleInsetY: titleY - y,
+          borderAboveTitle: Boolean(
+            border.compareDocumentPosition(title) &
+            Node.DOCUMENT_POSITION_PRECEDING,
+          ),
+          borderAboveContent: Boolean(
+            border.compareDocumentPosition(contents) &
+            Node.DOCUMENT_POSITION_PRECEDING,
+          ),
+        };
+      }),
+    ).toEqual({
+      titleInsetX: 16,
+      titleInsetY: 16,
+      borderAboveTitle: true,
+      borderAboveContent: true,
+    });
     const reader = cardNode.locator('[data-document-preview-scroll]');
-    await expect(reader.locator('.tiptap')).toHaveAttribute(
+    await expect(reader.locator('.board-document-content')).toHaveAttribute(
       'contenteditable',
       'false',
     );
+    await expect(reader.locator('.ProseMirror')).toHaveCount(0);
     await expect(reader).toContainText('Selectable first paragraph');
     await reader
       .getByText('Selectable first paragraph', { exact: true })
@@ -161,7 +202,7 @@ for (const scene of [
     await expect(reader.locator('.workspace-canvas-reference')).toContainText(
       '已在当前预览路径',
     );
-    expect(await active(page).locator('svg[role="application"]').count()).toBe(
+    await expect(active(page).locator('svg[role="application"]')).toHaveCount(
       1,
     );
     if (scene === 'whiteboard-basic') {

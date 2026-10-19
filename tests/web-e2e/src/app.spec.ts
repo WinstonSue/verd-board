@@ -166,7 +166,7 @@ test('uses a 1px default Frame content border and honors explicit no stroke', as
   );
   await expect(page.getByLabel('描边', { exact: true })).toHaveValue('#cbd5e1');
   await canvas(page).press('Escape');
-  const plate = cells(page, 'frame').locator('[data-frame-content-plate]');
+  const plate = cells(page, 'frame').locator('[data-frame-outline]');
   await expect(plate).toHaveAttribute('stroke-width', '1');
   await expect(plate).toHaveAttribute('stroke', '#cbd5e1');
   await selectFrame(page);

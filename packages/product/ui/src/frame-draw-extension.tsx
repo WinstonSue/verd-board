@@ -63,6 +63,11 @@ const table: FrameRenderExtension = {
 export const frameDrawExtensions: FrameRenderExtension[] = [
   {
     kind: 'geometry',
+    renderShapeCacheKey: ({ cell, geometry, selected }) => [
+      cell,
+      geometry,
+      selected,
+    ],
     renderShape: ({ cell, geometry, selected }) =>
       isNodeCell(cell) && geometry
         ? roughElement(cell, geometry, selected)

@@ -491,10 +491,12 @@ test('nested details return one level at a time and focus the opened shell', asy
     .nth(1);
   const outerId = await outer.getAttribute('data-cell-id'),
     innerId = await inner.getAttribute('data-cell-id');
-  const outerShell = outer.locator(':scope > rect'),
+  const outerShell = outer.locator(':scope > [data-frame-shell]'),
     outerTitle = canvas(page).locator(`[data-frame-title-id="${outerId}"]`),
     marker = canvas(page).locator('[data-cell-kind="geometry"]');
-  await outerShell.click({ position: { x: 12, y: 12 } });
+  await outer.locator(':scope > [data-frame-header] > rect').click({
+    position: { x: 12, y: 12 },
+  });
   const recenter = page.getByTestId('canvas-recenter').locator('visible=true');
   await expect(recenter).toBeVisible();
   await page.getByTestId('canvas-zoom-out').locator('visible=true').click();
@@ -508,7 +510,9 @@ test('nested details return one level at a time and focus the opened shell', asy
   // the shell's bottom margin, the only part left uncovered by content —
   // off-center, since the selected frame's resize handle sits at mid-bottom.
   const openByShell = async (frame: Locator) => {
-    const box = (await frame.locator(':scope > rect').boundingBox())!;
+    const box = (await frame
+      .locator(':scope > [data-frame-shell]')
+      .boundingBox())!;
     await page.mouse.dblclick(box.x + box.width / 4, box.y + box.height - 4);
   };
   await openByShell(outer);
@@ -563,7 +567,7 @@ test('nested details return one level at a time and focus the opened shell', asy
   const shell = (await canvas(page)
     .locator('[data-cell-kind="frame"],[data-cell-kind="frame-reference"]')
     .first()
-    .locator(':scope > rect')
+    .locator(':scope > [data-frame-shell]')
     .boundingBox())!;
   const svg = (await canvas(page).boundingBox())!;
   expect(shell.x + shell.width / 2).toBeCloseTo(
@@ -583,7 +587,7 @@ test('nested details return one level at a time and focus the opened shell', asy
   const narrowShell = (await canvas(page)
     .locator('[data-cell-kind="frame"],[data-cell-kind="frame-reference"]')
     .first()
-    .locator(':scope > rect')
+    .locator(':scope > [data-frame-shell]')
     .boundingBox())!;
   const narrowCanvas = (await canvas(page).boundingBox())!;
   expect(narrowShell.x).toBeGreaterThanOrEqual(narrowCanvas.x);
