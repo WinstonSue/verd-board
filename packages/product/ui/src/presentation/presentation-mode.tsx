@@ -65,7 +65,16 @@ export function PresentationMode(props: PresentationModeProps) {
         ? 'workflow'
         : sourceScene === 'architecture-layer'
           ? 'architecture'
-          : (sourceScene ?? 'whiteboard');
+          : sourceScene === 'uml-class-root' || sourceScene === 'uml-class'
+            ? 'uml-class'
+            : sourceScene === 'uml-sequence-root' ||
+                sourceScene === 'uml-sequence'
+              ? 'uml-sequence'
+              : sourceScene === 'mind' ||
+                  sourceScene === 'workflow' ||
+                  sourceScene === 'architecture'
+                ? sourceScene
+                : 'whiteboard';
   const { t, language } = useI18n();
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const shortcutsButton = useRef<HTMLButtonElement>(null);

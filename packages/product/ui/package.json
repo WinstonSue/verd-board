@@ -28,7 +28,9 @@
     "@sue/board-react-workflow": "workspace:*",
     "@sue/board-workflow": "workspace:*",
     "@ylib/tabs": "0.0.1",
-    "lucide-react": "^1.47.0"
+    "lucide-react": "^1.47.0",
+    "@sue/board-uml": "workspace:*",
+    "@sue/board-react-uml": "workspace:*"
   },
   "peerDependencies": {
     "react": ">=18",

@@ -1,4 +1,8 @@
 import {
+  createUmlClassFrameSnapshot,
+  createUmlSequenceFrameSnapshot,
+} from '@sue/board-uml';
+import {
   createFrameCell,
   frameMinimumSize,
   normalizeCellPositionOperations,
@@ -59,14 +63,26 @@ export function createFrameDrawingTool({
         height: Math.max(frameMinimumSize, geometry.height),
       };
     };
-    if (['mind', 'workflow', 'architecture'].includes(pointer)) {
+    if (
+      [
+        'mind',
+        'workflow',
+        'architecture',
+        'uml-class',
+        'uml-sequence',
+      ].includes(pointer)
+    ) {
       const anchorId = allocate('anchor');
       const snapshot =
         pointer === 'mind'
           ? createMindFrameSnapshot(cellId, anchorId)
           : pointer === 'workflow'
             ? createWorkflowFrameSnapshot(cellId, anchorId)
-            : createArchitectureFrameSnapshot(cellId, anchorId);
+            : pointer === 'uml-class'
+              ? createUmlClassFrameSnapshot(cellId, anchorId)
+              : pointer === 'uml-sequence'
+                ? createUmlSequenceFrameSnapshot(cellId, anchorId)
+                : createArchitectureFrameSnapshot(cellId, anchorId);
       const root = snapshot.store.cells[cellId];
       if (!isFrameCell(root)) return [];
       return [

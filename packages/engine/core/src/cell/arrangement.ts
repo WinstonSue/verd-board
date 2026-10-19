@@ -50,7 +50,8 @@ export function collectArrangementBlocks(
   ids: readonly CellId[] = [],
 ): ArrangementBlock[] {
   const frame = store.cells[frameId];
-  if (!isFrameCell(frame)) return [];
+  if (!isFrameCell(frame) || frameScene(store, frameId) === 'uml-sequence-root')
+    return [];
   const index = indexCells(store);
   const candidates = [
     ...new Set(

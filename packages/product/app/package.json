@@ -22,7 +22,9 @@
     "@sue/board-workflow": "workspace:*",
     "@sue/verd-board-ui": "workspace:*",
     "localforage": "^1.10.0",
-    "lucide-react": "^1.47.0"
+    "lucide-react": "^1.47.0",
+    "@sue/board-uml": "workspace:*",
+    "@sue/board-react-uml": "workspace:*"
   },
   "peerDependencies": {
     "react": ">=18",

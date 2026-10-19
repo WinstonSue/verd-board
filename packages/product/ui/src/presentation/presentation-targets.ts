@@ -16,7 +16,12 @@ import { architectureLayerIds } from '@sue/board-architecture';
 import { mindChildIds } from '@sue/board-mind';
 
 export type PresentationScene =
-  'whiteboard' | 'mind' | 'workflow' | 'architecture';
+  | 'whiteboard'
+  | 'mind'
+  | 'workflow'
+  | 'architecture'
+  | 'uml-class'
+  | 'uml-sequence';
 
 const isMind = (cell: CellStore['cells'][string] | undefined) =>
   cell?.kind === CellKind.mindRoot ||

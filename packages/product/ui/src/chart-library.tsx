@@ -13,13 +13,21 @@ const diagramIcons = {
   mind: Network,
   workflow: Workflow,
   architecture: Boxes,
+  'uml-class': Boxes,
+  'uml-sequence': Workflow,
 };
 
 export interface ChartLibraryRow {
   frameId: string;
   name: string;
   path: string;
-  diagram: 'canvas' | 'mind' | 'workflow' | 'architecture';
+  diagram:
+    | 'canvas'
+    | 'mind'
+    | 'workflow'
+    | 'architecture'
+    | 'uml-class'
+    | 'uml-sequence';
   placement: 'owned' | 'unorganized' | 'standalone' | 'legacy';
   ownerName?: string;
   ownerFrameId?: string;
@@ -66,12 +74,16 @@ const diagramLabel = (
     mind: '思维导图',
     workflow: '流程图',
     architecture: '架构图',
+    'uml-class': 'UML 类图',
+    'uml-sequence': 'UML 时序图',
   } as const;
   const en = {
     canvas: 'Canvas',
     mind: 'Mind',
     workflow: 'Flowchart',
     architecture: 'Architecture',
+    'uml-class': 'UML Class Diagram',
+    'uml-sequence': 'UML Sequence Diagram',
   } as const;
   return (locale === 'zh' ? zh : en)[diagram];
 };
@@ -238,6 +250,10 @@ export function ChartLibrary({
           <option value="workflow">{diagramLabel('workflow', locale)}</option>
           <option value="architecture">
             {diagramLabel('architecture', locale)}
+          </option>
+          <option value="uml-class">{diagramLabel('uml-class', locale)}</option>
+          <option value="uml-sequence">
+            {diagramLabel('uml-sequence', locale)}
           </option>
         </select>
         <select

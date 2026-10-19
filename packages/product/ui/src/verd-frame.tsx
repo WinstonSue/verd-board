@@ -1,3 +1,5 @@
+import { UmlPalette, UmlProperties } from './frame-uml';
+import { createUmlFrameExtensions } from '@sue/board-react-uml';
 import { measureBoardText } from '@sue/board-react';
 import {
   useEffect,
@@ -497,6 +499,7 @@ export function VerdFrame({
       }),
       ...createWorkflowFrameExtensions(registry),
       ...createArchitectureFrameExtensions(registry),
+      ...createUmlFrameExtensions(registry),
       ...frameDrawExtensions,
     ];
   }, [registry, mindMaxWidth, fontVersion]);
@@ -544,6 +547,13 @@ export function VerdFrame({
             language === 'zh' ? '架构层' : 'Architecture layer',
           'architecture-module':
             language === 'zh' ? '架构模块' : 'Architecture module',
+          'uml-class': language === 'zh' ? 'UML 分类器' : 'UML classifier',
+          'uml-relation': language === 'zh' ? 'UML 关系' : 'UML relation',
+          'uml-participant': language === 'zh' ? '参与者' : 'Participant',
+          'uml-message': language === 'zh' ? '消息' : 'Message',
+          'uml-note': language === 'zh' ? '注释' : 'Note',
+          'uml-fragment':
+            language === 'zh' ? '交互片段' : 'Interaction fragment',
           'vector-line': language === 'zh' ? '路径' : 'Path',
           table: language === 'zh' ? '表格' : 'Table',
           swimlane: language === 'zh' ? '泳道' : 'Swimlane',
@@ -1130,7 +1140,11 @@ export function VerdFrame({
             ? 'workflow'
             : scene === 'architecture-layer'
               ? 'architecture'
-              : 'whiteboard',
+              : scene === 'uml-class-root'
+                ? 'uml-class'
+                : scene === 'uml-sequence-root'
+                  ? 'uml-sequence'
+                  : 'whiteboard',
       });
     let parsed: unknown;
     try {
@@ -1272,7 +1286,12 @@ export function VerdFrame({
       },
     });
   }
-  if (scene === 'workflow-start' || scene === 'architecture-layer') {
+  if (
+    scene === 'workflow-start' ||
+    scene === 'architecture-layer' ||
+    scene === 'uml-class-root' ||
+    scene === 'uml-sequence-root'
+  ) {
     appMenuItems.push({
       id: 'export-mermaid',
       label: t('menu.exportMermaid'),
@@ -1353,7 +1372,11 @@ export function VerdFrame({
             ? 'verd-workflow'
             : scene === 'architecture-layer'
               ? 'verd-architecture'
-              : 'verd-board'
+              : scene === 'uml-class-root'
+                ? 'verd-uml-class'
+                : scene === 'uml-sequence-root'
+                  ? 'verd-uml-sequence'
+                  : 'verd-board'
       }
       data-runtime="cells"
       onPointerDownCapture={(event) => {
@@ -1696,6 +1719,20 @@ export function VerdFrame({
                       label: t('toolbar.architecture'),
                       icon: Boxes,
                     },
+                    {
+                      id: 'uml-class',
+                      label:
+                        language === 'zh' ? 'UML 类图' : 'UML Class Diagram',
+                      icon: Boxes,
+                    },
+                    {
+                      id: 'uml-sequence',
+                      label:
+                        language === 'zh'
+                          ? 'UML 时序图'
+                          : 'UML Sequence Diagram',
+                      icon: Workflow,
+                    },
                   ]}
                 />
                 <FrameIconButton
@@ -1754,6 +1791,14 @@ export function VerdFrame({
                 </select>
               )}
             </>
+          ) : scene === 'uml-class-root' || scene === 'uml-sequence-root' ? (
+            <UmlPalette
+              store={store}
+              frameId={frameId}
+              zh={language === 'zh'}
+              disabled={editDisabled}
+              dispatch={dispatch}
+            />
           ) : scene === 'workflow-start' ? (
             <>
               <button
@@ -1945,6 +1990,8 @@ export function VerdFrame({
                     precision={0}
                     disabled={
                       inspectorDisabled ||
+                      (scene === 'uml-sequence-root' &&
+                        cell.kind.startsWith('uml-')) ||
                       !selectionAllows(
                         store,
                         [cell.id],
@@ -2016,6 +2063,17 @@ export function VerdFrame({
             </div>
           </FramePropertyGroup>
         )}
+        {(scene === 'uml-class-root' || scene === 'uml-sequence-root') && (
+          <UmlProperties
+            key={cell?.id ?? frameId}
+            store={store}
+            frameId={frameId}
+            cell={cell}
+            zh={language === 'zh'}
+            disabled={cell ? !inspectorEditable : inspectorDisabled}
+            dispatch={dispatch}
+          />
+        )}
         {appearanceCells(store, uiSelection.ids).length > 0 && (
           <FramePropertyGroup
             id="appearance"
@@ -2060,7 +2118,7 @@ export function VerdFrame({
               cell.kind === 'architecture-module' ||
               isFrameCell(cell) ||
               isFrameReferenceCell(cell))) ||
-            isEdgeCell(cell)) && (
+            (isEdgeCell(cell) && !cell.kind.startsWith('uml-'))) && (
             <FramePropertyGroup
               id="specific"
               reveal={noteRequest?.id === cell.id ? noteRequest.sequence : 0}
@@ -2869,7 +2927,11 @@ export function VerdFrame({
                 ? 'workflow'
                 : scene === 'architecture-layer'
                   ? 'architecture'
-                  : 'whiteboard'
+                  : scene === 'uml-class-root'
+                    ? 'uml-class'
+                    : scene === 'uml-sequence-root'
+                      ? 'uml-sequence'
+                      : 'whiteboard'
           }
           locale={language}
           returnFocusRef={menuButton}
@@ -2927,7 +2989,11 @@ export function VerdFrame({
                 ? 'workflow'
                 : scene === 'architecture-layer'
                   ? 'architecture'
-                  : 'whiteboard'
+                  : scene === 'uml-class-root'
+                    ? 'uml-class'
+                    : scene === 'uml-sequence-root'
+                      ? 'uml-sequence'
+                      : 'whiteboard'
           }
           onImport={importSnapshot}
           onClose={() => setTextImport(false)}

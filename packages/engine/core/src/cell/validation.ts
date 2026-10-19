@@ -65,6 +65,8 @@ export const validateCellStore = (
               CellKind.mindRoot,
               CellKind.workflowStart,
               CellKind.architectureLayer,
+              CellKind.umlClassRoot,
+              CellKind.umlSequenceRoot,
             ].includes(kind as never),
           ),
       );
@@ -75,29 +77,45 @@ export const validateCellStore = (
         .forEach((child) => {
           const compatible =
             isDocumentReferenceCell(child) ||
-            (anchor === CellKind.mindRoot
-              ? isMindNodeKind(child.kind) ||
-                child.kind === CellKind.mindBranch ||
-                child.kind === CellKind.mindSummaryEdge
-              : anchor === CellKind.workflowStart
-                ? isWorkflowNodeKind(child.kind) ||
-                  child.kind === CellKind.workflowEdge
-                : anchor === CellKind.architectureLayer
-                  ? isArchitectureNodeKind(child.kind) ||
-                    child.kind === CellKind.architectureEdge
-                  : !isMindNodeKind(child.kind) &&
-                    !isWorkflowNodeKind(child.kind) &&
-                    !isArchitectureNodeKind(child.kind) &&
-                    ![
-                      CellKind.mindBranch,
-                      CellKind.mindSummaryEdge,
-                      CellKind.workflowEdge,
-                      CellKind.architectureEdge,
-                    ].includes(child.kind as never));
+            (anchor === CellKind.umlClassRoot
+              ? ['uml-class-root', 'uml-class', 'uml-relation'].includes(
+                  child.kind,
+                )
+              : anchor === CellKind.umlSequenceRoot
+                ? [
+                    'uml-sequence-root',
+                    'uml-participant',
+                    'uml-message',
+                    'uml-note',
+                    'uml-fragment',
+                  ].includes(child.kind)
+                : anchor === CellKind.mindRoot
+                  ? isMindNodeKind(child.kind) ||
+                    child.kind === CellKind.mindBranch ||
+                    child.kind === CellKind.mindSummaryEdge
+                  : anchor === CellKind.workflowStart
+                    ? isWorkflowNodeKind(child.kind) ||
+                      child.kind === CellKind.workflowEdge
+                    : anchor === CellKind.architectureLayer
+                      ? isArchitectureNodeKind(child.kind) ||
+                        child.kind === CellKind.architectureEdge
+                      : !isMindNodeKind(child.kind) &&
+                        !isWorkflowNodeKind(child.kind) &&
+                        !isArchitectureNodeKind(child.kind) &&
+                        ![
+                          CellKind.mindBranch,
+                          CellKind.mindSummaryEdge,
+                          CellKind.workflowEdge,
+                          CellKind.architectureEdge,
+                        ].includes(child.kind as never) &&
+                        !child.kind.startsWith('uml-'));
           if (!compatible)
             report(child.id, 'Cell does not belong to the frame scene');
         });
-      if (anchor === CellKind.mindRoot && cell.groups.length)
+      if (
+        (anchor === CellKind.mindRoot || anchor === CellKind.umlSequenceRoot) &&
+        cell.groups.length
+      )
         report(id, 'Groups are not allowed in mind frames');
     }
     if (isNodeCell(cell)) {

@@ -1,0 +1,14 @@
+sequenceDiagram
+  actor User
+  participant Service
+  User->>Service: request()
+  activate Service
+  alt allowed
+    loop each item
+      Service->>Service: process()
+    end
+  else denied
+    Note over User,Service: denied
+  end
+  Service-->>User: result
+  deactivate Service

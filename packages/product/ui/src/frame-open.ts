@@ -1,5 +1,6 @@
 import {
   stripFrameViewports,
+  frameScene,
   applyCellOperations,
   copyCellFragment,
   deleteCells,
@@ -44,9 +45,22 @@ export function openFrameOperations(
     ...root.children,
     ...root.groups,
   ]);
+  const currentScene = frameScene(store, frameId);
+  if (
+    currentScene?.startsWith('uml-') &&
+    currentScene !== frameScene(incoming.store, root.id)
+  )
+    throw new Error('Cannot replace UML with another scene');
   const cleared = deleteCells(
     store,
-    [...frame.groups, ...frame.children],
+    [
+      ...frame.groups,
+      ...frame.children.filter(
+        (id) =>
+          !currentScene?.startsWith('uml-') ||
+          store.cells[id]?.kind !== currentScene,
+      ),
+    ],
     // Opening a file replaces the frame, including objects the user had locked.
     { ignoreLock: true },
   );

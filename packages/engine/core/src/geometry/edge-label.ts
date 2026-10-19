@@ -42,6 +42,44 @@ const place = (
   routes: readonly (readonly Point[])[],
 ): EdgeLabelLayout => {
   const label = edge.labels?.[index];
+  if (edge.kind === 'uml-message' && points.length >= 2) {
+    const width = Math.max(
+      140,
+      Math.min(
+        400,
+        points[0][0] === points.at(-1)![0]
+          ? 200
+          : Math.abs(points.at(-1)![0] - points[0][0]) - 32,
+      ),
+    );
+    const lines = (label?.text ?? '')
+      .split('\n')
+      .reduce(
+        (sum, line) =>
+          sum +
+          Math.max(
+            1,
+            Math.ceil(
+              [...line].reduce(
+                (n, c) => n + (c.charCodeAt(0) > 255 ? 16 : 8),
+                0,
+              ) / width,
+            ),
+          ),
+        0,
+      );
+    const height = lines * 20 + 12;
+    const point: Point = [(points[0][0] + points[1][0]) / 2, points[0][1]];
+    return {
+      point,
+      bounds: {
+        x: point[0] - width / 2,
+        y: point[1] - height - 8,
+        width,
+        height,
+      },
+    };
+  }
   const midpoint = polylinePointAt(points, label?.position ?? 0.5);
   if (
     label?.position !== undefined ||

@@ -183,9 +183,15 @@ importers:
       '@sue/board-react-mind':
         specifier: workspace:*
         version: link:../../packages/react/mind
+      '@sue/board-react-uml':
+        specifier: workspace:*
+        version: link:../../packages/react/uml
       '@sue/board-react-workflow':
         specifier: workspace:*
         version: link:../../packages/react/workflow
+      '@sue/board-uml':
+        specifier: workspace:*
+        version: link:../../packages/engine/uml
       '@sue/board-workflow':
         specifier: workspace:*
         version: link:../../packages/engine/workflow
@@ -306,6 +312,9 @@ importers:
       '@sue/board-draw':
         specifier: workspace:*
         version: link:../../engine/draw
+      '@sue/board-uml':
+        specifier: workspace:*
+        version: link:../../engine/uml
       '@sue/board-workflow':
         specifier: workspace:*
         version: link:../../engine/workflow
@@ -433,6 +442,22 @@ importers:
         specifier: ^3.0.8
         version: 3.2.7(@types/debug@4.1.13)(@types/node@22.20.2)(@vitest/ui@3.2.7)(happy-dom@20.14.5)(jsdom@22.1.0(supports-color@8.1.1))(sass@1.104.1)(supports-color@8.1.1)(yaml@2.9.1)
 
+  packages/engine/uml:
+    dependencies:
+      '@sue/board-core':
+        specifier: workspace:*
+        version: link:../core
+    devDependencies:
+      eslint:
+        specifier: ^9.22.0
+        version: 9.39.5(supports-color@8.1.1)
+      vite:
+        specifier: ^6.2.2
+        version: 6.4.3(@types/node@22.20.2)(sass@1.104.1)(yaml@2.9.1)
+      vitest:
+        specifier: ^3.0.8
+        version: 3.2.7(@types/debug@4.1.13)(@types/node@22.20.2)(@vitest/ui@3.2.7)(happy-dom@20.14.5)(jsdom@22.1.0(supports-color@8.1.1))(sass@1.104.1)(supports-color@8.1.1)(yaml@2.9.1)
+
   packages/engine/workflow:
     dependencies:
       '@sue/board-core':
@@ -475,6 +500,12 @@ importers:
       '@sue/board-mind':
         specifier: workspace:*
         version: link:../../engine/mind
+      '@sue/board-react-uml':
+        specifier: workspace:*
+        version: link:../../react/uml
+      '@sue/board-uml':
+        specifier: workspace:*
+        version: link:../../engine/uml
       '@sue/board-workflow':
         specifier: workspace:*
         version: link:../../engine/workflow
@@ -551,9 +582,15 @@ importers:
       '@sue/board-react-text':
         specifier: workspace:*
         version: link:../../react/text
+      '@sue/board-react-uml':
+        specifier: workspace:*
+        version: link:../../react/uml
       '@sue/board-react-workflow':
         specifier: workspace:*
         version: link:../../react/workflow
+      '@sue/board-uml':
+        specifier: workspace:*
+        version: link:../../engine/uml
       '@sue/board-workflow':
         specifier: workspace:*
         version: link:../../engine/workflow
@@ -743,6 +780,34 @@ importers:
         specifier: ^3.0.8
         version: 3.2.7(@types/debug@4.1.13)(@types/node@22.20.2)(@vitest/ui@3.2.7)(happy-dom@20.14.5)(jsdom@22.1.0(supports-color@8.1.1))(sass@1.104.1)(supports-color@8.1.1)(yaml@2.9.1)
 
+  packages/react/uml:
+    dependencies:
+      '@sue/board-core':
+        specifier: workspace:*
+        version: link:../../engine/core
+      '@sue/board-react':
+        specifier: workspace:*
+        version: link:../board
+      '@sue/board-uml':
+        specifier: workspace:*
+        version: link:../../engine/uml
+      react:
+        specifier: 19.2.0
+        version: 19.2.0
+      react-dom:
+        specifier: 19.2.0
+        version: 19.2.0(react@19.2.0)
+    devDependencies:
+      eslint:
+        specifier: ^9.22.0
+        version: 9.39.5(supports-color@8.1.1)
+      vite:
+        specifier: ^6.2.2
+        version: 6.4.3(@types/node@22.20.2)(sass@1.104.1)(yaml@2.9.1)
+      vitest:
+        specifier: ^3.0.8
+        version: 3.2.7(@types/debug@4.1.13)(@types/node@22.20.2)(@vitest/ui@3.2.7)(happy-dom@20.14.5)(jsdom@22.1.0(supports-color@8.1.1))(sass@1.104.1)(supports-color@8.1.1)(yaml@2.9.1)
+
   packages/react/workflow:
     dependencies:
       '@sue/board-core':
@@ -779,6 +844,12 @@ importers:
       '@sue/board-react':
         specifier: workspace:*
         version: link:../../packages/react/board
+      '@sue/board-react-uml':
+        specifier: workspace:*
+        version: link:../../packages/react/uml
+      '@sue/board-uml':
+        specifier: workspace:*
+        version: link:../../packages/engine/uml
       react:
         specifier: 19.2.0
         version: 19.2.0

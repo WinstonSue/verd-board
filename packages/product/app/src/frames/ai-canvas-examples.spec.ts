@@ -1,3 +1,4 @@
+import { registerUmlCells } from '@sue/board-uml';
 import { describe, expect, it } from 'vitest';
 import { readFileSync, readdirSync } from 'node:fs';
 import path from 'node:path';
@@ -55,6 +56,7 @@ const registry = () => {
   registerMindCells(next);
   registerWorkflowCells(next);
   registerArchitectureCells(next);
+  registerUmlCells(next);
   return next;
 };
 
@@ -76,10 +78,18 @@ const frameFiles = [
   'workflow-dag.verd.json',
   'workflow-process.verd.json',
   'architecture.verd.json',
+  'uml-class.verd.json',
+  'uml-sequence.verd.json',
 ];
 const bundleFile = 'bundle-multi-canvas.verd.json';
 const snapshotFile = 'snapshot-nested-frames.frame.json';
-const textFiles = ['mind-map.md', 'workflow-dag.mmd', 'architecture.mmd'];
+const textFiles = [
+  'mind-map.md',
+  'workflow-dag.mmd',
+  'architecture.mmd',
+  'uml-class.mmd',
+  'uml-sequence.mmd',
+];
 const allFiles = [...frameFiles, bundleFile, snapshotFile, ...textFiles];
 
 describe('native AI specification embedded blocks', () => {

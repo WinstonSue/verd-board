@@ -6,6 +6,8 @@ export type ShortcutScene =
   | 'mind'
   | 'workflow'
   | 'architecture'
+  | 'uml-class'
+  | 'uml-sequence'
   | 'document'
   | 'presentation';
 export type ShortcutCategory = 'common' | ShortcutScene;
@@ -76,6 +78,8 @@ export const shortcutCategoryLabels: Record<ShortcutCategory, LocalizedText> = {
   mind: { zh: '脑图', en: 'Mind map' },
   workflow: { zh: '流程图', en: 'Workflow' },
   architecture: { zh: '架构图', en: 'Architecture' },
+  'uml-class': { zh: 'UML 类图', en: 'UML Class Diagram' },
+  'uml-sequence': { zh: 'UML 时序图', en: 'UML Sequence Diagram' },
   document: { zh: '文字文档', en: 'Document' },
   presentation: { zh: '演示', en: 'Presentation' },
 };
@@ -235,6 +239,8 @@ export const shortcutCatalog: Record<
   ],
   workflow: [],
   architecture: [],
+  'uml-class': [],
+  'uml-sequence': [],
   document: [
     entry('undo', '撤销', 'Undo', [['Mod', 'Z']]),
     entry('redo', '重做', 'Redo', [

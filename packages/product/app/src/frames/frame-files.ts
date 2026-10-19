@@ -1,3 +1,4 @@
+import { remapUmlCell } from '@sue/board-core';
 import {
   createFrameCell,
   isEdgeCell,
@@ -562,7 +563,10 @@ export const remapFrameFileIds = (
       : terminal;
   const cells: Record<CellId, Cell> = {};
   Object.values(file.cells).forEach((original) => {
-    let cell = { ...original, id: remap(original.id) } as Cell;
+    let cell = {
+      ...remapUmlCell(original, remap),
+      id: remap(original.id),
+    } as Cell;
     if (isFrameCell(cell)) {
       cell = {
         ...cell,

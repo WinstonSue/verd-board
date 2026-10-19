@@ -4,7 +4,7 @@ import {
   flowchartToDomainFrame,
   type DomainFrameImportConfig,
 } from './documents.js';
-import { parseMermaid } from './parseMermaid.js';
+import { parseMermaidToUmlFrame, parseMermaid } from './parseMermaid.js';
 
 export interface MermaidConfig {
   /**
@@ -40,13 +40,16 @@ export interface MermaidConfig {
 
 export interface MermaidFrameImportConfig
   extends MermaidConfig, DomainFrameImportConfig {
-  scene?: 'whiteboard' | 'workflow' | 'architecture';
+  scene?:
+    'whiteboard' | 'workflow' | 'architecture' | 'uml-class' | 'uml-sequence';
 }
 
 export const parseMermaidToFrameSnapshot = async (
   definition: string,
   config?: MermaidFrameImportConfig,
 ) => {
+  if (config?.scene === 'uml-class' || config?.scene === 'uml-sequence')
+    return parseMermaidToUmlFrame(definition, config.scene, config);
   const mermaidConfig = config || {};
   const fontSize =
     parseInt(mermaidConfig.themeVariables?.fontSize ?? '') || DEFAULT_FONT_SIZE;
@@ -79,3 +82,6 @@ export {
   parseMermaidToWorkflowFrame,
   serializeFrameToMermaid,
 } from './documents.js';
+
+export { parseMermaidToUmlFrame };
+export { serializeUmlToMermaid } from './uml.js';

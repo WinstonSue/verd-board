@@ -194,6 +194,12 @@ export interface FrameMovePreview {
 export interface FrameRenderExtension {
   kind?: string;
   layout?: (store: CellStore, frameId: string) => Map<string, NodeGeometry>;
+  /** Pure runtime projection of existing edges, shared by paint, hit testing and export. */
+  layoutEdges?: (
+    store: CellStore,
+    frameId: string,
+    geometry: ReadonlyMap<string, NodeGeometry>,
+  ) => Map<string, EdgeCell>;
   render?: (context: FrameRenderContext) => ReactNode;
   /** Override only the outline, retaining native text, selection and editing. */
   renderShape?: (context: FrameRenderContext) => ReactNode;
@@ -671,7 +677,24 @@ function createFrameLayouts(
       );
     canonicalGeometry(store, geometry, previous?.baseGeometry);
     const base = applyLayoutGeometry(store, geometry, previous?.baseNodes);
-    let laidOut = base.laidOut;
+    const applyEdges = (source: CellStore) => {
+      let result = source;
+      extensions.forEach((extension) =>
+        extension.layoutEdges?.(source, id, geometry).forEach((edge, key) => {
+          if (
+            !isEdgeCell(source.cells[key]) ||
+            edge.id !== key ||
+            edge.kind !== source.cells[key].kind
+          )
+            return;
+          if (result === source)
+            result = { ...source, cells: { ...source.cells } };
+          result.cells[key] = edge;
+        }),
+      );
+      return result;
+    };
+    let laidOut = applyEdges(base.laidOut);
     const baseGeometry = geometry;
     const baseRouting = createEdgeRoutingContext(
       laidOut,
@@ -701,7 +724,7 @@ function createFrameLayouts(
       geometry === baseGeometry
         ? base
         : applyLayoutGeometry(store, geometry, previous?.nodes);
-    laidOut = projected.laidOut;
+    laidOut = applyEdges(projected.laidOut);
     const outlines = previous?.outlines ?? new Map();
     const routes = previous?.routes ?? new Map();
     for (const map of [outlines, routes])
@@ -2633,7 +2656,7 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
     const frame = runtime.store.cells[frameId];
     if (!isFrameCell(frame)) return;
     frame.children.forEach((id) => {
-      const cell = runtime.store.cells[id];
+      const cell = frameLayouts(frameId).store.cells[id];
       if (isEdgeCell(cell) && !cell.locked && !cell.hidden) {
         const layout = frameLayouts(frameId);
         const points = edgePolyline(
@@ -2856,6 +2879,15 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
     source: { cellId: connection.cellId, portId: connection.portId },
     target,
     route: { mode: 'auto' },
+    ...(connection.kind === 'uml-relation'
+      ? {
+          data: {
+            relation: 'association',
+            sourceMarker: 'none',
+            targetMarker: 'none',
+          },
+        }
+      : {}),
   });
   const connectionScene = useMemo(() => {
     if (!connectionPreview) return null;
@@ -4180,6 +4212,13 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
             event.stopPropagation();
             event.preventDefault();
             if (
+              cell.kind === 'uml-message' ||
+              (cell.kind === 'uml-relation' && mode === 'label')
+            ) {
+              sceneActions.select(cellId, focus, event.shiftKey);
+              return;
+            }
+            if (
               !renderEditable ||
               pendingRef.current ||
               cell.locked ||
@@ -4290,7 +4329,7 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
                       {
                         type: 'replace_cell',
                         cell: {
-                          ...cell,
+                          ...(runtime.store.cells[cellId] as EdgeCell),
                           labels: [{ text: '', position: 0.5 }],
                         },
                       },
@@ -4395,29 +4434,45 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
                                     onClose={() => setLabelEditing(null)}
                                     onExitKey={() => svgRef.current?.focus()}
                                     onHistory={sceneActions.publishHistory}
-                                    onChange={({ newText }) =>
-                                      sceneActions.dispatch({
+                                    onChange={({ newText }) => {
+                                      const authored =
+                                        runtime.store.cells[cellId];
+                                      if (!isEdgeCell(authored)) return;
+                                      const next =
+                                        authored.kind === 'uml-relation' &&
+                                        at > 0
+                                          ? {
+                                              ...authored,
+                                              data: {
+                                                ...(authored.data as object),
+                                                [label.position === 0.12
+                                                  ? 'sourceMultiplicity'
+                                                  : 'targetMultiplicity']:
+                                                  newText.plainText,
+                                              },
+                                            }
+                                          : {
+                                              ...authored,
+                                              labels: (authored.labels?.length
+                                                ? authored.labels
+                                                : [{ text: '' }]
+                                              ).map((previous, index) =>
+                                                index === at
+                                                  ? {
+                                                      ...previous,
+                                                      text: newText.plainText,
+                                                      richText: newText,
+                                                    }
+                                                  : previous,
+                                              ),
+                                            };
+                                      return sceneActions.dispatch({
                                         id: transactionId(),
                                         operations: [
-                                          {
-                                            type: 'replace_cell',
-                                            cell: {
-                                              ...cell,
-                                              labels: cell.labels!.map(
-                                                (previous, index) =>
-                                                  index === at
-                                                    ? {
-                                                        ...previous,
-                                                        text: newText.plainText,
-                                                        richText: newText,
-                                                      }
-                                                    : previous,
-                                              ),
-                                            },
-                                          },
+                                          { type: 'replace_cell', cell: next },
                                         ],
-                                      })
-                                    }
+                                      });
+                                    }}
                                   />
                                 </foreignObject>
                               );
@@ -4478,9 +4533,12 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
                 renderEditable &&
                 !cell.locked &&
                 labelEditing?.id !== cellId &&
-                ['arrow', 'workflow-edge', 'architecture-edge'].includes(
-                  cell.kind,
-                ) && (
+                [
+                  'arrow',
+                  'workflow-edge',
+                  'architecture-edge',
+                  'uml-relation',
+                ].includes(cell.kind) && (
                   <FrameScaleContent
                     camera={cameraStore}
                     cellId={drawingPreview ? undefined : cellId}
@@ -4985,7 +5043,9 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
                                         ? 'workflow-edge'
                                         : cell.kind.startsWith('architecture-')
                                           ? 'architecture-edge'
-                                          : 'arrow',
+                                          : cell.kind === 'uml-class'
+                                            ? 'uml-relation'
+                                            : 'arrow',
                                       point: source,
                                       target: { point: source },
                                       scale: parentScale * placement.scale,

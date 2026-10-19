@@ -1,3 +1,4 @@
+import { createUmlFrameExtensions } from '@sue/board-react-uml';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   FrameCanvas,
@@ -40,6 +41,7 @@ export function CanvasPreview({
       }),
       ...createWorkflowFrameExtensions(registry),
       ...createArchitectureFrameExtensions(registry),
+      ...createUmlFrameExtensions(registry),
       ...frameDrawExtensions,
     ],
     [registry],

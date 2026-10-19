@@ -46,7 +46,7 @@ export function FrameArrangement({
     [...selection.focus].reverse().find((id) => isFrameCell(store.cells[id])) ??
     store.rootId;
   const scene = frameScene(store, frameId);
-  if (scene === 'mind-root') return null;
+  if (scene === 'mind-root' || scene === 'uml-sequence-root') return null;
   const commands = [
     {
       command: { type: 'fit-content' } as FrameSelectionCommand,

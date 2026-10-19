@@ -12,7 +12,9 @@
     "@sue/board-core": "workspace:*",
     "@sue/board-react": "workspace:*",
     "react": "19.2.0",
-    "react-dom": "19.2.0"
+    "react-dom": "19.2.0",
+    "@sue/board-uml": "workspace:*",
+    "@sue/board-react-uml": "workspace:*"
   },
   "devDependencies": {
     "vite": "^6.2.2",

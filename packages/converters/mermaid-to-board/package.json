@@ -27,7 +27,8 @@
     "@sue/board-workflow": "workspace:*",
     "@types/d3": "^7.4.3",
     "@types/dompurify": "3.0.5",
-    "mermaid": "10.9.3"
+    "mermaid": "10.9.3",
+    "@sue/board-uml": "workspace:*"
   },
   "devDependencies": {
     "eslint": "^9.22.0",

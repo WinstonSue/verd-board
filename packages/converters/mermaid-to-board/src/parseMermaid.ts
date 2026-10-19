@@ -1,3 +1,5 @@
+import { mermaidDiagramToUml } from './uml.js';
+import type { FrameSnapshot } from '@sue/board-core';
 import mermaid, { MermaidConfig } from 'mermaid';
 import { GraphImage } from './interfaces.js';
 import { MERMAID_CONFIG } from './constants.js';
@@ -54,12 +56,15 @@ let sequence = 0;
 const parseMermaidInternal = async (
   definition: string,
   config: MermaidConfig = MERMAID_CONFIG,
-): Promise<Flowchart | GraphImage | Sequence | Class> => {
+  nativeScene?: 'uml-class' | 'uml-sequence',
+): Promise<Flowchart | GraphImage | Sequence | Class | FrameSnapshot> => {
   mermaid.initialize({ ...MERMAID_CONFIG, ...config });
   // Parse the diagram
   const diagram = await mermaid.mermaidAPI.getDiagramFromText(
     encodeEntities(definition),
   );
+
+  if (nativeScene) return mermaidDiagramToUml(diagram, nativeScene, definition);
 
   // Render the SVG diagram
   const renderId = `verd-mermaid-${++sequence}`;
@@ -113,8 +118,11 @@ export const parseMermaid = (
   definition: string,
   config: MermaidConfig = MERMAID_CONFIG,
 ): Promise<Flowchart | GraphImage | Sequence | Class> => {
-  const result = parseQueue.then(() =>
-    parseMermaidInternal(definition, config),
+  const result = parseQueue.then(
+    () =>
+      parseMermaidInternal(definition, config) as Promise<
+        Flowchart | GraphImage | Sequence | Class
+      >,
   );
   parseQueue = result.then(
     () => undefined,
@@ -122,3 +130,19 @@ export const parseMermaid = (
   );
   return result;
 };
+
+export function parseMermaidToUmlFrame(
+  definition: string,
+  scene: 'uml-class' | 'uml-sequence',
+  config: MermaidConfig = MERMAID_CONFIG,
+): Promise<FrameSnapshot> {
+  const result = parseQueue.then(
+    () =>
+      parseMermaidInternal(definition, config, scene) as Promise<FrameSnapshot>,
+  );
+  parseQueue = result.then(
+    () => undefined,
+    () => undefined,
+  );
+  return result;
+}

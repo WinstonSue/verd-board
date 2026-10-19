@@ -39,6 +39,7 @@ export const groupCells = (
   if (
     !isFrameCell(frame) ||
     frameScene(store, frameId) === 'mind-root' ||
+    frameScene(store, frameId) === 'uml-sequence-root' ||
     unique.length < 2
   )
     throw new Error('Grouping requires at least two frame children');
@@ -119,7 +120,16 @@ export const translateCellSelection = (
 ): CellOperation[] => {
   // A locked object in the selection blocks the whole move. Skipping it would
   // leave the unlocked siblings shifted on their own.
-  if (!selectionMovesAtomically(store, ids)) return [];
+  if (
+    !selectionMovesAtomically(store, ids) ||
+    ids.some(
+      (id) =>
+        store.cells[id]?.kind.startsWith('uml-') &&
+        store.cells[id]?.kind !== 'uml-class' &&
+        store.cells[id]?.kind !== 'uml-relation',
+    )
+  )
+    return [];
   const cells = appearanceCells(
     store,
     ids.filter((id) => {

@@ -1,3 +1,4 @@
+import { umlReferences } from './uml';
 import type { RectangleClient } from '../interfaces/rectangle-client';
 import {
   createEdgeRoutingContext,
@@ -98,7 +99,7 @@ export const cellDeletionLocked = (store: CellStore, id: CellId): boolean => {
       : isGroupCell(cell)
         ? cell.members
         : ((cell as { data?: { memberIds?: string[] } }).data?.memberIds ?? []);
-    return members.some(visit);
+    return [...members, ...umlReferences(cell)].some(visit);
   };
   return visit(id);
 };

@@ -42,6 +42,7 @@ export async function withWorkspaceRuntime(task) {
       mind,
       workflow,
       architecture,
+      uml,
       frames,
       documents,
       common,
@@ -55,6 +56,7 @@ export async function withWorkspaceRuntime(task) {
       load('packages/engine/mind/src/public-api.ts'),
       load('packages/engine/workflow/src/public-api.ts'),
       load('packages/engine/architecture/src/public-api.ts'),
+      load('packages/engine/uml/src/public-api.ts'),
       load('packages/product/app/src/frames/frame-files.ts'),
       load('packages/product/app/src/documents/document-files.ts'),
       load('packages/engine/common/src/public-api.ts'),
@@ -78,10 +80,12 @@ export async function withWorkspaceRuntime(task) {
       mind.registerMindCells,
       workflow.registerWorkflowCells,
       architecture.registerArchitectureCells,
+      uml.registerUmlCells,
     ].forEach((register) => register(registry));
     return await task({
       core,
       mind,
+      uml,
       registry,
       frames,
       documents,

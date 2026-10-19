@@ -10,7 +10,13 @@ import type { FrameFileDiagnostic, FrameFileV2 } from './frame-files';
 export type FrameOrganization =
   { kind: 'standalone' } | { kind: 'subgraph'; ownerFrameId?: CellId };
 
-export type DiagramKind = 'canvas' | 'mind' | 'workflow' | 'architecture';
+export type DiagramKind =
+  | 'canvas'
+  | 'mind'
+  | 'workflow'
+  | 'architecture'
+  | 'uml-class'
+  | 'uml-sequence';
 
 export type OrganizationPlacement =
   | { kind: 'legacy' }
@@ -41,6 +47,8 @@ const ANCHORS: Record<string, DiagramKind> = {
   'mind-root': 'mind',
   'workflow-start': 'workflow',
   'architecture-layer': 'architecture',
+  'uml-class-root': 'uml-class',
+  'uml-sequence-root': 'uml-sequence',
 };
 
 /** Diagram type comes from scene anchors already stored on the file. */

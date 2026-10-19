@@ -1,3 +1,4 @@
+import { normalizeUmlRelations } from './uml';
 import { initializeNodeName } from './name';
 export * from './name';
 import type { NodeOutline } from '../geometry/shape';
@@ -516,9 +517,9 @@ export const applyCellOperations = (
   operations: readonly CellOperation[],
   registry?: CellRegistry,
 ): CellStore => {
-  let candidate = normalizeRelations(
+  let candidate = normalizeUmlRelations(
     store,
-    operations.reduce(applyUnchecked, store),
+    normalizeRelations(store, operations.reduce(applyUnchecked, store)),
   );
   // A domain frame cannot lose its last anchor, and starts cannot be deleted independently.
   Object.values(store.cells).forEach((cell) => {
@@ -535,7 +536,13 @@ export const applyCellOperations = (
         .map((id) => store.cells[id])
         .filter(
           (child) =>
-            child && ['mind-root', 'architecture-layer'].includes(child.kind),
+            child &&
+            [
+              'mind-root',
+              'architecture-layer',
+              'uml-class-root',
+              'uml-sequence-root',
+            ].includes(child.kind),
         );
       if (
         anchors.length &&

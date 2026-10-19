@@ -10,3 +10,5 @@ export * from './geometry';
 export * from './cell/kinds';
 export * from './cell/types';
 export * from './cell/index';
+
+export * from './cell/uml';

@@ -18,6 +18,8 @@ const publicPackages = [
   'packages/react/text',
   'packages/react/board',
   'packages/engine/architecture',
+  'packages/engine/uml',
+  'packages/react/uml',
   'packages/react/mind',
   'packages/react/workflow',
   'packages/react/architecture',
@@ -98,6 +100,8 @@ fs.writeFileSync(
       scripts: { build: 'vite build' },
       dependencies: {
         '@sue/board-architecture': 'workspace:*',
+        '@sue/board-uml': 'workspace:*',
+        '@sue/board-react-uml': 'workspace:*',
         '@sue/board-core': 'workspace:*',
         '@sue/board-common': 'workspace:*',
         '@sue/board-draw': 'workspace:*',
@@ -163,13 +167,19 @@ import { FrameCanvas, frameSnapshotToImage, type FrameCanvasController, type Fra
 import { createMindFrameSnapshot } from '@sue/board-mind';
 import { createMindFrameExtensions } from '@sue/board-react-mind';
 import { createWorkflowFrameExtensions } from '@sue/board-react-workflow';
+import { createUmlFrameExtensions } from '@sue/board-react-uml';
+import { createUmlSequenceFrameSnapshot, createUmlParticipantCell, addUmlCell } from '@sue/board-uml';
 import { createArchitectureFrameExtensions } from '@sue/board-react-architecture';
 if (['Board', 'BoardElement', 'BoardOperation', 'Transforms'].some(name => name in core)) throw new Error('Legacy core API is still exported');
 if (['mindDocumentToStore', 'withMind'].some(name => name in mind) || 'workflowDocumentToStore' in workflow || 'architectureDocumentToStore' in architecture) throw new Error('Legacy domain API is still exported');
 if (![createGeometryCell, registerDrawCells, LineText, VerdFrame, MyPage, WorkspaceSettings, FileTree, ChartLibrary, WorkspaceApp, parseMarkdownToFrameSnapshot, parseMermaidToFrameSnapshot].every(Boolean)) throw new Error('A native public package entry is missing');
 const textProps: TextEditorProps = { text: createInlineText('Consumer topic'), onChange: ({ newText }) => { if (!newText.plainText) throw new Error('Text change is missing'); } };
 const registry = createCellRegistry();
-const extensions = [...createMindFrameExtensions(registry), ...createWorkflowFrameExtensions(registry), ...createArchitectureFrameExtensions(registry)];
+const extensions = [...createMindFrameExtensions(registry), ...createWorkflowFrameExtensions(registry), ...createArchitectureFrameExtensions(registry), ...createUmlFrameExtensions(registry)];
+const umlSnapshot = createUmlSequenceFrameSnapshot('uml-consumer', 'uml-root');
+const umlRuntime = createCellRuntime(umlSnapshot, registry);
+umlRuntime.transact({id:'uml-add',operations:addUmlCell(umlRuntime.store,'uml-consumer',createUmlParticipantCell('uml-user'))});
+if (!umlRuntime.store.cells['uml-user']) throw new Error('UML public API missing');
 const value = createMindFrameSnapshot('consumer-frame', 'consumer-center');
 const runtime = createCellRuntime(value, registry);
 const routing: core.EdgeRoutingContext = core.createEdgeRoutingContext(value.store, value.store.rootId);

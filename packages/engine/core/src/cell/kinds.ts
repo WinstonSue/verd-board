@@ -24,6 +24,14 @@ export const CellKind = {
   architectureLayer: 'architecture-layer',
   architectureModule: 'architecture-module',
   architectureEdge: 'architecture-edge',
+  umlClassRoot: 'uml-class-root',
+  umlSequenceRoot: 'uml-sequence-root',
+  umlClass: 'uml-class',
+  umlRelation: 'uml-relation',
+  umlParticipant: 'uml-participant',
+  umlMessage: 'uml-message',
+  umlNote: 'uml-note',
+  umlFragment: 'uml-fragment',
 } as const;
 
 export type CellKindName = (typeof CellKind)[keyof typeof CellKind];
@@ -60,7 +68,9 @@ export const sceneAnchorKind = (kinds: readonly string[]) => {
     (kind) =>
       kind === CellKind.mindRoot ||
       kind === CellKind.workflowStart ||
-      kind === CellKind.architectureLayer,
+      kind === CellKind.architectureLayer ||
+      kind === CellKind.umlClassRoot ||
+      kind === CellKind.umlSequenceRoot,
   );
   return anchors[0];
 };

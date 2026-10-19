@@ -34,7 +34,7 @@ for (const locale of [
     connectors: '连线',
     shape: '形状',
     polyline: '折线',
-    domainTools: ['思维导图', '流程图', '架构图'],
+    domainTools: ['思维导图', '流程图', '架构图', 'UML 类图', 'UML 时序图'],
     edgeTools: ['箭头', '直线', '曲线'],
   },
   {
@@ -43,7 +43,13 @@ for (const locale of [
     connectors: 'Connectors',
     shape: 'Shape',
     polyline: 'Polyline',
-    domainTools: ['Mind Map', 'Flowchart', 'Architecture'],
+    domainTools: [
+      'Mind Map',
+      'Flowchart',
+      'Architecture',
+      'UML Class Diagram',
+      'UML Sequence Diagram',
+    ],
     edgeTools: ['Arrow', 'Line', 'Curve'],
   },
 ] as const) {
@@ -79,7 +85,9 @@ for (const locale of [
       name: locale.diagrams,
       exact: true,
     });
-    await expect(diagramMenu.getByRole('menuitemradio')).toHaveCount(3);
+    await expect(diagramMenu.getByRole('menuitemradio')).toHaveCount(
+      locale.domainTools.length,
+    );
     for (const label of locale.domainTools)
       await expect(
         diagramMenu.getByRole('menuitemradio', { name: label, exact: true }),
@@ -162,7 +170,7 @@ test('drawing menus support keyboard navigation, selection, Escape and outside d
   ).toBeFocused();
   await page.keyboard.press('End');
   await expect(
-    menu.getByRole('menuitemradio', { name: '架构图', exact: true }),
+    menu.getByRole('menuitemradio', { name: 'UML 时序图', exact: true }),
   ).toBeFocused();
   await page.keyboard.press('Home');
   await page.keyboard.press('Enter');

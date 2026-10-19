@@ -26,7 +26,9 @@
     "apps/web/src/app/harness.tsx",
     "tests/consumer/src/main.ts",
     "packages/converters/markdown-to-board/src/index.ts",
-    "packages/converters/mermaid-to-board/src/index.ts"
+    "packages/converters/mermaid-to-board/src/index.ts",
+    "packages/engine/uml/src/**/*.ts",
+    "packages/react/uml/src/**/*.tsx"
   ],
   "exclude": [
     "**/*.spec.ts",

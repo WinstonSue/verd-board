@@ -71,7 +71,14 @@
       "demo:packages/edge/29",
       "demo:packages/edge/30",
       "demo:packages/edge/31",
-      "project:topic/01/document"
+      "project:topic/01/document",
+      "demo:packages/module/@sue/board-react-uml",
+      "demo:packages/module/@sue/board-uml",
+      "demo:packages/edge/%40sue%2Fverd-board-ui>%40sue%2Fboard-react-uml",
+      "demo:packages/edge/%40sue%2Fboard-react-uml>%40sue%2Fboard-react",
+      "demo:packages/edge/%40sue%2Fboard-react-uml>%40sue%2Fboard-uml",
+      "demo:packages/edge/%40sue%2Fboard-uml>%40sue%2Fboard-core",
+      "demo:packages/edge/%40sue%2Fboard-mermaid-to-board>%40sue%2Fboard-uml"
     ],
     "groups": [],
     "data": {},
@@ -699,6 +706,7 @@
           "demo:packages/module/@sue/board-react",
           "demo:packages/module/@sue/board-react-mind",
           "demo:packages/module/@sue/board-react-text",
+          "demo:packages/module/@sue/board-react-uml",
           "demo:packages/module/@sue/board-react-workflow"
         ]
       },
@@ -1266,7 +1274,8 @@
           "demo:packages/module/@sue/board-common",
           "demo:packages/module/@sue/board-core",
           "demo:packages/module/@sue/board-layouts",
-          "demo:packages/module/@sue/board-text"
+          "demo:packages/module/@sue/board-text",
+          "demo:packages/module/@sue/board-uml"
         ]
       },
       "appearance": {
@@ -3128,6 +3137,262 @@
           },
           "plainText": "系统架构 · 包职责与公共接入"
         }
+      }
+    },
+    "demo:packages/module/@sue/board-react-uml": {
+      "id": "demo:packages/module/@sue/board-react-uml",
+      "kind": "architecture-module",
+      "cellType": "node",
+      "geometry": {
+        "x": 3584,
+        "y": 494,
+        "width": 372,
+        "height": 98,
+        "derived": false,
+        "outline": {
+          "kind": "roundRectangle",
+          "radius": 8
+        }
+      },
+      "data": {
+        "shape": "box",
+        "placed": true
+      },
+      "appearance": {
+        "fill": "#f0fdfa",
+        "strokeColor": "#94a3b8",
+        "strokeWidth": 1.5
+      },
+      "ports": [
+        {
+          "id": "top",
+          "side": "top",
+          "offset": 0.5,
+          "direction": "both"
+        },
+        {
+          "id": "right",
+          "side": "right",
+          "offset": 0.5,
+          "direction": "both"
+        },
+        {
+          "id": "bottom",
+          "side": "bottom",
+          "offset": 0.5,
+          "direction": "both"
+        },
+        {
+          "id": "left",
+          "side": "left",
+          "offset": 0.5,
+          "direction": "both"
+        }
+      ],
+      "content": {
+        "label": "@sue/board-react-uml\npackages/react/uml",
+        "text": {
+          "schemaVersion": 1,
+          "id": "demo:packages/module/@sue/board-react-uml/text",
+          "kind": "inline",
+          "plainText": "@sue/board-react-uml\npackages/react/uml",
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "@sue/board-react-uml"
+                  }
+                ]
+              },
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "packages/react/uml"
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      }
+    },
+    "demo:packages/module/@sue/board-uml": {
+      "id": "demo:packages/module/@sue/board-uml",
+      "kind": "architecture-module",
+      "cellType": "node",
+      "geometry": {
+        "x": 3386,
+        "y": 714,
+        "width": 372,
+        "height": 98,
+        "derived": false,
+        "outline": {
+          "kind": "roundRectangle",
+          "radius": 8
+        }
+      },
+      "data": {
+        "shape": "box",
+        "placed": true
+      },
+      "appearance": {
+        "fill": "#f0fdfa",
+        "strokeColor": "#94a3b8",
+        "strokeWidth": 1.5
+      },
+      "ports": [
+        {
+          "id": "top",
+          "side": "top",
+          "offset": 0.5,
+          "direction": "both"
+        },
+        {
+          "id": "right",
+          "side": "right",
+          "offset": 0.5,
+          "direction": "both"
+        },
+        {
+          "id": "bottom",
+          "side": "bottom",
+          "offset": 0.5,
+          "direction": "both"
+        },
+        {
+          "id": "left",
+          "side": "left",
+          "offset": 0.5,
+          "direction": "both"
+        }
+      ],
+      "content": {
+        "label": "@sue/board-uml\npackages/engine/uml",
+        "text": {
+          "schemaVersion": 1,
+          "id": "demo:packages/module/@sue/board-uml/text",
+          "kind": "inline",
+          "plainText": "@sue/board-uml\npackages/engine/uml",
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "@sue/board-uml"
+                  }
+                ]
+              },
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "packages/engine/uml"
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      }
+    },
+    "demo:packages/edge/%40sue%2Fverd-board-ui>%40sue%2Fboard-react-uml": {
+      "id": "demo:packages/edge/%40sue%2Fverd-board-ui>%40sue%2Fboard-react-uml",
+      "kind": "architecture-edge",
+      "cellType": "edge",
+      "source": {
+        "cellId": "demo:packages/module/@sue/verd-board-ui"
+      },
+      "target": {
+        "cellId": "demo:packages/module/@sue/board-react-uml"
+      },
+      "route": {
+        "mode": "orthogonal"
+      },
+      "appearance": {
+        "strokeColor": "#64748b",
+        "strokeWidth": 1.5
+      }
+    },
+    "demo:packages/edge/%40sue%2Fboard-react-uml>%40sue%2Fboard-react": {
+      "id": "demo:packages/edge/%40sue%2Fboard-react-uml>%40sue%2Fboard-react",
+      "kind": "architecture-edge",
+      "cellType": "edge",
+      "source": {
+        "cellId": "demo:packages/module/@sue/board-react-uml"
+      },
+      "target": {
+        "cellId": "demo:packages/module/@sue/board-react"
+      },
+      "route": {
+        "mode": "orthogonal"
+      },
+      "appearance": {
+        "strokeColor": "#64748b",
+        "strokeWidth": 1.5
+      }
+    },
+    "demo:packages/edge/%40sue%2Fboard-react-uml>%40sue%2Fboard-uml": {
+      "id": "demo:packages/edge/%40sue%2Fboard-react-uml>%40sue%2Fboard-uml",
+      "kind": "architecture-edge",
+      "cellType": "edge",
+      "source": {
+        "cellId": "demo:packages/module/@sue/board-react-uml"
+      },
+      "target": {
+        "cellId": "demo:packages/module/@sue/board-uml"
+      },
+      "route": {
+        "mode": "orthogonal"
+      },
+      "appearance": {
+        "strokeColor": "#64748b",
+        "strokeWidth": 1.5
+      }
+    },
+    "demo:packages/edge/%40sue%2Fboard-uml>%40sue%2Fboard-core": {
+      "id": "demo:packages/edge/%40sue%2Fboard-uml>%40sue%2Fboard-core",
+      "kind": "architecture-edge",
+      "cellType": "edge",
+      "source": {
+        "cellId": "demo:packages/module/@sue/board-uml"
+      },
+      "target": {
+        "cellId": "demo:packages/module/@sue/board-core"
+      },
+      "route": {
+        "mode": "orthogonal"
+      },
+      "appearance": {
+        "strokeColor": "#64748b",
+        "strokeWidth": 1.5
+      }
+    },
+    "demo:packages/edge/%40sue%2Fboard-mermaid-to-board>%40sue%2Fboard-uml": {
+      "id": "demo:packages/edge/%40sue%2Fboard-mermaid-to-board>%40sue%2Fboard-uml",
+      "kind": "architecture-edge",
+      "cellType": "edge",
+      "source": {
+        "cellId": "demo:packages/module/@sue/board-mermaid-to-board"
+      },
+      "target": {
+        "cellId": "demo:packages/module/@sue/board-uml"
+      },
+      "route": {
+        "mode": "orthogonal"
+      },
+      "appearance": {
+        "strokeColor": "#64748b",
+        "strokeWidth": 1.5
       }
     }
   },

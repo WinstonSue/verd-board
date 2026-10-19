@@ -629,3 +629,20 @@
     width: 150px;
   }
 }
+
+.frame-uml-tools {
+  border: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+.frame-uml-tools label {
+  font-size: 11px;
+  display: grid;
+  gap: 3px;
+}
+.frame-uml-tools select {
+  max-width: 90px;
+}

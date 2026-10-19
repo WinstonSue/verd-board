@@ -1,3 +1,5 @@
+import { serializeUmlToMermaid } from './uml.js';
+import { umlRoot } from '@sue/board-core';
 import {
   CellKind,
   createFrameCell,
@@ -477,6 +479,8 @@ export const serializeFrameToMermaid = (
   snapshot: FrameSnapshot,
   frameId = snapshot.store.rootId,
 ): string => {
+  if (umlRoot(snapshot.store, frameId))
+    return serializeUmlToMermaid(snapshot, frameId);
   const frame = snapshot.store.cells[frameId];
   if (!isFrameCell(frame)) throw new Error('Missing Frame');
   assertMermaidExpressible(snapshot, frameId);

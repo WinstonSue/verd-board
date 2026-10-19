@@ -1,3 +1,4 @@
+import { createUmlFrameExtensions } from '@sue/board-react-uml';
 import { useMemo, useRef, useState } from 'react';
 import {
   FrameCanvas,
@@ -44,6 +45,7 @@ const useExtensions = () =>
         ...createMindFrameExtensions(registry),
         ...createWorkflowFrameExtensions(registry),
         ...createArchitectureFrameExtensions(registry),
+        ...createUmlFrameExtensions(registry),
       ],
     };
   }, []);

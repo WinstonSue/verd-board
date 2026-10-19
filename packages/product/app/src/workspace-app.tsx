@@ -1,3 +1,4 @@
+import { registerUmlCells } from '@sue/board-uml';
 import {
   ChevronRight,
   LoaderCircle,
@@ -240,7 +241,13 @@ function WorkspaceAppShell({
   }>();
   const [libraryQuery, setLibraryQuery] = useState('');
   const [libraryDiagram, setLibraryDiagram] = useState<
-    'all' | 'canvas' | 'mind' | 'workflow' | 'architecture'
+    | 'all'
+    | 'canvas'
+    | 'mind'
+    | 'workflow'
+    | 'architecture'
+    | 'uml-class'
+    | 'uml-sequence'
   >('all');
   const [libraryOwner, setLibraryOwner] = useState('all');
   const [libraryScroll, setLibraryScroll] = useState(0);
@@ -317,6 +324,7 @@ function WorkspaceAppShell({
   if (!registryRef.current) {
     registryRef.current = registry ?? createCellRegistry();
     if (!registry) registerDrawCells(registryRef.current);
+    registerUmlCells(registryRef.current);
   }
 
   const openWorkspaceRequest = async (
@@ -1484,7 +1492,11 @@ function WorkspaceAppShell({
                 name: entry.file.frame.name || canvasDisplayName(entry.path),
                 path: entry.path,
                 diagram: diagramKindOf(entry.file) as
-                  'mind' | 'workflow' | 'architecture',
+                  | 'mind'
+                  | 'workflow'
+                  | 'architecture'
+                  | 'uml-class'
+                  | 'uml-sequence',
                 placement:
                   placement?.kind === 'owned'
                     ? ('owned' as const)

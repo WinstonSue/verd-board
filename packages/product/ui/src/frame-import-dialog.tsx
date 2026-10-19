@@ -12,7 +12,13 @@ import { useI18n } from './i18n';
 interface FrameImportDialogProps {
   registry: CellRegistry;
   extensions: FrameRenderExtension[];
-  scene?: 'whiteboard' | 'workflow' | 'architecture' | 'mind';
+  scene?:
+    | 'whiteboard'
+    | 'workflow'
+    | 'architecture'
+    | 'mind'
+    | 'uml-class'
+    | 'uml-sequence';
   onImport(snapshot: FrameSnapshot): Promise<void>;
   onClose(): void;
 }
@@ -56,7 +62,10 @@ export function FrameImportDialog({
                 await import('@sue/board-mermaid-to-board')
               ).parseMermaidToFrameSnapshot(text, {
                 scene:
-                  scene === 'workflow' || scene === 'architecture'
+                  scene === 'workflow' ||
+                  scene === 'architecture' ||
+                  scene === 'uml-class' ||
+                  scene === 'uml-sequence'
                     ? scene
                     : 'whiteboard',
               });

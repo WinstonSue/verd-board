@@ -1,3 +1,10 @@
+import {
+  umlReferences,
+  remapUmlCell,
+  umlClipboardSequence,
+  planUmlPaste,
+  type UmlClipboardSequence,
+} from './uml';
 import { normalizeCellPositionOperations } from './position';
 import { stripFrameViewports } from './types';
 import {
@@ -21,6 +28,7 @@ import { sceneAnchorKind } from './kinds';
 
 export interface CellFragment {
   cells: Record<CellId, Cell>;
+  umlSequence?: UmlClipboardSequence;
   ids: CellId[];
   /** Captured before cut, so independent domain owners survive deletion. */
   source?: {
@@ -53,6 +61,13 @@ export const copyCellFragment = (
     const cell = store.cells[id];
     if (!cell || included.has(id)) return;
     included.add(id);
+    if (cell.kind.startsWith('uml-')) {
+      umlReferences(cell).forEach(visit);
+      if (isEdgeCell(cell)) {
+        if ('cellId' in cell.source) visit(cell.source.cellId);
+        if ('cellId' in cell.target) visit(cell.target.cellId);
+      }
+    }
     if (isFrameCell(cell)) [...cell.children, ...cell.groups].forEach(visit);
     if (isGroupCell(cell)) cell.members.forEach(visit);
     (
@@ -79,7 +94,11 @@ export const copyCellFragment = (
       'cellId' in cell.source &&
       'cellId' in cell.target &&
       included.has(cell.source.cellId) &&
-      included.has(cell.target.cellId)
+      included.has(cell.target.cellId) &&
+      (cell.kind !== 'uml-message' ||
+        (ids.includes(cell.source.cellId) &&
+          ids.includes(cell.target.cellId)) ||
+        included.has(cell.id))
     )
       included.add(cell.id);
   });
@@ -184,6 +203,16 @@ export const copyCellFragment = (
   const frameId = ids.length ? index.parentOf.get(ids[0]) : undefined;
   return {
     cells,
+    ...(frameId
+      ? {
+          umlSequence: umlClipboardSequence(
+            store,
+            frameId,
+            included,
+            new Set(ids),
+          ),
+        }
+      : {}),
     ...(frameId && Object.keys(ownerById).length
       ? { source: { rootId: store.rootId, frameId, ownerById } }
       : {}),
@@ -216,7 +245,7 @@ export const pasteCellFragment = (
   const cells = Object.values(fragment.cells)
     .map((original) => {
       const shift: Point = nestedIds.has(original.id) ? [0, 0] : offset;
-      const cell = copy(original);
+      const cell = remapUmlCell(copy(original), remap) as Cell;
       cell.id = remap(cell.id);
       if (isNodeCell(cell))
         cell.geometry = {
@@ -394,6 +423,8 @@ export const planCellPaste = (request: CellPasteRequest): CellPastePlan => {
   const current = frameScene(request.store, request.frameId);
   if (request.intent !== 'open' && incoming && incoming !== current)
     throw new Error('Cannot mix scenes in one frame');
+  const umlPlan = planUmlPaste(request);
+  if (umlPlan) return umlPlan;
   let ownerId: string | undefined;
   const ownerById = new Map<string, string>();
   const needsOwner =

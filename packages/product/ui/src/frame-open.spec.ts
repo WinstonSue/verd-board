@@ -111,3 +111,47 @@ describe('openFrameOperations', () => {
     ).toThrow(/Invalid file/);
   });
 });
+
+it('opens a UML sequence by replacing its content while preserving its hidden root and undo history', async () => {
+  const core = await import('@sue/board-core'),
+    uml = await import('@sue/board-uml');
+  const registry = core.createCellRegistry();
+  uml.registerUmlCells(registry);
+  let store = uml.createUmlSequenceFrameSnapshot('f', 'root').store;
+  store = core.applyCellOperations(
+    store,
+    uml.addUmlCell(store, 'f', uml.createUmlParticipantCell('old')),
+    registry,
+  );
+  let incoming = uml.createUmlSequenceFrameSnapshot(
+    'incoming',
+    'incoming-root',
+  ).store;
+  incoming = core.applyCellOperations(
+    incoming,
+    uml.addUmlCell(incoming, 'incoming', uml.createUmlParticipantCell('new')),
+    registry,
+  );
+  const runtime = core.createCellRuntime({ store }, registry);
+  let n = 0;
+  runtime.transact({
+    id: 'open-uml',
+    operations: openFrameOperations(
+      store,
+      'f',
+      { store: incoming },
+      () => `copied:${n++}`,
+      registry,
+    ),
+  });
+  expect(runtime.store.cells.old).toBeUndefined();
+  expect(runtime.store.cells.root).toBeDefined();
+  expect(
+    Object.values(runtime.store.cells).filter(
+      (c) => c.kind === 'uml-sequence-root',
+    ),
+  ).toHaveLength(1);
+  expect(core.validateCellStore(runtime.store, registry)).toEqual([]);
+  runtime.undo();
+  expect(runtime.store).toEqual(store);
+});

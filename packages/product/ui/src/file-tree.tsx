@@ -49,14 +49,20 @@ export interface FileTreeCanvas {
   dirty?: boolean;
   conflicted?: boolean;
   /** Diagram icon; every file remains visible at its real path. */
-  diagram?: 'canvas' | 'mind' | 'workflow' | 'architecture';
+  diagram?:
+    | 'canvas'
+    | 'mind'
+    | 'workflow'
+    | 'architecture'
+    | 'uml-class'
+    | 'uml-sequence';
 }
 
 export interface FileTreeSubgraph {
   frameId: string;
   name: string;
   path: string;
-  diagram: 'mind' | 'workflow' | 'architecture';
+  diagram: 'mind' | 'workflow' | 'architecture' | 'uml-class' | 'uml-sequence';
   placement: 'owned' | 'unorganized' | 'standalone' | 'legacy';
   ownerFrameId?: string;
   dirty?: boolean;
@@ -317,6 +323,8 @@ const diagramIcons = {
   mind: Network,
   workflow: Workflow,
   architecture: Boxes,
+  'uml-class': Boxes,
+  'uml-sequence': Workflow,
 };
 
 export function FileTree({
