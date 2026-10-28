@@ -1,4 +1,5 @@
 import fs from 'node:fs';
+import { readSchemaArtifacts } from './schema-artifacts.mjs';
 import os from 'node:os';
 import path from 'node:path';
 import { spawn, spawnSync } from 'node:child_process';
@@ -13,7 +14,7 @@ if (!process.env.VERD_CONSUMER_REACT) {
   for (const major of ['18', '19']) {
     const result = spawnSync(
       process.execPath,
-      [fileURLToPath(import.meta.url)],
+      [fileURLToPath(import.meta.url), ...process.argv.slice(2)],
       {
         cwd: root,
         stdio: 'inherit',
@@ -37,7 +38,9 @@ const packageDependencies = Object.fromEntries(
 );
 // The overrides bind transitive @sue dependencies to the same real archives before
 // publication. Their original packed semver ranges are checked by packPublicPackages.
-const overrides = fromRegistry ? {} : packageDependencies;
+const overrides = fromRegistry
+  ? {}
+  : { ...packageDependencies, ...readSchemaArtifacts() };
 const registryConfig = fs
   .readFileSync(path.join(root, '.npmrc'), 'utf8')
   .split('\n')
@@ -88,12 +91,13 @@ fs.writeFileSync(
         ...packageDependencies,
         react: react19 ? '19.2.0' : '18.3.1',
         'react-dom': react19 ? '19.2.0' : '18.3.1',
+        'react-is': react19 ? '19.2.0' : '18.3.1',
       },
       devDependencies: {
         '@types/react': react19 ? '19.2.2' : '^18.3.12',
         '@types/react-dom': react19 ? '19.2.2' : '^18.3.1',
         '@vitejs/plugin-react': '^4.3.4',
-        typescript: '^5.6.3',
+        typescript: '5.6.3',
         jsdom: '22.1.0',
         vite: '^5.4.11',
       },
@@ -128,9 +132,9 @@ import * as workflow from '@sue/board-workflow';
 import * as architecture from '@sue/board-architecture';
 import { createCellRegistry, createCellRuntime, type FrameSnapshot } from '@sue/board-core';
 import { createInlineText, type TextEditorProps } from '@sue/board-common';
-import { createGeometryCell, registerDrawCells } from '@sue/board-draw';
+import { createGeometryCell, createDrawPlugin } from '@sue/board-draw';
 import { LineText } from '@sue/board-react-text';
-import { VerdFrame, MyPage, WorkspaceSettings, FileTree, ChartLibrary, type VerdFrameProps, type MyPageProps, type WorkspaceSettingsProps, type FileTreeProps, type ChartLibraryProps } from '@sue/verd-board-ui';
+import { createVerdFramePluginSet, VerdFrame, MyPage, WorkspaceSettings, FileTree, ChartLibrary, type VerdFrameProps, type MyPageProps, type WorkspaceSettingsProps, type FileTreeProps, type ChartLibraryProps } from '@sue/verd-board-ui';
 import '@sue/verd-board-ui/style.css';
 import { WorkspaceApp, type StorageAdapter } from '@sue/verd-board-app';
 import { parseMarkdownToFrameSnapshot } from '@sue/board-markdown-to-board';
@@ -144,10 +148,10 @@ import { createUmlSequenceFrameSnapshot, createUmlParticipantCell, addUmlCell } 
 import { createArchitectureFrameExtensions } from '@sue/board-react-architecture';
 if (['Board', 'BoardElement', 'BoardOperation', 'Transforms'].some(name => name in core)) throw new Error('Legacy core API is still exported');
 if (['mindDocumentToStore', 'withMind'].some(name => name in mind) || 'workflowDocumentToStore' in workflow || 'architectureDocumentToStore' in architecture) throw new Error('Legacy domain API is still exported');
-if (![createGeometryCell, registerDrawCells, LineText, VerdFrame, MyPage, WorkspaceSettings, FileTree, ChartLibrary, WorkspaceApp, parseMarkdownToFrameSnapshot, parseMermaidToFrameSnapshot].every(Boolean)) throw new Error('A native public package entry is missing');
+if (![createGeometryCell, createDrawPlugin, LineText, VerdFrame, MyPage, WorkspaceSettings, FileTree, ChartLibrary, WorkspaceApp, parseMarkdownToFrameSnapshot, parseMermaidToFrameSnapshot].every(Boolean)) throw new Error('A native public package entry is missing');
 const textProps: TextEditorProps = { text: createInlineText('Consumer topic'), onChange: ({ newText }) => { if (!newText.plainText) throw new Error('Text change is missing'); } };
-const registry = createCellRegistry();
-const extensions = [...createMindFrameExtensions(registry), ...createWorkflowFrameExtensions(registry), ...createArchitectureFrameExtensions(registry), ...createUmlFrameExtensions(registry)];
+const pluginSet = createVerdFramePluginSet();
+const {registry, extensions} = pluginSet;
 const umlSnapshot = createUmlSequenceFrameSnapshot('uml-consumer', 'uml-root');
 const umlRuntime = createCellRuntime(umlSnapshot, registry);
 umlRuntime.transact({id:'uml-add',operations:addUmlCell(umlRuntime.store,'uml-consumer',createUmlParticipantCell('uml-user'))});
@@ -182,7 +186,7 @@ const libraryProps: ChartLibraryProps = {
 void [textProps, standardProps, hostProps, productProps, storage, myProps, workspaceSettingsProps, fileTreeProps, libraryProps];
 const canvas = React.createRef<FrameCanvasController>();
 const hostCanvas = React.createRef<FrameCanvasController>();
-const transfer: (() => Promise<import('@sue/board-react').FrameIntentResult> | undefined) = () => canvas.current?.moveSelection('consumer-target');
+const transfer: (() => Promise<import('@sue/board-common').ActionResult> | undefined) = () => canvas.current?.executeAction('canvas.selection.move', { targetFrameId: 'consumer-target' });
 void transfer;
 const exportOptions: FrameImageOptions = { format: 'svg', padding: 20, ids: ['consumer-center'] };
 const errors: string[] = [];
@@ -224,8 +228,8 @@ function ConsumerHarness() {
       <button data-testid="accept" onClick={() => setHostStatus('accepted')}>Accept</button>
       <button data-testid="undo" onClick={() => history.current.undo()}>Undo</button>
       <button data-testid="export" onClick={() => void canvas.current?.exportImage(exportOptions).then(() => setLog('exported'), (error) => errors.push(String(error)))}>Export frame</button>
-      <FrameCanvas ref={canvas} value={snapshot} registry={registry} extensions={extensions} onChange={({ snapshot: next }) => setSnapshot(next)} />
-      <FrameCanvas ref={hostCanvas} value={{ snapshot }} adapter={{ toFrameSnapshot: (host) => host.snapshot }} onIntent={async transaction => {
+      <FrameCanvas ref={canvas} value={snapshot} pluginSet={pluginSet} onChange={({ snapshot: next }) => setSnapshot(next)} />
+      <FrameCanvas ref={hostCanvas} pluginSet={pluginSet} value={{ snapshot }} adapter={{ toFrameSnapshot: (host) => host.snapshot }} onIntent={async transaction => {
         if (hostStatus === 'rejected') return { status: 'rejected' };
         setSnapshot(current => ({ store: core.applyCellOperations(current.store, transaction.operations, registry) }));
         return { status: 'accepted' };
@@ -241,6 +245,10 @@ createRoot(document.getElementById('root')!).render(<ConsumerHarness />);
 fs.copyFileSync(
   path.join(root, 'tests/consumer/src/release-examples.tsx'),
   path.join(appDir, 'src/release-examples.tsx'),
+);
+fs.copyFileSync(
+  path.join(root, 'tests/consumer/src/main.ts'),
+  path.join(appDir, 'src/sdk-migration-types.ts'),
 );
 let snippetId = 0;
 for (const file of [

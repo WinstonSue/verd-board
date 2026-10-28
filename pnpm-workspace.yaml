@@ -13,6 +13,17 @@ allowBuilds:
 confirmModulesPurge: false
 minimumReleaseAgeExclude:
   - '@ylib/ai-config-manager@1.0.0-beta.0'
+  - '@sue/schema-core-engine@0.0.1'
+  - '@sue/schema-core-path@0.0.1'
+  - '@sue/schema-core-reactive@0.0.1'
+  - '@sue/schema-core-schema@0.0.1'
+  - '@sue/schema-core-shared@0.0.1'
+  - '@sue/schema-core-validator@0.0.1'
+  - '@sue/schema-core@0.0.1'
+  - '@sue/schema-settings-core@0.0.1'
+  - '@sue/schema-settings-react@0.0.1'
+  - '@sue/schema-view-grid@0.0.1'
+  - '@sue/schema-view-react@0.0.1'
 publicHoistPattern:
   - '*eslint*'
   - prettier

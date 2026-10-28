@@ -1,43 +1,45 @@
-import { test, expect, type Page, type Locator } from '@playwright/test';
+import { expect, test, type Locator, type Page } from '@playwright/test';
+import {
+  addArchitectureModule,
+  createArchitectureFrameSnapshot,
+  createArchitectureModuleCell,
+} from '../../../packages/engine/architecture/src/cell-commands';
+import {
+  Alignment,
+  createBlockText,
+  createInlineText,
+  type BoardTextDocument,
+} from '../../../packages/engine/common/src/public-api';
+import { applyCellOperations } from '../../../packages/engine/core/src/cell/index';
 import {
   createCellStore,
   createFrameCell,
+  type FrameCell,
   type FrameSnapshot,
   type NodeCell,
-  type FrameCell,
 } from '../../../packages/engine/core/src/cell/types';
-import { applyCellOperations } from '../../../packages/engine/core/src/cell/index';
 import {
-  createBlockText,
-  createInlineText,
-  Alignment,
-  type BoardTextDocument,
-} from '../../../packages/engine/common/src/public-api';
-import {
-  createMindFrameSnapshot,
-  createMindChildCell,
-  addMindChild,
-} from '../../../packages/engine/mind/src/cell-commands';
-import {
-  createWorkflowFrameSnapshot,
-  createWorkflowTaskCell,
-  addWorkflowTask,
-} from '../../../packages/engine/workflow/src/cell-commands';
-import {
-  createArchitectureFrameSnapshot,
-  createArchitectureModuleCell,
-  addArchitectureModule,
-} from '../../../packages/engine/architecture/src/cell-commands';
-import {
-  createTableCell,
   createGeometryCell,
+  createTableCell,
 } from '../../../packages/engine/draw/src/cell-commands';
 import { createSwimlaneCell } from '../../../packages/engine/draw/src/cell-table';
+import {
+  addMindChild,
+  createMindChildCell,
+  createMindFrameSnapshot,
+} from '../../../packages/engine/mind/src/cell-commands';
+import {
+  addWorkflowTask,
+  createWorkflowFrameSnapshot,
+  createWorkflowTaskCell,
+} from '../../../packages/engine/workflow/src/cell-commands';
+import { createTestCellRegistry as createFixtureRegistry } from '../../fixtures/plugins/registry';
 import {
   clearWorkspaceStorage,
   persistedWorkspace,
   waitForWorkspacePersisted,
 } from './workspace-nav';
+const testCellRegistry = createFixtureRegistry();
 
 test.use({ actionTimeout: 6000 });
 
@@ -403,6 +405,7 @@ test('Mind root, child and note keep their font, color and media text regions in
       createMindChildCell('child'),
       'branch',
     ),
+    testCellRegistry,
   );
   const child = snapshot.store.cells.child as NodeCell;
   child.content = { label: formatted().plainText, text: formatted() };
@@ -505,6 +508,7 @@ test('Mind defaults align left and notes align at the top, preserving explicit b
         createMindChildCell(item.id),
         `branch-${item.id}`,
       ),
+      testCellRegistry,
     );
     const child = snapshot.store.cells[item.id] as NodeCell;
     const text = { ...createInlineText(item.id), align: item.align };
@@ -648,6 +652,7 @@ for (const domain of ['workflow', 'architecture'] as const) {
           'start',
           createWorkflowTaskCell('task'),
         ),
+        testCellRegistry,
       );
     } else {
       snapshot = createArchitectureFrameSnapshot('root', 'layer');
@@ -658,6 +663,7 @@ for (const domain of ['workflow', 'architecture'] as const) {
           'layer',
           createArchitectureModuleCell('task'),
         ),
+        testCellRegistry,
       );
     }
     const task = snapshot.store.cells.task as NodeCell;

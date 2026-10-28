@@ -1,5 +1,11 @@
 # @sue/board-react
 
+## Unreleased
+
+新增 FrameEditor、FrameUIPlugin 与 createFramePluginSet；保留受控/宿主/历史接口及内置富文本。领域交互从 kind 分支改为贡献策略，转换器由宿主注入，新增公开 CSS。
+
+本轮不升级版本或发布，随下一主版本交付；参见原生架构和迁移文档。
+
 ## 2.0.0
 
 ### Major Changes

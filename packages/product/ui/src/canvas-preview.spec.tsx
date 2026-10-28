@@ -18,7 +18,7 @@ vi.mock('@sue/board-react', async (importOriginal) => {
       ref,
     ) {
       probe.values.push(props.value);
-      React.useImperativeHandle(ref, () => ({ fit: probe.fit }), []);
+      React.useImperativeHandle(ref, () => ({ executeAction: probe.fit }), []);
       return <svg />;
     }),
   };

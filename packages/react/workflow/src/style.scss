@@ -1,0 +1,4 @@
+/* Public workflow UI stylesheet. Rendering uses SVG presentation attributes. */
+:where([data-frame-editor]) {
+  --board-workflow-installed: 1;
+}

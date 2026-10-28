@@ -1,19 +1,23 @@
-import React, { act, createRef } from 'react';
-import { createRoot } from 'react-dom/client';
-import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createInlineText } from '@sue/board-common';
 import {
   applyCellOperations,
   createCellStore,
   createFrameCell,
-  type NodeCell,
   type FrameSnapshot,
+  type NodeCell,
 } from '@sue/board-core';
+import { act, createRef } from 'react';
+import { createRoot } from 'react-dom/client';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { createTestCellRegistry as createFixtureRegistry } from '../../../../tests/fixtures/plugins/registry';
+import { createTestFramePluginSet } from '../../../../tests/fixtures/plugins/ui';
 import {
   FrameCanvas,
   type FrameCanvasController,
   type FrameIntentResult,
 } from './frame-canvas';
+const testFramePluginSet = createTestFramePluginSet();
+const testCellRegistry = createFixtureRegistry();
 
 vi.mock('@sue/board-react-text', () => ({
   LineText: ({
@@ -78,6 +82,7 @@ async function mount({ legacy = '', reject = false, host = false } = {}) {
   const render = () =>
     root.render(
       <FrameCanvas
+        pluginSet={testFramePluginSet}
         ref={controller}
         value={value}
         autoFit={false}
@@ -129,9 +134,13 @@ describe('name initialization across native editing sessions', () => {
     }
     await test.close();
     expect(test.cell().name).toBe('xxx');
-    await act(async () => test.controller.current!.undo());
+    await act(async () =>
+      test.controller.current!.executeAction('canvas.history.undo'),
+    );
     expect(test.cell().name).toBeUndefined();
-    await act(async () => test.controller.current!.redo());
+    await act(async () =>
+      test.controller.current!.executeAction('canvas.history.redo'),
+    );
     expect(test.cell().name).toBe('xxx');
     const old = await mount({ legacy: 'Old\nname' });
     await act(async () => old.editor().click());

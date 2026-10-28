@@ -1,25 +1,28 @@
 import {
-  deriveBoardTextPlainText,
-  isBoardTextDocument,
+  mapBoardTextLinks,
+  remapWorkspaceLink,
+  type BoardTextDocument,
   type BoardTextNode,
 } from '@sue/board-common';
 import {
   isDocumentCell,
   isFrameReferenceCell,
   type CellId,
+  type CellRegistry,
 } from '@sue/board-core';
 import {
-  remapFrameFileIds,
   organizationForCopy,
+  remapFrameFileIds,
   type FrameFileDiagnostic,
 } from '../frames/frame-files';
 import { type CopyOwnershipMode } from '../frames/frame-organization';
 import {
-  workspaceFileId,
+  isDocumentFileV1,
   isWorkspaceFile,
+  workspaceFileId,
   type WorkspaceFile,
 } from './document-files';
-import { createDocumentLink, parseDocumentLink } from './document-links';
+import { createWorkspaceCellRegistry } from '../frames/plugins';
 
 export interface WorkspaceReference {
   sourceId: string;
@@ -46,6 +49,40 @@ export function buildWorkspaceReferenceGraph(
     );
   });
   return { targetsOf, referencedBy };
+}
+
+/** Roots whose export closure contains a document, without cloning export data. */
+export function workspaceDocumentDependents(
+  files: readonly WorkspaceFile[],
+  references: WorkspaceReferenceGraph,
+): ReadonlySet<string> {
+  const present = new Set(files.map(workspaceFileId));
+  const dependents = new Map<string, string[]>();
+  references.referencedBy.forEach((sources, targetId) =>
+    dependents.set(
+      targetId,
+      sources.map((source) => source.sourceId),
+    ),
+  );
+  for (const file of files) {
+    if (
+      file.format === 'verd-frame' &&
+      file.organization?.kind === 'subgraph' &&
+      file.organization.ownerFrameId
+    ) {
+      const childId = file.frame.id;
+      dependents.set(childId, [
+        ...(dependents.get(childId) ?? []),
+        file.organization.ownerFrameId,
+      ]);
+    }
+  }
+  const result = new Set(files.filter(isDocumentFileV1).map((file) => file.id));
+  // Follow reverse dependencies once, including cycles and owned subgraphs.
+  for (const id of result)
+    for (const sourceId of dependents.get(id) ?? [])
+      if (present.has(sourceId)) result.add(sourceId);
+  return result;
 }
 export function workspaceExportBundle(
   files: WorkspaceFile[],
@@ -180,30 +217,6 @@ function remapText(
   return {
     ...node,
     ...(attrs ? { attrs } : {}),
-    ...(node.marks
-      ? {
-          marks: node.marks.map((mark) => {
-            if (
-              mark.type !== 'link' ||
-              typeof mark.attrs?.['href'] !== 'string'
-            )
-              return mark;
-            const link = parseDocumentLink(mark.attrs['href']);
-            return link?.kind === 'file' && ids.has(link.fileId)
-              ? {
-                  ...mark,
-                  attrs: {
-                    ...mark.attrs,
-                    href: createDocumentLink(
-                      ids.get(link.fileId)!,
-                      link.anchor ?? undefined,
-                    ),
-                  },
-                }
-              : mark;
-          }),
-        }
-      : {}),
     ...(node.content
       ? { content: node.content.map((child) => remapText(child, ids)) }
       : {}),
@@ -216,6 +229,7 @@ export function remapWorkspaceFiles(
   collide: (id: string) => boolean,
   createId: () => string,
   copy?: { rootId: string; mode?: CopyOwnershipMode; assignOwnerId?: string },
+  registry: CellRegistry = createWorkspaceCellRegistry(),
 ): { files: WorkspaceFile[]; idMap: Map<CellId, CellId> } {
   const all = files.flatMap((file) =>
     file.format === 'verd-frame'
@@ -233,42 +247,36 @@ export function remapWorkspaceFiles(
     claimed.add(next);
     idMap.set(id, next);
   }
+  const copiedOwners = new Map(
+    files.flatMap((file) => {
+      if (file.format !== 'verd-frame') return [];
+      const owner = idMap.get(file.frame.id) ?? file.frame.id;
+      return [file.frame.id, ...Object.keys(file.cells)].map(
+        (id) => [idMap.get(id) ?? id, owner] as const,
+      );
+    }),
+  );
+  const targetOwnerOf = (id: string) => copiedOwners.get(id);
   const remapped = files.map((original): WorkspaceFile => {
     const file = structuredClone(original);
     if (file.format === 'verd-document') {
       const id = idMap.get(file.id) ?? file.id;
       const content = remapText(file.text.content, idMap);
+      const text = mapBoardTextLinks({ ...file.text, id, content }, (href) =>
+        remapWorkspaceLink(href, {
+          idMap,
+          sourceFileId: file.id,
+          targetFileId: id,
+          targetOwnerOf,
+        }),
+      ) as BoardTextDocument;
       return {
         ...file,
         id,
-        text: {
-          ...file.text,
-          id,
-          content,
-          plainText: deriveBoardTextPlainText(content),
-        },
+        text,
       };
     }
-    const next = remapFrameFileIds(file, idMap);
-    Object.values(next.cells).forEach((cell) => {
-      if (isDocumentCell(cell))
-        cell.data = {
-          ...cell.data,
-          targetDocumentId:
-            idMap.get(cell.data.targetDocumentId) ?? cell.data.targetDocumentId,
-        };
-      if (cell.cellType === 'node' && isBoardTextDocument(cell.content?.text)) {
-        const content = remapText(cell.content.text.content, idMap);
-        cell.content = {
-          ...cell.content,
-          text: {
-            ...cell.content.text,
-            content,
-            plainText: deriveBoardTextPlainText(content),
-          },
-        };
-      }
-    });
+    const next = remapFrameFileIds(file, idMap, { registry, targetOwnerOf });
     if (copy) {
       const org = organizationForCopy(file, idMap, {
         mode: copy.mode ?? 'retarget',

@@ -1,14 +1,11 @@
-import { describe, it, expect } from 'vitest';
-import { parseMermaidToFrameSnapshot, serializeFrameToMermaid } from './index';
+import { isEdgeCell, isNodeCell, type NodeCell } from '@sue/board-core';
 import {
-  isNodeCell,
-  isEdgeCell,
   umlRoot,
-  type UmlSequenceData,
-  type NodeCell,
   type UmlClassData,
-  type UmlFragmentData,
-} from '@sue/board-core';
+  type UmlSequenceData,
+} from '@sue/board-uml';
+import { describe, expect, it } from 'vitest';
+import { parseMermaidToFrameSnapshot, serializeFrameToMermaid } from './index';
 const classes = `classDiagram
 class Service {
   +String name

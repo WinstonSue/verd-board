@@ -1,26 +1,21 @@
-import { registerUmlCells } from '@sue/board-uml';
-import { describe, expect, it } from 'vitest';
-import { readFileSync, readdirSync } from 'node:fs';
-import path from 'node:path';
-import { fileURLToPath } from 'node:url';
+import type { BoardTextNode } from '@sue/board-common';
 import {
-  createCellRegistry,
   isFrameCell,
   validateCellStore,
   type CellStore,
   type FrameSnapshot,
 } from '@sue/board-core';
-import { registerDrawCells } from '@sue/board-draw';
-import { registerMindCells } from '@sue/board-mind';
-import { registerWorkflowCells } from '@sue/board-workflow';
-import { registerArchitectureCells } from '@sue/board-architecture';
 import { parseMarkdownToFrameSnapshot } from '@sue/board-markdown-to-board';
-import type { BoardTextNode } from '@sue/board-common';
-import { isDocumentFileV1 } from '../documents/document-files';
 import {
   parseMermaidToArchitectureFrame,
   parseMermaidToWorkflowFrame,
 } from '@sue/board-mermaid-to-board';
+import { readFileSync, readdirSync } from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { describe, expect, it } from 'vitest';
+import { createTestCellRegistry } from '../../../../../tests/fixtures/plugins/registry';
+import { isDocumentFileV1 } from '../documents/document-files';
 import {
   assembleWorkspaceStore,
   isFrameFileV2,
@@ -51,12 +46,8 @@ const readExample = (name: string) =>
 const readJson = (name: string) => JSON.parse(readExample(name)) as unknown;
 
 const registry = () => {
-  const next = createCellRegistry();
-  registerDrawCells(next);
-  registerMindCells(next);
-  registerWorkflowCells(next);
-  registerArchitectureCells(next);
-  registerUmlCells(next);
+  const next = createTestCellRegistry();
+
   return next;
 };
 

@@ -1,13 +1,15 @@
 import { describe, expect, it } from 'vitest';
+import { createTestCellRegistry as createFixtureRegistry } from '../../../../../tests/fixtures/plugins/registry';
+import { clearFrameCells } from './commands';
+import { applyCellOperations } from './index';
+import { createCellRuntime } from './runtime';
 import {
   createCellStore,
   createFrameCell,
   type Cell,
   type FrameCell,
 } from './types';
-import { applyCellOperations } from './index';
-import { createCellRuntime } from './runtime';
-import { clearFrameCells } from './commands';
+const testCellRegistry = createFixtureRegistry();
 
 describe('clear mounted frame', () => {
   it.each(['mind-root', 'workflow-start', 'architecture-layer', 'geometry'])(
@@ -27,14 +29,18 @@ describe('clear mounted frame', () => {
               ? { memberIds: [], order: id }
               : {},
       });
-      const store = applyCellOperations(createCellStore(root), [
-        { type: 'insert_cell', parentId: 'root', cell: make('a') },
-        { type: 'insert_cell', parentId: 'root', cell: make('b') },
-      ]);
-      const runtime = createCellRuntime({ store });
+      const store = applyCellOperations(
+        createCellStore(root),
+        [
+          { type: 'insert_cell', parentId: 'root', cell: make('a') },
+          { type: 'insert_cell', parentId: 'root', cell: make('b') },
+        ],
+        testCellRegistry,
+      );
+      const runtime = createCellRuntime({ store }, testCellRegistry);
       runtime.transact({
         id: 'clear',
-        operations: clearFrameCells(store, 'root'),
+        operations: clearFrameCells(store, 'root', testCellRegistry),
       });
       expect((runtime.store.cells.root as FrameCell).children).toEqual(
         kind === 'workflow-start'
@@ -70,11 +76,12 @@ describe('clear mounted frame', () => {
           cell: createFrameCell('sibling'),
         },
       ],
+      testCellRegistry,
     );
-    const runtime = createCellRuntime({ store });
+    const runtime = createCellRuntime({ store }, testCellRegistry);
     runtime.transact({
       id: 'clear',
-      operations: clearFrameCells(store, 'inside'),
+      operations: clearFrameCells(store, 'inside', testCellRegistry),
     });
     expect(runtime.store.cells.descendant).toBeUndefined();
     expect(runtime.store.cells.sibling).toEqual(store.cells.sibling);

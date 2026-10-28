@@ -2,21 +2,23 @@ import {
   edgeLabelLayout,
   isFrameCell,
   isNodeCell,
-  umlRoot,
   type CellStore,
-  type NodeCell,
   type EdgeCell,
+  type NodeCell,
   type NodeGeometry,
   type Point,
-  type UmlClassData,
-  type UmlSequenceData,
-  type UmlFragmentData,
-  type UmlNoteData,
-  type UmlMessageData,
-  type UmlRelationData,
-  type UmlEvent,
 } from '@sue/board-core';
 import { umlRelationMarkers } from './model';
+import {
+  umlRoot,
+  type UmlClassData,
+  type UmlEvent,
+  type UmlFragmentData,
+  type UmlMessageData,
+  type UmlNoteData,
+  type UmlRelationData,
+  type UmlSequenceData,
+} from './public-api';
 export interface UmlActivationBounds {
   participantId: string;
   startId: string;

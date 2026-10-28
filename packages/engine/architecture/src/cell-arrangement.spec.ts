@@ -1,16 +1,19 @@
-import { describe, expect, it } from 'vitest';
 import {
   arrangeCells,
   arrangementAvailability,
   copyCellFragment,
-  createCellRegistry,
   createCellRuntime,
   deleteCells,
   groupCells,
   planCellPaste,
-  type NodeCell,
   type FrameCell,
+  type NodeCell,
 } from '@sue/board-core';
+import { describe, expect, it } from 'vitest';
+import {
+  createTestCellRegistry as createFixtureRegistry,
+  createTestCellRegistry,
+} from '../../../../tests/fixtures/plugins/registry';
 import {
   addArchitectureModule,
   createArchitectureFrameSnapshot,
@@ -19,14 +22,12 @@ import {
   materializeArchitecturePositions,
   moveArchitectureModuleToLayer,
 } from './cell-commands';
-import {
-  layoutArchitectureCells,
-  registerArchitectureCells,
-} from './cell-utils';
+import { layoutArchitectureCells } from './cell-utils';
+const testCellRegistry = createFixtureRegistry();
 
 const fixture = () => {
-  const registry = createCellRegistry();
-  registerArchitectureCells(registry);
+  const registry = createTestCellRegistry();
+
   const runtime = createCellRuntime(
     createArchitectureFrameSnapshot('frame', 'layer'),
     registry,
@@ -86,16 +87,28 @@ describe('architecture arrangement and domain groups', () => {
     const order = (runtime.store.cells.frame as FrameCell).children;
     runtime.transact({
       id: 'group',
-      operations: groupCells(runtime.store, 'frame', ['a', 'c'], 'group'),
+      operations: groupCells(
+        runtime.store,
+        'frame',
+        ['a', 'c'],
+        'group',
+        testCellRegistry,
+      ),
     });
     expect((runtime.store.cells.frame as FrameCell).children).toEqual(order);
     expect(runtime.index.domainOwnerOf.get('a')).toBe('layer');
     expect(runtime.index.domainOwnerOf.get('c')).toBe('other');
     expect(
-      arrangementAvailability(runtime.store, 'frame', [], {
-        type: 'layout',
-        style: 'layers',
-      }),
+      arrangementAvailability(
+        runtime.store,
+        'frame',
+        [],
+        {
+          type: 'layout',
+          style: 'layers',
+        },
+        testCellRegistry,
+      ),
     ).toMatchObject({
       enabled: false,
       reason: 'A group crosses architecture layers',
@@ -108,6 +121,8 @@ describe('architecture arrangement and domain groups', () => {
         'frame',
         ['group', 'b'],
         'vertical',
+        32,
+        testCellRegistry,
       ),
     });
     expect(runtime.index.domainOwnerOf.get('c')).toBe('other');
@@ -119,15 +134,25 @@ describe('architecture arrangement and domain groups', () => {
     const runtime = fixture();
     runtime.transact({
       id: 'group',
-      operations: groupCells(runtime.store, 'frame', ['a', 'c'], 'group'),
+      operations: groupCells(
+        runtime.store,
+        'frame',
+        ['a', 'c'],
+        'group',
+        testCellRegistry,
+      ),
     });
-    const fragment = copyCellFragment(runtime.store, ['group']);
+    const fragment = copyCellFragment(
+      runtime.store,
+      ['group'],
+      testCellRegistry,
+    );
     const plan = planCellPaste({
       store: runtime.store,
       frameId: 'frame',
       selectionIds: [],
       fragment,
-      registry: runtime.registry,
+      registry: testCellRegistry,
       allocateId: (id) => `copy-${id}`,
     });
     runtime.transact({ id: 'paste', operations: plan.operations });
@@ -135,7 +160,9 @@ describe('architecture arrangement and domain groups', () => {
     expect(runtime.index.domainOwnerOf.get('copy-c')).toBe('other');
     runtime.transact({
       id: 'delete-layer',
-      operations: deleteCells(runtime.store, ['other']),
+      operations: deleteCells(runtime.store, ['other'], {
+        registry: runtime.registry,
+      }),
     });
     const before = runtime.store;
     expect(() =>
@@ -144,7 +171,7 @@ describe('architecture arrangement and domain groups', () => {
         frameId: 'frame',
         selectionIds: [],
         fragment,
-        registry: runtime.registry,
+        registry: testCellRegistry,
         allocateId: (id) => `more-${id}`,
       }),
     ).toThrow('Original paste owner');

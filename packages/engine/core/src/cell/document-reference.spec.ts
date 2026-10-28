@@ -1,16 +1,18 @@
-import { describe, it, expect } from 'vitest';
+import { describe, expect, it } from 'vitest';
+import { createTestCellRegistry as createFixtureRegistry } from '../../../../../tests/fixtures/plugins/registry';
+import { arrangeCells } from './arrangement';
+import { deleteCells } from './index';
+import { createCellRuntime } from './runtime';
 import {
-  createDocumentReferenceCell,
-  createDocumentFrameCell,
-  createFrameCell,
   createCellStore,
+  createDocumentFrameCell,
+  createDocumentReferenceCell,
+  createFrameCell,
   type NodeCell,
 } from './types';
-import { createCellRuntime } from './runtime';
-import { validateCellStore } from './validation';
-import { arrangeCells } from './arrangement';
 import { DocumentReferenceUtil, type BaseCellUtil } from './util';
-import { deleteCells } from './index';
+import { validateCellStore } from './validation';
+const testCellRegistry = createFixtureRegistry();
 
 describe('neutral document occurrences', () => {
   for (const scene of [
@@ -27,6 +29,12 @@ describe('neutral document occurrences', () => {
           id: 'anchor',
           cellType: 'node',
           kind: scene,
+          data:
+            scene === 'workflow-start'
+              ? { memberIds: ['anchor'], graphMode: 'dag', origin: [0, 0] }
+              : scene === 'architecture-layer'
+                ? { order: '0', memberIds: [] }
+                : undefined,
           geometry: { x: 0, y: 0, width: 100, height: 60 },
         } as NodeCell;
         root.children.push('anchor');
@@ -39,9 +47,9 @@ describe('neutral document occurrences', () => {
       });
       root.children.push(card.id);
       store.cells[card.id] = card;
-      expect(validateCellStore(store)).toEqual([]);
-      const runtime = createCellRuntime({ store });
-      const util = runtime.registry.get(card.kind) as DocumentReferenceUtil;
+      expect(validateCellStore(store, testCellRegistry)).toEqual([]);
+      const runtime = createCellRuntime({ store }, testCellRegistry);
+      const util = testCellRegistry.get(card.kind) as DocumentReferenceUtil;
       expect(util).toBeInstanceOf(DocumentReferenceUtil);
       expect(util.capabilities(runtime.store, card, 'embedded')).toMatchObject({
         move: true,
@@ -57,6 +65,8 @@ describe('neutral document occurrences', () => {
           root.id,
           [],
           scene === 'workflow-start' ? 'flow' : 'layers',
+          32,
+          testCellRegistry,
         );
         expect(
           ops.some(
@@ -66,7 +76,9 @@ describe('neutral document occurrences', () => {
       }
       runtime.transact({
         id: 'delete',
-        operations: deleteCells(runtime.store, [card.id]),
+        operations: deleteCells(runtime.store, [card.id], {
+          registry: runtime.registry,
+        }),
       });
       expect(runtime.store.cells[card.id]).toBeUndefined();
     });
@@ -83,7 +95,9 @@ describe('neutral document occurrences', () => {
     });
     root.children.push(card.id);
     store.cells[card.id] = card;
-    expect(validateCellStore(store).map((issue) => issue.message)).toEqual(
+    expect(
+      validateCellStore(store, testCellRegistry).map((issue) => issue.message),
+    ).toEqual(
       expect.arrayContaining([
         'Document reference requires a target',
         'Document references cannot rotate',
@@ -103,10 +117,10 @@ it('editable document Frames are allowed only in regular canvases and keep Frame
   });
   root.children.push(frame.id);
   store.cells[frame.id] = frame;
-  expect(validateCellStore(store)).toEqual([]);
-  const runtime = createCellRuntime({ store });
+  expect(validateCellStore(store, testCellRegistry)).toEqual([]);
+  const runtime = createCellRuntime({ store }, testCellRegistry);
   expect(
-    (runtime.registry.get(frame.kind) as BaseCellUtil).capabilities(
+    (testCellRegistry.get(frame.kind) as BaseCellUtil).capabilities(
       runtime.store,
       frame,
       'embedded',
@@ -126,7 +140,7 @@ it('editable document Frames are allowed only in regular canvases and keep Frame
   } as NodeCell;
   root.children.push('anchor');
   expect(
-    validateCellStore(store).some(
+    validateCellStore(store, testCellRegistry).some(
       (issue) => issue.cellId === frame.id && issue.message.includes('scene'),
     ),
   ).toBe(true);

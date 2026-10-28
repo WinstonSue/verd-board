@@ -1,17 +1,18 @@
 import {
-  stripFrameViewports,
-  frameScene,
   applyCellOperations,
   copyCellFragment,
   deleteCells,
+  frameScene,
   isFrameCell,
   planCellPaste,
+  stripFrameViewports,
   validateCellStore,
   type CellOperation,
   type CellRegistry,
   type CellStore,
   type FrameSnapshot,
 } from '@sue/board-core';
+import { createVerdFramePluginSet } from './frame-plugins';
 
 export const isFrameSnapshot = (value: unknown): value is FrameSnapshot => {
   if (!value || typeof value !== 'object') return false;
@@ -30,7 +31,7 @@ export function openFrameOperations(
   frameId: string,
   incoming: FrameSnapshot,
   allocateId: (previous: string) => string,
-  registry?: CellRegistry,
+  registry: CellRegistry = createVerdFramePluginSet().registry,
 ): CellOperation[] {
   incoming = { store: stripFrameViewports(incoming.store) };
   const root = incoming.store.cells[incoming.store.rootId];
@@ -41,14 +42,15 @@ export function openFrameOperations(
     throw new Error(issues.map((issue) => issue.message).join('; '));
   const frame = store.cells[frameId];
   if (!isFrameCell(frame)) throw new Error('Missing frame');
-  const fragment = copyCellFragment(incoming.store, [
-    ...root.children,
-    ...root.groups,
-  ]);
-  const currentScene = frameScene(store, frameId);
+  const fragment = copyCellFragment(
+    incoming.store,
+    [...root.children, ...root.groups],
+    registry,
+  );
+  const currentScene = frameScene(store, frameId, registry);
   if (
     currentScene?.startsWith('uml-') &&
-    currentScene !== frameScene(incoming.store, root.id)
+    currentScene !== frameScene(incoming.store, root.id, registry)
   )
     throw new Error('Cannot replace UML with another scene');
   const cleared = deleteCells(
@@ -62,7 +64,7 @@ export function openFrameOperations(
       ),
     ],
     // Opening a file replaces the frame, including objects the user had locked.
-    { ignoreLock: true },
+    { registry: registry, ignoreLock: true },
   );
   const pasted = planCellPaste({
     store,

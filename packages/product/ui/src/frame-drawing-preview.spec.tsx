@@ -1,22 +1,18 @@
-import React, { act, createRef } from 'react';
-import { createRoot } from 'react-dom/client';
-import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
-  createCellRegistry,
   applyCellOperations,
   createCellStore,
-  createFrameCell,
   createDefaultShapeGeometryRegistry,
-  isNodeCell,
-  isEdgeCell,
+  createFrameCell,
   edgePolyline,
   flattenCurve,
+  isEdgeCell,
+  isNodeCell,
   moveEdgeRoutePoint,
+  type CellTransaction,
+  type FrameCell,
   type FrameSnapshot,
   type NodeCell,
-  type FrameCell,
   type Point,
-  type CellTransaction,
 } from '@sue/board-core';
 import * as Draw from '@sue/board-draw';
 import {
@@ -25,12 +21,14 @@ import {
   type FrameCanvasTool,
   type FrameIntentResult,
 } from '@sue/board-react';
-import { createMindFrameExtensions } from '@sue/board-react-mind';
-import { createWorkflowFrameExtensions } from '@sue/board-react-workflow';
-import { createArchitectureFrameExtensions } from '@sue/board-react-architecture';
+import { act, createRef } from 'react';
+import { createRoot } from 'react-dom/client';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { createTestCellRegistry as createFixtureRegistry } from '../../../../tests/fixtures/plugins/registry';
+import { createTestFramePluginSet } from '../../../../tests/fixtures/plugins/ui';
 import { cloneFrameImageSvg } from '../../../react/board/src/frame-export';
-import { frameDrawExtensions } from './frame-draw-extension';
 import { createFrameDrawingTool } from './frame-drawing-tool';
+const testCellRegistry = createFixtureRegistry();
 
 (
   globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }
@@ -73,16 +71,10 @@ const mount = async (
     bottom: 700,
     toJSON() {},
   } as DOMRect);
-  const registry = createCellRegistry();
-  Draw.registerDrawCells(registry);
+  const pluginSet = createTestFramePluginSet();
+  const { registry } = pluginSet;
   const layout = vi.fn(() => new Map());
-  const extensions = [
-    ...createMindFrameExtensions(registry),
-    ...createWorkflowFrameExtensions(registry),
-    ...createArchitectureFrameExtensions(registry),
-    ...frameDrawExtensions,
-    { layout },
-  ];
+  const extensions = [...pluginSet.extensions, { layout }];
   const container = document.createElement('div');
   document.body.append(container);
   const root = createRoot(container),
@@ -315,7 +307,11 @@ describe('drawing previews and final cells share rendering', () => {
   });
   it('uses the final release position and current zoom, and retains click/minimum defaults', async () => {
     const test = await mount();
-    await act(async () => test.controller.current!.setZoom(2));
+    await act(async () =>
+      test.controller.current!.executeAction('canvas.view.set-zoom', {
+        zoom: 2,
+      }),
+    );
     await test.paint();
     await test.start([500, 270], [300, 150]);
     await act(async () => test.fire('pointerup', [250, 100]));
@@ -782,7 +778,11 @@ describe('live draft dependencies', () => {
     await test.paint();
     const circle = test.svg.querySelector('[data-eraser-preview]')!;
     expect(circle.getAttribute('r')).toBe('10');
-    await act(async () => test.controller.current!.setZoom(2));
+    await act(async () =>
+      test.controller.current!.executeAction('canvas.view.set-zoom', {
+        zoom: 2,
+      }),
+    );
     await test.paint();
     expect(
       test.svg.querySelector('[data-eraser-preview]')!.getAttribute('r'),
@@ -797,7 +797,11 @@ describe('live draft dependencies', () => {
     const test = await mount(tool('curve'), value);
     await test.start([100, 150], [390, 150]);
     expect(test.svg.querySelector('[data-port-active]')).toBeTruthy();
-    await act(async () => test.controller.current!.setZoom(2));
+    await act(async () =>
+      test.controller.current!.executeAction('canvas.view.set-zoom', {
+        zoom: 2,
+      }),
+    );
     await test.paint();
     expect(test.svg.querySelector('[data-port-active]')).toBeNull();
     const before = paths(test.svg.querySelector('[data-drawing-preview]')!);
@@ -1032,9 +1036,11 @@ describe('created-cell activation', () => {
       width: 240,
       height: 180,
     });
-    value.store = applyCellOperations(value.store, [
-      { type: 'insert_cell', parentId: 'root', cell: nested },
-    ]);
+    value.store = applyCellOperations(
+      value.store,
+      [{ type: 'insert_cell', parentId: 'root', cell: nested }],
+      testCellRegistry,
+    );
     const test = await mount(tool('select'), value);
     const title = test.svg.querySelector('[data-frame-title-id="nested"]')!;
     expect(title.querySelector('foreignObject')!.getAttribute('x')).toBe('316');
@@ -1058,7 +1064,11 @@ describe('created-cell activation', () => {
       Object.defineProperty(anchor, key, {
         value: { baseVal: { value: Number(anchor.getAttribute(key)) } },
       });
-    await act(async () => test.controller.current!.editText('nested'));
+    await act(async () =>
+      test.controller.current!.executeAction('canvas.selection.edit', {
+        cellId: 'nested',
+      }),
+    );
     expect(
       document.querySelector('[data-frame-title-editor="nested"]'),
     ).not.toBeNull();
@@ -1085,7 +1095,11 @@ describe('created-cell activation', () => {
         cells: { ...value.store.cells, nested: { ...nested, locked: true } },
       },
     });
-    await act(async () => test.controller.current!.editText('nested'));
+    await act(async () =>
+      test.controller.current!.executeAction('canvas.selection.edit', {
+        cellId: 'nested',
+      }),
+    );
     expect(
       document.querySelector('[data-frame-title-editor="nested"]'),
     ).toBeNull();

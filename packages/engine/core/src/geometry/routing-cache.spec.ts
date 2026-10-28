@@ -1,18 +1,20 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import * as Routing from './obstacle-route';
+import { createTestCellRegistry as createFixtureRegistry } from '../../../../../tests/fixtures/plugins/registry';
+import {
+  createCellStore,
+  createFrameCell,
+  type CellStore,
+  type EdgeCell,
+  type NodeCell,
+} from '../cell/types';
 import {
   createEdgeRoutingContext,
   edgePolyline,
   edgeRoutePoints,
 } from './edge';
 import { edgeLabelLayout } from './edge-label';
-import {
-  createCellStore,
-  createFrameCell,
-  type NodeCell,
-  type EdgeCell,
-  type CellStore,
-} from '../cell/types';
+import * as Routing from './obstacle-route';
+const testCellRegistry = createFixtureRegistry();
 
 const fixture = () => {
   const frame = createFrameCell('root'),
@@ -48,7 +50,13 @@ const prepare = (
   store: CellStore,
   previous?: ReturnType<typeof createEdgeRoutingContext>,
 ) => {
-  const context = createEdgeRoutingContext(store, 'root', undefined, previous);
+  const context = createEdgeRoutingContext(
+    store,
+    'root',
+    undefined,
+    previous,
+    testCellRegistry,
+  );
   context.prepare!();
   return context;
 };
@@ -74,6 +82,62 @@ describe('geometry-based routing reuse', () => {
     expect(second.routes.get('e')!.edge).toBe(next.cells.e);
     expect(second.terminals!.get('e')!.edge).toBe(next.cells.e);
     expect(edgePolyline(next, next.cells.e, undefined, second)).toBe(points);
+  });
+  it('invalidates changed plugin direction hints without moving nodes, and preserves authored anchors', () => {
+    const store = fixture();
+    let side: 'top' | 'bottom' = 'top';
+    const registry = {
+      ...testCellRegistry,
+      scenes: [
+        {
+          id: 'hint',
+          anchorKinds: ['frame'],
+          kinds: ['arrow'],
+          routing: () => ({ source: side, target: side }),
+        },
+      ],
+    };
+    const first = createEdgeRoutingContext(
+      store,
+      'root',
+      undefined,
+      undefined,
+      registry,
+    );
+    first.prepare!();
+    expect(first.terminals!.get('e')!.source.side).toBe('top');
+    side = 'bottom';
+    const find = vi.spyOn(Routing, 'routeOrthogonalAvoiding');
+    const next = createEdgeRoutingContext(
+      store,
+      'root',
+      undefined,
+      first,
+      registry,
+    );
+    next.prepare!();
+    expect(find).toHaveBeenCalled();
+    expect(next.terminals!.get('e')!.source.side).toBe('bottom');
+    const edge = store.cells.e as EdgeCell;
+    const fixed = {
+      ...store,
+      cells: {
+        ...store.cells,
+        e: {
+          ...edge,
+          source: { cellId: 'a', anchor: [1, 0.5] as [number, number] },
+        },
+      },
+    };
+    const authored = createEdgeRoutingContext(
+      fixed,
+      'root',
+      undefined,
+      next,
+      registry,
+    );
+    authored.prepare!();
+    expect(authored.terminals!.get('e')!.source.point).toEqual([80, 30]);
   });
   it.each([
     'move',
@@ -122,7 +186,13 @@ describe('geometry-based routing reuse', () => {
       );
     }
     const find = vi.spyOn(Routing, 'routeOrthogonalAvoiding');
-    const second = createEdgeRoutingContext(next, 'root', undefined, first);
+    const second = createEdgeRoutingContext(
+      next,
+      'root',
+      undefined,
+      first,
+      testCellRegistry,
+    );
     if (change === 'clearance')
       Object.defineProperty(second, 'clearance', { value: 40 });
     second.prepare!();
@@ -144,7 +214,13 @@ describe('geometry-based routing reuse', () => {
       points,
     );
     expect(find).not.toHaveBeenCalled();
-    const lazy = createEdgeRoutingContext(store, 'root');
+    const lazy = createEdgeRoutingContext(
+      store,
+      'root',
+      undefined,
+      undefined,
+      testCellRegistry,
+    );
     const oldPrepare = vi.spyOn(lazy, 'prepare');
     prepare(store, lazy);
     expect(oldPrepare).not.toHaveBeenCalled();

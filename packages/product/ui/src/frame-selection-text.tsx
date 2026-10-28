@@ -1,22 +1,23 @@
-import {
-  appearanceCells,
-  isNodeCell,
-  isFrameCell,
-  isMindNodeKind,
-  type CellStore,
-  type CellOperation,
-} from '@sue/board-core';
+import { FrameSettingsControl } from '@sue/board-react';
 import {
   Alignment,
   createInlineText,
   formatBoardText,
   isBoardTextDocument,
+  textWithDefaultAlignment,
   type BoardTextDocument,
   type BoardTextNode,
-  textWithDefaultAlignment,
 } from '@sue/board-common';
+import {
+  appearanceCells,
+  isFrameCell,
+  isNodeCell,
+  type CellOperation,
+  type CellStore,
+} from '@sue/board-core';
+import { isMindNodeKind } from '@sue/board-mind';
+import { Bold, Italic, Strikethrough, Underline } from 'lucide-react';
 import { useState } from 'react';
-import { Bold, Italic, Underline, Strikethrough } from 'lucide-react';
 import { useI18n } from './i18n';
 
 export interface SelectionTextStyle {
@@ -194,77 +195,106 @@ export function FrameSelectionText({
       </div>
       <label>
         {language === 'zh' ? '字号' : 'Font size'}
-        <select
-          aria-label="Selection font size"
+        <FrameSettingsControl
+          field={{
+            key: 'Selection font size',
+            editor: 'select',
+            props: {
+              'aria-label': 'Selection font size',
+              children: (
+                <>
+                  <option value="" disabled>
+                    {language === 'zh' ? '混合值' : 'Mixed values'}
+                  </option>
+                  {[12, 14, 16, 18, 20, 24, 28, 32, 40, 48].map((size) => (
+                    <option key={size} value={`${size}px`}>
+                      {size}
+                    </option>
+                  ))}
+                </>
+              ),
+            },
+          }}
           value={common('fontSize')}
-          onChange={(event) => change({ fontSize: event.target.value })}
-        >
-          <option value="" disabled>
-            {language === 'zh' ? '混合值' : 'Mixed values'}
-          </option>
-          {[12, 14, 16, 18, 20, 24, 28, 32, 40, 48].map((size) => (
-            <option key={size} value={`${size}px`}>
-              {size}
-            </option>
-          ))}
-        </select>
+          onCommit={(value) => change({ fontSize: value })}
+        />
       </label>
       <label>
         {language === 'zh' ? '文字颜色' : 'Text color'}
-        <input
-          aria-label="Selection text color"
-          type="color"
-          data-mixed={common('color') === '' || undefined}
-          title={
-            common('color') === ''
-              ? language === 'zh'
-                ? '混合值'
-                : 'Mixed values'
-              : undefined
-          }
-          aria-description={
-            common('color') === ''
-              ? language === 'zh'
-                ? '混合值'
-                : 'Mixed values'
-              : undefined
-          }
+        <FrameSettingsControl
+          field={{
+            key: 'Selection text color',
+            editor: 'input',
+            props: {
+              'aria-label': 'Selection text color',
+              type: 'color',
+              'data-mixed': common('color') === '' || undefined,
+              title:
+                common('color') === ''
+                  ? language === 'zh'
+                    ? '混合值'
+                    : 'Mixed values'
+                  : undefined,
+              'aria-description':
+                common('color') === ''
+                  ? language === 'zh'
+                    ? '混合值'
+                    : 'Mixed values'
+                  : undefined,
+            },
+          }}
           value={
             /^#[0-9a-f]{6}$/i.test(common('color'))
               ? common('color')
               : '#0f172a'
           }
-          onChange={(event) => change({ color: event.target.value })}
+          onCommit={(value) => change({ color: value })}
         />
       </label>
       <label>
         {language === 'zh' ? '文字对齐' : 'Text alignment'}
-        <select
-          aria-label="Selection text alignment"
+        <FrameSettingsControl
+          field={{
+            key: 'Selection text alignment',
+            editor: 'select',
+            props: {
+              'aria-label': 'Selection text alignment',
+              children: (
+                <>
+                  <option value="" disabled>
+                    {language === 'zh' ? '混合值' : 'Mixed values'}
+                  </option>
+                  <option value="left">
+                    {language === 'zh' ? '左' : 'Left'}
+                  </option>
+                  <option value="center">
+                    {language === 'zh' ? '中' : 'Center'}
+                  </option>
+                  <option value="right">
+                    {language === 'zh' ? '右' : 'Right'}
+                  </option>
+                </>
+              ),
+            },
+          }}
           value={
             alignments.every((alignment) => alignment === alignments[0])
               ? alignments[0]
               : ''
           }
-          onChange={(event) =>
-            change({ align: event.target.value as Alignment })
-          }
-        >
-          <option value="" disabled>
-            {language === 'zh' ? '混合值' : 'Mixed values'}
-          </option>
-          <option value="left">{language === 'zh' ? '左' : 'Left'}</option>
-          <option value="center">{language === 'zh' ? '中' : 'Center'}</option>
-          <option value="right">{language === 'zh' ? '右' : 'Right'}</option>
-        </select>
+          onCommit={(value) => change({ align: value as Alignment })}
+        />
       </label>
       <label>
         {language === 'zh' ? '链接' : 'Link'}
-        <input
-          aria-label="Selection link URL"
-          type="url"
+        <FrameSettingsControl
+          field={{
+            key: 'Selection link URL',
+            editor: 'input',
+            props: { 'aria-label': 'Selection link URL', type: 'url' },
+          }}
           value={link}
-          onChange={(event) => setLink(event.target.value)}
+          onCommit={(value) => setLink(value)}
         />
       </label>
       <div>

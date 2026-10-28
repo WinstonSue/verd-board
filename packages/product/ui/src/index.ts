@@ -1,20 +1,37 @@
-export * from './verd-frame';
-export * from './components/workspace-switcher';
-export * from './workspace-tabs';
-export * from './file-tree';
-export * from './chart-library';
-export * from './document-page';
-export * from './workspace-empty';
-export * from './workspace-settings';
-export * from './i18n';
-export * from './appearance-preferences';
-export * from './frame-settings-page';
-export { CanvasPreview } from './canvas-preview';
+export { PreviewMountProvider, usePreviewMount } from '@sue/board-react';
+export type {
+  FrameCanvasController,
+  FrameLinkHost,
+  FrameDocumentReferences,
+  FrameDocumentEditingView,
+} from '@sue/board-react';
 export { DocumentEditor, DocumentPreview } from '@sue/board-react-text';
 export type { DocumentPreviewController } from '@sue/board-react-text';
-export type { FrameDocumentReferences } from '@sue/board-react';
-export { PreviewMountProvider, usePreviewMount } from '@sue/board-react';
+export * from './appearance-preferences';
+export { CanvasPreview } from './canvas-preview';
+export * from './chart-library';
+export * from './components/workspace-switcher';
+export * from './document-page';
+export * from './file-tree';
+export * from './frame-settings-page';
+export * from './i18n';
+export * from './verd-frame';
+export * from './workspace-empty';
+export * from './workspace-settings';
+export * from './workspace-tabs';
+export * from './workspace-file-navigation';
+export { bindWorkspaceAction } from './workspace-action-bindings';
 
+export * from './frame-plugins';
 export * from './my-page';
 export * from './workspace-menu';
 export * from './workspace-trash';
+
+export {
+  FrameAutoCalculationProvider,
+  createFrameAutoCalculationSession,
+} from '@sue/board-react';
+export type {
+  FrameAutoCalculationConfig,
+  FrameAutoCalculationSession,
+} from '@sue/board-react';

@@ -1,0 +1,120 @@
+import {
+  _electron as electron,
+  expect,
+  test,
+  type ElectronApplication,
+} from '@playwright/test';
+import {
+  copyFile,
+  mkdir,
+  mkdtemp,
+  readFile,
+  rm,
+  writeFile,
+} from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
+import { setAppLanguage } from '../../web-e2e/src/app-actions';
+import { expandPropertyGroup } from '../../web-e2e/src/property-group';
+
+const root = path.resolve(__dirname, '../../..');
+// eslint-disable-next-line no-empty-pattern -- Electron owns the page.
+test('one-shot optimized paths persist across desktop restart without enabling continuous calculation', async ({}, info) => {
+  const directory = await mkdtemp(
+    path.join(tmpdir(), 'verd-optimized-routing-'),
+  );
+  const workspace = path.join(directory, 'workspace');
+  const filename = path.join(workspace, 'routing.verd.json');
+  let desktop: ElectronApplication | undefined;
+  try {
+    await mkdir(workspace);
+    await copyFile(
+      path.join(root, 'workspace/架构图/01-项目分层与依赖.verd.json'),
+      filename,
+    );
+    const before = JSON.parse(await readFile(filename, 'utf8'));
+    const launcher = path.join(directory, 'launch.cjs');
+    await writeFile(
+      launcher,
+      `const {app}=require('electron');\napp.setPath('userData',${JSON.stringify(path.join(directory, 'user-data'))});\nrequire(${JSON.stringify(path.join(root, 'apps/desktop/dist-electron/main.js'))});`,
+    );
+    const env = { ...process.env, VERDBOARD_WORKSPACE_PATH: workspace };
+    delete env.ELECTRON_RUN_AS_NODE;
+    delete env.VITE_DEV_SERVER_URL;
+    const launch = async () => {
+      desktop = await electron.launch({ args: [launcher], env });
+      const page = await desktop.firstWindow();
+      await desktop.evaluate(({ BrowserWindow }) =>
+        BrowserWindow.getAllWindows()[0].setSize(1440, 900),
+      );
+      await expect(page.locator('.workspace-shell')).toBeVisible();
+      await page.locator('.file-tree-name[title="routing.verd.json"]').click();
+      const pane = page.locator('.workspace-pane.is-active');
+      await expect(pane.locator('[data-edge-hit]')).toHaveCount(41);
+      await setAppLanguage(page, 'zh');
+      await expandPropertyGroup(pane);
+      return { page, pane, button: pane.getByTestId('frame-reroute-edges') };
+    };
+    const { page, pane, button } = await launch();
+    await expect(button).toBeEnabled();
+    await button.click();
+    await expect(button).toBeEnabled();
+    await expect(
+      pane.getByTestId('frame-auto-layout-toggle'),
+    ).not.toBeChecked();
+    await expect(pane.getByTestId('frame-auto-edges-toggle')).not.toBeChecked();
+    await expect
+      .poll(
+        async () =>
+          Object.values(
+            JSON.parse(await readFile(filename, 'utf8')).cells,
+          ).filter(
+            (cell: any) =>
+              cell.route?.mode === 'orthogonal' && cell.route.points?.length,
+          ).length,
+      )
+      .toBe(41);
+    const saved = JSON.parse(await readFile(filename, 'utf8'));
+    for (const cell of Object.values(before.cells) as any[])
+      if (cell.cellType === 'node') expect(saved.cells[cell.id]).toEqual(cell);
+    await pane.getByRole('button', { name: '选择连线整理方式' }).click();
+    await expect(
+      page.getByRole('menuitemradio', { name: /^重置手工走线/ }),
+    ).toBeVisible();
+    await page.screenshot({ path: info.outputPath('routing-options.png') });
+    await page.getByRole('menuitemradio', { name: /^重置手工走线/ }).click();
+    await expect(button).toHaveText('重置手工走线');
+    await expect(button).toBeDisabled();
+    await expect
+      .poll(
+        async () =>
+          Object.values(
+            JSON.parse(await readFile(filename, 'utf8')).cells,
+          ).filter((cell: any) => cell.route?.points?.length).length,
+      )
+      .toBe(0);
+    await pane.getByRole('button', { name: '选择连线整理方式' }).click();
+    await page.getByRole('menuitemradio', { name: /^优化全部连线/ }).click();
+    await expect
+      .poll(async () => JSON.parse(await readFile(filename, 'utf8')).cells)
+      .toEqual(saved.cells);
+    const closed = page.waitForEvent('close');
+    await desktop!.evaluate(({ BrowserWindow }) =>
+      BrowserWindow.getAllWindows()[0].close(),
+    );
+    await closed;
+    await desktop!.close();
+    desktop = undefined;
+    const restarted = await launch();
+    await expect(restarted.button).toBeEnabled();
+    await expect(
+      restarted.pane.getByTestId('frame-auto-edges-toggle'),
+    ).not.toBeChecked();
+    expect(JSON.parse(await readFile(filename, 'utf8')).cells).toEqual(
+      saved.cells,
+    );
+  } finally {
+    await desktop?.close();
+    await rm(directory, { recursive: true, force: true });
+  }
+});

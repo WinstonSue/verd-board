@@ -13,6 +13,7 @@ export interface OrthogonalRoutingOptions {
   clearance?: number;
   strokeWidth?: number;
   bendPenalty?: number;
+  crossingPenalty?: number;
   /** Previously planned edges are soft obstacles, never impassable walls. */
   occupied?: readonly RoutingSegment[];
 }
@@ -35,6 +36,7 @@ export const routingSegmentPenalty = (
   a: Point,
   b: Point,
   segments: readonly RoutingSegment[],
+  crossingPenalty = 160,
 ) => {
   const horizontal = a[1] === b[1],
     axis = horizontal ? 0 : 1,
@@ -46,14 +48,14 @@ export const routingSegmentPenalty = (
       if (gap < laneGap)
         penalty +=
           overlapLength(a[axis], b[axis], start[axis], end[axis]) *
-          (gap < epsilon ? 8 : 2 * (1 - gap / laneGap));
+          (gap < epsilon ? 128 : 4 * (1 - gap / laneGap));
     } else if (
       start[axis] > Math.min(a[axis], b[axis]) &&
       start[axis] <= Math.max(a[axis], b[axis]) &&
       a[across] > Math.min(start[across], end[across]) &&
       a[across] < Math.max(start[across], end[across])
     )
-      penalty += 160;
+      penalty += crossingPenalty;
   }
   return penalty;
 };
@@ -121,6 +123,43 @@ const clearRoute = (
           outwardSegment(b, a, targetSide)),
     );
   });
+
+/** Shared safety check for automatic route compaction; never moves endpoints. */
+export function isClearOrthogonalRoute(
+  points: readonly Point[],
+  sourceSide: GeometrySide,
+  targetSide: GeometrySide,
+  obstacles: readonly RoutingObstacle[],
+  options: OrthogonalRoutingOptions,
+): boolean {
+  if (
+    points.length < 2 ||
+    points.some((point) => !point.every(Number.isFinite))
+  )
+    return false;
+  if (
+    !points
+      .slice(1)
+      .every(
+        (end, at) => (points[at][0] === end[0]) !== (points[at][1] === end[1]),
+      )
+  )
+    return false;
+  if (
+    !outwardSegment(points[0], points[1], sourceSide) ||
+    !outwardSegment(points.at(-1)!, points.at(-2)!, targetSide)
+  )
+    return false;
+  const clearance = options.clearance ?? 12;
+  const boxes = obstacles.map((box) => ({
+    ...box,
+    x: box.x - clearance,
+    y: box.y - clearance,
+    width: box.width + clearance * 2,
+    height: box.height + clearance * 2,
+  }));
+  return clearRoute(points, boxes, sourceSide, targetSide, options);
+}
 
 const escape = (
   point: Point,
@@ -274,6 +313,23 @@ const findRoute = (
         axis === 0 ? box.x : box.y,
         axis === 0 ? box.x + box.width : box.y + box.height,
       );
+    const boundaries = [...new Set(values)].sort((a, b) => a - b);
+    // Actual free-space midlines survive manual moves and save/reload.
+    const gaps = boundaries
+      .slice(1)
+      .flatMap((end, at) =>
+        end - boundaries[at] >= laneGap * 2 ? [(end + boundaries[at]) / 2] : [],
+      );
+    values.push(
+      ...gaps
+        .sort(
+          (a, b) =>
+            Math.min(Math.abs(a - start[axis]), Math.abs(a - end[axis])) -
+              Math.min(Math.abs(b - start[axis]), Math.abs(b - end[axis])) ||
+            a - b,
+        )
+        .slice(0, boxes.length > 64 ? 4 : 12),
+    );
     values.push(Math.min(...values) - 24, Math.max(...values) + 24);
     // A bounded set of extra channels lets parallel edges separate without
     // growing a dense diagram's visibility grid for every previously routed edge.
@@ -326,7 +382,7 @@ const findRoute = (
               along[a + 1],
               segment.start[axis],
               segment.end[axis],
-            ) * (gap < epsilon ? 8 : 2 * (1 - gap / laneGap));
+            ) * (gap < epsilon ? 128 : 4 * (1 - gap / laneGap));
       if (
         b + 1 < across.length &&
         coordinate > across[b] &&
@@ -337,7 +393,7 @@ const findRoute = (
             along[a] > Math.min(segment.start[axis], segment.end[axis]) &&
             along[a] < Math.max(segment.start[axis], segment.end[axis])
           )
-            crossing[at(a, b)] += 160;
+            crossing[at(a, b)] += options.crossingPenalty ?? 160;
     }
   }
   const firstNode = grid.yi.get(start[1])! * width + grid.xi.get(start[0])!;
@@ -436,8 +492,12 @@ export const routeOrthogonalAvoiding = (
         .slice(1)
         .some(
           (point, at) =>
-            routingSegmentPenalty(original[at], point, options.occupied ?? []) >
-            0,
+            routingSegmentPenalty(
+              original[at],
+              point,
+              options.occupied ?? [],
+              options.crossingPenalty,
+            ) > 0,
         )
     )
       return { points: original, status: 'clear' };
@@ -453,3 +513,88 @@ export const routeOrthogonalAvoiding = (
   }
   return { points: original, status: 'blocked' };
 };
+
+/** Separate residual shared lanes without moving authored terminals or crossing shapes. */
+export function separateOrthogonalSegments(
+  points: readonly Point[],
+  sourceSide: GeometrySide,
+  targetSide: GeometrySide,
+  obstacles: readonly RoutingObstacle[],
+  options: OrthogonalRoutingOptions,
+): Point[] {
+  const clearance = Math.max(0, options.strokeWidth ?? 2) / 2 + 1;
+  const boxes = obstacles.map((box) => ({
+    ...box,
+    x: box.x - clearance,
+    y: box.y - clearance,
+    width: box.width + clearance * 2,
+    height: box.height + clearance * 2,
+  }));
+  const score = (route: readonly Point[]) =>
+    route
+      .slice(1)
+      .reduce(
+        (sum, end, at) =>
+          sum +
+          Math.abs(end[0] - route[at][0]) +
+          Math.abs(end[1] - route[at][1]) +
+          routingSegmentPenalty(
+            route[at],
+            end,
+            options.occupied ?? [],
+            options.crossingPenalty,
+          ),
+        0,
+      );
+  let result = points.map((point) => [...point] as Point),
+    best = score(result);
+  for (let at = 1; at + 2 < result.length; at++) {
+    if (
+      !routingSegmentPenalty(result[at], result[at + 1], options.occupied ?? [])
+    )
+      continue;
+    const axis = result[at][1] === result[at + 1][1] ? 1 : 0;
+    for (const offset of [
+      -1,
+      1,
+      -2,
+      2,
+      -4,
+      4,
+      -8,
+      8,
+      -laneGap,
+      laneGap,
+      -laneGap * 2,
+      laneGap * 2,
+    ]) {
+      const candidate = result.map((point) => [...point] as Point);
+      candidate[at][axis] += offset;
+      candidate[at + 1][axis] += offset;
+      // Moving a lane must not reverse a neighboring leg into a hairpin.
+      if (
+        [at - 1, at, at + 1].some((index) => {
+          const oldA = result[index],
+            oldB = result[index + 1],
+            a = candidate[index],
+            b = candidate[index + 1];
+          return (
+            (oldB[0] - oldA[0]) * (b[0] - a[0]) +
+              (oldB[1] - oldA[1]) * (b[1] - a[1]) <=
+            0
+          );
+        })
+      )
+        continue;
+      const cost = score(candidate);
+      if (
+        cost < best - epsilon &&
+        clearRoute(candidate, boxes, sourceSide, targetSide, options)
+      ) {
+        result = candidate;
+        best = cost;
+      }
+    }
+  }
+  return simplifyOrthogonal(result);
+}

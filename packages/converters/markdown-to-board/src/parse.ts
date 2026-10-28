@@ -1,5 +1,5 @@
+import type { BoardTextNode } from '@sue/board-common';
 import {
-  CellKind,
   createFrameCell,
   type Cell,
   type CellId,
@@ -9,20 +9,19 @@ import {
 import {
   createMindChildCell,
   createMindRootCell,
+  MindKind,
   stackMindTreeRoots,
 } from '@sue/board-mind';
-import { unified } from 'unified';
-import remarkParse from 'remark-parse';
 import type { Heading, List, PhrasingContent, RootContent } from 'mdast';
+import remarkParse from 'remark-parse';
+import { unified } from 'unified';
 import {
   markdownBlocks,
   markdownDefinitions,
   markdownInline,
   markdownNoteDocument,
   markdownTitleDocument,
-  type MarkdownDefinitions,
 } from './richtext';
-import type { BoardTextNode } from '@sue/board-common';
 
 export interface MarkdownParseOptions {
   /** Title for documents that carry no usable heading of their own. */
@@ -120,7 +119,7 @@ export const parseMarkdownToFrameSnapshot = (
     childCounts.set(parentId, order + 1);
     const edge: Cell = {
       id: `markdown:branch:${sequence}`,
-      kind: CellKind.mindBranch,
+      kind: MindKind.mindBranch,
       cellType: 'edge',
       source: { cellId: parentId },
       target: { cellId: node.id },

@@ -1,40 +1,40 @@
-import { entityCodesToText } from './utils.js';
-import {
-  createUmlClassFrameSnapshot,
-  createUmlSequenceFrameSnapshot,
-  createUmlClassCell,
-  createUmlParticipantCell,
-  createUmlRelationCell,
-  createUmlMessageCell,
-  createUmlNoteCell,
-  createUmlFragmentCell,
-  registerUmlCells,
-} from '@sue/board-uml';
 import {
   createCellRegistry,
   isFrameCell,
-  isNodeCell,
-  umlRoot,
   validateCellStore,
   type Cell,
-  type NodeCell,
   type EdgeCell,
   type FrameSnapshot,
+  type NodeCell,
+} from '@sue/board-core';
+import { createDrawPlugin } from '@sue/board-draw';
+import {
+  createUmlClassCell,
+  createUmlClassFrameSnapshot,
+  createUmlFragmentCell,
+  createUmlMessageCell,
+  createUmlNoteCell,
+  createUmlParticipantCell,
+  createUmlPlugin,
+  createUmlRelationCell,
+  createUmlSequenceFrameSnapshot,
+  umlRoot,
   type UmlClassData,
+  type UmlEvent,
+  type UmlFragmentData,
+  type UmlMessageData,
+  type UmlNoteData,
+  type UmlRelation,
   type UmlRelationData,
   type UmlSequenceData,
-  type UmlFragmentData,
-  type UmlNoteData,
-  type UmlMessageData,
-  type UmlEvent,
-  type UmlRelation,
-} from '@sue/board-core';
+} from '@sue/board-uml';
 import type { Diagram } from 'mermaid/dist/Diagram.js';
 import type {
+  ClassMember,
   ClassNode,
   ClassRelation,
-  ClassMember,
 } from 'mermaid/dist/diagrams/class/classTypes.js';
+import { entityCodesToText } from './utils.js';
 type Db = {
   getClasses(): Record<string, ClassNode>;
   getRelations(): ClassRelation[];
@@ -62,8 +62,10 @@ const text = (value: string) =>
 const actorId = (value: any): string =>
   typeof value === 'string' ? value : value?.actor;
 function checked(snapshot: FrameSnapshot) {
-  const registry = createCellRegistry();
-  registerUmlCells(registry);
+  const registry = createCellRegistry({
+    plugins: [createUmlPlugin(), createDrawPlugin()],
+  });
+
   const issues = validateCellStore(snapshot.store, registry);
   if (issues.length) throw new Error(issues.map((i) => i.message).join('; '));
   return snapshot;

@@ -1,6 +1,6 @@
 import {
-  stripFrameViewports,
   isFrameCell,
+  stripFrameViewports,
   validateCellStore,
   type Cell,
   type CellRegistry,
@@ -8,6 +8,7 @@ import {
   type FrameSnapshot,
 } from '@sue/board-core';
 import type { StorageAdapter } from '../storage-adapter';
+import { createWorkspaceCellRegistry } from './plugins';
 
 export const WORKSPACE_KEY = 'main_board_content';
 export const MIGRATION_BACKUP_KEY = 'legacy_workspace_backup';
@@ -58,7 +59,7 @@ export const isWorkspaceManifest = (
 };
 const assertWorkspace = (
   snapshot: WorkspaceSnapshot,
-  registry?: CellRegistry,
+  registry: CellRegistry = createWorkspaceCellRegistry(),
 ) => {
   const errors = validateCellStore(snapshot.store, registry);
   if (errors.length)
@@ -162,7 +163,7 @@ const frameRecord = (
 const persistCellWorkspace = async (
   adapter: StorageAdapter,
   snapshot: WorkspaceSnapshot,
-  registry?: CellRegistry,
+  registry: CellRegistry = createWorkspaceCellRegistry(),
 ): Promise<WorkspaceManifest> => {
   const saved = clone(snapshot);
   assertWorkspace(saved, registry);
@@ -234,7 +235,7 @@ const persistCellWorkspace = async (
 export const saveCellWorkspace = (
   adapter: StorageAdapter,
   snapshot: WorkspaceSnapshot,
-  registry?: CellRegistry,
+  registry: CellRegistry = createWorkspaceCellRegistry(),
 ) =>
   withStorageChannel(adapter, () =>
     persistCellWorkspace(adapter, snapshot, registry),
@@ -242,7 +243,7 @@ export const saveCellWorkspace = (
 
 const readCellWorkspace = async (
   adapter: StorageAdapter,
-  registry?: CellRegistry,
+  registry: CellRegistry = createWorkspaceCellRegistry(),
 ): Promise<WorkspaceSnapshot | null> => {
   const value = await adapter.getItem(WORKSPACE_KEY);
   if (!value) return null;
@@ -287,7 +288,7 @@ const readCellWorkspace = async (
 };
 export const loadCellWorkspace = (
   adapter: StorageAdapter,
-  registry?: CellRegistry,
+  registry: CellRegistry = createWorkspaceCellRegistry(),
 ) =>
   withStorageChannel(adapter, async () => {
     const snapshot = await readCellWorkspace(adapter, registry);

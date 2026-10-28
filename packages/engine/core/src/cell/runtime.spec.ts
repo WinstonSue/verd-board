@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { createCellRuntime } from './runtime';
+import { createTestCellRegistry as createFixtureRegistry } from '../../../../../tests/fixtures/plugins/registry';
 import { applyCellOperations } from './index';
+import { createCellRuntime } from './runtime';
 import { createCellStore, createFrameCell } from './types';
+const testCellRegistry = createFixtureRegistry();
 describe('mounted frame runtime', () => {
   it('drops legacy frame cameras without changing the input and caches indexes by document identity', () => {
     const frame = createFrameCell('root');
@@ -9,7 +11,7 @@ describe('mounted frame runtime', () => {
       view: { viewport: { zoom: 7 }, theme: { boardBackground: '#abcdef' } },
     });
     const source = createCellStore(frame),
-      runtime = createCellRuntime({ store: source });
+      runtime = createCellRuntime({ store: source }, testCellRegistry);
     expect(runtime.store.cells.root).toMatchObject({
       view: { theme: { boardBackground: '#abcdef' } },
     });
@@ -53,23 +55,30 @@ describe('mounted frame runtime', () => {
           },
         },
       ],
+      testCellRegistry,
     );
-    const runtime = createCellRuntime({ store });
+    const runtime = createCellRuntime({ store }, testCellRegistry);
     runtime.select({ focus: ['root'], ids: ['node'] });
     const node = store.cells.node;
     runtime.replace({
-      store: applyCellOperations(store, [
-        {
-          type: 'replace_cell',
-          cell: { ...node, content: { label: 'Host update' } },
-        },
-      ]),
+      store: applyCellOperations(
+        store,
+        [
+          {
+            type: 'replace_cell',
+            cell: { ...node, content: { label: 'Host update' } },
+          },
+        ],
+        testCellRegistry,
+      ),
     });
     expect(runtime.selection).toEqual({ focus: ['root'], ids: ['node'] });
     runtime.replace({
-      store: applyCellOperations(runtime.store, [
-        { type: 'remove_cell', cellId: 'node' },
-      ]),
+      store: applyCellOperations(
+        runtime.store,
+        [{ type: 'remove_cell', cellId: 'node' }],
+        testCellRegistry,
+      ),
     });
     expect(runtime.selection).toEqual({ focus: ['root'], ids: [] });
     runtime.replace({
@@ -97,8 +106,9 @@ describe('mounted frame runtime', () => {
           parentId: 'nested',
         },
       ],
+      testCellRegistry,
     );
-    const runtime = createCellRuntime({ store });
+    const runtime = createCellRuntime({ store }, testCellRegistry);
     runtime.mount('nested');
     runtime.select({ focus: ['nested'], ids: ['node'] });
     expect(runtime.index.parentOf.get('nested')).toBe('root');
@@ -108,9 +118,12 @@ describe('mounted frame runtime', () => {
     );
   });
   it('allows explicit history-free metadata transactions', () => {
-    const runtime = createCellRuntime({
-      store: createCellStore(createFrameCell('root')),
-    });
+    const runtime = createCellRuntime(
+      {
+        store: createCellStore(createFrameCell('root')),
+      },
+      testCellRegistry,
+    );
     const root = runtime.store.cells.root;
     runtime.transact({
       id: 'view',
@@ -128,9 +141,12 @@ describe('mounted frame runtime', () => {
     expect(runtime.history.undos).toHaveLength(0);
   });
   it('preserves later theme metadata when undo changes frame children', () => {
-    const runtime = createCellRuntime({
-      store: createCellStore(createFrameCell('root')),
-    });
+    const runtime = createCellRuntime(
+      {
+        store: createCellStore(createFrameCell('root')),
+      },
+      testCellRegistry,
+    );
     runtime.transact({
       id: 'insert',
       operations: [
@@ -171,9 +187,12 @@ describe('mounted frame runtime', () => {
   it('restores the file theme when the transaction asks for it', () => {
     const root = createFrameCell('root');
     root.view = { theme: { boardBackground: '#ffffff' } };
-    const runtime = createCellRuntime({
-      store: createCellStore(root),
-    });
+    const runtime = createCellRuntime(
+      {
+        store: createCellStore(root),
+      },
+      testCellRegistry,
+    );
     runtime.transact({
       id: 'open',
       restoreView: true,
@@ -197,25 +216,32 @@ describe('mounted frame runtime', () => {
     });
   });
   it('drops selections that move out of their focus boundary', () => {
-    const runtime = createCellRuntime({
-      store: applyCellOperations(createCellStore(createFrameCell('root')), [
-        {
-          type: 'insert_cell',
-          cell: createFrameCell('nested'),
-          parentId: 'root',
-        },
-        {
-          type: 'insert_cell',
-          cell: {
-            id: 'node',
-            kind: 'geometry',
-            cellType: 'node',
-            geometry: { x: 0, y: 0, width: 10, height: 10 },
-          },
-          parentId: 'root',
-        },
-      ]),
-    });
+    const runtime = createCellRuntime(
+      {
+        store: applyCellOperations(
+          createCellStore(createFrameCell('root')),
+          [
+            {
+              type: 'insert_cell',
+              cell: createFrameCell('nested'),
+              parentId: 'root',
+            },
+            {
+              type: 'insert_cell',
+              cell: {
+                id: 'node',
+                kind: 'geometry',
+                cellType: 'node',
+                geometry: { x: 0, y: 0, width: 10, height: 10 },
+              },
+              parentId: 'root',
+            },
+          ],
+          testCellRegistry,
+        ),
+      },
+      testCellRegistry,
+    );
     runtime.select({ focus: ['root'], ids: ['node'] });
     runtime.transact({
       id: 'move',
@@ -226,25 +252,32 @@ describe('mounted frame runtime', () => {
     expect(runtime.selection).toEqual({ focus: ['root'], ids: [] });
   });
   it('retains a valid nested selection through property undo and redo', () => {
-    const runtime = createCellRuntime({
-      store: applyCellOperations(createCellStore(createFrameCell('root')), [
-        {
-          type: 'insert_cell',
-          cell: createFrameCell('nested'),
-          parentId: 'root',
-        },
-        {
-          type: 'insert_cell',
-          parentId: 'nested',
-          cell: {
-            id: 'node',
-            kind: 'geometry',
-            cellType: 'node',
-            geometry: { x: 10, y: 10, width: 20, height: 20 },
-          },
-        },
-      ]),
-    });
+    const runtime = createCellRuntime(
+      {
+        store: applyCellOperations(
+          createCellStore(createFrameCell('root')),
+          [
+            {
+              type: 'insert_cell',
+              cell: createFrameCell('nested'),
+              parentId: 'root',
+            },
+            {
+              type: 'insert_cell',
+              parentId: 'nested',
+              cell: {
+                id: 'node',
+                kind: 'geometry',
+                cellType: 'node',
+                geometry: { x: 10, y: 10, width: 20, height: 20 },
+              },
+            },
+          ],
+          testCellRegistry,
+        ),
+      },
+      testCellRegistry,
+    );
     runtime.select({ focus: ['root', 'nested'], ids: ['node'] });
     runtime.transact({
       id: 'rename',
@@ -275,15 +308,22 @@ describe('mounted frame runtime', () => {
     expect(runtime.selection.ids).toEqual([]);
   });
   it('falls back to an existing root when redo deletes the mounted frame', () => {
-    const runtime = createCellRuntime({
-      store: applyCellOperations(createCellStore(createFrameCell('root')), [
-        {
-          type: 'insert_cell',
-          cell: createFrameCell('nested'),
-          parentId: 'root',
-        },
-      ]),
-    });
+    const runtime = createCellRuntime(
+      {
+        store: applyCellOperations(
+          createCellStore(createFrameCell('root')),
+          [
+            {
+              type: 'insert_cell',
+              cell: createFrameCell('nested'),
+              parentId: 'root',
+            },
+          ],
+          testCellRegistry,
+        ),
+      },
+      testCellRegistry,
+    );
     runtime.transact({
       id: 'delete',
       operations: [{ type: 'remove_cell', cellId: 'nested' }],

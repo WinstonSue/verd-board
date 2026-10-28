@@ -1,28 +1,28 @@
-import { createDefaultWorkflowDocument } from './legacy/workflow-document';
 import {
-  registerDrawCells,
-  validateTableData,
+  createCellStore,
+  createFrameCell,
+  isEdgeCell,
+  isGroupCell,
+  isNodeCell,
+  relativeAnchor,
+  type NodeCell,
+} from '@sue/board-core';
+import {
+  pathNodePoints,
   tableGrid,
+  validateTableData,
   type TableCellData,
+  type VectorLineData,
 } from '@sue/board-draw';
-import { isGroupCell, isNodeCell, type NodeCell } from '@sue/board-core';
-import { describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
-import { migrateLegacyCellWorkspace } from './cell-workspace';
+import { describe, expect, it } from 'vitest';
+import { createTestCellRegistry } from '../../../../../tests/fixtures/plugins/registry';
 import {
   loadCellWorkspace,
   MIGRATION_BACKUP_KEY,
 } from '../frames/workspace-storage';
-import { registerWorkflowCells } from '@sue/board-workflow';
-import {
-  createCellStore,
-  createFrameCell,
-  createCellRegistry,
-  isEdgeCell,
-  relativeAnchor,
-  pathNodePoints,
-  type VectorLineData,
-} from '@sue/board-core';
+import { migrateLegacyCellWorkspace } from './cell-workspace';
+import { createDefaultWorkflowDocument } from './legacy/workflow-document';
 const memory = (source: Record<string, unknown>) => {
   const values = new Map(Object.entries(source));
   return {
@@ -45,14 +45,8 @@ describe('legacy cell workspace migration', () => {
         'utf8',
       ),
     );
-    const registry = createCellRegistry();
-    registerDrawCells(registry);
-    registerWorkflowCells(registry);
-    const { registerMindCells } = await import('@sue/board-mind');
-    const { registerArchitectureCells } =
-      await import('@sue/board-architecture');
-    registerMindCells(registry);
-    registerArchitectureCells(registry);
+    const registry = createTestCellRegistry();
+
     const adapter = memory(source);
     const snapshot = await migrateLegacyCellWorkspace(adapter, registry);
     const cells = Object.values(snapshot.store.cells);
@@ -128,8 +122,8 @@ describe('legacy cell workspace migration', () => {
   });
 
   it('materializes legacy swimlane title spans, preserves text, fill and fixed headings', async () => {
-    const registry = createCellRegistry();
-    registerDrawCells(registry);
+    const registry = createTestCellRegistry();
+
     for (const vertical of [false, true]) {
       const rows = vertical
         ? [
@@ -206,8 +200,8 @@ describe('legacy cell workspace migration', () => {
   });
 
   it('preserves legacy vector line points, closure, curve style and rotation', async () => {
-    const registry = createCellRegistry();
-    registerDrawCells(registry);
+    const registry = createTestCellRegistry();
+
     const points = [
       [10, 20],
       [120, 20],
@@ -249,8 +243,8 @@ describe('legacy cell workspace migration', () => {
     expect(await loadCellWorkspace(adapter, registry)).toEqual(snapshot);
   });
   it('normalizes the known transitional vector line shape at the migration boundary', async () => {
-    const registry = createCellRegistry();
-    registerDrawCells(registry);
+    const registry = createTestCellRegistry();
+
     const store = createCellStore(createFrameCell('root'));
     store.cells.line = {
       id: 'line',
@@ -368,8 +362,8 @@ describe('legacy cell workspace migration', () => {
         target: { nodeKey: 'task', portId: 'in' },
       },
     ];
-    const registry = createCellRegistry();
-    registerWorkflowCells(registry);
+    const registry = createTestCellRegistry();
+
     const snapshot = await migrateLegacyCellWorkspace(
       memory({ main_workflow_content: document }),
       registry,

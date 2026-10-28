@@ -1,12 +1,12 @@
-import type { RectangleClient } from '../interfaces/rectangle-client';
+import { relationshipArrangementPositions } from './relationship-layout';
 import type { Point } from '../interfaces/point';
-import { indexCells, type CellOperation } from './index';
-import { translateCellSelection } from './commands';
-import { frameScene } from './frame';
+import type { RectangleClient } from '../interfaces/rectangle-client';
 import {
   graphArrangementPositions,
   type ArrangementLink,
 } from './arrangement-graph';
+import { translateCellSelection } from './commands';
+import { frameScene } from './frame';
 import {
   cellArrangementBounds,
   groupAncestors,
@@ -15,23 +15,23 @@ import {
   lockedByAncestor,
   unionCellBounds,
 } from './group';
+import { indexCells, type CellOperation } from './index';
+import { createCellRegistry, type CellRegistry } from './registry';
 import {
+  isDocumentCell,
   isEdgeCell,
   isFrameCell,
   isGroupCell,
   isNodeCell,
-  isDocumentCell,
-  type ArchitectureLayerData,
   type CellId,
   type CellStore,
-  type NodeCell,
 } from './types';
 
 export type CellAlignment =
   'left' | 'center' | 'right' | 'top' | 'middle' | 'bottom';
 export type CellDistribution = 'horizontal' | 'vertical';
 export type CellLayoutStyle =
-  'grid' | 'horizontal' | 'vertical' | 'flow' | 'layers';
+  'grid' | 'horizontal' | 'vertical' | 'relationships' | (string & {});
 export type ArrangementCommand =
   | { type: 'align'; axis: CellAlignment }
   | { type: 'distribute'; axis: CellDistribution }
@@ -48,9 +48,17 @@ export function collectArrangementBlocks(
   store: CellStore,
   frameId: CellId,
   ids: readonly CellId[] = [],
+  registry: CellRegistry = createCellRegistry(),
 ): ArrangementBlock[] {
   const frame = store.cells[frameId];
-  if (!isFrameCell(frame) || frameScene(store, frameId) === 'uml-sequence-root')
+  if (
+    !isFrameCell(frame) ||
+    registry.scenes.some(
+      (scene) =>
+        scene.arrangeable === false &&
+        scene.anchorKinds.includes(frameScene(store, frameId, registry) ?? ''),
+    )
+  )
     return [];
   const index = indexCells(store);
   const candidates = [
@@ -74,11 +82,8 @@ export function collectArrangementBlocks(
       !cell ||
       cell.hidden ||
       (!isNodeCell(cell) && !isGroupCell(cell)) ||
-      cell.kind === 'architecture-layer' ||
-      cell.kind.startsWith('mind-')
+      registry.get(cell.kind)?.arrangeable === false
     )
-      return [];
-    if (frameScene(store, frameId) === 'mind-root' && !isDocumentCell(cell))
       return [];
     if (groupAncestors(store, id).some((owner) => selected.has(owner)))
       return [];
@@ -104,13 +109,14 @@ const moveBlocks = (
   blocks: readonly ArrangementBlock[],
   deltas: readonly Point[],
   roundDelta = true,
+  registry: CellRegistry = createCellRegistry(),
 ): CellOperation[] =>
   blocks.flatMap((block, i) => {
     const delta: Point = roundDelta
       ? [Math.round(deltas[i][0]), Math.round(deltas[i][1])]
       : deltas[i];
     return delta[0] || delta[1]
-      ? translateCellSelection(store, [block.id], delta)
+      ? translateCellSelection(store, [block.id], delta, registry)
       : [];
   });
 
@@ -118,11 +124,12 @@ export function alignCells(
   store: CellStore,
   ids: readonly CellId[],
   axis: CellAlignment,
+  registry: CellRegistry = createCellRegistry(),
 ): CellOperation[] {
   if (!ids.length) return [];
   const frameId = indexCells(store).parentOf.get(ids[0]);
   if (!frameId) return [];
-  const blocks = collectArrangementBlocks(store, frameId, ids);
+  const blocks = collectArrangementBlocks(store, frameId, ids, registry);
   if (blocks.length < 2 || blocks.some((block) => block.locked)) return [];
   const bounds = unionCellBounds(blocks.map((block) => block.bounds))!;
   return moveBlocks(
@@ -144,6 +151,8 @@ export function alignCells(
             ? bounds.y + bounds.height - b.y - b.height
             : 0,
     ]),
+    true,
+    registry,
   );
 }
 
@@ -151,11 +160,12 @@ export function distributeCells(
   store: CellStore,
   ids: readonly CellId[],
   axis: CellDistribution,
+  registry: CellRegistry = createCellRegistry(),
 ): CellOperation[] {
   if (!ids.length) return [];
   const frameId = indexCells(store).parentOf.get(ids[0]);
   if (!frameId) return [];
-  const blocks = collectArrangementBlocks(store, frameId, ids);
+  const blocks = collectArrangementBlocks(store, frameId, ids, registry);
   if (blocks.length < 3 || blocks.some((block) => block.locked)) return [];
   const horizontal = axis === 'horizontal';
   const position = (block: ArrangementBlock) =>
@@ -178,7 +188,7 @@ export function distributeCells(
     cursor += size(block) + gap;
     return horizontal ? [delta, 0] : [0, delta];
   });
-  return moveBlocks(store, blocks, deltas);
+  return moveBlocks(store, blocks, deltas, true, registry);
 }
 
 const stableBlocks = (blocks: ArrangementBlock[]) =>
@@ -187,7 +197,7 @@ const stableBlocks = (blocks: ArrangementBlock[]) =>
 function arrangementLinks(
   store: CellStore,
   blocks: ArrangementBlock[],
-  kind: string,
+  kind?: string,
 ): ArrangementLink[] {
   const owner = new Map(
     blocks.flatMap((block) =>
@@ -197,7 +207,8 @@ function arrangementLinks(
   return Object.values(store.cells).flatMap((cell) => {
     if (
       !isEdgeCell(cell) ||
-      cell.kind !== kind ||
+      cell.hidden ||
+      (kind !== undefined && cell.kind !== kind) ||
       !('cellId' in cell.source) ||
       !('cellId' in cell.target)
     )
@@ -208,82 +219,6 @@ function arrangementLinks(
   });
 }
 
-function flowRows(
-  store: CellStore,
-  blocks: ArrangementBlock[],
-): ArrangementBlock[][] {
-  const owner = new Map(
-    blocks.flatMap((block) =>
-      block.members.map((id) => [id, block.id] as const),
-    ),
-  );
-  const targets = new Map(blocks.map((block) => [block.id, new Set<string>()]));
-  const incoming = new Map(blocks.map((block) => [block.id, 0]));
-  for (const cell of Object.values(store.cells)) {
-    if (
-      !isEdgeCell(cell) ||
-      cell.kind !== 'workflow-edge' ||
-      !('cellId' in cell.source) ||
-      !('cellId' in cell.target)
-    )
-      continue;
-    const source = owner.get(cell.source.cellId),
-      target = owner.get(cell.target.cellId);
-    if (
-      !source ||
-      !target ||
-      source === target ||
-      targets.get(source)!.has(target)
-    )
-      continue;
-    targets.get(source)!.add(target);
-    incoming.set(target, incoming.get(target)! + 1);
-  }
-  const rows: ArrangementBlock[][] = [];
-  let ready = blocks.filter((block) => incoming.get(block.id) === 0);
-  let visited = 0;
-  while (ready.length) {
-    rows.push(ready);
-    visited += ready.length;
-    const next: ArrangementBlock[] = [];
-    for (const block of ready)
-      for (const id of targets.get(block.id)!) {
-        incoming.set(id, incoming.get(id)! - 1);
-        if (!incoming.get(id))
-          next.push(blocks.find((candidate) => candidate.id === id)!);
-      }
-    ready = next.sort((a, b) => a.id.localeCompare(b.id));
-  }
-  if (visited !== blocks.length)
-    throw new Error('Cannot arrange a cyclic grouped workflow');
-  return rows;
-}
-
-function layerRows(
-  store: CellStore,
-  blocks: ArrangementBlock[],
-): ArrangementBlock[][] {
-  const index = indexCells(store);
-  const rows = new Map<string, ArrangementBlock[]>();
-  for (const block of blocks) {
-    const owners = new Set(
-      block.members
-        .filter((id) => store.cells[id]?.kind === 'architecture-module')
-        .map((id) => index.domainOwnerOf.get(id)),
-    );
-    if (owners.size > 1) throw new Error('A group crosses architecture layers');
-    const owner = [...owners][0] ?? block.id;
-    rows.set(owner, [...(rows.get(owner) ?? []), block]);
-  }
-  return [...rows]
-    .sort(([a], [b]) => {
-      const order = (id: string) =>
-        (store.cells[id] as NodeCell<ArchitectureLayerData>)?.data?.order ?? id;
-      return order(a).localeCompare(order(b)) || a.localeCompare(b);
-    })
-    .map(([, row]) => row);
-}
-
 /** Explicit layouts produce authored positions and never run while rendering. */
 export function arrangeCells(
   store: CellStore,
@@ -291,27 +226,47 @@ export function arrangeCells(
   ids: readonly CellId[],
   style: CellLayoutStyle,
   gap = 32,
+  registry: CellRegistry = createCellRegistry(),
 ): CellOperation[] {
-  const scene = frameScene(store, frameId);
+  const scene = registry.scenes.find((scene) =>
+    scene.anchorKinds.includes(frameScene(store, frameId, registry) ?? ''),
+  );
+  const layout = scene?.layouts?.find((layout) => layout.id === style);
   if (
-    (style === 'flow' && scene !== 'workflow-start') ||
-    (style === 'layers' && scene !== 'architecture-layer')
+    !layout &&
+    !['grid', 'horizontal', 'vertical', 'relationships'].includes(style)
   )
     throw new Error('Layout does not match the frame');
-  const blocks = collectArrangementBlocks(store, frameId, ids).filter(
+  const blocks = collectArrangementBlocks(store, frameId, ids, registry).filter(
     (block) =>
       !block.locked &&
-      (!(style === 'flow' || style === 'layers') ||
-        !block.members.some((id) => isDocumentCell(store.cells[id]))),
+      (!layout || !block.members.some((id) => isDocumentCell(store.cells[id]))),
   );
-  if (style === 'flow' || style === 'layers')
-    blocks.sort((a, b) => a.id.localeCompare(b.id));
+  if (layout) blocks.sort((a, b) => a.id.localeCompare(b.id));
   else stableBlocks(blocks);
   if (blocks.length < 2) return [];
   const bounds = unionCellBounds(blocks.map((block) => block.bounds))!;
+  if (style === 'relationships') {
+    const positions = relationshipArrangementPositions(
+      blocks,
+      arrangementLinks(store, blocks),
+    );
+    return moveBlocks(
+      store,
+      blocks,
+      blocks.map((block): Point => {
+        const point = positions.get(block.id)!;
+        return [
+          Math.round(bounds.x) + point[0] - block.bounds.x,
+          Math.round(bounds.y) + point[1] - block.bounds.y,
+        ];
+      }),
+      false,
+      registry,
+    );
+  }
   let rows: ArrangementBlock[][];
-  if (style === 'flow') rows = flowRows(store, blocks);
-  else if (style === 'layers') rows = layerRows(store, blocks);
+  if (layout) rows = layout.rows(store, blocks, registry);
   else {
     const columns =
       style === 'horizontal'
@@ -323,16 +278,12 @@ export function arrangeCells(
       blocks.slice(i * columns, (i + 1) * columns),
     );
   }
-  if (style === 'flow' || style === 'layers') {
+  if (layout) {
     const positions = graphArrangementPositions(
       rows,
-      arrangementLinks(
-        store,
-        blocks,
-        style === 'flow' ? 'workflow-edge' : 'architecture-edge',
-      ),
-      Math.max(48, gap),
+      arrangementLinks(store, blocks, layout.edgeKind),
       Math.max(96, gap),
+      Math.max(160, gap),
     );
     return moveBlocks(
       store,
@@ -345,8 +296,22 @@ export function arrangeCells(
         ];
       }),
       false,
+      registry,
     );
   }
+  const members = new Set(blocks.flatMap((block) => block.members));
+  if (
+    Object.values(store.cells).some(
+      (cell) =>
+        isEdgeCell(cell) &&
+        !cell.hidden &&
+        'cellId' in cell.source &&
+        'cellId' in cell.target &&
+        members.has(cell.source.cellId) &&
+        members.has(cell.target.cellId),
+    )
+  )
+    gap = Math.max(gap, 96);
   const widths = Array.from(
     { length: Math.max(...rows.map((row) => row.length)) },
     (_, i) => Math.max(...rows.map((row) => row[i]?.bounds.width ?? 0)),
@@ -365,6 +330,8 @@ export function arrangeCells(
     store,
     blocks,
     blocks.map((block) => positions.get(block.id)!),
+    true,
+    registry,
   );
 }
 
@@ -373,15 +340,26 @@ export function arrangementAvailability(
   frameId: CellId,
   ids: readonly CellId[],
   command: ArrangementCommand,
+  registry: CellRegistry = createCellRegistry(),
 ): { enabled: boolean; reason?: string } {
   try {
-    const blocks = collectArrangementBlocks(store, frameId, ids);
+    const blocks = collectArrangementBlocks(store, frameId, ids, registry);
+    const layout =
+      command.type === 'layout'
+        ? registry.scenes
+            .find((scene) =>
+              scene.anchorKinds.includes(
+                frameScene(store, frameId, registry) ?? '',
+              ),
+            )
+            ?.layouts?.find((layout) => layout.id === command.style)
+        : undefined;
     if (
       command.type === 'layout' &&
-      ((command.style === 'flow' &&
-        frameScene(store, frameId) !== 'workflow-start') ||
-        (command.style === 'layers' &&
-          frameScene(store, frameId) !== 'architecture-layer'))
+      !layout &&
+      !['grid', 'horizontal', 'vertical', 'relationships'].includes(
+        command.style,
+      )
     )
       return { enabled: false };
     if (command.type !== 'layout')
@@ -393,8 +371,7 @@ export function arrangementAvailability(
       };
     const movable = blocks.filter((block) => !block.locked);
     if (movable.length < 2) return { enabled: false };
-    if (command.style === 'flow') flowRows(store, movable);
-    if (command.style === 'layers') layerRows(store, movable);
+    layout?.rows(store, movable, registry);
     return { enabled: true };
   } catch (error) {
     return {

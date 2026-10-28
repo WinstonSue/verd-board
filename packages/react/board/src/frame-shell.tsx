@@ -1,16 +1,17 @@
 import {
-  useId,
-  type ReactNode,
-  type PointerEventHandler,
-  type MouseEventHandler,
-} from 'react';
-import {
   frameContentViewport,
   frameTitleBounds,
   type NodeAppearance,
   type NodeGeometry,
 } from '@sue/board-core';
+import {
+  useId,
+  type MouseEventHandler,
+  type PointerEventHandler,
+  type ReactNode,
+} from 'react';
 import { FrameCellShadow } from './frame-shadow';
+import type { FrameCameraStore } from './frame-camera-store';
 
 /** One shell and geometry contract for owned Frames and canvas/document references. */
 export function FrameShell({
@@ -28,6 +29,8 @@ export function FrameShell({
   children,
 }: {
   geometry: NodeGeometry;
+  camera: FrameCameraStore;
+  scale: number;
   appearance?: NodeAppearance;
   active: boolean;
   unresolved?: boolean;
@@ -54,7 +57,7 @@ export function FrameShell({
     ...titleBounds,
     width: Math.max(0, titleBounds.width - (actions ? actionWidth + 8 : 0)),
   };
-  const stroke = active ? '#6366f1' : (appearance?.strokeColor ?? '#cbd5e1');
+  const stroke = appearance?.strokeColor ?? '#cbd5e1';
   return (
     <>
       <FrameCellShadow shadow={appearance?.shadow} bounds={geometry}>
@@ -163,6 +166,7 @@ export function FrameShell({
         {...bounds}
         rx={12}
         data-frame-outline
+        data-frame-node-outline
         fill="none"
         stroke={stroke}
         opacity={appearance?.opacity}
@@ -175,6 +179,10 @@ export function FrameShell({
               : undefined
         }
         pointerEvents="none"
+      />
+      <g
+        data-frame-node-interaction-slot
+        data-frame-export-exclude="interaction-slot"
       />
     </>
   );

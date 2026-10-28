@@ -35,6 +35,15 @@ export interface Translations {
   'arrange.unlock': string;
   'arrange.layout': string;
   'arrange.apply': string;
+  'arrange.groupContents': string;
+  'arrange.reroute': string;
+  'arrange.relationships': string;
+  'arrange.overlap': string;
+  'arrange.noRoutes': string;
+  'arrange.scopeFrame': string;
+  'arrange.scopeGroup': string;
+  'arrange.scopeSelection': string;
+  'arrange.rerouteHint': string;
   'arrange.grid': string;
   'arrange.horizontal': string;
   'arrange.vertical': string;

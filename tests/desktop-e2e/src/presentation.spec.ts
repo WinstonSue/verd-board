@@ -115,6 +115,15 @@ test('desktop lectures in the same fullscreen window and one Esc restores the ed
       )
       .toBe(true);
     await expect(lecture.locator('[data-cell-kind="geometry"]')).toHaveCount(1);
+    if (process.platform === 'darwin') {
+      await expect
+        .poll(() =>
+          desktop.evaluate(({ BrowserWindow }) =>
+            BrowserWindow.getAllWindows()[0].isSimpleFullScreen(),
+          ),
+        )
+        .toBe(true);
+    }
     await page.keyboard.press('l');
     await expect(mode).toHaveClass(/\bis-laser\b/);
     await page.keyboard.press('l');
@@ -140,6 +149,13 @@ test('desktop lectures in the same fullscreen window and one Esc restores the ed
       .poll(() => page.evaluate(() => document.fullscreenElement === null))
       .toBe(true);
     await expect(canvas).toBeVisible();
+    if (process.platform === 'darwin') {
+      expect(
+        await desktop.evaluate(({ BrowserWindow }) =>
+          BrowserWindow.getAllWindows()[0].isSimpleFullScreen(),
+        ),
+      ).toBe(false);
+    }
     await expect(canvas).toHaveAttribute(
       'data-lecture-editor-instance',
       'original',
@@ -155,6 +171,33 @@ test('desktop lectures in the same fullscreen window and one Esc restores the ed
         ({ BrowserWindow }) => BrowserWindow.getAllWindows().length,
       ),
     ).toBe(1);
+    if (process.platform === 'darwin') {
+      // A fullscreen window owned by the user must survive presentation cleanup.
+      await desktop.evaluate(({ BrowserWindow }) =>
+        BrowserWindow.getAllWindows()[0].setSimpleFullScreen(true),
+      );
+      await page
+        .locator('.frame-app-toolbar:visible')
+        .getByRole('button', { name: '演示', exact: true })
+        .click();
+      await expect(mode).toBeVisible();
+      await expect
+        .poll(() => page.evaluate(() => !!document.fullscreenElement))
+        .toBe(true);
+      await page.keyboard.press('Escape');
+      await expect(mode).toHaveCount(0);
+      await expect
+        .poll(() => page.evaluate(() => document.fullscreenElement === null))
+        .toBe(true);
+      expect(
+        await desktop.evaluate(({ BrowserWindow }) =>
+          BrowserWindow.getAllWindows()[0].isSimpleFullScreen(),
+        ),
+      ).toBe(true);
+      await desktop.evaluate(({ BrowserWindow }) =>
+        BrowserWindow.getAllWindows()[0].setSimpleFullScreen(false),
+      );
+    }
     await page
       .locator('.frame-app-toolbar:visible')
       .getByRole('button', { name: '撤销', exact: true })

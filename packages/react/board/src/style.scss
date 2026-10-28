@@ -1,0 +1,77 @@
+@use '@sue/board-react-actions/style.css';
+@import '@sue/board-react-text/style.css';
+.frame-editor {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 320px;
+  font-family: system-ui, sans-serif;
+  color: #1f2937;
+  background: #fff;
+}
+.frame-editor__toolbar {
+  display: flex;
+  gap: 6px;
+  padding: 8px;
+  flex-wrap: wrap;
+  border-bottom: 1px solid #ddd;
+}
+.frame-editor button,
+.frame-editor input,
+.frame-editor select {
+  font: inherit;
+}
+.frame-editor button {
+  border: 1px solid #d1d5db;
+  border-radius: 5px;
+  padding: 5px 9px;
+  background: #fff;
+  cursor: pointer;
+}
+.frame-editor button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+.frame-editor__body {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+}
+.frame-editor__body > :first-child {
+  flex: 1;
+  min-width: 0;
+}
+.frame-editor__properties {
+  width: 240px;
+  padding: 12px;
+  overflow: auto;
+  border-left: 1px solid #ddd;
+}
+.frame-editor__properties label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 8px 0;
+}
+.frame-editor [role='alert'] {
+  color: #b91c1c;
+  padding: 8px;
+}
+
+.frame-editor__menu {
+  display: flex;
+  flex-direction: column;
+  min-width: 160px;
+  padding: 4px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  background: #fff;
+  box-shadow: 0 8px 24px #0002;
+}
+.frame-editor__menu button {
+  border: 0;
+  text-align: left;
+}
+.frame-editor__menu button:focus-visible {
+  outline: 2px solid #6366f1;
+}

@@ -1,3 +1,4 @@
+import { FrameI18nProvider } from '@sue/board-react';
 import React, {
   createContext,
   useContext,
@@ -5,12 +6,12 @@ import React, {
   useMemo,
   useState,
 } from 'react';
-import { zhTranslations, enTranslations } from './translations';
+import { enTranslations, zhTranslations } from './translations';
 import {
-  Language,
-  Translations,
   I18nContextType,
   I18nProviderProps,
+  Language,
+  Translations,
 } from './types';
 
 const translations: Record<Language, Translations> = {
@@ -103,7 +104,16 @@ export const I18nProvider: React.FC<I18nProviderProps> = ({
     [language, messages],
   );
 
-  return <I18nContext.Provider value={value}>{children}</I18nContext.Provider>;
+  return (
+    <I18nContext.Provider value={value}>
+      <FrameI18nProvider
+        language={language}
+        messages={{ ...translations[language], ...messages?.[language] }}
+      >
+        {children}
+      </FrameI18nProvider>
+    </I18nContext.Provider>
+  );
 };
 
 export const useI18n = (): I18nContextType => {
@@ -127,4 +137,4 @@ export const i18nInsideBoardHook = () => {
   return i18n;
 };
 
-export type { Language, Translations, I18nContextType };
+export type { I18nContextType, Language, Translations };

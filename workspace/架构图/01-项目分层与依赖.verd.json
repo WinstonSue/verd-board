@@ -50,7 +50,6 @@
       "demo:packages/edge/8",
       "demo:packages/edge/9",
       "demo:packages/edge/10",
-      "demo:packages/edge/11",
       "demo:packages/edge/12",
       "demo:packages/edge/13",
       "demo:packages/edge/14",
@@ -78,7 +77,14 @@
       "demo:packages/edge/%40sue%2Fboard-react-uml>%40sue%2Fboard-react",
       "demo:packages/edge/%40sue%2Fboard-react-uml>%40sue%2Fboard-uml",
       "demo:packages/edge/%40sue%2Fboard-uml>%40sue%2Fboard-core",
-      "demo:packages/edge/%40sue%2Fboard-mermaid-to-board>%40sue%2Fboard-uml"
+      "demo:packages/edge/%40sue%2Fboard-mermaid-to-board>%40sue%2Fboard-uml",
+      "demo:packages/module/@sue/board-react-draw",
+      "demo:packages/edge/%40sue%2Fverd-board-ui>%40sue%2Fboard-react-draw",
+      "demo:packages/edge/%40sue%2Fboard-react-draw>%40sue%2Fboard-draw",
+      "demo:packages/edge/%40sue%2Fboard-react-draw>%40sue%2Fboard-react",
+      "demo:packages/module/@sue/board-react-actions",
+      "demo:packages/edge/%40sue%2Fboard-react-actions>%40sue%2Fboard-common",
+      "demo:packages/edge/%40sue%2Fboard-react-text>%40sue%2Fboard-react-actions"
     ],
     "groups": [],
     "data": {},
@@ -193,7 +199,7 @@
       "kind": "architecture-module",
       "cellType": "node",
       "geometry": {
-        "x": 614,
+        "x": 20,
         "y": 54,
         "width": 372,
         "height": 98,
@@ -294,7 +300,7 @@
       "kind": "architecture-module",
       "cellType": "node",
       "geometry": {
-        "x": 1010,
+        "x": 488,
         "y": 54,
         "width": 372,
         "height": 98,
@@ -455,8 +461,8 @@
       "kind": "architecture-module",
       "cellType": "node",
       "geometry": {
-        "x": 614,
-        "y": 274,
+        "x": 254,
+        "y": 312,
         "width": 372,
         "height": 98,
         "derived": false,
@@ -556,8 +562,8 @@
       "kind": "architecture-module",
       "cellType": "node",
       "geometry": {
-        "x": 1010,
-        "y": 274,
+        "x": 1837,
+        "y": 312,
         "width": 372,
         "height": 98,
         "derived": false,
@@ -702,8 +708,10 @@
         "order": "00000002",
         "fontSize": 24,
         "memberIds": [
+          "demo:packages/module/@sue/board-react-actions",
           "demo:packages/module/@sue/board-react-architecture",
           "demo:packages/module/@sue/board-react",
+          "demo:packages/module/@sue/board-react-draw",
           "demo:packages/module/@sue/board-react-mind",
           "demo:packages/module/@sue/board-react-text",
           "demo:packages/module/@sue/board-react-uml",
@@ -721,8 +729,8 @@
       "kind": "architecture-module",
       "cellType": "node",
       "geometry": {
-        "x": 20,
-        "y": 494,
+        "x": 3068,
+        "y": 570,
         "width": 372,
         "height": 98,
         "derived": false,
@@ -822,8 +830,8 @@
       "kind": "architecture-module",
       "cellType": "node",
       "geometry": {
-        "x": 416,
-        "y": 494,
+        "x": 2132,
+        "y": 570,
         "width": 372,
         "height": 98,
         "derived": false,
@@ -923,8 +931,8 @@
       "kind": "architecture-module",
       "cellType": "node",
       "geometry": {
-        "x": 812,
-        "y": 494,
+        "x": 728,
+        "y": 570,
         "width": 372,
         "height": 98,
         "derived": false,
@@ -1024,8 +1032,8 @@
       "kind": "architecture-module",
       "cellType": "node",
       "geometry": {
-        "x": 1208,
-        "y": 494,
+        "x": 4004,
+        "y": 570,
         "width": 372,
         "height": 98,
         "derived": false,
@@ -1125,8 +1133,8 @@
       "kind": "architecture-module",
       "cellType": "node",
       "geometry": {
-        "x": 1604,
-        "y": 494,
+        "x": 1196,
+        "y": 570,
         "width": 372,
         "height": 98,
         "derived": false,
@@ -1289,8 +1297,8 @@
       "kind": "architecture-module",
       "cellType": "node",
       "geometry": {
-        "x": 218,
-        "y": 714,
+        "x": 3116,
+        "y": 836,
         "width": 372,
         "height": 98,
         "derived": false,
@@ -1390,8 +1398,8 @@
       "kind": "architecture-module",
       "cellType": "node",
       "geometry": {
-        "x": 614,
-        "y": 714,
+        "x": 1244,
+        "y": 836,
         "width": 372,
         "height": 98,
         "derived": false,
@@ -1491,8 +1499,8 @@
       "kind": "architecture-module",
       "cellType": "node",
       "geometry": {
-        "x": 1010,
-        "y": 714,
+        "x": 2180,
+        "y": 836,
         "width": 372,
         "height": 98,
         "derived": false,
@@ -1592,8 +1600,8 @@
       "kind": "architecture-module",
       "cellType": "node",
       "geometry": {
-        "x": 1406,
-        "y": 714,
+        "x": 1712,
+        "y": 836,
         "width": 372,
         "height": 98,
         "derived": false,
@@ -1755,8 +1763,8 @@
       "kind": "architecture-module",
       "cellType": "node",
       "geometry": {
-        "x": 218,
-        "y": 934,
+        "x": 2583,
+        "y": 1186,
         "width": 372,
         "height": 98,
         "derived": false,
@@ -1856,8 +1864,8 @@
       "kind": "architecture-module",
       "cellType": "node",
       "geometry": {
-        "x": 614,
-        "y": 934,
+        "x": 1551,
+        "y": 1186,
         "width": 372,
         "height": 98,
         "derived": false,
@@ -1957,8 +1965,8 @@
       "kind": "architecture-module",
       "cellType": "node",
       "geometry": {
-        "x": 1010,
-        "y": 934,
+        "x": 3051,
+        "y": 1186,
         "width": 372,
         "height": 98,
         "derived": false,
@@ -2058,8 +2066,8 @@
       "kind": "architecture-module",
       "cellType": "node",
       "geometry": {
-        "x": 1406,
-        "y": 934,
+        "x": 2019,
+        "y": 1186,
         "width": 372,
         "height": 98,
         "derived": false,
@@ -2220,8 +2228,8 @@
       "kind": "architecture-module",
       "cellType": "node",
       "geometry": {
-        "x": 416,
-        "y": 1154,
+        "x": 1257,
+        "y": 1444,
         "width": 372,
         "height": 98,
         "derived": false,
@@ -2321,8 +2329,8 @@
       "kind": "architecture-module",
       "cellType": "node",
       "geometry": {
-        "x": 812,
-        "y": 1154,
+        "x": 2344,
+        "y": 1444,
         "width": 372,
         "height": 98,
         "derived": false,
@@ -2422,8 +2430,8 @@
       "kind": "architecture-module",
       "cellType": "node",
       "geometry": {
-        "x": 1208,
-        "y": 1154,
+        "x": 789,
+        "y": 1444,
         "width": 372,
         "height": 98,
         "derived": false,
@@ -2529,7 +2537,25 @@
         "cellId": "demo:packages/module/@sue/verd-board-app"
       },
       "route": {
-        "mode": "orthogonal"
+        "mode": "orthogonal",
+        "points": [
+          [
+            206,
+            152
+          ],
+          [
+            206,
+            232
+          ],
+          [
+            440,
+            232
+          ],
+          [
+            440,
+            312
+          ]
+        ]
       },
       "appearance": {
         "strokeColor": "#64748b",
@@ -2547,7 +2573,25 @@
         "cellId": "demo:packages/module/@sue/verd-board-app"
       },
       "route": {
-        "mode": "orthogonal"
+        "mode": "orthogonal",
+        "points": [
+          [
+            674,
+            152
+          ],
+          [
+            674,
+            288
+          ],
+          [
+            440,
+            288
+          ],
+          [
+            440,
+            312
+          ]
+        ]
       },
       "appearance": {
         "strokeColor": "#64748b",
@@ -2565,7 +2609,33 @@
         "cellId": "demo:packages/module/@sue/board-markdown-to-text"
       },
       "route": {
-        "mode": "orthogonal"
+        "mode": "orthogonal",
+        "points": [
+          [
+            440,
+            410
+          ],
+          [
+            440,
+            1612
+          ],
+          [
+            1173,
+            1612
+          ],
+          [
+            1173,
+            1420
+          ],
+          [
+            975,
+            1420
+          ],
+          [
+            975,
+            1444
+          ]
+        ]
       },
       "appearance": {
         "strokeColor": "#64748b",
@@ -2583,7 +2653,33 @@
         "cellId": "demo:packages/module/@sue/verd-board-ui"
       },
       "route": {
-        "mode": "orthogonal"
+        "mode": "orthogonal",
+        "points": [
+          [
+            626,
+            361
+          ],
+          [
+            1573,
+            361
+          ],
+          [
+            1573,
+            349
+          ],
+          [
+            1835,
+            349
+          ],
+          [
+            1835,
+            361
+          ],
+          [
+            1837,
+            361
+          ]
+        ]
       },
       "appearance": {
         "strokeColor": "#64748b",
@@ -2601,7 +2697,41 @@
         "cellId": "demo:packages/module/@sue/board-markdown-to-board"
       },
       "route": {
-        "mode": "orthogonal"
+        "mode": "orthogonal",
+        "points": [
+          [
+            2023,
+            410
+          ],
+          [
+            2023,
+            522
+          ],
+          [
+            716,
+            522
+          ],
+          [
+            716,
+            1405
+          ],
+          [
+            1436,
+            1405
+          ],
+          [
+            1436,
+            1408
+          ],
+          [
+            1443,
+            1408
+          ],
+          [
+            1443,
+            1444
+          ]
+        ]
       },
       "appearance": {
         "strokeColor": "#64748b",
@@ -2619,7 +2749,41 @@
         "cellId": "demo:packages/module/@sue/board-mermaid-to-board"
       },
       "route": {
-        "mode": "orthogonal"
+        "mode": "orthogonal",
+        "points": [
+          [
+            2023,
+            410
+          ],
+          [
+            2023,
+            434
+          ],
+          [
+            2516,
+            434
+          ],
+          [
+            2516,
+            410
+          ],
+          [
+            4388,
+            410
+          ],
+          [
+            4388,
+            1420
+          ],
+          [
+            2530,
+            1420
+          ],
+          [
+            2530,
+            1444
+          ]
+        ]
       },
       "appearance": {
         "strokeColor": "#64748b",
@@ -2637,7 +2801,25 @@
         "cellId": "demo:packages/module/@sue/board-react-architecture"
       },
       "route": {
-        "mode": "orthogonal"
+        "mode": "orthogonal",
+        "points": [
+          [
+            1837,
+            361
+          ],
+          [
+            1578,
+            361
+          ],
+          [
+            1578,
+            619
+          ],
+          [
+            1568,
+            619
+          ]
+        ]
       },
       "appearance": {
         "strokeColor": "#64748b",
@@ -2655,7 +2837,33 @@
         "cellId": "demo:packages/module/@sue/board-react-mind"
       },
       "route": {
-        "mode": "orthogonal"
+        "mode": "orthogonal",
+        "points": [
+          [
+            1837,
+            361
+          ],
+          [
+            1835,
+            361
+          ],
+          [
+            1835,
+            558
+          ],
+          [
+            1103,
+            558
+          ],
+          [
+            1103,
+            619
+          ],
+          [
+            1100,
+            619
+          ]
+        ]
       },
       "appearance": {
         "strokeColor": "#64748b",
@@ -2673,7 +2881,57 @@
         "cellId": "demo:packages/module/@sue/board-react-workflow"
       },
       "route": {
-        "mode": "orthogonal"
+        "mode": "orthogonal",
+        "points": [
+          [
+            2209,
+            361
+          ],
+          [
+            2233,
+            361
+          ],
+          [
+            2233,
+            373
+          ],
+          [
+            3531,
+            373
+          ],
+          [
+            3531,
+            361
+          ],
+          [
+            3920,
+            361
+          ],
+          [
+            3920,
+            620
+          ],
+          [
+            3932,
+            620
+          ],
+          [
+            3932,
+            631
+          ],
+          [
+            3980,
+            631
+          ],
+          [
+            3980,
+            619
+          ],
+          [
+            4004,
+            619
+          ]
+        ]
       },
       "appearance": {
         "strokeColor": "#64748b",
@@ -2691,7 +2949,25 @@
         "cellId": "demo:packages/module/@sue/board-core"
       },
       "route": {
-        "mode": "orthogonal"
+        "mode": "orthogonal",
+        "points": [
+          [
+            3254,
+            668
+          ],
+          [
+            3254,
+            752
+          ],
+          [
+            3302,
+            752
+          ],
+          [
+            3302,
+            836
+          ]
+        ]
       },
       "appearance": {
         "strokeColor": "#64748b",
@@ -2709,25 +2985,49 @@
         "cellId": "demo:packages/module/@sue/board-react-text"
       },
       "route": {
-        "mode": "orthogonal"
-      },
-      "appearance": {
-        "strokeColor": "#64748b",
-        "strokeWidth": 1.5
-      }
-    },
-    "demo:packages/edge/11": {
-      "id": "demo:packages/edge/11",
-      "kind": "architecture-edge",
-      "cellType": "edge",
-      "source": {
-        "cellId": "demo:packages/module/@sue/board-react-text"
-      },
-      "target": {
-        "cellId": "demo:packages/module/@sue/board-common"
-      },
-      "route": {
-        "mode": "orthogonal"
+        "mode": "orthogonal",
+        "points": [
+          [
+            3068,
+            619
+          ],
+          [
+            3052,
+            619
+          ],
+          [
+            3052,
+            558
+          ],
+          [
+            3062,
+            558
+          ],
+          [
+            3062,
+            546
+          ],
+          [
+            3068,
+            546
+          ],
+          [
+            3068,
+            534
+          ],
+          [
+            2529,
+            534
+          ],
+          [
+            2529,
+            619
+          ],
+          [
+            2504,
+            619
+          ]
+        ]
       },
       "appearance": {
         "strokeColor": "#64748b",
@@ -2745,7 +3045,25 @@
         "cellId": "demo:packages/module/@sue/board-mind"
       },
       "route": {
-        "mode": "orthogonal"
+        "mode": "orthogonal",
+        "points": [
+          [
+            1100,
+            619
+          ],
+          [
+            1102,
+            619
+          ],
+          [
+            1102,
+            1235
+          ],
+          [
+            1551,
+            1235
+          ]
+        ]
       },
       "appearance": {
         "strokeColor": "#64748b",
@@ -2763,7 +3081,33 @@
         "cellId": "demo:packages/module/@sue/board-react"
       },
       "route": {
-        "mode": "orthogonal"
+        "mode": "orthogonal",
+        "points": [
+          [
+            1100,
+            619
+          ],
+          [
+            1184,
+            619
+          ],
+          [
+            1184,
+            692
+          ],
+          [
+            3044,
+            692
+          ],
+          [
+            3044,
+            619
+          ],
+          [
+            3068,
+            619
+          ]
+        ]
       },
       "appearance": {
         "strokeColor": "#64748b",
@@ -2781,7 +3125,33 @@
         "cellId": "demo:packages/module/@sue/board-react"
       },
       "route": {
-        "mode": "orthogonal"
+        "mode": "orthogonal",
+        "points": [
+          [
+            4004,
+            619
+          ],
+          [
+            3920,
+            619
+          ],
+          [
+            3920,
+            670
+          ],
+          [
+            3464,
+            670
+          ],
+          [
+            3464,
+            619
+          ],
+          [
+            3440,
+            619
+          ]
+        ]
       },
       "appearance": {
         "strokeColor": "#64748b",
@@ -2799,7 +3169,25 @@
         "cellId": "demo:packages/module/@sue/board-workflow"
       },
       "route": {
-        "mode": "orthogonal"
+        "mode": "orthogonal",
+        "points": [
+          [
+            4004,
+            619
+          ],
+          [
+            4001,
+            619
+          ],
+          [
+            4001,
+            1235
+          ],
+          [
+            3423,
+            1235
+          ]
+        ]
       },
       "appearance": {
         "strokeColor": "#64748b",
@@ -2817,7 +3205,41 @@
         "cellId": "demo:packages/module/@sue/board-architecture"
       },
       "route": {
-        "mode": "orthogonal"
+        "mode": "orthogonal",
+        "points": [
+          [
+            1568,
+            619
+          ],
+          [
+            1570,
+            619
+          ],
+          [
+            1570,
+            824
+          ],
+          [
+            1710,
+            824
+          ],
+          [
+            1710,
+            946
+          ],
+          [
+            1995,
+            946
+          ],
+          [
+            1995,
+            1235
+          ],
+          [
+            2019,
+            1235
+          ]
+        ]
       },
       "appearance": {
         "strokeColor": "#64748b",
@@ -2829,13 +3251,55 @@
       "kind": "architecture-edge",
       "cellType": "edge",
       "source": {
-        "cellId": "demo:packages/module/@sue/board-react-architecture"
+        "cellId": "demo:packages/module/@sue/board-react-architecture",
+        "anchor": [
+          1,
+          0.5
+        ]
       },
       "target": {
-        "cellId": "demo:packages/module/@sue/board-react"
+        "cellId": "demo:packages/module/@sue/board-react",
+        "anchor": [
+          0,
+          0.3877551020408163
+        ]
       },
       "route": {
-        "mode": "orthogonal"
+        "mode": "orthogonal",
+        "points": [
+          [
+            1568,
+            619
+          ],
+          [
+            1652,
+            619
+          ],
+          [
+            1652,
+            680
+          ],
+          [
+            2588,
+            680
+          ],
+          [
+            2588,
+            546
+          ],
+          [
+            3063,
+            546
+          ],
+          [
+            3063,
+            608
+          ],
+          [
+            3068,
+            608
+          ]
+        ]
       },
       "appearance": {
         "strokeColor": "#64748b",
@@ -2853,7 +3317,17 @@
         "cellId": "demo:packages/module/@sue/board-common"
       },
       "route": {
-        "mode": "orthogonal"
+        "mode": "orthogonal",
+        "points": [
+          [
+            1712,
+            885
+          ],
+          [
+            1616,
+            885
+          ]
+        ]
       },
       "appearance": {
         "strokeColor": "#64748b",
@@ -2871,7 +3345,57 @@
         "cellId": "demo:packages/module/@sue/board-common"
       },
       "route": {
-        "mode": "orthogonal"
+        "mode": "orthogonal",
+        "points": [
+          [
+            2583,
+            1235
+          ],
+          [
+            2540,
+            1235
+          ],
+          [
+            2540,
+            1308
+          ],
+          [
+            2332,
+            1308
+          ],
+          [
+            2332,
+            1296
+          ],
+          [
+            1652,
+            1296
+          ],
+          [
+            1652,
+            1308
+          ],
+          [
+            1494,
+            1308
+          ],
+          [
+            1494,
+            970
+          ],
+          [
+            1618,
+            970
+          ],
+          [
+            1618,
+            885
+          ],
+          [
+            1616,
+            885
+          ]
+        ]
       },
       "appearance": {
         "strokeColor": "#64748b",
@@ -2889,7 +3413,33 @@
         "cellId": "demo:packages/module/@sue/board-core"
       },
       "route": {
-        "mode": "orthogonal"
+        "mode": "orthogonal",
+        "points": [
+          [
+            2955,
+            1235
+          ],
+          [
+            3015,
+            1235
+          ],
+          [
+            3015,
+            970
+          ],
+          [
+            3092,
+            970
+          ],
+          [
+            3092,
+            885
+          ],
+          [
+            3116,
+            885
+          ]
+        ]
       },
       "appearance": {
         "strokeColor": "#64748b",
@@ -2907,7 +3457,25 @@
         "cellId": "demo:packages/module/@sue/board-common"
       },
       "route": {
-        "mode": "orthogonal"
+        "mode": "orthogonal",
+        "points": [
+          [
+            1737,
+            1186
+          ],
+          [
+            1737,
+            948
+          ],
+          [
+            1430,
+            948
+          ],
+          [
+            1430,
+            934
+          ]
+        ]
       },
       "appearance": {
         "strokeColor": "#64748b",
@@ -2925,7 +3493,81 @@
         "cellId": "demo:packages/module/@sue/board-core"
       },
       "route": {
-        "mode": "orthogonal"
+        "mode": "orthogonal",
+        "points": [
+          [
+            1923,
+            1235
+          ],
+          [
+            1925,
+            1235
+          ],
+          [
+            1925,
+            958
+          ],
+          [
+            1983,
+            958
+          ],
+          [
+            1983,
+            946
+          ],
+          [
+            2008,
+            946
+          ],
+          [
+            2008,
+            958
+          ],
+          [
+            2168,
+            958
+          ],
+          [
+            2168,
+            897
+          ],
+          [
+            2143,
+            897
+          ],
+          [
+            2143,
+            885
+          ],
+          [
+            2120,
+            885
+          ],
+          [
+            2120,
+            834
+          ],
+          [
+            3104,
+            834
+          ],
+          [
+            3104,
+            873
+          ],
+          [
+            3103,
+            873
+          ],
+          [
+            3103,
+            885
+          ],
+          [
+            3116,
+            885
+          ]
+        ]
       },
       "appearance": {
         "strokeColor": "#64748b",
@@ -2943,7 +3585,33 @@
         "cellId": "demo:packages/module/@sue/board-layouts"
       },
       "route": {
-        "mode": "orthogonal"
+        "mode": "orthogonal",
+        "points": [
+          [
+            1923,
+            1235
+          ],
+          [
+            2007,
+            1235
+          ],
+          [
+            2007,
+            946
+          ],
+          [
+            2142,
+            946
+          ],
+          [
+            2142,
+            885
+          ],
+          [
+            2180,
+            885
+          ]
+        ]
       },
       "appearance": {
         "strokeColor": "#64748b",
@@ -2961,7 +3629,25 @@
         "cellId": "demo:packages/module/@sue/board-core"
       },
       "route": {
-        "mode": "orthogonal"
+        "mode": "orthogonal",
+        "points": [
+          [
+            3237,
+            1186
+          ],
+          [
+            3237,
+            1060
+          ],
+          [
+            3302,
+            1060
+          ],
+          [
+            3302,
+            934
+          ]
+        ]
       },
       "appearance": {
         "strokeColor": "#64748b",
@@ -2979,7 +3665,49 @@
         "cellId": "demo:packages/module/@sue/board-layouts"
       },
       "route": {
-        "mode": "orthogonal"
+        "mode": "orthogonal",
+        "points": [
+          [
+            3051,
+            1235
+          ],
+          [
+            3034,
+            1235
+          ],
+          [
+            3034,
+            982
+          ],
+          [
+            2567,
+            982
+          ],
+          [
+            2567,
+            958
+          ],
+          [
+            2564,
+            958
+          ],
+          [
+            2564,
+            946
+          ],
+          [
+            2576,
+            946
+          ],
+          [
+            2576,
+            885
+          ],
+          [
+            2552,
+            885
+          ]
+        ]
       },
       "appearance": {
         "strokeColor": "#64748b",
@@ -2997,7 +3725,57 @@
         "cellId": "demo:packages/module/@sue/board-core"
       },
       "route": {
-        "mode": "orthogonal"
+        "mode": "orthogonal",
+        "points": [
+          [
+            2391,
+            1235
+          ],
+          [
+            2540,
+            1235
+          ],
+          [
+            2540,
+            958
+          ],
+          [
+            2571,
+            958
+          ],
+          [
+            2571,
+            970
+          ],
+          [
+            3008,
+            970
+          ],
+          [
+            3008,
+            946
+          ],
+          [
+            3080,
+            946
+          ],
+          [
+            3080,
+            897
+          ],
+          [
+            3091,
+            897
+          ],
+          [
+            3091,
+            885
+          ],
+          [
+            3116,
+            885
+          ]
+        ]
       },
       "appearance": {
         "strokeColor": "#64748b",
@@ -3015,7 +3793,33 @@
         "cellId": "demo:packages/module/@sue/board-mind"
       },
       "route": {
-        "mode": "orthogonal"
+        "mode": "orthogonal",
+        "points": [
+          [
+            1629,
+            1493
+          ],
+          [
+            1653,
+            1493
+          ],
+          [
+            1653,
+            1296
+          ],
+          [
+            1527,
+            1296
+          ],
+          [
+            1527,
+            1235
+          ],
+          [
+            1551,
+            1235
+          ]
+        ]
       },
       "appearance": {
         "strokeColor": "#64748b",
@@ -3033,7 +3837,33 @@
         "cellId": "demo:packages/module/@sue/board-architecture"
       },
       "route": {
-        "mode": "orthogonal"
+        "mode": "orthogonal",
+        "points": [
+          [
+            2344,
+            1493
+          ],
+          [
+            2320,
+            1493
+          ],
+          [
+            2320,
+            1296
+          ],
+          [
+            2415,
+            1296
+          ],
+          [
+            2415,
+            1235
+          ],
+          [
+            2391,
+            1235
+          ]
+        ]
       },
       "appearance": {
         "strokeColor": "#64748b",
@@ -3051,7 +3881,25 @@
         "cellId": "demo:packages/module/@sue/board-draw"
       },
       "route": {
-        "mode": "orthogonal"
+        "mode": "orthogonal",
+        "points": [
+          [
+            2530,
+            1444
+          ],
+          [
+            2530,
+            1364
+          ],
+          [
+            2769,
+            1364
+          ],
+          [
+            2769,
+            1284
+          ]
+        ]
       },
       "appearance": {
         "strokeColor": "#64748b",
@@ -3069,7 +3917,25 @@
         "cellId": "demo:packages/module/@sue/board-workflow"
       },
       "route": {
-        "mode": "orthogonal"
+        "mode": "orthogonal",
+        "points": [
+          [
+            2716,
+            1493
+          ],
+          [
+            3049,
+            1493
+          ],
+          [
+            3049,
+            1235
+          ],
+          [
+            3051,
+            1235
+          ]
+        ]
       },
       "appearance": {
         "strokeColor": "#64748b",
@@ -3087,7 +3953,41 @@
         "cellId": "demo:packages/module/@sue/board-common"
       },
       "route": {
-        "mode": "orthogonal"
+        "mode": "orthogonal",
+        "points": [
+          [
+            975,
+            1444
+          ],
+          [
+            975,
+            1417
+          ],
+          [
+            1442,
+            1417
+          ],
+          [
+            1442,
+            1408
+          ],
+          [
+            1448,
+            1408
+          ],
+          [
+            1448,
+            960
+          ],
+          [
+            1430,
+            960
+          ],
+          [
+            1430,
+            934
+          ]
+        ]
       },
       "appearance": {
         "strokeColor": "#64748b",
@@ -3100,7 +4000,7 @@
       "kind": "document-reference",
       "geometry": {
         "x": 0,
-        "y": 1366,
+        "y": 1682,
         "width": 680,
         "height": 480
       },
@@ -3144,8 +4044,8 @@
       "kind": "architecture-module",
       "cellType": "node",
       "geometry": {
-        "x": 3584,
-        "y": 494,
+        "x": 2600,
+        "y": 570,
         "width": 372,
         "height": 98,
         "derived": false,
@@ -3227,8 +4127,8 @@
       "kind": "architecture-module",
       "cellType": "node",
       "geometry": {
-        "x": 3386,
-        "y": 714,
+        "x": 2648,
+        "y": 836,
         "width": 372,
         "height": 98,
         "derived": false,
@@ -3310,13 +4210,39 @@
       "kind": "architecture-edge",
       "cellType": "edge",
       "source": {
-        "cellId": "demo:packages/module/@sue/verd-board-ui"
+        "cellId": "demo:packages/module/@sue/verd-board-ui",
+        "anchor": [
+          0.6523297491039423,
+          1
+        ]
       },
       "target": {
-        "cellId": "demo:packages/module/@sue/board-react-uml"
+        "cellId": "demo:packages/module/@sue/board-react-uml",
+        "anchor": [
+          0.5,
+          0
+        ]
       },
       "route": {
-        "mode": "orthogonal"
+        "mode": "orthogonal",
+        "points": [
+          [
+            2080,
+            410
+          ],
+          [
+            2517,
+            410
+          ],
+          [
+            2517,
+            570
+          ],
+          [
+            2786,
+            570
+          ]
+        ]
       },
       "appearance": {
         "strokeColor": "#64748b",
@@ -3334,7 +4260,17 @@
         "cellId": "demo:packages/module/@sue/board-react"
       },
       "route": {
-        "mode": "orthogonal"
+        "mode": "orthogonal",
+        "points": [
+          [
+            2972,
+            619
+          ],
+          [
+            3068,
+            619
+          ]
+        ]
       },
       "appearance": {
         "strokeColor": "#64748b",
@@ -3352,7 +4288,25 @@
         "cellId": "demo:packages/module/@sue/board-uml"
       },
       "route": {
-        "mode": "orthogonal"
+        "mode": "orthogonal",
+        "points": [
+          [
+            2786,
+            668
+          ],
+          [
+            2786,
+            752
+          ],
+          [
+            2834,
+            752
+          ],
+          [
+            2834,
+            836
+          ]
+        ]
       },
       "appearance": {
         "strokeColor": "#64748b",
@@ -3370,7 +4324,17 @@
         "cellId": "demo:packages/module/@sue/board-core"
       },
       "route": {
-        "mode": "orthogonal"
+        "mode": "orthogonal",
+        "points": [
+          [
+            3020,
+            885
+          ],
+          [
+            3116,
+            885
+          ]
+        ]
       },
       "appearance": {
         "strokeColor": "#64748b",
@@ -3388,7 +4352,403 @@
         "cellId": "demo:packages/module/@sue/board-uml"
       },
       "route": {
-        "mode": "orthogonal"
+        "mode": "orthogonal",
+        "points": [
+          [
+            2530,
+            1444
+          ],
+          [
+            2530,
+            1441
+          ],
+          [
+            2518,
+            1441
+          ],
+          [
+            2518,
+            1320
+          ],
+          [
+            2566,
+            1320
+          ],
+          [
+            2566,
+            958
+          ],
+          [
+            2834,
+            958
+          ],
+          [
+            2834,
+            934
+          ]
+        ]
+      },
+      "appearance": {
+        "strokeColor": "#64748b",
+        "strokeWidth": 1.5
+      }
+    },
+    "demo:packages/module/@sue/board-react-draw": {
+      "id": "demo:packages/module/@sue/board-react-draw",
+      "kind": "architecture-module",
+      "cellType": "node",
+      "geometry": {
+        "x": 3536,
+        "y": 570,
+        "width": 372,
+        "height": 98,
+        "derived": false,
+        "outline": {
+          "kind": "roundRectangle",
+          "radius": 8
+        }
+      },
+      "data": {
+        "shape": "box",
+        "placed": true
+      },
+      "appearance": {
+        "fill": "#f0fdfa",
+        "strokeColor": "#94a3b8",
+        "strokeWidth": 1.5
+      },
+      "ports": [
+        {
+          "id": "top",
+          "side": "top",
+          "offset": 0.5,
+          "direction": "both"
+        },
+        {
+          "id": "right",
+          "side": "right",
+          "offset": 0.5,
+          "direction": "both"
+        },
+        {
+          "id": "bottom",
+          "side": "bottom",
+          "offset": 0.5,
+          "direction": "both"
+        },
+        {
+          "id": "left",
+          "side": "left",
+          "offset": 0.5,
+          "direction": "both"
+        }
+      ],
+      "content": {
+        "label": "@sue/board-react-draw\npackages/react/draw",
+        "text": {
+          "schemaVersion": 1,
+          "id": "demo:packages/module/@sue/board-react-draw/text",
+          "kind": "inline",
+          "plainText": "@sue/board-react-draw\npackages/react/draw",
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "@sue/board-react-draw"
+                  }
+                ]
+              },
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "packages/react/draw"
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      }
+    },
+    "demo:packages/edge/%40sue%2Fverd-board-ui>%40sue%2Fboard-react-draw": {
+      "id": "demo:packages/edge/%40sue%2Fverd-board-ui>%40sue%2Fboard-react-draw",
+      "kind": "architecture-edge",
+      "cellType": "edge",
+      "source": {
+        "cellId": "demo:packages/module/@sue/verd-board-ui"
+      },
+      "target": {
+        "cellId": "demo:packages/module/@sue/board-react-draw"
+      },
+      "route": {
+        "mode": "orthogonal",
+        "points": [
+          [
+            2209,
+            361
+          ],
+          [
+            3534,
+            361
+          ],
+          [
+            3534,
+            619
+          ],
+          [
+            3536,
+            619
+          ]
+        ]
+      },
+      "appearance": {
+        "strokeColor": "#64748b",
+        "strokeWidth": 1.5
+      }
+    },
+    "demo:packages/edge/%40sue%2Fboard-react-draw>%40sue%2Fboard-draw": {
+      "id": "demo:packages/edge/%40sue%2Fboard-react-draw>%40sue%2Fboard-draw",
+      "kind": "architecture-edge",
+      "cellType": "edge",
+      "source": {
+        "cellId": "demo:packages/module/@sue/board-react-draw"
+      },
+      "target": {
+        "cellId": "demo:packages/module/@sue/board-draw"
+      },
+      "route": {
+        "mode": "orthogonal",
+        "points": [
+          [
+            3536,
+            619
+          ],
+          [
+            3534,
+            619
+          ],
+          [
+            3534,
+            1286
+          ],
+          [
+            3036,
+            1286
+          ],
+          [
+            3036,
+            1247
+          ],
+          [
+            3029,
+            1247
+          ],
+          [
+            3029,
+            1235
+          ],
+          [
+            3015,
+            1235
+          ],
+          [
+            3015,
+            1247
+          ],
+          [
+            2979,
+            1247
+          ],
+          [
+            2979,
+            1235
+          ],
+          [
+            2955,
+            1235
+          ]
+        ]
+      },
+      "appearance": {
+        "strokeColor": "#64748b",
+        "strokeWidth": 1.5
+      }
+    },
+    "demo:packages/edge/%40sue%2Fboard-react-draw>%40sue%2Fboard-react": {
+      "id": "demo:packages/edge/%40sue%2Fboard-react-draw>%40sue%2Fboard-react",
+      "kind": "architecture-edge",
+      "cellType": "edge",
+      "source": {
+        "cellId": "demo:packages/module/@sue/board-react-draw"
+      },
+      "target": {
+        "cellId": "demo:packages/module/@sue/board-react"
+      },
+      "route": {
+        "mode": "orthogonal",
+        "points": [
+          [
+            3536,
+            619
+          ],
+          [
+            3440,
+            619
+          ]
+        ]
+      },
+      "appearance": {
+        "strokeColor": "#64748b",
+        "strokeWidth": 1.5
+      }
+    },
+    "demo:packages/module/@sue/board-react-actions": {
+      "id": "demo:packages/module/@sue/board-react-actions",
+      "kind": "architecture-module",
+      "cellType": "node",
+      "geometry": {
+        "x": 1664,
+        "y": 570,
+        "width": 372,
+        "height": 98,
+        "derived": false,
+        "outline": {
+          "kind": "roundRectangle",
+          "radius": 8
+        }
+      },
+      "data": {
+        "shape": "box",
+        "placed": true
+      },
+      "appearance": {
+        "fill": "#f0fdfa",
+        "strokeColor": "#94a3b8",
+        "strokeWidth": 1.5
+      },
+      "ports": [
+        {
+          "id": "top",
+          "side": "top",
+          "offset": 0.5,
+          "direction": "both"
+        },
+        {
+          "id": "right",
+          "side": "right",
+          "offset": 0.5,
+          "direction": "both"
+        },
+        {
+          "id": "bottom",
+          "side": "bottom",
+          "offset": 0.5,
+          "direction": "both"
+        },
+        {
+          "id": "left",
+          "side": "left",
+          "offset": 0.5,
+          "direction": "both"
+        }
+      ],
+      "content": {
+        "label": "@sue/board-react-actions\npackages/react/actions",
+        "text": {
+          "schemaVersion": 1,
+          "id": "demo:packages/module/@sue/board-react-actions/text",
+          "kind": "inline",
+          "plainText": "@sue/board-react-actions\npackages/react/actions",
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "@sue/board-react-actions"
+                  }
+                ]
+              },
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "packages/react/actions"
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      }
+    },
+    "demo:packages/edge/%40sue%2Fboard-react-actions>%40sue%2Fboard-common": {
+      "id": "demo:packages/edge/%40sue%2Fboard-react-actions>%40sue%2Fboard-common",
+      "kind": "architecture-edge",
+      "cellType": "edge",
+      "source": {
+        "cellId": "demo:packages/module/@sue/board-react-actions"
+      },
+      "target": {
+        "cellId": "demo:packages/module/@sue/board-common"
+      },
+      "route": {
+        "mode": "orthogonal",
+        "points": [
+          [
+            1664,
+            619
+          ],
+          [
+            1640,
+            619
+          ],
+          [
+            1640,
+            885
+          ],
+          [
+            1616,
+            885
+          ]
+        ]
+      },
+      "appearance": {
+        "strokeColor": "#64748b",
+        "strokeWidth": 1.5
+      }
+    },
+    "demo:packages/edge/%40sue%2Fboard-react-text>%40sue%2Fboard-react-actions": {
+      "id": "demo:packages/edge/%40sue%2Fboard-react-text>%40sue%2Fboard-react-actions",
+      "kind": "architecture-edge",
+      "cellType": "edge",
+      "source": {
+        "cellId": "demo:packages/module/@sue/board-react-text"
+      },
+      "target": {
+        "cellId": "demo:packages/module/@sue/board-react-actions"
+      },
+      "route": {
+        "mode": "orthogonal",
+        "points": [
+          [
+            2132,
+            619
+          ],
+          [
+            2036,
+            619
+          ]
+        ]
       },
       "appearance": {
         "strokeColor": "#64748b",

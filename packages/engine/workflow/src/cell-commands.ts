@@ -1,29 +1,31 @@
 import {
-  createFrameCell,
+  arrangeCells,
   assertWholeGroupsMoved,
+  createCellRegistry,
+  createCellStore,
+  createFrameCell,
   groupAncestors,
   indexCells,
-  arrangeCells,
-  isFrameCell,
-  createCellStore,
-  CellKind,
-  isNodeCell,
   isEdgeCell,
-  type CellStore,
-  type NodeCell,
-  type WorkflowStartData,
+  isFrameCell,
+  isNodeCell,
   type CellOperation,
-  type Point,
+  type CellRegistry,
+  type CellStore,
   type FrameSnapshot,
+  type NodeCell,
+  type Point,
 } from '@sue/board-core';
 import { layoutDag } from '@sue/board-layouts';
 import { workflowCellPorts, workflowStartOf } from './cell-utils';
+import { createWorkflowPlugin } from './plugin';
+import { WorkflowKind, type WorkflowStartData } from './public-api';
 export const createWorkflowStartCell = (
   id: string,
   origin: Point = [40, 80],
 ): NodeCell<WorkflowStartData> => ({
   id,
-  kind: CellKind.workflowStart,
+  kind: WorkflowKind.workflowStart,
   cellType: 'node',
   geometry: {
     x: origin[0],
@@ -41,7 +43,7 @@ export const createWorkflowTaskCell = (
   decision = false,
 ): NodeCell => ({
   id,
-  kind: decision ? CellKind.workflowDecision : CellKind.workflowTask,
+  kind: decision ? WorkflowKind.workflowDecision : WorkflowKind.workflowTask,
   cellType: 'node',
   geometry: {
     x: 0,
@@ -73,7 +75,7 @@ export const addWorkflowTask = (
   node: NodeCell,
 ): CellOperation[] => {
   const start = store.cells[startId];
-  if (!isNodeCell(start) || start.kind !== CellKind.workflowStart)
+  if (!isNodeCell(start) || start.kind !== WorkflowKind.workflowStart)
     throw new Error('Missing workflow start');
   const data = (start as NodeCell<WorkflowStartData>).data!;
   const frame = Object.values(store.cells).find(
@@ -122,7 +124,7 @@ export const layoutWorkflowCells = (store: CellStore, frameId: string) => {
   if (frame?.cellType !== 'frame') return result;
   (frame as import('@sue/board-core').FrameCell).children.forEach((id) => {
     const start = store.cells[id];
-    if (!isNodeCell(start) || start.kind !== CellKind.workflowStart) return;
+    if (!isNodeCell(start) || start.kind !== WorkflowKind.workflowStart) return;
     const data = (start as NodeCell<WorkflowStartData>).data!;
     const nodes = data.memberIds
       .map((id) => store.cells[id])
@@ -131,7 +133,7 @@ export const layoutWorkflowCells = (store: CellStore, frameId: string) => {
       .filter(isEdgeCell)
       .filter(
         (edge) =>
-          edge.kind === CellKind.workflowEdge &&
+          edge.kind === WorkflowKind.workflowEdge &&
           'cellId' in edge.source &&
           workflowStartOf(store, edge.source.cellId)?.id === start.id,
       )
@@ -164,14 +166,14 @@ export const layoutWorkflowCells = (store: CellStore, frameId: string) => {
 
 const workflowGraph = (store: CellStore, startId: string) => {
   const start = store.cells[startId];
-  if (!isNodeCell(start) || start.kind !== CellKind.workflowStart)
+  if (!isNodeCell(start) || start.kind !== WorkflowKind.workflowStart)
     throw new Error('Missing workflow start');
   const ids = new Set((start.data as WorkflowStartData).memberIds);
   const nodes = [...ids].map((id) => store.cells[id]).filter(isNodeCell);
   const edges = Object.values(store.cells)
     .filter(isEdgeCell)
     .flatMap((edge) =>
-      edge.kind === CellKind.workflowEdge &&
+      edge.kind === WorkflowKind.workflowEdge &&
       'cellId' in edge.source &&
       'cellId' in edge.target &&
       ids.has(edge.source.cellId) &&
@@ -213,6 +215,9 @@ export const canAutoLayoutWorkflow = (
 export const autoLayoutWorkflow = (
   store: CellStore,
   startId: string,
+  registry: CellRegistry = createCellRegistry({
+    plugins: [createWorkflowPlugin()],
+  }),
 ): CellOperation[] => {
   if (!canAutoLayoutWorkflow(store, startId))
     throw new Error('Cannot auto layout a cyclic workflow');
@@ -232,6 +237,8 @@ export const autoLayoutWorkflow = (
       indexCells(store).parentOf.get(startId)!,
       ids,
       'flow',
+      32,
+      registry,
     );
   }
   const layout = layoutDag(

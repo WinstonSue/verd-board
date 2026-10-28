@@ -1,26 +1,27 @@
 import {
   createFrameCell,
   isFrameCell,
-  isNodeCell,
-  umlRoot,
-  umlEvents,
   type Cell,
-  type CellStore,
   type CellOperation,
-  type NodeCell,
+  type CellStore,
   type EdgeCell,
   type FrameSnapshot,
+  type NodeCell,
+} from '@sue/board-core';
+import {
+  umlEvents,
+  umlRoot,
   type UmlClassData,
   type UmlClassifier,
+  type UmlEvent,
+  type UmlFragmentData,
+  type UmlMessageData,
+  type UmlNoteData,
+  type UmlParticipantData,
   type UmlRelation,
   type UmlRelationData,
   type UmlSequenceData,
-  type UmlParticipantData,
-  type UmlMessageData,
-  type UmlEvent,
-  type UmlFragmentData,
-  type UmlNoteData,
-} from '@sue/board-core';
+} from './public-api';
 export const umlPorts = () =>
   (['top', 'right', 'bottom', 'left'] as const).map((side) => ({
     id: side,

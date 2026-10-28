@@ -1,6 +1,7 @@
 import {
   createCellRuntime,
   isFrameReferenceCell,
+  UnregisteredCellKindsError,
   type CellId,
   type CellRegistry,
   type CellRuntime,
@@ -13,6 +14,7 @@ import {
   sameFrameContent,
   type FrameFileV2,
 } from '../frames/frame-files';
+import { createWorkspaceCellRegistry } from '../frames/plugins';
 import type {
   CommandResult,
   WorkspaceSession,
@@ -79,6 +81,8 @@ export interface OccurrenceOpenResult {
   ok: boolean;
   occurrence?: OccurrenceSession;
   message?: string;
+  code?: string;
+  kinds?: readonly string[];
 }
 
 const fileStore = (file: FrameFileV2): CellStore => ({
@@ -127,7 +131,8 @@ export const createCanvasSession = (options: {
   session: WorkspaceSession;
   registry?: CellRegistry;
 }) => {
-  const { session, registry } = options;
+  const { session } = options;
+  const registry = options.registry ?? createWorkspaceCellRegistry();
   const occurrences = new Map<OccurrenceId, OccurrenceSession>();
   const retainCounts = new Map<OccurrenceSession, number>();
   const listeners = new Set<() => void>();
@@ -143,6 +148,13 @@ export const createCanvasSession = (options: {
     createCellRuntime({ store: fileStore(file) }, registry);
 
   const entryFor = (fileId: CellId) => session.getState().files.get(fileId);
+  const openingFailure = (error: unknown): OccurrenceOpenResult => ({
+    ok: false,
+    message: error instanceof Error ? error.message : String(error),
+    ...(error instanceof UnregisteredCellKindsError
+      ? { code: error.code, kinds: error.kinds }
+      : {}),
+  });
 
   /**
    * Reconciles every live occurrence against the canonical files: changed
@@ -243,11 +255,17 @@ export const createCanvasSession = (options: {
     }
     const entry = entryFor(fileId);
     if (!entry) return { ok: false, message: `Unknown file: ${fileId}` };
+    let runtime: CellRuntime;
+    try {
+      runtime = makeRuntime(entry.file);
+    } catch (error) {
+      return openingFailure(error);
+    }
     const occurrence = adopt(id, {
       fileId,
       appearancePath: [fileId],
       contentReadonly: false,
-      runtime: makeRuntime(entry.file),
+      runtime,
       file: entry.file,
     });
     activate(id);
@@ -290,6 +308,12 @@ export const createCanvasSession = (options: {
     const fileId = ref.data.targetFrameId;
     const entry = entryFor(fileId);
     if (!entry) return { ok: false, message: `Missing target file: ${fileId}` };
+    let runtime: CellRuntime;
+    try {
+      runtime = makeRuntime(entry.file);
+    } catch (error) {
+      return openingFailure(error);
+    }
     const occurrence = adopt(id, {
       fileId,
       refId,
@@ -298,7 +322,7 @@ export const createCanvasSession = (options: {
       appearancePath,
       contentReadonly:
         isRegularCanvas(entry.file) || !!parentOccurrence?.contentReadonly,
-      runtime: makeRuntime(entry.file),
+      runtime,
       file: entry.file,
     });
     if (shouldActivate) activate(id);

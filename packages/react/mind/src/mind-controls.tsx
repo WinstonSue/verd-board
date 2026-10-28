@@ -16,8 +16,11 @@ export const renderMindControls = (context: FrameRenderContext) => {
   )
     return null;
   const children = mindChildIds(store, cell.id);
-  const collapsed = !!(cell.data as { collapsed?: boolean } | undefined)
-    ?.collapsed;
+  const canonicalCollapsed = !!(
+    cell.data as { collapsed?: boolean } | undefined
+  )?.collapsed;
+  const collapsed =
+    canonicalCollapsed && !context.viewProjection.expandedCellIds.has(cell.id);
   if (!children.length || (!collapsed && !context.hovered && !context.selected))
     return null;
   const side = mindGrowthSide(store, cell.id);
@@ -40,22 +43,31 @@ export const renderMindControls = (context: FrameRenderContext) => {
     const latest = store.cells[cell.id];
     if (!isNodeCell(latest)) return;
     context.select();
-    void context.dispatch({
-      id: crypto.randomUUID(),
-      operations: [
-        {
-          type: 'replace_cell',
-          cell: {
-            ...latest,
-            data: {
-              ...(latest.data as object),
-              collapsed: !(latest.data as { collapsed?: boolean } | undefined)
-                ?.collapsed,
+    const nextCollapsed = !collapsed;
+    const latestCollapsed = !!(
+      latest.data as { collapsed?: boolean } | undefined
+    )?.collapsed;
+    if (nextCollapsed === latestCollapsed) {
+      context.clearRevealOverrides?.([cell.id]);
+      return;
+    }
+    void context
+      .dispatch({
+        id: crypto.randomUUID(),
+        operations: [
+          {
+            type: 'replace_cell',
+            cell: {
+              ...latest,
+              data: { ...(latest.data as object), collapsed: nextCollapsed },
             },
           },
-        },
-      ],
-    });
+        ],
+      })
+      .then((result) => {
+        if (result.status === 'accepted')
+          context.clearRevealOverrides?.([cell.id]);
+      });
   };
   return (
     <g data-mind-controls={cell.id}>

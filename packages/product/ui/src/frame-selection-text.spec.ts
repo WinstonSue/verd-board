@@ -1,17 +1,19 @@
-import { describe, it, expect } from 'vitest';
 import { Alignment, createInlineText } from '@sue/board-common';
 import {
-  createCellRuntime,
-  createFrameCell,
-  createCellStore,
   applyCellOperations,
+  createCellRuntime,
+  createCellStore,
+  createFrameCell,
   groupCells,
   type NodeCell,
 } from '@sue/board-core';
+import { describe, expect, it } from 'vitest';
+import { createTestCellRegistry as createFixtureRegistry } from '../../../../tests/fixtures/plugins/registry';
 import {
   formatSelectionText,
   updateSelectionText,
 } from './frame-selection-text';
+const testCellRegistry = createFixtureRegistry();
 
 describe('selection text formatting', () => {
   it('preserves mixed styles, links and structure while replacing only requested marks', () => {
@@ -52,40 +54,45 @@ describe('selection text formatting', () => {
       geometry: { x: 0, y: 0, width: 100, height: 40 },
       content: { label: id, text: createInlineText(id) },
     });
-    let store = applyCellOperations(createCellStore(createFrameCell('root')), [
-      ...['a', 'b', 'locked'].map((id) => ({
-        type: 'insert_cell' as const,
-        parentId: 'root',
-        cell: { ...node(id), locked: id === 'locked' },
-      })),
-      {
-        type: 'insert_cell',
-        parentId: 'root',
-        cell: createFrameCell('nested'),
-      },
-      { type: 'insert_cell', parentId: 'nested', cell: node('inside') },
-      {
-        type: 'insert_cell',
-        parentId: 'root',
-        cell: {
-          id: 'arrow',
-          kind: 'arrow',
-          cellType: 'edge',
-          source: { cellId: 'a' },
-          target: { cellId: 'b' },
-          route: { mode: 'auto' },
-          labels: [
-            { text: 'First', position: 0.2 },
-            { text: 'Second', position: 0.8 },
-          ],
+    let store = applyCellOperations(
+      createCellStore(createFrameCell('root')),
+      [
+        ...['a', 'b', 'locked'].map((id) => ({
+          type: 'insert_cell' as const,
+          parentId: 'root',
+          cell: { ...node(id), locked: id === 'locked' },
+        })),
+        {
+          type: 'insert_cell',
+          parentId: 'root',
+          cell: createFrameCell('nested'),
         },
-      },
-    ]);
+        { type: 'insert_cell', parentId: 'nested', cell: node('inside') },
+        {
+          type: 'insert_cell',
+          parentId: 'root',
+          cell: {
+            id: 'arrow',
+            kind: 'arrow',
+            cellType: 'edge',
+            source: { cellId: 'a' },
+            target: { cellId: 'b' },
+            route: { mode: 'auto' },
+            labels: [
+              { text: 'First', position: 0.2 },
+              { text: 'Second', position: 0.8 },
+            ],
+          },
+        },
+      ],
+      testCellRegistry,
+    );
     store = applyCellOperations(
       store,
-      groupCells(store, 'root', ['a', 'b'], 'group'),
+      groupCells(store, 'root', ['a', 'b'], 'group', testCellRegistry),
+      testCellRegistry,
     );
-    const runtime = createCellRuntime({ store });
+    const runtime = createCellRuntime({ store }, testCellRegistry);
     runtime.transact({
       id: 'format',
       operations: updateSelectionText(

@@ -1,18 +1,13 @@
-import React, { act, createRef } from 'react';
-import { createRoot } from 'react-dom/client';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { createInlineText, type BoardTextDocument } from '@sue/board-common';
 import {
-  createCellRegistry,
   createCellRuntime,
   createFrameCell,
   frameContentViewport,
   geometryBounds,
   type FrameSnapshot,
-  type MindRootData,
   type NodeCell,
   type NodeGeometry,
 } from '@sue/board-core';
-import { createInlineText, type BoardTextDocument } from '@sue/board-common';
 import {
   addMindChild,
   createMindChildCell,
@@ -21,13 +16,17 @@ import {
   createMindSummary,
   layoutMindCells,
   mindChildIds,
+  type MindRootData,
 } from '@sue/board-mind';
 import {
   FrameCanvas,
   type FrameCanvasController,
   type FrameRenderExtension,
 } from '@sue/board-react';
-import { createMindFrameExtensions } from './frame-extension';
+import { act, createRef } from 'react';
+import { createRoot } from 'react-dom/client';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { createTestFramePluginSet } from '../../../../tests/fixtures/plugins/ui';
 import { cloneFrameImageSvg } from '../../board/src/frame-export';
 
 vi.mock('../../board/src/frame-text-editor', () => ({
@@ -63,8 +62,7 @@ afterEach(async () => {
 });
 
 const fixture = () => {
-  const registry = createCellRegistry();
-  const extensions = createMindFrameExtensions(registry);
+  const { registry, extensions } = createTestFramePluginSet();
   const runtime = createCellRuntime(
     createMindFrameSnapshot('mind', 'topic'),
     registry,
@@ -225,30 +223,30 @@ describe('embedded Mind root dragging', () => {
         dy = b.y + b.height / 2 - (a.y + a.height / 2);
       await t.fire(t.cell('a'), 'pointerdown', 300, 300);
       await t.fire(t.svg, 'pointermove', 300 + dx * scale, 300 + dy * scale);
-      const ghost = t.host.querySelector('[data-mind-ghost="a"]')!;
+      const ghost = t.host.querySelector('[data-move-ghost="a"]')!;
       expect(ghost).not.toBeNull();
       expect(ghost.getAttribute('opacity')).toBe('0.35');
       expect(ghost.querySelector('[data-draft-cell-id="a1"]')).not.toBeNull();
       expect(ghost.querySelector('[data-draft-cell-id="summary"]')).toBeNull();
       expect(
-        t.host.querySelector('[data-mind-drop-target="b"]'),
+        t.host.querySelector('[data-move-drop-target="b"]'),
       ).not.toBeNull();
       expect(t.ref.current!.runtime.store).toBe(before);
       expect(t.ref.current!.runtime.history.undos).toHaveLength(history);
       expect(t.onChange).toHaveBeenCalledTimes(changes);
       expect(
-        cloneFrameImageSvg(t.svg).querySelector('[data-mind-ghost]'),
+        cloneFrameImageSvg(t.svg).querySelector('[data-move-ghost]'),
       ).toBeNull();
       const outline = ghost
         .querySelector('[data-draft-cell-id="a1"] path')!
         .getAttribute('d');
       await t.fire(t.svg, 'pointercancel', 300 + dx * scale, 300 + dy * scale);
-      expect(t.host.querySelector('[data-mind-ghost]')).toBeNull();
+      expect(t.host.querySelector('[data-move-ghost]')).toBeNull();
       expect(t.ref.current!.runtime.store).toBe(before);
       await t.fire(t.cell('a'), 'pointerdown', 300, 300);
       await t.fire(t.svg, 'pointermove', 300 + dx * scale, 300 + dy * scale);
       await t.fire(t.svg, 'pointerup', 300 + dx * scale, 300 + dy * scale);
-      expect(t.host.querySelector('[data-mind-ghost]')).toBeNull();
+      expect(t.host.querySelector('[data-move-ghost]')).toBeNull();
       expect(mindChildIds(t.ref.current!.runtime.store, 'b')).toEqual(['a']);
       expect(t.cell('a1').querySelector('path')!.getAttribute('d')).toBe(
         outline,
@@ -256,7 +254,7 @@ describe('embedded Mind root dragging', () => {
       expect(t.ref.current!.runtime.history.undos).toHaveLength(history + 1);
       expect(t.onChange).toHaveBeenCalledTimes(changes + 1);
       await act(async () => {
-        t.ref.current!.undo();
+        t.ref.current!.executeAction('canvas.history.undo');
       });
       expect(t.ref.current!.runtime.store).toEqual(before);
     },
@@ -314,9 +312,9 @@ describe('embedded Mind root dragging', () => {
       'range',
     ])
       expect(saved.store.cells[id]).toEqual(t.value.store.cells[id]);
-    await act(async () => t.ref.current!.undo());
+    await act(async () => t.ref.current!.executeAction('canvas.history.undo'));
     expect(t.display).toEqual(before);
-    await act(async () => t.ref.current!.redo());
+    await act(async () => t.ref.current!.executeAction('canvas.history.redo'));
     expect(t.display).toEqual(preview);
     const reloaded = JSON.parse(JSON.stringify(saved)) as FrameSnapshot;
     await act(async () => t.render('board', reloaded));
@@ -476,14 +474,18 @@ describe('embedded Mind root dragging', () => {
     const before = new Map(t.display);
     for (const type of ['lock', 'unlock'] as const) {
       await act(async () => {
-        await t.ref.current!.executeSelectionCommand({ type });
+        await t.ref.current!.executeAction(`canvas.selection.${type}`);
       });
       expect(
         (t.ref.current!.runtime.store.cells.topic as NodeCell).geometry,
       ).toEqual(canonical);
       expect(t.display).toEqual(before);
     }
-    await act(async () => t.ref.current!.editText('topic'));
+    await act(async () =>
+      t.ref.current!.executeAction('canvas.selection.edit', {
+        cellId: 'topic',
+      }),
+    );
     expect(t.host.querySelector('[data-frame-text-editor]')).not.toBeNull();
     await act(async () => {
       (
@@ -615,9 +617,13 @@ describe('Mind fold controls', () => {
         expect(Object.keys(t.ref.current!.runtime.store.cells)).toEqual(ids);
         expect(t.ref.current!.runtime.selection.ids).toEqual([id]);
         expect(t.ref.current!.runtime.history.undos.length).toBe(before + 1);
-        await act(async () => t.ref.current!.undo());
+        await act(async () =>
+          t.ref.current!.executeAction('canvas.history.undo'),
+        );
         hiddenIds.forEach((hidden) => expect(t.cell(hidden)).not.toBeNull());
-        await act(async () => t.ref.current!.redo());
+        await act(async () =>
+          t.ref.current!.executeAction('canvas.history.redo'),
+        );
         hiddenIds.forEach((hidden) => expect(t.cell(hidden)).toBeNull());
 
         // The expand button stays discoverable after selecting another tree.

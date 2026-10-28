@@ -1,18 +1,12 @@
-import { createUmlFrameExtensions } from '@sue/board-react-uml';
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { type FrameSnapshot } from '@sue/board-core';
 import {
   FrameCanvas,
   type FrameCanvasController,
   type FrameDocumentReferences,
 } from '@sue/board-react';
-import { createCellRegistry, type FrameSnapshot } from '@sue/board-core';
-import { registerDrawCells } from '@sue/board-draw';
-import { createMindFrameExtensions } from '@sue/board-react-mind';
-import { createWorkflowFrameExtensions } from '@sue/board-react-workflow';
-import { createArchitectureFrameExtensions } from '@sue/board-react-architecture';
-import { measureBoardText } from '@sue/board-react-text';
-import { frameDrawExtensions } from './frame-draw-extension';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { canvasPreviewSnapshot } from './canvas-preview-snapshot';
+import { createVerdFramePluginSet } from './frame-plugins';
 
 /** A private read-only runtime: never mounts a workspace editing occurrence. */
 export function CanvasPreview({
@@ -35,24 +29,7 @@ export function CanvasPreview({
     [value.store, frameId],
   );
   previousSnapshot.current = preview;
-  const registry = useMemo(() => {
-    const result = createCellRegistry();
-    registerDrawCells(result);
-    return result;
-  }, []);
-  const extensions = useMemo(
-    () => [
-      ...createMindFrameExtensions(registry, {
-        measureText: (text, width, size) =>
-          measureBoardText(text, width, size, 'system-ui, sans-serif'),
-      }),
-      ...createWorkflowFrameExtensions(registry),
-      ...createArchitectureFrameExtensions(registry),
-      ...createUmlFrameExtensions(registry),
-      ...frameDrawExtensions,
-    ],
-    [registry],
-  );
+  const pluginSet = useMemo(() => createVerdFramePluginSet(), []);
   useEffect(() => {
     const fit = () => {
       const svg = container.current?.querySelector('svg');
@@ -62,7 +39,7 @@ export function CanvasPreview({
       // preview fills the card at any outer zoom instead of scaling twice.
       if (svg && bounds && bounds.width > 0 && bounds.height > 0)
         svg.setAttribute('viewBox', `0 0 ${bounds.width} ${bounds.height}`);
-      controller.current?.fit();
+      controller.current?.executeAction('canvas.view.fit');
     };
     const raf = requestAnimationFrame(() => {
       fit();
@@ -86,8 +63,7 @@ export function CanvasPreview({
         ref={controller}
         value={preview}
         frameId={frameId}
-        registry={registry}
-        extensions={extensions}
+        pluginSet={pluginSet}
         documentReferences={documentReferences}
         readonly
         suspended

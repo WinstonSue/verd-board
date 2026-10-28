@@ -1,138 +1,66 @@
 # @sue/board-react
 
-## 2.0.0 接入与变更
+以下为下一主版本的源码接入方式。本轮只交付代码与 Changesets，不升级版本、不发布；请用本仓构建的真实 tarball 验证，已发布的 2.0.0 不包含这些新入口。
 
-统一 FrameCanvas；1.0.0 已提供此入口。新增引用宿主、文档窗口、移动预览和控制器能力；保留 value/onChange 与 adapter/onIntent 两种模式。右键菜单改在松开鼠标后显示。
+通用 FrameCanvas、可组合 FrameEditor、工具栏、属性控件、快捷键分发、图像导出，以及内置富文本。不依赖领域引擎、领域 UI、产品包或转换器。
 
-在项目 `.npmrc` 配置两个 scope：
+在项目 .npmrc 配置两个 scope，访问权限和令牌由仓库管理员提供；令牌保存在用户配置或 CI secret。最小编辑器只使用 @sue，完整产品的 @ylib 传递依赖也需要相应授权。
 
 ```ini
 @sue:registry=https://packages.aliyun.com/69f800449b7ce0afb00bda0e/npm/npm-registry/
 @ylib:registry=https://packages.aliyun.com/6141c43fdd62cdb60fbbdbda/npm/npm-registry/
 ```
 
-两个仓库都需要获得访问授权。令牌放在用户级 `.npmrc` 或 CI secret，通过仓库管理员获取；不要提交令牌。`@ylib/tabs` 是产品包的传递依赖，只有 `@sue` 配置不足以安装完整产品。
+最小 Mind 安装四个 Board 包（文本和布局自动安装）：
 
 ```bash
-pnpm add @sue/board-core@2.0.0 @sue/board-mind@2.0.0 @sue/board-react@2.0.0 @sue/board-react-mind@2.0.0 @sue/board-react-text@2.0.0 react react-dom
+pnpm add @sue/board-core @sue/board-mind @sue/board-react @sue/board-react-mind react react-dom
 ```
-
-React 组件面向浏览器，支持 React 18/19；TypeScript 使用现代 Bundler 模块解析。ESM、CJS 与声明从 `dist` 加载，不导入 `src` 或未声明的深层路径。仓库开发的 Node/pnpm 要求不等同于浏览器运行时要求。
 
 <!-- consumer-example -->
 
 ```tsx
 import { useState } from 'react';
-import { createCellRegistry } from '@sue/board-core';
 import { createMindFrameSnapshot } from '@sue/board-mind';
-import { FrameCanvas } from '@sue/board-react';
-import { createMindFrameExtensions } from '@sue/board-react-mind';
-import '@sue/board-react-text/style.css';
-const registry = createCellRegistry();
-const extensions = createMindFrameExtensions(registry);
-export function MindEditor() {
-  const [value, setValue] = useState(() => createMindFrameSnapshot('frame', 'root'));
-  return (
-    <div style={{ height: 600 }}>
-      <FrameCanvas registry={registry} extensions={extensions} value={value} onChange={({ snapshot }) => setValue(snapshot)} />
-    </div>
-  );
-}
-```
-
-画布容器必须有明确高度。独立文本/画布加载 `@sue/board-react-text/style.css`；`VerdFrame`/`WorkspaceApp` 加载 `@sue/verd-board-ui/style.css`（已包含文本样式）。
-
-### 第三方宿主
-
-`adapter.toFrameSnapshot(value)` 只负责读取业务值。`onIntent(transaction)` 返回 `{status:'accepted'}` 或 `{status:'rejected', message?}`；接受后宿主必须回写新 `value`，画布不会代替宿主保存。异步等待期间阻止重复提交；外部撤销通过 `history` 接入。标准 `onChange` 模式与宿主模式互斥。
-
-<!-- consumer-example -->
-
-```tsx
-import { applyCellOperations, type FrameSnapshot } from '@sue/board-core';
-import { FrameCanvas, type FrameCanvasProps } from '@sue/board-react';
-import { useState } from 'react';
-export function HostEditor({ initial }: { initial: FrameSnapshot }) {
-  const [value, setValue] = useState({ snapshot: initial });
-  const props: FrameCanvasProps<typeof value> = {
-    value,
-    adapter: { toFrameSnapshot: (v) => v.snapshot },
-    onIntent: (transaction) => {
-      const store = applyCellOperations(value.snapshot.store, transaction.operations);
-      setValue({ snapshot: { store } });
-      return { status: 'accepted' };
-    },
-  };
-  return (
-    <div style={{ height: 600 }}>
-      <FrameCanvas {...props} />
-    </div>
-  );
-}
-```
-
-完整发布摘要与迁移入口见 [VerdBoard 2.0](https://github.com/WinstonSue/verd-board#npm-2)；逐包变更见本包随附的 `CHANGELOG.md`。`FrameCanvas` 已存在于 1.0.0，早期 BoardCanvas/领域 Canvas 的删除不是本次新增变更。
-
-## API 与使用细节
-
-统一 Cell/Frame React 画布，提供标准受控快照、第三方宿主意图、控制器和渲染扩展。白板与领域画布共用 `FrameCanvas`，通过 `frameId` 打开根或嵌套 Frame。
-
-## 安装与使用
-
-安装 `@sue/board-react`、React 与 React DOM，并按场景注册 core 和领域 Util。
-
-```tsx
-import { useState } from 'react';
-import { createCellStore, createFrameCell } from '@sue/board-core';
-import { FrameCanvas } from '@sue/board-react';
-import '@sue/board-react-text/style.css';
-
+import { FrameEditor } from '@sue/board-react';
+import { createMindUIPlugin } from '@sue/board-react-mind';
+import '@sue/board-react/style.css';
+import '@sue/board-react-mind/style.css';
+const plugins = [createMindUIPlugin()];
 export function Editor() {
-  const [value, setValue] = useState(() => ({
-    store: createCellStore(createFrameCell('root')),
-  }));
-  return <FrameCanvas value={value} onChange={({ snapshot }) => setValue(snapshot)} />;
+  const [value, setValue] = useState(createMindFrameSnapshot('frame', 'topic'));
+  return (
+    <div style={{ height: 600 }}>
+      <FrameEditor plugins={plugins} value={value} onChange={(change) => setValue(change.snapshot)} />
+    </div>
+  );
 }
 ```
 
-`value` 为 `FrameSnapshot`，`onChange` 同时提供新快照和事务。主题保存在 `FrameCell.view`；视口只保存在当前画布内存，选择、历史、索引与派生布局只存在于运行时。
+底层用法：const pluginSet = createFramePluginSet(plugins)，传给 FrameCanvas 的 pluginSet。FrameEditor 支持 value/onChange 或 adapter/onIntent，readonly、外部 history。引擎语义和 UI 贡献由同一个插件集合生成，预览和导出复用该组合。
 
-第三方模式使用 `adapter.toFrameSnapshot(value)` 和 `onIntent(transaction)`。宿主接受后回写 value，拒绝不修改当前快照，等待期间禁用重复提交。`readonly`、外部 `history`、独立选择和自定义节点渲染共用此入口。
+只通过公开的 style.css 加载样式。FrameImporter/FrameExporter 是可选宿主能力，安装转换器后通过 importers/exporters 注入。不同编辑器使用独立插件集合、配置和语言；变更插件种类需要重新挂载编辑器。
 
-## 操作手感
+完整契约、格式兼容和迁移见原生“React 接入”和“系统架构”。
 
-`FrameCanvas` 的可选 `interactionSettings: FrameCanvasInteractionSettings` 接受 `zoomSensitivity` 与 `dragPanSpeed`，两项都是相对默认手感的倍率，缺省为 `1`，有效范围 `0.25–3`。非有限数值回退为 `1`，超范围数值被限制到边界。
+## 声明式配置面板
 
-```tsx
-<FrameCanvas value={value} onChange={({ snapshot }) => setValue(snapshot)} interactionSettings={{ zoomSensitivity: 0.5, dragPanSpeed: 1.5 }} />
-```
+普通字段可用 `defineSettings` / `ConfigPanel` 声明，宿主在 `onCommit` 中执行既有事务。`createFrameSettingsContribution({ id, definition, bind })` 创建类型化插件贡献，挂到 `propertyPanels` 或 `settingsPanels`；旧 `Properties` / `Settings` 仍用于复杂编辑器。面板 ID 不得重复。
 
-缩放倍率影响触控板捏合及 Ctrl/Meta 滚轮的指数缩放，保留指针锚点和 `0.1–8` 的缩放边界。拖动倍率影响手型、Space、中键及右键拖动画布，每次拖动开始时固定本次倍率。滚轮平移、对象拖拽、触屏双指缩放与按钮缩放保持原行为。更新参数保留画布运行时，不触发 `onChange` / `onIntent`、历史或文档保存；画布本身不读取偏好存储。
+`FrameGeometryControls` 与 `FrameAppearanceSettings` 提供最小编辑器和产品面板共用的字段定义；`FrameSettingsText` 保留文本草稿，`FramePropertyNumber` 保留数字草稿，`FrameSettingsControl` 桥接即时生效的原生控件。新 SDK 为独立仓库候选包，联调使用校验过的 tarball；正式版本须在 SDK 发布并更新依赖后验证 registry 消费。
 
-## 公共 API
+## 下一主版本：统一用户操作与定位
 
-| 入口                                    | 职责                                                                                                      |
-| --------------------------------------- | --------------------------------------------------------------------------------------------------------- |
-| `FrameCanvas`                           | 统一挂载、绘制和交互                                                                                      |
-| `FrameCanvasController`                 | runtime、dispatch、undo/redo、focus、fit、centerSelection、setZoom、clipboard、moveSelection、exportImage |
-| `useFrameRuntime` / `useFrameSelection` | 渲染扩展读取当前运行时与选择                                                                              |
-| `FrameRenderExtension`                  | layout、render、renderShape、textBounds、visible                                                          |
-| `FrameRenderContext.getGeometry`        | 读取当前布局和预览几何                                                                                    |
-| `FrameRichText` / `FrameTextEditor`     | 共享文本显示与编辑                                                                                        |
-| `frameSnapshotToImage`                  | 原生 SVG/PNG/JPEG 导出                                                                                    |
+`FrameCanvasController` exposes `actions()`, `getActionState(id,args?)`, `executeAction(id,args?,invocation?)` and `actionSource`. Toolbar, menu, shortcut, palette and help read the same definitions. `Ctrl/Cmd+Shift+P` opens the nearest scope's palette. `@sue/board-react-actions` supplies the shared React surface; board CSS already includes its styles.
 
-文字查看态与编辑态共享文字区域和排版。向两者传入同一份 `style`，编辑器未指定 `mode` 时采用文档的 `kind`；浮动工具栏不占正文空间。独立接入画布时引入 `@sue/board-react-text/style.css`，产品样式入口已包含它。
+Replace `clipboard`, `undo/redo`, `fit`, `centerSelection`, `setZoom`, `editText`, `moveSelection`, `selectionCommandState` and `executeSelectionCommand` with `canvas.clipboard.*`, `canvas.history.*`, `canvas.view.*`, `canvas.selection.edit`, `canvas.selection.move` and selection/arrangement action IDs. `frameSelectionActionId(FrameSelectionOperation)` maps arrangement/group/lock operations. Low-level `dispatch`, image export and bounds helpers remain host composition APIs.
 
-`controller.centerSelection()` 在当前比例下居中选中的节点；多选和组合使用节点联合边界，Frame 包含标题，连线不参与。定位考虑派生布局、旋转、嵌套坐标与 `viewportInsets`，不修改选择、文档或撤销历史。没有可见目标或拖动期间不执行，只读模式仍可定位。
+`FrameUIPlugin.actions` contributes definitions with stable IDs, `effect`, argument validation, state and execution. Tools reference `actionId`; plugin-local `shortcuts`, tool `run/enabled/tool` callbacks and engine `CellUtil.keyboard` are removed. Menus call `action.capture()` before focus changes. Content execution waits for `flushEditing()` and preserves the original target through asynchronous work; inspect the returned `ActionResult` instead of assuming success.
 
-旧 BoardCanvas、ControlledBoard、Wrapper、元素控制器、事件桥接和样式入口已删除，不提供公开兼容层。领域 React 包注册 Frame 扩展，不另建画布。产品布局和外观由调用方控制，无需引入旧样式文件。
+`FrameLinkHost` delegates `createLink({frameId,cellId})` and `openLink(href)` to the host. Link activation is workspace-internal; the canvas does not resolve files or register an OS deep-link handler. `revealTarget({cellId,requestId,signal?})` replaces `revealCell` and one-way reveal props, returning `revealed`, `cancelled` or `unavailable` after layout is ready.
 
-详细模式与迁移状态见 [画布模式](../../../workspace/文档/包/画布模式.verd-doc.json)，[React 包文档](../../../workspace/文档/包/React接入.verd-doc.json) 和 [源码结构](./doc/STRUCTURE.md)。
+`FrameRenderExtension.layout(store,frameId,projection)` and render contexts share an occurrence-local `FrameViewProjection`. Mind reveal ancestors are runtime overrides only; cache by projection identity, and use canonical projection for export. Node, Edge, label/marker and Group bounds are handled consistently. Persistent Frame/document formats stay unchanged.
 
-## 排列控制器
+Continuous text in custom render extensions should call `context.commitEditing(transaction)` so the editing barrier tracks its host receipt without starting another Action for each input event. Use `context.dispatch` for final discrete controls; it executes through the shared Action adapter and waits for host echo. The canvas initializes its internal action controller even when the consumer does not supply a React ref.
 
-`controller.selectionCommandState(command)` 和 `executeSelectionCommand(command)` 共用排列、Group 与锁定规则。命令类型为 `{type:'align',axis}`、`{type:'distribute',axis}`、`{type:'layout',style}` 或 `{type:'group'|'ungroup'|'lock'|'unlock'}`。布局样式支持 grid/horizontal/vertical/flow/layers，领域样式按当前 Frame 限制。一次操作只提交一次事务，尊重只读、pending 及宿主接受/拒绝；布局只作用于选择，空选时作用于当前 Frame 直接对象。
-
-`interactionSettings.smartGuides?: boolean` 默认 `true`，控制拖动参考线及吸附，Alt 临时绕过。Group 可嵌套，双击逐层进入，Esc 逐层退出；整体移动不穿透成员 Frame。
-
-旧 Workflow/Architecture 快照在接入前使用各引擎包导出的 `materializeWorkflowPositions` / `materializeArchitecturePositions` 物化派生位置；产品已在加载/导入边界调用。Mind 的布局扩展继续保留，Workflow 使用保存位置，Architecture 扩展只派生层框。
+Embedded document hosts may implement `FrameDocumentReferences.captureEditingView(instanceId)` and `restoreEditingView(view, activate, signal?)`. `FrameDocumentEditingView` is `{cellId,state:unknown}`; `captureDocumentEditingView()` / `restoreDocumentEditingView(view,signal?)` forward it through the canvas controller. Keep `state` as plain JSON. The adapter resolves the current occurrence, calls `activate(instanceId)`, waits for its editor-ready acknowledgement and returns `Promise<ActionResult>`; abort or a missing source ends the wait without a timeout. The product stores canonical document identity, content revision, selection and scroll, restoring a caret only when the revision still matches. These optional hooks add no document history and require no rich-text schema or DOM protocol in the SDK.

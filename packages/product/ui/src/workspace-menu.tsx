@@ -1,8 +1,18 @@
 import { useEffect, useRef, useState, type Ref } from 'react';
-import { ChevronDown, FolderOpen, House, Settings } from 'lucide-react';
+import {
+  ChevronDown,
+  Command,
+  FolderOpen,
+  House,
+  History,
+  Settings,
+} from 'lucide-react';
+import { useActionSource, type ActionSource } from '@sue/board-react-actions';
+import { bindWorkspaceAction } from './workspace-action-bindings';
 import { FileTreeMenu, type FileTreeMenuItem } from './file-tree-menu';
 
 export interface WorkspaceMenuProps {
+  actionSource?: ActionSource;
   name: string;
   locale?: 'zh' | 'en';
   switching?: boolean;
@@ -11,9 +21,14 @@ export interface WorkspaceMenuProps {
   onSettings(): void;
   onOpenFolder?(): void;
   onOpenBuiltin?(): void;
+  history?: readonly { id: string; name: string; description?: string }[];
+  currentHistoryId?: string;
+  onOpenHistory?(id: string): void;
+  onRefreshHistory?(): void;
 }
 
 export function WorkspaceMenu({
+  actionSource,
   name,
   locale = 'zh',
   switching = false,
@@ -22,9 +37,14 @@ export function WorkspaceMenu({
   onSettings,
   onOpenFolder,
   onOpenBuiltin,
+  history = [],
+  currentHistoryId,
+  onOpenHistory,
+  onRefreshHistory,
 }: WorkspaceMenuProps) {
   const button = useRef<HTMLButtonElement | null>(null);
   const [open, setOpen] = useState(false);
+  useActionSource(actionSource);
   const zh = locale === 'zh';
   useEffect(() => {
     setOpen(false);
@@ -32,31 +52,64 @@ export function WorkspaceMenu({
   const items: FileTreeMenuItem[] = [
     {
       id: 'settings',
+      action: bindWorkspaceAction(actionSource, 'workspace.settings'),
       label: zh ? '工作区设置' : 'Workspace settings',
       icon: Settings,
       testId: 'workspace-open-settings',
       onSelect: onSettings,
     },
   ];
-  if (onOpenFolder)
+  const commandPalette = bindWorkspaceAction(
+    actionSource,
+    'workspace.command-palette',
+  );
+  if (commandPalette)
+    items.push({
+      id: 'command-palette',
+      action: commandPalette,
+      label: zh ? '命令面板' : 'Command palette',
+      icon: Command,
+      testId: 'workspace-command-palette',
+      onSelect: () => {},
+    });
+  if (actionSource || onOpenFolder)
     items.push({
       id: 'open-folder',
+      action: bindWorkspaceAction(actionSource, 'workspace.open-folder'),
       label: zh ? '打开工作区文件夹' : 'Open workspace folder',
       icon: FolderOpen,
       testId: 'workspace-open-folder',
       groupStart: true,
-      onSelect: onOpenFolder,
+      onSelect: () => onOpenFolder?.(),
     });
-  if (onOpenBuiltin)
+  if (actionSource || onOpenBuiltin)
     items.push({
       id: 'open-builtin',
+      action: bindWorkspaceAction(actionSource, 'workspace.open-builtin'),
       label: zh ? '回到内置工作区' : 'Open built-in workspace',
       icon: House,
       testId: 'workspace-open-builtin',
-      disabled: isDefault,
+      disabled: actionSource ? undefined : isDefault,
       groupStart: !onOpenFolder,
-      onSelect: onOpenBuiltin,
+      onSelect: () => onOpenBuiltin?.(),
     });
+  for (const [index, entry] of history.entries()) {
+    const current = entry.id === currentHistoryId;
+    items.push({
+      id: `history-${entry.id}`,
+      action: bindWorkspaceAction(actionSource, 'workspace.open-history', {
+        historyId: entry.id,
+      }),
+      label: `${entry.name}${entry.description ? ` · ${entry.description}` : ''}${current ? (zh ? '（当前）' : ' (current)') : ''}`,
+      title: `${entry.name}${entry.description ? ` · ${entry.description}` : ''}`,
+      icon: History,
+      groupLabel:
+        index === 0 ? (zh ? '已打开的工作区' : 'Opened workspaces') : undefined,
+      disabled: current || switching,
+      testId: `workspace-history-${entry.id}`,
+      onSelect: () => onOpenHistory?.(entry.id),
+    });
+  }
   return (
     <div className="workspace-sidebar-header">
       <button
@@ -73,10 +126,14 @@ export function WorkspaceMenu({
         aria-haspopup="menu"
         aria-expanded={open}
         disabled={switching}
-        onClick={() => setOpen((value) => !value)}
+        onClick={() => {
+          if (!open) onRefreshHistory?.();
+          setOpen((value) => !value);
+        }}
         onKeyDown={(event) => {
           if (event.key === 'ArrowDown') {
             event.preventDefault();
+            if (!open) onRefreshHistory?.();
             setOpen(true);
           }
         }}
@@ -86,10 +143,14 @@ export function WorkspaceMenu({
       </button>
       {open && button.current && (
         <FileTreeMenu
+          className="workspace-switch-menu"
           label={zh ? '工作区' : 'Workspace'}
           anchor={button.current}
           placement="bottom-start"
           items={items}
+          actionSource={actionSource}
+          preserveItemLabels
+          locale={locale}
           onClose={() => setOpen(false)}
         />
       )}

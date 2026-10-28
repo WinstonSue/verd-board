@@ -1,26 +1,20 @@
-import { useEffect, useRef } from 'react';
-import {
-  registerUmlCells,
-  layoutUmlCells,
-  umlClassMetrics,
-  layoutUmlEdges,
-  layoutUmlSequence,
-  moveUmlEvent,
-  sequenceEventLocations,
-} from '@sue/board-uml';
-import {
-  isNodeCell,
-  type CellRegistry,
-  type NodeCell,
-  type EdgeCell,
-  type UmlClassData,
-  type UmlParticipantData,
-  type UmlFragmentData,
-} from '@sue/board-core';
+import { isNodeCell, type CellRegistry, type NodeCell } from '@sue/board-core';
 import type {
   FrameRenderContext,
   FrameRenderExtension,
 } from '@sue/board-react';
+import {
+  layoutUmlCells,
+  layoutUmlEdges,
+  layoutUmlSequence,
+  moveUmlEvent,
+  sequenceEventLocations,
+  umlClassMetrics,
+  type UmlClassData,
+  type UmlFragmentData,
+  type UmlParticipantData,
+} from '@sue/board-uml';
+import { useEffect, useRef } from 'react';
 function UmlShape(context: FrameRenderContext) {
   const { cell, geometry: b, store, frameId } = context;
   if (!isNodeCell(cell) || !b) return null;
@@ -41,6 +35,7 @@ function UmlShape(context: FrameRenderContext) {
           stroke={stroke}
         />
         <path
+          data-frame-interaction-ignore
           d={`M ${b.x} ${b.y + 54} H ${b.x + b.width} M ${b.x} ${divider} H ${b.x + b.width}`}
           stroke={stroke}
         />
@@ -288,7 +283,10 @@ function MessageDrag(context: FrameRenderContext) {
 export function createUmlFrameExtensions(
   registry: CellRegistry,
 ): FrameRenderExtension[] {
-  registerUmlCells(registry);
+  if (!registry.plugins.some((plugin) => plugin.id === 'uml'))
+    throw new Error(
+      'Install createUmlPlugin() through createCellRegistry before creating render extensions',
+    );
   return [
     { layout: layoutUmlCells, layoutEdges: layoutUmlEdges },
     ...['uml-class', 'uml-participant', 'uml-note', 'uml-fragment'].map(

@@ -1,4 +1,3 @@
-import { describe, expect, it } from 'vitest';
 import {
   createCellStore,
   createFrameCell,
@@ -6,6 +5,7 @@ import {
   type CellStore,
   type NodeCell,
 } from '@sue/board-core';
+import { describe, expect, it } from 'vitest';
 import { createFrameLockResolver } from './frame-locks';
 describe('render snapshot lock index', () => {
   it('matches frame/group ancestor locks, excluding the cell itself, and refreshes with the store', () => {

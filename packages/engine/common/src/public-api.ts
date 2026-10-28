@@ -11,3 +11,6 @@ export * from './text/structure';
 export * from './text/format-state';
 export * from './text/renderers';
 export * from './text/default-alignment';
+export * from './workspace-links';
+export * from './text/map-links';
+export * from './actions';

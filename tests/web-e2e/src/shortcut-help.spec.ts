@@ -7,7 +7,8 @@ test.use({ actionTimeout: 6000 });
 const pane = (page: Page) => page.locator('.workspace-pane.is-active');
 const canvas = (page: Page) =>
   pane(page).locator('svg[aria-label="Frame canvas"][data-surface="root"]');
-const help = (page: Page) => page.getByTestId('shortcut-help');
+const help = (page: Page) =>
+  page.getByRole('dialog', { name: /^(快捷键|Keyboard shortcuts)$/ });
 const search = (page: Page) => help(page).getByRole('searchbox');
 const world = (page: Page) => canvas(page).locator('> [data-frame-world]');
 
@@ -43,7 +44,7 @@ for (const [tool, category, identity] of [
   ['流程图', '流程图', 'verd-workflow'],
   ['架构图', '架构图', 'verd-architecture'],
 ] as const) {
-  test(`${category} help defaults to the scene and preserves the canvas`, async ({
+  test(`${category} help lists available action bindings and preserves the canvas`, async ({
     page,
   }) => {
     await prepareCanvas(page, tool);
@@ -55,21 +56,22 @@ for (const [tool, category, identity] of [
     await selectAppAction(page, '快捷键');
     await expect(help(page)).toBeVisible();
     await expect(
-      help(page).getByRole('button', { name: category, exact: true }),
-    ).toHaveAttribute('aria-pressed', 'true');
-    await expect(
-      help(page).getByRole('heading', { name: '通用画布操作' }),
+      help(page).locator('[data-action-id="canvas.history.undo"]'),
     ).toBeVisible();
+    await expect(
+      help(page).locator('[data-action-id="product.export"]'),
+    ).toBeVisible();
+    await expect(
+      help(page).getByRole('button', { name: category, exact: true }),
+    ).toHaveCount(0);
     await expect(search(page)).toBeFocused();
-    await search(page).fill('导出画布文件');
-    await expect(help(page).locator('.shortcut-help__row')).toHaveCount(1);
+    await search(page).fill('撤销');
+    await expect(help(page).locator('.verd-actions-help-row')).toHaveCount(1);
     await search(page).fill('');
     const close = help(page).getByRole('button', { name: '关闭快捷键帮助' });
     await close.focus();
     await page.keyboard.press('Shift+Tab');
-    await expect(
-      help(page).getByRole('button', { name: '全部', exact: true }),
-    ).toBeFocused();
+    await expect(search(page)).toBeFocused();
     await page.keyboard.press('Tab');
     await expect(close).toBeFocused();
     for (const key of ['Delete', 'ControlOrMeta+z', 'p', 'ControlOrMeta+s'])
@@ -88,8 +90,8 @@ for (const [tool, category, identity] of [
     await selectAppAction(page, '快捷键');
     await expect(search(page)).toHaveValue('');
     await expect(
-      help(page).getByRole('button', { name: category, exact: true }),
-    ).toHaveAttribute('aria-pressed', 'true');
+      help(page).locator('[data-action-id="canvas.history.undo"]'),
+    ).toBeVisible();
   });
 }
 
@@ -111,13 +113,13 @@ test('document help keeps editor selection and history, without triggering find'
   });
   await opener.click();
   await expect(
-    help(page).getByRole('button', { name: '文字文档', exact: true }),
-  ).toHaveAttribute('aria-pressed', 'true');
+    help(page).locator('[data-action-id="document.toggle-bold"]'),
+  ).toBeVisible();
   await expect(
-    help(page).getByRole('heading', { name: '通用画布操作' }),
+    help(page).locator('[data-action-id="canvas.history.undo"]'),
   ).toHaveCount(0);
-  await search(page).fill('查找框中');
-  await expect(help(page).locator('.shortcut-help__row')).toHaveCount(2);
+  await search(page).fill('查找');
+  await expect(help(page).locator('.verd-actions-help-row')).toHaveCount(2);
   await page.keyboard.press('ControlOrMeta+f');
   await page.keyboard.press('ControlOrMeta+Shift+h');
   await page.keyboard.press('Escape');
@@ -165,8 +167,8 @@ test('presentation help owns Escape, keeps the HUD visible and preserves laser a
   const opener = mode.getByRole('button', { name: '快捷键', exact: true });
   await opener.click();
   await expect(
-    help(page).getByRole('button', { name: '演示', exact: true }),
-  ).toHaveAttribute('aria-pressed', 'true');
+    help(page).locator('[data-action-id="presentation.next"]'),
+  ).toBeVisible();
   for (const key of ['ArrowRight', 'Enter', '0', 'l', 'Tab', 'Shift+Tab'])
     await page.keyboard.press(key);
   await expect(mode).toHaveClass(/is-laser/);
@@ -200,9 +202,11 @@ test('English help remains usable in a narrow viewport', async ({ page }) => {
   await help(page).screenshot({ path: '/tmp/verd-shortcuts-wide.png' });
   await page.setViewportSize({ width: 540, height: 720 });
   await expect(
-    help(page).getByRole('button', { name: 'Whiteboard', exact: true }),
-  ).toHaveAttribute('aria-pressed', 'true');
-  await help(page).getByRole('button', { name: 'All', exact: true }).click();
+    help(page).locator('[data-action-id="canvas.history.undo"]'),
+  ).toBeVisible();
+  await expect(
+    help(page).locator('[data-action-id="product.export"]'),
+  ).toContainText('Export');
   await search(page).fill('no such action');
   await expect(help(page).getByRole('status')).toHaveText(
     'No matching shortcuts',

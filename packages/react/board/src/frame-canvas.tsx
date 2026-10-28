@@ -1,23 +1,201 @@
 import {
+  captureAutoCalculationScope,
+  prepareAutoCalculation,
+  pruneAutoCalculationConfig,
+  useFrameAutoCalculation,
+  type FrameAutoCalculationConfig,
+} from './frame-auto-calculation';
+import { FrameReferenceBoundary } from './frame-reference-boundary';
+import { useFrameI18n } from './frame-i18n';
+import {
+  Alignment,
+  createInlineText,
+  isBoardTextDocument,
+  sameBoardText,
+  type ActionResult,
+  type ActionState,
+  type ActionInvocation,
+  type BoundAction,
+  type BoardTextDocument,
+} from '@sue/board-common';
+import {
+  alignCells,
+  applyCellOperations,
+  planCellLayout,
+  resolveCellArrangementScope,
+  arrangementEdgeIds,
+  rerouteEdges,
+  optimizeEdges,
+  optimizableEdgeIds,
+  arrangementAvailability,
+  arrowMarkerGeometry,
+  assertRegisteredCellKinds,
+  bindEdgeRouteTerminals,
+  cellArrangementBounds,
+  collectArrangementBlocks,
+  copyCellFragment,
+  createCellRegistry,
+  createCellRuntime,
+  createDefaultShapeGeometryRegistry,
+  createEdgeRoutingContext,
+  frameEdgeCrossingJumps,
+  curvePath,
+  deleteCells,
+  distanceToPolyline,
+  distributeCells,
+  edgeLabelLayout,
+  edgePolyline,
+  edgeRoutePoints,
+  edgeTerminalPosition,
+  fitFrameContent,
+  flattenCurve,
+  focusedCellIds,
+  frameContentBounds,
+  frameContentViewport,
+  frameMinimumSize,
+  frameScene,
+  frameVisualBounds,
+  geometryBounds,
+  groupAncestors,
+  groupBounds,
+  groupCells,
+  groupHasLockedLeaf,
+  groupLeafMembers,
+  hitNodeShape,
+  isDocumentCell,
+  isDocumentFrameCell,
+  isEdgeCell,
+  isFrameCell,
+  isFrameReferenceCell,
+  isGroupCell,
+  isNodeCell,
+  moveEdgeRoutePoint,
+  moveEdgeSegment,
+  moveGroup,
+  moveWhiteboardCells,
+  nodeContentName,
+  nodeShapeGeometry,
+  nodeShapeSpec,
+  normalizeCellPositionOperations,
+  planCellPaste,
+  polylineClosestPosition,
+  polylinePath,
+  portAnchor,
+  relativeAnchor,
+  reorderCells,
+  replaceEdgeTerminal,
+  resizeNodeGeometry,
+  rotateNodeGeometry,
+  roundNodeGeometry,
+  roundNodePosition,
+  selectionAllows,
+  selectionObjectAtFocus,
+  setCellsLocked,
+  snapEdgeTerminal,
+  stripFrameViewports,
+  translateCellSelection,
+  ungroupCells,
+  unionCellBounds,
+  type Cell,
+  type CellChange,
+  type CellFragment,
+  type CellMoveContext,
+  type CellOperation,
+  type CellRegistry,
+  type CellRuntime,
+  type CellSelection,
+  type CellStore,
+  type CellTransaction,
+  type EdgeCell,
+  type EdgeRoutingContext,
+  type FrameSnapshot,
+  type NodeCell,
+  type NodeGeometry,
+  type Point,
+  type RectangleClient,
+  type ResizeHandle,
+} from '@sue/board-core';
+import { measureBoardText } from '@sue/board-react-text';
+import {
+  ActionScope,
+  resolveActionShortcut,
+  type ActionSource,
+} from '@sue/board-react-actions';
+import {
+  createFrameActions,
+  frameIntentActionResult,
+  type FrameActionServices,
+  type FrameSelectionOperation,
+} from './frame-actions';
+import {
+  canonicalFrameProjection,
+  type FrameViewProjection,
+  type FrameLinkHost,
+  type FrameRevealRequest,
+  type FrameRevealResult,
+} from './frame-view-projection';
+import {
+  createContext,
+  forwardRef,
+  memo,
+  useCallback,
+  useContext,
+  useEffect,
+  useId,
+  useImperativeHandle,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  useSyncExternalStore,
+  type CSSProperties,
+  type ReactNode,
+} from 'react';
+import { snapArrangementDelta, type AlignmentGuide } from './frame-alignment';
+import {
+  createFrameCameraStore,
+  FrameNodeAppearance,
+  FrameScaleContent,
+  type FrameNodeAppearanceValue,
+} from './frame-camera-store';
+import { FrameInteractiveEdge } from './frame-edge-stroke';
+import { FrameNodeInteraction } from './frame-relation-highlight';
+import { frameSnapshotToImage, type FrameImageOptions } from './frame-export';
+import {
   fitContentCandidates,
   fitContentOperations,
 } from './frame-fit-content';
-import { measureBoardText } from '@sue/board-react-text';
-import { createFrameWheelOwner, FrameWheelContext } from './frame-wheel';
-import { projectEmbeddedMindTrees } from './frame-mind-projection';
-import { snapArrangementDelta, type AlignmentGuide } from './frame-alignment';
 import {
   normalizeInteractionMultiplier,
   type FrameCanvasInteractionSettings,
 } from './frame-interaction-settings';
-export type { FrameCanvasInteractionSettings } from './frame-interaction-settings';
-import { frameSnapshotToImage, type FrameImageOptions } from './frame-export';
+import { createFrameLockResolver } from './frame-locks';
+import { createFrameNativeEvents } from './frame-native-events';
 import {
-  createFrameCameraStore,
-  FrameScaleContent,
-  FrameNodeAppearance,
-  type FrameNodeAppearanceValue,
-} from './frame-camera-store';
+  frameCellUI,
+  projectEmbeddedContent,
+  referenceContentOffsets,
+  updateContentOffset,
+  type FramePluginSet,
+  type FrameUIPlugin,
+  type FrameActionContext,
+  type FrameActionHost,
+} from './frame-plugins';
+import {
+  FrameRichText,
+  FrameRichTextPreviewContext,
+  FrameRichTextLinkContext,
+} from './frame-rich-text';
+import { frameSelectionWorldBounds } from './frame-selection-camera';
+import { FrameSelectionHandles } from './frame-selection-handles';
+import { FrameCellShadow, FrameStaticShadow } from './frame-shadow';
+import { FrameShell } from './frame-shell';
+import { FrameTextEditor } from './frame-text-editor';
+import {
+  frameTitleCss,
+  FrameTitleEditor,
+  frameTitleStyle,
+} from './frame-title-editor';
 import {
   interpolateViewport,
   prefersReducedMotion,
@@ -25,140 +203,14 @@ import {
   viewportForBounds,
   type ViewportInsets,
 } from './frame-viewport';
-import {
-  memo,
-  createContext,
-  useContext,
-  useId,
-  useCallback,
-  useEffect,
-  useLayoutEffect,
-  useMemo,
-  useRef,
-  useState,
-  useSyncExternalStore,
-  forwardRef,
-  useImperativeHandle,
-  type ReactNode,
-  type CSSProperties,
-} from 'react';
-import {
-  alignCells,
-  distributeCells,
-  arrangeCells,
-  arrangementAvailability,
-  collectArrangementBlocks,
-  cellArrangementBounds,
-  unionCellBounds,
-  geometryBounds,
-  focusedCellIds,
-  groupBounds,
-  groupLeafMembers,
-  groupHasLockedLeaf,
-  groupAncestors,
-  selectionObjectAtFocus,
-  groupCells,
-  ungroupCells,
-  setCellsLocked,
-  type ArrangementCommand,
-  type RectangleClient,
-  stripFrameViewports,
-  nodeContentName,
-  normalizeCellPositionOperations,
-  roundNodePosition,
-  roundNodeGeometry,
-  frameVisualBounds,
-  frameContentViewport,
-  frameMinimumSize,
-  applyCellOperations,
-  deleteCells,
-  reorderCells,
-  moveWhiteboardCells,
-  translateCellSelection,
-  frameScene,
-  createCellRuntime,
-  createCellRegistry,
-  isGroupCell,
-  moveGroup,
-  isFrameCell,
-  isFrameReferenceCell,
-  isDocumentCell,
-  isDocumentFrameCell,
-  isNodeCell,
-  isMindNodeKind,
-  isEdgeCell,
-  fitFrameContent,
-  frameContentBounds,
-  nodeShapeSpec,
-  nodeShapeGeometry,
-  hitNodeShape,
-  createDefaultShapeGeometryRegistry,
-  polylinePath,
-  edgeRoutePoints,
-  createEdgeRoutingContext,
-  curvePath,
-  arrowMarkerGeometry,
-  edgeLabelLayout,
-  portAnchor,
-  relativeAnchor,
-  distanceToPolyline,
-  resizeNodeGeometry,
-  rotateNodeGeometry,
-  edgePolyline,
-  edgeTerminalPosition,
-  flattenCurve,
-  snapEdgeTerminal,
-  replaceEdgeTerminal,
-  bindEdgeRouteTerminals,
-  moveEdgeRoutePoint,
-  moveEdgeSegment,
-  polylineClosestPosition,
-  copyCellFragment,
-  planCellPaste,
-  selectionAllows,
-  type Cell,
-  type CellRuntime,
-  type CellRegistry,
-  type CellTransaction,
-  type CellChange,
-  type CellSelection,
-  type CellOperation,
-  type CellStore,
-  type CellMoveContext,
-  type FrameSnapshot,
-  type NodeCell,
-  type NodeGeometry,
-  type EdgeCell,
-  type EdgeRoutingContext,
-  type ResizeHandle,
-  type Point,
-  type CellFragment,
-} from '@sue/board-core';
-import { FrameRichText, FrameRichTextPreviewContext } from './frame-rich-text';
-import { FrameSelectionHandles } from './frame-selection-handles';
-import { FrameShell } from './frame-shell';
+import { createFrameWheelOwner, FrameWheelContext } from './frame-wheel';
 import { PreviewMountProvider, usePreviewMount } from './preview-mount';
-import { frameSelectionWorldBounds } from './frame-selection-camera';
-import { FrameTextEditor } from './frame-text-editor';
-import {
-  FrameTitleEditor,
-  frameTitleStyle,
-  frameTitleCss,
-} from './frame-title-editor';
-import { FrameInteractiveEdge } from './frame-edge-stroke';
-import { createFrameNativeEvents } from './frame-native-events';
-import { createFrameLockResolver } from './frame-locks';
-import { FrameCellShadow, FrameStaticShadow } from './frame-shadow';
-import {
-  createInlineText,
-  Alignment,
-  isBoardTextDocument,
-  sameBoardText,
-  type BoardTextDocument,
-} from '@sue/board-common';
+export type { FrameCanvasInteractionSettings } from './frame-interaction-settings';
 
 export interface FrameRenderContext {
   store: CellStore;
+  viewProjection: FrameViewProjection;
+  clearRevealOverrides?(ids?: readonly string[]): void;
   cell: Cell;
   geometry?: NodeGeometry;
   selected: boolean;
@@ -175,6 +227,8 @@ export interface FrameRenderContext {
   edit?(id: string): void;
   history(action: 'undo' | 'redo'): void;
   dispatch(transaction: CellTransaction): Promise<FrameIntentResult>;
+  /** Continuous text submission joins the editing barrier without recursively starting an Action. */
+  commitEditing?(transaction: CellTransaction): Promise<FrameIntentResult>;
 }
 export interface FramePresentation {
   fill?: string;
@@ -193,8 +247,13 @@ export interface FrameMovePreview {
   ghost?: { parentId: string; cellIds: readonly string[] };
 }
 export interface FrameRenderExtension {
+  plugin?: FrameUIPlugin;
   kind?: string;
-  layout?: (store: CellStore, frameId: string) => Map<string, NodeGeometry>;
+  layout?: (
+    store: CellStore,
+    frameId: string,
+    projection?: FrameViewProjection,
+  ) => Map<string, NodeGeometry>;
   /** Pure runtime projection of existing edges, shared by paint, hit testing and export. */
   layoutEdges?: (
     store: CellStore,
@@ -272,17 +331,17 @@ export interface FrameInstanceHost {
     occurrenceId: string,
     transaction: CellTransaction,
   ): Promise<FrameIntentResult>;
-  updateMindOffset?(
+  updateContentOffset?(
     occurrenceId: string,
-    mindRootId: string,
+    rootId: string,
     offset: Point,
   ): void;
 }
 export type FrameIntentResult =
   { status: 'accepted' } | { status: 'rejected'; message?: string };
 export interface FrameHistoryAdapter {
-  undo(): void;
-  redo(): void;
+  undo(): void | Promise<unknown>;
+  redo(): void | Promise<unknown>;
   /**
    * Real availability for toolbar state. Absent = legacy behavior where an
    * external adapter keeps the buttons enabled unconditionally.
@@ -292,37 +351,13 @@ export interface FrameHistoryAdapter {
   /** True while a workspace commit is still in flight. */
   busy?(): boolean;
 }
-export type FrameSelectionCommand =
-  | ArrangementCommand
-  | { type: 'group' | 'ungroup' | 'lock' | 'unlock' | 'fit-content' };
-export interface FrameCanvasController {
-  runtime: CellRuntime;
-  selectionCommandState(command: FrameSelectionCommand): {
-    enabled: boolean;
-    reason?: string;
-  };
-  executeSelectionCommand(
-    command: FrameSelectionCommand,
-  ): Promise<FrameIntentResult>;
+type FrameSelectionCommand = FrameSelectionOperation;
+interface FrameViewServices {
   exportImage(options?: FrameImageOptions): Promise<Blob>;
   dispatch(transaction: CellTransaction): Promise<FrameIntentResult>;
-  moveSelection(targetFrameId: string): Promise<FrameIntentResult>;
-  clipboard(action: 'copy' | 'cut' | 'paste'): Promise<FrameIntentResult>;
-  undo(): void;
-  redo(): void;
-  focus(frameId: string): void;
-  fit(): void;
-  /** Center the mounted node selection, preserving the current zoom. */
-  centerSelection(): void;
-  /**
-   * Locate `cellId` again on an already mounted canvas: select it and
-   * center it without changing zoom.
-   */
-  revealCell(cellId: string): void;
   /** Screen point to canvas world coordinates, including the current camera. */
   clientToWorld(clientX: number, clientY: number): [number, number];
   setZoom(zoom: number): void;
-  editText(cellId: string): void;
   selectionScreenBounds(): FrameCanvasViewState['selectionScreenBounds'];
   fitBounds(
     bounds: RectangleClient,
@@ -344,7 +379,40 @@ export interface FrameCanvasController {
     },
   ): boolean;
   getContentBounds(): RectangleClient;
-  finishEditing(): void;
+}
+export interface FrameCanvasController {
+  readonly actionSource: ActionSource;
+  getActionContext(): FrameActionContext;
+  getActiveController(): FrameCanvasController;
+  findOccurrence(occurrenceId: string): FrameCanvasController | null;
+  getActionState(id: string, args?: unknown): ActionState;
+  getAutoCalculation(): FrameAutoCalculationConfig;
+  setAutoLayoutStyle(style: import('@sue/board-core').CellLayoutStyle): void;
+  executeAction(
+    id: string,
+    args?: unknown,
+    invocation?: ActionInvocation,
+  ): Promise<ActionResult>;
+  actions(): readonly BoundAction[];
+  flushEditing(): Promise<FrameIntentResult>;
+  captureDocumentEditingView(): FrameDocumentEditingView | null;
+  restoreDocumentEditingView(
+    view: FrameDocumentEditingView,
+    signal?: AbortSignal,
+  ): Promise<ActionResult>;
+  revealTarget(request: FrameRevealRequest): Promise<FrameRevealResult>;
+  clearRevealOverrides(ids?: readonly string[]): void;
+  getViewProjection(): FrameViewProjection;
+  getCamera(): { zoom: number; origination: Point };
+  restoreCamera(camera: { zoom: number; origination: Point }): void;
+  runtime: CellRuntime;
+  dispatch(transaction: CellTransaction): Promise<FrameIntentResult>;
+  exportImage(options?: FrameImageOptions): Promise<Blob>;
+  clientToWorld(clientX: number, clientY: number): [number, number];
+  selectionScreenBounds(): FrameCanvasViewState['selectionScreenBounds'];
+  fitBounds: FrameViewServices['fitBounds'];
+  fitCells: FrameViewServices['fitCells'];
+  getContentBounds(): RectangleClient;
 }
 export interface FrameCanvasDrawingContext {
   zoom: number;
@@ -384,7 +452,19 @@ export interface FrameDocumentReferenceProps {
   suspended: boolean;
   exporting: boolean;
 }
+/** Adapter-owned state; the canvas does not depend on a document text schema. */
+export interface FrameDocumentEditingView {
+  cellId: string;
+  state: unknown;
+}
 export interface FrameDocumentReferences {
+  flushEditing?(instanceId: string): Promise<ActionResult>;
+  captureEditingView?(instanceId: string): FrameDocumentEditingView | null;
+  restoreEditingView?(
+    view: FrameDocumentEditingView,
+    activate: (instanceId: string) => void,
+    signal?: AbortSignal,
+  ): Promise<ActionResult>;
   editRequest?: { instanceId: string; nonce: number };
   /** Changes when preview dependencies change, including on a stable adapter. */
   readonly revision?: unknown;
@@ -396,10 +476,13 @@ export interface FrameDocumentReferences {
   render(props: FrameDocumentReferenceProps): ReactNode;
 }
 interface FrameCanvasCommon {
+  pluginSet?: FramePluginSet;
   documentReferences?: FrameDocumentReferences;
   exporting?: boolean;
   /** Device interaction preferences; camera-only, never written to the document. */
   interactionSettings?: FrameCanvasInteractionSettings;
+  autoCalculation?: FrameAutoCalculationConfig;
+  onAutoCalculationChange?(config: FrameAutoCalculationConfig): void;
   frameId?: string;
   registry?: CellRegistry;
   extensions?: readonly FrameRenderExtension[];
@@ -430,7 +513,7 @@ interface FrameCanvasCommon {
     refId: string;
     geometry: import('@sue/board-core').NodeGeometry;
     offsets: ReadonlyMap<string, Point>;
-    onMindOffset(rootId: string, offset: Point): void;
+    onContentOffset(rootId: string, offset: Point): void;
   };
   /** One-shot place mode. Click reports a world point; Escape cancels. */
   placing?: boolean;
@@ -441,6 +524,8 @@ interface FrameCanvasCommon {
   ) => void;
   onViewStateChange?: (state: FrameCanvasViewState) => void;
   onCanvasContextMenu?: (point: [number, number] | null) => void;
+  actionHost?: FrameActionHost;
+  linkHost?: FrameLinkHost;
   overlays?: ReactNode;
   /** Fit once on each canvas entry. Offscreen image export opts out. */
   autoFit?: boolean;
@@ -572,7 +657,7 @@ type FrameLayoutEntry = {
   geometry: Map<string, NodeGeometry>;
   baseGeometry: Map<string, NodeGeometry>;
   fitBounds: RectangleClient;
-  mindOffsets: Map<string, Point>;
+  contentOffsets: Map<string, Point>;
   store: CellStore;
   routing: EdgeRoutingContext;
   outlines: Map<
@@ -666,6 +751,9 @@ function createFrameLayouts(
   seed?: { frameId: string; geometry: ReadonlyMap<string, NodeGeometry> },
   mountedRootId = store.rootId,
   memory = new Map<string, FrameLayoutMemory>(),
+  registry: CellRegistry = createCellRegistry(),
+  viewProjection: FrameViewProjection = canonicalFrameProjection,
+  previewBase?: (id: string) => FrameLayoutEntry,
 ) {
   for (const id of memory.keys())
     if (!isFrameCell(store.cells[id])) memory.delete(id);
@@ -682,7 +770,7 @@ function createFrameLayouts(
     else
       extensions.forEach((extension) =>
         extension
-          .layout?.(store, id)
+          .layout?.(store, id, viewProjection)
           .forEach((value, key) => geometry.set(key, roundNodeGeometry(value))),
       );
     canonicalGeometry(store, geometry, previous?.baseGeometry);
@@ -706,26 +794,36 @@ function createFrameLayouts(
     };
     let laidOut = applyEdges(base.laidOut);
     const baseGeometry = geometry;
+    const previewRouting = previewBase?.(id).routing;
     const baseRouting = createEdgeRoutingContext(
       laidOut,
       id,
       undefined,
-      previous?.baseRouting,
+      previewRouting ?? previous?.baseRouting,
+      registry,
+      { preview: !!previewRouting },
     );
     const contentBounds = frameContentBounds(laidOut, id, baseRouting);
-    const fitBounds =
-      frameScene(store, id) === 'mind-root'
-        ? unionCellBounds([
-            contentBounds,
-            ...[...baseGeometry].flatMap(([id, bounds]) =>
-              !store.cells[id]?.hidden ? [geometryBounds(bounds)] : [],
-            ),
-          ])!
-        : contentBounds;
+    const fitBounds = extensions.some((extension) =>
+      extension.plugin?.fitLayoutBounds?.(store, id),
+    )
+      ? unionCellBounds([
+          contentBounds,
+          ...[...baseGeometry].flatMap(([id, bounds]) =>
+            !store.cells[id]?.hidden ? [geometryBounds(bounds)] : [],
+          ),
+        ])!
+      : contentBounds;
     const frame = store.cells[id];
     const projection =
       id !== mountedRootId && isFrameCell(frame)
-        ? projectEmbeddedMindTrees(store, frame, baseGeometry, fitBounds)
+        ? projectEmbeddedContent(
+            extensions,
+            store,
+            frame,
+            baseGeometry,
+            fitBounds,
+          )
         : { geometry, offsets: new Map<string, Point>() };
     geometry = projection.geometry;
     if (geometry !== baseGeometry)
@@ -750,12 +848,19 @@ function createFrameLayouts(
       baseGeometry,
       baseRouting,
       fitBounds,
-      mindOffsets: projection.offsets,
+      contentOffsets: projection.offsets,
       store: laidOut,
       routing:
         geometry === baseGeometry
           ? baseRouting
-          : createEdgeRoutingContext(laidOut, id, undefined, previous?.routing),
+          : createEdgeRoutingContext(
+              laidOut,
+              id,
+              undefined,
+              previewRouting ?? previous?.routing,
+              registry,
+              { preview: !!previewRouting },
+            ),
       outlines,
       routes,
       getGeometry: (cellId: string) => {
@@ -780,16 +885,31 @@ function createFrameLayouts(
   };
 }
 export const FrameCanvas = forwardRef(function FrameCanvas<T>(
-  props: FrameCanvasProps<T>,
+  suppliedProps: FrameCanvasProps<T>,
   ref: React.ForwardedRef<FrameCanvasController>,
 ) {
+  const combinedExtensions = useMemo(() => {
+    const set = suppliedProps.pluginSet;
+    if (!set) return suppliedProps.extensions;
+    const extras = suppliedProps.extensions?.filter(
+      (extension) => !set.extensions.includes(extension),
+    );
+    return extras?.length ? [...extras, ...set.extensions] : set.extensions;
+  }, [suppliedProps.extensions, suppliedProps.pluginSet]);
+  const props = {
+    ...suppliedProps,
+    registry: suppliedProps.pluginSet?.registry ?? suppliedProps.registry,
+    extensions: combinedExtensions,
+  };
   const renderScope = useId();
   const snapshot = useMemo(() => {
     const projected = props.adapter
       ? props.adapter.toFrameSnapshot(props.value as T)
       : (props.value as FrameSnapshot);
+    if (props.pluginSet)
+      assertRegisteredCellKinds(projected.store, props.pluginSet.registry);
     return { store: stripFrameViewports(projected.store) };
-  }, [props.value, props.adapter]);
+  }, [props.value, props.adapter, props.pluginSet]);
   const runtimeRef = useRef<CellRuntime | null>(props.runtime ?? null);
   if (props.runtime) runtimeRef.current = props.runtime;
   else if (!runtimeRef.current)
@@ -817,6 +937,78 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
     [lockResolvers],
   );
   const frameId = props.frameId ?? runtime.store.rootId;
+  const [autoCalculation, setAutoCalculation] = useFrameAutoCalculation(
+    frameId,
+    props.autoCalculation,
+    props.onAutoCalculationChange,
+  );
+  const autoCalculationRef = useRef(autoCalculation);
+  autoCalculationRef.current = autoCalculation;
+  const autoLayoutStyleRef = useRef<
+    import('@sue/board-core').CellLayoutStyle | null
+  >(null);
+  useEffect(() => {
+    const config = autoCalculationRef.current;
+    const next = pruneAutoCalculationConfig(runtime.store, config);
+    if (next !== config) {
+      autoCalculationRef.current = next;
+      setAutoCalculation(next);
+    }
+    // The setter follows the current controlled host or inherited session.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [runtime, revision, autoCalculation]);
+  const [viewProjection, setViewProjection] = useState<FrameViewProjection>(
+    () => ({
+      identity: {},
+      expandedCellIds: new Set(),
+      purpose: props.exporting ? 'export' : 'interactive',
+    }),
+  );
+  const viewProjectionRef = useRef(viewProjection);
+  viewProjectionRef.current = viewProjection;
+  const [revealHighlight, setRevealHighlight] = useState<string | null>(null);
+  const [revealBounds, setRevealBounds] = useState<RectangleClient | null>(
+    null,
+  );
+  const revealToken = useRef(0);
+  const revealTargetRef = useRef<
+    (request: FrameRevealRequest) => Promise<FrameRevealResult>
+  >(async () => ({ status: 'cancelled', code: 'not-ready' }));
+  const layoutReadyRef = useRef<FrameViewProjection>(viewProjection);
+  const layoutWaiters = useRef(new Set<() => void>());
+  const alive = useRef(true);
+  const lifetime = useRef(new AbortController());
+  const clearRevealOverrides = (ids?: readonly string[]) => {
+    if (!ids) {
+      revealToken.current++;
+      setRevealHighlight(null);
+      for (const done of layoutWaiters.current) done();
+    }
+    const next = ids
+      ? new Set(
+          [...viewProjectionRef.current.expandedCellIds].filter(
+            (id) => !ids.includes(id),
+          ),
+        )
+      : new Set<string>();
+    if (next.size === viewProjectionRef.current.expandedCellIds.size) return;
+    setViewProjection({
+      identity: {},
+      expandedCellIds: next,
+      purpose: 'interactive',
+    });
+  };
+  useEffect(() => {
+    const invalid = [...viewProjectionRef.current.expandedCellIds].filter(
+      (id) => !runtime.store.cells[id],
+    );
+    if (invalid.length) clearRevealOverrides(invalid);
+  }, [runtime, revision]);
+  const lastIntentPrediction = useRef<{
+    before: CellStore;
+    expected: CellStore;
+    acknowledged?: boolean;
+  } | null>(null);
   const [pending, setPending] = useState(false);
   const pendingRef = useRef(false);
   const keyboardSelectionRef = useRef<{
@@ -837,6 +1029,8 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
   const [editing, setEditingState] = useState<string | null>(null);
   const editingCellRef = useRef<string | null>(null);
   const textCommitRef = useRef<Promise<FrameIntentResult> | null>(null);
+  const composingRef = useRef(false);
+  const documentCommitRef = useRef<Promise<ActionResult> | null>(null);
   const nameSession = useRef<{ id: string; initial: string } | null>(null);
   const finishNameRef = useRef<
     (session: { id: string; initial: string }) => void
@@ -1009,6 +1203,7 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
   useEffect(() => {
     keyboardSelectionRef.current = null;
     keyboardEditRef.current = null;
+    actionAfterToken.current = null;
     setEditing(null);
     // A read-only presentation can share an already mounted reference runtime.
     // Mounting it again would clear the editor's selection.
@@ -1038,8 +1233,16 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
     )
       setEditing(null);
   }, [editing, editable, runtime, revision, setEditing]);
+  const operationFailureMessage = (error: unknown): string => {
+    const message = error instanceof Error ? error.message : String(error);
+    if (message !== 'layout-overlap') return message;
+    return propsRef.current.actionHost?.language === 'en'
+      ? 'Layout would overlap an outside or locked node. Nothing was changed; adjust the scope or positions and retry.'
+      : '布局结果会与范围外或锁定节点重叠，未应用。请调整范围或位置后重试。';
+  };
   const dispatchTransaction = async (
     transaction: CellTransaction,
+    skipAuto: { layout?: boolean; edges?: boolean } = {},
   ): Promise<FrameIntentResult> => {
     const current = propsRef.current;
     const mountedFrameId = current.frameId ?? runtime.store.rootId;
@@ -1053,13 +1256,31 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
     if (pendingRef.current)
       return { status: 'rejected', message: 'A transaction is pending' };
     try {
+      const prepared = prepareAutoCalculation(
+        runtime.store,
+        transaction.operations,
+        autoCalculationRef.current,
+        runtime.registry,
+        skipAuto,
+      );
+      transaction = { ...transaction, operations: prepared.operations };
+      const expected = prepared.expected;
+      lastIntentPrediction.current = { before: runtime.store, expected };
+      const settleAutoConfig = () => {
+        if (!alive.current || propsRef.current.suspended) return;
+        const config = autoCalculationRef.current;
+        const next = pruneAutoCalculationConfig(expected, config);
+        if (next !== config) {
+          autoCalculationRef.current = next;
+          setAutoCalculation(next);
+        }
+      };
+      if (
+        JSON.stringify(expected.cells) === JSON.stringify(runtime.store.cells)
+      )
+        return { status: 'accepted' };
       if (current.adapter) {
         // Host mode never mutates its source or publishes a speculative state.
-        applyCellOperations(
-          runtime.store,
-          transaction.operations,
-          runtime.registry,
-        );
         pendingRef.current = true;
         setPending(true);
         const result = (await current.onIntent?.(transaction)) ?? {
@@ -1068,18 +1289,19 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
         if (result.status === 'rejected') {
           current.onReject?.(result);
           setFailure(result.message ?? 'Edit rejected');
-        }
+        } else settleAutoConfig();
         return result;
       }
       const change = runtime.transact(transaction);
       current.onSelectionChange?.(runtime.selection);
       current.onChange?.(change);
+      settleAutoConfig();
       setFailure(null);
       return { status: 'accepted' };
     } catch (error) {
       const result = {
         status: 'rejected' as const,
-        message: error instanceof Error ? error.message : String(error),
+        message: operationFailureMessage(error),
       };
       current.onReject?.(result);
       setFailure(result.message);
@@ -1089,14 +1311,20 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
       setPending(false);
     }
   };
-  const dispatch = (transaction: CellTransaction) =>
-    dispatchTransaction({
-      ...transaction,
-      operations: normalizeCellPositionOperations(
-        runtime.store,
-        transaction.operations,
-      ),
-    });
+  const dispatch = (
+    transaction: CellTransaction,
+    skipAuto?: { layout?: boolean; edges?: boolean },
+  ) =>
+    dispatchTransaction(
+      {
+        ...transaction,
+        operations: normalizeCellPositionOperations(
+          runtime.store,
+          transaction.operations,
+        ),
+      },
+      skipAuto,
+    );
   finishNameRef.current = ({ id, initial }) => {
     const commit = () => {
       const cell = runtime.store.cells[id];
@@ -1177,13 +1405,13 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
       )
     )
       return;
+    cancelInteractionRef.current();
     setEditing(cellId);
   };
   const publishHistory = (direction: 'undo' | 'redo') => {
     if (!editable || pending) return;
     if (props.history) {
-      props.history[direction]();
-      return;
+      return props.history[direction]();
     }
     if (props.adapter) return;
     const entry =
@@ -1288,7 +1516,7 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
   const clipboardFailure = (error: unknown): FrameIntentResult => {
     const result = {
       status: 'rejected' as const,
-      message: error instanceof Error ? error.message : String(error),
+      message: operationFailureMessage(error),
     };
     propsRef.current.onReject?.(result);
     setFailure(result.message);
@@ -1305,9 +1533,17 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
     )
       ? [...selected]
       : [];
-    const operations = deleteCells(runtime.store, ids);
+    const operations = deleteCells(runtime.store, ids, {
+      registry: runtime.registry,
+    });
     applyCellOperations(runtime.store, operations, runtime.registry);
-    return { ids, operations, fragment: copyCellFragment(runtime.store, ids) };
+    return {
+      ids,
+      operations,
+      fragment: copyCellFragment(runtime.store, ids, runtime.registry, {
+        fileId: frameId,
+      }),
+    };
   };
   const focusFrameId = () =>
     [...runtime.selection.focus]
@@ -1333,6 +1569,7 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
     const parentId = focusFrameId();
     try {
       const plan = planCellPaste({
+        fileId: frameId,
         store: runtime.store,
         frameId: parentId,
         selectionIds: runtime.selection.ids,
@@ -1341,11 +1578,12 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
         offset: [20, 20],
         registry: runtime.registry,
         intent: 'paste',
-        targetMindNodeId:
+        targetCellId:
           runtime.selection.ids.length === 1 &&
-          ['mind-root', 'mind-child'].includes(
+          frameCellUI(
+            props.extensions,
             runtime.store.cells[runtime.selection.ids[0]]?.kind,
-          )
+          ).pasteTarget
             ? runtime.selection.ids[0]
             : undefined,
       });
@@ -1417,81 +1655,47 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
       const scale = Math.min(1, 600 / image.width, 400 / image.height);
       const width = image.width * scale,
         height = image.height * scale;
-      if (
-        hit &&
-        isNodeCell(hit) &&
-        ['mind-root', 'mind-child', 'mind-summary'].includes(hit.kind)
-      ) {
-        return dispatch({
-          id: transactionId(),
-          operations: [
-            {
-              type: 'replace_cell',
-              cell: {
-                ...hit,
-                geometry: {
-                  ...hit.geometry,
-                  width: Math.max(hit.geometry.width, width + 16),
-                },
-                data: {
-                  ...(hit.data as object),
-                  image: { url, width, height },
-                },
-              },
-            },
-          ],
-        });
+      const context = {
+        registry: runtime.registry,
+        store: runtime.store,
+        frameId: focusFrameId(),
+        hit,
+        at,
+        image: { url, width, height },
+        allocateId: transactionId,
+      };
+      for (const extension of props.extensions ?? []) {
+        const operations = extension.plugin?.pasteImage?.(context);
+        if (operations)
+          return dispatch({ id: transactionId(), operations }).then((result) =>
+            selectInserted(operations, result),
+          );
       }
-      const id = transactionId();
-      const operations = [
-        {
-          type: 'insert_cell' as const,
-          parentId: focusFrameId(),
-          cell: {
-            id,
-            kind: 'image',
-            cellType: 'node' as const,
-            geometry: {
-              x: at[0] - width / 2,
-              y: at[1] - height / 2,
-              width,
-              height,
-            },
-            data: { url },
-          },
-        },
-      ];
-      return dispatch({ id: transactionId(), operations }).then((result) =>
-        selectInserted(operations, result),
-      );
+      return {
+        status: 'rejected' as const,
+        message: 'No installed plugin accepts images here',
+      };
     }
     if (!source.text?.trim()) return { status: 'rejected' as const };
-    const id = transactionId();
-    const operations = [
-      {
-        type: 'insert_cell' as const,
-        parentId: focusFrameId(),
-        cell: {
-          id,
-          kind: 'geometry',
-          cellType: 'node' as const,
-          geometry: {
-            x: at[0],
-            y: at[1],
-            width: 160,
-            height: 48,
-            outline: 'text',
-          },
-          content: {
-            label: source.text,
-            text: createInlineText(source.text),
-          },
-        },
-      },
-    ];
-    return dispatch({ id: transactionId(), operations }).then((result) =>
-      selectInserted(operations, result),
-    );
+    for (const extension of props.extensions ?? []) {
+      const operations = extension.plugin?.pasteText?.({
+        registry: runtime.registry,
+        store: runtime.store,
+        frameId: focusFrameId(),
+        hit,
+        at,
+        text: source.text,
+        allocateId: transactionId,
+      });
+      if (operations)
+        return dispatch({ id: transactionId(), operations }).then((result) =>
+          selectInserted(operations, result),
+        );
+    }
+    return {
+      status: 'rejected' as const,
+      message: 'No installed plugin accepts text here',
+    };
   };
   const readClipboardText = (raw: string): CellFragment => {
     const payload = JSON.parse(raw);
@@ -1504,48 +1708,58 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
       throw new Error('Clipboard does not contain Verd cells');
     return payload;
   };
-  const clipboard = async (
+  const prepareClipboard = (
     action: 'copy' | 'cut' | 'paste',
-  ): Promise<FrameIntentResult> => {
-    if (action !== 'copy' && (!editable || pendingRef.current))
-      return {
-        status: 'rejected',
-        message: pendingRef.current
-          ? 'A transaction is pending'
-          : 'Canvas is readonly',
+  ): (() => Promise<FrameIntentResult>) => {
+    const selection = JSON.stringify(runtime.selection);
+    const valid = () =>
+      alive.current &&
+      !propsRef.current.suspended &&
+      JSON.stringify(runtime.selection) === selection;
+    if (action === 'paste') {
+      const receipt = navigator.clipboard.readText().then(
+        (value) => ({ value }),
+        (error) => ({ error }),
+      );
+      return async () => {
+        try {
+          const result = await receipt;
+          if ('error' in result) throw result.error;
+          if (!valid())
+            return { status: 'rejected', message: 'Clipboard target changed' };
+          return await pasteFragment(readClipboardText(result.value));
+        } catch (error) {
+          return clipboardFailure(error);
+        }
       };
-    try {
-      if (action === 'paste')
-        return await pasteFragment(
-          readClipboardText(await navigator.clipboard.readText()),
-        );
-      if (action === 'copy') {
-        await navigator.clipboard.writeText(
-          clipboardText(copyCellFragment(runtime.store, runtime.selection.ids)),
-        );
-        return { status: 'accepted' };
-      }
-      const source = runtime.store;
-      const cut = cutSelection();
-      if (!cut.ids.length)
-        return { status: 'rejected', message: 'No unlocked cells selected' };
-      pendingRef.current = true;
-      setPending(true);
-      try {
-        await navigator.clipboard.writeText(clipboardText(cut.fragment));
-      } finally {
-        pendingRef.current = false;
-        setPending(false);
-      }
-      if (runtime.store !== source)
-        throw new Error('Canvas changed while writing to the clipboard');
-      return await dispatch({
-        id: transactionId(),
-        operations: cut.operations,
-      });
-    } catch (error) {
-      return clipboardFailure(error);
     }
+    // Snapshot after the editing barrier; native ClipboardEvent payloads are
+    // written synchronously by their transport and never enter this branch.
+    return async () => {
+      try {
+        if (!valid())
+          return { status: 'rejected', message: 'Clipboard target changed' };
+        const source = runtime.store;
+        const cut = action === 'cut' ? cutSelection() : null;
+        if (cut && !cut.ids.length)
+          return { status: 'rejected', message: 'No unlocked cells selected' };
+        const fragment =
+          cut?.fragment ??
+          copyCellFragment(source, runtime.selection.ids, runtime.registry, {
+            fileId: frameId,
+          });
+        await navigator.clipboard.writeText(clipboardText(fragment));
+        if (!valid() || runtime.store !== source)
+          return { status: 'rejected', message: 'Clipboard target changed' };
+        if (!cut) return { status: 'accepted' };
+        return await dispatch({
+          id: transactionId(),
+          operations: cut.operations,
+        });
+      } catch (error) {
+        return clipboardFailure(error);
+      }
+    };
   };
   const selectionDisplayStore = () => {
     return frameLayouts(focusFrameId()).store;
@@ -1553,7 +1767,17 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
   const selectionCommandState = (
     command: FrameSelectionCommand,
   ): { enabled: boolean; reason?: string } => {
-    if (!editable || pendingRef.current) return { enabled: false };
+    if (pendingRef.current) return { enabled: false, reason: 'pending' };
+    if (!editable)
+      return {
+        enabled: false,
+        reason:
+          propsRef.current.readonly ||
+          presenting ||
+          !(propsRef.current.onChange || propsRef.current.onIntent)
+            ? 'readonly'
+            : 'locked',
+      };
     const store =
         command.type === 'align' ||
         command.type === 'distribute' ||
@@ -1562,15 +1786,69 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
           : runtime.store,
       selection = runtime.selection;
     if (
-      command.type === 'align' ||
-      command.type === 'distribute' ||
-      command.type === 'layout'
-    )
+      command.type === 'layout' ||
+      command.type === 'reroute' ||
+      command.type === 'optimize-routes'
+    ) {
+      try {
+        if (command.type === 'reroute' || command.type === 'optimize-routes') {
+          const operations =
+            command.type === 'optimize-routes'
+              ? optimizableEdgeIds(
+                  store,
+                  arrangementEdgeIds(store, selection),
+                  runtime.registry,
+                )
+              : rerouteEdges(
+                  store,
+                  arrangementEdgeIds(store, selection),
+                  runtime.registry,
+                );
+          return {
+            enabled: operations.length > 0,
+            reason: operations.length
+              ? undefined
+              : command.type === 'reroute'
+                ? 'no-routes-to-reset'
+                : 'no-routes-to-optimize',
+          };
+        }
+        const scope = resolveCellArrangementScope(store, selection);
+        if (!scope.ids.length) return { enabled: false };
+        const blocks = collectArrangementBlocks(
+          store,
+          scope.frameId,
+          scope.ids,
+          runtime.registry,
+        );
+        const specialized = runtime.registry.scenes.some(
+          (scene) =>
+            scene.anchorKinds.includes(
+              frameScene(store, scope.frameId, runtime.registry) ?? '',
+            ) && scene.layouts?.some((layout) => layout.id === command.style),
+        );
+        return {
+          enabled:
+            blocks.filter((block) => !block.locked).length >= 2 &&
+            (specialized ||
+              ['grid', 'horizontal', 'vertical', 'relationships'].includes(
+                command.style,
+              )),
+        };
+      } catch (error) {
+        return {
+          enabled: false,
+          reason: error instanceof Error ? error.message : String(error),
+        };
+      }
+    }
+    if (command.type === 'align' || command.type === 'distribute')
       return arrangementAvailability(
         store,
         focusFrameId(),
         selection.ids,
         command,
+        runtime.registry,
       );
     if (command.type === 'fit-content')
       return {
@@ -1596,7 +1874,13 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
           ungroupCells(store, selection.ids).length > 0,
       };
     try {
-      groupCells(store, focusFrameId(), selection.ids, '__new_group__');
+      groupCells(
+        store,
+        focusFrameId(),
+        selection.ids,
+        '__new_group__',
+        runtime.registry,
+      );
       return { enabled: true };
     } catch (error) {
       return {
@@ -1645,19 +1929,39 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
         );
         if (!operations.length) return { status: 'accepted' };
       } else if (command.type === 'align')
-        operations = alignCells(store, selection.ids, command.axis);
+        operations = alignCells(
+          store,
+          selection.ids,
+          command.axis,
+          runtime.registry,
+        );
       else if (command.type === 'distribute')
-        operations = distributeCells(store, selection.ids, command.axis);
+        operations = distributeCells(
+          store,
+          selection.ids,
+          command.axis,
+          runtime.registry,
+        );
       else if (command.type === 'layout')
-        operations = arrangeCells(
+        operations = planCellLayout(
+          store,
+          selection,
+          command.style,
+          runtime.registry,
+        );
+      else if (command.type === 'reroute' || command.type === 'optimize-routes')
+        operations = (
+          command.type === 'optimize-routes' ? optimizeEdges : rerouteEdges
+        )(store, arrangementEdgeIds(store, selection), runtime.registry);
+      else if (command.type === 'group') {
+        const groupId = transactionId();
+        operations = groupCells(
           store,
           focusFrameId(),
           selection.ids,
-          command.style,
+          groupId,
+          runtime.registry,
         );
-      else if (command.type === 'group') {
-        const groupId = transactionId();
-        operations = groupCells(store, focusFrameId(), selection.ids, groupId);
         nextIds = [groupId];
       } else if (command.type === 'ungroup') {
         nextIds = selection.ids.flatMap((id) => {
@@ -1671,9 +1975,17 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
           selection.ids,
           command.type === 'lock',
         );
+      if (!operations.length) return { status: 'accepted' };
       const request = { ids: nextIds, focus: selection.focus, accepted: false };
       keyboardSelectionRef.current = request;
-      const result = await dispatch({ id: transactionId(), operations });
+      const result = await dispatch(
+        { id: transactionId(), operations },
+        {
+          layout: command.type === 'layout',
+          edges:
+            command.type === 'optimize-routes' || command.type === 'reroute',
+        },
+      );
       if (keyboardSelectionRef.current === request) {
         if (result.status === 'rejected') keyboardSelectionRef.current = null;
         else {
@@ -1686,10 +1998,280 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
       return clipboardFailure(error);
     }
   };
-  useImperativeHandle(ref, () => ({
-    runtime,
-    selectionCommandState,
-    executeSelectionCommand,
+  const publicController = useRef<FrameCanvasController | null>(null);
+  const activeControllerRef = useRef<FrameCanvasController | null>(null);
+  const activatedOccurrences = useRef(new Map<string, FrameCanvasController>());
+  const actionAfterToken = useRef<object | null>(null);
+  const echoCancellations = useRef(new Set<() => void>());
+  useEffect(() => {
+    for (const cancel of echoCancellations.current) cancel();
+    actionAfterToken.current = null;
+  }, [frameId, props.suspended]);
+  const flushEditing = async (): Promise<FrameIntentResult> => {
+    if (composingRef.current)
+      return { status: 'rejected', message: 'composing' };
+    if (documentEditing) {
+      const request =
+        propsRef.current.documentReferences?.flushEditing?.(documentEditing);
+      if (request) documentCommitRef.current = request;
+    }
+    {
+      const result = await documentCommitRef.current;
+      if (result && result.status !== 'completed' && result.status !== 'noop')
+        return {
+          status: 'rejected',
+          message:
+            'code' in result ? (result.message ?? result.code) : result.status,
+        };
+    }
+    const active = svgRef.current?.querySelector<HTMLElement>(
+      '[contenteditable="true"]',
+    );
+    active?.blur();
+    setEditing(null);
+    setLabelEditing(null);
+    await Promise.resolve();
+    const result = await textCommitRef.current;
+    if (
+      result?.status === 'accepted' &&
+      lastIntentPrediction.current &&
+      !lastIntentPrediction.current.acknowledged
+    ) {
+      const prediction = lastIntentPrediction.current;
+      return awaitEcho(prediction.expected, prediction.before);
+    }
+    return result ?? { status: 'accepted' };
+  };
+  const awaitEcho = (
+    expected: CellStore,
+    before: CellStore,
+  ): Promise<FrameIntentResult> => {
+    const ids = [
+      ...new Set([
+        ...Object.keys(expected.cells),
+        ...Object.keys(before.cells),
+      ]),
+    ].filter((id) => expected.cells[id] !== before.cells[id]);
+    const matches = () =>
+      ids.every(
+        (id) =>
+          JSON.stringify(runtime.store.cells[id]) ===
+          JSON.stringify(expected.cells[id]),
+      );
+    if (!propsRef.current.adapter || matches()) {
+      if (lastIntentPrediction.current?.expected === expected)
+        lastIntentPrediction.current.acknowledged = true;
+      return Promise.resolve({ status: 'accepted' });
+    }
+    return new Promise((resolve) => {
+      const finish = (result: FrameIntentResult) => {
+        if (
+          result.status === 'accepted' &&
+          lastIntentPrediction.current?.expected === expected
+        )
+          lastIntentPrediction.current.acknowledged = true;
+        echoCancellations.current.delete(cancel);
+        unsubscribe();
+        lifetime.current.signal.removeEventListener('abort', cancel);
+        resolve(result);
+      };
+      const cancel = () =>
+        finish({ status: 'rejected', message: 'scope-disposed' });
+      const unsubscribe = runtime.subscribe(() => {
+        if (matches()) finish({ status: 'accepted' });
+      });
+      echoCancellations.current.add(cancel);
+      lifetime.current.signal.addEventListener('abort', cancel, { once: true });
+      if (!alive.current) cancel();
+    });
+  };
+  const runOperations = async (
+    operations: readonly CellOperation[],
+    after?: {
+      selectionIds?: readonly string[];
+      editId?: string;
+      restoreView?: boolean;
+      normalizePositions?: boolean;
+    },
+  ): Promise<ActionResult> => {
+    if (!alive.current || propsRef.current.suspended)
+      return { status: 'cancelled', code: 'stale-context' };
+    if (!operations.length) return { status: 'noop' };
+    const targetFrameId = propsRef.current.frameId ?? runtime.store.rootId;
+    const targetOccurrenceId = propsRef.current.instanceId;
+    const before = runtime.store;
+    const request = {};
+    actionAfterToken.current = request;
+    const result = await (
+      after?.normalizePositions === false ? dispatchTransaction : dispatch
+    )({
+      id: transactionId(),
+      operations,
+      restoreView: after?.restoreView,
+    });
+    if (
+      !alive.current ||
+      propsRef.current.suspended ||
+      targetFrameId !== (propsRef.current.frameId ?? runtime.store.rootId) ||
+      targetOccurrenceId !== propsRef.current.instanceId
+    )
+      return { status: 'cancelled', code: 'stale-context' };
+    if (result.status === 'rejected') return frameIntentActionResult(result);
+    const expected =
+      lastIntentPrediction.current?.before === before
+        ? lastIntentPrediction.current.expected
+        : runtime.store;
+    const echo = await awaitEcho(expected, before);
+    if (echo.status === 'rejected') return frameIntentActionResult(echo);
+    if (actionAfterToken.current !== request) return { status: 'completed' };
+    if (after?.selectionIds) {
+      runtime.select({
+        focus: runtime.selection.focus,
+        ids: [...after.selectionIds],
+      });
+      propsRef.current.onSelectionChange?.(runtime.selection);
+    }
+    if (after?.editId && runtime.store.cells[after.editId])
+      editText(after.editId);
+    return { status: 'completed' };
+  };
+  const readActionContext = (): FrameActionContext => {
+    const ids = [...runtime.selection.ids],
+      cell = ids.length === 1 ? runtime.store.cells[ids[0]] : undefined;
+    const readonly =
+      !!propsRef.current.readonly ||
+      !(propsRef.current.onChange || propsRef.current.onIntent);
+    const locked =
+      !!runtime.store.cells[frameId]?.locked ||
+      (!!cell && (!!cell.locked || lockedByAncestor(runtime.store, cell.id)));
+    return {
+      surface: propsRef.current.actionHost ? 'product' : 'editor',
+      tool: propsRef.current.tool ?? { mode: 'select' },
+      interactionState:
+        dragRef.current ||
+        gestureRef.current ||
+        edgeDragRef.current ||
+        vectorDraftRef.current
+          ? 'gesture'
+          : editing || labelEditing || documentEditing
+            ? 'editing'
+            : 'idle',
+      store: runtime.store,
+      frameId: focusFrameId(),
+      fileId: frameId,
+      occurrenceId: propsRef.current.instanceId ?? frameId,
+      mountEpoch: lifetime.current,
+      appearancePath: propsRef.current.referenceAppearance ?? [],
+      selectionIds: ids,
+      selectionFocus: [...runtime.selection.focus],
+      cell,
+      language: propsRef.current.actionHost?.language ?? 'zh',
+      readonly,
+      pending: pendingRef.current,
+      locked,
+      disabled: readonly || pendingRef.current || locked,
+      registry: runtime.registry,
+      controller: publicController.current,
+      allocateId: transactionId,
+      dispatch: async (operations) => runOperations(operations),
+      runOperations,
+      setTool: propsRef.current.actionHost?.setTool,
+      requestProperties: propsRef.current.actionHost?.requestProperties,
+      propertyRequests: propsRef.current.actionHost?.propertyRequests,
+      viewProjection: viewProjectionRef.current,
+      clearRevealOverrides,
+      executeAction: (id, args, invocation) =>
+        actionRuntime.executeAction(id, args, invocation),
+      getActionState: (id, args) => actionRuntime.getActionState(id, args),
+    };
+  };
+  const contextReader = useRef(readActionContext);
+  contextReader.current = readActionContext;
+  const servicesReader = useRef<() => FrameActionServices>(() => {
+    throw new Error('Canvas not mounted');
+  });
+  const actionRuntime = useMemo(
+    () =>
+      createFrameActions({
+        getContext: () => contextReader.current(),
+        refresh: (captured) => {
+          if (
+            !alive.current ||
+            propsRef.current.suspended ||
+            captured.controller?.runtime !== runtime
+          )
+            return null;
+          const current = contextReader.current();
+          if (
+            captured.frameId !== current.frameId ||
+            captured.fileId !== current.fileId ||
+            captured.occurrenceId !== current.occurrenceId ||
+            captured.mountEpoch !== current.mountEpoch
+          )
+            return null;
+          if (
+            captured.selectionIds.some((id) => !current.store.cells[id]) ||
+            JSON.stringify(captured.selectionFocus) !==
+              JSON.stringify(current.selectionFocus) ||
+            JSON.stringify(captured.selectionIds) !==
+              JSON.stringify(current.selectionIds)
+          )
+            return null;
+          return current;
+        },
+        services: () => servicesReader.current(),
+        definitions: () => [
+          ...(propsRef.current.extensions ?? []).flatMap(
+            (extension) => extension.plugin?.actions ?? [],
+          ),
+          ...(propsRef.current.actionHost?.actions ?? []).map((definition) => ({
+            ...definition,
+            getState: (c: FrameActionContext, a: unknown) =>
+              propsRef.current.actionHost?.actions
+                ?.find((d) => d.id === definition.id)
+                ?.getState?.(c, a) ?? {},
+            execute: (
+              c: FrameActionContext,
+              a: unknown,
+              i: Parameters<typeof definition.execute>[2],
+            ) =>
+              propsRef.current
+                .actionHost!.actions!.find((d) => d.id === definition.id)!
+                .execute(c, a, i),
+          })),
+        ],
+      }),
+    [
+      runtime,
+      props.extensions,
+      (props.actionHost?.actions ?? []).map((a) => a.id).join('|'),
+    ],
+  );
+  useEffect(() => {
+    alive.current = true;
+    return () => {
+      alive.current = false;
+      queueMicrotask(() => {
+        if (!alive.current) {
+          lifetime.current.abort();
+          actionRuntime.dispose();
+        }
+      });
+    };
+  }, [actionRuntime]);
+  const actionToolKey = props.tool?.key ?? props.tool?.mode ?? 'select';
+  useEffect(() => {
+    actionRuntime.invalidate();
+  }, [
+    actionRuntime,
+    autoCalculation,
+    revision,
+    pending,
+    props.readonly,
+    viewProjection,
+    actionToolKey,
+  ]);
+  const createViewServices = (): FrameViewServices => ({
     exportImage: (options) =>
       frameSnapshotToImage(
         { store: runtime.store },
@@ -1713,76 +2295,6 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
         },
       ),
     dispatch: dispatchTransaction,
-    clipboard,
-    moveSelection: async (targetFrameId) => {
-      try {
-        const laidOut = { ...runtime.store, cells: { ...runtime.store.cells } };
-        Object.values(runtime.store.cells)
-          .filter(isFrameCell)
-          .forEach((frame) => {
-            propsRef.current.extensions?.forEach((extension) =>
-              extension
-                .layout?.(runtime.store, frame.id)
-                .forEach((geometry, id) => {
-                  const node = laidOut.cells[id];
-                  if (isNodeCell(node))
-                    laidOut.cells[id] = {
-                      ...node,
-                      geometry: roundNodeGeometry(geometry),
-                    };
-                }),
-            );
-          });
-        return await dispatch({
-          id: transactionId(),
-          operations: moveWhiteboardCells(
-            runtime.store,
-            runtime.selection.ids,
-            targetFrameId,
-            laidOut,
-          ),
-        });
-      } catch (error) {
-        return {
-          status: 'rejected',
-          message: error instanceof Error ? error.message : String(error),
-        };
-      }
-    },
-    undo: () => publishHistory('undo'),
-    redo: () => publishHistory('redo'),
-    focus: (id) => {
-      const index = runtime.index;
-      const path = [id];
-      let parent = index.parentOf.get(id);
-      while (parent && path[0] !== frameId) {
-        path.unshift(parent);
-        parent = index.parentOf.get(parent);
-      }
-      runtime.select({ focus: path, ids: [] });
-    },
-    fit: fitCanvas,
-    centerSelection,
-    revealCell(cellId: string) {
-      const index = runtime.index;
-      const path = [cellId];
-      const seen = new Set<string>();
-      let parent = index.parentOf.get(cellId) ?? index.groupOf.get(cellId);
-      while (parent && path[0] !== frameId && !seen.has(parent)) {
-        seen.add(parent);
-        path.unshift(parent);
-        parent = index.parentOf.get(parent) ?? index.groupOf.get(parent);
-      }
-      if (path[0] !== frameId) path.unshift(frameId);
-      const focus = path.slice(0, -1);
-      const mounted = focus.length ? focus : [frameId];
-      try {
-        runtime.select({ focus: mounted, ids: [cellId] });
-      } catch {
-        runtime.select({ focus: [frameId], ids: [] });
-      }
-      centerSelection();
-    },
     clientToWorld(clientX: number, clientY: number) {
       return pointFromEventRef.current({ clientX, clientY });
     },
@@ -1794,7 +2306,6 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
         ),
         origination: cameraRef.current.origination ?? zeroOrigin,
       }),
-    editText,
     selectionScreenBounds: () => boundsRef.current(),
     fitBounds: (bounds, options) => fitWorldBounds(bounds, options),
     fitCells: (ids, options) => {
@@ -1815,15 +2326,262 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
       return true;
     },
     getContentBounds: () => contentBounds(),
-    finishEditing: () => {
-      const active = svgRef.current?.querySelector(
-        '[contenteditable="true"]',
-      ) as HTMLElement | null;
-      active?.blur();
-      setEditing(null);
-      setLabelEditing(null);
-    },
-  }));
+  });
+  servicesReader.current = () => {
+    const viewServices = createViewServices();
+    return {
+      getAutoCalculation: () => autoCalculationRef.current,
+      toggleAutoCalculation: (kind) => {
+        const config = autoCalculationRef.current;
+        const next = { ...config };
+        if (config[kind]) delete next[kind];
+        else {
+          const scope = captureAutoCalculationScope(
+            runtime.store,
+            runtime.selection,
+          );
+          if (kind === 'layout') {
+            const scene = frameScene(
+              runtime.store,
+              scope.frameId,
+              runtime.registry,
+            );
+            const defaultStyle =
+              runtime.registry.scenes.find((definition) =>
+                definition.anchorKinds.includes(scene ?? ''),
+              )?.layouts?.[0]?.id ?? 'grid';
+            next.layout = {
+              scope,
+              style: autoLayoutStyleRef.current ?? defaultStyle,
+            };
+          } else next.edges = { scope };
+        }
+        autoCalculationRef.current = next;
+        setAutoCalculation(next);
+      },
+      selectionState: selectionCommandState,
+      selectionExecute: async (command) => {
+        const previous = lastIntentPrediction.current;
+        const result = await executeSelectionCommand(command);
+        if (
+          result.status === 'accepted' &&
+          lastIntentPrediction.current !== previous &&
+          lastIntentPrediction.current
+        ) {
+          const prediction = lastIntentPrediction.current;
+          return awaitEcho(prediction.expected, prediction.before);
+        }
+        return result;
+      },
+      movePlan: (targetFrameId) => {
+        const laidOut = { ...runtime.store, cells: { ...runtime.store.cells } };
+        Object.values(runtime.store.cells)
+          .filter(isFrameCell)
+          .forEach((frame) => {
+            propsRef.current.extensions?.forEach((extension) =>
+              extension
+                .layout?.(runtime.store, frame.id)
+                .forEach((geometry, id) => {
+                  const node = laidOut.cells[id];
+                  if (isNodeCell(node))
+                    laidOut.cells[id] = {
+                      ...node,
+                      geometry: roundNodeGeometry(geometry),
+                    };
+                }),
+            );
+          });
+        return moveWhiteboardCells(
+          runtime.store,
+          runtime.selection.ids,
+          targetFrameId,
+          laidOut,
+          runtime.registry,
+        );
+      },
+      prepareClipboard,
+      settleClipboard: async (perform) => {
+        const before = lastIntentPrediction.current;
+        const result = await perform();
+        if (
+          result.status === 'accepted' &&
+          lastIntentPrediction.current !== before &&
+          lastIntentPrediction.current
+        ) {
+          const prediction = lastIntentPrediction.current;
+          return awaitEcho(prediction.expected, prediction.before);
+        }
+        return result;
+      },
+      flushEditing,
+      history: publishHistory,
+      canHistory: (kind) =>
+        !propsRef.current.readonly &&
+        (propsRef.current.history
+          ? kind === 'undo'
+            ? (propsRef.current.history.canUndo?.() ?? true)
+            : (propsRef.current.history.canRedo?.() ?? true)
+          : kind === 'undo'
+            ? runtime.history.undos.length > 0
+            : runtime.history.redos.length > 0),
+      fit: () => fitCanvas(),
+      centerSelection: () => centerSelection(),
+      centerState: () => {
+        const hasBounds = !!boundsRef.current();
+        const blocked = !!(
+          dragging ||
+          dragRef.current ||
+          gestureRef.current ||
+          edgeDragRef.current ||
+          pinchRef.current ||
+          rightDragRef.current?.moved
+        );
+        return {
+          enabled: hasBounds && !blocked,
+          reason: !hasBounds
+            ? 'no-selection'
+            : blocked
+              ? 'interaction-active'
+              : undefined,
+        };
+      },
+      setZoom: viewServices.setZoom,
+      getZoom: () => cameraRef.current.zoom ?? 1,
+      select: (ids) => {
+        runtime.select({ focus: runtime.selection.focus, ids: [...ids] });
+        propsRef.current.onSelectionChange?.(runtime.selection);
+      },
+      exit: () => {
+        const focus = runtime.selection.focus;
+        runtime.select({
+          focus: focus.length > 1 ? focus.slice(0, -1) : focus,
+          ids: [],
+        });
+      },
+      edit: editText,
+      ...(propsRef.current.linkHost
+        ? {
+            copyLink: async () => {
+              const id = runtime.selection.ids[0];
+              if (runtime.selection.ids.length !== 1)
+                return {
+                  status: 'rejected' as const,
+                  code: 'single-selection-required',
+                };
+              await navigator.clipboard.writeText(
+                propsRef.current.linkHost!.createLink({ frameId, cellId: id }),
+              );
+              return { status: 'completed' as const };
+            },
+          }
+        : {}),
+    };
+  };
+  useImperativeHandle(ref ?? publicController, () => {
+    const viewServices = createViewServices();
+    const controller: FrameCanvasController = {
+      runtime,
+      dispatch: viewServices.dispatch,
+      exportImage: viewServices.exportImage,
+      clientToWorld: viewServices.clientToWorld,
+      selectionScreenBounds: viewServices.selectionScreenBounds,
+      fitBounds: viewServices.fitBounds,
+      fitCells: viewServices.fitCells,
+      getContentBounds: viewServices.getContentBounds,
+      actionSource: actionRuntime,
+      getActionContext: readActionContext,
+      getActiveController: () =>
+        activeControllerRef.current?.getActiveController() ??
+        publicController.current!,
+      findOccurrence: (id) => {
+        if (!alive.current) return null;
+        if (id === (propsRef.current.instanceId ?? frameId))
+          return publicController.current;
+        for (const child of activatedOccurrences.current.values()) {
+          const found = child.findOccurrence(id);
+          if (found) return found;
+        }
+        return null;
+      },
+      getAutoCalculation: () => autoCalculationRef.current,
+      setAutoLayoutStyle: (style) => {
+        autoLayoutStyleRef.current = style;
+        const config = autoCalculationRef.current;
+        if (config.layout && config.layout.style !== style) {
+          const next = { ...config, layout: { ...config.layout, style } };
+          autoCalculationRef.current = next;
+          setAutoCalculation(next);
+        }
+      },
+      getActionState: actionRuntime.getActionState,
+      executeAction: actionRuntime.executeAction,
+      actions: actionRuntime.actions,
+      flushEditing,
+      captureDocumentEditingView: () =>
+        documentEditing
+          ? (propsRef.current.documentReferences?.captureEditingView?.(
+              documentEditing,
+            ) ?? null)
+          : null,
+      restoreDocumentEditingView: (view, signal) => {
+        if (!alive.current || signal?.aborted)
+          return Promise.resolve({
+            status: 'cancelled',
+            code: 'stale-context',
+          });
+        const cell = runtime.store.cells[view.cellId];
+        if (
+          !isDocumentFrameCell(cell) ||
+          cell.hidden ||
+          propsRef.current.readonly ||
+          propsRef.current.suspended ||
+          !selectionAllows(
+            runtime.store,
+            [cell.id],
+            runtime.registry,
+            'edit',
+            frameId,
+          )
+        )
+          return Promise.resolve({
+            status: 'cancelled',
+            code: 'missing-document-occurrence',
+          });
+        const restore = propsRef.current.documentReferences?.restoreEditingView;
+        if (!restore) return Promise.resolve({ status: 'noop' });
+        const abort = new AbortController();
+        const cancel = () => abort.abort();
+        const signals = [lifetime.current.signal, ...(signal ? [signal] : [])];
+        for (const source of signals) {
+          if (source.aborted) abort.abort();
+          else source.addEventListener('abort', cancel, { once: true });
+        }
+        return restore(
+          view,
+          (instanceId) => {
+            documentCommitRef.current = null;
+            setDocumentEditing(instanceId);
+          },
+          abort.signal,
+        ).finally(() => {
+          for (const source of signals)
+            source.removeEventListener('abort', cancel);
+        });
+      },
+      revealTarget: (request) => revealTargetRef.current(request),
+      clearRevealOverrides,
+      getViewProjection: () => viewProjectionRef.current,
+      getCamera: () => ({
+        zoom: cameraRef.current.zoom ?? 1,
+        origination: [
+          ...(cameraRef.current.origination ?? zeroOrigin),
+        ] as Point,
+      }),
+      restoreCamera: (camera) => setViewport(camera, true),
+    };
+    publicController.current = controller;
+    return controller;
+  });
   const view = (
     runtime.store.cells[frameId] as import('@sue/board-core').FrameCell
   )?.view;
@@ -2003,7 +2761,7 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
   };
   const layoutMemory = useMemo(
     () => new Map<string, FrameLayoutMemory>(),
-    [frameId, props.extensions],
+    [frameId, props.extensions, viewProjection.identity],
   );
   const frameLayouts = useMemo(
     () =>
@@ -2013,8 +2771,10 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
         undefined,
         frameId,
         layoutMemory,
+        runtime.registry,
+        viewProjection,
       ),
-    [runtime.store, props.extensions, frameId, layoutMemory],
+    [runtime.store, props.extensions, frameId, layoutMemory, viewProjection],
   );
   const centerSelection = () => {
     const svg = svgRef.current;
@@ -2060,6 +2820,128 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
       true,
     );
   };
+  revealTargetRef.current = async (request) => {
+    const token = ++revealToken.current;
+    const cancelled = () =>
+      !alive.current ||
+      request.signal?.aborted ||
+      token !== revealToken.current;
+    for (const done of layoutWaiters.current) done();
+    if (cancelled())
+      return {
+        status: 'cancelled',
+        code: request.signal?.aborted ? 'aborted' : 'unmounted',
+      };
+    const cell = runtime.store.cells[request.cellId];
+    if (!cell) return { status: 'unavailable', code: 'missing-cell' };
+    if (cell.hidden) return { status: 'unavailable', code: 'hidden' };
+    setRevealHighlight(null);
+    const expanded = new Set<string>();
+    for (const extension of propsRef.current.extensions ?? [])
+      for (const id of extension.plugin?.prepareReveal?.(
+        runtime.store,
+        cell.id,
+      ) ?? [])
+        expanded.add(id);
+    const next: FrameViewProjection = {
+      identity: {},
+      expandedCellIds: expanded,
+      purpose: 'interactive',
+    };
+    setViewProjection(next);
+    await new Promise<void>((resolve) => {
+      const done = () => {
+        if (layoutReadyRef.current !== next && !cancelled()) return;
+        layoutWaiters.current.delete(done);
+        request.signal?.removeEventListener('abort', done);
+        lifetime.current.signal.removeEventListener('abort', done);
+        resolve();
+      };
+      layoutWaiters.current.add(done);
+      request.signal?.addEventListener('abort', done, { once: true });
+      lifetime.current.signal.addEventListener('abort', done, { once: true });
+      done();
+    });
+    if (cancelled()) return { status: 'cancelled', code: 'superseded' };
+    const latestCell = runtime.store.cells[request.cellId];
+    if (!latestCell) return { status: 'unavailable', code: 'missing-cell' };
+    if (latestCell.hidden) return { status: 'unavailable', code: 'hidden' };
+    const frames: string[] = [];
+    let owner = runtime.index.parentOf.get(cell.id);
+    const seen = new Set<string>();
+    while (owner && !seen.has(owner)) {
+      seen.add(owner);
+      frames.unshift(owner);
+      if (owner === frameId) break;
+      owner = runtime.index.parentOf.get(owner);
+    }
+    if (frames[0] !== frameId)
+      return { status: 'unavailable', code: 'unsupported' };
+    const groups = groupAncestors(runtime.store, cell.id).reverse();
+    try {
+      runtime.select({ focus: [...frames, ...groups], ids: [cell.id] });
+    } catch {
+      return { status: 'unavailable', code: 'unsupported' };
+    }
+    const svg = svgRef.current;
+    if (!svg) return { status: 'cancelled', code: 'unmounted' };
+    const bounds = frameSelectionWorldBounds({
+      includeEdges: true,
+      svg,
+      world: worldRef.current,
+      store: runtime.store,
+      frameId,
+      ids: [cell.id],
+      parentOf: runtime.index.parentOf,
+      layouts: (id) => displayedLayoutsRef.current.get(id) ?? frameLayouts(id),
+    });
+    if (!bounds) return { status: 'unavailable', code: 'unrenderable' };
+    const rect = captureViewportRect();
+    if (!rect) return { status: 'unavailable', code: 'unrenderable' };
+    const insets = propsRef.current.viewportInsets ?? {
+      top: 40,
+      right: 40,
+      bottom: 40,
+      left: 40,
+    };
+    const currentZoom = cameraRef.current.zoom ?? 1;
+    const zoom = Math.max(
+      Number.EPSILON,
+      Math.min(
+        currentZoom,
+        Math.max(1, rect.width - insets.left - insets.right) /
+          Math.max(1, bounds.width),
+        Math.max(1, rect.height - insets.top - insets.bottom) /
+          Math.max(1, bounds.height),
+      ),
+    );
+    setViewport(
+      {
+        zoom,
+        origination: [
+          bounds.x +
+            bounds.width / 2 -
+            (insets.left + (rect.width - insets.left - insets.right) / 2) /
+              zoom,
+          bounds.y +
+            bounds.height / 2 -
+            (insets.top + (rect.height - insets.top - insets.bottom) / 2) /
+              zoom,
+        ],
+      },
+      true,
+      { minZoom: Number.EPSILON },
+    );
+    propsRef.current.onSelectionChange?.(runtime.selection);
+    setRevealBounds(bounds);
+    setRevealHighlight(cell.id);
+    return { status: 'revealed', cellId: cell.id };
+  };
+  useEffect(() => {
+    if (!revealHighlight) return;
+    const timer = setTimeout(() => setRevealHighlight(null), 1200);
+    return () => clearTimeout(timer);
+  }, [revealHighlight]);
   const fitCanvas = (focusCellId?: string) => {
     const frame = runtime.store.cells[frameId];
     const svg = svgRef.current;
@@ -2357,11 +3239,11 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
     focus: string[];
     scale: number;
     geometry: Map<string, NodeGeometry>;
-    mode?: 'move' | 'resize' | 'rotate' | 'mind-pan';
-    mindFrameId?: string;
+    mode?: 'move' | 'resize' | 'rotate' | 'content-pan';
+    panFrameId?: string;
     /** Reference occurrence the pan belongs to; offsets write to its shell. */
-    mindRefId?: string;
-    mindOffset?: Point;
+    panRefId?: string;
+    contentOffset?: Point;
     handle?: ResizeHandle;
     localStart?: Point;
     pointerMatrix?: DOMMatrix;
@@ -2387,6 +3269,26 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
     previewState.id === dragRef.current?.id
       ? previewState.geometry
       : null;
+  const previewPaintFrame = useRef<number | null>(null);
+  const previewPaintJobs = useRef(new Map<string, () => void>());
+  const schedulePreviewPaint = (key: string, job: () => void) => {
+    previewPaintJobs.current.set(key, job);
+    if (previewPaintFrame.current !== null) return;
+    previewPaintFrame.current = requestAnimationFrame(() => {
+      previewPaintFrame.current = null;
+      const jobs = [...previewPaintJobs.current.values()];
+      previewPaintJobs.current.clear();
+      jobs.forEach((paint) => paint());
+    });
+  };
+  useEffect(
+    () => () => {
+      if (previewPaintFrame.current !== null)
+        cancelAnimationFrame(previewPaintFrame.current);
+      previewPaintJobs.current.clear();
+    },
+    [],
+  );
   const setPreview = (geometry: NodeGeometry | null) => {
     const drag = dragRef.current;
     const next =
@@ -2394,8 +3296,15 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
         ? { sessionId: drag.sessionId, id: drag.id, geometry }
         : null;
     previewRef.current = next;
-    setPreviewState(next);
-    if (!next) setMoveGhost(null);
+    if (next) schedulePreviewPaint('geometry', () => setPreviewState(next));
+    else {
+      if (previewPaintFrame.current !== null)
+        cancelAnimationFrame(previewPaintFrame.current);
+      previewPaintFrame.current = null;
+      previewPaintJobs.current.clear();
+      setPreviewState(null);
+      setMoveGhost(null);
+    }
   };
   const resolveMovePreview = (
     drag: NonNullable<typeof dragRef.current>,
@@ -2421,7 +3330,7 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
       scale: cameraStore.getZoom() * drag.scale,
     });
   };
-  const updateMoveGhost = (
+  const paintMoveGhost = (
     drag: NonNullable<typeof dragRef.current>,
     geometry: NodeGeometry,
     point: Point,
@@ -2447,6 +3356,13 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
             plan,
           },
     );
+  };
+  const updateMoveGhost = (
+    drag: NonNullable<typeof dragRef.current>,
+    geometry: NodeGeometry,
+    point: Point,
+  ) => {
+    schedulePreviewPaint('ghost', () => paintMoveGhost(drag, geometry, point));
   };
   const moveGhostScene = useMemo(() => {
     if (
@@ -2475,13 +3391,31 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
           props.extensions,
           undefined,
           frameId,
+          undefined,
+          runtime.registry,
+          viewProjection,
+          frameLayouts,
         ),
       };
     } catch {
       return null;
     }
-  }, [moveGhost, runtime.store, runtime.registry, props.extensions, frameId]);
-  const [alignmentGuides, setAlignmentGuides] = useState<AlignmentGuide[]>([]);
+  }, [
+    moveGhost,
+    runtime.store,
+    runtime.registry,
+    props.extensions,
+    frameId,
+    frameLayouts,
+    viewProjection,
+  ]);
+  const [alignmentGuides, paintAlignmentGuides] = useState<AlignmentGuide[]>(
+    [],
+  );
+  const setAlignmentGuides = (guides: AlignmentGuide[]) => {
+    if (!dragRef.current) paintAlignmentGuides(guides);
+    else schedulePreviewPaint('guides', () => paintAlignmentGuides(guides));
+  };
   const edgeDragRef = useRef<{
     cell: EdgeCell;
     start: Point;
@@ -2578,13 +3512,32 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
   };
   const cancelInteractionRef = useRef(cancelInteraction);
   cancelInteractionRef.current = cancelInteraction;
+  const finishDocumentEditing = (instanceId: string) => {
+    const request =
+      propsRef.current.documentReferences?.flushEditing?.(instanceId) ??
+      Promise.resolve({ status: 'noop' } as ActionResult);
+    documentCommitRef.current = request;
+    return request.then((result) => {
+      if (
+        alive.current &&
+        (result.status === 'completed' || result.status === 'noop')
+      )
+        setDocumentEditing((current) =>
+          current === instanceId ? null : current,
+        );
+      return result;
+    });
+  };
   const activeToolKey = props.tool?.key ?? props.tool?.mode ?? 'select';
   useEffect(() => {
-    setDocumentEditing(null);
+    if (documentEditing) void finishDocumentEditing(documentEditing);
   }, [activeToolKey, props.readonly, props.suspended]);
   const documentEditRequest = props.documentReferences?.editRequest;
   useEffect(() => {
-    if (documentEditRequest) setDocumentEditing(documentEditRequest.instanceId);
+    if (documentEditRequest) {
+      documentCommitRef.current = null;
+      setDocumentEditing(documentEditRequest.instanceId);
+    }
   }, [documentEditRequest?.nonce, documentEditRequest?.instanceId]);
   useEffect(() => {
     if (!documentEditing) return;
@@ -2595,7 +3548,7 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
           .closest?.('[data-document-frame-instance]')
           ?.getAttribute('data-document-frame-instance') !== documentEditing
       )
-        setDocumentEditing(null);
+        void finishDocumentEditing(documentEditing);
     };
     document.addEventListener('pointerdown', leave, true);
     return () => document.removeEventListener('pointerdown', leave, true);
@@ -2705,58 +3658,24 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
     });
   };
   const commitEditingTab = () => {
-    if (!editing) return;
     const id = editing;
-    const commit = textCommitRef.current;
-    setEditing(null);
-    void (async () => {
-      const committed = await commit;
-      if (committed && committed.status === 'rejected') return;
-      const cell = runtime.store.cells[id];
-      const util = cell ? runtime.registry.get(cell.kind) : undefined;
-      if (!cell || !util || !('keyboard' in util) || pendingRef.current) return;
-      const operations = (
-        util as import('@sue/board-core').BaseCellUtil
-      ).keyboard(runtime.store, cell, 'Tab', transactionId);
-      if (!operations) return;
-      const inserted = operations.find(
-        (operation) => operation.type === 'insert_cell',
-      );
-      const request =
-        inserted?.type === 'insert_cell'
-          ? {
-              ids: [inserted.cell.id],
-              focus: [...runtime.selection.focus],
-              accepted: false,
-            }
-          : null;
-      keyboardSelectionRef.current = request;
-      const edit =
-        inserted?.type === 'insert_cell' && isNodeCell(inserted.cell)
-          ? {
-              id: inserted.cell.id,
-              label: inserted.cell.content?.label ?? '',
-              accepted: false,
-            }
-          : null;
-      keyboardEditRef.current = edit;
-      const result = await dispatch({
-        id: transactionId(),
-        operations,
-      });
-      if (keyboardSelectionRef.current !== request) return;
-      if (result.status === 'rejected') {
-        keyboardSelectionRef.current = null;
-        keyboardEditRef.current = null;
-        return;
+    if (!id) return;
+    void flushEditing().then((result) => {
+      if (result.status === 'accepted' && runtime.store.cells[id]) {
+        const match = resolveActionShortcut(actionRuntime.actions(), {
+          key: 'Tab',
+          ctrlKey: false,
+          metaKey: false,
+          altKey: false,
+          shiftKey: false,
+          repeat: false,
+        } as KeyboardEvent);
+        if (match.status === 'matched')
+          void actionRuntime.executeAction(match.action.id);
       }
-      if (request) {
-        request.accepted = true;
-        if (edit) edit.accepted = true;
-        applyKeyboardSelection();
-      }
-    })();
+    });
   };
+
   const updateEdgeDrag = (
     event: React.PointerEvent<SVGElement>,
     capture = true,
@@ -2799,6 +3718,7 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
           edgeDrag.mode,
           next.kind,
           12 / (zoom * edgeDrag.scale),
+          runtime.registry,
         ),
       );
     else if (edgeDrag.mode === 'point')
@@ -2869,6 +3789,8 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
             geometry: base.baseGeometry,
           },
           frameId,
+          undefined,
+          runtime.registry,
         ),
       };
     } catch {
@@ -2893,15 +3815,7 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
     source: { cellId: connection.cellId, portId: connection.portId },
     target,
     route: { mode: 'auto' },
-    ...(connection.kind === 'uml-relation'
-      ? {
-          data: {
-            relation: 'association',
-            sourceMarker: 'none',
-            targetMarker: 'none',
-          },
-        }
-      : {}),
+    data: frameCellUI(props.extensions, connection.kind).edgeData,
   });
   const connectionScene = useMemo(() => {
     if (!connectionPreview) return null;
@@ -2948,6 +3862,8 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
           geometry: base.baseGeometry,
         },
         frameId,
+        undefined,
+        runtime.registry,
       ),
     };
   }, [connectionPreview, frameLayouts, props.extensions, frameId]);
@@ -2979,6 +3895,7 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
       connection.kind,
       12 /
         (matrix ? 1 / Math.hypot(matrix.a, matrix.b) : zoom * connection.scale),
+      runtime.registry,
     );
     if (!('cellId' in target) || !target.portId) target = { point };
     if ('cellId' in target) {
@@ -3167,8 +4084,8 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
       shellGeometry?: NodeGeometry,
       /**
        * Set when this frame renders inside a frame-reference occurrence:
-       * `refId` receives per-occurrence mind-pan writes, `offsets` carries
-       * that occurrence's saved mind-tree pan offsets, and `seen` guards
+       * `refId` receives per-occurrence content-pan writes, `offsets` carries
+       * that occurrence's saved content pan offsets, and `seen` guards
        * against reference cycles reaching this frame again.
        */
       occurrence?: {
@@ -3191,23 +4108,24 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
         : dragRef.current?.id === id && nodePreview
           ? { ...frame, geometry: nodePreview }
           : frame;
-      const mindPan = dragRef.current?.mode === 'mind-pan';
+      const contentPan = dragRef.current?.mode === 'content-pan';
       const projection =
-        embedded && (shellGeometry || (mindPan && nodePreview))
-          ? projectEmbeddedMindTrees(
+        embedded && (shellGeometry || (contentPan && nodePreview))
+          ? projectEmbeddedContent(
+              props.extensions,
               store,
               displayedFrame,
               base.baseGeometry,
               base.fitBounds,
-              mindPan && nodePreview && dragRef.current?.mindFrameId === id
+              contentPan && nodePreview && dragRef.current?.panFrameId === id
                 ? new Map([
                     [
                       dragRef.current.id,
                       [
-                        (dragRef.current.mindOffset?.[0] ?? 0) +
+                        (dragRef.current.contentOffset?.[0] ?? 0) +
                           nodePreview.x -
                           dragRef.current.original.x,
-                        (dragRef.current.mindOffset?.[1] ?? 0) +
+                        (dragRef.current.contentOffset?.[1] ?? 0) +
                           nodePreview.y -
                           dragRef.current.original.y,
                       ] as Point,
@@ -3215,14 +4133,14 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
                   ])
                 : (occurrence?.offsets ?? undefined),
             )
-          : { geometry: base.geometry, offsets: base.mindOffsets };
-      const mindOffsets = projection.offsets;
+          : { geometry: base.geometry, offsets: base.contentOffsets };
+      const contentOffsets = projection.offsets;
       const geometry =
-        scene?.overrides || (dragRef.current && nodePreview && !mindPan)
+        scene?.overrides || (dragRef.current && nodePreview && !contentPan)
           ? new Map(projection.geometry)
           : projection.geometry;
       scene?.overrides?.forEach((bounds, id) => geometry.set(id, bounds));
-      if (dragRef.current && nodePreview && !mindPan) {
+      if (dragRef.current && nodePreview && !contentPan) {
         const dragged = store.cells[dragRef.current.id];
         if (isGroupCell(dragged)) {
           for (const operation of translateCellSelection(
@@ -3232,6 +4150,7 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
               nodePreview.x - dragRef.current.original.x,
               nodePreview.y - dragRef.current.original.y,
             ],
+            runtime.registry,
           ))
             if (operation.type === 'replace_cell' && isNodeCell(operation.cell))
               geometry.set(operation.cell.id, operation.cell.geometry);
@@ -3260,6 +4179,7 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
           base.store,
           dragRef.current.ids ?? [dragRef.current.id],
           delta,
+          runtime.registry,
         )) {
           if (operation.type !== 'replace_cell') continue;
           laidOut.cells[operation.cell.id] = operation.cell;
@@ -3267,8 +4187,20 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
             geometry.set(operation.cell.id, operation.cell.geometry);
         }
       }
+      const lightweightRouting = !!(
+        dragRef.current &&
+        nodePreview &&
+        !drawingPreview
+      );
       const routing = geometryChanged
-        ? createEdgeRoutingContext(laidOut, id, undefined, base.routing)
+        ? createEdgeRoutingContext(
+            laidOut,
+            id,
+            undefined,
+            base.routing,
+            runtime.registry,
+            { preview: lightweightRouting },
+          )
         : base.routing;
       if (!drawingPreview)
         displayedLayoutsRef.current.set(id, {
@@ -3285,7 +4217,10 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
       const fitted = embedded
         ? fitFrameContent(
             displayedFrame,
-            frameScene(store, id) === 'mind-root'
+            lightweightRouting ||
+              props.extensions?.some((extension) =>
+                extension.plugin?.fitLayoutBounds?.(store, id),
+              )
               ? base.fitBounds
               : frameContentBounds(laidOut, id, routing),
           )
@@ -3296,11 +4231,28 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
         fitted.offset.every(Number.isFinite)
           ? fitted
           : { scale: 1, offset: [0, 0] as Point };
+      const crossingJumps =
+        drawingPreview || lightweightRouting
+          ? undefined
+          : frameEdgeCrossingJumps(laidOut, id, routing);
+      const relationEdges = new Map<string, string[]>();
+      for (const cellId of frame.children) {
+        const edge = laidOut.cells[cellId];
+        if (!isEdgeCell(edge) || edge.hidden) continue;
+        for (const terminal of [edge.source, edge.target])
+          if ('cellId' in terminal) {
+            const connected = relationEdges.get(terminal.cellId) ?? [];
+            connected.push(cellId);
+            relationEdges.set(terminal.cellId, connected);
+          }
+      }
       const contextForCell = (
         cell: Cell,
         bounds?: NodeGeometry,
       ): FrameRenderContext => ({
         store,
+        viewProjection,
+        clearRevealOverrides,
         cell: store.cells[cell.id] ?? cell,
         geometry: bounds,
         selected:
@@ -3330,9 +4282,36 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
           if (!drawingPreview) sceneActions.editText(id);
         },
         history: (action: 'undo' | 'redo') => {
-          if (!drawingPreview) sceneActions.publishHistory(action);
+          if (!drawingPreview)
+            void actionRuntime.executeAction(`canvas.history.${action}`);
         },
-        dispatch: drawingPreview ? rejectPreviewIntent : sceneActions.dispatch,
+        commitEditing: drawingPreview
+          ? rejectPreviewIntent
+          : (transaction) => {
+              const request = sceneActions.dispatch(transaction);
+              textCommitRef.current = request;
+              return request;
+            },
+        dispatch: drawingPreview
+          ? rejectPreviewIntent
+          : async (transaction) => {
+              const result = await actionRuntime.executeAction(
+                'canvas.apply-operations',
+                {
+                  operations: transaction.operations,
+                  restoreView: transaction.restoreView,
+                },
+              );
+              return result.status === 'completed' || result.status === 'noop'
+                ? { status: 'accepted' }
+                : {
+                    status: 'rejected',
+                    message:
+                      'code' in result
+                        ? (result.message ?? result.code)
+                        : result.status,
+                  };
+            },
       });
       const contextAtZoom = (
         context: FrameRenderContext,
@@ -3477,6 +4456,7 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
         };
         const beginFrameMove = (event: React.PointerEvent<SVGElement>) => {
           event.stopPropagation();
+          activeControllerRef.current = null;
           propsRef.current.onActiveInstance?.(null);
           if (drawingPreview) return;
           if (event.button !== 0) {
@@ -3512,7 +4492,9 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
                   : undefined,
               ids:
                 runtime.selection.ids.length > 1 &&
-                frameScene(store, id) !== 'mind-root'
+                !props.extensions?.some((extension) =>
+                  extension.plugin?.fitLayoutBounds?.(store, id),
+                )
                   ? [...runtime.selection.ids]
                   : undefined,
               id:
@@ -3542,9 +4524,12 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
           const documentIsEditing =
             !documentReadonly && documentEditing === instanceId;
           const exitDocumentEdit = () => {
-            setDocumentEditing(null);
-            sceneActions.select(cellId, focus, false);
-            svgRef.current?.focus({ preventScroll: true });
+            void finishDocumentEditing(instanceId).then((result) => {
+              if (result.status === 'completed' || result.status === 'noop') {
+                sceneActions.select(cellId, focus, false);
+                svgRef.current?.focus({ preventScroll: true });
+              }
+            });
           };
           const title =
             cell.name ??
@@ -3613,6 +4598,8 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
               data-document-frame-instance={instanceId}
             >
               <FrameShell
+                camera={cameraStore}
+                scale={parentScale * placement.scale}
                 geometry={shell}
                 appearance={cell.appearance}
                 active={!drawingPreview && (selected || documentIsEditing)}
@@ -3665,6 +4652,7 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
                       event.preventDefault();
                       event.stopPropagation();
                       sceneActions.select(cellId, focus, false);
+                      documentCommitRef.current = null;
                       setDocumentEditing(instanceId);
                     }}
                     onClickCapture={(event) => {
@@ -3700,6 +4688,8 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
               data-draft-cell-kind={drawingPreview ? 'frame' : undefined}
             >
               <FrameShell
+                camera={cameraStore}
+                scale={parentScale * placement.scale}
                 geometry={shellBounds}
                 appearance={cell.appearance}
                 active={active}
@@ -3766,7 +4756,11 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
                       id={cellId}
                       geometry={bounds}
                       scale={zoom * parentScale * placement.scale}
-                      resize={allowed.resize && cell.kind !== 'vector-line'}
+                      resize={
+                        allowed.resize &&
+                        frameCellUI(props.extensions, cell.kind)
+                          .resizeHandles !== false
+                      }
                       rotate={false}
                       inset
                       outline={false}
@@ -3835,7 +4829,7 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
                     shellBounds.y,
                     shellBounds.width,
                     shellBounds.height,
-                    cell.data.mindOffsets,
+                    referenceContentOffsets(props.extensions, cell),
                     propsRef.current.suspended,
                     propsRef.current.readonly,
                     propsRef.current.inputMode,
@@ -3846,6 +4840,7 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
                     <FrameReferenceSurface
                       documentReferences={propsRef.current.documentReferences}
                       exporting={propsRef.current.exporting}
+                      linkHost={propsRef.current.linkHost}
                       host={host}
                       ownerFileId={id}
                       refId={cellId}
@@ -3858,7 +4853,7 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
                       seen={referenceSeen}
                       bounds={contentBounds}
                       shellGeometry={shellBounds}
-                      offsets={cell.data.mindOffsets}
+                      offsets={referenceContentOffsets(props.extensions, cell)}
                       suspended={propsRef.current.suspended}
                       readonly={propsRef.current.readonly}
                       inputMode={propsRef.current.inputMode}
@@ -3874,10 +4869,18 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
                       onOpenFrame={(...args) =>
                         propsRef.current.onOpenFrame?.(...args)
                       }
-                      onActivate={(occurrenceId) =>
-                        propsRef.current.onActiveInstance?.(occurrenceId)
-                      }
+                      onActivate={(occurrenceId, childController) => {
+                        if (childController) {
+                          activeControllerRef.current = childController;
+                          activatedOccurrences.current.set(
+                            occurrenceId,
+                            childController,
+                          );
+                        }
+                        propsRef.current.onActiveInstance?.(occurrenceId);
+                      }}
                       onBackgroundTap={() => {
+                        activeControllerRef.current = null;
                         propsRef.current.onActiveInstance?.(
                           propsRef.current.surface === 'nested'
                             ? (propsRef.current.instanceId ?? null)
@@ -3890,6 +4893,7 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
                         propsRef.current.onInstanceSelection?.(selection)
                       }
                       onExit={() => {
+                        activeControllerRef.current = null;
                         propsRef.current.onActiveInstance?.(null);
                         sceneActions.selectContextCell(cellId, focus);
                         svgRef.current?.focus();
@@ -3908,6 +4912,8 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
               data-draft-cell-kind={drawingPreview ? 'frame' : undefined}
             >
               <FrameShell
+                camera={cameraStore}
+                scale={parentScale * placement.scale}
                 geometry={shellBounds}
                 appearance={cell.appearance}
                 active={active}
@@ -3974,7 +4980,10 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
                       {
                         refId: cellId,
                         offsets: new Map(
-                          Object.entries(cell.data.mindOffsets ?? {}),
+                          Object.entries(
+                            referenceContentOffsets(props.extensions, cell) ??
+                              {},
+                          ),
                         ),
                         seen: new Set([...seen, targetId]),
                         scope: `${occurrence?.scope ?? propsRef.current.instanceId ?? id}/${cellId}`,
@@ -4042,11 +5051,19 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
             'cellId' in cell.target
               ? context.getGeometry(cell.target.cellId)
               : undefined;
+          const routeRouting =
+            routing.preview &&
+            (!('cellId' in cell.source) ||
+              sourceGeometry === base.getGeometry(cell.source.cellId)) &&
+            (!('cellId' in cell.target) ||
+              targetGeometry === base.getGeometry(cell.target.cellId))
+              ? base.routing
+              : routing;
           let route = base.routes.get(cellId);
           if (
             !route ||
             route.cell !== cell ||
-            route.routing !== routing ||
+            route.routing !== routeRouting ||
             route.sourceGeometry !== sourceGeometry ||
             route.targetGeometry !== targetGeometry
           ) {
@@ -4062,7 +5079,7 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
               cell.source,
               geometry,
             );
-            const points = edgeRoutePoints(cell, source, target, routing);
+            const points = edgeRoutePoints(cell, source, target, routeRouting);
             const reusable =
               route?.cell === cell && route.points === points
                 ? route
@@ -4071,7 +5088,7 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
               cell,
               sourceGeometry,
               targetGeometry,
-              routing,
+              routing: routeRouting,
               points,
               markers: reusable?.markers,
               labelPoints: reusable
@@ -4097,8 +5114,10 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
             event.stopPropagation();
             event.preventDefault();
             if (
-              cell.kind === 'uml-message' ||
-              (cell.kind === 'uml-relation' && mode === 'label')
+              frameCellUI(props.extensions, cell.kind).editEdge === false ||
+              (frameCellUI(props.extensions, cell.kind).editEdgeLabel ===
+                false &&
+                mode === 'label')
             ) {
               sceneActions.select(cellId, focus, event.shiftKey);
               return;
@@ -4128,7 +5147,9 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
           const markerData = cell.data as
             { sourceMarker?: string; targetMarker?: string } | undefined;
           const isBranch =
-            cell.kind === 'mind-branch' || cell.kind === 'mind-summary-edge';
+            frameCellUI(props.extensions, cell.kind).branch === true;
+          const readableEdge =
+            runtime.registry.get(cell.kind)?.routable !== false;
           const interactiveEndpoint = (terminal: EdgeCell['source']) => {
             if (!('cellId' in terminal) || !terminal.portId || !editable)
               return;
@@ -4175,9 +5196,7 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
             height:
               Math.max(...shadowPoints.map((point) => point[1])) - minY + 12,
           };
-          const stroke = selected
-            ? '#6366f1'
-            : (cell.appearance?.strokeColor ?? '#64748b');
+          const stroke = cell.appearance?.strokeColor ?? '#64748b';
           return (
             <g
               key={cellId}
@@ -4185,7 +5204,13 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
               data-draft-cell-id={drawingPreview ? cellId : undefined}
               data-cell-kind={drawingPreview ? undefined : cell.kind}
               data-draft-cell-kind={drawingPreview ? cell.kind : undefined}
-              opacity={cell.appearance?.opacity}
+              onPointerEnter={() => {
+                if (!drawingPreview && readableEdge)
+                  cameraStore.setHovered(cellId);
+              }}
+              onPointerLeave={() => {
+                if (readableEdge) cameraStore.leave(cellId);
+              }}
               onDoubleClick={(event) => {
                 event.stopPropagation();
                 if (sceneActions.enterSelectedGroup(cellId)) return;
@@ -4269,14 +5294,50 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
                 bounds={shadowBounds}
               >
                 {(filter) => (
-                  <g filter={filter}>
+                  <>
                     {(() => {
                       const fallback = (
                         <>
                           <FrameInteractiveEdge
                             id={cellId}
                             camera={cameraStore}
+                            scale={parentScale * placement.scale}
+                            bounds={{
+                              x: shadowBounds.x - 4,
+                              y: shadowBounds.y - 4,
+                              width: shadowBounds.width + 8,
+                              height: shadowBounds.height + 8,
+                            }}
+                            filter={filter}
+                            interactive={readableEdge}
+                            selected={selected || labelEditing?.id === cellId}
                             points={points}
+                            sourceId={
+                              readableEdge && 'cellId' in cell.source
+                                ? cell.source.cellId
+                                : undefined
+                            }
+                            targetId={
+                              readableEdge && 'cellId' in cell.target
+                                ? cell.target.cellId
+                                : undefined
+                            }
+                            jumps={crossingJumps?.get(cellId)}
+                            rounded={
+                              readableEdge &&
+                              (cell.route.mode === 'auto' ||
+                                cell.route.mode === 'orthogonal')
+                            }
+                            relatedSelected={
+                              readableEdge &&
+                              runtime.selection.ids.some(
+                                (selectedId) =>
+                                  ('cellId' in cell.source &&
+                                    selectedId === cell.source.cellId) ||
+                                  ('cellId' in cell.target &&
+                                    selectedId === cell.target.cellId),
+                              )
+                            }
                             curve={cell.route.mode === 'curve'}
                             source={interactiveEndpoint(cell.source)}
                             target={interactiveEndpoint(cell.target)}
@@ -4288,142 +5349,160 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
                             appearance={cell.appearance}
                             stroke={stroke}
                             preview={drawingPreview}
-                          />
-                          {cell.labels?.map((label, at) => {
-                            const { point, bounds: labelBounds } =
-                              edgeLabelLayout(cell, at, labelPoints, routing);
-                            if (
-                              !drawingPreview &&
-                              labelEditing?.id === cellId &&
-                              labelEditing.index === at
-                            )
+                          >
+                            {cell.labels?.map((label, at) => {
+                              const { point, bounds: labelBounds } =
+                                edgeLabelLayout(cell, at, labelPoints, routing);
+                              if (
+                                !drawingPreview &&
+                                labelEditing?.id === cellId &&
+                                labelEditing.index === at
+                              )
+                                return (
+                                  <foreignObject
+                                    key={at}
+                                    data-edge-label-editor={at}
+                                    x={labelBounds.x}
+                                    y={labelBounds.y}
+                                    width={labelBounds.width}
+                                    height={labelBounds.height}
+                                    stroke="none"
+                                    style={{ overflow: 'visible' }}
+                                  >
+                                    <FrameTextEditor
+                                      text={
+                                        isBoardTextDocument(label.richText)
+                                          ? label.richText
+                                          : plainTextDocument(label, label.text)
+                                      }
+                                      style={{ color: stroke }}
+                                      readonly={!renderEditable}
+                                      onClose={() => setLabelEditing(null)}
+                                      onExitKey={() => svgRef.current?.focus()}
+                                      onHistory={sceneActions.publishHistory}
+                                      onChange={({ newText }) => {
+                                        const authored =
+                                          runtime.store.cells[cellId];
+                                        if (!isEdgeCell(authored)) return;
+                                        const next =
+                                          frameCellUI(
+                                            props.extensions,
+                                            authored.kind,
+                                          ).editableMarker === true && at > 0
+                                            ? {
+                                                ...authored,
+                                                data: {
+                                                  ...(authored.data as object),
+                                                  [label.position === 0.12
+                                                    ? 'sourceMultiplicity'
+                                                    : 'targetMultiplicity']:
+                                                    newText.plainText,
+                                                },
+                                              }
+                                            : {
+                                                ...authored,
+                                                labels: (authored.labels?.length
+                                                  ? authored.labels
+                                                  : [{ text: '' }]
+                                                ).map((previous, index) =>
+                                                  index === at
+                                                    ? {
+                                                        ...previous,
+                                                        text: newText.plainText,
+                                                        richText: newText,
+                                                      }
+                                                    : previous,
+                                                ),
+                                              };
+                                        const request = sceneActions.dispatch({
+                                          id: transactionId(),
+                                          operations: [
+                                            {
+                                              type: 'replace_cell',
+                                              cell: next,
+                                            },
+                                          ],
+                                        });
+                                        textCommitRef.current = request;
+                                        return request;
+                                      }}
+                                    />
+                                  </foreignObject>
+                                );
                               return (
-                                <foreignObject
+                                <g
                                   key={at}
-                                  data-edge-label-editor={at}
-                                  x={labelBounds.x}
-                                  y={labelBounds.y}
-                                  width={labelBounds.width}
-                                  height={labelBounds.height}
-                                  stroke="none"
-                                  style={{ overflow: 'visible' }}
+                                  data-edge-label={at}
+                                  onPointerDown={(event) =>
+                                    beginEdgeEdit(event, 'label', point, at)
+                                  }
                                 >
-                                  <FrameTextEditor
-                                    text={
-                                      isBoardTextDocument(label.richText)
-                                        ? label.richText
-                                        : plainTextDocument(label, label.text)
-                                    }
-                                    style={{ color: stroke }}
-                                    readonly={!renderEditable}
-                                    onClose={() => setLabelEditing(null)}
-                                    onExitKey={() => svgRef.current?.focus()}
-                                    onHistory={sceneActions.publishHistory}
-                                    onChange={({ newText }) => {
-                                      const authored =
-                                        runtime.store.cells[cellId];
-                                      if (!isEdgeCell(authored)) return;
-                                      const next =
-                                        authored.kind === 'uml-relation' &&
-                                        at > 0
-                                          ? {
-                                              ...authored,
-                                              data: {
-                                                ...(authored.data as object),
-                                                [label.position === 0.12
-                                                  ? 'sourceMultiplicity'
-                                                  : 'targetMultiplicity']:
-                                                  newText.plainText,
-                                              },
-                                            }
-                                          : {
-                                              ...authored,
-                                              labels: (authored.labels?.length
-                                                ? authored.labels
-                                                : [{ text: '' }]
-                                              ).map((previous, index) =>
-                                                index === at
-                                                  ? {
-                                                      ...previous,
-                                                      text: newText.plainText,
-                                                      richText: newText,
-                                                    }
-                                                  : previous,
-                                              ),
-                                            };
-                                      return sceneActions.dispatch({
-                                        id: transactionId(),
-                                        operations: [
-                                          { type: 'replace_cell', cell: next },
-                                        ],
-                                      });
-                                    }}
+                                  <rect
+                                    x={labelBounds.x}
+                                    y={labelBounds.y}
+                                    width={labelBounds.width}
+                                    height={labelBounds.height}
+                                    fill="transparent"
+                                    stroke="none"
                                   />
-                                </foreignObject>
+                                  <foreignObject
+                                    x={labelBounds.x}
+                                    y={labelBounds.y}
+                                    width={labelBounds.width}
+                                    height={labelBounds.height}
+                                    pointerEvents="none"
+                                  >
+                                    <FrameRichText
+                                      text={
+                                        isBoardTextDocument(label.richText)
+                                          ? label.richText
+                                          : plainTextDocument(label, label.text)
+                                      }
+                                      style={{ color: stroke }}
+                                    />
+                                  </foreignObject>
+                                </g>
                               );
-                            return (
-                              <g
-                                key={at}
-                                data-edge-label={at}
-                                onPointerDown={(event) =>
-                                  beginEdgeEdit(event, 'label', point, at)
-                                }
-                              >
-                                <rect
-                                  x={labelBounds.x}
-                                  y={labelBounds.y}
-                                  width={labelBounds.width}
-                                  height={labelBounds.height}
-                                  fill="transparent"
-                                  stroke="none"
-                                />
-                                <foreignObject
-                                  x={labelBounds.x}
-                                  y={labelBounds.y}
-                                  width={labelBounds.width}
-                                  height={labelBounds.height}
-                                  pointerEvents="none"
-                                >
-                                  <FrameRichText
-                                    text={
-                                      isBoardTextDocument(label.richText)
-                                        ? label.richText
-                                        : plainTextDocument(label, label.text)
-                                    }
-                                    style={{ color: stroke }}
-                                  />
-                                </foreignObject>
-                              </g>
-                            );
-                          })}
+                            })}
+                          </FrameInteractiveEdge>
                         </>
                       );
                       return extension?.render ? (
                         <FrameScaleContent
                           camera={cameraStore}
                           cellId={drawingPreview ? undefined : cellId}
-                          render={(scale) =>
-                            extension.render!(contextAtZoom(context, scale)) ??
-                            fallback
-                          }
+                          render={(scale) => {
+                            const rendered = extension.render!(
+                              contextAtZoom(context, scale),
+                            );
+                            return rendered == null ? (
+                              fallback
+                            ) : (
+                              <g
+                                filter={filter}
+                                opacity={cell.appearance?.opacity}
+                              >
+                                {rendered}
+                              </g>
+                            );
+                          }}
                         />
                       ) : (
                         fallback
                       );
                     })()}
-                  </g>
+                  </>
                 )}
               </FrameCellShadow>
+              <g
+                data-frame-node-interaction-slot
+                data-frame-export-exclude="interaction-slot"
+              />
               {selected &&
                 renderEditable &&
                 !cell.locked &&
                 labelEditing?.id !== cellId &&
-                [
-                  'arrow',
-                  'workflow-edge',
-                  'architecture-edge',
-                  'uml-relation',
-                ].includes(cell.kind) && (
+                !!runtime.registry.get(cell.kind)?.canConnect && (
                   <FrameScaleContent
                     camera={cameraStore}
                     cellId={drawingPreview ? undefined : cellId}
@@ -4583,75 +5662,74 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
           const textStyle = {
             fontSize:
               (cell.data as { fontSize?: number })?.fontSize ??
-              (cell.kind === 'mind-root' ? 20 : 16),
+              frameCellUI(props.extensions, cell.kind).defaultFontSize ??
+              16,
             color: color ?? '#0f172a',
           };
-          const createFallback = () =>
-            cell.kind === 'image' ? (
-              <image
-                href={(cell.data as { url: string })?.url}
-                x={bounds.x}
-                y={bounds.y}
-                width={bounds.width}
-                height={bounds.height}
-              />
-            ) : (
-              <>
-                {(() => {
-                  const defaultOutline = pathGeometry ? (
-                    <OutlineParts parts={shapeParts ?? []} />
-                  ) : outline === 'ellipse' ? (
-                    <ellipse
-                      cx={bounds.x + bounds.width / 2}
-                      cy={bounds.y + bounds.height / 2}
-                      rx={bounds.width / 2}
-                      ry={bounds.height / 2}
-                    />
-                  ) : spec.kind === 'polygon' ? (
-                    <polygon points={spec.points} />
-                  ) : (
-                    <rect
-                      x={spec.x}
-                      y={spec.y}
-                      width={spec.width}
-                      height={spec.height}
-                      rx={spec.rx}
-                      ry={spec.ry}
-                    />
-                  );
-                  return shapeExtension?.renderShape ? (
-                    <FrameScaleContent
-                      camera={cameraStore}
-                      cellId={drawingPreview ? undefined : cellId}
-                      render={(scale) =>
-                        shapeExtension.renderShape!(
-                          contextAtZoom(context, scale),
-                        ) ?? defaultOutline
-                      }
-                    />
-                  ) : (
-                    defaultOutline
-                  );
-                })()}
-                {(drawingPreview || editing !== cellId) && (
-                  <foreignObject
-                    x={textBounds.x + 8}
-                    y={textBounds.y + 4}
-                    width={Math.max(1, textBounds.width - 16)}
-                    height={Math.max(1, textBounds.height - 8)}
-                    stroke="none"
-                  >
-                    <FrameRichText
-                      text={text}
-                      style={textStyle}
-                      defaultAlign={
-                        isMindNodeKind(cell.kind) ? Alignment.left : undefined
-                      }
-                    />
-                  </foreignObject>
-                )}
-              </>
-            );
+          const createFallback = () => (
+            <>
+              {(() => {
+                const defaultOutline = pathGeometry ? (
+                  <OutlineParts parts={shapeParts ?? []} />
+                ) : outline === 'ellipse' ? (
+                  <ellipse
+                    cx={bounds.x + bounds.width / 2}
+                    cy={bounds.y + bounds.height / 2}
+                    rx={bounds.width / 2}
+                    ry={bounds.height / 2}
+                  />
+                ) : spec.kind === 'polygon' ? (
+                  <polygon points={spec.points} />
+                ) : (
+                  <rect
+                    x={spec.x}
+                    y={spec.y}
+                    width={spec.width}
+                    height={spec.height}
+                    rx={spec.rx}
+                    ry={spec.ry}
+                  />
+                );
+                return (
+                  <g data-frame-node-outline>
+                    {shapeExtension?.renderShape ? (
+                      <FrameScaleContent
+                        camera={cameraStore}
+                        cellId={drawingPreview ? undefined : cellId}
+                        render={(scale) =>
+                          shapeExtension.renderShape!(
+                            contextAtZoom(context, scale),
+                          ) ?? defaultOutline
+                        }
+                      />
+                    ) : (
+                      defaultOutline
+                    )}
+                  </g>
+                );
+              })()}
+              {(drawingPreview || editing !== cellId) && (
+                <foreignObject
+                  x={textBounds.x + 8}
+                  y={textBounds.y + 4}
+                  width={Math.max(1, textBounds.width - 16)}
+                  height={Math.max(1, textBounds.height - 8)}
+                  stroke="none"
+                >
+                  <FrameRichText
+                    text={text}
+                    style={textStyle}
+                    defaultAlign={
+                      frameCellUI(props.extensions, cell.kind)
+                        .defaultTextAlignment === 'left'
+                        ? Alignment.left
+                        : undefined
+                    }
+                  />
+                </foreignObject>
+              )}
+            </>
+          );
           const fallback =
             drawingPreview || (shapeExtension && !shapeCacheKey)
               ? createFallback()
@@ -4689,6 +5767,7 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
               shadow={cell.appearance?.shadow}
               bounds={bounds}
               content={content}
+              opacity={cell.appearance?.opacity}
             />
           );
           const shadowedContent =
@@ -4696,7 +5775,12 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
               ? createShadow()
               : nativeContent(
                   cellId,
-                  [content, bounds, cell.appearance?.shadow],
+                  [
+                    content,
+                    bounds,
+                    cell.appearance?.shadow,
+                    cell.appearance?.opacity,
+                  ],
                   createShadow,
                   'shadow',
                 );
@@ -4709,11 +5793,7 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
               data-draft-cell-kind={drawingPreview ? cell.kind : undefined}
               fill={fill ?? cell.appearance?.fill ?? '#fff'}
               data-node-shape={bounds.outline}
-              stroke={
-                selected
-                  ? '#6366f1'
-                  : (cell.appearance?.strokeColor ?? stroke ?? '#64748b')
-              }
+              stroke={cell.appearance?.strokeColor ?? stroke ?? '#64748b'}
               strokeWidth={cell.appearance?.strokeWidth ?? 1.5}
               strokeDasharray={
                 cell.appearance?.strokeStyle === 'dashed'
@@ -4722,9 +5802,14 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
                     ? '2 4'
                     : undefined
               }
-              opacity={cell.appearance?.opacity}
-              onPointerEnter={() => {
-                if (!drawingPreview) cameraStore.setHovered(cellId);
+              onPointerEnter={(event) => {
+                if (
+                  !drawingPreview &&
+                  (event.target as Element)
+                    .closest('[data-cell-id]')
+                    ?.getAttribute('data-cell-id') === cellId
+                )
+                  cameraStore.setHovered(cellId);
               }}
               onPointerLeave={() => cameraStore.leave(cellId)}
               transform={
@@ -4743,7 +5828,8 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
                 else sceneActions.selectContextCell(cellId, focus);
                 const util = runtime.registry.get(cell.kind);
                 const canMove =
-                  cell.kind === 'mind-child' ||
+                  frameCellUI(props.extensions, cell.kind).pointerMove ===
+                    true ||
                   (util && 'capabilities' in util
                     ? (
                         util as import('@sue/board-core').BaseCellUtil
@@ -4752,11 +5838,8 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
                         cell,
                         embedded ? 'embedded' : 'root',
                       ).move
-                    : ![
-                        'mind-child',
-                        'mind-summary',
-                        'architecture-layer',
-                      ].includes(cell.kind));
+                    : frameCellUI(props.extensions, cell.kind).pointerMove !==
+                      false);
                 // Mind topics report move:false, so a multi-selection cannot be
                 // translated. A pointer on one topic still has to collapse that
                 // selection on click and reorder that topic on drag.
@@ -4774,8 +5857,11 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
                   !cell.locked &&
                   !sceneActions.selectionHasLockedGroup() &&
                   (selectionCanMove ||
-                    cell.kind === 'mind-child' ||
-                    (embedded && cell.kind === 'mind-root')) &&
+                    frameCellUI(props.extensions, cell.kind).pointerMove ===
+                      true ||
+                    (embedded &&
+                      frameCellUI(props.extensions, cell.kind).embeddedPan ===
+                        true)) &&
                   parentScale * placement.scale > 0
                 ) {
                   event.preventDefault();
@@ -4785,16 +5871,24 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
                     sessionId: ++dragSequence.current,
                     pointerId: event.pointerId,
                     mode:
-                      embedded && cell.kind === 'mind-root'
-                        ? 'mind-pan'
+                      embedded &&
+                      frameCellUI(props.extensions, cell.kind).embeddedPan ===
+                        true
+                        ? 'content-pan'
                         : undefined,
-                    mindFrameId:
-                      embedded && cell.kind === 'mind-root' ? id : undefined,
-                    mindRefId:
-                      embedded && cell.kind === 'mind-root'
+                    panFrameId:
+                      embedded &&
+                      frameCellUI(props.extensions, cell.kind).embeddedPan ===
+                        true
+                        ? id
+                        : undefined,
+                    panRefId:
+                      embedded &&
+                      frameCellUI(props.extensions, cell.kind).embeddedPan ===
+                        true
                         ? occurrence?.refId
                         : undefined,
-                    mindOffset: mindOffsets.get(cellId),
+                    contentOffset: contentOffsets.get(cellId),
                     collapseId:
                       !event.shiftKey && runtime.selection.ids.length > 1
                         ? cellId
@@ -4802,7 +5896,9 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
                     ids:
                       selectionCanMove &&
                       runtime.selection.ids.length > 1 &&
-                      frameScene(store, id) !== 'mind-root'
+                      !props.extensions?.some((extension) =>
+                        extension.plugin?.fitLayoutBounds?.(store, id),
+                      )
                         ? [...runtime.selection.ids]
                         : undefined,
                     id:
@@ -4840,6 +5936,10 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
               }}
             >
               {shadowedContent}
+              <g
+                data-frame-node-interaction-slot
+                data-frame-export-exclude="interaction-slot"
+              />
               {selected &&
                 renderEditable &&
                 !cell.locked &&
@@ -4852,8 +5952,13 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
                         id={cellId}
                         geometry={bounds}
                         scale={zoom * parentScale * placement.scale}
-                        resize={allowed.resize && cell.kind !== 'vector-line'}
+                        resize={
+                          allowed.resize &&
+                          frameCellUI(props.extensions, cell.kind)
+                            .resizeHandles !== false
+                        }
                         rotate={allowed.rotate}
+                        outline={false}
                         onStart={beginGeometryEdit}
                       />
                     )}
@@ -4928,13 +6033,9 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
                                       frameId: id,
                                       key: activeToolKey,
                                       id: transactionId(),
-                                      kind: cell.kind.startsWith('workflow-')
-                                        ? 'workflow-edge'
-                                        : cell.kind.startsWith('architecture-')
-                                          ? 'architecture-edge'
-                                          : cell.kind === 'uml-class'
-                                            ? 'uml-relation'
-                                            : 'arrow',
+                                      kind:
+                                        frameCellUI(props.extensions, cell.kind)
+                                          .edgeKind ?? '',
                                       point: source,
                                       target: { point: source },
                                       scale: parentScale * placement.scale,
@@ -5007,11 +6108,15 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
                   height={Math.max(1, textBounds.height - 8)}
                   stroke="none"
                   style={{ overflow: 'visible' }}
+                  opacity={cell.appearance?.opacity}
                 >
                   <FrameTextEditor
                     text={text}
                     defaultAlign={
-                      isMindNodeKind(cell.kind) ? Alignment.left : undefined
+                      frameCellUI(props.extensions, cell.kind)
+                        .defaultTextAlignment === 'left'
+                        ? Alignment.left
+                        : undefined
                     }
                     style={textStyle}
                     readonly={context.readonly || pending}
@@ -5117,12 +6222,92 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
         cellId: string,
         layer: 'body' | 'controls' = 'body',
       ) => {
-        const node = renderCellBody(cellId, layer);
+        let node = renderCellBody(cellId, layer);
         const cell =
           !drawingPreview && edgePreview?.id === cellId
             ? edgePreview
             : laidOut.cells[cellId];
         if (!node || !cell) return node;
+        const connected = relationEdges.get(cellId);
+        if (layer === 'body' && !drawingPreview && isNodeCell(cell))
+          node = (
+            <FrameNodeInteraction
+              key={cellId}
+              camera={cameraStore}
+              cellId={cellId}
+              scale={parentScale * placement.scale}
+              edgeIds={connected}
+              bounds={geometry.get(cellId) ?? cell.geometry}
+              baseWidth={
+                cell.appearance?.strokeWidth ??
+                (isFrameCell(cell) ||
+                isFrameReferenceCell(cell) ||
+                isDocumentCell(cell)
+                  ? 1
+                  : 1.5)
+              }
+              primary={
+                runtime.selection.ids.includes(cellId) ||
+                editing === cellId ||
+                documentEditing ===
+                  `${occurrence?.scope ?? propsRef.current.instanceId ?? frameId}/${cellId}`
+              }
+              enabled={!presenting && !props.exporting}
+              relatedSelected={
+                connected?.some((edgeId) =>
+                  runtime.selection.ids.includes(edgeId),
+                ) ?? false
+              }
+            >
+              {node}
+            </FrameNodeInteraction>
+          );
+        if (
+          layer === 'body' &&
+          !drawingPreview &&
+          isEdgeCell(cell) &&
+          props.extensions?.some(
+            (extension) =>
+              (!extension.kind || extension.kind === cell.kind) &&
+              extension.render,
+          )
+        ) {
+          const points = base.routes.get(cellId)?.points ?? [];
+          const x = Math.min(...points.map((point) => point[0]));
+          const y = Math.min(...points.map((point) => point[1]));
+          const edgeBounds = {
+            x: x - 16,
+            y: y - 16,
+            width: Math.max(...points.map((point) => point[0])) - x + 32,
+            height: Math.max(...points.map((point) => point[1])) - y + 32,
+          };
+          const terminals = [cell.source, cell.target].flatMap((terminal) =>
+            'cellId' in terminal ? [terminal.cellId] : [],
+          );
+          if (points.length)
+            node = (
+              <FrameNodeInteraction
+                key={cellId}
+                camera={cameraStore}
+                cellId={cellId}
+                kind="edge"
+                scale={parentScale * placement.scale}
+                edgeIds={terminals}
+                bounds={edgeBounds}
+                baseWidth={cell.appearance?.strokeWidth ?? 2}
+                enabled={!presenting && !props.exporting}
+                primary={
+                  runtime.selection.ids.includes(cellId) ||
+                  labelEditing?.id === cellId
+                }
+                relatedSelected={terminals.some((terminal) =>
+                  runtime.selection.ids.includes(terminal),
+                )}
+              >
+                {node}
+              </FrameNodeInteraction>
+            );
+        }
         const extensions = props.extensions?.filter(
           (extension) =>
             (!extension.kind || extension.kind === cell.kind) &&
@@ -5282,14 +6467,14 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
               return (
                 <FrameRichTextPreviewContext.Provider value={true}>
                   <g
-                    data-mind-drop-preview
-                    data-drawing-preview="mind-drop"
+                    data-move-drop-preview
+                    data-drawing-preview="move-drop"
                     data-frame-export-exclude
                     aria-hidden="true"
                     pointerEvents="none"
                   >
                     <rect
-                      data-mind-drop-target={parentId}
+                      data-move-drop-target={parentId}
                       x={parent.x - 3}
                       y={parent.y - 3}
                       width={parent.width + 6}
@@ -5305,7 +6490,7 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
                           : undefined
                       }
                     />
-                    <g data-mind-ghost={moveGhost.id} opacity={0.35}>
+                    <g data-move-ghost={moveGhost.id} opacity={0.35}>
                       {renderFrame(
                         id,
                         focus,
@@ -5412,1756 +6597,1767 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
     // World selection geometry changes with the committed scene, never its camera.
     refreshSelectionWorldBounds();
     publishViewStateRef.current();
-  }, [sceneContent, refreshSelectionWorldBounds]);
+    layoutReadyRef.current = viewProjection;
+    layoutWaiters.current.forEach((resolve) => resolve());
+  }, [sceneContent, refreshSelectionWorldBounds, viewProjection]);
   return (
     <FrameCanvasProviders runtime={runtime} wheelOwner={wheelOwner}>
-      <div
-        className={props.className}
-        style={{
-          position: 'relative',
-          width: '100%',
-          height: '100%',
-          minHeight: 320,
-          ...props.style,
-        }}
-      >
-        <svg
-          ref={svgRef}
-          role="application"
-          aria-label="Frame canvas"
-          data-instance-id={propsRef.current.instanceId ?? frameId}
-          data-surface={props.surface ?? 'root'}
-          tabIndex={props.suspended || props.surface === 'nested' ? -1 : 0}
-          onClickCapture={(event) => {
-            if (
-              (event.target as Element).closest?.(
-                '[data-document-preview-body]',
-              )
-            )
-              return;
-            if (propsRef.current.inputMode === 'present') {
-              event.preventDefault();
-              event.stopPropagation();
-            }
-          }}
-          onPointerDownCapture={(event) => {
-            if (
-              (event.target as Element).closest?.(
-                '[data-document-preview-body]',
-              )
-            )
-              return;
-            if (propsRef.current.suspended) return;
-            if (
-              propsRef.current.placing &&
-              event.button === 0 &&
-              !(event.target as Element).closest('[data-reference-instance]')
-            ) {
-              event.preventDefault();
-              event.stopPropagation();
-              propsRef.current.onPlace?.(pointFromEventRef.current(event));
-              return;
-            }
-            if (
-              propsRef.current.inputMode !== 'present' &&
-              !(event.target as Element).closest?.('[data-reference-instance]')
-            )
-              propsRef.current.onActiveInstance?.(null);
-            const zoom = cameraRef.current.zoom ?? 1;
-            // Portal controls bubble through the React canvas tree, but their
-            // pointer events belong to the editor, not canvas focus/gestures.
-            if ((event.target as Element).closest('[data-frame-text-toolbar]'))
-              return;
-            if (event.button === 0 && pointersRef.current.size === 0) {
-              keyboardSelectionRef.current = null;
-              keyboardEditRef.current = null;
-            }
-            if (
-              !(event.target as Element).closest?.(
-                '[contenteditable="true"], input, textarea, select, [data-frame-text-editor]',
-              )
-            )
-              svgRef.current?.focus();
-            pointersRef.current.set(event.pointerId, [
-              event.clientX,
-              event.clientY,
-            ]);
-            if (pointersRef.current.size >= 2) {
-              presentTapRef.current = null;
-              event.preventDefault();
-              event.stopPropagation();
-              blockSinglePointerRef.current = true;
-              cancelInteraction();
-              const points = [...pointersRef.current.values()];
-              const rect = captureViewportRect()!;
-              pinchRef.current = {
-                distance:
-                  Math.hypot(
-                    points[0][0] - points[1][0],
-                    points[0][1] - points[1][1],
-                  ) || 1,
-                zoom: cameraRef.current.zoom ?? 1,
-                origin: [...(cameraRef.current.origination ?? zeroOrigin)],
-                center: [
-                  (points[0][0] + points[1][0]) / 2 - rect.left,
-                  (points[0][1] + points[1][1]) / 2 - rect.top,
-                ],
-              };
-              setDragging(true);
-              return;
-            }
-            if (propsRef.current.inputMode === 'present') {
-              presentTapRef.current = null;
-              event.preventDefault();
-              event.stopPropagation();
-              if (event.button === 0 || event.button === 1) {
-                cancelInteraction();
-                if (event.button === 0 && !spaceHandRef.current) {
-                  let target = event.target as Element | null;
-                  let cellId: string | null = null;
-                  while (target && target !== svgRef.current) {
-                    const id = target.getAttribute('data-cell-id');
-                    if (id && runtime.index.parentOf.get(id) === frameId) {
-                      cellId = id;
-                      break;
+      <FrameRichTextLinkContext.Provider value={props.linkHost}>
+        <ActionScope
+          registry={actionRuntime}
+          language={props.actionHost?.language}
+          enabled={!props.suspended && !props.exporting}
+        >
+          <div
+            className={props.className}
+            style={{
+              position: 'relative',
+              width: '100%',
+              height: '100%',
+              minHeight: 320,
+              ...props.style,
+            }}
+          >
+            <svg
+              ref={svgRef}
+              role="application"
+              aria-label="Frame canvas"
+              data-reveal-cell-id={revealHighlight ?? undefined}
+              data-instance-id={propsRef.current.instanceId ?? frameId}
+              data-surface={props.surface ?? 'root'}
+              tabIndex={props.suspended || props.surface === 'nested' ? -1 : 0}
+              onClickCapture={(event) => {
+                if (
+                  (event.target as Element).closest?.(
+                    '[data-document-preview-body]',
+                  )
+                )
+                  return;
+                if (propsRef.current.inputMode === 'present') {
+                  event.preventDefault();
+                  event.stopPropagation();
+                }
+              }}
+              onPointerDownCapture={(event) => {
+                if (
+                  (event.ctrlKey || event.metaKey) &&
+                  (event.target as Element).closest('a[href]')
+                ) {
+                  event.preventDefault();
+                  return;
+                }
+
+                if (
+                  (event.target as Element).closest?.(
+                    '[data-document-preview-body]',
+                  )
+                )
+                  return;
+                if (propsRef.current.suspended) return;
+                if (
+                  propsRef.current.placing &&
+                  event.button === 0 &&
+                  !(event.target as Element).closest(
+                    '[data-reference-instance]',
+                  )
+                ) {
+                  event.preventDefault();
+                  event.stopPropagation();
+                  propsRef.current.onPlace?.(pointFromEventRef.current(event));
+                  return;
+                }
+                if (
+                  propsRef.current.inputMode !== 'present' &&
+                  !(event.target as Element).closest?.(
+                    '[data-reference-instance]',
+                  )
+                ) {
+                  activeControllerRef.current = null;
+                  propsRef.current.onActiveInstance?.(null);
+                }
+                const zoom = cameraRef.current.zoom ?? 1;
+                // Portal controls bubble through the React canvas tree, but their
+                // pointer events belong to the editor, not canvas focus/gestures.
+                if (
+                  (event.target as Element).closest('[data-frame-text-toolbar]')
+                )
+                  return;
+                if (event.button === 0 && pointersRef.current.size === 0) {
+                  keyboardSelectionRef.current = null;
+                  keyboardEditRef.current = null;
+                  actionAfterToken.current = null;
+                }
+                if (
+                  !(event.target as Element).closest?.(
+                    '[contenteditable="true"], input, textarea, select, [data-frame-text-editor]',
+                  )
+                )
+                  svgRef.current?.focus();
+                pointersRef.current.set(event.pointerId, [
+                  event.clientX,
+                  event.clientY,
+                ]);
+                if (pointersRef.current.size >= 2) {
+                  presentTapRef.current = null;
+                  event.preventDefault();
+                  event.stopPropagation();
+                  blockSinglePointerRef.current = true;
+                  cancelInteraction();
+                  const points = [...pointersRef.current.values()];
+                  const rect = captureViewportRect()!;
+                  pinchRef.current = {
+                    distance:
+                      Math.hypot(
+                        points[0][0] - points[1][0],
+                        points[0][1] - points[1][1],
+                      ) || 1,
+                    zoom: cameraRef.current.zoom ?? 1,
+                    origin: [...(cameraRef.current.origination ?? zeroOrigin)],
+                    center: [
+                      (points[0][0] + points[1][0]) / 2 - rect.left,
+                      (points[0][1] + points[1][1]) / 2 - rect.top,
+                    ],
+                  };
+                  setDragging(true);
+                  return;
+                }
+                if (propsRef.current.inputMode === 'present') {
+                  presentTapRef.current = null;
+                  event.preventDefault();
+                  event.stopPropagation();
+                  if (event.button === 0 || event.button === 1) {
+                    cancelInteraction();
+                    if (event.button === 0 && !spaceHandRef.current) {
+                      let target = event.target as Element | null;
+                      let cellId: string | null = null;
+                      while (target && target !== svgRef.current) {
+                        const id = target.getAttribute('data-cell-id');
+                        if (id && runtime.index.parentOf.get(id) === frameId) {
+                          cellId = id;
+                          break;
+                        }
+                        target = target.parentElement;
+                      }
+                      presentTapRef.current = {
+                        pointerId: event.pointerId,
+                        x: event.clientX,
+                        y: event.clientY,
+                        cellId,
+                      };
                     }
-                    target = target.parentElement;
+                    gestureRef.current = {
+                      mode: 'hand',
+                      dragPanSpeed: normalizeInteractionMultiplier(
+                        propsRef.current.interactionSettings?.dragPanSpeed,
+                      ),
+                      points: [pointFromEvent(event)],
+                      erased: new Set(),
+                      origin: [
+                        ...(cameraRef.current.origination ?? zeroOrigin),
+                      ],
+                      zoom: cameraRef.current.zoom ?? 1,
+                      additive: false,
+                    };
+                    setDragging(true);
+                    svgRef.current?.setPointerCapture(event.pointerId);
+                    return;
                   }
-                  presentTapRef.current = {
+                }
+                if (event.button === 1 || spaceHandRef.current) {
+                  event.preventDefault();
+                  event.stopPropagation();
+                  cancelInteraction();
+                  const point = pointFromEvent(event);
+                  gestureRef.current = {
+                    mode: 'hand',
+                    dragPanSpeed: normalizeInteractionMultiplier(
+                      propsRef.current.interactionSettings?.dragPanSpeed,
+                    ),
+                    points: [point],
+                    erased: new Set(),
+                    origin: [...(cameraRef.current.origination ?? zeroOrigin)],
+                    zoom: cameraRef.current.zoom ?? 1,
+                    additive: false,
+                  };
+                  setDragging(true);
+                  svgRef.current?.setPointerCapture(event.pointerId);
+                  return;
+                }
+                if (event.button === 2) {
+                  rightDragRef.current = {
                     pointerId: event.pointerId,
                     x: event.clientX,
                     y: event.clientY,
-                    cellId,
+                    moved: false,
                   };
+                  return;
                 }
-                gestureRef.current = {
-                  mode: 'hand',
-                  dragPanSpeed: normalizeInteractionMultiplier(
-                    propsRef.current.interactionSettings?.dragPanSpeed,
-                  ),
-                  points: [pointFromEvent(event)],
-                  erased: new Set(),
-                  origin: [...(cameraRef.current.origination ?? zeroOrigin)],
-                  zoom: cameraRef.current.zoom ?? 1,
-                  additive: false,
-                };
-                setDragging(true);
-                svgRef.current?.setPointerCapture(event.pointerId);
-                return;
-              }
-            }
-            if (event.button === 1 || spaceHandRef.current) {
-              event.preventDefault();
-              event.stopPropagation();
-              cancelInteraction();
-              const point = pointFromEvent(event);
-              gestureRef.current = {
-                mode: 'hand',
-                dragPanSpeed: normalizeInteractionMultiplier(
-                  propsRef.current.interactionSettings?.dragPanSpeed,
-                ),
-                points: [point],
-                erased: new Set(),
-                origin: [...(cameraRef.current.origination ?? zeroOrigin)],
-                zoom: cameraRef.current.zoom ?? 1,
-                additive: false,
-              };
-              setDragging(true);
-              svgRef.current?.setPointerCapture(event.pointerId);
-              return;
-            }
-            if (event.button === 2) {
-              rightDragRef.current = {
-                pointerId: event.pointerId,
-                x: event.clientX,
-                y: event.clientY,
-                moved: false,
-              };
-              return;
-            }
-            if (event.button !== 0) return;
-            const tool = props.tool;
-            if (
-              connectingRef.current &&
-              !(event.target as Element).closest('[data-port-id]')
-            ) {
-              updateConnection(event);
-              const chosen = (event.target as Element)
-                .closest('[data-cell-id]')
-                ?.getAttribute('data-cell-id');
-              if (chosen && runtime.store.cells[chosen]) {
-                const focus: string[] = [];
-                let owner = runtime.index.parentOf.get(chosen);
-                while (owner) {
-                  focus.unshift(owner);
-                  if (owner === frameId) break;
-                  owner = runtime.index.parentOf.get(owner);
+                if (event.button !== 0) return;
+                const tool = props.tool;
+                if (
+                  connectingRef.current &&
+                  !(event.target as Element).closest('[data-port-id]')
+                ) {
+                  updateConnection(event);
+                  const chosen = (event.target as Element)
+                    .closest('[data-cell-id]')
+                    ?.getAttribute('data-cell-id');
+                  if (chosen && runtime.store.cells[chosen]) {
+                    const focus: string[] = [];
+                    let owner = runtime.index.parentOf.get(chosen);
+                    while (owner) {
+                      focus.unshift(owner);
+                      if (owner === frameId) break;
+                      owner = runtime.index.parentOf.get(owner);
+                    }
+                    if (focus[0] === frameId) selectContextCell(chosen, focus);
+                  }
+                  event.stopPropagation();
+                  event.preventDefault();
+                  return;
                 }
-                if (focus[0] === frameId) selectContextCell(chosen, focus);
-              }
-              event.stopPropagation();
-              event.preventDefault();
-              return;
-            }
-            if (tool?.mode === 'polyline') {
-              if (!editable || pendingRef.current || event.button !== 0) return;
-              event.stopPropagation();
-              event.preventDefault();
-              svgRef.current?.focus();
-              const rawPoint = pointFromEvent(event);
-              const point = vectorDraftRef.current?.hover ?? rawPoint;
-              const draft = vectorDraftRef.current ?? {
-                points: [],
-                frameId,
-                tool,
-                key: activeToolKey,
-                context: drawingContext(cameraRef.current.zoom ?? 1),
-              };
-              if (
-                draft.points.length > 1 &&
-                Math.hypot(
-                  point[0] - draft.points[0][0],
-                  point[1] - draft.points[0][1],
-                ) *
-                  zoom <=
-                  8
-              ) {
-                draft.points.push([...draft.points[0]]);
-                vectorDraftRef.current = draft;
-                finishVectorDraft();
-                return;
-              }
-              if (
-                !draft.points.length ||
-                Math.hypot(
-                  point[0] - draft.points.at(-1)![0],
-                  point[1] - draft.points.at(-1)![1],
-                ) *
-                  zoom >
-                  0.5
-              )
-                draft.points.push(point);
-              draft.hover = undefined;
-              vectorDraftRef.current = draft;
-              scheduleDraftPaint();
-              return;
-            }
-            const background = event.target === event.currentTarget;
-            if (!tool || (tool.mode === 'select' && !background)) return;
-            if (
-              tool.mode !== 'hand' &&
-              tool.mode !== 'select' &&
-              (!editable || pendingRef.current)
-            )
-              return;
-            event.stopPropagation();
-            event.preventDefault();
-            const point = pointFromEvent(event);
-            gestureRef.current = {
-              mode: tool.mode,
-              dragPanSpeed: normalizeInteractionMultiplier(
-                propsRef.current.interactionSettings?.dragPanSpeed,
-              ),
-              key: activeToolKey,
-              frameId,
-              tool: 'complete' in tool ? tool : undefined,
-              context: drawingContext(cameraRef.current.zoom ?? 1),
-              points: [point],
-              erased: new Set(),
-              origin: [...(cameraRef.current.origination ?? zeroOrigin)],
-              zoom: cameraRef.current.zoom ?? 1,
-              additive: event.shiftKey,
-              focus:
-                runtime.selection.focus
-                  .filter((id) => runtime.store.cells[id]?.cellType === 'frame')
-                  .at(-1) === frameId
-                  ? runtime.selection.focus
-                  : [frameId],
-            };
-            scheduleDraftPaint();
-            svgRef.current?.setPointerCapture(event.pointerId);
-            if (tool.mode === 'hand') setDragging(true);
-            if (tool.mode === 'erase') eraseAt(point);
-            if (tool.mode === 'select' && !event.shiftKey)
-              runtime.select({
-                focus: gestureRef.current.focus ?? [frameId],
-                ids: [],
-              });
-          }}
-          style={{
-            width: '100%',
-            height: '100%',
-            outline: 'none',
-            overflow: 'hidden',
-            touchAction: 'none',
-            backgroundColor: view?.theme?.boardBackground ?? '#f8fafc',
-            backgroundImage: view?.theme?.gridEnabled
-              ? 'radial-gradient(circle, #94a3b8 1px, transparent 1px)'
-              : undefined,
-            backgroundSize: view?.theme?.gridEnabled
-              ? `${Math.max(4, view.theme.gridSize ?? 20) * zoom}px ${Math.max(4, view.theme.gridSize ?? 20) * zoom}px`
-              : undefined,
-            backgroundPosition: `${-origin[0] * zoom}px ${-origin[1] * zoom}px`,
-            cursor:
-              props.tool?.mode === 'hand' || spaceHandRef.current
-                ? 'grab'
-                : props.tool?.mode === 'erase'
-                  ? 'crosshair'
-                  : undefined,
-          }}
-          onDragStart={(event) => event.preventDefault()}
-          onPointerDown={(event) => {
-            if (propsRef.current.inputMode === 'present') return;
-            if (
-              (event.target as Element).closest?.(
-                '[data-frame-text-editor], [contenteditable="true"]',
-              )
-            )
-              return;
-            if (dragRef.current || gestureRef.current || connectingRef.current)
-              return;
-            keyboardSelectionRef.current = null;
-            keyboardEditRef.current = null;
-            runtime.select({ focus: [frameId], ids: [] });
-            props.onSelectionChange?.(runtime.selection);
-            setEditing(null);
-            setLabelEditing(null);
-          }}
-          onDoubleClickCapture={(event) => {
-            if (propsRef.current.inputMode === 'present') {
-              event.preventDefault();
-              event.stopPropagation();
-              return;
-            }
-            if (props.tool?.mode === 'polyline' && vectorDraftRef.current) {
-              event.stopPropagation();
-              event.preventDefault();
-              finishVectorDraft();
-            }
-          }}
-          onPointerLeave={() => {
-            cameraStore.setHovered(null);
-            if (props.tool?.mode === 'erase' && !gestureRef.current) {
-              eraserHoverRef.current = null;
-              clearDraftPaint();
-            }
-          }}
-          onPointerMove={(event) => {
-            const tap = presentTapRef.current;
-            if (
-              tap &&
-              tap.pointerId === event.pointerId &&
-              Math.hypot(event.clientX - tap.x, event.clientY - tap.y) > 4
-            )
-              presentTapRef.current = null;
-            const zoom = cameraRef.current.zoom ?? 1;
-            if (props.tool?.mode === 'erase' && !gestureRef.current) {
-              eraserHoverRef.current = pointFromEvent(event);
-              scheduleDraftPaint();
-            }
-            if (pointersRef.current.has(event.pointerId))
-              pointersRef.current.set(event.pointerId, [
-                event.clientX,
-                event.clientY,
-              ]);
-            if (pinchRef.current && pointersRef.current.size >= 2) {
-              const points = [...pointersRef.current.values()];
-              const distance =
-                Math.hypot(
-                  points[0][0] - points[1][0],
-                  points[0][1] - points[1][1],
-                ) || 1;
-              const rect = captureViewportRect()!;
-              const center: Point = [
-                (points[0][0] + points[1][0]) / 2 - rect.left,
-                (points[0][1] + points[1][1]) / 2 - rect.top,
-              ];
-              const nextZoom = Math.max(
-                propsRef.current.inputMode === 'present' ? 0.01 : 0.1,
-                Math.min(
-                  8,
-                  pinchRef.current.zoom *
-                    (distance / pinchRef.current.distance),
-                ),
-              );
-              const pinch = pinchRef.current;
-              rememberGesture({
-                zoom: nextZoom,
-                origination: [
-                  pinch.origin[0] +
-                    pinch.center[0] / pinch.zoom -
-                    center[0] / nextZoom,
-                  pinch.origin[1] +
-                    pinch.center[1] / pinch.zoom -
-                    center[1] / nextZoom,
-                ],
-              });
-              return;
-            }
-            const rightDrag = rightDragRef.current;
-            if (
-              rightDrag &&
-              rightDrag.pointerId === event.pointerId &&
-              !rightDrag.moved
-            ) {
-              if ((event.buttons & 2) === 0) rightDragRef.current = null;
-              else if (
-                Math.hypot(
-                  event.clientX - rightDrag.x,
-                  event.clientY - rightDrag.y,
-                ) > 6
-              ) {
-                cancelInteraction();
-                rightDrag.moved = true;
-                propsRef.current.onCanvasContextMenu?.(null);
+                if (tool?.mode === 'polyline') {
+                  if (!editable || pendingRef.current || event.button !== 0)
+                    return;
+                  event.stopPropagation();
+                  event.preventDefault();
+                  svgRef.current?.focus();
+                  const rawPoint = pointFromEvent(event);
+                  const point = vectorDraftRef.current?.hover ?? rawPoint;
+                  const draft = vectorDraftRef.current ?? {
+                    points: [],
+                    frameId,
+                    tool,
+                    key: activeToolKey,
+                    context: drawingContext(cameraRef.current.zoom ?? 1),
+                  };
+                  if (
+                    draft.points.length > 1 &&
+                    Math.hypot(
+                      point[0] - draft.points[0][0],
+                      point[1] - draft.points[0][1],
+                    ) *
+                      zoom <=
+                      8
+                  ) {
+                    draft.points.push([...draft.points[0]]);
+                    vectorDraftRef.current = draft;
+                    finishVectorDraft();
+                    return;
+                  }
+                  if (
+                    !draft.points.length ||
+                    Math.hypot(
+                      point[0] - draft.points.at(-1)![0],
+                      point[1] - draft.points.at(-1)![1],
+                    ) *
+                      zoom >
+                      0.5
+                  )
+                    draft.points.push(point);
+                  draft.hover = undefined;
+                  vectorDraftRef.current = draft;
+                  scheduleDraftPaint();
+                  return;
+                }
+                const background = event.target === event.currentTarget;
+                if (!tool || (tool.mode === 'select' && !background)) return;
+                if (
+                  tool.mode !== 'hand' &&
+                  tool.mode !== 'select' &&
+                  (!editable || pendingRef.current)
+                )
+                  return;
+                event.stopPropagation();
+                event.preventDefault();
                 const point = pointFromEvent(event);
                 gestureRef.current = {
-                  mode: 'hand',
+                  mode: tool.mode,
                   dragPanSpeed: normalizeInteractionMultiplier(
                     propsRef.current.interactionSettings?.dragPanSpeed,
                   ),
+                  key: activeToolKey,
+                  frameId,
+                  tool: 'complete' in tool ? tool : undefined,
+                  context: drawingContext(cameraRef.current.zoom ?? 1),
                   points: [point],
                   erased: new Set(),
                   origin: [...(cameraRef.current.origination ?? zeroOrigin)],
                   zoom: cameraRef.current.zoom ?? 1,
-                  additive: false,
-                };
-                setDragging(true);
-                svgRef.current?.setPointerCapture(event.pointerId);
-              }
-            }
-            if (connectingRef.current) {
-              updateConnection(event);
-              return;
-            }
-            const draft = vectorDraftRef.current;
-            if (draft) {
-              let point = pointFromEvent(event);
-              const first = draft.points[0],
-                last = draft.points.at(-1)!;
-              if (
-                draft.points.length > 1 &&
-                Math.hypot(point[0] - first[0], point[1] - first[1]) * zoom <= 8
-              )
-                point = [...first];
-              else if (event.shiftKey) {
-                const angle =
-                    Math.round(
-                      Math.atan2(point[1] - last[1], point[0] - last[0]) /
-                        (Math.PI / 4),
-                    ) *
-                    (Math.PI / 4),
-                  distance = Math.hypot(point[0] - last[0], point[1] - last[1]);
-                point = [
-                  last[0] + distance * Math.cos(angle),
-                  last[1] + distance * Math.sin(angle),
-                ];
-              } else if (Math.abs(point[0] - last[0]) * zoom <= 5)
-                point = [last[0], point[1]];
-              else if (Math.abs(point[1] - last[1]) * zoom <= 5)
-                point = [point[0], last[1]];
-              draft.hover = point;
-              scheduleDraftPaint();
-              return;
-            }
-            if (edgeDragRef.current) {
-              updateEdgeDrag(event);
-              scheduleDraftPaint();
-              return;
-            }
-            const gesture = gestureRef.current;
-            if (gesture) {
-              const point = pointFromEvent(event);
-              if (gesture.mode === 'hand') {
-                const rect = captureViewportRect()!;
-                const originalClient: Point = [
-                  (gesture.points[0][0] - gesture.origin[0]) * gesture.zoom,
-                  (gesture.points[0][1] - gesture.origin[1]) * gesture.zoom,
-                ];
-                setViewport({
-                  zoom: gesture.zoom,
-                  origination: [
-                    gesture.origin[0] -
-                      ((event.clientX - rect.left - originalClient[0]) *
-                        (gesture.dragPanSpeed ?? 1)) /
-                        gesture.zoom,
-                    gesture.origin[1] -
-                      ((event.clientY - rect.top - originalClient[1]) *
-                        (gesture.dragPanSpeed ?? 1)) /
-                        gesture.zoom,
-                  ],
-                });
-              } else {
-                if (['select', 'box', 'line', 'erase'].includes(gesture.mode))
-                  gesture.points = [gesture.points[0], point];
-                else gesture.points.push(point);
-                if (gesture.mode === 'erase') eraseAt(point);
-                scheduleDraftPaint();
-              }
-              return;
-            }
-            const drag = dragRef.current;
-            if (drag) {
-              if (drag.pointerId !== event.pointerId) return;
-              if ((event.buttons & 1) === 0) {
-                clearNodeDrag();
-                return;
-              }
-              const point = pointFromEvent(event);
-              if (
-                (!drag.mode || drag.mode === 'mind-pan') &&
-                !preview &&
-                Math.hypot(point[0] - drag.start[0], point[1] - drag.start[1]) *
-                  zoom <
-                  3
-              )
-                return;
-              // Capturing on pointerdown retargets clicks to the SVG and loses double clicks.
-              if (!svgRef.current?.hasPointerCapture(event.pointerId))
-                svgRef.current?.setPointerCapture(event.pointerId);
-              let dx = (point[0] - drag.start[0]) / drag.scale;
-              let dy = (point[1] - drag.start[1]) / drag.scale;
-              const ownerFrame = runtime.index.parentOf.get(drag.id);
-              if (
-                (!drag.mode || drag.mode === 'move') &&
-                ownerFrame &&
-                frameScene(runtime.store, ownerFrame) !== 'mind-root' &&
-                propsRef.current.interactionSettings?.smartGuides !== false &&
-                !event.altKey
-              ) {
-                if (!drag.snapBounds) {
-                  const cells = { ...runtime.store.cells };
-                  drag.geometry.forEach((geometry, id) => {
-                    const cell = cells[id];
-                    if (isNodeCell(cell)) cells[id] = { ...cell, geometry };
-                  });
-                  const displayed = { ...runtime.store, cells };
-                  const moving = drag.ids ?? [drag.id];
-                  const selected = new Set(moving);
-                  drag.snapBounds = unionCellBounds(
-                    moving.flatMap((id) => {
-                      const b = cellArrangementBounds(displayed, id);
-                      return b ? [b] : [];
-                    }),
-                  );
-                  const focusId = runtime.selection.focus.at(-1)!;
-                  const targets = focusedCellIds(displayed, focusId);
-                  drag.snapTargets = collectArrangementBlocks(
-                    displayed,
-                    ownerFrame,
-                    targets,
-                  )
-                    .filter(
-                      (block) =>
-                        !selected.has(block.id) &&
-                        !block.members.some((id) => selected.has(id)),
-                    )
-                    .map((block) => block.bounds);
-                  drag.frameId = ownerFrame;
-                }
-                if (drag.snapBounds) {
-                  const snap = snapArrangementDelta(
-                    drag.snapBounds,
-                    [dx, dy],
-                    drag.snapTargets ?? [],
-                    6 / (zoom * drag.scale),
-                  );
-                  [dx, dy] = snap.delta;
-                  setAlignmentGuides(snap.guides);
-                }
-              } else setAlignmentGuides([]);
-              const nextPreview = (
-                drag.mode === 'resize'
-                  ? roundNodeGeometry
-                  : drag.mode === 'mind-pan'
-                    ? (geometry: NodeGeometry) => geometry
-                    : roundNodePosition
-              )(
-                drag.mode === 'resize'
-                  ? resizeNodeGeometry(
-                      drag.original,
-                      drag.handle ?? 'se',
-                      [dx, dy],
-                      {
-                        preserveRatio:
-                          event.shiftKey ||
-                          (() => {
-                            const c = runtime.store.cells[drag.id];
-                            return (
-                              (isFrameCell(c) || isFrameReferenceCell(c)) &&
-                              c.aspectRatio !== undefined &&
-                              c.aspectRatio !== 'custom'
-                            );
-                          })(),
-                        fromCenter: event.altKey,
-                        minSize:
-                          isFrameCell(runtime.store.cells[drag.id]) ||
-                          isFrameReferenceCell(runtime.store.cells[drag.id])
-                            ? frameMinimumSize
-                            : 8,
-                      },
-                    )
-                  : drag.mode === 'rotate'
-                    ? rotateNodeGeometry(
-                        drag.original,
-                        drag.localStart!,
-                        [drag.localStart![0] + dx, drag.localStart![1] + dy],
-                        event.shiftKey,
+                  additive: event.shiftKey,
+                  focus:
+                    runtime.selection.focus
+                      .filter(
+                        (id) => runtime.store.cells[id]?.cellType === 'frame',
                       )
-                    : {
-                        ...drag.original,
-                        x: drag.original.x + dx,
-                        y: drag.original.y + dy,
-                        derived: false,
-                      },
-              );
-              setPreview(nextPreview);
-              const local = drag.pointerMatrix
-                ? new DOMPoint(event.clientX, event.clientY).matrixTransform(
-                    drag.pointerMatrix,
-                  )
-                : undefined;
-              updateMoveGhost(
-                drag,
-                nextPreview,
-                local
-                  ? [local.x, local.y]
-                  : [
-                      nextPreview.x + nextPreview.width / 2,
-                      nextPreview.y + nextPreview.height / 2,
-                    ],
-              );
-            }
-          }}
-          onContextMenu={(event) => {
-            if (
-              (event.target as Element).closest(
-                '[contenteditable="true"], input, textarea',
-              )
-            )
-              return;
-            event.preventDefault();
-            // Native right-click menus can fire on press or release. Pointerup
-            // handles mouse menus; keep this path for keyboard invocation.
-            if (event.button === 2 || rightDragRef.current) return;
-            propsRef.current.onCanvasContextMenu?.([
-              event.clientX,
-              event.clientY,
-            ]);
-          }}
-          onDragOver={(event) => {
-            if ([...event.dataTransfer.types].includes('Files'))
-              event.preventDefault();
-          }}
-          onDrop={(event) => {
-            if (
-              (event.target as Element).closest(
-                '[contenteditable="true"], input, textarea',
-              ) ||
-              !editable ||
-              pendingRef.current
-            )
-              return;
-            const file = [...event.dataTransfer.files].find((item) =>
-              item.type.startsWith('image/'),
-            );
-            if (!file) return;
-            event.preventDefault();
-            void insertExternal(
-              { image: file },
-              pointFromEvent(event as unknown as React.PointerEvent),
-              event.clientX,
-              event.clientY,
-            );
-          }}
-          onPointerUp={(event) => {
-            const tap = presentTapRef.current;
-            if (tap?.pointerId === event.pointerId)
-              presentTapRef.current = null;
-            const rightDrag = rightDragRef.current;
-            if (rightDrag?.pointerId === event.pointerId) {
-              rightDragRef.current = null;
-              if (
-                event.button === 2 &&
-                !rightDrag.moved &&
-                Math.hypot(
-                  event.clientX - rightDrag.x,
-                  event.clientY - rightDrag.y,
-                ) <= 6 &&
-                !(event.target as Element).closest(
-                  '[contenteditable="true"], input, textarea',
-                )
-              )
-                propsRef.current.onCanvasContextMenu?.([
-                  event.clientX,
-                  event.clientY,
-                ]);
-            }
-            pointersRef.current.delete(event.pointerId);
-            if (blockSinglePointerRef.current) {
-              if (pointersRef.current.size < 2 && pinchRef.current) {
-                commitGesture();
-                pinchRef.current = null;
-                setDragging(false);
-              }
-              if (pointersRef.current.size === 0)
-                blockSinglePointerRef.current = false;
-              return;
-            }
-            if (propsRef.current.inputMode === 'present') {
-              if (pointersRef.current.size === 0) {
-                if (gestureRef.current?.mode === 'hand' || pinchRef.current)
-                  commitGesture();
-                gestureRef.current = null;
-                pinchRef.current = null;
-                setDragging(false);
-              }
-              // Settle the pan before a tap starts a camera animation; a later
-              // gesture commit would otherwise cancel that animation.
-              if (
-                tap?.pointerId === event.pointerId &&
-                Math.hypot(event.clientX - tap.x, event.clientY - tap.y) <= 4
-              )
-                propsRef.current.onPresentTap?.(tap.cellId);
-              return;
-            }
-            if (pointersRef.current.size < 2) {
-              if (pinchRef.current || gestureRef.current?.mode === 'hand')
-                commitGesture();
-              pinchRef.current = null;
-              setDragging(false);
-            }
-            if (vectorDraftRef.current) return;
-            if (edgeDragRef.current) {
-              const final = updateEdgeDrag(event, false);
-              if (final)
-                void dispatch({
-                  id: transactionId(),
-                  operations: [{ type: 'replace_cell', cell: final }],
-                });
-              edgeDragRef.current = null;
-              setDragging(false);
-              edgePendingPreviewRef.current = null;
-              setEdgePreview(null);
-              clearDraftPaint();
-              return;
-            }
-            const gesture = gestureRef.current;
-            if (gesture) {
-              const tool = gesture.tool;
-              if (gesture.mode !== 'hand') {
-                const end = pointFromEvent(event);
-                if (gesture.mode === 'path') {
-                  const last = gesture.points.at(-1)!;
-                  if (last[0] !== end[0] || last[1] !== end[1])
-                    gesture.points.push(end);
-                } else gesture.points = [gesture.points[0], end];
-                if (gesture.mode === 'erase') eraseAt(end);
-              }
-              if (gesture.mode === 'hand') commitGesture();
-              else if (gesture.mode === 'erase' && gesture.erased.size)
-                void dispatch({
-                  id: transactionId(),
-                  operations: deleteCells(runtime.store, [...gesture.erased]),
-                });
-              else if (gesture.mode === 'select') {
-                const first = gesture.points[0],
-                  last = gesture.points.at(-1)!;
-                const focus = gesture.focus ?? [frameId];
-                const displayed = selectionDisplayStore();
-                const ids = focusedCellIds(displayed, focus.at(-1)!).filter(
-                  (id) => {
-                    const bounds = cellArrangementBounds(displayed, id);
-                    return (
-                      bounds &&
-                      bounds.x >= Math.min(first[0], last[0]) &&
-                      bounds.y >= Math.min(first[1], last[1]) &&
-                      bounds.x + bounds.width <= Math.max(first[0], last[0]) &&
-                      bounds.y + bounds.height <= Math.max(first[1], last[1])
-                    );
-                  },
-                );
-                runtime.select({
-                  focus,
-                  ids: gesture.additive
-                    ? [...new Set([...runtime.selection.ids, ...ids])]
-                    : ids,
-                });
-                props.onSelectionChange?.(runtime.selection);
-              } else if (tool && 'complete' in tool) {
-                try {
-                  const operations = tool.complete(
-                    runtime.store,
-                    gesture.frameId ?? frameId,
-                    gesture.points,
-                    gesture.context
-                      ? {
-                          ...gesture.context,
-                          zoom: cameraRef.current.zoom ?? 1,
-                        }
+                      .at(-1) === frameId
+                      ? runtime.selection.focus
+                      : [frameId],
+                };
+                scheduleDraftPaint();
+                svgRef.current?.setPointerCapture(event.pointerId);
+                if (tool.mode === 'hand') setDragging(true);
+                if (tool.mode === 'erase') eraseAt(point);
+                if (tool.mode === 'select' && !event.shiftKey)
+                  runtime.select({
+                    focus: gestureRef.current.focus ?? [frameId],
+                    ids: [],
+                  });
+              }}
+              style={{
+                width: '100%',
+                height: '100%',
+                outline: 'none',
+                overflow: 'hidden',
+                touchAction: 'none',
+                backgroundColor: view?.theme?.boardBackground ?? '#f8fafc',
+                backgroundImage: view?.theme?.gridEnabled
+                  ? 'radial-gradient(circle, #94a3b8 1px, transparent 1px)'
+                  : undefined,
+                backgroundSize: view?.theme?.gridEnabled
+                  ? `${Math.max(4, view.theme.gridSize ?? 20) * zoom}px ${Math.max(4, view.theme.gridSize ?? 20) * zoom}px`
+                  : undefined,
+                backgroundPosition: `${-origin[0] * zoom}px ${-origin[1] * zoom}px`,
+                cursor:
+                  props.tool?.mode === 'hand' || spaceHandRef.current
+                    ? 'grab'
+                    : props.tool?.mode === 'erase'
+                      ? 'crosshair'
                       : undefined,
-                  );
-                  commitCreatedCells(
-                    operations,
-                    gesture.frameId ?? frameId,
-                    tool,
-                  );
-                } catch (error) {
-                  setFailure(
-                    error instanceof Error ? error.message : String(error),
-                  );
-                }
-              }
-              gestureRef.current = null;
-              setDragging(false);
-              rightDragRef.current = null;
-              clearDraftPaint();
-              return;
-            }
-            const drag = dragRef.current;
-            if (drag && drag.pointerId !== event.pointerId) return;
-            const currentPreview = previewRef.current;
-            let preview =
-              drag &&
-              currentPreview?.sessionId === drag.sessionId &&
-              currentPreview.id === drag.id
-                ? currentPreview.geometry
-                : null;
-            if (
-              drag &&
-              preview &&
-              (!drag.mode || drag.mode === 'move') &&
-              propsRef.current.extensions?.some(
-                (extension) =>
-                  (!extension.kind ||
-                    extension.kind === runtime.store.cells[drag.id]?.kind) &&
-                  extension.previewMove,
-              )
-            ) {
-              const finalPoint = pointFromEvent(event);
-              preview = roundNodePosition({
-                ...drag.original,
-                x:
-                  drag.original.x +
-                  (finalPoint[0] - drag.start[0]) / drag.scale,
-                y:
-                  drag.original.y +
-                  (finalPoint[1] - drag.start[1]) / drag.scale,
-                derived: false,
-              });
-            }
-            if (drag?.collapseId && !preview)
-              select(drag.collapseId, drag.focus);
-            if (drag && preview) {
-              const cell = runtime.store.cells[drag.id];
-              if (
-                drag.mode === 'mind-pan' &&
-                drag.mindFrameId &&
-                isNodeCell(cell) &&
-                propsRef.current.embedShell
-              ) {
-                const shell = propsRef.current.embedShell;
-                const layout = frameLayouts(drag.mindFrameId);
-                const frame = runtime.store.cells[drag.mindFrameId];
-                if (isFrameCell(frame)) {
-                  const requested: Point = [
-                    (drag.mindOffset?.[0] ?? 0) + preview.x - drag.original.x,
-                    (drag.mindOffset?.[1] ?? 0) + preview.y - drag.original.y,
-                  ];
-                  const offset = projectEmbeddedMindTrees(
-                    runtime.store,
-                    { ...frame, geometry: shell.geometry },
-                    layout.baseGeometry,
-                    layout.fitBounds,
-                    new Map([[cell.id, requested]]),
-                  ).offsets.get(cell.id);
-                  if (
-                    offset &&
-                    (offset[0] !== drag.mindOffset?.[0] ||
-                      offset[1] !== drag.mindOffset?.[1])
+              }}
+              onDragStart={(event) => event.preventDefault()}
+              onPointerDown={(event) => {
+                if (propsRef.current.inputMode === 'present') return;
+                if (
+                  (event.target as Element).closest?.(
+                    '[data-frame-text-editor], [contenteditable="true"]',
                   )
-                    shell.onMindOffset(cell.id, offset);
+                )
+                  return;
+                if (
+                  dragRef.current ||
+                  gestureRef.current ||
+                  connectingRef.current
+                )
+                  return;
+                keyboardSelectionRef.current = null;
+                keyboardEditRef.current = null;
+                runtime.select({ focus: [frameId], ids: [] });
+                props.onSelectionChange?.(runtime.selection);
+                setEditing(null);
+                setLabelEditing(null);
+              }}
+              onDoubleClickCapture={(event) => {
+                if (propsRef.current.inputMode === 'present') {
+                  event.preventDefault();
+                  event.stopPropagation();
+                  return;
                 }
-              } else if (
-                drag.mode === 'mind-pan' &&
-                drag.mindFrameId &&
-                isNodeCell(cell)
-              ) {
-                const layout = frameLayouts(drag.mindFrameId);
-                const frame = runtime.store.cells[drag.mindFrameId];
-                const refCell = drag.mindRefId
-                  ? runtime.store.cells[drag.mindRefId]
-                  : undefined;
-                const ref =
-                  refCell && isFrameReferenceCell(refCell)
-                    ? refCell
-                    : undefined;
-                if (isFrameCell(frame) && (!drag.mindRefId || ref)) {
-                  // Occurrence pans clamp against the ref shell geometry and
-                  // persist on the reference, never on shared target content.
-                  const displayed = ref
-                    ? { ...frame, geometry: ref.geometry }
-                    : frame;
-                  const requested: Point = [
-                    (drag.mindOffset?.[0] ?? 0) + preview.x - drag.original.x,
-                    (drag.mindOffset?.[1] ?? 0) + preview.y - drag.original.y,
+                if (props.tool?.mode === 'polyline' && vectorDraftRef.current) {
+                  event.stopPropagation();
+                  event.preventDefault();
+                  finishVectorDraft();
+                }
+              }}
+              onPointerLeave={() => {
+                cameraStore.setHovered(null);
+                if (props.tool?.mode === 'erase' && !gestureRef.current) {
+                  eraserHoverRef.current = null;
+                  clearDraftPaint();
+                }
+              }}
+              onPointerMove={(event) => {
+                const tap = presentTapRef.current;
+                if (
+                  tap &&
+                  tap.pointerId === event.pointerId &&
+                  Math.hypot(event.clientX - tap.x, event.clientY - tap.y) > 4
+                )
+                  presentTapRef.current = null;
+                const zoom = cameraRef.current.zoom ?? 1;
+                if (props.tool?.mode === 'erase' && !gestureRef.current) {
+                  eraserHoverRef.current = pointFromEvent(event);
+                  scheduleDraftPaint();
+                }
+                if (pointersRef.current.has(event.pointerId))
+                  pointersRef.current.set(event.pointerId, [
+                    event.clientX,
+                    event.clientY,
+                  ]);
+                if (pinchRef.current && pointersRef.current.size >= 2) {
+                  const points = [...pointersRef.current.values()];
+                  const distance =
+                    Math.hypot(
+                      points[0][0] - points[1][0],
+                      points[0][1] - points[1][1],
+                    ) || 1;
+                  const rect = captureViewportRect()!;
+                  const center: Point = [
+                    (points[0][0] + points[1][0]) / 2 - rect.left,
+                    (points[0][1] + points[1][1]) / 2 - rect.top,
                   ];
-                  const offset = projectEmbeddedMindTrees(
-                    runtime.store,
-                    displayed,
-                    layout.baseGeometry,
-                    layout.fitBounds,
-                    new Map([[cell.id, requested]]),
-                  ).offsets.get(cell.id);
+                  const nextZoom = Math.max(
+                    propsRef.current.inputMode === 'present' ? 0.01 : 0.1,
+                    Math.min(
+                      8,
+                      pinchRef.current.zoom *
+                        (distance / pinchRef.current.distance),
+                    ),
+                  );
+                  const pinch = pinchRef.current;
+                  rememberGesture({
+                    zoom: nextZoom,
+                    origination: [
+                      pinch.origin[0] +
+                        pinch.center[0] / pinch.zoom -
+                        center[0] / nextZoom,
+                      pinch.origin[1] +
+                        pinch.center[1] / pinch.zoom -
+                        center[1] / nextZoom,
+                    ],
+                  });
+                  return;
+                }
+                const rightDrag = rightDragRef.current;
+                if (
+                  rightDrag &&
+                  rightDrag.pointerId === event.pointerId &&
+                  !rightDrag.moved
+                ) {
+                  if ((event.buttons & 2) === 0) rightDragRef.current = null;
+                  else if (
+                    Math.hypot(
+                      event.clientX - rightDrag.x,
+                      event.clientY - rightDrag.y,
+                    ) > 6
+                  ) {
+                    cancelInteraction();
+                    rightDrag.moved = true;
+                    propsRef.current.onCanvasContextMenu?.(null);
+                    const point = pointFromEvent(event);
+                    gestureRef.current = {
+                      mode: 'hand',
+                      dragPanSpeed: normalizeInteractionMultiplier(
+                        propsRef.current.interactionSettings?.dragPanSpeed,
+                      ),
+                      points: [point],
+                      erased: new Set(),
+                      origin: [
+                        ...(cameraRef.current.origination ?? zeroOrigin),
+                      ],
+                      zoom: cameraRef.current.zoom ?? 1,
+                      additive: false,
+                    };
+                    setDragging(true);
+                    svgRef.current?.setPointerCapture(event.pointerId);
+                  }
+                }
+                if (connectingRef.current) {
+                  updateConnection(event);
+                  return;
+                }
+                const draft = vectorDraftRef.current;
+                if (draft) {
+                  let point = pointFromEvent(event);
+                  const first = draft.points[0],
+                    last = draft.points.at(-1)!;
                   if (
-                    offset &&
-                    (offset[0] !== drag.mindOffset?.[0] ||
-                      offset[1] !== drag.mindOffset?.[1])
+                    draft.points.length > 1 &&
+                    Math.hypot(point[0] - first[0], point[1] - first[1]) *
+                      zoom <=
+                      8
                   )
-                    void dispatch({
-                      id: transactionId(),
-                      operations: ref
-                        ? [
-                            {
-                              type: 'replace_cell',
-                              cell: {
-                                ...ref,
-                                data: {
-                                  ...ref.data,
-                                  mindOffsets: {
-                                    ...(ref.data.mindOffsets ?? {}),
-                                    [cell.id]: offset,
-                                  },
-                                },
-                              },
-                            },
-                          ]
-                        : [
-                            {
-                              type: 'replace_cell',
-                              cell: {
-                                ...cell,
-                                data: {
-                                  ...(cell.data as object),
-                                  embeddedOffset: offset,
-                                },
-                              },
-                            },
-                          ],
+                    point = [...first];
+                  else if (event.shiftKey) {
+                    const angle =
+                        Math.round(
+                          Math.atan2(point[1] - last[1], point[0] - last[0]) /
+                            (Math.PI / 4),
+                        ) *
+                        (Math.PI / 4),
+                      distance = Math.hypot(
+                        point[0] - last[0],
+                        point[1] - last[1],
+                      );
+                    point = [
+                      last[0] + distance * Math.cos(angle),
+                      last[1] + distance * Math.sin(angle),
+                    ];
+                  } else if (Math.abs(point[0] - last[0]) * zoom <= 5)
+                    point = [last[0], point[1]];
+                  else if (Math.abs(point[1] - last[1]) * zoom <= 5)
+                    point = [point[0], last[1]];
+                  draft.hover = point;
+                  scheduleDraftPaint();
+                  return;
+                }
+                if (edgeDragRef.current) {
+                  updateEdgeDrag(event);
+                  scheduleDraftPaint();
+                  return;
+                }
+                const gesture = gestureRef.current;
+                if (gesture) {
+                  const point = pointFromEvent(event);
+                  if (gesture.mode === 'hand') {
+                    const rect = captureViewportRect()!;
+                    const originalClient: Point = [
+                      (gesture.points[0][0] - gesture.origin[0]) * gesture.zoom,
+                      (gesture.points[0][1] - gesture.origin[1]) * gesture.zoom,
+                    ];
+                    setViewport({
+                      zoom: gesture.zoom,
+                      origination: [
+                        gesture.origin[0] -
+                          ((event.clientX - rect.left - originalClient[0]) *
+                            (gesture.dragPanSpeed ?? 1)) /
+                            gesture.zoom,
+                        gesture.origin[1] -
+                          ((event.clientY - rect.top - originalClient[1]) *
+                            (gesture.dragPanSpeed ?? 1)) /
+                            gesture.zoom,
+                      ],
                     });
+                  } else {
+                    if (
+                      ['select', 'box', 'line', 'erase'].includes(gesture.mode)
+                    )
+                      gesture.points = [gesture.points[0], point];
+                    else gesture.points.push(point);
+                    if (gesture.mode === 'erase') eraseAt(point);
+                    scheduleDraftPaint();
+                  }
+                  return;
                 }
-              } else if (drag.ids) {
-                void dispatch({
-                  id: transactionId(),
-                  operations: translateCellSelection(runtime.store, drag.ids, [
-                    preview.x - drag.original.x,
-                    preview.y - drag.original.y,
-                  ]),
-                });
-              } else if (isGroupCell(cell)) {
-                void dispatch({
-                  id: transactionId(),
-                  operations: moveGroup(runtime.store, cell.id, [
-                    preview.x - drag.original.x,
-                    preview.y - drag.original.y,
-                  ]),
-                });
-              } else if (isNodeCell(cell)) {
-                const util = runtime.registry.get(cell.kind);
-                try {
-                  const position = drag.pointerMatrix
+                const drag = dragRef.current;
+                if (drag) {
+                  if (drag.pointerId !== event.pointerId) return;
+                  if ((event.buttons & 1) === 0) {
+                    clearNodeDrag();
+                    return;
+                  }
+                  const point = pointFromEvent(event);
+                  if (
+                    (!drag.mode || drag.mode === 'content-pan') &&
+                    !preview &&
+                    Math.hypot(
+                      point[0] - drag.start[0],
+                      point[1] - drag.start[1],
+                    ) *
+                      zoom <
+                      3
+                  )
+                    return;
+                  // Capturing on pointerdown retargets clicks to the SVG and loses double clicks.
+                  if (!svgRef.current?.hasPointerCapture(event.pointerId))
+                    svgRef.current?.setPointerCapture(event.pointerId);
+                  let dx = (point[0] - drag.start[0]) / drag.scale;
+                  let dy = (point[1] - drag.start[1]) / drag.scale;
+                  const ownerFrame = runtime.index.parentOf.get(drag.id);
+                  if (
+                    (!drag.mode || drag.mode === 'move') &&
+                    ownerFrame &&
+                    !props.extensions?.some((extension) =>
+                      extension.plugin?.fitLayoutBounds?.(
+                        runtime.store,
+                        ownerFrame,
+                      ),
+                    ) &&
+                    propsRef.current.interactionSettings?.smartGuides !==
+                      false &&
+                    !event.altKey
+                  ) {
+                    if (!drag.snapBounds) {
+                      const cells = { ...runtime.store.cells };
+                      drag.geometry.forEach((geometry, id) => {
+                        const cell = cells[id];
+                        if (isNodeCell(cell)) cells[id] = { ...cell, geometry };
+                      });
+                      const displayed = { ...runtime.store, cells };
+                      const moving = drag.ids ?? [drag.id];
+                      const selected = new Set(moving);
+                      drag.snapBounds = unionCellBounds(
+                        moving.flatMap((id) => {
+                          const b = cellArrangementBounds(displayed, id);
+                          return b ? [b] : [];
+                        }),
+                      );
+                      const focusId = runtime.selection.focus.at(-1)!;
+                      const targets = focusedCellIds(displayed, focusId);
+                      drag.snapTargets = collectArrangementBlocks(
+                        displayed,
+                        ownerFrame,
+                        targets,
+                        runtime.registry,
+                      )
+                        .filter(
+                          (block) =>
+                            !selected.has(block.id) &&
+                            !block.members.some((id) => selected.has(id)),
+                        )
+                        .map((block) => block.bounds);
+                      drag.frameId = ownerFrame;
+                    }
+                    if (drag.snapBounds) {
+                      const snap = snapArrangementDelta(
+                        drag.snapBounds,
+                        [dx, dy],
+                        drag.snapTargets ?? [],
+                        6 / (zoom * drag.scale),
+                      );
+                      [dx, dy] = snap.delta;
+                      setAlignmentGuides(snap.guides);
+                    }
+                  } else setAlignmentGuides([]);
+                  const nextPreview = (
+                    drag.mode === 'resize'
+                      ? roundNodeGeometry
+                      : drag.mode === 'content-pan'
+                        ? (geometry: NodeGeometry) => geometry
+                        : roundNodePosition
+                  )(
+                    drag.mode === 'resize'
+                      ? resizeNodeGeometry(
+                          drag.original,
+                          drag.handle ?? 'se',
+                          [dx, dy],
+                          {
+                            preserveRatio:
+                              event.shiftKey ||
+                              (() => {
+                                const c = runtime.store.cells[drag.id];
+                                return (
+                                  (isFrameCell(c) || isFrameReferenceCell(c)) &&
+                                  c.aspectRatio !== undefined &&
+                                  c.aspectRatio !== 'custom'
+                                );
+                              })(),
+                            fromCenter: event.altKey,
+                            minSize:
+                              isFrameCell(runtime.store.cells[drag.id]) ||
+                              isFrameReferenceCell(runtime.store.cells[drag.id])
+                                ? frameMinimumSize
+                                : 8,
+                          },
+                        )
+                      : drag.mode === 'rotate'
+                        ? rotateNodeGeometry(
+                            drag.original,
+                            drag.localStart!,
+                            [
+                              drag.localStart![0] + dx,
+                              drag.localStart![1] + dy,
+                            ],
+                            event.shiftKey,
+                          )
+                        : {
+                            ...drag.original,
+                            x: drag.original.x + dx,
+                            y: drag.original.y + dy,
+                            derived: false,
+                          },
+                  );
+                  setPreview(nextPreview);
+                  const local = drag.pointerMatrix
                     ? new DOMPoint(
                         event.clientX,
                         event.clientY,
                       ).matrixTransform(drag.pointerMatrix)
                     : undefined;
-                  const point: Point = position
-                    ? [position.x, position.y]
-                    : [
-                        preview.x + preview.width / 2,
-                        preview.y + preview.height / 2,
-                      ];
-                  const base = util as import('@sue/board-core').BaseCellUtil;
-                  const authoredPreview =
-                    drag.mode === 'rotate'
-                      ? { ...cell.geometry, rotation: preview.rotation }
-                      : drag.mode === 'resize' && drag.canonicalOriginal
-                        ? {
-                            ...preview,
-                            x:
-                              preview.x -
-                              drag.original.x +
-                              drag.canonicalOriginal.x,
-                            y:
-                              preview.y -
-                              drag.original.y +
-                              drag.canonicalOriginal.y,
-                          }
-                        : preview;
-                  const movePlan = resolveMovePreview(drag, preview, point);
-                  const operations = movePlan
-                    ? movePlan.operations
-                    : util && 'move' in util
-                      ? drag.mode === 'resize'
-                        ? base.resize(runtime.store, cell, authoredPreview)
-                        : drag.mode === 'rotate'
-                          ? base.rotate(runtime.store, cell, authoredPreview)
-                          : base.move(
-                              runtime.store,
-                              cell,
-                              {
-                                ...cell.geometry,
-                                x: preview.x,
-                                y: preview.y,
-                                derived: false,
-                              },
-                              undefined,
-                              {
-                                point,
-                                geometry: drag.geometry,
-                                scale: cameraStore.getZoom() * drag.scale,
-                              },
-                            )
+                  updateMoveGhost(
+                    drag,
+                    nextPreview,
+                    local
+                      ? [local.x, local.y]
                       : [
-                          {
-                            type: 'replace_cell' as const,
-                            cell: {
-                              ...cell,
-                              geometry:
-                                drag.mode === 'resize' || drag.mode === 'rotate'
-                                  ? authoredPreview
-                                  : {
-                                      ...cell.geometry,
-                                      x: preview.x,
-                                      y: preview.y,
-                                      derived: false,
-                                    },
-                            },
-                          },
-                        ];
-                  if (operations.length)
-                    void dispatch({ id: transactionId(), operations });
-                } catch (error) {
-                  const result = {
-                    status: 'rejected' as const,
-                    message:
-                      error instanceof Error ? error.message : String(error),
-                  };
-                  props.onReject?.(result);
-                  setFailure(result.message);
+                          nextPreview.x + nextPreview.width / 2,
+                          nextPreview.y + nextPreview.height / 2,
+                        ],
+                  );
                 }
-              }
-            }
-            clearNodeDrag();
-          }}
-          onLostPointerCapture={() => {
-            presentTapRef.current = null;
-            pointersRef.current.clear();
-            if (pinchRef.current || gestureRef.current?.mode === 'hand')
-              commitGesture();
-            pinchRef.current = null;
-            blockSinglePointerRef.current = false;
-            cancelInteraction();
-          }}
-          onPointerCancel={() => {
-            presentTapRef.current = null;
-            pointersRef.current.clear();
-            if (pinchRef.current || gestureRef.current?.mode === 'hand')
-              commitGesture();
-            pinchRef.current = null;
-            blockSinglePointerRef.current = false;
-            cancelInteraction();
-          }}
-          onKeyDown={(event) => {
-            if (
-              propsRef.current.suspended ||
-              propsRef.current.surface === 'nested'
-            ) {
-              if (
-                propsRef.current.surface === 'nested' &&
-                event.key === 'Escape'
-              )
-                event.stopPropagation();
-              if (propsRef.current.suspended) return;
-            }
-            if (propsRef.current.surface === 'nested' && event.code === 'Space')
-              return;
-            if (vectorDraftRef.current && event.key === 'Enter') {
-              event.preventDefault();
-              finishVectorDraft(true);
-              return;
-            }
-            if (
-              editing &&
-              event.key === 'Tab' &&
-              !event.ctrlKey &&
-              !event.metaKey &&
-              !event.altKey
-            ) {
-              event.preventDefault();
-              event.stopPropagation();
-              commitEditingTab();
-              return;
-            }
-            if (editing || labelEditing) {
-              if (event.key === 'Escape') {
-                event.preventDefault();
-                setEditing(null);
-                setLabelEditing(null);
-                svgRef.current?.focus();
-                return;
-              }
-              if (event.key !== 'Tab') return;
-              setEditing(null);
-              setLabelEditing(null);
-            }
-            if (
-              (event.target as Element).closest(
-                '[contenteditable="true"], input, textarea',
-              )
-            )
-              return;
-            if (
-              event.code === 'Space' &&
-              !event.ctrlKey &&
-              !event.metaKey &&
-              !event.altKey
-            ) {
-              event.preventDefault();
-              spaceHandRef.current = true;
-              return;
-            }
-            if (propsRef.current.inputMode === 'present') return;
-            const modified = event.ctrlKey || event.metaKey;
-            if (modified && event.key.toLowerCase() === 'g') {
-              event.preventDefault();
-              const command: FrameSelectionCommand = {
-                type: event.shiftKey ? 'ungroup' : 'group',
-              };
-              if (selectionCommandState(command).enabled)
-                void executeSelectionCommand(command);
-              return;
-            }
-            if (modified && event.key.toLowerCase() === 'a') {
-              event.preventDefault();
-              const focus = runtime.selection.focus;
-              const ids = focusedCellIds(runtime.store, focus.at(-1)!);
-              runtime.select({
-                focus,
-                ids: ids.filter((id) => !runtime.store.cells[id].hidden),
-              });
-              props.onSelectionChange?.(runtime.selection);
-              return;
-            }
-            if (
-              editable &&
-              !pendingRef.current &&
-              modified &&
-              event.key.toLowerCase() === 'd' &&
-              runtime.selection.ids.length
-            ) {
-              event.preventDefault();
-              const fragment = copyCellFragment(
-                runtime.store,
-                runtime.selection.ids,
-              );
-              const parentId =
-                [...runtime.selection.focus]
-                  .reverse()
-                  .find((id) => isFrameCell(runtime.store.cells[id])) ??
-                frameId;
-              try {
-                const plan = planCellPaste({
-                  store: runtime.store,
-                  frameId: parentId,
-                  selectionIds: runtime.selection.ids,
-                  fragment,
-                  allocateId: transactionId,
-                  offset: [20, 20],
-                  registry: runtime.registry,
-                  intent: 'duplicate',
-                  targetMindNodeId:
-                    runtime.selection.ids.length === 1 &&
-                    ['mind-root', 'mind-child'].includes(
-                      runtime.store.cells[runtime.selection.ids[0]].kind,
-                    )
-                      ? runtime.selection.ids[0]
-                      : undefined,
-                });
-                const request = {
-                  ids: plan.selection.ids,
-                  focus: plan.selection.focus,
-                  accepted: false,
-                };
-                keyboardSelectionRef.current = request;
-                void dispatch({
-                  id: transactionId(),
-                  operations: plan.operations,
-                }).then((result) => {
-                  if (keyboardSelectionRef.current !== request) return;
-                  if (result.status === 'rejected')
-                    keyboardSelectionRef.current = null;
-                  else {
-                    request.accepted = true;
-                    applyKeyboardSelection();
-                  }
-                });
-              } catch (error) {
-                setFailure(
-                  error instanceof Error ? error.message : String(error),
-                );
-              }
-              return;
-            }
-            if (modified && ['=', '+', '-', '0'].includes(event.key)) {
-              event.preventDefault();
-              if (event.shiftKey && ['=', '+'].includes(event.key)) {
-                fitCanvas();
-                return;
-              }
-              setViewport({
-                zoom:
-                  event.key === '0'
-                    ? 1
-                    : Math.max(
-                        0.1,
-                        Math.min(
-                          8,
-                          (cameraRef.current.zoom ?? 1) +
-                            (event.key === '-' ? -0.1 : 0.1),
-                        ),
-                      ),
-                origination: cameraRef.current.origination ?? zeroOrigin,
-              });
-              return;
-            }
-            if (event.key === 'Escape') {
-              event.preventDefault();
-              if (propsRef.current.placing) {
-                propsRef.current.onCancelPlace?.();
-                return;
-              }
-              if (
-                propsRef.current.surface === 'nested' &&
-                propsRef.current.onExitInstance
-              ) {
-                event.stopPropagation();
-                propsRef.current.onExitInstance();
-                return;
-              }
-              if (
-                gestureRef.current ||
-                vectorDraftRef.current ||
-                connectingRef.current ||
-                edgeDragRef.current ||
-                dragRef.current
-              ) {
-                event.stopPropagation();
-                cancelInteraction();
-                return;
-              }
-              const focus = runtime.selection.focus;
-              const group = runtime.store.cells[focus.at(-1)!];
-              runtime.select(
-                isGroupCell(group)
-                  ? { focus: focus.slice(0, -1), ids: [group.id] }
-                  : {
-                      focus:
-                        runtime.selection.ids.length || focus.length === 1
-                          ? focus
-                          : focus.slice(0, -1),
-                      ids: [],
-                    },
-              );
-              props.onSelectionChange?.(runtime.selection);
-              return;
-            }
-            if (
-              editable &&
-              (event.ctrlKey || event.metaKey) &&
-              (['[', ']', '{', '}'].includes(event.key) ||
-                ['BracketLeft', 'BracketRight'].includes(event.code))
-            ) {
-              event.preventDefault();
-              const direction =
-                event.code === 'BracketRight' || [']', '}'].includes(event.key)
-                  ? event.shiftKey || event.altKey
-                    ? 'front'
-                    : 'forward'
-                  : event.shiftKey || event.altKey
-                    ? 'back'
-                    : 'backward';
-              const ownerId =
-                [...runtime.selection.focus]
-                  .reverse()
-                  .find((id) => isFrameCell(runtime.store.cells[id])) ??
-                frameId;
-              if (!frameScene(runtime.store, ownerId))
-                void dispatch({
-                  id: transactionId(),
-                  operations: reorderCells(
-                    runtime.store,
-                    ownerId,
-                    runtime.selection.ids,
-                    direction,
-                  ),
-                });
-              return;
-            }
-            const selected =
-              runtime.selection.ids.length === 1
-                ? runtime.store.cells[runtime.selection.ids[0]]
-                : undefined;
-            const util = selected
-              ? runtime.registry.get(selected.kind)
-              : undefined;
-            const expandMind =
-              (event.ctrlKey || event.metaKey) &&
-              event.key === '/' &&
-              selected?.kind === 'mind-child';
-            if (
-              editable &&
-              selected &&
-              util &&
-              'keyboard' in util &&
-              ((!event.ctrlKey && !event.metaKey && !event.altKey) ||
-                expandMind)
-            ) {
-              if (pendingRef.current) {
-                event.preventDefault();
-                return;
-              }
-              const operations = (
-                util as import('@sue/board-core').BaseCellUtil
-              ).keyboard(runtime.store, selected, event.key, transactionId);
-              if (operations) {
-                event.preventDefault();
-                const inserted = operations.find(
-                  (operation) =>
-                    operation.type === 'insert_cell' &&
-                    isNodeCell(operation.cell),
-                );
-                const selection =
-                  inserted?.type === 'insert_cell'
-                    ? {
-                        ids: [inserted.cell.id],
-                        focus: [...runtime.selection.focus],
-                        accepted: false,
-                      }
-                    : null;
-                keyboardSelectionRef.current = selection;
-                const edit =
-                  inserted?.type === 'insert_cell' &&
-                  isNodeCell(inserted.cell) &&
-                  ['mind-root', 'mind-child', 'mind-summary'].includes(
-                    inserted.cell.kind,
-                  )
-                    ? {
-                        id: inserted.cell.id,
-                        label: inserted.cell.content?.label ?? '',
-                        accepted: false,
-                      }
-                    : null;
-                keyboardEditRef.current = edit;
-                void dispatch({ id: transactionId(), operations }).then(
-                  (result) => {
-                    if (keyboardSelectionRef.current !== selection) return;
-                    if (result.status === 'rejected') {
-                      keyboardSelectionRef.current = null;
-                      keyboardEditRef.current = null;
-                    } else if (selection) {
-                      selection.accepted = true;
-                      if (edit) edit.accepted = true;
-                      applyKeyboardSelection();
-                    }
-                  },
-                );
-                return;
-              }
-            }
-            if (
-              editable &&
-              !pendingRef.current &&
-              isNodeCell(selected) &&
-              !selected.locked &&
-              ['mind-root', 'mind-child', 'mind-summary'].includes(
-                selected.kind,
-              ) &&
-              !event.ctrlKey &&
-              !event.metaKey &&
-              !event.altKey &&
-              event.key.length === 1 &&
-              event.code !== 'Space' &&
-              !event.nativeEvent.isComposing
-            ) {
-              event.preventDefault();
-              const text = createInlineText(event.key);
-              const previous = selected.content?.text;
-              if (isBoardTextDocument(previous)) {
-                text.id = previous.id;
-                text.align = previous.align;
-                const findText = (
-                  node: import('@sue/board-common').BoardTextNode,
-                ): import('@sue/board-common').BoardTextNode | undefined =>
-                  node.type === 'text'
-                    ? node
-                    : node.content?.map(findText).find(Boolean);
-                const leaf = findText(text.content),
-                  prior = findText(previous.content);
-                if (leaf && prior?.marks) leaf.marks = prior.marks;
-              }
-              const request = {
-                id: selected.id,
-                label: event.key,
-                accepted: false,
-              };
-              nameSession.current =
-                selected.name === undefined
-                  ? { id: selected.id, initial: nodeContentName(selected) }
-                  : null;
-              keyboardEditRef.current = request;
-              void dispatch({
-                id: transactionId(),
-                operations: [
-                  {
-                    type: 'replace_cell',
-                    deferName: true,
-                    cell: {
-                      ...selected,
-                      name:
-                        selected.name ??
-                        (nameSession.current?.initial || undefined),
-                      content: {
-                        ...selected.content,
-                        label: event.key,
-                        text,
-                      },
-                    },
-                  },
-                ],
-              }).then((result) => {
-                if (keyboardEditRef.current !== request) return;
-                if (result.status === 'rejected')
-                  keyboardEditRef.current = null;
-                else {
-                  request.accepted = true;
-                  applyKeyboardSelection();
-                }
-              });
-              return;
-            }
-            if (
-              (event.ctrlKey || event.metaKey) &&
-              event.key.toLowerCase() === 'z'
-            ) {
-              event.preventDefault();
-              publishHistory(event.shiftKey ? 'redo' : 'undo');
-            } else if (
-              editable &&
-              !event.ctrlKey &&
-              !event.metaKey &&
-              (event.key === 'Delete' || event.key === 'Backspace')
-            ) {
-              event.preventDefault();
-              void dispatch({
-                id: transactionId(),
-                operations: deleteCells(runtime.store, runtime.selection.ids),
-              });
-            }
-          }}
-          onCopy={(event) => {
-            if (
-              (event.target as Element).closest(
-                '[contenteditable="true"], input, textarea',
-              ) ||
-              !runtime.selection.ids.length
-            )
-              return;
-            event.preventDefault();
-            const fragment = copyCellFragment(
-              runtime.store,
-              runtime.selection.ids,
-            );
-            event.clipboardData.setData(
-              'application/x-verd-cells',
-              JSON.stringify(fragment),
-            );
-            event.clipboardData.setData('text/plain', clipboardText(fragment));
-          }}
-          onCut={(event) => {
-            if (
-              (event.target as Element).closest(
-                '[contenteditable="true"], input, textarea',
-              ) ||
-              !editable ||
-              pendingRef.current
-            )
-              return;
-            event.preventDefault();
-            try {
-              const cut = cutSelection();
-              if (!cut.ids.length) return;
-              event.clipboardData.setData(
-                'application/x-verd-cells',
-                JSON.stringify(cut.fragment),
-              );
-              event.clipboardData.setData(
-                'text/plain',
-                clipboardText(cut.fragment),
-              );
-              void dispatch({
-                id: transactionId(),
-                operations: cut.operations,
-              });
-            } catch (error) {
-              clipboardFailure(error);
-            }
-          }}
-          onPaste={(event) => {
-            if (
-              (event.target as Element).closest(
-                '[contenteditable="true"], input, textarea',
-              )
-            )
-              return;
-            if (!editable || pendingRef.current) return;
-            const custom = event.clipboardData.getData(
-              'application/x-verd-cells',
-            );
-            const plain = event.clipboardData.getData('text/plain');
-            const itemList = event.clipboardData.items;
-            const image =
-              itemList && typeof itemList[Symbol.iterator] === 'function'
-                ? [...itemList].find((item) => item.type.startsWith('image/'))
-                : undefined;
-            if (custom) {
-              try {
-                event.preventDefault();
-                void pasteFragment(JSON.parse(custom));
-              } catch (error) {
-                clipboardFailure(error);
-              }
-              return;
-            }
-            if (image) {
-              const file = image.getAsFile();
-              if (!file) return;
-              event.preventDefault();
-              void insertExternal({ image: file }, viewportCenter()).catch(
-                (error) => clipboardFailure(error),
-              );
-              return;
-            }
-            if (!plain) return;
-            try {
-              event.preventDefault();
-              void pasteFragment(readClipboardText(plain));
-            } catch {
-              event.preventDefault();
-              void insertExternal({ text: plain }, viewportCenter());
-            }
-          }}
-          onKeyUp={(event) => {
-            if (event.code === 'Space') spaceHandRef.current = false;
-          }}
-        >
-          <style>{`[data-drawing-preview], [data-drawing-preview] * { pointer-events: none !important; }`}</style>
-          <style>{frameTitleCss}</style>
-          <g
-            ref={worldRef}
-            data-frame-world="true"
-            transform={`scale(${zoom}) translate(${-origin[0]} ${-origin[1]})`}
-          >
-            {sceneContent}
-            {vectorDraftRef.current && (
-              <circle
-                data-vector-close="true"
-                cx={vectorDraftRef.current.points[0][0]}
-                cy={vectorDraftRef.current.points[0][1]}
-                r={5 / zoom}
-                fill={
-                  gesturePreview.length > 2 &&
-                  gesturePreview.at(-1)![0] ===
-                    vectorDraftRef.current.points[0][0] &&
-                  gesturePreview.at(-1)![1] ===
-                    vectorDraftRef.current.points[0][1]
-                    ? '#6366f1'
-                    : '#fff'
-                }
-                stroke="#6366f1"
-                strokeWidth={1 / zoom}
-                pointerEvents="none"
-              />
-            )}
-            {draftScene && (
-              <FrameRichTextPreviewContext.Provider value={true}>
-                <g
-                  data-drawing-preview="true"
-                  data-frame-export-exclude
-                  aria-hidden="true"
-                  pointerEvents="none"
-                >
-                  {renderFrame(frameId, [frameId], false, 1, draftScene)}
-                </g>
-              </FrameRichTextPreviewContext.Provider>
-            )}
-            {gesturePreview.length > 0 &&
-              gestureRef.current?.mode !== 'hand' &&
-              !draftScene &&
-              (gestureRef.current?.mode === 'select' ? (
-                <rect
-                  data-selection-marquee="true"
-                  x={Math.min(gesturePreview[0][0], gesturePreview.at(-1)![0])}
-                  y={Math.min(gesturePreview[0][1], gesturePreview.at(-1)![1])}
-                  width={Math.abs(
-                    gesturePreview.at(-1)![0] - gesturePreview[0][0],
-                  )}
-                  height={Math.abs(
-                    gesturePreview.at(-1)![1] - gesturePreview[0][1],
-                  )}
-                  fill="#6366f1"
-                  fillOpacity={0.1}
-                  stroke="#6366f1"
-                  strokeWidth={1 / zoom}
-                  pointerEvents="none"
-                />
-              ) : props.tool?.mode === 'erase' ? (
-                <circle
-                  data-eraser-preview="true"
-                  data-frame-export-exclude
-                  cx={gesturePreview.at(-1)![0]}
-                  cy={gesturePreview.at(-1)![1]}
-                  r={10 / zoom}
-                  fill="#ef4444"
-                  fillOpacity={0.08}
-                  stroke="#ef4444"
-                  strokeWidth={1 / zoom}
-                  pointerEvents="none"
-                />
-              ) : (vectorDraftRef.current?.tool ?? gestureRef.current?.tool)
-                  ?.preview ? null : gestureRef.current?.mode === 'box' ? (
-                <rect
-                  data-drawing-preview="true"
-                  data-frame-export-exclude
-                  x={Math.min(gesturePreview[0][0], gesturePreview.at(-1)![0])}
-                  y={Math.min(gesturePreview[0][1], gesturePreview.at(-1)![1])}
-                  width={Math.abs(
-                    gesturePreview.at(-1)![0] - gesturePreview[0][0],
-                  )}
-                  height={Math.abs(
-                    gesturePreview.at(-1)![1] - gesturePreview[0][1],
-                  )}
-                  fill="none"
-                  stroke="#6366f1"
-                  strokeWidth={2 / zoom}
-                  pointerEvents="none"
-                />
-              ) : (
-                <path
-                  data-drawing-preview="true"
-                  data-frame-export-exclude
-                  d={polylinePath(
-                    ['path', 'polyline'].includes(
-                      (vectorDraftRef.current?.tool ?? gestureRef.current?.tool)
-                        ?.mode ?? '',
-                    )
-                      ? gesturePreview
-                      : [gesturePreview[0], gesturePreview.at(-1)!],
-                  )}
-                  fill="none"
-                  stroke="#6366f1"
-                  strokeWidth={2 / zoom}
-                  pointerEvents="none"
-                />
-              ))}
-          </g>
-        </svg>
-        {editing &&
-          (isFrameCell(runtime.store.cells[editing]) ||
-            isFrameReferenceCell(runtime.store.cells[editing])) &&
-          !runtime.store.cells[editing].hidden &&
-          editable &&
-          selectionAllows(
-            runtime.store,
-            [editing],
-            runtime.registry,
-            'edit',
-            runtime.mountedRootId,
-          ) && (
-            <FrameTitleEditor
-              cellId={editing}
-              svg={svgRef.current}
-              style={frameTitleStyle(runtime.selection.ids.includes(editing))}
-              text={
-                isBoardTextDocument(
-                  (runtime.store.cells[editing] as NodeCell).content?.text,
-                )
-                  ? ((runtime.store.cells[editing] as NodeCell).content!
-                      .text as BoardTextDocument)
-                  : plainTextDocument(
-                      runtime.store.cells[editing],
-                      (runtime.store.cells[editing] as NodeCell).content
-                        ?.label ??
-                        (runtime.store.cells[editing] as NodeCell).name ??
-                        '',
-                    )
-              }
-              readonly={!editable || pending}
-              onClose={() => setEditing(null)}
-              onExitKey={() => svgRef.current?.focus()}
-              onHistory={publishHistory}
-              onChange={({ newText }) => {
-                const cell = runtime.store.cells[editing];
+              }}
+              onContextMenu={(event) => {
                 if (
-                  !(isFrameCell(cell) || isFrameReferenceCell(cell)) ||
-                  !selectionAllows(
-                    runtime.store,
-                    [editing],
-                    runtime.registry,
-                    'edit',
-                    runtime.mountedRootId,
+                  (event.target as Element).closest(
+                    '[contenteditable="true"], input, textarea',
                   )
                 )
-                  return Promise.resolve({ status: 'rejected' as const });
-                const previous = isBoardTextDocument(cell.content?.text)
-                  ? cell.content.text
-                  : createInlineText(cell.content?.label ?? '');
-                if (sameBoardText(previous, newText)) return;
-                const request = dispatch({
-                  id: transactionId(),
-                  operations: [
-                    {
-                      type: 'replace_cell',
-                      deferName: true,
-                      cell: {
-                        ...cell,
-                        name:
-                          cell.name ??
-                          (nameSession.current?.initial || undefined),
-                        content: {
-                          ...cell.content,
-                          label: newText.plainText,
-                          text: newText,
+                  return;
+                event.preventDefault();
+                // Native right-click menus can fire on press or release. Pointerup
+                // handles mouse menus; keep this path for keyboard invocation.
+                if (event.button === 2 || rightDragRef.current) return;
+                propsRef.current.onCanvasContextMenu?.([
+                  event.clientX,
+                  event.clientY,
+                ]);
+              }}
+              onDragOver={(event) => {
+                if ([...event.dataTransfer.types].includes('Files'))
+                  event.preventDefault();
+              }}
+              onDrop={(event) => {
+                if (
+                  (event.target as Element).closest(
+                    '[contenteditable="true"], input, textarea',
+                  ) ||
+                  !editable ||
+                  pendingRef.current
+                )
+                  return;
+                const file = [...event.dataTransfer.files].find((item) =>
+                  item.type.startsWith('image/'),
+                );
+                if (!file) return;
+                event.preventDefault();
+                void insertExternal(
+                  { image: file },
+                  pointFromEvent(event as unknown as React.PointerEvent),
+                  event.clientX,
+                  event.clientY,
+                );
+              }}
+              onPointerUp={(event) => {
+                const tap = presentTapRef.current;
+                if (tap?.pointerId === event.pointerId)
+                  presentTapRef.current = null;
+                const rightDrag = rightDragRef.current;
+                if (rightDrag?.pointerId === event.pointerId) {
+                  rightDragRef.current = null;
+                  if (
+                    event.button === 2 &&
+                    !rightDrag.moved &&
+                    Math.hypot(
+                      event.clientX - rightDrag.x,
+                      event.clientY - rightDrag.y,
+                    ) <= 6 &&
+                    !(event.target as Element).closest(
+                      '[contenteditable="true"], input, textarea',
+                    )
+                  )
+                    propsRef.current.onCanvasContextMenu?.([
+                      event.clientX,
+                      event.clientY,
+                    ]);
+                }
+                pointersRef.current.delete(event.pointerId);
+                if (blockSinglePointerRef.current) {
+                  if (pointersRef.current.size < 2 && pinchRef.current) {
+                    commitGesture();
+                    pinchRef.current = null;
+                    setDragging(false);
+                  }
+                  if (pointersRef.current.size === 0)
+                    blockSinglePointerRef.current = false;
+                  return;
+                }
+                if (propsRef.current.inputMode === 'present') {
+                  if (pointersRef.current.size === 0) {
+                    if (gestureRef.current?.mode === 'hand' || pinchRef.current)
+                      commitGesture();
+                    gestureRef.current = null;
+                    pinchRef.current = null;
+                    setDragging(false);
+                  }
+                  // Settle the pan before a tap starts a camera animation; a later
+                  // gesture commit would otherwise cancel that animation.
+                  if (
+                    tap?.pointerId === event.pointerId &&
+                    Math.hypot(event.clientX - tap.x, event.clientY - tap.y) <=
+                      4
+                  )
+                    propsRef.current.onPresentTap?.(tap.cellId);
+                  return;
+                }
+                if (pointersRef.current.size < 2) {
+                  if (pinchRef.current || gestureRef.current?.mode === 'hand')
+                    commitGesture();
+                  pinchRef.current = null;
+                  setDragging(false);
+                }
+                if (vectorDraftRef.current) return;
+                if (edgeDragRef.current) {
+                  const final = updateEdgeDrag(event, false);
+                  if (final)
+                    void dispatch({
+                      id: transactionId(),
+                      operations: [{ type: 'replace_cell', cell: final }],
+                    });
+                  edgeDragRef.current = null;
+                  setDragging(false);
+                  edgePendingPreviewRef.current = null;
+                  setEdgePreview(null);
+                  clearDraftPaint();
+                  return;
+                }
+                const gesture = gestureRef.current;
+                if (gesture) {
+                  const tool = gesture.tool;
+                  if (gesture.mode !== 'hand') {
+                    const end = pointFromEvent(event);
+                    if (gesture.mode === 'path') {
+                      const last = gesture.points.at(-1)!;
+                      if (last[0] !== end[0] || last[1] !== end[1])
+                        gesture.points.push(end);
+                    } else gesture.points = [gesture.points[0], end];
+                    if (gesture.mode === 'erase') eraseAt(end);
+                  }
+                  if (gesture.mode === 'hand') commitGesture();
+                  else if (gesture.mode === 'erase' && gesture.erased.size)
+                    void dispatch({
+                      id: transactionId(),
+                      operations: deleteCells(
+                        runtime.store,
+                        [...gesture.erased],
+                        {
+                          registry: runtime.registry,
+                        },
+                      ),
+                    });
+                  else if (gesture.mode === 'select') {
+                    const first = gesture.points[0],
+                      last = gesture.points.at(-1)!;
+                    const focus = gesture.focus ?? [frameId];
+                    const displayed = selectionDisplayStore();
+                    const ids = focusedCellIds(displayed, focus.at(-1)!).filter(
+                      (id) => {
+                        const bounds = cellArrangementBounds(displayed, id);
+                        return (
+                          bounds &&
+                          bounds.x >= Math.min(first[0], last[0]) &&
+                          bounds.y >= Math.min(first[1], last[1]) &&
+                          bounds.x + bounds.width <=
+                            Math.max(first[0], last[0]) &&
+                          bounds.y + bounds.height <=
+                            Math.max(first[1], last[1])
+                        );
+                      },
+                    );
+                    runtime.select({
+                      focus,
+                      ids: gesture.additive
+                        ? [...new Set([...runtime.selection.ids, ...ids])]
+                        : ids,
+                    });
+                    props.onSelectionChange?.(runtime.selection);
+                  } else if (tool && 'complete' in tool) {
+                    try {
+                      const operations = tool.complete(
+                        runtime.store,
+                        gesture.frameId ?? frameId,
+                        gesture.points,
+                        gesture.context
+                          ? {
+                              ...gesture.context,
+                              zoom: cameraRef.current.zoom ?? 1,
+                            }
+                          : undefined,
+                      );
+                      commitCreatedCells(
+                        operations,
+                        gesture.frameId ?? frameId,
+                        tool,
+                      );
+                    } catch (error) {
+                      setFailure(
+                        error instanceof Error ? error.message : String(error),
+                      );
+                    }
+                  }
+                  gestureRef.current = null;
+                  setDragging(false);
+                  rightDragRef.current = null;
+                  clearDraftPaint();
+                  return;
+                }
+                const drag = dragRef.current;
+                if (drag && drag.pointerId !== event.pointerId) return;
+                const currentPreview = previewRef.current;
+                let preview =
+                  drag &&
+                  currentPreview?.sessionId === drag.sessionId &&
+                  currentPreview.id === drag.id
+                    ? currentPreview.geometry
+                    : null;
+                if (
+                  drag &&
+                  preview &&
+                  (!drag.mode || drag.mode === 'move') &&
+                  propsRef.current.extensions?.some(
+                    (extension) =>
+                      (!extension.kind ||
+                        extension.kind ===
+                          runtime.store.cells[drag.id]?.kind) &&
+                      extension.previewMove,
+                  )
+                ) {
+                  const finalPoint = pointFromEvent(event);
+                  preview = roundNodePosition({
+                    ...drag.original,
+                    x:
+                      drag.original.x +
+                      (finalPoint[0] - drag.start[0]) / drag.scale,
+                    y:
+                      drag.original.y +
+                      (finalPoint[1] - drag.start[1]) / drag.scale,
+                    derived: false,
+                  });
+                }
+                if (drag?.collapseId && !preview)
+                  select(drag.collapseId, drag.focus);
+                if (drag && preview) {
+                  const cell = runtime.store.cells[drag.id];
+                  if (
+                    drag.mode === 'content-pan' &&
+                    drag.panFrameId &&
+                    isNodeCell(cell) &&
+                    propsRef.current.embedShell
+                  ) {
+                    const shell = propsRef.current.embedShell;
+                    const layout = frameLayouts(drag.panFrameId);
+                    const frame = runtime.store.cells[drag.panFrameId];
+                    if (isFrameCell(frame)) {
+                      const requested: Point = [
+                        (drag.contentOffset?.[0] ?? 0) +
+                          preview.x -
+                          drag.original.x,
+                        (drag.contentOffset?.[1] ?? 0) +
+                          preview.y -
+                          drag.original.y,
+                      ];
+                      const offset = projectEmbeddedContent(
+                        props.extensions,
+                        runtime.store,
+                        { ...frame, geometry: shell.geometry },
+                        layout.baseGeometry,
+                        layout.fitBounds,
+                        new Map([[cell.id, requested]]),
+                      ).offsets.get(cell.id);
+                      if (
+                        offset &&
+                        (offset[0] !== drag.contentOffset?.[0] ||
+                          offset[1] !== drag.contentOffset?.[1])
+                      )
+                        shell.onContentOffset(cell.id, offset);
+                    }
+                  } else if (
+                    drag.mode === 'content-pan' &&
+                    drag.panFrameId &&
+                    isNodeCell(cell)
+                  ) {
+                    const layout = frameLayouts(drag.panFrameId);
+                    const frame = runtime.store.cells[drag.panFrameId];
+                    const refCell = drag.panRefId
+                      ? runtime.store.cells[drag.panRefId]
+                      : undefined;
+                    const ref =
+                      refCell && isFrameReferenceCell(refCell)
+                        ? refCell
+                        : undefined;
+                    if (isFrameCell(frame) && (!drag.panRefId || ref)) {
+                      // Occurrence pans clamp against the ref shell geometry and
+                      // persist on the reference, never on shared target content.
+                      const displayed = ref
+                        ? { ...frame, geometry: ref.geometry }
+                        : frame;
+                      const requested: Point = [
+                        (drag.contentOffset?.[0] ?? 0) +
+                          preview.x -
+                          drag.original.x,
+                        (drag.contentOffset?.[1] ?? 0) +
+                          preview.y -
+                          drag.original.y,
+                      ];
+                      const offset = projectEmbeddedContent(
+                        props.extensions,
+                        runtime.store,
+                        displayed,
+                        layout.baseGeometry,
+                        layout.fitBounds,
+                        new Map([[cell.id, requested]]),
+                      ).offsets.get(cell.id);
+                      if (
+                        offset &&
+                        (offset[0] !== drag.contentOffset?.[0] ||
+                          offset[1] !== drag.contentOffset?.[1])
+                      )
+                        void dispatch({
+                          id: transactionId(),
+                          operations: ref
+                            ? [
+                                {
+                                  type: 'replace_cell',
+                                  cell: updateContentOffset(
+                                    props.extensions,
+                                    ref,
+                                    cell.id,
+                                    offset,
+                                  ),
+                                },
+                              ]
+                            : [
+                                {
+                                  type: 'replace_cell',
+                                  cell: updateContentOffset(
+                                    props.extensions,
+                                    cell,
+                                    cell.id,
+                                    offset,
+                                  ),
+                                },
+                              ],
+                        });
+                    }
+                  } else if (drag.ids) {
+                    void dispatch({
+                      id: transactionId(),
+                      operations: translateCellSelection(
+                        runtime.store,
+                        drag.ids,
+                        [
+                          preview.x - drag.original.x,
+                          preview.y - drag.original.y,
+                        ],
+                        runtime.registry,
+                      ),
+                    });
+                  } else if (isGroupCell(cell)) {
+                    void dispatch({
+                      id: transactionId(),
+                      operations: moveGroup(
+                        runtime.store,
+                        cell.id,
+                        [
+                          preview.x - drag.original.x,
+                          preview.y - drag.original.y,
+                        ],
+                        runtime.registry,
+                      ),
+                    });
+                  } else if (isNodeCell(cell)) {
+                    const util = runtime.registry.get(cell.kind);
+                    try {
+                      const position = drag.pointerMatrix
+                        ? new DOMPoint(
+                            event.clientX,
+                            event.clientY,
+                          ).matrixTransform(drag.pointerMatrix)
+                        : undefined;
+                      const point: Point = position
+                        ? [position.x, position.y]
+                        : [
+                            preview.x + preview.width / 2,
+                            preview.y + preview.height / 2,
+                          ];
+                      const base =
+                        util as import('@sue/board-core').BaseCellUtil;
+                      const authoredPreview =
+                        drag.mode === 'rotate'
+                          ? { ...cell.geometry, rotation: preview.rotation }
+                          : drag.mode === 'resize' && drag.canonicalOriginal
+                            ? {
+                                ...preview,
+                                x:
+                                  preview.x -
+                                  drag.original.x +
+                                  drag.canonicalOriginal.x,
+                                y:
+                                  preview.y -
+                                  drag.original.y +
+                                  drag.canonicalOriginal.y,
+                              }
+                            : preview;
+                      const movePlan = resolveMovePreview(drag, preview, point);
+                      const operations = movePlan
+                        ? movePlan.operations
+                        : util && 'move' in util
+                          ? drag.mode === 'resize'
+                            ? base.resize(runtime.store, cell, authoredPreview)
+                            : drag.mode === 'rotate'
+                              ? base.rotate(
+                                  runtime.store,
+                                  cell,
+                                  authoredPreview,
+                                )
+                              : base.move(
+                                  runtime.store,
+                                  cell,
+                                  {
+                                    ...cell.geometry,
+                                    x: preview.x,
+                                    y: preview.y,
+                                    derived: false,
+                                  },
+                                  undefined,
+                                  {
+                                    point,
+                                    geometry: drag.geometry,
+                                    scale: cameraStore.getZoom() * drag.scale,
+                                  },
+                                )
+                          : [
+                              {
+                                type: 'replace_cell' as const,
+                                cell: {
+                                  ...cell,
+                                  geometry:
+                                    drag.mode === 'resize' ||
+                                    drag.mode === 'rotate'
+                                      ? authoredPreview
+                                      : {
+                                          ...cell.geometry,
+                                          x: preview.x,
+                                          y: preview.y,
+                                          derived: false,
+                                        },
+                                },
+                              },
+                            ];
+                      if (operations.length)
+                        void dispatch({ id: transactionId(), operations });
+                    } catch (error) {
+                      const result = {
+                        status: 'rejected' as const,
+                        message:
+                          error instanceof Error
+                            ? error.message
+                            : String(error),
+                      };
+                      props.onReject?.(result);
+                      setFailure(result.message);
+                    }
+                  }
+                }
+                clearNodeDrag();
+              }}
+              onLostPointerCapture={() => {
+                presentTapRef.current = null;
+                pointersRef.current.clear();
+                if (pinchRef.current || gestureRef.current?.mode === 'hand')
+                  commitGesture();
+                pinchRef.current = null;
+                blockSinglePointerRef.current = false;
+                cancelInteraction();
+              }}
+              onPointerCancel={() => {
+                presentTapRef.current = null;
+                pointersRef.current.clear();
+                if (pinchRef.current || gestureRef.current?.mode === 'hand')
+                  commitGesture();
+                pinchRef.current = null;
+                blockSinglePointerRef.current = false;
+                cancelInteraction();
+              }}
+              onKeyDown={(event) => {
+                if (
+                  event.defaultPrevented ||
+                  propsRef.current.suspended ||
+                  event.nativeEvent.isComposing ||
+                  event.nativeEvent.keyCode === 229 ||
+                  ['Process', 'Dead', 'AltGraph'].includes(event.key) ||
+                  event.getModifierState('AltGraph')
+                )
+                  return;
+
+                if (
+                  propsRef.current.suspended ||
+                  propsRef.current.surface === 'nested'
+                ) {
+                  if (
+                    propsRef.current.surface === 'nested' &&
+                    event.key === 'Escape'
+                  )
+                    event.stopPropagation();
+                  if (propsRef.current.suspended) return;
+                }
+                if (
+                  propsRef.current.surface === 'nested' &&
+                  event.code === 'Space'
+                )
+                  return;
+                if (vectorDraftRef.current && event.key === 'Enter') {
+                  event.preventDefault();
+                  finishVectorDraft(true);
+                  return;
+                }
+                if (
+                  editing &&
+                  event.key === 'Tab' &&
+                  !event.ctrlKey &&
+                  !event.metaKey &&
+                  !event.altKey
+                ) {
+                  event.preventDefault();
+                  event.stopPropagation();
+                  commitEditingTab();
+                  return;
+                }
+                if (editing || labelEditing) {
+                  if (event.key === 'Escape') {
+                    event.preventDefault();
+                    setEditing(null);
+                    setLabelEditing(null);
+                    svgRef.current?.focus();
+                    return;
+                  }
+                  if (event.key !== 'Tab') return;
+                  setEditing(null);
+                  setLabelEditing(null);
+                }
+                if (
+                  (event.target as Element).closest(
+                    '[contenteditable="true"], input, textarea',
+                  )
+                )
+                  return;
+                if (
+                  event.code === 'Space' &&
+                  !event.ctrlKey &&
+                  !event.metaKey &&
+                  !event.altKey
+                ) {
+                  event.preventDefault();
+                  spaceHandRef.current = true;
+                  return;
+                }
+                if (propsRef.current.inputMode === 'present') return;
+                if (event.key === 'Escape') {
+                  event.preventDefault();
+                  clearRevealOverrides();
+                  setRevealHighlight(null);
+                  if (propsRef.current.placing) {
+                    propsRef.current.onCancelPlace?.();
+                    return;
+                  }
+                  if (
+                    gestureRef.current ||
+                    vectorDraftRef.current ||
+                    connectingRef.current ||
+                    edgeDragRef.current ||
+                    dragRef.current
+                  ) {
+                    event.stopPropagation();
+                    cancelInteraction();
+                    return;
+                  }
+                  if (
+                    propsRef.current.surface === 'nested' &&
+                    propsRef.current.onExitInstance
+                  ) {
+                    event.stopPropagation();
+                    propsRef.current.onExitInstance();
+                    return;
+                  }
+                  const focus = runtime.selection.focus;
+                  const group = runtime.store.cells[focus.at(-1)!];
+                  runtime.select(
+                    isGroupCell(group)
+                      ? { focus: focus.slice(0, -1), ids: [group.id] }
+                      : {
+                          focus:
+                            runtime.selection.ids.length || focus.length === 1
+                              ? focus
+                              : focus.slice(0, -1),
+                          ids: [],
+                        },
+                  );
+                  props.onSelectionChange?.(runtime.selection);
+                  return;
+                }
+                if (
+                  dragRef.current ||
+                  gestureRef.current ||
+                  edgeDragRef.current ||
+                  connectingRef.current ||
+                  vectorDraftRef.current
+                ) {
+                  const owner = resolveActionShortcut(
+                    actionRuntime.actions(),
+                    event,
+                  );
+                  if (
+                    owner.status === 'matched' &&
+                    (owner.action.id.startsWith('draw.') ||
+                      owner.action.id.startsWith('canvas.tool.') ||
+                      owner.action.id.startsWith('product.diagram.'))
+                  ) {
+                    cancelInteraction();
+                    event.preventDefault();
+                    event.stopPropagation();
+                    void owner.action.execute(undefined, {
+                      source: 'shortcut',
+                    });
+                    return;
+                  }
+                  event.preventDefault();
+                  event.stopPropagation();
+                  return;
+                }
+                const selected =
+                  runtime.selection.ids.length === 1
+                    ? runtime.store.cells[runtime.selection.ids[0]]
+                    : undefined;
+                const resolved = resolveActionShortcut(
+                  actionRuntime.actions(),
+                  event,
+                );
+                if (resolved.status === 'matched') {
+                  event.preventDefault();
+                  event.stopPropagation();
+                  void resolved.action.execute(undefined, {
+                    source: 'shortcut',
+                  });
+                  return;
+                }
+                if (resolved.status === 'conflict') {
+                  event.preventDefault();
+                  event.stopPropagation();
+                  setFailure('Conflicting shortcuts');
+                  return;
+                }
+                if (
+                  editable &&
+                  !pendingRef.current &&
+                  isNodeCell(selected) &&
+                  !selected.locked &&
+                  frameCellUI(props.extensions, selected.kind).topic &&
+                  !event.ctrlKey &&
+                  !event.metaKey &&
+                  !event.altKey &&
+                  event.key.length === 1 &&
+                  event.code !== 'Space' &&
+                  !event.nativeEvent.isComposing
+                ) {
+                  event.preventDefault();
+                  const text = createInlineText(event.key);
+                  const previous = selected.content?.text;
+                  if (isBoardTextDocument(previous)) {
+                    text.id = previous.id;
+                    text.align = previous.align;
+                    const findText = (
+                      node: import('@sue/board-common').BoardTextNode,
+                    ): import('@sue/board-common').BoardTextNode | undefined =>
+                      node.type === 'text'
+                        ? node
+                        : node.content?.map(findText).find(Boolean);
+                    const leaf = findText(text.content),
+                      prior = findText(previous.content);
+                    if (leaf && prior?.marks) leaf.marks = prior.marks;
+                  }
+                  const request = {
+                    id: selected.id,
+                    label: event.key,
+                    accepted: false,
+                  };
+                  nameSession.current =
+                    selected.name === undefined
+                      ? { id: selected.id, initial: nodeContentName(selected) }
+                      : null;
+                  keyboardEditRef.current = request;
+                  void dispatch({
+                    id: transactionId(),
+                    operations: [
+                      {
+                        type: 'replace_cell',
+                        deferName: true,
+                        cell: {
+                          ...selected,
+                          name:
+                            selected.name ??
+                            (nameSession.current?.initial || undefined),
+                          content: {
+                            ...selected.content,
+                            label: event.key,
+                            text,
+                          },
                         },
                       },
-                    },
-                  ],
-                });
-                textCommitRef.current = request;
-                return request;
+                    ],
+                  }).then((result) => {
+                    if (keyboardEditRef.current !== request) return;
+                    if (result.status === 'rejected')
+                      keyboardEditRef.current = null;
+                    else {
+                      request.accepted = true;
+                      applyKeyboardSelection();
+                    }
+                  });
+                  return;
+                }
               }}
-            />
-          )}
-        {props.overlays}
-        {failure && (
-          <div
-            role="alert"
-            style={{ position: 'absolute', bottom: 8, left: 8 }}
-          >
-            {failure}
+              onCompositionStart={() => {
+                composingRef.current = true;
+              }}
+              onCompositionEnd={() => {
+                composingRef.current = false;
+              }}
+              onCopy={(event) => {
+                if (
+                  (event.target as Element).closest(
+                    '[contenteditable="true"], input, textarea',
+                  ) ||
+                  !runtime.selection.ids.length
+                )
+                  return;
+                if (
+                  !actionRuntime.getActionState('canvas.clipboard.copy').enabled
+                )
+                  return;
+                event.preventDefault();
+                const fragment = copyCellFragment(
+                  runtime.store,
+                  runtime.selection.ids,
+                  runtime.registry,
+                  { fileId: frameId },
+                );
+                event.clipboardData.setData(
+                  'application/x-verd-cells',
+                  JSON.stringify(fragment),
+                );
+                event.clipboardData.setData(
+                  'text/plain',
+                  clipboardText(fragment),
+                );
+                void actionRuntime.executeAction(
+                  'canvas.clipboard.copy',
+                  { performNative: async () => ({ status: 'accepted' }) },
+                  { source: 'native' },
+                );
+              }}
+              onCut={(event) => {
+                if (
+                  (event.target as Element).closest(
+                    '[contenteditable="true"], input, textarea',
+                  ) ||
+                  !actionRuntime.getActionState('canvas.clipboard.cut').enabled
+                )
+                  return;
+                event.preventDefault();
+                try {
+                  const cut = cutSelection();
+                  if (!cut.ids.length) return;
+                  event.clipboardData.setData(
+                    'application/x-verd-cells',
+                    JSON.stringify(cut.fragment),
+                  );
+                  event.clipboardData.setData(
+                    'text/plain',
+                    clipboardText(cut.fragment),
+                  );
+                  const source = runtime.store;
+                  void actionRuntime.executeAction(
+                    'canvas.clipboard.cut',
+                    {
+                      performNative: async () => {
+                        if (runtime.store !== source)
+                          return {
+                            status: 'rejected',
+                            message: 'Clipboard target changed',
+                          };
+                        return dispatch({
+                          id: transactionId(),
+                          operations: cut.operations,
+                        });
+                      },
+                    },
+                    { source: 'native' },
+                  );
+                } catch (error) {
+                  clipboardFailure(error);
+                }
+              }}
+              onPaste={(event) => {
+                if (
+                  (event.target as Element).closest(
+                    '[contenteditable="true"], input, textarea',
+                  ) ||
+                  !actionRuntime.getActionState('canvas.clipboard.paste')
+                    .enabled
+                )
+                  return;
+                const custom = event.clipboardData.getData(
+                  'application/x-verd-cells',
+                );
+                const plain = event.clipboardData.getData('text/plain');
+                const items = event.clipboardData.items;
+                const image =
+                  items && typeof items[Symbol.iterator] === 'function'
+                    ? [...items]
+                        .find((item) => item.type.startsWith('image/'))
+                        ?.getAsFile()
+                    : null;
+                if (!custom && !plain && !image) return;
+                event.preventDefault();
+                const source = runtime.store;
+                void actionRuntime.executeAction(
+                  'canvas.clipboard.paste',
+                  {
+                    performNative: async () => {
+                      if (runtime.store !== source)
+                        return {
+                          status: 'rejected',
+                          message: 'Clipboard target changed',
+                        };
+                      try {
+                        if (custom)
+                          return await pasteFragment(JSON.parse(custom));
+                        if (image)
+                          return await insertExternal(
+                            { image },
+                            viewportCenter(),
+                          );
+                        let fragment: CellFragment;
+                        try {
+                          fragment = readClipboardText(plain);
+                        } catch {
+                          return await insertExternal(
+                            { text: plain },
+                            viewportCenter(),
+                          );
+                        }
+                        return await pasteFragment(fragment);
+                      } catch (error) {
+                        return clipboardFailure(error);
+                      }
+                    },
+                  },
+                  { source: 'native' },
+                );
+              }}
+              onKeyUp={(event) => {
+                if (event.code === 'Space') spaceHandRef.current = false;
+              }}
+            >
+              <style>{`[data-drawing-preview], [data-drawing-preview] * { pointer-events: none !important; }`}</style>
+              <style>{frameTitleCss}</style>
+              <g
+                ref={worldRef}
+                data-frame-world="true"
+                transform={`scale(${zoom}) translate(${-origin[0]} ${-origin[1]})`}
+              >
+                {sceneContent}
+                {revealHighlight && revealBounds && (
+                  <rect
+                    data-frame-export-exclude
+                    data-reveal-highlight={revealHighlight}
+                    x={revealBounds.x - 6}
+                    y={revealBounds.y - 6}
+                    width={revealBounds.width + 12}
+                    height={revealBounds.height + 12}
+                    fill="none"
+                    stroke="var(--vm-primary,#6366f1)"
+                    strokeWidth={3 / zoom}
+                    strokeDasharray="6 3"
+                    pointerEvents="none"
+                  />
+                )}
+                {vectorDraftRef.current && (
+                  <circle
+                    data-vector-close="true"
+                    cx={vectorDraftRef.current.points[0][0]}
+                    cy={vectorDraftRef.current.points[0][1]}
+                    r={5 / zoom}
+                    fill={
+                      gesturePreview.length > 2 &&
+                      gesturePreview.at(-1)![0] ===
+                        vectorDraftRef.current.points[0][0] &&
+                      gesturePreview.at(-1)![1] ===
+                        vectorDraftRef.current.points[0][1]
+                        ? '#6366f1'
+                        : '#fff'
+                    }
+                    stroke="#6366f1"
+                    strokeWidth={1 / zoom}
+                    pointerEvents="none"
+                  />
+                )}
+                {draftScene && (
+                  <FrameRichTextPreviewContext.Provider value={true}>
+                    <g
+                      data-drawing-preview="true"
+                      data-frame-export-exclude
+                      aria-hidden="true"
+                      pointerEvents="none"
+                    >
+                      {renderFrame(frameId, [frameId], false, 1, draftScene)}
+                    </g>
+                  </FrameRichTextPreviewContext.Provider>
+                )}
+                {gesturePreview.length > 0 &&
+                  gestureRef.current?.mode !== 'hand' &&
+                  !draftScene &&
+                  (gestureRef.current?.mode === 'select' ? (
+                    <rect
+                      data-selection-marquee="true"
+                      x={Math.min(
+                        gesturePreview[0][0],
+                        gesturePreview.at(-1)![0],
+                      )}
+                      y={Math.min(
+                        gesturePreview[0][1],
+                        gesturePreview.at(-1)![1],
+                      )}
+                      width={Math.abs(
+                        gesturePreview.at(-1)![0] - gesturePreview[0][0],
+                      )}
+                      height={Math.abs(
+                        gesturePreview.at(-1)![1] - gesturePreview[0][1],
+                      )}
+                      fill="#6366f1"
+                      fillOpacity={0.1}
+                      stroke="#6366f1"
+                      strokeWidth={1 / zoom}
+                      pointerEvents="none"
+                    />
+                  ) : props.tool?.mode === 'erase' ? (
+                    <circle
+                      data-eraser-preview="true"
+                      data-frame-export-exclude
+                      cx={gesturePreview.at(-1)![0]}
+                      cy={gesturePreview.at(-1)![1]}
+                      r={10 / zoom}
+                      fill="#ef4444"
+                      fillOpacity={0.08}
+                      stroke="#ef4444"
+                      strokeWidth={1 / zoom}
+                      pointerEvents="none"
+                    />
+                  ) : (vectorDraftRef.current?.tool ?? gestureRef.current?.tool)
+                      ?.preview ? null : gestureRef.current?.mode === 'box' ? (
+                    <rect
+                      data-drawing-preview="true"
+                      data-frame-export-exclude
+                      x={Math.min(
+                        gesturePreview[0][0],
+                        gesturePreview.at(-1)![0],
+                      )}
+                      y={Math.min(
+                        gesturePreview[0][1],
+                        gesturePreview.at(-1)![1],
+                      )}
+                      width={Math.abs(
+                        gesturePreview.at(-1)![0] - gesturePreview[0][0],
+                      )}
+                      height={Math.abs(
+                        gesturePreview.at(-1)![1] - gesturePreview[0][1],
+                      )}
+                      fill="none"
+                      stroke="#6366f1"
+                      strokeWidth={2 / zoom}
+                      pointerEvents="none"
+                    />
+                  ) : (
+                    <path
+                      data-drawing-preview="true"
+                      data-frame-export-exclude
+                      d={polylinePath(
+                        ['path', 'polyline'].includes(
+                          (
+                            vectorDraftRef.current?.tool ??
+                            gestureRef.current?.tool
+                          )?.mode ?? '',
+                        )
+                          ? gesturePreview
+                          : [gesturePreview[0], gesturePreview.at(-1)!],
+                      )}
+                      fill="none"
+                      stroke="#6366f1"
+                      strokeWidth={2 / zoom}
+                      pointerEvents="none"
+                    />
+                  ))}
+              </g>
+            </svg>
+            {editing &&
+              (isFrameCell(runtime.store.cells[editing]) ||
+                isFrameReferenceCell(runtime.store.cells[editing])) &&
+              !runtime.store.cells[editing].hidden &&
+              editable &&
+              selectionAllows(
+                runtime.store,
+                [editing],
+                runtime.registry,
+                'edit',
+                runtime.mountedRootId,
+              ) && (
+                <FrameTitleEditor
+                  cellId={editing}
+                  svg={svgRef.current}
+                  style={frameTitleStyle(
+                    runtime.selection.ids.includes(editing),
+                  )}
+                  text={
+                    isBoardTextDocument(
+                      (runtime.store.cells[editing] as NodeCell).content?.text,
+                    )
+                      ? ((runtime.store.cells[editing] as NodeCell).content!
+                          .text as BoardTextDocument)
+                      : plainTextDocument(
+                          runtime.store.cells[editing],
+                          (runtime.store.cells[editing] as NodeCell).content
+                            ?.label ??
+                            (runtime.store.cells[editing] as NodeCell).name ??
+                            '',
+                        )
+                  }
+                  readonly={!editable || pending}
+                  onClose={() => setEditing(null)}
+                  onExitKey={() => svgRef.current?.focus()}
+                  onHistory={publishHistory}
+                  onChange={({ newText }) => {
+                    const cell = runtime.store.cells[editing];
+                    if (
+                      !(isFrameCell(cell) || isFrameReferenceCell(cell)) ||
+                      !selectionAllows(
+                        runtime.store,
+                        [editing],
+                        runtime.registry,
+                        'edit',
+                        runtime.mountedRootId,
+                      )
+                    )
+                      return Promise.resolve({ status: 'rejected' as const });
+                    const previous = isBoardTextDocument(cell.content?.text)
+                      ? cell.content.text
+                      : createInlineText(cell.content?.label ?? '');
+                    if (sameBoardText(previous, newText)) return;
+                    const request = dispatch({
+                      id: transactionId(),
+                      operations: [
+                        {
+                          type: 'replace_cell',
+                          deferName: true,
+                          cell: {
+                            ...cell,
+                            name:
+                              cell.name ??
+                              (nameSession.current?.initial || undefined),
+                            content: {
+                              ...cell.content,
+                              label: newText.plainText,
+                              text: newText,
+                            },
+                          },
+                        },
+                      ],
+                    });
+                    textCommitRef.current = request;
+                    return request;
+                  }}
+                />
+              )}
+            {props.overlays}
+            {failure && (
+              <div
+                role="alert"
+                style={{ position: 'absolute', bottom: 8, left: 8 }}
+              >
+                {failure}
+              </div>
+            )}
           </div>
-        )}
-      </div>
+        </ActionScope>
+      </FrameRichTextLinkContext.Provider>
     </FrameCanvasProviders>
   );
 }) as <T = FrameSnapshot>(
@@ -7169,6 +8365,7 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
 ) => React.ReactElement;
 
 function FrameReferenceSurface({
+  linkHost,
   documentReferences,
   exporting,
   host,
@@ -7193,6 +8390,7 @@ function FrameReferenceSurface({
   onSelection,
   onExit,
 }: {
+  linkHost?: FrameLinkHost;
   documentReferences?: FrameDocumentReferences;
   exporting?: boolean;
   host: FrameInstanceHost;
@@ -7212,11 +8410,16 @@ function FrameReferenceSurface({
   extensions?: readonly FrameRenderExtension[];
   onOpen(): void;
   onOpenFrame?: FrameCanvasCommon['onOpenFrame'];
-  onActivate(occurrenceId: string): void;
+  onActivate(
+    occurrenceId: string,
+    controller?: FrameCanvasController | null,
+  ): void;
   onBackgroundTap(): void;
   onSelection(selection: CellSelection): void;
   onExit(): void;
 }) {
+  const { language } = useFrameI18n();
+  const nestedController = useRef<FrameCanvasController>(null);
   const appearanceKey = appearance.join('/');
   const appearanceIdentity = JSON.stringify(appearance);
   const seenKey = JSON.stringify(seen);
@@ -7295,7 +8498,7 @@ function FrameReferenceSurface({
           )
             return;
           if (binding && inputMode !== 'present')
-            onActivate(binding.occurrenceId);
+            onActivate(binding.occurrenceId, nestedController.current);
           const target = event.target as Element;
           if (
             !binding ||
@@ -7365,44 +8568,57 @@ function FrameReferenceSurface({
         style={{ width: '100%', height: '100%', position: 'relative' }}
       >
         {binding ? (
-          <FrameCanvas
-            documentReferences={documentReferences}
-            exporting={exporting}
-            runtime={binding.runtime}
-            value={{ store: binding.runtime.store }}
-            adapter={{ toFrameSnapshot: (value) => value }}
-            onIntent={(transaction) =>
-              host.commit(binding.occurrenceId, transaction)
-            }
-            surface="nested"
-            instanceId={binding.occurrenceId}
-            frameId={targetFrameId}
-            readonly={readonly || binding.readonly || suspended}
-            inputMode={inputMode}
-            suspended={suspended}
-            registry={registry}
-            extensions={extensions}
-            autoFit={false}
-            viewportOrigin={[bounds.x, bounds.y]}
-            referenceSeen={JSON.parse(seenKey) as string[]}
-            referenceAppearance={query.appearance}
-            instanceHost={host}
-            onActiveInstance={(occurrenceId) => {
-              if (occurrenceId) onActivate(occurrenceId);
-            }}
-            onInstanceSelection={onSelection}
-            onExitInstance={onExit}
-            onOpenFrame={onOpenFrame}
-            embedShell={{
-              refId,
-              geometry: shellGeometry,
-              offsets: offsetMap,
-              onMindOffset: (rootId, offset) =>
-                host.updateMindOffset?.(binding.occurrenceId, rootId, offset),
-            }}
-            onSelectionChange={onSelection}
-            style={{ width: '100%', height: '100%', minHeight: 0 }}
-          />
+          <FrameReferenceBoundary
+            revision={binding.runtime.store}
+            language={language}
+            onOpen={onOpen}
+          >
+            <FrameCanvas
+              ref={nestedController}
+              linkHost={linkHost}
+              documentReferences={documentReferences}
+              exporting={exporting}
+              runtime={binding.runtime}
+              value={{ store: binding.runtime.store }}
+              adapter={{ toFrameSnapshot: (value) => value }}
+              onIntent={(transaction) =>
+                host.commit(binding.occurrenceId, transaction)
+              }
+              surface="nested"
+              instanceId={binding.occurrenceId}
+              frameId={targetFrameId}
+              readonly={readonly || binding.readonly || suspended}
+              inputMode={inputMode}
+              suspended={suspended}
+              registry={registry}
+              extensions={extensions}
+              autoFit={false}
+              viewportOrigin={[bounds.x, bounds.y]}
+              referenceSeen={JSON.parse(seenKey) as string[]}
+              referenceAppearance={query.appearance}
+              instanceHost={host}
+              onActiveInstance={(occurrenceId) => {
+                if (occurrenceId)
+                  onActivate(occurrenceId, nestedController.current);
+              }}
+              onInstanceSelection={onSelection}
+              onExitInstance={onExit}
+              onOpenFrame={onOpenFrame}
+              embedShell={{
+                refId,
+                geometry: shellGeometry,
+                offsets: offsetMap,
+                onContentOffset: (rootId, offset) =>
+                  host.updateContentOffset?.(
+                    binding.occurrenceId,
+                    rootId,
+                    offset,
+                  ),
+              }}
+              onSelectionChange={onSelection}
+              style={{ width: '100%', height: '100%', minHeight: 0 }}
+            />
+          </FrameReferenceBoundary>
         ) : mounted ? (
           <div data-frame-missing>引用缺失</div>
         ) : null}

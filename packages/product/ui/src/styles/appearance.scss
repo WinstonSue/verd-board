@@ -1,7 +1,17 @@
 @use './appearance-tokens' as tokens;
 
+@mixin action-tokens {
+  --verd-actions-background: var(--vm-background);
+  --verd-actions-text: var(--vm-foreground);
+  --verd-actions-border: var(--vm-border-strong);
+  --verd-actions-selection: var(--vm-fill-active);
+  --verd-actions-selection-text: var(--vm-foreground);
+  --verd-actions-backdrop: var(--vm-backdrop);
+}
+
 :where(:root) {
   @include tokens.light;
+  @include action-tokens;
 }
 :root[data-verd-appearance='dark'] {
   @include tokens.dark;
@@ -13,6 +23,9 @@
 }
 :root[data-verd-appearance='dark'] :where(dialog)::backdrop {
   @include tokens.backdrop-dark;
+}
+.verd-actions-panel::backdrop {
+  --verd-actions-backdrop: var(--vm-backdrop);
 }
 html[data-verd-appearance] {
   background: var(--vm-background-subtle);
@@ -28,6 +41,7 @@ html[data-verd-appearance] {
 // editors. Do not inherit the surrounding application's appearance into it.
 svg[data-surface][aria-label='Frame canvas'] {
   @include tokens.light;
+  @include action-tokens;
   // An invalid custom-property value restores each text component's original
   // fallback, rather than imposing document-page colors on canvas text.
   --board-bg: initial;

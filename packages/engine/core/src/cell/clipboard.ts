@@ -1,38 +1,36 @@
-import {
-  umlReferences,
-  remapUmlCell,
-  umlClipboardSequence,
-  planUmlPaste,
-  type UmlClipboardSequence,
-} from './uml';
+import { portAnchor, relativeAnchor } from '../geometry/edge';
+import type { Point } from '../interfaces/point';
+import { frameScene } from './frame';
+import { groupLeafMembers, lockedByAncestor } from './group';
+import type { CellOperation, CellSelection } from './index';
+import { indexCells, listedMembers } from './index';
+import { sceneAnchorKind } from './kinds';
 import { normalizeCellPositionOperations } from './position';
-import { stripFrameViewports } from './types';
+import {
+  assertRegisteredCellKinds,
+  createCellRegistry,
+  type CellRegistry,
+} from './registry';
 import {
   isEdgeCell,
   isFrameCell,
   isGroupCell,
   isNodeCell,
+  stripFrameViewports,
   type Cell,
   type CellId,
   type CellStore,
   type EdgeCell,
   type NodeGeometry,
 } from './types';
-import type { Point } from '../interfaces/point';
-import { portAnchor, relativeAnchor } from '../geometry/edge';
-import type { CellOperation, CellRegistry, CellSelection } from './index';
-import { frameScene } from './frame';
-import { groupLeafMembers, lockedByAncestor } from './group';
-import { indexCells } from './index';
-import { sceneAnchorKind } from './kinds';
 
 export interface CellFragment {
   cells: Record<CellId, Cell>;
-  umlSequence?: UmlClipboardSequence;
   ids: CellId[];
   /** Captured before cut, so independent domain owners survive deletion. */
   source?: {
     rootId: CellId;
+    fileId?: CellId;
     frameId: CellId;
     ownerById: Record<CellId, CellId>;
   };
@@ -54,6 +52,8 @@ const freePoint = (store: CellStore, terminal: EdgeCell['source']): Point => {
 export const copyCellFragment = (
   store: CellStore,
   ids: readonly CellId[],
+  registry: CellRegistry = createCellRegistry(),
+  context?: { fileId?: CellId },
 ): CellFragment => {
   store = stripFrameViewports(store);
   const included = new Set<CellId>();
@@ -61,31 +61,13 @@ export const copyCellFragment = (
     const cell = store.cells[id];
     if (!cell || included.has(id)) return;
     included.add(id);
-    if (cell.kind.startsWith('uml-')) {
-      umlReferences(cell).forEach(visit);
-      if (isEdgeCell(cell)) {
-        if ('cellId' in cell.source) visit(cell.source.cellId);
-        if ('cellId' in cell.target) visit(cell.target.cellId);
-      }
+    for (const plugin of registry.plugins) {
+      plugin.references?.(cell).forEach(visit);
+      plugin.copyReferences?.(store, cell).forEach(visit);
     }
     if (isFrameCell(cell)) [...cell.children, ...cell.groups].forEach(visit);
     if (isGroupCell(cell)) cell.members.forEach(visit);
-    (
-      (cell as { data?: { memberIds?: string[] } }).data?.memberIds ?? []
-    ).forEach(visit);
-    if (cell.kind === 'mind-root' || cell.kind === 'mind-child')
-      Object.values(store.cells).forEach((edge) => {
-        if (
-          isEdgeCell(edge) &&
-          edge.kind === 'mind-branch' &&
-          'cellId' in edge.source &&
-          edge.source.cellId === id &&
-          'cellId' in edge.target
-        ) {
-          visit(edge.target.cellId);
-          visit(edge.id);
-        }
-      });
+    listedMembers(cell, registry).forEach(visit);
   };
   ids.forEach(visit);
   Object.values(store.cells).forEach((cell) => {
@@ -95,105 +77,53 @@ export const copyCellFragment = (
       'cellId' in cell.target &&
       included.has(cell.source.cellId) &&
       included.has(cell.target.cellId) &&
-      (cell.kind !== 'uml-message' ||
+      (registry.get(cell.kind)?.copyWithEndpoints !== false ||
         (ids.includes(cell.source.cellId) &&
           ids.includes(cell.target.cellId)) ||
         included.has(cell.id))
     )
       included.add(cell.id);
   });
-  Object.values(store.cells).forEach((edge) => {
-    if (
-      !isEdgeCell(edge) ||
-      edge.kind !== 'mind-summary-edge' ||
-      !('cellId' in edge.target)
-    )
-      return;
-    const range = edge.data as
-      { startSiblingId: string; endSiblingId: string } | undefined;
-    const branch = range
-      ? Object.values(store.cells).find(
-          (cell) =>
-            isEdgeCell(cell) &&
-            cell.kind === 'mind-branch' &&
-            'cellId' in cell.target &&
-            cell.target.cellId === range.startSiblingId,
-        )
-      : undefined;
-    if (
-      range &&
-      included.has(range.startSiblingId) &&
-      included.has(range.endSiblingId) &&
-      branch &&
-      isEdgeCell(branch) &&
-      'cellId' in branch.source &&
-      included.has(branch.source.cellId)
-    )
-      visit(edge.target.cellId);
-  });
+  for (const plugin of registry.plugins)
+    plugin.copy?.(store, ids, included, visit);
   const cells: Record<string, Cell> = {};
   included.forEach((id) => {
     const cell = copy(store.cells[id]);
     if (isEdgeCell(cell)) {
-      if (cell.kind === 'mind-summary-edge') {
-        const range = cell.data as
-          { startSiblingId: string; endSiblingId: string } | undefined;
-        if (
-          !range ||
-          !included.has(range.startSiblingId) ||
-          !included.has(range.endSiblingId)
+      if (
+        registry.plugins.some(
+          (plugin) =>
+            plugin.filterCopy?.(cell, included, store.cells) === false,
         )
-          return;
-      }
+      )
+        return;
       const sourceMissing =
         'cellId' in cell.source && !included.has(cell.source.cellId);
       const targetMissing =
         'cellId' in cell.target && !included.has(cell.target.cellId);
-      if ((sourceMissing || targetMissing) && cell.kind !== 'arrow') return;
+      if (
+        (sourceMissing || targetMissing) &&
+        registry.get(cell.kind)?.freeTerminals !== true
+      )
+        return;
       if (sourceMissing) cell.source = { point: freePoint(store, cell.source) };
       if (targetMissing) cell.target = { point: freePoint(store, cell.target) };
     }
     cells[id] = cell;
   });
-  Object.values(store.cells).forEach((edge) => {
+  for (const cell of Object.values(cells))
     if (
-      isEdgeCell(edge) &&
-      edge.kind === 'mind-summary-edge' &&
-      'cellId' in edge.source &&
-      'cellId' in edge.target &&
-      cells[edge.source.cellId] &&
-      cells[edge.target.cellId]
-    ) {
-      const range = edge.data as
-        { startSiblingId?: string; endSiblingId?: string } | undefined;
-      if (
-        range?.startSiblingId &&
-        range?.endSiblingId &&
-        cells[range.startSiblingId] &&
-        cells[range.endSiblingId]
-      )
-        cells[edge.id] = copy(edge);
-    }
-  });
-  Object.values(cells).forEach((cell) => {
-    if (
-      cell.kind === 'mind-summary' &&
-      !Object.values(cells).some(
-        (edge) =>
-          isEdgeCell(edge) &&
-          edge.kind === 'mind-summary-edge' &&
-          'cellId' in edge.target &&
-          edge.target.cellId === cell.id,
+      registry.plugins.some(
+        (plugin) => plugin.filterCopy?.(cell, included, cells) === false,
       )
     )
       delete cells[cell.id];
-  });
   const descendants = new Set(
     Object.values(cells).flatMap((cell) =>
       isFrameCell(cell) ? [...cell.children, ...cell.groups] : [],
     ),
   );
-  const index = indexCells(store);
+  const index = indexCells(store, registry);
   const ownerById = Object.fromEntries(
     Object.keys(cells).flatMap((id) => {
       const owner = index.domainOwnerOf.get(id);
@@ -203,34 +133,40 @@ export const copyCellFragment = (
   const frameId = ids.length ? index.parentOf.get(ids[0]) : undefined;
   return {
     cells,
+    ...Object.assign(
+      {},
+      ...registry.plugins.map((plugin) =>
+        frameId
+          ? plugin.clipboardMetadata?.(store, frameId, included, new Set(ids))
+          : undefined,
+      ),
+    ),
     ...(frameId
       ? {
-          umlSequence: umlClipboardSequence(
-            store,
+          source: {
+            rootId: store.rootId,
+            fileId: context?.fileId,
             frameId,
-            included,
-            new Set(ids),
-          ),
+            ownerById,
+          },
         }
-      : {}),
-    ...(frameId && Object.keys(ownerById).length
-      ? { source: { rootId: store.rootId, frameId, ownerById } }
       : {}),
     ids: Object.keys(cells).filter((id) => !descendants.has(id)),
   };
 };
 
-export const pasteCellFragment = (
+const buildPastedCellFragment = (
   fragment: CellFragment,
   parentId: string,
   allocateId: (previous: string) => string,
   offset: Point = [20, 20],
-  targetMindNodeId?: string,
+  targetCellId?: string,
   adjust?: (
     cell: Cell,
     context: { sourceId: string; nested: boolean; offset: Point },
   ) => Cell | null,
-): CellOperation[] => {
+  registry: CellRegistry = createCellRegistry(),
+): { operations: CellOperation[]; idMap: ReadonlyMap<string, string> } => {
   const mapping = new Map(
     Object.keys(fragment.cells).map((id) => [id, allocateId(id)]),
   );
@@ -245,7 +181,9 @@ export const pasteCellFragment = (
   const cells = Object.values(fragment.cells)
     .map((original) => {
       const shift: Point = nestedIds.has(original.id) ? [0, 0] : offset;
-      const cell = remapUmlCell(copy(original), remap) as Cell;
+      let cell = copy(original);
+      for (const plugin of registry.plugins)
+        cell = plugin.remap?.(cell, remap) ?? cell;
       cell.id = remap(cell.id);
       if (isNodeCell(cell))
         cell.geometry = {
@@ -283,36 +221,8 @@ export const pasteCellFragment = (
           x + shift[0],
           y + shift[1],
         ]);
-      if (
-        isNodeCell(cell) &&
-        cell.kind === 'mind-child' &&
-        !Object.values(fragment.cells).some(
-          (edge) =>
-            isEdgeCell(edge) &&
-            edge.kind === 'mind-branch' &&
-            'cellId' in edge.target &&
-            edge.target.cellId === original.id,
-        )
-      ) {
-        cell.kind = 'mind-root';
-        cell.geometry.derived = false;
-        // A detached branch becomes an independent tree; roots must stay expanded.
-        if (cell.data && typeof cell.data === 'object')
-          delete (cell.data as { collapsed?: boolean }).collapsed;
-      }
-      const data = (
-        cell as {
-          data?: {
-            memberIds?: string[];
-            startSiblingId?: string;
-            endSiblingId?: string;
-          };
-        }
-      ).data;
-      if (data?.memberIds) data.memberIds = data.memberIds.map(remap);
-      if (data?.startSiblingId)
-        data.startSiblingId = remap(data.startSiblingId);
-      if (data?.endSiblingId) data.endSiblingId = remap(data.endSiblingId);
+      for (const plugin of registry.plugins)
+        cell = plugin.preparePaste?.(cell, original, fragment) ?? cell;
       if (!adjust) return cell;
       return adjust(cell, {
         sourceId: original.id,
@@ -329,43 +239,109 @@ export const pasteCellFragment = (
         parents.set(id, cell.id),
       );
   });
-  if (targetMindNodeId)
-    cells
-      .filter(
-        (cell) =>
-          !parents.has(cell.id) &&
-          isNodeCell(cell) &&
-          cell.kind === 'mind-root',
-      )
-      .forEach((cell, index) => {
-        if (!isNodeCell(cell)) return;
-        cell.kind = 'mind-child';
-        cell.geometry.derived = true;
-        cells.push({
-          id: allocateId(`paste-branch-${index}`),
-          kind: 'mind-branch',
-          cellType: 'edge',
-          source: { cellId: targetMindNodeId },
-          target: { cellId: cell.id },
-          route: { mode: 'auto' },
-          data: { order: `paste-${cell.id}` },
-        });
-      });
+  if (targetCellId)
+    for (const plugin of registry.plugins)
+      plugin.pasteCells?.(cells, targetCellId, allocateId);
   const depth = (id: string, seen = new Set<string>()): number => {
     if (seen.has(id)) throw new Error('Clipboard frame hierarchy cycle');
     seen.add(id);
     return parents.has(id) ? 1 + depth(parents.get(id)!, seen) : 0;
   };
-  return cells
+  const operations: CellOperation[] = cells
     .sort((a, b) => depth(a.id) - depth(b.id))
     .map((cell) => ({
       type: 'insert_cell',
       cell: isFrameCell(cell) ? { ...cell, children: [], groups: [] } : cell,
       parentId: parents.get(cell.id) ?? parentId,
     }));
+  return { operations, idMap: mapping };
+};
+
+/** Finalize after every plugin has formed the copied cells and their ownership. */
+const remapPastedLinks = (
+  operations: CellOperation[],
+  idMap: ReadonlyMap<string, string>,
+  fragment: CellFragment,
+  targetFrameId: string,
+  registry: CellRegistry,
+  targetStore?: CellStore,
+  targetFileId?: string,
+): CellOperation[] => {
+  const originalById = new Map(
+    [...idMap].map(([source, target]) => [target, source]),
+  );
+  const sourceOwners = new Map<string, string>();
+  for (const cell of Object.values(fragment.cells))
+    if (isFrameCell(cell)) {
+      sourceOwners.set(cell.id, cell.id);
+      for (const id of [...cell.children, ...cell.groups])
+        sourceOwners.set(id, cell.id);
+    }
+  const inserted = new Set<string>();
+  const targetOwners = new Map<string, string>();
+  if (targetStore)
+    for (const cell of Object.values(targetStore.cells))
+      if (isFrameCell(cell)) {
+        targetOwners.set(cell.id, cell.id);
+        for (const id of [...cell.children, ...cell.groups])
+          targetOwners.set(id, cell.id);
+      }
+  for (const operation of operations)
+    if (operation.type === 'insert_cell') {
+      inserted.add(operation.cell.id);
+      targetOwners.set(
+        operation.cell.id,
+        isFrameCell(operation.cell) ? operation.cell.id : operation.parentId,
+      );
+    }
+  const mapCell = (cell: Cell): Cell => {
+    // Existing owners can be patched to attach copied members. Their text is
+    // not copied and must never have its original links rewritten.
+    if (!inserted.has(cell.id)) return cell;
+    const originalId = originalById.get(cell.id);
+    return registry.remapLinks(cell, {
+      idMap,
+      sourceFileId:
+        fragment.source?.fileId ??
+        fragment.source?.rootId ??
+        (originalId && sourceOwners.get(originalId)) ??
+        fragment.source?.frameId,
+      targetFileId: targetFileId ?? targetStore?.rootId ?? targetFrameId,
+      targetOwnerOf: (id) =>
+        inserted.has(id)
+          ? (targetFileId ?? targetStore?.rootId ?? targetFrameId)
+          : targetOwners.get(id),
+    });
+  };
+  return operations.map((operation) => {
+    if (operation.type === 'insert_cell' || operation.type === 'replace_cell')
+      return { ...operation, cell: mapCell(operation.cell) };
+    if (operation.type === 'patch_cells')
+      return {
+        ...operation,
+        cells: Object.fromEntries(
+          Object.entries(operation.cells).map(([id, cell]) => [
+            id,
+            cell ? mapCell(cell) : null,
+          ]),
+        ),
+      };
+    return operation;
+  });
+};
+
+/** Direct clipboard consumers and the higher-level planner share finalization. */
+export const pasteCellFragment = (
+  ...args: Parameters<typeof buildPastedCellFragment>
+): CellOperation[] => {
+  const { operations, idMap } = buildPastedCellFragment(...args);
+  const [fragment, parentId, , , , , registry = createCellRegistry()] = args;
+  return remapPastedLinks(operations, idMap, fragment, parentId, registry);
 };
 
 export interface CellPasteRequest {
+  /** Canonical owning file, distinct from an assembled store root or nested Frame. */
+  fileId?: string;
   store: CellStore;
   frameId: string;
   selectionIds: readonly string[];
@@ -374,16 +350,18 @@ export interface CellPasteRequest {
   offset?: Point;
   registry?: CellRegistry;
   geometry?: ReadonlyMap<string, NodeGeometry>;
-  /** Mind paste still passes the selected topic. Core does not infer a domain target. */
-  targetMindNodeId?: string;
+  /** Optional explicit domain target, interpreted only by the installed plugins. */
+  targetCellId?: string;
   /** File open replaces a frame and does not ask for an ownership target. */
   intent?: 'paste' | 'duplicate' | 'import' | 'open';
 }
 export interface CellPastePlan {
+  /** Complete identity mapping, including identities reused by a custom planner. */
+  idMap: ReadonlyMap<string, string>;
   operations: CellOperation[];
   selection: CellSelection;
 }
-const fragmentScene = (fragment: CellFragment) => {
+const fragmentScene = (fragment: CellFragment, registry: CellRegistry) => {
   const nested = new Set(
     Object.values(fragment.cells).flatMap((cell) =>
       isFrameCell(cell) ? [...cell.children, ...cell.groups] : [],
@@ -393,10 +371,12 @@ const fragmentScene = (fragment: CellFragment) => {
     Object.values(fragment.cells)
       .filter((cell) => !nested.has(cell.id))
       .map((cell) => cell.kind),
+    registry,
   );
 };
 /** Plans one paste. A rejected plan does not describe a partial transaction. */
 export const planCellPaste = (request: CellPasteRequest): CellPastePlan => {
+  const registry = request.registry ?? createCellRegistry();
   const frame = request.store.cells[request.frameId];
   if (!isFrameCell(frame)) throw new Error('Missing frame');
   if (
@@ -418,13 +398,31 @@ export const planCellPaste = (request: CellPasteRequest): CellPastePlan => {
   }
   if (request.fragment.ids.some((id) => !request.fragment.cells[id]))
     throw new Error('Clipboard does not contain Verd cells');
+  assertRegisteredCellKinds(
+    { rootId: request.frameId, cells: request.fragment.cells },
+    registry,
+  );
   const fragmentIds = new Set(Object.keys(request.fragment.cells));
-  const incoming = fragmentScene(request.fragment);
-  const current = frameScene(request.store, request.frameId);
+  const incoming = fragmentScene(request.fragment, registry);
+  const current = frameScene(request.store, request.frameId, registry);
   if (request.intent !== 'open' && incoming && incoming !== current)
     throw new Error('Cannot mix scenes in one frame');
-  const umlPlan = planUmlPaste(request);
-  if (umlPlan) return umlPlan;
+  for (const plugin of registry.plugins) {
+    const plan = plugin.planPaste?.({ ...request, registry });
+    if (plan)
+      return {
+        ...plan,
+        operations: remapPastedLinks(
+          plan.operations,
+          plan.idMap,
+          request.fragment,
+          request.frameId,
+          registry,
+          request.store,
+          request.fileId,
+        ),
+      };
+  }
   let ownerId: string | undefined;
   const ownerById = new Map<string, string>();
   const needsOwner =
@@ -448,10 +446,8 @@ export const planCellPaste = (request: CellPasteRequest): CellPastePlan => {
     if (sameFrame) {
       owner = source.ownerById?.[cell.id];
       const target = owner ? request.store.cells[owner] : undefined;
-      const index = indexCells(request.store);
-      const expected = cell.kind.startsWith('workflow-')
-        ? 'workflow-start'
-        : 'architecture-layer';
+      const index = indexCells(request.store, registry);
+      const expected = registry.get(cell.kind)?.ownerKind;
       if (
         !target ||
         target.kind !== expected ||
@@ -490,12 +486,12 @@ export const planCellPaste = (request: CellPasteRequest): CellPastePlan => {
       request.allocateId(id),
     ]),
   );
-  const operations = pasteCellFragment(
+  const { operations } = buildPastedCellFragment(
     request.fragment,
     request.frameId,
     (id) => mapping.get(id) ?? request.allocateId(id),
     request.offset ?? [20, 20],
-    request.targetMindNodeId,
+    request.targetCellId,
     (cell, context) => {
       const util = request.registry?.get(cell.kind);
       return (
@@ -507,6 +503,7 @@ export const planCellPaste = (request: CellPasteRequest): CellPastePlan => {
         }) ?? cell
       );
     },
+    registry,
   );
   const extras: CellOperation[] = [];
   if (request.registry) {
@@ -581,7 +578,16 @@ export const planCellPaste = (request: CellPasteRequest): CellPastePlan => {
     .map((id) => mapping.get(id))
     .filter((id): id is string => !!id && !grouped.has(id));
   return {
-    operations: completed,
+    idMap: mapping,
+    operations: remapPastedLinks(
+      completed,
+      mapping,
+      request.fragment,
+      request.frameId,
+      registry,
+      request.store,
+      request.fileId,
+    ),
     selection: { focus: [request.frameId], ids },
   };
 };

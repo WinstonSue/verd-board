@@ -4,6 +4,10 @@ import {
   frameToParentPoint,
   frameVisualBounds,
   isFrameCell,
+  isEdgeCell,
+  edgePolyline,
+  flattenCurve,
+  edgeLabelLayout,
   isGroupCell,
   isNodeCell,
   type CellStore,
@@ -29,6 +33,7 @@ export function frameSelectionWorldBounds({
   ids,
   parentOf,
   layouts,
+  includeEdges = false,
 }: {
   svg: SVGSVGElement;
   world: SVGGElement | null;
@@ -37,12 +42,13 @@ export function frameSelectionWorldBounds({
   ids: readonly string[];
   parentOf: ReadonlyMap<string, string>;
   layouts(id: string): CameraLayout;
+  includeEdges?: boolean;
 }): RectangleClient | null {
   if (!ids.length) return null;
   const elements = new Map(
-    Array.from(svg.querySelectorAll<SVGGraphicsElement>('[data-cell-id]')).map(
-      (element) => [element.getAttribute('data-cell-id')!, element],
-    ),
+    Array.from(svg.querySelectorAll<SVGGraphicsElement>('[data-cell-id]'))
+      .filter((element) => element.closest('svg') === svg)
+      .map((element) => [element.getAttribute('data-cell-id')!, element]),
   );
   const visited = new Set<string>();
   const points: Point[] = [];
@@ -56,10 +62,48 @@ export function frameSelectionWorldBounds({
       return;
     }
     const element = elements.get(id);
-    if (!isNodeCell(cell) || !element) return;
+    if ((!isNodeCell(cell) && !isEdgeCell(cell)) || !element) return;
     const owner = parentOf.get(id);
     if (!owner) return;
-    const geometry = layouts(owner).getGeometry(id) ?? cell.geometry;
+    const layout = layouts(owner);
+    let geometry: NodeGeometry;
+    if (isEdgeCell(cell)) {
+      if (!includeEdges) return;
+      const displayed = layout.store.cells[id];
+      if (!isEdgeCell(displayed)) return;
+      const path = edgePolyline(
+        layout.store,
+        displayed,
+        undefined,
+        layout.routing,
+      );
+      const route =
+        displayed.route.mode === 'curve' ? flattenCurve(path) : path;
+      if (!route.length) return;
+      const padding = Math.max(
+        12,
+        (displayed.appearance?.strokeWidth ?? 2) * 2,
+      );
+      const boxes = [
+        ...route.map(([x, y]) => ({
+          x: x - padding,
+          y: y - padding,
+          width: padding * 2,
+          height: padding * 2,
+        })),
+        ...(displayed.labels ?? []).map(
+          (_, i) => edgeLabelLayout(displayed, i, path, layout.routing).bounds,
+        ),
+      ];
+      const x = Math.min(...boxes.map((b) => b.x)),
+        y = Math.min(...boxes.map((b) => b.y));
+      geometry = {
+        x,
+        y,
+        width: Math.max(...boxes.map((b) => b.x + b.width)) - x,
+        height: Math.max(...boxes.map((b) => b.y + b.height)) - y,
+      };
+    } else geometry = layout.getGeometry(id) ?? cell.geometry;
     if (
       ![
         geometry.x,

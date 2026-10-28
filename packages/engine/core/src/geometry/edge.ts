@@ -1,32 +1,46 @@
+import type { CellRegistry } from '../cell/registry';
 import {
-  isNodeCell,
-  isFrameCell,
   isEdgeCell,
+  isFrameCell,
+  isNodeCell,
   type CellStore,
   type EdgeCell,
   type NodeGeometry,
   type PortSpec,
 } from '../cell/types';
 import type { Point } from '../interfaces/point';
-import { sideAnchor, facingSides, type GeometrySide } from './side';
-import { routeOrthogonal, simplifyOrthogonal } from './route';
-import { polylinePath } from './polyline';
-import { nodeShapeGeometry } from './node';
 import type { EdgeLabelLayout } from './edge-label';
-import {
-  routingBatches,
-  copyRoutingResult,
-  sameRoutingResult,
-} from './routing-cache';
+import { nodeShapeGeometry } from './node';
 import {
   routeOrthogonalAvoiding,
-  type RoutingObstacle,
+  routingSegmentPenalty,
+  separateOrthogonalSegments,
   type OrthogonalRoutingResult,
+  type RoutingObstacle,
   type RoutingSegment,
 } from './obstacle-route';
+import { polylinePath } from './polyline';
+import { optimizeFrameRoutes } from './route-optimization';
+import { routeOrthogonal, simplifyOrthogonal } from './route';
+import {
+  compactOrthogonalRoute,
+  type CompactionRoute,
+} from './route-compaction';
+import {
+  copyRoutingResult,
+  routingBatches,
+  sameRoutingResult,
+} from './routing-cache';
+import { facingSides, sideAnchor, type GeometrySide } from './side';
 
 type TerminalPosition = { point: Point; side: GeometrySide };
 export interface EdgeRoutingContext {
+  /** Explicit one-shot optimization; persisted route strategies never enable it. */
+  readonly optimizeIds?: ReadonlySet<string>;
+  readonly fixedTerminalIds?: ReadonlySet<string>;
+  /** Interaction previews reuse settled paths and only adjust connected ends. */
+  readonly preview?: EdgeRoutingContext;
+  readonly registry?: CellRegistry;
   readonly obstacles: readonly RoutingObstacle[];
   readonly clearance?: number;
   /** Lazy frame-wide planning keeps all consumers independent of render order. */
@@ -61,6 +75,12 @@ export const createEdgeRoutingContext = (
   frameId: string,
   geometry?: ReadonlyMap<string, NodeGeometry>,
   previous?: EdgeRoutingContext,
+  registry?: CellRegistry,
+  options?: {
+    optimizeIds?: ReadonlySet<string>;
+    fixedTerminalIds?: ReadonlySet<string>;
+    preview?: boolean;
+  },
 ): EdgeRoutingContext => {
   const frame = store.cells[frameId];
   const obstacles: RoutingObstacle[] = [];
@@ -70,7 +90,7 @@ export const createEdgeRoutingContext = (
       if (
         !isNodeCell(node) ||
         node.hidden ||
-        node.kind === 'architecture-layer'
+        registry?.get(node.kind)?.routingObstacle === false
       )
         continue;
       const g = geometry?.get(id) ?? node.geometry;
@@ -97,26 +117,30 @@ export const createEdgeRoutingContext = (
   obstacles.sort((a, b) => a.id.localeCompare(b.id));
   const context: EdgeRoutingContext = {
     obstacles,
+    registry,
     routes: new Map(),
     clearance: previous?.clearance,
     terminals: new Map(),
+    optimizeIds: options?.optimizeIds,
+    fixedTerminalIds: options?.fixedTerminalIds,
+    preview: options?.preview ? previous : undefined,
   };
   let prepared = false;
   context.prepare = () => {
     if (prepared) return;
     prepared = true;
-    planFrameRoutes(store, frameId, geometry, context, previous);
+    if (!options?.preview)
+      planFrameRoutes(store, frameId, geometry, context, previous);
     // Retain only the current store and pure batch output after preparation.
     previous = undefined;
   };
   return context;
 };
 
-const automaticRoute = (edge: EdgeCell) =>
+const automaticRoute = (edge: EdgeCell, registry?: CellRegistry) =>
   (edge.route.mode === 'auto' || edge.route.mode === 'orthogonal') &&
   !('points' in edge.route && edge.route.points?.length) &&
-  edge.kind !== 'mind-branch' &&
-  edge.kind !== 'mind-summary-edge';
+  registry?.get(edge.kind)?.routable !== false;
 
 const sameTerminal = (a: TerminalPosition, b: TerminalPosition) =>
   a.side === b.side && a.point[0] === b.point[0] && a.point[1] === b.point[1];
@@ -134,8 +158,19 @@ function planFrameRoutes(
     .map((id) => store.cells[id])
     .filter(
       (cell): cell is EdgeCell =>
-        isEdgeCell(cell) && !cell.hidden && automaticRoute(cell),
+        isEdgeCell(cell) &&
+        !cell.hidden &&
+        automaticRoute(cell, context.registry),
     );
+  const crossingPenalty = context.registry?.scenes.some(
+    (scene) =>
+      !!scene.routing && edges.some((edge) => scene.kinds.includes(edge.kind)),
+  )
+    ? Math.max(
+        160,
+        Math.min(1600, 1600 * (48 / Math.max(1, edges.length)) ** 4),
+      )
+    : 160;
   const terminals = context.terminals!;
   type Exit = {
     edge: EdgeCell;
@@ -157,16 +192,50 @@ function planFrameRoutes(
       edge.source,
       geometry,
     );
+    const preference = context.registry?.scenes
+      .find((scene) => scene.kinds.includes(edge.kind))
+      ?.routing?.(store, edge, geometry);
+    const originalSource = source,
+      originalTarget = target;
+    const preferred = (
+      end: 'source' | 'target',
+      position: TerminalPosition,
+    ): TerminalPosition => {
+      const terminal = edge[end],
+        side = preference?.[end];
+      if (
+        context.fixedTerminalIds?.has(edge.id) ||
+        !side ||
+        !('cellId' in terminal) ||
+        terminal.portId ||
+        terminal.anchor
+      )
+        return position;
+      const node = store.cells[terminal.cellId];
+      if (
+        !isNodeCell(node) ||
+        (geometry?.get(node.id) ?? node.geometry).rotation
+      )
+        return position;
+      return portAnchor(geometry?.get(node.id) ?? node.geometry, { side });
+    };
+    const plannedSource = preferred('source', source),
+      plannedTarget = preferred('target', target);
     terminals.set(edge.id, {
       edge,
-      source,
-      target,
-      originalSource: source,
-      originalTarget: target,
+      source: plannedSource,
+      target: plannedTarget,
+      originalSource,
+      originalTarget,
     });
     for (const end of ['source', 'target'] as const) {
       const terminal = edge[end];
-      if (!('cellId' in terminal) || terminal.portId || terminal.anchor)
+      if (
+        context.fixedTerminalIds?.has(edge.id) ||
+        !('cellId' in terminal) ||
+        terminal.portId ||
+        terminal.anchor
+      )
         continue;
       const node = store.cells[terminal.cellId];
       if (
@@ -174,7 +243,7 @@ function planFrameRoutes(
         (geometry?.get(node.id) ?? node.geometry).rotation
       )
         continue;
-      const position = end === 'source' ? source : target;
+      const position = end === 'source' ? plannedSource : plannedTarget;
       const key = `${terminal.cellId}:${position.side}`;
       const list = exits.get(key) ?? [];
       list.push({
@@ -184,6 +253,39 @@ function planFrameRoutes(
         side: position.side,
       });
       exits.set(key, list);
+    }
+  }
+  // A short node side cannot accommodate arbitrarily many arrowheads.
+  for (const [, list] of [...exits].sort(([a], [b]) => a.localeCompare(b))) {
+    const terminal = list[0].edge[list[0].end];
+    if (!('cellId' in terminal)) continue;
+    const node = store.cells[terminal.cellId];
+    if (!isNodeCell(node)) continue;
+    const bounds = geometry?.get(node.id) ?? node.geometry;
+    const verticalSide = list[0].side === 'left' || list[0].side === 'right';
+    const size = verticalSide ? bounds.height : bounds.width;
+    const capacity = Math.max(1, Math.floor((size - 32) / 16) + 1);
+    if (list.length <= capacity) continue;
+    const axis = verticalSide ? 1 : 0;
+    list.sort(
+      (a, b) =>
+        a.other[axis] - b.other[axis] || a.edge.id.localeCompare(b.edge.id),
+    );
+    for (const exit of list.splice(capacity)) {
+      const candidates: GeometrySide[] = verticalSide
+        ? ['top', 'bottom']
+        : ['left', 'right'];
+      candidates.sort(
+        (a, b) =>
+          (exits.get(`${terminal.cellId}:${a}`)?.length ?? 0) -
+          (exits.get(`${terminal.cellId}:${b}`)?.length ?? 0),
+      );
+      const side = candidates[0],
+        nextKey = `${terminal.cellId}:${side}`;
+      const next = exits.get(nextKey) ?? [];
+      next.push({ ...exit, side });
+      exits.set(nextKey, next);
+      terminals.get(exit.edge.id)![exit.end] = portAnchor(bounds, { side });
     }
   }
   for (const list of exits.values()) {
@@ -204,7 +306,13 @@ function planFrameRoutes(
       const bounds = geometry?.get(node.id) ?? node.geometry;
       terminals.get(edge.id)![end] = portAnchor(bounds, {
         side,
-        offset: (at + 1) / (list.length + 1),
+        offset: (() => {
+          const size = axis === 0 ? bounds.width : bounds.height;
+          const padding = Math.min(16, size / (list.length + 1));
+          return (
+            (padding + ((size - 2 * padding) * at) / (list.length - 1)) / size
+          );
+        })(),
       });
     });
   }
@@ -217,6 +325,7 @@ function planFrameRoutes(
   };
   edges.sort((a, b) => length(a) - length(b) || a.id.localeCompare(b.id));
   const occupied: RoutingSegment[] = [];
+  const fixedRoutes: CompactionRoute[] = [];
   const addSegments = (points: readonly Point[]) =>
     points.slice(1).forEach((end, at) => {
       const start = points[at];
@@ -228,23 +337,34 @@ function planFrameRoutes(
     if (
       isEdgeCell(edge) &&
       !edge.hidden &&
-      !automaticRoute(edge) &&
-      'points' in edge.route &&
-      edge.route.points?.length
+      !automaticRoute(edge, context.registry) &&
+      (edge.route.mode === 'straight' ||
+        ('points' in edge.route && !!edge.route.points?.length))
     ) {
-      addSegments(
-        edgeRoutePoints(
-          edge,
-          edgeTerminalPosition(store, edge.source, edge.target, geometry),
-          edgeTerminalPosition(store, edge.target, edge.source, geometry),
-        ),
+      const points = edgeRoutePoints(
+        edge,
+        edgeTerminalPosition(store, edge.source, edge.target, geometry),
+        edgeTerminalPosition(store, edge.target, edge.source, geometry),
       );
+      addSegments(points);
+      fixedRoutes.push({
+        id: edge.id,
+        points,
+        bridgeable:
+          edge.route.mode !== 'curve' &&
+          context.registry?.get(edge.kind)?.routable !== false,
+      });
     }
   }
+  const fixedSegments = [...occupied];
   // All congestion inputs belong to the batch, not just each edge's endpoints.
   const signature = JSON.stringify([
     frameId,
     context.clearance,
+    crossingPenalty,
+    'optimized-v1',
+    [...(context.optimizeIds ?? [])].sort(),
+    [...(context.fixedTerminalIds ?? [])].sort(),
     context.obstacles.map(({ id, x, y, width, height }) => [
       id,
       x,
@@ -293,6 +413,7 @@ function planFrameRoutes(
           clearance: context.clearance,
           strokeWidth: edge.appearance?.strokeWidth,
           occupied,
+          crossingPenalty,
         },
       );
     const old = previous?.routes.get(edge.id);
@@ -310,6 +431,175 @@ function planFrameRoutes(
     context.routes.set(edge.id, { edge, source, target, result });
     results.set(edge.id, copyRoutingResult(result));
     addSegments(result.points);
+  }
+  if (!reusable) {
+    const segmentList = (points: readonly Point[]) =>
+      points.slice(1).map((end, at) => ({ start: points[at], end }));
+    const score = (points: readonly Point[], other: RoutingSegment[]) =>
+      points
+        .slice(1)
+        .reduce(
+          (sum, end, at) =>
+            sum +
+            Math.abs(end[0] - points[at][0]) +
+            Math.abs(end[1] - points[at][1]) +
+            routingSegmentPenalty(points[at], end, other, crossingPenalty) +
+            24,
+          0,
+        );
+    const congestion = (edge: EdgeCell) => {
+      const other = [
+        ...fixedSegments,
+        ...edges
+          .filter((peer) => peer !== edge)
+          .flatMap((peer) =>
+            segmentList(context.routes.get(peer.id)!.result.points),
+          ),
+      ];
+      const points = context.routes.get(edge.id)!.result.points;
+      return points
+        .slice(1)
+        .reduce(
+          (sum, end, at) =>
+            sum +
+            routingSegmentPenalty(points[at], end, other, crossingPenalty),
+          0,
+        );
+    };
+    const crowded = edges
+      .map((edge) => ({ edge, cost: congestion(edge) }))
+      .filter((item) => item.cost > 0)
+      .sort((a, b) => b.cost - a.cost || a.edge.id.localeCompare(b.edge.id));
+    for (const { edge } of crowded.slice(
+      0,
+      edges.length <= 64 ? Math.floor(1024 / edges.length) : 4,
+    )) {
+      const old = context.routes.get(edge.id)!;
+      const other = [
+        ...fixedSegments,
+        ...edges
+          .filter((peer) => peer !== edge)
+          .flatMap((peer) =>
+            segmentList(context.routes.get(peer.id)!.result.points),
+          ),
+      ];
+      const candidate = routeOrthogonalAvoiding(
+        old.source.point,
+        old.source.side,
+        old.target.point,
+        old.target.side,
+        context.obstacles,
+        {
+          sourceId: 'cellId' in edge.source ? edge.source.cellId : undefined,
+          targetId: 'cellId' in edge.target ? edge.target.cellId : undefined,
+          clearance: context.clearance,
+          strokeWidth: edge.appearance?.strokeWidth,
+          occupied: other,
+          crossingPenalty,
+        },
+      );
+      if (
+        candidate.status !== 'blocked' &&
+        score(candidate.points, other) < score(old.result.points, other) - 1e-6
+      ) {
+        old.result = candidate;
+        results.set(edge.id, copyRoutingResult(candidate));
+      }
+    }
+    for (let pass = 0; pass < (edges.length <= 64 ? 2 : 1); pass++)
+      for (const edge of edges.length <= 64
+        ? edges
+        : crowded.slice(0, 4).map((item) => item.edge)) {
+        const old = context.routes.get(edge.id)!;
+        if (old.result.status === 'blocked') continue;
+        const other = [
+          ...fixedSegments,
+          ...edges
+            .filter((peer) => peer !== edge)
+            .flatMap((peer) =>
+              segmentList(context.routes.get(peer.id)!.result.points),
+            ),
+        ];
+        const points = separateOrthogonalSegments(
+          old.result.points,
+          old.source.side,
+          old.target.side,
+          context.obstacles,
+          {
+            sourceId: 'cellId' in edge.source ? edge.source.cellId : undefined,
+            targetId: 'cellId' in edge.target ? edge.target.cellId : undefined,
+            strokeWidth: edge.appearance?.strokeWidth,
+            occupied: other,
+            crossingPenalty,
+          },
+        );
+        if (
+          points.length === old.result.points.length &&
+          points.every(
+            (point, at) =>
+              point[0] === old.result.points[at][0] &&
+              point[1] === old.result.points[at][1],
+          )
+        )
+          continue;
+        old.result = { status: 'routed', points };
+        results.set(edge.id, copyRoutingResult(old.result));
+      }
+    // Last pass: lane nudging must never reintroduce compacted short steps.
+    let remainingCrossings = Math.max(1, Math.floor(edges.length / 10));
+    const compactable =
+      edges.length <= 64
+        ? [...edges]
+        : [...edges]
+            .sort(
+              (a, b) =>
+                context.routes.get(b.id)!.result.points.length -
+                  context.routes.get(a.id)!.result.points.length ||
+                a.id.localeCompare(b.id),
+            )
+            .slice(0, 16);
+    // Dense frames spend their bounded cleanup work on the most complicated paths.
+    for (const edge of compactable.sort((a, b) => a.id.localeCompare(b.id))) {
+      const old = context.routes.get(edge.id)!;
+      if (old.result.status === 'blocked') continue;
+      const others: CompactionRoute[] = [
+        ...fixedRoutes,
+        ...edges
+          .filter((peer) => peer !== edge)
+          .map((peer) => ({
+            id: peer.id,
+            points: context.routes.get(peer.id)!.result.points,
+            bridgeable: true,
+          })),
+      ];
+      const compacted = compactOrthogonalRoute(
+        { id: edge.id, points: old.result.points, bridgeable: true },
+        old.source.side,
+        old.target.side,
+        context.obstacles,
+        others,
+        {
+          sourceId: 'cellId' in edge.source ? edge.source.cellId : undefined,
+          targetId: 'cellId' in edge.target ? edge.target.cellId : undefined,
+          clearance: context.clearance,
+          strokeWidth: edge.appearance?.strokeWidth,
+        },
+        remainingCrossings,
+      );
+      if (!compacted) continue;
+      remainingCrossings -= compacted.crossingDelta;
+      old.result = { status: 'routed', points: compacted.points };
+      results.set(edge.id, copyRoutingResult(old.result));
+    }
+  }
+  if (!reusable) {
+    if (context.optimizeIds?.size)
+      optimizeFrameRoutes(edges, context, fixedRoutes, crossingPenalty);
+    for (const edge of edges)
+      results.set(
+        edge.id,
+        copyRoutingResult(context.routes.get(edge.id)!.result),
+      );
   }
   routingBatches.set(context, {
     signature,
@@ -456,58 +746,105 @@ export const flattenCurve = (points: readonly Point[], steps = 24): Point[] => {
   return result;
 };
 
+/** Cheap endpoint following, shared by editable paths and interaction previews. */
+function followOrthogonalEnds(
+  original: readonly Point[],
+  source: TerminalPosition,
+  target: TerminalPosition,
+  sourceMoved: boolean,
+  targetMoved: boolean,
+): Point[] {
+  let points = simplifyOrthogonal(original.map((point) => [...point] as Point));
+  if (points.length < 2)
+    return routeOrthogonal(
+      source.point,
+      source.side,
+      target.point,
+      target.side,
+    );
+  const firstHorizontal = points[0][1] === points[1][1];
+  const lastHorizontal = points.at(-1)![1] === points.at(-2)![1];
+  if (sourceMoved) points[0] = source.point;
+  if (targetMoved) points[points.length - 1] = target.point;
+  if (points.length <= 2)
+    return points[0][0] !== points[1][0] && points[0][1] !== points[1][1]
+      ? routeOrthogonal(source.point, source.side, target.point, target.side)
+      : points;
+  if (sourceMoved)
+    points[1] = firstHorizontal
+      ? [points[1][0], source.point[1]]
+      : [source.point[0], points[1][1]];
+  if (targetMoved) {
+    const at = points.length - 2;
+    points[at] = lastHorizontal
+      ? [points[at][0], target.point[1]]
+      : [target.point[0], points[at][1]];
+  }
+  return simplifyOrthogonal(points);
+}
+
 export const edgeRoutePoints = (
   edge: EdgeCell,
   source: { point: Point; side: GeometrySide },
   target: { point: Point; side: GeometrySide },
   routing?: EdgeRoutingContext,
 ): Point[] => {
+  if (routing?.preview && automaticRoute(edge, routing.registry)) {
+    const settled = routing.preview;
+    const prior = settled.routes.get(edge.id);
+    const terminals = settled.terminals?.get(edge.id);
+    if (prior) {
+      if (
+        sameTerminal(source, terminals?.originalSource ?? prior.source) &&
+        sameTerminal(target, terminals?.originalTarget ?? prior.target)
+      )
+        return prior.result.points;
+      const oldSource = terminals?.originalSource ?? prior.source;
+      const oldTarget = terminals?.originalTarget ?? prior.target;
+      const ds = [
+        source.point[0] - oldSource.point[0],
+        source.point[1] - oldSource.point[1],
+      ];
+      const dt = [
+        target.point[0] - oldTarget.point[0],
+        target.point[1] - oldTarget.point[1],
+      ];
+      if (Math.abs(ds[0] - dt[0]) < 1e-6 && Math.abs(ds[1] - dt[1]) < 1e-6)
+        return prior.result.points.map((point): Point => [
+          point[0] + ds[0],
+          point[1] + ds[1],
+        ]);
+      return followOrthogonalEnds(
+        prior.result.points,
+        source,
+        target,
+        !!(ds[0] || ds[1]),
+        !!(dt[0] || dt[1]),
+      );
+    }
+    return routeOrthogonal(
+      source.point,
+      source.side,
+      target.point,
+      target.side,
+    );
+  }
   if ('points' in edge.route && edge.route.points?.length) {
-    let points = edge.route.points.map((point) => [...point] as Point);
+    const points = edge.route.points.map((point) => [...point] as Point);
     const moved = (point: Point, next: Point) =>
       point[0] !== next[0] || point[1] !== next[1];
     const sourceMoved =
       'cellId' in edge.source && moved(points[0], source.point);
     const targetMoved =
       'cellId' in edge.target && moved(points.at(-1)!, target.point);
-    if (edge.route.mode === 'orthogonal' && (sourceMoved || targetMoved)) {
-      // Remove redundant collinear corners before moving the adjoining legs;
-      // a moved port or fractional anchor must not introduce diagonal segments.
-      points = simplifyOrthogonal(points);
-      if (points.length < 2)
-        return routeOrthogonal(
-          source.point,
-          source.side,
-          target.point,
-          target.side,
-        );
-      const firstHorizontal = points[0][1] === points[1]?.[1];
-      const lastHorizontal = points.at(-1)![1] === points.at(-2)?.[1];
-      if ('cellId' in edge.source) points[0] = source.point;
-      if ('cellId' in edge.target) points[points.length - 1] = target.point;
-      if (points.length <= 2)
-        return points.length === 2 &&
-          points[0][0] !== points[1][0] &&
-          points[0][1] !== points[1][1]
-          ? routeOrthogonal(
-              source.point,
-              source.side,
-              target.point,
-              target.side,
-            )
-          : points;
-      if (sourceMoved)
-        points[1] = firstHorizontal
-          ? [points[1][0], source.point[1]]
-          : [source.point[0], points[1][1]];
-      if (targetMoved) {
-        const at = points.length - 2;
-        points[at] = lastHorizontal
-          ? [points[at][0], target.point[1]]
-          : [target.point[0], points[at][1]];
-      }
-      return simplifyOrthogonal(points);
-    }
+    if (edge.route.mode === 'orthogonal' && (sourceMoved || targetMoved))
+      return followOrthogonalEnds(
+        points,
+        source,
+        target,
+        sourceMoved,
+        targetMoved,
+      );
     if ('cellId' in edge.source) points[0] = source.point;
     if ('cellId' in edge.target) points[points.length - 1] = target.point;
     return points;

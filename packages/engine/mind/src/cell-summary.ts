@@ -4,11 +4,11 @@ import {
   polylinePath,
   type CellStore,
   type EdgeCell,
-  type MindSummaryData,
   type NodeGeometry,
   type Point,
 } from '@sue/board-core';
 import { mindChildIds } from './cell-utils';
+import { type MindSummaryData } from './public-api';
 
 export interface MindSummaryGeometry {
   path: string;

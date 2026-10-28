@@ -1,5 +1,11 @@
 # @sue/board-react-mind
 
+## Unreleased
+
+新增 createMindUIPlugin；完整 Mind 属性、设置、工具、渲染、快捷键、投影与实例平移策略归本包，配置和语言按编辑器隔离。
+
+本轮不升级版本或发布，随下一主版本交付；参见原生架构和迁移文档。
+
 ## 2.0.0
 
 ### Major Changes

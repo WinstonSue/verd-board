@@ -1,7 +1,4 @@
-import React, { act, createRef } from 'react';
-import { createRoot } from 'react-dom/client';
-import { describe, expect, it, vi } from 'vitest';
-import { createCellRegistry, createCellRuntime } from '@sue/board-core';
+import { createCellRuntime } from '@sue/board-core';
 import {
   addMindChild,
   createMindChildCell,
@@ -14,13 +11,17 @@ import {
   type FrameCanvasController,
   type FrameIntentResult,
 } from '@sue/board-react';
+import { act, createRef } from 'react';
+import { createRoot } from 'react-dom/client';
+import { describe, expect, it, vi } from 'vitest';
+import { createTestCellRegistry } from '../../../../tests/fixtures/plugins/registry';
 import { createMindFrameExtensions } from './frame-extension';
 
 (
   globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }
 ).IS_REACT_ACT_ENVIRONMENT = true;
 const fixture = () => {
-  const registry = createCellRegistry(),
+  const registry = createTestCellRegistry(),
     extensions = createMindFrameExtensions(registry);
   const runtime = createCellRuntime(
     createMindFrameSnapshot('frame', 'root'),

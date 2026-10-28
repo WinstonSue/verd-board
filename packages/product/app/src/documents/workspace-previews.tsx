@@ -1,3 +1,7 @@
+import {
+  WorkspaceContentBoundary,
+  WorkspaceFileError,
+} from '../workspace-content-boundary';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Check, ExternalLink } from 'lucide-react';
 import {
@@ -11,12 +15,13 @@ import {
   type DocumentEditorController,
   type DocumentPreviewController,
   type FrameDocumentReferences,
+  type FrameDocumentEditingView,
 } from '@sue/verd-board-ui';
 import type {
   DocumentEditOrigin,
   WorkspaceSessionSnapshot,
 } from '../session/workspace-session';
-import { parseDocumentLink } from './document-links';
+import { parseWorkspaceLink, type ActionResult } from '@sue/board-common';
 import { createPreviewRevisions } from './preview-revisions';
 
 export interface PreviewOptions {
@@ -29,18 +34,56 @@ export interface PreviewOptions {
   active: boolean;
   locale?: 'zh' | 'en';
   exporting?: boolean;
+  retry?(): Promise<void>;
   history?: DocumentHistoryAdapter;
   edit?(
     id: string,
     change: DocumentEditorChange,
     origin: DocumentEditOrigin,
-  ): void;
+  ): ReturnType<React.ComponentProps<typeof DocumentEditor>['onChange']>;
   rename?(id: string, title: string): void;
   restore?: ReadonlyMap<
     string,
     { revision: number; selection?: DocumentSelection }
   >;
   editRequest?: { instanceId: string; nonce: number };
+  onEditorReady?(
+    instanceId: string,
+    controller: DocumentEditorController | null,
+  ): void;
+  onEditorViewReady?(
+    instanceId: string,
+    view: EmbeddedDocumentView | null,
+    ready?: boolean,
+  ): void;
+}
+interface EmbeddedDocumentState {
+  targetDocumentId: string;
+  revision: string;
+  selection: DocumentSelection | null;
+  scroll: { top: number; left: number };
+}
+interface EmbeddedDocumentView {
+  capture(): EmbeddedDocumentState;
+  restore(state: EmbeddedDocumentState): ActionResult;
+}
+function isEmbeddedDocumentState(
+  value: unknown,
+): value is EmbeddedDocumentState {
+  if (!value || typeof value !== 'object') return false;
+  const state = value as Partial<EmbeddedDocumentState>;
+  return (
+    typeof state.targetDocumentId === 'string' &&
+    typeof state.revision === 'string' &&
+    !!state.scroll &&
+    Number.isFinite(state.scroll.top) &&
+    Number.isFinite(state.scroll.left) &&
+    (state.selection === null ||
+      (!!state.selection &&
+        Number.isInteger(state.selection.from) &&
+        Number.isInteger(state.selection.to) &&
+        typeof state.selection.collapsed === 'boolean'))
+  );
 }
 // Keep passive preview controls independent of surrounding editor chrome so
 // offscreen image rendering has the same geometry as the live document.
@@ -73,13 +116,19 @@ const embeddedEditorFocus = { autoFocus: false };
 export function createWorkspaceDocumentPreviewCache() {
   const entries = new Map<
     string,
-    { options: PreviewOptions; adapter: FrameDocumentReferences }
+    {
+      options: PreviewOptions;
+      adapter: FrameDocumentReferences;
+      dispose(): void;
+      reconcile(): void;
+    }
   >();
   const get = (options: PreviewOptions): FrameDocumentReferences => {
     const key = JSON.stringify([options.instance, options.path]);
     const previous = entries.get(key);
     if (previous) {
       previous.options = options;
+      previous.reconcile();
       return previous.adapter;
     }
     const dependencies = createPreviewRevisions();
@@ -87,7 +136,50 @@ export function createWorkspaceDocumentPreviewCache() {
       object,
       { inputs: readonly unknown[]; token: object }
     >();
-    const entry = { options, adapter: null! as FrameDocumentReferences };
+    const editors = new Map<string, DocumentEditorController>();
+    const views = new Map<string, EmbeddedDocumentView>();
+    const readyViews = new Map<string, EmbeddedDocumentView>();
+    const occurrences = new Map<
+      string,
+      Parameters<FrameDocumentReferences['render']>[0]
+    >();
+    const waiting = new Set<{
+      instanceId: string;
+      targetDocumentId: string;
+      resolve(view: EmbeddedDocumentView | null): void;
+    }>();
+    const entry = {
+      options,
+      adapter: null! as FrameDocumentReferences,
+      dispose: () => {
+        for (const waiter of [...waiting]) waiter.resolve(null);
+      },
+      reconcile: () => {
+        for (const waiter of [...waiting])
+          if (!entry.options.snapshot.documents.has(waiter.targetDocumentId))
+            waiter.resolve(null);
+      },
+    };
+    const waitReady = (
+      instanceId: string,
+      targetDocumentId: string,
+      signal?: AbortSignal,
+    ): Promise<EmbeddedDocumentView | null> => {
+      if (signal?.aborted) return Promise.resolve(null);
+      const ready = readyViews.get(instanceId);
+      if (ready) return Promise.resolve(ready);
+      return new Promise((resolve) => {
+        const finish = (view: EmbeddedDocumentView | null) => {
+          waiting.delete(waiter);
+          signal?.removeEventListener('abort', cancel);
+          resolve(view);
+        };
+        const cancel = () => finish(null);
+        const waiter = { instanceId, targetDocumentId, resolve: finish };
+        waiting.add(waiter);
+        signal?.addEventListener('abort', cancel, { once: true });
+      });
+    };
     let sceneRevision:
       { inputs: readonly unknown[]; token: object } | undefined;
     const optionInputs = () => {
@@ -107,6 +199,23 @@ export function createWorkspaceDocumentPreviewCache() {
       a.length === b.length && a.every((value, index) => value === b[index]);
     const current = (): PreviewOptions => ({
       ...entry.options,
+      onEditorReady: (id, controller) => {
+        if (controller) editors.set(id, controller);
+        else editors.delete(id);
+      },
+      onEditorViewReady: (id, view, ready = true) => {
+        if (view) {
+          views.set(id, view);
+          if (ready) {
+            readyViews.set(id, view);
+            for (const waiter of [...waiting])
+              if (waiter.instanceId === id) waiter.resolve(view);
+          } else readyViews.delete(id);
+        } else {
+          views.delete(id);
+          readyViews.delete(id);
+        }
+      },
       open: (...args) => entry.options.open(...args),
       openLink: (...args) => entry.options.openLink(...args),
       edit: entry.options.edit
@@ -117,6 +226,50 @@ export function createWorkspaceDocumentPreviewCache() {
         : undefined,
     });
     entry.adapter = {
+      flushEditing: async (id) =>
+        editors.get(id)?.flushEditing() ?? { status: 'noop' },
+      captureEditingView: (id) => {
+        const occurrence = occurrences.get(id),
+          view = views.get(id);
+        return occurrence && view
+          ? { cellId: occurrence.cellId, state: view.capture() }
+          : null;
+      },
+      restoreEditingView: async (
+        saved: FrameDocumentEditingView,
+        activate,
+        signal,
+      ) => {
+        if (signal?.aborted)
+          return { status: 'cancelled', code: 'stale-context' };
+        if (!isEmbeddedDocumentState(saved.state))
+          return { status: 'rejected', code: 'invalid-document-view' };
+        const state = saved.state;
+        const occurrence = [...occurrences.values()].find(
+          (item) =>
+            item.cellId === saved.cellId &&
+            item.targetDocumentId === state.targetDocumentId,
+        );
+        if (
+          !occurrence ||
+          occurrence.kind !== 'document-frame' ||
+          occurrence.readonly ||
+          !entry.options.snapshot.documents.has(state.targetDocumentId)
+        )
+          return { status: 'cancelled', code: 'missing-document-occurrence' };
+        const ready = waitReady(
+          occurrence.instanceId,
+          state.targetDocumentId,
+          signal,
+        );
+        activate(occurrence.instanceId);
+        const view = await ready;
+        if (!view || signal?.aborted)
+          return { status: 'cancelled', code: 'stale-context' };
+        if (!entry.options.snapshot.documents.has(state.targetDocumentId))
+          return { status: 'cancelled', code: 'missing-document' };
+        return view.restore(state);
+      },
       // The root scene observes session changes; individual bodies below only
       // change when their reachable sources or editing options have changed.
       get revision() {
@@ -149,7 +302,15 @@ export function createWorkspaceDocumentPreviewCache() {
         return token;
       },
       title: (id) => entry.options.snapshot.documents.get(id)?.file.title,
-      render: (props) => workspaceDocumentPreviews(current()).render(props),
+      render: (props) => {
+        if (!props.exporting) {
+          for (const [id, occurrence] of occurrences)
+            if (occurrence.cellId === props.cellId && id !== props.instanceId)
+              occurrences.delete(id);
+          occurrences.set(props.instanceId, props);
+        }
+        return workspaceDocumentPreviews(current()).render(props);
+      },
       renderHeaderActions: (props) =>
         workspaceDocumentPreviews(current()).renderHeaderActions?.(props),
     };
@@ -159,7 +320,10 @@ export function createWorkspaceDocumentPreviewCache() {
   get.retain = (instances: Iterable<string>) => {
     const retained = new Set(instances);
     for (const [key, entry] of entries)
-      if (!retained.has(entry.options.instance)) entries.delete(key);
+      if (!retained.has(entry.options.instance)) {
+        entry.dispose();
+        entries.delete(key);
+      }
   };
   return get;
 }
@@ -240,36 +404,92 @@ export function workspaceDocumentPreviews(
         </>
       );
     },
-    render: (props) =>
-      props.kind === 'document-frame' &&
-      props.editing &&
-      !props.readonly &&
-      options.edit &&
-      !options.path.includes(props.targetDocumentId) ? (
-        <DocumentFrameEditor
-          options={options}
-          targetId={props.targetDocumentId}
-          instanceId={props.instanceId}
-          cellId={props.cellId}
-          onExit={props.onExitEdit}
-        />
-      ) : (
-        <DocumentReferencePreview
-          shell={props.kind === 'document-frame' && !props.readonly}
-          annotation={props.annotation}
-          options={{
-            ...options,
-            active: options.active,
-            exporting: options.exporting || props.exporting,
-            instance: JSON.stringify([options.instance, props.instanceId]),
-          }}
-          targetId={props.targetDocumentId}
-        />
-      ),
+    render: (props) => (
+      <WorkspaceContentBoundary
+        resetKeys={[
+          options.snapshot.documents.get(props.targetDocumentId)?.file,
+          options.snapshot.store,
+        ]}
+        locale={options.locale}
+        onRetry={options.retry}
+      >
+        {props.kind === 'document-frame' &&
+        props.editing &&
+        !props.readonly &&
+        options.edit &&
+        !options.path.includes(props.targetDocumentId) ? (
+          <DocumentFrameEditor
+            options={options}
+            targetId={props.targetDocumentId}
+            instanceId={props.instanceId}
+            cellId={props.cellId}
+            onExit={props.onExitEdit}
+          />
+        ) : (
+          <DocumentReferencePreview
+            shell={props.kind === 'document-frame' && !props.readonly}
+            annotation={props.annotation}
+            options={{
+              ...options,
+              active: options.active,
+              exporting: options.exporting || props.exporting,
+              instance: JSON.stringify([options.instance, props.instanceId]),
+            }}
+            targetId={props.targetDocumentId}
+          />
+        )}
+      </WorkspaceContentBoundary>
+    ),
   };
 }
 
 export function WorkspaceCanvasReference({
+  targetFrameId,
+  options,
+}: {
+  targetFrameId: string;
+  options: PreviewOptions;
+}) {
+  const entry = options.snapshot.files.get(targetFrameId);
+  const failure = [...(options.snapshot.failedFiles?.values() ?? [])].find(
+    (item) => item.fileId === targetFrameId,
+  );
+  return (
+    <WorkspaceContentBoundary
+      resetKeys={[entry?.file, options.snapshot.store]}
+      path={entry?.path ?? failure?.path}
+      locale={options.locale}
+      onRetry={options.retry}
+    >
+      {failure && !entry?.dirty ? (
+        <div>
+          <button
+            type="button"
+            style={referenceButtonStyle}
+            onClick={() => options.open(targetFrameId)}
+          >
+            {options.locale === 'en' ? 'Open source' : '打开原图'}
+          </button>
+          <WorkspaceFileError
+            path={failure.path}
+            message={failure.diagnostics
+              .map((issue) => issue.message)
+              .join('\n')}
+            locale={options.locale}
+            onRetry={options.retry}
+          />
+        </div>
+      ) : (
+        <WorkspaceCanvasReferenceContent
+          targetFrameId={targetFrameId}
+          options={options}
+        />
+      )}
+    </WorkspaceContentBoundary>
+  );
+}
+
+function WorkspaceCanvasReferenceContent({
   targetFrameId,
   options,
 }: {
@@ -373,6 +593,18 @@ function DocumentReferencePreview({
   const stop = (event: React.SyntheticEvent) => {
     if (!shell) event.stopPropagation();
   };
+  const failure = [...(options.snapshot.failedFiles?.values() ?? [])].find(
+    (item) => item.fileId === targetId,
+  );
+  if (failure && !options.snapshot.documents.get(targetId)?.dirty)
+    return (
+      <WorkspaceFileError
+        path={failure.path}
+        message={failure.diagnostics.map((issue) => issue.message).join('\n')}
+        locale={options.locale}
+        onRetry={options.retry}
+      />
+    );
   return (
     <div
       data-document-preview-body
@@ -411,12 +643,12 @@ function DocumentReferencePreview({
         rememberScroll();
         const href = anchor.getAttribute('href') ?? '';
         if (href.startsWith('#')) {
-          const link = parseDocumentLink(href, targetId);
+          const link = parseWorkspaceLink(href, targetId);
           const heading =
-            link?.kind === 'file'
+            link?.kind === 'heading'
               ? ctl.current
                   ?.getHeadings()
-                  .find((item) => item.anchor === link.anchor)
+                  .find((item) => item.anchor === link.slug)
               : null;
           if (heading) ctl.current?.locateHeading(heading.pos);
           else options.openLink(href, targetId);
@@ -516,6 +748,17 @@ function DocumentFrameEditor({
   onExit(): void;
 }) {
   const file = options.snapshot.documents.get(targetId)?.file;
+  const readyCallback = useRef(options.onEditorReady);
+  readyCallback.current = options.onEditorReady;
+  const viewReadyCallback = useRef(options.onEditorViewReady);
+  viewReadyCallback.current = options.onEditorViewReady;
+  useEffect(
+    () => () => {
+      readyCallback.current?.(instanceId, null);
+      viewReadyCallback.current?.(instanceId, null);
+    },
+    [instanceId],
+  );
   const root = useRef<HTMLDivElement>(null);
   const body = useRef<HTMLDivElement>(null);
   const controller = useRef<DocumentEditorController | null>(null);
@@ -590,13 +833,13 @@ function DocumentFrameEditor({
         if (event.button !== 0 || (!event.metaKey && !event.ctrlKey)) return;
         const href = anchor.getAttribute('href') ?? '';
         const link = href.startsWith('#')
-          ? parseDocumentLink(href, targetId)
+          ? parseWorkspaceLink(href, targetId)
           : null;
         const heading =
-          link?.kind === 'file'
+          link?.kind === 'heading'
             ? controller.current
                 ?.getHeadings()
-                .find((item) => item.anchor === link.anchor)
+                .find((item) => item.anchor === link.slug)
             : null;
         if (heading) controller.current?.locateHeading(heading.pos);
         else options.openLink(href, targetId);
@@ -631,8 +874,13 @@ function DocumentFrameEditor({
           return;
         event.preventDefault();
         event.stopPropagation();
-        controller.current?.commit();
-        onExit();
+        const active = controller.current;
+        if (!active) onExit();
+        else
+          void active.flushEditing().then((result) => {
+            if (result.status === 'completed' || result.status === 'noop')
+              onExit();
+          });
       }}
       onKeyDown={stop}
     >
@@ -687,11 +935,11 @@ function DocumentFrameEditor({
               <button
                 type="button"
                 disabled={matchIndex < 0}
-                onClick={() => {
+                onClick={async () => {
                   if (matches[matchIndex])
-                    controller.current?.replace(
-                      matches[matchIndex],
-                      replacement,
+                    await controller.current?.executeAction(
+                      'document.replace',
+                      { match: matches[matchIndex], text: replacement },
                     );
                   search(query);
                 }}
@@ -701,8 +949,11 @@ function DocumentFrameEditor({
               <button
                 type="button"
                 disabled={!matches.length}
-                onClick={() => {
-                  controller.current?.replaceAll(query, replacement);
+                onClick={async () => {
+                  await controller.current?.executeAction(
+                    'document.replace-all',
+                    { query, text: replacement },
+                  );
                   search(query);
                 }}
               >
@@ -763,10 +1014,41 @@ function DocumentFrameEditor({
           }
           onReady={(ctl) => {
             controller.current = ctl;
+            options.onEditorReady?.(instanceId, ctl);
+            options.onEditorViewReady?.(instanceId, null);
             restoring.current = true;
             if (restoreFrame.current !== null)
               cancelAnimationFrame(restoreFrame.current);
             if (ctl) {
+              const view: EmbeddedDocumentView = {
+                capture: () => ({
+                  targetDocumentId: targetId,
+                  revision: JSON.stringify(ctl.getDocument().content),
+                  selection: ctl.getSelection(),
+                  scroll: {
+                    top: body.current?.scrollTop ?? 0,
+                    left: body.current?.scrollLeft ?? 0,
+                  },
+                }),
+                restore: (state) => {
+                  if (state.targetDocumentId !== targetId)
+                    return { status: 'cancelled', code: 'missing-document' };
+                  if (
+                    JSON.stringify(ctl.getDocument().content) ===
+                      state.revision &&
+                    state.selection
+                  )
+                    ctl.restoreSelection(state.selection);
+                  const element = body.current;
+                  if (!element)
+                    return { status: 'cancelled', code: 'stale-context' };
+                  element.scrollTop = state.scroll.top;
+                  element.scrollLeft = state.scroll.left;
+                  options.scroll.set(scrollKey, { ...state.scroll });
+                  return { status: 'completed' };
+                },
+              };
+              options.onEditorViewReady?.(instanceId, view, false);
               ctl.focus(
                 options.restore?.has(instanceId) ? 'preserve' : 'start',
               );
@@ -779,6 +1061,7 @@ function DocumentFrameEditor({
                 }
                 restoring.current = false;
                 restoreFrame.current = null;
+                options.onEditorViewReady?.(instanceId, view, true);
               });
             }
           }}

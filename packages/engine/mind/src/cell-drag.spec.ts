@@ -1,4 +1,3 @@
-import { describe, expect, it } from 'vitest';
 import {
   applyCellOperations,
   type CellStore,
@@ -6,15 +5,18 @@ import {
   type NodeGeometry,
 } from '@sue/board-core';
 import { MindLayoutType } from '@sue/board-layouts';
+import { describe, expect, it } from 'vitest';
+import { createTestCellRegistry as createFixtureRegistry } from '../../../../tests/fixtures/plugins/registry';
 import {
   addMindChild,
   createMindChildCell,
   createMindFrameSnapshot,
   createMindRootCell,
 } from './cell-commands';
-import { layoutMindCells, mindChildIds } from './cell-utils';
-import { mindGrowthSide } from './cell-link';
 import { resolveMindChildMove } from './cell-drag';
+import { mindGrowthSide } from './cell-link';
+import { layoutMindCells, mindChildIds } from './cell-utils';
+const testCellRegistry = createFixtureRegistry();
 
 const fixture = (layout: string = 'right') => {
   let { store } = createMindFrameSnapshot('frame', 'root');
@@ -27,6 +29,7 @@ const fixture = (layout: string = 'right') => {
     store = applyCellOperations(
       store,
       addMindChild(store, parent, createMindChildCell(id), `edge-${id}`),
+      testCellRegistry,
     );
   return store;
 };
@@ -70,13 +73,17 @@ const near = (
 describe('Mind attachment hotzones', () => {
   it('chooses the nearest overlapping target, breaking equal distances by Frame order', () => {
     let store = fixture();
-    store = applyCellOperations(store, [
-      {
-        type: 'insert_cell',
-        parentId: 'frame',
-        cell: createMindRootCell('other'),
-      },
-    ]);
+    store = applyCellOperations(
+      store,
+      [
+        {
+          type: 'insert_cell',
+          parentId: 'frame',
+          cell: createMindRootCell('other'),
+        },
+      ],
+      testCellRegistry,
+    );
     const positions = layoutMindCells(store, 'frame');
     positions.forEach((bounds, id) =>
       positions.set(id, { ...bounds, x: -5000, y: -5000 }),
@@ -103,16 +110,20 @@ describe('Mind attachment hotzones', () => {
     'uses the %s hotzone of another standard root independently of the pointer',
     (side) => {
       let store = fixture();
-      store = applyCellOperations(store, [
-        {
-          type: 'insert_cell',
-          parentId: 'frame',
-          cell: {
-            ...createMindRootCell('other', [1000, 600]),
-            data: { layout: 'standard' },
+      store = applyCellOperations(
+        store,
+        [
+          {
+            type: 'insert_cell',
+            parentId: 'frame',
+            cell: {
+              ...createMindRootCell('other', [1000, 600]),
+              data: { layout: 'standard' },
+            },
           },
-        },
-      ]);
+        ],
+        testCellRegistry,
+      );
       const positions = layoutMindCells(store, 'frame'),
         target = positions.get('other')!;
       const preview = {
@@ -131,7 +142,11 @@ describe('Mind attachment hotzones', () => {
         { point: [-10000, -10000], geometry: positions },
       );
       expect(plan.parentId).toBe('other');
-      const next = applyCellOperations(store, plan.operations);
+      const next = applyCellOperations(
+        store,
+        plan.operations,
+        testCellRegistry,
+      );
       expect(
         (next.cells.other as NodeCell<{ rightNodeCount: number }>).data
           ?.rightNodeCount ?? Math.ceil(mindChildIds(next, 'other').length / 2),
@@ -157,7 +172,11 @@ describe('Mind attachment hotzones', () => {
       );
       expect(plan.parentId).toBe('b');
       expect(mindChildIds(store, 'b')).toEqual([]);
-      const next = applyCellOperations(store, plan.operations);
+      const next = applyCellOperations(
+        store,
+        plan.operations,
+        testCellRegistry,
+      );
       expect(mindChildIds(next, 'b')).toEqual(['a']);
       expect(mindChildIds(next, 'a')).toEqual(['a1']);
     },
@@ -221,9 +240,11 @@ describe('Mind attachment hotzones', () => {
         context,
       ),
     ).toEqual({ operations: [] });
-    store = applyCellOperations(store, [
-      { type: 'replace_cell', cell: { ...store.cells.b, locked: true } },
-    ]);
+    store = applyCellOperations(
+      store,
+      [{ type: 'replace_cell', cell: { ...store.cells.b, locked: true } }],
+      testCellRegistry,
+    );
     expect(
       resolveMindChildMove(
         store,
@@ -237,13 +258,17 @@ describe('Mind attachment hotzones', () => {
 
   it('allows another tree in the same Frame, and rejects an explicit cross-Frame target', () => {
     let store = fixture();
-    store = applyCellOperations(store, [
-      {
-        type: 'insert_cell',
-        parentId: 'frame',
-        cell: createMindRootCell('other', [1000, 600]),
-      },
-    ]);
+    store = applyCellOperations(
+      store,
+      [
+        {
+          type: 'insert_cell',
+          parentId: 'frame',
+          cell: createMindRootCell('other', [1000, 600]),
+        },
+      ],
+      testCellRegistry,
+    );
     const positions = layoutMindCells(store, 'frame');
     const plan = resolveMindChildMove(
       store,
@@ -284,7 +309,10 @@ describe('Mind attachment hotzones', () => {
     );
     expect(plan.parentId).toBeUndefined();
     expect(
-      mindChildIds(applyCellOperations(store, plan.operations), 'root'),
+      mindChildIds(
+        applyCellOperations(store, plan.operations, testCellRegistry),
+        'root',
+      ),
     ).toEqual(['b', 'a']);
   });
 });

@@ -14,6 +14,7 @@ import {
   ChevronDown,
   ChevronUp,
   Code,
+  Command,
   Columns3,
   Download,
   Highlighter,
@@ -39,7 +40,22 @@ import {
   X,
   type LucideIcon,
 } from 'lucide-react';
-import { Alignment } from '@sue/board-common';
+import {
+  Alignment,
+  actionLabel,
+  createActionRegistry,
+  type BoundAction,
+} from '@sue/board-common';
+import {
+  ActionScope,
+  formatActionShortcut,
+  resolveActionShortcut,
+  useActionScope,
+  useActionState,
+  useActionSource,
+  type ActionScopeValue,
+  type ActionSource,
+} from '@sue/board-react-actions';
 import {
   DocumentEditor,
   type DocumentEditorChange,
@@ -50,10 +66,9 @@ import {
   type DocumentSelection,
   type DocumentToolbarState,
 } from '@sue/board-react-text';
-import type { BoardTextDocument } from '@sue/board-common';
+import type { BoardTextDocument, WorkspaceTarget } from '@sue/board-common';
 import './document-page.scss';
-import { ShortcutHelp } from './shortcut-help';
-import { shortcutLabels } from './shortcut-catalog';
+import { shortcutLabels } from './shortcut-labels';
 
 export type {
   DocumentEditorChange,
@@ -78,7 +93,7 @@ export interface DocumentPageProps {
   restore?: { revision: number; selection?: DocumentSelection };
   /** Focuses the title once — used right after creating a document. */
   autoFocusTitle?: boolean;
-  onChange(change: DocumentEditorChange): void;
+  onChange: import('@sue/board-react-text').DocumentEditorProps['onChange'];
   onTitleCommit(title: string): void;
   /** Exports the document file in a supported format. */
   onExport?(format: 'json' | 'markdown'): void;
@@ -88,7 +103,21 @@ export interface DocumentPageProps {
   /** Receives explicit link activation; the workspace resolves the target. */
   onOpenLink?(href: string): void;
   /** A fresh request also navigates an already mounted document. */
-  navigation?: { anchor: string | null; requestId: number };
+  navigation?: {
+    requestId: number;
+    target: WorkspaceTarget;
+    /** Session-only address; positions are resolved against the current editor. */
+    frameReference?: {
+      targetFrameId: string;
+      occurrence: number;
+      revision: string;
+    };
+    signal?: AbortSignal;
+  };
+  onNavigationResult?(
+    requestId: number,
+    result: { status: 'revealed' | 'unavailable' | 'cancelled'; code?: string },
+  ): void;
 }
 
 // The page manages navigation/embedded focus explicitly; passive tabs must not steal it.
@@ -248,24 +277,40 @@ function ToolbarButton({
   disabled,
   onClick,
   icon: Icon,
+  actionId,
 }: {
   title: string;
   pressed?: boolean;
   disabled?: boolean;
-  onClick(): void;
+  onClick?(): void;
   icon: LucideIcon;
+  actionId?: string;
 }) {
+  const scope = useActionScope();
+  const state = useActionState(actionId ?? '');
+  if (actionId && !state.visible) return null;
   return (
     <button
       type="button"
       className={`doc-toolbar__btn${pressed ? ' pressed' : ''}`}
       title={title}
       aria-label={title}
-      aria-pressed={pressed}
-      disabled={disabled}
+      aria-pressed={actionId ? (state.checked ?? pressed) : pressed}
+      disabled={disabled || (actionId ? !state.enabled : false)}
+      data-action-id={actionId}
       // Keep the editor selection — commands act on it.
       onMouseDown={(event) => event.preventDefault()}
-      onClick={onClick}
+      onClick={
+        onClick ??
+        (() => {
+          if (actionId)
+            void scope?.source
+              .actions()
+              .find((action) => action.id === actionId)
+              ?.capture()
+              .execute(undefined, { source: 'toolbar' });
+        })
+      }
     >
       <Icon size={16} />
     </button>
@@ -289,12 +334,13 @@ export function DocumentPage({
   onReady,
   onOpenLink,
   navigation,
+  onNavigationResult,
   frameChoices,
   renderFrameReference,
 }: DocumentPageProps) {
   const t = labels[locale];
-  const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const shortcutsButton = useRef<HTMLButtonElement>(null);
+  const commandButton = useRef<HTMLButtonElement>(null);
   const [controller, setController] = useState<DocumentEditorController | null>(
     null,
   );
@@ -319,8 +365,13 @@ export function DocumentPage({
   const findInputRef = useRef<HTMLInputElement>(null);
   const controllerRef = useRef<DocumentEditorController | null>(null);
   const lastNavigationRef = useRef<number | null>(null);
-  const navigationAnchor = navigation?.anchor;
+  const navigationAnchor =
+    navigation?.target.kind === 'heading' ? navigation.target.slug : null;
+  const navigationKind = navigation?.target.kind;
+  const navigationSignal = navigation?.signal;
+  const navigationFileId = navigation?.target.fileId;
   const navigationRequestId = navigation?.requestId;
+  const navigationFrameReference = navigation?.frameReference;
   controllerRef.current = controller;
 
   const refreshToolbar = useCallback(() => {
@@ -355,20 +406,96 @@ export function DocumentPage({
     // WorkspaceApp activates the pane in the same render as this request.
     const frame = requestAnimationFrame(() => {
       lastNavigationRef.current = navigationRequestId;
+      if (navigationSignal?.aborted) {
+        onNavigationResult?.(navigationRequestId, {
+          status: 'cancelled',
+          code: 'aborted',
+        });
+        return;
+      }
+      if (navigationKind === 'cell' || navigationFileId !== value.id) {
+        onNavigationResult?.(navigationRequestId, {
+          status: 'unavailable',
+          code: navigationKind === 'cell' ? 'wrong-file-type' : 'wrong-file',
+        });
+        return;
+      }
+      if (navigationFrameReference) {
+        const fresh =
+          JSON.stringify(value.content) === navigationFrameReference.revision;
+        const revealed =
+          fresh &&
+          controller.locateFrameReference(
+            navigationFrameReference.targetFrameId,
+            navigationFrameReference.occurrence,
+          );
+        setNotice(
+          revealed
+            ? null
+            : locale === 'zh'
+              ? '引用位置已变化，请重新选择。'
+              : 'The reference changed. Please select it again.',
+        );
+        onNavigationResult?.(
+          navigationRequestId,
+          revealed
+            ? { status: 'revealed' }
+            : {
+                status: 'unavailable',
+                code: fresh ? 'missing-reference' : 'stale-reference',
+              },
+        );
+        return;
+      }
       const heading = navigationAnchor
         ? controller
             .getHeadings()
             .find((item) => item.anchor === navigationAnchor)
         : undefined;
       setNotice(null);
-      if (heading) controller.locateHeading(heading.pos);
-      else {
+      if (heading) {
+        controller.locateHeading(heading.pos);
+        onNavigationResult?.(navigationRequestId, { status: 'revealed' });
+      } else if (navigationAnchor) {
+        setNotice(t.headingNotFound);
+        onNavigationResult?.(navigationRequestId, {
+          status: 'unavailable',
+          code: 'missing-heading',
+        });
+      } else {
         controller.focus('start');
-        if (navigationAnchor) setNotice(t.headingNotFound);
+        onNavigationResult?.(navigationRequestId, { status: 'revealed' });
       }
     });
-    return () => cancelAnimationFrame(frame);
-  }, [controller, navigationAnchor, navigationRequestId, t.headingNotFound]);
+    const aborted = () => {
+      cancelAnimationFrame(frame);
+      if (lastNavigationRef.current !== navigationRequestId) {
+        lastNavigationRef.current = navigationRequestId;
+        onNavigationResult?.(navigationRequestId, {
+          status: 'cancelled',
+          code: 'aborted',
+        });
+      }
+    };
+    navigationSignal?.addEventListener('abort', aborted, { once: true });
+    return () => {
+      cancelAnimationFrame(frame);
+      navigationSignal?.removeEventListener('abort', aborted);
+    };
+  }, [
+    controller,
+    navigationAnchor,
+    navigationRequestId,
+    navigationKind,
+    navigationFrameReference,
+    navigationSignal,
+    navigationFileId,
+    value.id,
+    value.content,
+    locale,
+    onNavigationResult,
+    t.headingNotFound,
+  ]);
 
   // ------- title -------
   useEffect(() => {
@@ -413,17 +540,24 @@ export function DocumentPage({
     ctl.selectMatch(matches[next]);
   };
 
-  const replaceCurrent = () => {
+  const replaceCurrent = async () => {
     const ctl = controllerRef.current;
     if (!ctl || matchIndex < 0 || !matches[matchIndex]) return;
-    ctl.replace(matches[matchIndex], replacement);
+    await ctl.executeAction('document.replace', {
+      match: matches[matchIndex],
+      text: replacement,
+    });
     runFind(query, matchCase);
   };
 
-  const replaceEvery = () => {
+  const replaceEvery = async () => {
     const ctl = controllerRef.current;
     if (!ctl || !query) return;
-    ctl.replaceAll(query, replacement, { caseSensitive: matchCase });
+    await ctl.executeAction('document.replace-all', {
+      query,
+      text: replacement,
+      options: { caseSensitive: matchCase },
+    });
     runFind(query, matchCase);
   };
 
@@ -435,7 +569,7 @@ export function DocumentPage({
   // ------- link / image -------
   const applyLink = () => {
     const href = linkDraft.trim();
-    if (href) controllerRef.current?.setLink(href);
+    if (href) void linkAction.current?.execute(href, { source: 'toolbar' });
     setLinkOpen(false);
   };
 
@@ -458,16 +592,15 @@ export function DocumentPage({
   };
 
   const pageKeyDown = (event: React.KeyboardEvent) => {
-    if (shortcutsOpen) return;
-    const mod = event.metaKey || event.ctrlKey;
-    if (mod && !event.shiftKey && event.key.toLowerCase() === 'f') {
+    if (event.defaultPrevented || event.nativeEvent.isComposing) return;
+    const resolved = resolveActionShortcut(pageActions.actions(), event);
+    if (
+      resolved.status === 'matched' &&
+      resolved.action.id !== 'document.command-palette'
+    ) {
       event.preventDefault();
-      openFind('find');
-      return;
-    }
-    if (mod && event.shiftKey && event.key.toLowerCase() === 'h') {
-      event.preventDefault();
-      if (!readonly) openFind('replace');
+      event.stopPropagation();
+      void resolved.action.capture().execute(undefined, { source: 'shortcut' });
       return;
     }
     if (event.key === 'Escape' && findOpen) {
@@ -499,8 +632,171 @@ export function DocumentPage({
     }
   };
 
-  const canUndo = history ? history.canUndo() : (toolbar?.editable ?? false);
-  const canRedo = history ? history.canRedo() : false;
+  const scopeRef = useRef<ActionScopeValue | null>(null);
+  const linkAction = useRef<BoundAction | null>(null);
+  const imageAction = useRef<BoundAction | null>(null);
+  const frameAction = useRef<BoundAction | null>(null);
+  const actionOptions = useRef({
+    value,
+    readonly,
+    onExport,
+    controller,
+    toolbar,
+  });
+  actionOptions.current = { value, readonly, onExport, controller, toolbar };
+  const actionHandlers = useRef<Record<string, () => void>>({});
+  const pageActions = useMemo(() => {
+    const actions = createActionRegistry({
+      getContext: () => ({
+        id: actionOptions.current.value.id,
+        controller: actionOptions.current.controller,
+      }),
+      refresh: (captured) =>
+        captured.id === actionOptions.current.value.id &&
+        captured.controller === actionOptions.current.controller
+          ? captured
+          : null,
+    });
+    for (const [id, label, key, shift, editable] of [
+      ['find', '查找', 'f', false, false],
+      ['find-replace', '查找替换', 'h', true, true],
+      ['link-dialog', '链接', '', false, true],
+      ['image-dialog', '插入图片', '', false, true],
+      ['frame-dialog', '插入图表', '', false, true],
+      ['toggle-toc', '目录', '', false, false],
+      ['help', '快捷键', '', false, false],
+      ['command-palette', '命令面板', 'p', true, false],
+      ['export-dialog', '导出', '', false, false],
+    ] as const)
+      actions.register({
+        id: `document.${id}`,
+        label: {
+          zh: label,
+          en:
+            id === 'command-palette'
+              ? 'Command palette'
+              : id.replace(/-/g, ' '),
+        },
+        category: 'document',
+        effect: id === 'toggle-toc' ? 'view' : 'dialog',
+        palette: id !== 'command-palette',
+        shortcuts: key ? [{ key, mod: true, shift }] : undefined,
+        getState: () => ({
+          enabled:
+            !!actionOptions.current.controller &&
+            (!editable || !actionOptions.current.readonly),
+          reason:
+            editable && actionOptions.current.readonly ? 'readonly' : undefined,
+        }),
+        execute: () => {
+          actionHandlers.current[id]?.();
+          return { status: 'completed' };
+        },
+      });
+    for (const format of ['json', 'markdown'] as const)
+      actions.register({
+        id: `document.export-${format}`,
+        label: format === 'json' ? '导出文档' : '导出 Markdown',
+        category: 'document',
+        effect: 'external',
+        getState: () => ({
+          visible: !!actionOptions.current.onExport,
+          enabled:
+            !!actionOptions.current.onExport &&
+            !!actionOptions.current.controller,
+        }),
+        execute: async (context, _args, execution) => {
+          const receipt = await context.controller!.flushEditing();
+          if (receipt.status !== 'completed' && receipt.status !== 'noop')
+            return receipt;
+          const invalid = execution.checkpoint();
+          if (invalid) return invalid;
+          await actionOptions.current.onExport?.(format);
+          return { status: 'completed' };
+        },
+      });
+    actions.seal();
+    return actions;
+  }, []);
+  useActionSource(pageActions);
+  const actionsMounted = useRef(false);
+  useEffect(() => {
+    actionsMounted.current = true;
+    return () => {
+      actionsMounted.current = false;
+      queueMicrotask(() => {
+        if (!actionsMounted.current) pageActions.dispose();
+      });
+    };
+  }, [pageActions]);
+  useEffect(() => {
+    pageActions.invalidate();
+  }, [pageActions, controller, readonly, onExport]);
+  const source = useMemo<ActionSource>(
+    () => ({
+      actions: () => [
+        ...(controller?.actions() ?? []),
+        ...pageActions.actions(),
+      ],
+      getActionState: (id, args) =>
+        controller?.actions().some((action) => action.id === id)
+          ? controller.getActionState(id, args)
+          : pageActions.getActionState(id, args),
+      subscribe(listener) {
+        const a = controller?.subscribe(listener);
+        const b = pageActions.subscribe(listener);
+        return () => {
+          a?.();
+          b();
+        };
+      },
+      get revision() {
+        return (controller?.revision ?? 0) + pageActions.revision;
+      },
+    }),
+    [controller, pageActions],
+  );
+  const invoke = (id: string, args?: unknown) => {
+    const action = source
+      .actions()
+      .find((item) => item.id === `document.${id}`);
+    if (action) void action.capture().execute(args, { source: 'toolbar' });
+  };
+  const capture = (id: string) =>
+    controllerRef.current
+      ?.actions()
+      .find((action) => action.id === `document.${id}`)
+      ?.capture() ?? null;
+  actionHandlers.current = {
+    find: () => openFind('find'),
+    'find-replace': () => openFind('replace'),
+    'link-dialog': () => {
+      linkAction.current = capture('set-link');
+      setLinkDraft(controllerRef.current?.getToolbarState().link ?? '');
+      setLinkOpen((open) => !open);
+    },
+    'image-dialog': () => {
+      imageAction.current = capture('insert-image');
+      imageInputRef.current?.click();
+    },
+    'frame-dialog': () => {
+      frameAction.current = capture('insert-frame-reference');
+      setFramePickerOpen(true);
+    },
+    'toggle-toc': () => setTocOpen((open) => !open),
+    'export-dialog': () => setExportOpen((open) => !open),
+    help: () =>
+      scopeRef.current?.openHelp({
+        returnFocus: () => shortcutsButton.current,
+      }),
+    'command-palette': () =>
+      scopeRef.current?.openPalette({
+        returnFocus: () => commandButton.current,
+      }),
+  };
+
+  const canUndo = controller?.getActionState('document.undo').enabled ?? false;
+  const canRedo = controller?.getActionState('document.redo').enabled ?? false;
   const blockValue =
     toolbar?.block === 'heading'
       ? `h${toolbar.headingLevel ?? 1}`
@@ -513,553 +809,628 @@ export function DocumentPage({
       aria-label={shortcutLabels[locale].title}
       title={shortcutLabels[locale].title}
       onMouseDown={(event) => event.preventDefault()}
-      onClick={() => setShortcutsOpen(true)}
+      onClick={() => invoke('help')}
     >
       <Keyboard size={16} aria-hidden />
     </button>
   );
+  const commandAction = pageActions
+    .actions()
+    .find((action) => action.id === 'document.command-palette')!;
+  const commandLabel = actionLabel(commandAction.label, locale);
+  const commandTrigger = (
+    <button
+      type="button"
+      ref={commandButton}
+      className="doc-toolbar__btn"
+      data-action-id={commandAction.id}
+      aria-label={commandLabel}
+      title={`${commandLabel} — ${formatActionShortcut(commandAction.shortcuts![0])}`}
+      disabled={!commandAction.getState().enabled}
+      onMouseDown={(event) => event.preventDefault()}
+      onClick={() => invoke('command-palette')}
+    >
+      <Command size={16} aria-hidden />
+    </button>
+  );
 
   return (
-    <div
-      className={`document-page${compact ? ' document-page--compact' : ''}`}
-      onKeyDown={pageKeyDown}
-      onClickCapture={openEditorLink}
-      onAuxClickCapture={(event) => {
-        if (linkInEditor(event.target)) event.preventDefault();
+    <ActionScope
+      registry={source}
+      language={locale}
+      onReady={(scope) => {
+        scopeRef.current = scope;
       }}
     >
-      <header className="document-page__header">
-        <input
-          ref={titleInputRef}
-          className="document-page__title"
-          value={titleDraft ?? title}
-          placeholder={t.titlePlaceholder}
-          disabled={readonly}
-          onChange={(event) => setTitleDraft(event.target.value)}
-          onBlur={commitTitle}
-          onKeyDown={(event) => {
-            if (event.key === 'Enter') {
-              event.preventDefault();
-              commitTitle();
-              controllerRef.current?.focus('start');
-            } else if (event.key === 'Escape') {
-              setTitleDraft(null);
-            }
-          }}
-        />
-        {!readonly && (
-          <div className="doc-toolbar" role="toolbar" aria-label="document">
-            <select
-              className="doc-toolbar__select"
-              title={t.paragraph}
-              value={blockValue}
-              onMouseDown={(event) => event.stopPropagation()}
-              onChange={(event) => {
-                const ctl = controllerRef.current;
-                if (!ctl) return;
-                const v = event.target.value;
-                if (v === 'paragraph') ctl.setParagraph();
-                else if (v.startsWith('h'))
-                  ctl.setHeading(Number(v.slice(1)) as 1 | 2 | 3 | 4 | 5 | 6);
-                else if (v === 'blockquote') ctl.toggleBlockquote();
-                else if (v === 'codeBlock') ctl.toggleCodeBlock();
-                else if (v === 'bulletList') ctl.toggleBulletList();
-                else if (v === 'orderedList') ctl.toggleOrderedList();
-              }}
-            >
-              <option value="paragraph">{t.paragraph}</option>
-              {[1, 2, 3, 4, 5, 6].map((level) => (
-                <option key={level} value={`h${level}`}>
-                  {t.heading} {level}
-                </option>
-              ))}
-              <option value="bulletList">{t.bulletList}</option>
-              <option value="orderedList">{t.orderedList}</option>
-              <option value="blockquote">{t.blockquote}</option>
-              <option value="codeBlock">{t.codeBlock}</option>
-            </select>
-            <span className="doc-toolbar__sep" />
-            <ToolbarButton
-              title={t.bold}
-              pressed={!!toolbar?.marks.bold}
-              onClick={() => controllerRef.current?.toggleMark('bold')}
-              icon={Bold}
-            />
-            <ToolbarButton
-              title={t.italic}
-              pressed={!!toolbar?.marks.italic}
-              onClick={() => controllerRef.current?.toggleMark('italic')}
-              icon={Italic}
-            />
-            <ToolbarButton
-              title={t.underline}
-              pressed={!!toolbar?.marks.underline}
-              onClick={() => controllerRef.current?.toggleMark('underline')}
-              icon={UnderlineIcon}
-            />
-            <ToolbarButton
-              title={t.strike}
-              pressed={!!toolbar?.marks.strike}
-              onClick={() => controllerRef.current?.toggleMark('strike')}
-              icon={Strikethrough}
-            />
-            <ToolbarButton
-              title={t.inlineCode}
-              pressed={!!toolbar?.marks.code}
-              onClick={() => controllerRef.current?.toggleMark('code')}
-              icon={Code}
-            />
-            <span className="doc-toolbar__sep" />
-            <select
-              className="doc-toolbar__select doc-toolbar__select--size"
-              title={t.fontSize}
-              value={toolbar?.marks.fontSize ?? ''}
-              onMouseDown={(event) => event.stopPropagation()}
-              onChange={(event) =>
-                controllerRef.current?.setFontSize(event.target.value || null)
+      <div
+        className={`document-page${compact ? ' document-page--compact' : ''}`}
+        onKeyDownCapture={pageKeyDown}
+        onClickCapture={openEditorLink}
+        onAuxClickCapture={(event) => {
+          if (linkInEditor(event.target)) event.preventDefault();
+        }}
+      >
+        <header className="document-page__header">
+          <input
+            ref={titleInputRef}
+            className="document-page__title"
+            value={titleDraft ?? title}
+            placeholder={t.titlePlaceholder}
+            disabled={readonly}
+            onChange={(event) => setTitleDraft(event.target.value)}
+            onBlur={commitTitle}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter') {
+                event.preventDefault();
+                commitTitle();
+                controllerRef.current?.focus('start');
+              } else if (event.key === 'Escape') {
+                setTitleDraft(null);
               }
-            >
-              <option value="">{t.fontSize}</option>
-              {FONT_SIZES.map((size) => (
-                <option key={size} value={`${size}px`}>
-                  {size}
-                </option>
-              ))}
-            </select>
-            <label
-              className="doc-toolbar__btn doc-toolbar__color"
-              title={t.textColor}
-              style={{ color: toolbar?.marks.color ?? undefined }}
-            >
-              <Paintbrush size={16} />
-              <input
-                type="color"
-                value={toolbar?.marks.color ?? '#111827'}
-                onChange={(event) =>
-                  controllerRef.current?.setTextColor(event.target.value)
-                }
-              />
-            </label>
-            <label
-              className="doc-toolbar__btn doc-toolbar__color"
-              title={t.highlight}
-              style={{ color: toolbar?.marks.highlight ?? undefined }}
-            >
-              <Highlighter size={16} />
-              <input
-                type="color"
-                value={toolbar?.marks.highlight ?? '#fef08a'}
-                onChange={(event) =>
-                  controllerRef.current?.setHighlight(event.target.value)
-                }
-              />
-            </label>
-            <span className="doc-toolbar__sep" />
-            <ToolbarButton
-              title={t.alignLeft}
-              pressed={toolbar?.align === Alignment.left}
-              onClick={() =>
-                controllerRef.current?.setTextAlign(Alignment.left)
-              }
-              icon={AlignLeft}
-            />
-            <ToolbarButton
-              title={t.alignCenter}
-              pressed={toolbar?.align === Alignment.center}
-              onClick={() =>
-                controllerRef.current?.setTextAlign(Alignment.center)
-              }
-              icon={AlignCenter}
-            />
-            <ToolbarButton
-              title={t.alignRight}
-              pressed={toolbar?.align === Alignment.right}
-              onClick={() =>
-                controllerRef.current?.setTextAlign(Alignment.right)
-              }
-              icon={AlignRight}
-            />
-            <span className="doc-toolbar__sep" />
-            <ToolbarButton
-              title={t.link}
-              pressed={!!toolbar?.link}
-              onClick={() => {
-                setLinkDraft(toolbar?.link ?? '');
-                setLinkOpen((v) => !v);
-              }}
-              icon={LinkIcon}
-            />
-            <ToolbarButton
-              title={t.image}
-              onClick={() => imageInputRef.current?.click()}
-              icon={ImageIcon}
-            />
-            {frameChoices && (
-              <ToolbarButton
-                title={locale === 'zh' ? '插入图表' : 'Insert canvas'}
-                icon={Columns3}
-                onClick={() => setFramePickerOpen(true)}
-              />
-            )}
-            <ToolbarButton
-              title={t.table}
-              onClick={() => controllerRef.current?.insertTable()}
-              icon={TableIcon}
-            />
-            <ToolbarButton
-              title={t.horizontalRule}
-              onClick={() => controllerRef.current?.insertHorizontalRule()}
-              icon={Minus}
-            />
-            <span className="doc-toolbar__sep" />
-            <ToolbarButton
-              title={t.clearFormat}
-              onClick={() => controllerRef.current?.clearFormatting()}
-              icon={RemoveFormatting}
-            />
-            <ToolbarButton
-              title={t.undo}
-              disabled={!canUndo}
-              onClick={() => controllerRef.current?.undo()}
-              icon={Undo2}
-            />
-            <ToolbarButton
-              title={t.redo}
-              disabled={!canRedo}
-              onClick={() => controllerRef.current?.redo()}
-              icon={Redo2}
-            />
-            <span className="doc-toolbar__sep" />
-            <ToolbarButton
-              title={`${t.find} (⌘F)`}
-              pressed={!!findOpen}
-              onClick={() => (findOpen ? closeFind() : openFind('find'))}
-              icon={Search}
-            />
-            <ToolbarButton
-              title={t.toc}
-              pressed={tocOpen}
-              onClick={() => setTocOpen((v) => !v)}
-              icon={ListTree}
-            />
-            {shortcutsTrigger}
-            {onExport && (
-              <span className="doc-export">
-                <ToolbarButton
-                  title={t.export}
-                  pressed={exportOpen}
-                  onClick={() => setExportOpen((open) => !open)}
-                  icon={Download}
-                />
-                {exportOpen && (
-                  <div className="doc-export__menu" role="menu">
-                    <button
-                      type="button"
-                      role="menuitem"
-                      onClick={() => {
-                        setExportOpen(false);
-                        onExport('json');
-                      }}
-                    >
-                      {t.exportJson}
-                    </button>
-                    <button
-                      type="button"
-                      role="menuitem"
-                      onClick={() => {
-                        setExportOpen(false);
-                        onExport('markdown');
-                      }}
-                    >
-                      {t.exportMarkdown}
-                    </button>
-                  </div>
-                )}
-              </span>
-            )}
-            <input
-              ref={imageInputRef}
-              type="file"
-              accept="image/png,image/jpeg,image/webp,image/gif"
-              hidden
-              onChange={async (event) => {
-                const file = event.target.files?.[0];
-                event.target.value = '';
-                if (!file) return;
-                const src = await pickImage(file);
-                if (src) controllerRef.current?.insertImage({ src });
-              }}
-            />
-          </div>
-        )}
-        {readonly && shortcutsTrigger}
-        {framePickerOpen && !readonly && (
-          <div
-            className="doc-frame-picker"
-            role="dialog"
-            aria-label={locale === 'zh' ? '插入图表' : 'Insert canvas'}
-          >
-            <button type="button" onClick={() => setFramePickerOpen(false)}>
-              {locale === 'zh' ? '取消' : 'Cancel'}
-            </button>
-            {frameChoices?.map((frame) => (
-              <button
-                type="button"
-                key={frame.frameId}
-                onClick={() => {
-                  controllerRef.current?.insertFrameReference(frame.frameId);
-                  setFramePickerOpen(false);
-                }}
-              >
-                {frame.title} <small>{frame.path}</small>
-              </button>
-            ))}
-            {!frameChoices?.length && (
-              <p>
-                {locale === 'zh'
-                  ? '工作区中没有画布'
-                  : 'No canvases in this workspace'}
-              </p>
-            )}
-          </div>
-        )}
-        {linkOpen && (
-          <div className="doc-linkbar">
-            <input
-              ref={(node) => node?.focus()}
-              value={linkDraft}
-              placeholder={t.linkPlaceholder}
-              onChange={(event) => setLinkDraft(event.target.value)}
-              onKeyDown={(event) => {
-                if (event.key === 'Enter') applyLink();
-                if (event.key === 'Escape') setLinkOpen(false);
-              }}
-            />
-            <button type="button" onClick={applyLink}>
-              {t.linkApply}
-            </button>
-            {onOpenLink && (
-              <button
-                type="button"
-                disabled={!linkDraft.trim()}
-                onClick={() => {
-                  const href = linkDraft.trim();
-                  if (href) onOpenLink(href);
-                }}
-              >
-                {t.openLink}
-              </button>
-            )}
-            {toolbar?.link && (
-              <button
-                type="button"
-                onClick={() => {
-                  controllerRef.current?.setLink(null);
-                  setLinkOpen(false);
-                }}
-              >
-                {t.linkRemove}
-              </button>
-            )}
-          </div>
-        )}
-        {findOpen && (
-          <div className="doc-findbar">
-            <input
-              ref={findInputRef}
-              value={query}
-              placeholder={t.findPlaceholder}
-              onChange={(event) => {
-                setQuery(event.target.value);
-                runFind(event.target.value, matchCase);
-              }}
-              onKeyDown={(event) => {
-                if (event.key === 'Enter') stepMatch(event.shiftKey ? -1 : 1);
-                if (event.key === 'Escape') closeFind();
-              }}
-            />
-            <label className="doc-findbar__case" title={t.matchCase}>
-              <input
-                type="checkbox"
-                checked={matchCase}
+            }}
+          />
+          {!readonly && (
+            <div className="doc-toolbar" role="toolbar" aria-label="document">
+              <select
+                className="doc-toolbar__select"
+                title={t.paragraph}
+                value={blockValue}
+                onMouseDown={(event) => event.stopPropagation()}
                 onChange={(event) => {
-                  setMatchCase(event.target.checked);
-                  runFind(query, event.target.checked);
+                  const ctl = controllerRef.current;
+                  if (!ctl) return;
+                  const v = event.target.value;
+                  if (v === 'paragraph') invoke('set-paragraph');
+                  else if (v.startsWith('h'))
+                    invoke('set-heading', Number(v.slice(1)));
+                  else if (v === 'blockquote') invoke('toggle-blockquote');
+                  else if (v === 'codeBlock') invoke('toggle-code-block');
+                  else if (v === 'bulletList') invoke('toggle-bullet-list');
+                  else if (v === 'orderedList') invoke('toggle-ordered-list');
+                }}
+              >
+                <option value="paragraph">{t.paragraph}</option>
+                {[1, 2, 3, 4, 5, 6].map((level) => (
+                  <option key={level} value={`h${level}`}>
+                    {t.heading} {level}
+                  </option>
+                ))}
+                <option value="bulletList">{t.bulletList}</option>
+                <option value="orderedList">{t.orderedList}</option>
+                <option value="blockquote">{t.blockquote}</option>
+                <option value="codeBlock">{t.codeBlock}</option>
+              </select>
+              <span className="doc-toolbar__sep" />
+              <ToolbarButton
+                actionId="document.toggle-bold"
+                title={t.bold}
+                pressed={!!toolbar?.marks.bold}
+                onClick={() => invoke('toggle-bold')}
+                icon={Bold}
+              />
+              <ToolbarButton
+                actionId="document.toggle-italic"
+                title={t.italic}
+                pressed={!!toolbar?.marks.italic}
+                onClick={() => invoke('toggle-italic')}
+                icon={Italic}
+              />
+              <ToolbarButton
+                actionId="document.toggle-underline"
+                title={t.underline}
+                pressed={!!toolbar?.marks.underline}
+                onClick={() => invoke('toggle-underline')}
+                icon={UnderlineIcon}
+              />
+              <ToolbarButton
+                actionId="document.toggle-strike"
+                title={t.strike}
+                pressed={!!toolbar?.marks.strike}
+                onClick={() => invoke('toggle-strike')}
+                icon={Strikethrough}
+              />
+              <ToolbarButton
+                actionId="document.toggle-code"
+                title={t.inlineCode}
+                pressed={!!toolbar?.marks.code}
+                onClick={() => invoke('toggle-code')}
+                icon={Code}
+              />
+              <span className="doc-toolbar__sep" />
+              <select
+                className="doc-toolbar__select doc-toolbar__select--size"
+                title={t.fontSize}
+                value={toolbar?.marks.fontSize ?? ''}
+                onMouseDown={(event) => event.stopPropagation()}
+                onChange={(event) =>
+                  invoke('set-font-size', event.target.value || null)
+                }
+              >
+                <option value="">{t.fontSize}</option>
+                {FONT_SIZES.map((size) => (
+                  <option key={size} value={`${size}px`}>
+                    {size}
+                  </option>
+                ))}
+              </select>
+              <label
+                className="doc-toolbar__btn doc-toolbar__color"
+                title={t.textColor}
+                style={{ color: toolbar?.marks.color ?? undefined }}
+              >
+                <Paintbrush size={16} />
+                <input
+                  type="color"
+                  value={toolbar?.marks.color ?? '#111827'}
+                  onChange={(event) =>
+                    invoke('set-text-color', event.target.value)
+                  }
+                />
+              </label>
+              <label
+                className="doc-toolbar__btn doc-toolbar__color"
+                title={t.highlight}
+                style={{ color: toolbar?.marks.highlight ?? undefined }}
+              >
+                <Highlighter size={16} />
+                <input
+                  type="color"
+                  value={toolbar?.marks.highlight ?? '#fef08a'}
+                  onChange={(event) =>
+                    invoke('set-highlight', event.target.value)
+                  }
+                />
+              </label>
+              <span className="doc-toolbar__sep" />
+              <ToolbarButton
+                actionId="document.align-left"
+                title={t.alignLeft}
+                pressed={toolbar?.align === Alignment.left}
+                onClick={() => invoke('align-left')}
+                icon={AlignLeft}
+              />
+              <ToolbarButton
+                actionId="document.align-center"
+                title={t.alignCenter}
+                pressed={toolbar?.align === Alignment.center}
+                onClick={() => invoke('align-center')}
+                icon={AlignCenter}
+              />
+              <ToolbarButton
+                actionId="document.align-right"
+                title={t.alignRight}
+                pressed={toolbar?.align === Alignment.right}
+                onClick={() => invoke('align-right')}
+                icon={AlignRight}
+              />
+              <span className="doc-toolbar__sep" />
+              <ToolbarButton
+                actionId="document.link-dialog"
+                title={t.link}
+                pressed={!!toolbar?.link}
+                onClick={() => {
+                  invoke('link-dialog');
+                }}
+                icon={LinkIcon}
+              />
+              <ToolbarButton
+                actionId="document.image-dialog"
+                title={t.image}
+                onClick={() => invoke('image-dialog')}
+                icon={ImageIcon}
+              />
+              {frameChoices && (
+                <ToolbarButton
+                  actionId="document.frame-dialog"
+                  title={locale === 'zh' ? '插入图表' : 'Insert canvas'}
+                  icon={Columns3}
+                  onClick={() => invoke('frame-dialog')}
+                />
+              )}
+              <ToolbarButton
+                actionId="document.insert-table"
+                title={t.table}
+                onClick={() => invoke('insert-table')}
+                icon={TableIcon}
+              />
+              <ToolbarButton
+                actionId="document.insert-horizontal-rule"
+                title={t.horizontalRule}
+                onClick={() => invoke('insert-horizontal-rule')}
+                icon={Minus}
+              />
+              <span className="doc-toolbar__sep" />
+              <ToolbarButton
+                actionId="document.clear-formatting"
+                title={t.clearFormat}
+                onClick={() => invoke('clear-formatting')}
+                icon={RemoveFormatting}
+              />
+              <ToolbarButton
+                actionId="document.undo"
+                title={t.undo}
+                disabled={!canUndo}
+                onClick={() => invoke('undo')}
+                icon={Undo2}
+              />
+              <ToolbarButton
+                actionId="document.redo"
+                title={t.redo}
+                disabled={!canRedo}
+                onClick={() => invoke('redo')}
+                icon={Redo2}
+              />
+              <span className="doc-toolbar__sep" />
+              <ToolbarButton
+                title={`${t.find} (⌘F)`}
+                pressed={!!findOpen}
+                onClick={() => (findOpen ? closeFind() : invoke('find'))}
+                icon={Search}
+              />
+              <ToolbarButton
+                actionId="document.toggle-toc"
+                title={t.toc}
+                pressed={tocOpen}
+                onClick={() => invoke('toggle-toc')}
+                icon={ListTree}
+              />
+              {commandTrigger}
+              {shortcutsTrigger}
+              {onExport && (
+                <span className="doc-export">
+                  <ToolbarButton
+                    title={t.export}
+                    pressed={exportOpen}
+                    onClick={() => invoke('export-dialog')}
+                    icon={Download}
+                  />
+                  {exportOpen && (
+                    <div className="doc-export__menu" role="menu">
+                      <button
+                        type="button"
+                        role="menuitem"
+                        onClick={() => {
+                          setExportOpen(false);
+                          invoke('export-json');
+                        }}
+                      >
+                        {t.exportJson}
+                      </button>
+                      <button
+                        type="button"
+                        role="menuitem"
+                        onClick={() => {
+                          setExportOpen(false);
+                          invoke('export-markdown');
+                        }}
+                      >
+                        {t.exportMarkdown}
+                      </button>
+                    </div>
+                  )}
+                </span>
+              )}
+              <input
+                ref={imageInputRef}
+                type="file"
+                accept="image/png,image/jpeg,image/webp,image/gif"
+                hidden
+                onChange={async (event) => {
+                  const file = event.target.files?.[0];
+                  event.target.value = '';
+                  if (!file) return;
+                  const src = await pickImage(file);
+                  if (src)
+                    void imageAction.current?.execute(
+                      { src },
+                      { source: 'toolbar' },
+                    );
                 }}
               />
-              <CaseSensitive size={14} />
-            </label>
-            <span className="doc-findbar__count">
-              {matches.length ? `${matchIndex + 1}/${matches.length}` : '0/0'}
-            </span>
-            <ToolbarButton
-              title={t.prevMatch}
-              disabled={!matches.length}
-              onClick={() => stepMatch(-1)}
-              icon={ChevronUp}
-            />
-            <ToolbarButton
-              title={t.nextMatch}
-              disabled={!matches.length}
-              onClick={() => stepMatch(1)}
-              icon={ChevronDown}
-            />
-            {findOpen === 'replace' && (
-              <>
+            </div>
+          )}
+          {readonly && (
+            <>
+              {commandTrigger}
+              {shortcutsTrigger}
+            </>
+          )}
+          {framePickerOpen && !readonly && (
+            <div
+              className="doc-frame-picker"
+              role="dialog"
+              aria-label={locale === 'zh' ? '插入图表' : 'Insert canvas'}
+            >
+              <button type="button" onClick={() => setFramePickerOpen(false)}>
+                {locale === 'zh' ? '取消' : 'Cancel'}
+              </button>
+              {frameChoices?.map((frame) => (
+                <button
+                  type="button"
+                  key={frame.frameId}
+                  onClick={() => {
+                    void frameAction.current?.execute(frame.frameId, {
+                      source: 'toolbar',
+                    });
+                    setFramePickerOpen(false);
+                  }}
+                >
+                  {frame.title} <small>{frame.path}</small>
+                </button>
+              ))}
+              {!frameChoices?.length && (
+                <p>
+                  {locale === 'zh'
+                    ? '工作区中没有画布'
+                    : 'No canvases in this workspace'}
+                </p>
+              )}
+            </div>
+          )}
+          {linkOpen && (
+            <div className="doc-linkbar">
+              <input
+                ref={(node) => node?.focus()}
+                value={linkDraft}
+                placeholder={t.linkPlaceholder}
+                onChange={(event) => setLinkDraft(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter') applyLink();
+                  if (event.key === 'Escape') setLinkOpen(false);
+                }}
+              />
+              <button type="button" onClick={applyLink}>
+                {t.linkApply}
+              </button>
+              {onOpenLink && (
+                <button
+                  type="button"
+                  disabled={!linkDraft.trim()}
+                  onClick={() => {
+                    const href = linkDraft.trim();
+                    if (href) onOpenLink(href);
+                  }}
+                >
+                  {t.openLink}
+                </button>
+              )}
+              {toolbar?.link && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    void linkAction.current?.execute(null, {
+                      source: 'toolbar',
+                    });
+                    setLinkOpen(false);
+                  }}
+                >
+                  {t.linkRemove}
+                </button>
+              )}
+            </div>
+          )}
+          {findOpen && (
+            <div className="doc-findbar">
+              <input
+                ref={findInputRef}
+                value={query}
+                placeholder={t.findPlaceholder}
+                onChange={(event) => {
+                  setQuery(event.target.value);
+                  runFind(event.target.value, matchCase);
+                }}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter') stepMatch(event.shiftKey ? -1 : 1);
+                  if (event.key === 'Escape') closeFind();
+                }}
+              />
+              <label className="doc-findbar__case" title={t.matchCase}>
                 <input
-                  value={replacement}
-                  placeholder={t.replacePlaceholder}
-                  onChange={(event) => setReplacement(event.target.value)}
-                  onKeyDown={(event) => {
-                    if (event.key === 'Escape') closeFind();
+                  type="checkbox"
+                  checked={matchCase}
+                  onChange={(event) => {
+                    setMatchCase(event.target.checked);
+                    runFind(query, event.target.checked);
                   }}
                 />
-                <ToolbarButton
-                  title={t.replaceOne}
-                  disabled={matchIndex < 0}
-                  onClick={replaceCurrent}
-                  icon={Replace}
-                />
-                <ToolbarButton
-                  title={t.replaceAll}
-                  disabled={!matches.length}
-                  onClick={replaceEvery}
-                  icon={ReplaceAll}
-                />
-              </>
-            )}
-            {!readonly && findOpen === 'find' && (
-              <button
-                type="button"
-                className="doc-findbar__mode"
-                onClick={() => setFindOpen('replace')}
-              >
-                {t.replace}
-              </button>
-            )}
-            <ToolbarButton title={t.close} onClick={closeFind} icon={X} />
+                <CaseSensitive size={14} />
+              </label>
+              <span className="doc-findbar__count">
+                {matches.length ? `${matchIndex + 1}/${matches.length}` : '0/0'}
+              </span>
+              <ToolbarButton
+                title={t.prevMatch}
+                disabled={!matches.length}
+                onClick={() => stepMatch(-1)}
+                icon={ChevronUp}
+              />
+              <ToolbarButton
+                title={t.nextMatch}
+                disabled={!matches.length}
+                onClick={() => stepMatch(1)}
+                icon={ChevronDown}
+              />
+              {findOpen === 'replace' && (
+                <>
+                  <input
+                    value={replacement}
+                    placeholder={t.replacePlaceholder}
+                    onChange={(event) => setReplacement(event.target.value)}
+                    onKeyDown={(event) => {
+                      if (event.key === 'Escape') closeFind();
+                    }}
+                  />
+                  <ToolbarButton
+                    title={t.replaceOne}
+                    disabled={matchIndex < 0}
+                    onClick={replaceCurrent}
+                    icon={Replace}
+                  />
+                  <ToolbarButton
+                    title={t.replaceAll}
+                    disabled={!matches.length}
+                    onClick={replaceEvery}
+                    icon={ReplaceAll}
+                  />
+                </>
+              )}
+              {!readonly && findOpen === 'find' && (
+                <button
+                  type="button"
+                  className="doc-findbar__mode"
+                  onClick={() => setFindOpen('replace')}
+                >
+                  {t.replace}
+                </button>
+              )}
+              <ToolbarButton title={t.close} onClick={closeFind} icon={X} />
+            </div>
+          )}
+          {toolbar?.inTable && !readonly && (
+            <div className="doc-tablebar">
+              <ToolbarButton
+                actionId="document.add-row-before"
+                title={t.addRowBefore}
+                disabled={
+                  !controller?.getActionState('document.add-row-before').enabled
+                }
+                onClick={() => invoke('add-row-before')}
+                icon={Rows3}
+              />
+              <ToolbarButton
+                actionId="document.add-row-after"
+                title={t.addRow}
+                disabled={
+                  !controller?.getActionState('document.add-row-after').enabled
+                }
+                onClick={() => invoke('add-row-after')}
+                icon={Rows3}
+              />
+              <ToolbarButton
+                actionId="document.add-column-before"
+                title={t.addColBefore}
+                disabled={
+                  !controller?.getActionState('document.add-column-before')
+                    .enabled
+                }
+                onClick={() => invoke('add-column-before')}
+                icon={Columns3}
+              />
+              <ToolbarButton
+                actionId="document.add-column-after"
+                title={t.addCol}
+                disabled={
+                  !controller?.getActionState('document.add-column-after')
+                    .enabled
+                }
+                onClick={() => invoke('add-column-after')}
+                icon={Columns3}
+              />
+              <span className="doc-toolbar__sep" />
+              <ToolbarButton
+                actionId="document.delete-row"
+                title={t.delRow}
+                disabled={
+                  !controller?.getActionState('document.delete-row').enabled
+                }
+                onClick={() => invoke('delete-row')}
+                icon={Rows3}
+              />
+              <ToolbarButton
+                actionId="document.delete-column"
+                title={t.delCol}
+                disabled={
+                  !controller?.getActionState('document.delete-column').enabled
+                }
+                onClick={() => invoke('delete-column')}
+                icon={Columns3}
+              />
+              <ToolbarButton
+                actionId="document.toggle-header-row"
+                title={t.headerRow}
+                disabled={
+                  !controller?.getActionState('document.toggle-header-row')
+                    .enabled
+                }
+                onClick={() => invoke('toggle-header-row')}
+                icon={TableIcon}
+              />
+              <ToolbarButton
+                actionId="document.toggle-header-column"
+                title={t.headerCol}
+                disabled={
+                  !controller?.getActionState('document.toggle-header-column')
+                    .enabled
+                }
+                onClick={() => invoke('toggle-header-column')}
+                icon={TableIcon}
+              />
+              <span className="doc-toolbar__sep" />
+              <ToolbarButton
+                actionId="document.delete-table"
+                title={t.delTable}
+                disabled={
+                  !controller?.getActionState('document.delete-table').enabled
+                }
+                onClick={() => invoke('delete-table')}
+                icon={Trash2}
+              />
+            </div>
+          )}
+        </header>
+        <div className="document-page__body">
+          {tocOpen && (
+            <aside className="document-page__toc">
+              <div className="document-page__toc-title">{t.toc}</div>
+              {headings.length === 0 && (
+                <div className="document-page__toc-empty">{t.tocEmpty}</div>
+              )}
+              {headings.map((item, index) => (
+                <button
+                  key={`${item.pos}-${index}`}
+                  type="button"
+                  className="document-page__toc-item"
+                  style={{ paddingLeft: `${8 + (item.level - 1) * 14}px` }}
+                  title={item.text || t.untitledHeading}
+                  onClick={() => controllerRef.current?.locateHeading(item.pos)}
+                >
+                  {item.text || t.untitledHeading}
+                </button>
+              ))}
+            </aside>
+          )}
+          <div className="document-page__content">
+            <DocumentEditor
+              {...managedEditorFocus}
+              renderFrameReference={renderFrameReference}
+              value={value}
+              readonly={readonly}
+              history={history}
+              restore={restore}
+              onChange={onChange}
+              onReady={ready}
+              onImageFile={pickImage}
+            />
           </div>
-        )}
-        {toolbar?.inTable && !readonly && (
-          <div className="doc-tablebar">
-            <ToolbarButton
-              title={t.addRowBefore}
-              disabled={!controller?.can('addTableRowBefore')}
-              onClick={() => controllerRef.current?.addTableRow('before')}
-              icon={Rows3}
-            />
-            <ToolbarButton
-              title={t.addRow}
-              disabled={!controller?.can('addTableRowAfter')}
-              onClick={() => controllerRef.current?.addTableRow('after')}
-              icon={Rows3}
-            />
-            <ToolbarButton
-              title={t.addColBefore}
-              disabled={!controller?.can('addTableColumnBefore')}
-              onClick={() => controllerRef.current?.addTableColumn('before')}
-              icon={Columns3}
-            />
-            <ToolbarButton
-              title={t.addCol}
-              disabled={!controller?.can('addTableColumnAfter')}
-              onClick={() => controllerRef.current?.addTableColumn('after')}
-              icon={Columns3}
-            />
-            <span className="doc-toolbar__sep" />
-            <ToolbarButton
-              title={t.delRow}
-              disabled={!controller?.can('deleteTableRow')}
-              onClick={() => controllerRef.current?.deleteTableRow()}
-              icon={Rows3}
-            />
-            <ToolbarButton
-              title={t.delCol}
-              disabled={!controller?.can('deleteTableColumn')}
-              onClick={() => controllerRef.current?.deleteTableColumn()}
-              icon={Columns3}
-            />
-            <ToolbarButton
-              title={t.headerRow}
-              disabled={!controller?.can('toggleTableHeaderRow')}
-              onClick={() => controllerRef.current?.toggleTableHeader('row')}
-              icon={TableIcon}
-            />
-            <ToolbarButton
-              title={t.headerCol}
-              disabled={!controller?.can('toggleTableHeaderColumn')}
-              onClick={() => controllerRef.current?.toggleTableHeader('column')}
-              icon={TableIcon}
-            />
-            <span className="doc-toolbar__sep" />
-            <ToolbarButton
-              title={t.delTable}
-              disabled={!controller?.can('deleteTable')}
-              onClick={() => controllerRef.current?.deleteTable()}
-              icon={Trash2}
-            />
-          </div>
-        )}
-      </header>
-      <div className="document-page__body">
-        {tocOpen && (
-          <aside className="document-page__toc">
-            <div className="document-page__toc-title">{t.toc}</div>
-            {headings.length === 0 && (
-              <div className="document-page__toc-empty">{t.tocEmpty}</div>
-            )}
-            {headings.map((item, index) => (
-              <button
-                key={`${item.pos}-${index}`}
-                type="button"
-                className="document-page__toc-item"
-                style={{ paddingLeft: `${8 + (item.level - 1) * 14}px` }}
-                title={item.text || t.untitledHeading}
-                onClick={() => controllerRef.current?.locateHeading(item.pos)}
-              >
-                {item.text || t.untitledHeading}
-              </button>
-            ))}
-          </aside>
-        )}
-        <div className="document-page__content">
-          <DocumentEditor
-            {...managedEditorFocus}
-            renderFrameReference={renderFrameReference}
-            value={value}
-            readonly={readonly}
-            history={history}
-            restore={restore}
-            onChange={onChange}
-            onReady={ready}
-            onImageFile={pickImage}
-          />
         </div>
+        <footer className="document-page__status">
+          <span>
+            {charCount} {t.chars}
+          </span>
+          <span className={`document-page__save is-${saveState}`}>
+            {t.save[saveState]}
+          </span>
+        </footer>
+
+        {notice && (
+          <div className="document-page__notice" role="status">
+            {notice}
+            <button type="button" onClick={() => setNotice(null)}>
+              <X size={14} />
+            </button>
+          </div>
+        )}
       </div>
-      <footer className="document-page__status">
-        <span>
-          {charCount} {t.chars}
-        </span>
-        <span className={`document-page__save is-${saveState}`}>
-          {t.save[saveState]}
-        </span>
-      </footer>
-      {shortcutsOpen && (
-        <ShortcutHelp
-          scene="document"
-          locale={locale}
-          returnFocusRef={shortcutsButton}
-          onClose={() => setShortcutsOpen(false)}
-        />
-      )}
-      {notice && (
-        <div className="document-page__notice" role="status">
-          {notice}
-          <button type="button" onClick={() => setNotice(null)}>
-            <X size={14} />
-          </button>
-        </div>
-      )}
-    </div>
+    </ActionScope>
   );
 }

@@ -90,3 +90,13 @@ function Demo({ text }: { text: BoardTextDocument }) {
 旧 `raw.blocks` / `children` 文档只在应用私有迁移边界读取；不提供公开的旧文本运行时或单独迁移函数。
 
 查看和编辑共享段落、标题、列表、引用、代码、表格、空行与文字格式的排版规则。`LineText` 只限制输入与粘贴换行，不移除已有的块结构。文档或格式的外部更新不会被相同的 `plainText` 忽略，切换只读状态不会产生文字修改事件。产品的 `@sue/verd-board-ui/style.css` 已包含文字样式。
+
+## 下一主版本：独立文档 Actions
+
+The current next-major source replaces the standalone `DocumentEditorController` mutation facade with `actions()`, `getActionState(id,args?)`, `executeAction(id,args?,invocation?)`, `revision` and `subscribe`. The old standalone `toggleMark`, block/style/link/image/table methods, `replace/replaceAll`, `can`, and `undo/redo` methods are removed; use `document.toggle-bold`, `document.set-heading`, `document.set-link`, `document.insert-image`, `document.insert-table`, `document.replace/replace-all`, `document.undo/redo` and the other registered IDs. This does not remove the separate inline `BoardTextController` API.
+
+Read, selection, focus, heading and search helpers remain. `restoreSelection` restores a view selection without a content edit. `commit()` reads the current document; `await flushEditing()` also waits for the actual `onChange` host receipt and rejects active IME composition. `onChange` may return void, an `ActionResult`, `{ok,diagnostics}`, or a Promise of those values. Return the actual host commit Promise so navigation and later commands cannot overtake a rejected or pending write.
+
+The editor uses `@sue/board-react-actions` for scope shortcuts, palette and help without importing the board renderer. Capture an action before opening a custom link/image dialog; stale document selections are cancelled. Input/restore echoes and readonly navigation do not emit extra content transactions. These breaking APIs are source-only until the next-major release; this change does not bump versions or publish.
+
+`DocumentEditorController.locateFrameReference(targetFrameId, occurrence)` selects and scrolls to a zero-based direct canvas embed in the current document, including read-only views, and returns whether it was found. Occurrences are runtime addresses; hosts must revalidate the source body before using a previously listed position.

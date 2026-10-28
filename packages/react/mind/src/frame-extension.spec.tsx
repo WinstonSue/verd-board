@@ -1,21 +1,24 @@
-import { act } from 'react';
-import { createRoot } from 'react-dom/client';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { createBlockText } from '@sue/board-common';
 import {
-  createCellRegistry,
   isFrameCell,
   isNodeCell,
   ThemeColorMode,
-  type MindNodeData,
   type NodeCell,
 } from '@sue/board-core';
 import {
   createMindFrameSnapshot,
   mindCellMetrics,
   mindPresentation,
+  type MindNodeData,
 } from '@sue/board-mind';
-import { createBlockText } from '@sue/board-common';
-import type { FrameRenderContext } from '@sue/board-react';
+import {
+  canonicalFrameProjection,
+  type FrameRenderContext,
+} from '@sue/board-react';
+import { act } from 'react';
+import { createRoot } from 'react-dom/client';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { createTestCellRegistry } from '../../../../tests/fixtures/plugins/registry';
 import { createMindFrameExtensions } from './frame-extension';
 
 vi.mock('@sue/board-mind', async (original) => {
@@ -32,7 +35,7 @@ vi.mock('@sue/board-mind', async (original) => {
 ).IS_REACT_ACT_ENVIRONMENT = true;
 afterEach(() => vi.clearAllMocks());
 const fixture = () => {
-  const registry = createCellRegistry();
+  const registry = createTestCellRegistry();
   const extensions = createMindFrameExtensions(registry);
   const { store } = createMindFrameSnapshot('frame', 'root');
   const cell = store.cells.root as NodeCell<MindNodeData>;
@@ -45,6 +48,7 @@ const fixture = () => {
     selected: false,
     readonly: false,
     pending: false,
+    viewProjection: canonicalFrameProjection,
     getGeometry: (id) => {
       const node = store.cells[id];
       return isNodeCell(node) ? node.geometry : undefined;

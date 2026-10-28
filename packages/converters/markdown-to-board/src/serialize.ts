@@ -1,21 +1,20 @@
+import type { BoardTextDocument } from '@sue/board-common';
 import {
-  CellKind,
   isEdgeCell,
   isFrameCell,
   type CellStore,
   type EdgeCell,
   type NodeCell,
 } from '@sue/board-core';
-import { mindChildIds } from '@sue/board-mind';
-import { unified } from 'unified';
-import remarkStringify from 'remark-stringify';
+import { mindChildIds, MindKind } from '@sue/board-mind';
 import type {
   BlockContent,
   ListItem,
   PhrasingContent,
   RootContent,
 } from 'mdast';
-import type { BoardTextDocument } from '@sue/board-common';
+import remarkStringify from 'remark-stringify';
+import { unified } from 'unified';
 import { boardBlocksToMarkdown, boardInlineToMarkdown } from './richtext';
 
 const titleInline = (cell: NodeCell): PhrasingContent[] => {
@@ -60,7 +59,7 @@ export const serializeFrameToMarkdown = (
     Object.values(store.cells)
       .filter(
         (cell): cell is EdgeCell =>
-          isEdgeCell(cell) && cell.kind === CellKind.mindSummaryEdge,
+          isEdgeCell(cell) && cell.kind === MindKind.mindSummaryEdge,
       )
       .map((edge) => ('cellId' in edge.target ? edge.target.cellId : '')),
   );
@@ -71,8 +70,8 @@ export const serializeFrameToMarkdown = (
       .filter(
         (cell): cell is NodeCell =>
           !!cell &&
-          (cell.kind === CellKind.mindChild ||
-            cell.kind === CellKind.mindRoot) &&
+          (cell.kind === MindKind.mindChild ||
+            cell.kind === MindKind.mindRoot) &&
           !summaries.has(cell.id),
       );
 
@@ -124,7 +123,7 @@ export const serializeFrameToMarkdown = (
   const roots = frame.children
     .map((id) => store.cells[id])
     .filter(
-      (cell): cell is NodeCell => !!cell && cell.kind === CellKind.mindRoot,
+      (cell): cell is NodeCell => !!cell && cell.kind === MindKind.mindRoot,
     );
   const content = roots.flatMap((root) => blocksOf(root, 1));
   return unified()

@@ -1,17 +1,21 @@
 import { describe, expect, it } from 'vitest';
-import layeredFixture from '../../../../../tests/fixtures/diagrams/architecture-layered.json';
 import flowFixture from '../../../../../tests/fixtures/diagrams/architecture-data-flow.json';
+import layeredFixture from '../../../../../tests/fixtures/diagrams/architecture-layered.json';
+import { createTestCellRegistry as createFixtureRegistry } from '../../../../../tests/fixtures/plugins/registry';
+import { type ArchitectureLayerData } from '../../../architecture/src/public-api';
 import { arrangeCells, arrangementAvailability } from './arrangement';
 import { applyCellOperations, groupCells, setCellsLocked } from './index';
+import { planCellLayout } from './layout-plan';
 import {
   createCellStore,
+  createDocumentReferenceCell,
   createFrameCell,
   isNodeCell,
   type CellStore,
   type FrameCell,
   type NodeCell,
-  type ArchitectureLayerData,
 } from './types';
+const testCellRegistry = createFixtureRegistry();
 
 const fixture = (name: string): CellStore =>
   structuredClone(
@@ -26,13 +30,45 @@ const modules = (store: CellStore) =>
   );
 
 describe('authored graph layouts', () => {
+  it('keeps document cards outside a specialized layout and ignores derived transparent layer bands', () => {
+    let store = fixture('architecture-layered');
+    const card = createDocumentReferenceCell(
+      'layout-card',
+      'external-document',
+      { x: -2000, y: -2000, width: 400, height: 200 },
+    );
+    store = applyCellOperations(
+      store,
+      [{ type: 'insert_cell', parentId: 'diagram', cell: card }],
+      testCellRegistry,
+    );
+    const operations = planCellLayout(
+      store,
+      { focus: [store.rootId, 'diagram'], ids: [] },
+      'layers',
+      testCellRegistry,
+    );
+    expect(operations.length).toBeGreaterThan(0);
+    const next = applyCellOperations(store, operations, testCellRegistry);
+    expect(next.cells[card.id]).toEqual(card);
+    expect(
+      planCellLayout(
+        next,
+        { focus: [store.rootId, 'diagram'], ids: [] },
+        'layers',
+        testCellRegistry,
+      ),
+    ).toEqual([]);
+  });
+
   it.each(['architecture-layered', 'architecture-data-flow'])(
     'arranges %s without changing sizes, membership, topology or child order; repeated application is stable',
     (name) => {
       const store = fixture(name);
       const next = applyCellOperations(
         store,
-        arrangeCells(store, 'diagram', [], 'layers'),
+        arrangeCells(store, 'diagram', [], 'layers', 32, testCellRegistry),
+        testCellRegistry,
       );
       expect(next.cells.diagram).toEqual(store.cells.diagram);
       for (const cell of Object.values(store.cells)) {
@@ -58,15 +94,17 @@ describe('authored graph layouts', () => {
         expect(
           Math.min(...rows[i].map((g) => g.y)) -
             Math.max(...rows[i - 1].map((g) => g.y + g.height)),
-        ).toBeGreaterThanOrEqual(95);
+        ).toBeGreaterThanOrEqual(159);
       for (const row of rows) {
         row.sort((a, b) => a.x - b.x);
         for (let i = 1; i < row.length; i++)
           expect(
             row[i].x - row[i - 1].x - row[i - 1].width,
-          ).toBeGreaterThanOrEqual(47);
+          ).toBeGreaterThanOrEqual(95);
       }
-      expect(arrangeCells(next, 'diagram', [], 'layers')).toEqual([]);
+      expect(
+        arrangeCells(next, 'diagram', [], 'layers', 32, testCellRegistry),
+      ).toEqual([]);
       const reversed: CellStore = {
         ...store,
         cells: {
@@ -81,7 +119,8 @@ describe('authored graph layouts', () => {
       };
       const reordered = applyCellOperations(
         reversed,
-        arrangeCells(reversed, 'diagram', [], 'layers'),
+        arrangeCells(reversed, 'diagram', [], 'layers', 32, testCellRegistry),
+        testCellRegistry,
       );
       for (const cell of modules(next))
         expect(geometry(reordered, cell.id)).toEqual(cell.geometry);
@@ -103,19 +142,29 @@ describe('authored graph layouts', () => {
           },
         },
       })),
+      testCellRegistry,
     );
     store = applyCellOperations(
       store,
-      groupCells(store, 'diagram', ['cell-1', 'cell-2'], 'apps'),
+      groupCells(
+        store,
+        'diagram',
+        ['cell-1', 'cell-2'],
+        'apps',
+        testCellRegistry,
+      ),
+      testCellRegistry,
     );
     const ids = modules(store).map((cell) => cell.id);
     store = applyCellOperations(
       store,
       setCellsLocked(store, [ids.at(-1)!], true),
+      testCellRegistry,
     );
     const next = applyCellOperations(
       store,
-      arrangeCells(store, 'diagram', [], 'layers'),
+      arrangeCells(store, 'diagram', [], 'layers', 32, testCellRegistry),
+      testCellRegistry,
     );
     const delta = (id: string) => [
       geometry(next, id).x - geometry(store, id).x,
@@ -126,7 +175,8 @@ describe('authored graph layouts', () => {
     const selected = ids.slice(2, 6);
     const partial = applyCellOperations(
       store,
-      arrangeCells(store, 'diagram', selected, 'layers'),
+      arrangeCells(store, 'diagram', selected, 'layers', 32, testCellRegistry),
+      testCellRegistry,
     );
     for (const id of ids.filter((id) => !selected.includes(id)))
       expect(geometry(partial, id)).toEqual(geometry(store, id));
@@ -136,13 +186,26 @@ describe('authored graph layouts', () => {
     let store = fixture('architecture-layered');
     store = applyCellOperations(
       store,
-      groupCells(store, 'diagram', ['cell-1', 'cell-4'], 'cross'),
+      groupCells(
+        store,
+        'diagram',
+        ['cell-1', 'cell-4'],
+        'cross',
+        testCellRegistry,
+      ),
+      testCellRegistry,
     );
     expect(
-      arrangementAvailability(store, 'diagram', [], {
-        type: 'layout',
-        style: 'layers',
-      }),
+      arrangementAvailability(
+        store,
+        'diagram',
+        [],
+        {
+          type: 'layout',
+          style: 'layers',
+        },
+        testCellRegistry,
+      ),
     ).toEqual({
       enabled: false,
       reason: 'A group crosses architecture layers',
@@ -151,54 +214,83 @@ describe('authored graph layouts', () => {
 
   it('preserves workflow topology and rejects cycles including cycles created by grouping', () => {
     let store = createCellStore(createFrameCell('root'));
-    store = applyCellOperations(store, [
-      ...['start', 'a', 'b', 'c'].map((id, i) => ({
-        type: 'insert_cell' as const,
-        parentId: 'root',
-        cell: {
-          id,
-          kind: i ? 'workflow-task' : 'workflow-start',
-          cellType: 'node' as const,
-          geometry: { x: 20 + i * 10, y: 30 + i * 20, width: 80, height: 40 },
-        },
-      })),
-      ...[
-        ['start', 'a'],
-        ['a', 'b'],
-        ['b', 'c'],
-      ].map(([source, target], i) => ({
-        type: 'insert_cell' as const,
-        parentId: 'root',
-        cell: {
-          id: `edge-${i}`,
-          kind: 'workflow-edge',
-          cellType: 'edge' as const,
-          source: { cellId: source },
-          target: { cellId: target },
-          route: { mode: 'auto' as const },
-        },
-      })),
-    ]);
+    store = applyCellOperations(
+      store,
+      [
+        ...['start', 'a', 'b', 'c'].map((id, i) => ({
+          type: 'insert_cell' as const,
+          parentId: 'root',
+          cell: {
+            id,
+            kind: i ? 'workflow-task' : 'workflow-start',
+            ports: [
+              {
+                id: 'out',
+                side: 'bottom' as const,
+                direction: 'output' as const,
+              },
+              { id: 'in', side: 'top' as const, direction: 'input' as const },
+            ],
+            data: i
+              ? undefined
+              : {
+                  graphMode: 'dag',
+                  origin: [20, 30],
+                  memberIds: ['start', 'a', 'b', 'c'],
+                },
+            cellType: 'node' as const,
+            geometry: { x: 20 + i * 10, y: 30 + i * 20, width: 80, height: 40 },
+          },
+        })),
+        ...[
+          ['start', 'a'],
+          ['a', 'b'],
+          ['b', 'c'],
+        ].map(([source, target], i) => ({
+          type: 'insert_cell' as const,
+          parentId: 'root',
+          cell: {
+            id: `edge-${i}`,
+            kind: 'workflow-edge',
+            cellType: 'edge' as const,
+            source: { cellId: source, portId: 'out' },
+            target: { cellId: target, portId: 'in' },
+            route: { mode: 'auto' as const },
+          },
+        })),
+      ],
+      testCellRegistry,
+    );
     const next = applyCellOperations(
       store,
-      arrangeCells(store, 'root', [], 'flow'),
+      arrangeCells(store, 'root', [], 'flow', 32, testCellRegistry),
+      testCellRegistry,
     );
     expect(['start', 'a', 'b', 'c'].map((id) => geometry(next, id).x)).toEqual([
       20, 20, 20, 20,
     ]);
     expect(['start', 'a', 'b', 'c'].map((id) => geometry(next, id).y)).toEqual([
-      30, 166, 302, 438,
+      30, 230, 430, 630,
     ]);
-    expect(arrangeCells(next, 'root', [], 'flow')).toEqual([]);
+    expect(
+      arrangeCells(next, 'root', [], 'flow', 32, testCellRegistry),
+    ).toEqual([]);
     store = applyCellOperations(
       store,
-      groupCells(store, 'root', ['a', 'c'], 'cycle'),
+      groupCells(store, 'root', ['a', 'c'], 'cycle', testCellRegistry),
+      testCellRegistry,
     );
     expect(
-      arrangementAvailability(store, 'root', [], {
-        type: 'layout',
-        style: 'flow',
-      }).reason,
+      arrangementAvailability(
+        store,
+        'root',
+        [],
+        {
+          type: 'layout',
+          style: 'flow',
+        },
+        testCellRegistry,
+      ).reason,
     ).toContain('cyclic');
   });
 });

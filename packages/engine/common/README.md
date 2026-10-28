@@ -35,16 +35,14 @@ console.log(deriveBoardTextPlainText(text.content));
 
 ## API 与使用细节
 
-Common logic for drawing plugins. When writing drawing business code, if you find that there is some reusable logic between plugins, such as text processing, graphics rendering, image rendering, Resize interaction, Creation interaction, etc., try to write the code in `@sue/board-common` for easy reuse.
+Pure shared text, Action and workspace-link contracts. This package has no runtime dependency on React or `@sue/board-core`.
 
-`core` core logic, currently mainly places the base class of plugin components
+## 下一主版本源码：Actions 与稳定链接
 
-`generators` Generator is an abstract concept, mainly used for plug-in component rendering and management of drawing elements.
+The current source adds `ActionDefinition`, `ActionState`, `ActionResult`, `createActionRegistry`, `WorkspaceTarget`, `createWorkspaceLink`, `parseWorkspaceLink`, `parseExternalLink` and `remapWorkspaceLink`. These are next-major source APIs; prepare Changesets and validate real tarballs before publishing. The published 2.0.0 API is described separately above.
 
-`plugins` places reusable plugin logic
+Actions declare a stable ID, arguments, effect, availability and execution. Registries are instance-scoped and sealed. Menus capture actions before moving focus; asynchronous work rechecks the captured target through `signal` / `checkpoint()`. Content operations wait for the host flush barrier. `beforeFlush` starts user-activation-sensitive transport and exposes its result as `invocation.preflight`. `beforeQueue` then prepares the captured editor before acquiring the content lane, so native editor submissions can complete without waiting behind their own command; cancellation and target/permission checks run again before enqueueing.
 
-`transforms` Common data processing logic
+Workspace targets are `{kind:'file',fileId}`, `{kind:'heading',fileId,slug}` or `{kind:'cell',fileId,cellId}`. A cell fragment encodes `cell:<CellId>` once after `#`. Cell identity is globally unique within the workspace; the live owner index follows moves, and the URL file ID remains a hint/fallback. Internal links do not encode physical paths, camera state or occurrence identity.
 
-#### Dependence
-
-- `@sue/board-core`
+`mapBoardTextLinks` visits link marks in explicit rich-text slots and skips literal code. `mapStandardCellLinks` uses structural typing for Node/Frame text and Edge label text, so common remains independent of the Cell model. Domain plugins handle their own table/note slots. Copied targets use the new Cell ID and owner; targets outside the copied set retain their original identity.

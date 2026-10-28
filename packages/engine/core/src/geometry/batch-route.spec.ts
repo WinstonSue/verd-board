@@ -2,13 +2,11 @@ import { readFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
-import {
-  createEdgeRoutingContext,
-  edgePolyline,
-  edgeTerminalPosition,
-} from './edge';
-import { routeOrthogonalAvoiding } from './obstacle-route';
-import { edgeLabelLayout } from './edge-label';
+import { createTestCellRegistry as createFixtureRegistry } from '../../../../../tests/fixtures/plugins/registry';
+import { arrangeCells } from '../cell/arrangement';
+import { optimizeEdges } from '../cell/layout-plan';
+import { frameContentBounds } from '../cell/frame';
+import { applyCellOperations } from '../cell/index';
 import {
   createCellStore,
   createFrameCell,
@@ -19,9 +17,18 @@ import {
   type NodeCell,
 } from '../cell/types';
 import type { Point } from '../interfaces/point';
-import { arrangeCells } from '../cell/arrangement';
-import { applyCellOperations } from '../cell/index';
-import { frameContentBounds } from '../cell/frame';
+import {
+  createEdgeRoutingContext,
+  edgePolyline,
+  edgeTerminalPosition,
+} from './edge';
+import { edgeLabelLayout } from './edge-label';
+import {
+  isClearOrthogonalRoute,
+  routeOrthogonalAvoiding,
+} from './obstacle-route';
+import { edgeCrossingJumps } from './edge-crossings';
+const testCellRegistry = createFixtureRegistry();
 
 const fixture = (name: string): CellStore =>
   JSON.parse(
@@ -36,6 +43,174 @@ const fixture = (name: string): CellStore =>
   ).store;
 const edgesOf = (store: CellStore) =>
   Object.values(store.cells).filter(isEdgeCell);
+
+it('reoptimizes around a moved obstacle instead of freezing saved route points', () => {
+  const frame = createFrameCell('root');
+  const store = createCellStore(frame);
+  const node = (id: string, x: number, y: number): NodeCell => ({
+    id,
+    kind: 'geometry',
+    cellType: 'node',
+    geometry: { x, y, width: 100, height: 100 },
+  });
+  const edge: EdgeCell = {
+    id: 'edge',
+    kind: 'arrow',
+    cellType: 'edge',
+    source: { cellId: 'source', anchor: [1, 0.5] },
+    target: { cellId: 'target', anchor: [0, 0.5] },
+    route: { mode: 'auto', strategy: 'optimized' },
+  };
+  for (const cell of [
+    node('source', 0, 0),
+    node('target', 600, 0),
+    node('obstacle', 300, 300),
+    edge,
+  ]) {
+    store.cells[cell.id] = cell;
+    frame.children.push(cell.id);
+  }
+  const before = createEdgeRoutingContext(
+    store,
+    'root',
+    undefined,
+    undefined,
+    testCellRegistry,
+  );
+  const oldPath = edgePolyline(store, edge, undefined, before);
+  const moved = applyCellOperations(
+    store,
+    [{ type: 'replace_cell', cell: node('obstacle', 300, 0) }],
+    testCellRegistry,
+  );
+  const after = createEdgeRoutingContext(
+    moved,
+    'root',
+    undefined,
+    before,
+    testCellRegistry,
+  );
+  const path = edgePolyline(moved, edge, undefined, after);
+  expect(path).not.toEqual(oldPath);
+  const planned = after.routes.get(edge.id)!;
+  expect(
+    isClearOrthogonalRoute(
+      path,
+      planned.source.side,
+      planned.target.side,
+      after.obstacles,
+      { sourceId: 'source', targetId: 'target', clearance: after.clearance },
+    ),
+  ).toBe(true);
+  expect((moved.cells.edge as EdgeCell).route).toEqual({
+    mode: 'auto',
+    strategy: 'optimized',
+  });
+});
+
+it('improves existing automatic diagrams with stable, persistent, bounded routing', () => {
+  let improvements = 0;
+  for (const name of [
+    'architecture-layered',
+    'architecture-data-flow',
+    'architecture-packages',
+  ]) {
+    const store = fixture(name);
+    const edges = edgesOf(store);
+    const baseline = createEdgeRoutingContext(
+      store,
+      store.rootId,
+      undefined,
+      undefined,
+      testCellRegistry,
+      { fixedTerminalIds: new Set(edges.map((edge) => edge.id)) },
+    );
+    const before = edges.map((edge) =>
+      edgePolyline(store, edge, undefined, baseline),
+    );
+    const next = applyCellOperations(
+      store,
+      optimizeEdges(
+        store,
+        edges.map((edge) => edge.id),
+        testCellRegistry,
+      ),
+      testCellRegistry,
+    );
+    const context = createEdgeRoutingContext(
+      next,
+      next.rootId,
+      undefined,
+      baseline,
+      testCellRegistry,
+    );
+    const after = edges.map((edge) =>
+      edgePolyline(next, next.cells[edge.id] as EdgeCell, undefined, context),
+    );
+    const old = clutter(before),
+      quality = clutter(after);
+    const bends = (paths: Point[][]) =>
+      paths.reduce((sum, points) => sum + Math.max(0, points.length - 2), 0);
+    if (
+      quality.crossings < old.crossings ||
+      quality.overlap < old.overlap ||
+      bends(after) < bends(before)
+    )
+      improvements++;
+    const distance = (points: Point[]) =>
+      points
+        .slice(1)
+        .reduce(
+          (sum, p, at) =>
+            sum +
+            Math.abs(p[0] - points[at][0]) +
+            Math.abs(p[1] - points[at][1]),
+          0,
+        );
+    expect(
+      after.reduce((sum, path) => sum + distance(path), 0),
+    ).toBeLessThanOrEqual(
+      before.reduce((sum, path) => sum + distance(path), 0) * 1.1 + 1e-6,
+    );
+    for (let at = 0; at < edges.length; at++) {
+      expect(distance(after[at])).toBeLessThanOrEqual(
+        distance(before[at]) * 1.2 + 48 + 1e-6,
+      );
+      expect(after[at][0]).toEqual(before[at][0]);
+      expect(after[at].at(-1)).toEqual(before[at].at(-1));
+      expect((next.cells[edges[at].id] as EdgeCell).route).toMatchObject({
+        mode: 'orthogonal',
+        points: expect.any(Array),
+      });
+    }
+    const reloaded = JSON.parse(JSON.stringify(next)) as CellStore;
+    (reloaded.cells[next.rootId] as FrameCell).children.reverse();
+    const fresh = createEdgeRoutingContext(
+      reloaded,
+      next.rootId,
+      undefined,
+      undefined,
+      testCellRegistry,
+    );
+    for (let at = 0; at < edges.length; at++)
+      expect(
+        edgePolyline(
+          reloaded,
+          reloaded.cells[edges[at].id] as EdgeCell,
+          undefined,
+          fresh,
+        ),
+      ).toEqual(after[at]);
+    expect(
+      optimizeEdges(
+        next,
+        edges.map((edge) => edge.id),
+        testCellRegistry,
+      ),
+    ).toEqual([]);
+  }
+  expect(improvements).toBeGreaterThan(0);
+});
 const segments = (points: readonly Point[]) =>
   points.slice(1).map((end, at) => [points[at], end]);
 const clutter = (routes: Point[][]) => {
@@ -105,7 +280,13 @@ describe('frame-wide connector planning', () => {
         frame.children.push(cell.id);
       }
     }
-    const context = createEdgeRoutingContext(store, frame.id);
+    const context = createEdgeRoutingContext(
+      store,
+      frame.id,
+      undefined,
+      undefined,
+      testCellRegistry,
+    );
     const edges = edgesOf(store);
     for (const edge of edges)
       expect(
@@ -125,7 +306,13 @@ describe('frame-wide connector planning', () => {
     (name) => {
       const store = fixture(name),
         before = structuredClone(store);
-      const context = createEdgeRoutingContext(store, store.rootId);
+      const context = createEdgeRoutingContext(
+        store,
+        store.rootId,
+        undefined,
+        undefined,
+        testCellRegistry,
+      );
       const edges = edgesOf(store);
       const baseline = edges.map((edge) => {
         const source = edgeTerminalPosition(store, edge.source, edge.target);
@@ -157,7 +344,13 @@ describe('frame-wide connector planning', () => {
       ).toBe(true);
       const reversed = structuredClone(store);
       (reversed.cells[store.rootId] as FrameCell).children.reverse();
-      const other = createEdgeRoutingContext(reversed, reversed.rootId);
+      const other = createEdgeRoutingContext(
+        reversed,
+        reversed.rootId,
+        undefined,
+        undefined,
+        testCellRegistry,
+      );
       for (const edge of [...edges].reverse())
         expect(
           edgePolyline(
@@ -169,11 +362,15 @@ describe('frame-wide connector planning', () => {
         ).toEqual(context.routes.get(edge.id)!.result.points);
       const arranged = applyCellOperations(
         store,
-        arrangeCells(store, store.rootId, [], 'layers'),
+        arrangeCells(store, store.rootId, [], 'layers', 32, testCellRegistry),
+        testCellRegistry,
       );
       const arrangedContext = createEdgeRoutingContext(
         arranged,
         arranged.rootId,
+        undefined,
+        undefined,
+        testCellRegistry,
       );
       const arrangedClutter = clutter(
         edgesOf(arranged).map((edge) =>
@@ -185,17 +382,179 @@ describe('frame-wide connector planning', () => {
     },
   );
 
+  it('keeps the real 24-module package graph legible and deterministic after layout', () => {
+    const before = fixture('architecture-packages');
+    const store = applyCellOperations(
+      before,
+      arrangeCells(before, before.rootId, [], 'layers', 32, testCellRegistry),
+      testCellRegistry,
+    );
+    const original = structuredClone(store);
+    const context = createEdgeRoutingContext(
+      store,
+      store.rootId,
+      undefined,
+      undefined,
+      testCellRegistry,
+    );
+    const edges = edgesOf(store);
+    const paths = edges.map((edge) =>
+      edgePolyline(store, edge, undefined, context),
+    );
+    const mindToLayouts = edges.findIndex(
+      (edge) => edge.id === 'demo:packages/edge/23',
+    );
+    expect(paths[mindToLayouts]).toHaveLength(4); // The screenshot's former six-point stair is now two bends.
+    expect(paths[mindToLayouts][1][1]).toBe(paths[mindToLayouts][2][1]);
+    const jumps = edgeCrossingJumps(
+      edges.map((edge, at) => ({ id: edge.id, points: paths[at] })),
+    );
+    expect(jumps.get(edges[mindToLayouts].id)?.length).toBeGreaterThanOrEqual(
+      1,
+    );
+    expect(edges).toHaveLength(41);
+    expect(
+      Object.values(store.cells).filter(
+        (cell) => cell.kind === 'architecture-module',
+      ),
+    ).toHaveLength(24);
+    const quality = clutter(paths);
+    expect(quality.crossings).toBeLessThanOrEqual(26);
+    expect(quality.overlap).toBeLessThanOrEqual(16);
+    const total = paths.reduce(
+      (sum, path) =>
+        sum +
+        segments(path).reduce(
+          (length, [a, b]) =>
+            length + Math.abs(a[0] - b[0]) + Math.abs(a[1] - b[1]),
+          0,
+        ),
+      0,
+    );
+    expect(total).toBeLessThanOrEqual(45000);
+    expect(
+      [...context.routes.values()].every(
+        (route) => route.result.status !== 'blocked',
+      ),
+    ).toBe(true);
+    for (let at = 0; at < edges.length; at++)
+      for (const [a, b] of segments(paths[at]))
+        for (const obstacle of context.obstacles) {
+          if (
+            [edges[at].source, edges[at].target].some(
+              (end) => 'cellId' in end && end.cellId === obstacle.id,
+            )
+          )
+            continue;
+          const horizontal = a[1] === b[1];
+          const cuts = horizontal
+            ? a[1] > obstacle.y &&
+              a[1] < obstacle.y + obstacle.height &&
+              Math.max(a[0], b[0]) > obstacle.x &&
+              Math.min(a[0], b[0]) < obstacle.x + obstacle.width
+            : a[0] > obstacle.x &&
+              a[0] < obstacle.x + obstacle.width &&
+              Math.max(a[1], b[1]) > obstacle.y &&
+              Math.min(a[1], b[1]) < obstacle.y + obstacle.height;
+          expect(cuts, `${edges[at].id} crosses ${obstacle.id}`).toBe(false);
+        }
+    expect(store).toEqual(original);
+    expect(
+      arrangeCells(store, store.rootId, [], 'layers', 32, testCellRegistry),
+    ).toEqual([]);
+    const reversed = structuredClone(store);
+    (reversed.cells[store.rootId] as FrameCell).children.reverse();
+    const other = createEdgeRoutingContext(
+      reversed,
+      reversed.rootId,
+      undefined,
+      undefined,
+      testCellRegistry,
+    );
+    for (const edge of [...edges].reverse())
+      expect(
+        edgePolyline(
+          reversed,
+          reversed.cells[edge.id] as EdgeCell,
+          undefined,
+          other,
+        ),
+      ).toEqual(context.routes.get(edge.id)!.result.points);
+  });
+
+  it('never compacts authored orthogonal points even when they contain a short stair', () => {
+    const frame = createFrameCell('root'),
+      store = createCellStore(frame);
+    const points: Point[] = [
+      [100, 50],
+      [140, 50],
+      [140, 62],
+      [260, 62],
+      [260, 150],
+      [300, 150],
+    ];
+    const nodes: NodeCell[] = [
+      {
+        id: 'a',
+        cellType: 'node',
+        kind: 'geometry',
+        geometry: { x: 0, y: 0, width: 100, height: 100 },
+      },
+      {
+        id: 'b',
+        cellType: 'node',
+        kind: 'geometry',
+        geometry: { x: 300, y: 100, width: 100, height: 100 },
+      },
+    ];
+    const edge: EdgeCell = {
+      id: 'manual',
+      cellType: 'edge',
+      kind: 'arrow',
+      source: { cellId: 'a' },
+      target: { cellId: 'b' },
+      route: { mode: 'orthogonal', points },
+    };
+    for (const cell of [...nodes, edge]) {
+      store.cells[cell.id] = cell;
+      frame.children.push(cell.id);
+    }
+    const before = structuredClone(store);
+    const context = createEdgeRoutingContext(
+      store,
+      frame.id,
+      undefined,
+      undefined,
+      testCellRegistry,
+    );
+    expect(edgePolyline(store, edge, undefined, context)).toEqual(points);
+    expect(context.routes.has(edge.id)).toBe(false);
+    expect(store).toEqual(before);
+  });
+
   it('distributes automatic exits in destination order while preserving authored ports and points', () => {
     const store = fixture('architecture-data-flow');
     const edges = edgesOf(store);
     const source = edges.find((edge) => edge.labels?.[0]?.text === '白板')!;
     const sibling = edges.find((edge) => edge.labels?.[0]?.text === '工作流')!;
-    const context = createEdgeRoutingContext(store, store.rootId);
+    const context = createEdgeRoutingContext(
+      store,
+      store.rootId,
+      undefined,
+      undefined,
+      testCellRegistry,
+    );
     const first = edgePolyline(store, source, undefined, context);
     const second = edgePolyline(store, sibling, undefined, context);
     expect(first[0][0]).toBeLessThan(second[0][0]);
     source.source = { ...source.source, portId: 'bottom', anchor: [0.5, 1] };
-    const fixed = createEdgeRoutingContext(store, store.rootId);
+    const fixed = createEdgeRoutingContext(
+      store,
+      store.rootId,
+      undefined,
+      undefined,
+      testCellRegistry,
+    );
     expect(edgePolyline(store, source, undefined, fixed)[0]).toEqual(
       edgeTerminalPosition(store, source.source, source.target).point,
     );
@@ -219,7 +578,13 @@ describe('frame-wide connector planning', () => {
 
   it('keeps derived labels away from nodes and one another, and honors explicit positions', () => {
     const store = fixture('architecture-data-flow');
-    const context = createEdgeRoutingContext(store, store.rootId);
+    const context = createEdgeRoutingContext(
+      store,
+      store.rootId,
+      undefined,
+      undefined,
+      testCellRegistry,
+    );
     const labels = edgesOf(store)
       .filter((edge) => edge.labels?.length)
       .map((edge) => {
@@ -284,7 +649,13 @@ describe('frame-wide connector planning', () => {
     };
     store.cells.edge = edge;
     frame.children.push(edge.id);
-    const routing = createEdgeRoutingContext(store, frame.id);
+    const routing = createEdgeRoutingContext(
+      store,
+      frame.id,
+      undefined,
+      undefined,
+      testCellRegistry,
+    );
     const layout = edgeLabelLayout(
       edge,
       0,

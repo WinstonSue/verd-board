@@ -1,6 +1,3 @@
-import React, { act } from 'react';
-import { createRoot, type Root } from 'react-dom/client';
-import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   createCellRuntime,
   createFrameCell,
@@ -9,9 +6,14 @@ import {
   type CellChange,
 } from '@sue/board-core';
 import type { VerdFrameProps } from '@sue/verd-board-ui';
-import { WorkspaceApp } from './workspace-app';
+import { act } from 'react';
+import { createRoot, type Root } from 'react-dom/client';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { createTestCellRegistry as createFixtureRegistry } from '../../../../tests/fixtures/plugins/registry';
 import { createFrameFile } from './frames/frame-files';
 import { createMemoryWorkspaceHost } from './host/memory-workspace-host';
+import { WorkspaceApp } from './workspace-app';
+const testCellRegistry = createFixtureRegistry();
 
 let latest: VerdFrameProps | null = null;
 vi.mock('@sue/verd-board-ui', async (importOriginal) => {
@@ -81,7 +83,7 @@ const setup = async () => {
   );
   expect(latest).not.toBeNull();
   const changeName = (name: string): CellChange => {
-    const runtime = createCellRuntime(latest!.value);
+    const runtime = createCellRuntime(latest!.value, testCellRegistry);
     const board = runtime.store.cells.board;
     if (!isFrameCell(board)) throw new Error('Expected a canvas root');
     return runtime.transact({
@@ -172,7 +174,7 @@ describe('WorkspaceApp runtime snapshot echoes', () => {
       width: 240,
       height: 160,
     });
-    const runtime = createCellRuntime(latest!.value);
+    const runtime = createCellRuntime(latest!.value, testCellRegistry);
     const change = runtime.transact({
       id: 'create-owned-frame',
       operations: [{ type: 'insert_cell', parentId: 'board', cell: nested }],

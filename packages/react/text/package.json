@@ -29,7 +29,8 @@
     "@tiptap/pm": "^3.16.0",
     "@tiptap/react": "^3.16.0",
     "@tiptap/starter-kit": "^3.16.0",
-    "github-slugger": "^2.0.0"
+    "github-slugger": "^2.0.0",
+    "@sue/board-react-actions": "workspace:*"
   },
   "peerDependencies": {
     "react": ">=18",

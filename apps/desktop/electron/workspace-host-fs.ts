@@ -252,6 +252,7 @@ export const createFsWorkspaceHost = (
 } => {
   const workspaces = new Map<string, FsWorkspace>();
   const workspacesByRoot = new Map<string, FsWorkspace>();
+  const enqueueGlobalConfigWrite = createSerialQueue();
   const now = options.now ?? Date.now;
   const debounceMs = options.watchDebounceMs ?? 120;
   const globalConfigPath =
@@ -1215,12 +1216,14 @@ export const createFsWorkspaceHost = (
     },
     readGlobalConfig: readGlobalConfigInner,
     async writeGlobalConfig(value, expectedVersion) {
-      const snapshot = await readGlobalConfigInner();
-      if (snapshot.version !== expectedVersion)
-        return { applied: false, snapshot };
-      const next = { version: snapshot.version + 1, value };
-      await writeJsonFile(globalConfigPath(), next);
-      return { applied: true, snapshot: next };
+      return enqueueGlobalConfigWrite(async () => {
+        const snapshot = await readGlobalConfigInner();
+        if (snapshot.version !== expectedVersion)
+          return { applied: false, snapshot };
+        const next = { version: snapshot.version + 1, value };
+        await writeJsonFile(globalConfigPath(), next);
+        return { applied: true, snapshot: next };
+      });
     },
     async openWorkspace(request: OpenWorkspaceRequest = { default: true }) {
       if (request.pick) {

@@ -1,3 +1,12 @@
+import { edgeTerminalPosition, portAnchor } from '../geometry/edge';
+import {
+  hitNodeShape,
+  nodeShapeGeometry,
+  unrotateNodePoint,
+} from '../geometry/node';
+import { simplifyOrthogonal } from '../geometry/route';
+import type { Point } from '../interfaces/point';
+import { createCellRegistry, type CellRegistry } from './registry';
 import {
   isFrameCell,
   isNodeCell,
@@ -5,14 +14,6 @@ import {
   type EdgeCell,
   type EdgeTerminal,
 } from './types';
-import type { Point } from '../interfaces/point';
-import {
-  nodeShapeGeometry,
-  unrotateNodePoint,
-  hitNodeShape,
-} from '../geometry/node';
-import { portAnchor, edgeTerminalPosition } from '../geometry/edge';
-import { simplifyOrthogonal } from '../geometry/route';
 
 /** Only direct siblings are eligible: snapping can never create a cross-Frame edge. */
 export const snapEdgeTerminal = (
@@ -20,8 +21,9 @@ export const snapEdgeTerminal = (
   frameId: string,
   point: Point,
   end: 'source' | 'target',
-  kind = 'arrow',
+  kind: string,
   tolerance = 12,
+  registry: CellRegistry = createCellRegistry(),
 ): EdgeTerminal => {
   const frame = store.cells[frameId];
   if (!isFrameCell(frame)) throw new Error('Missing edge frame');
@@ -29,10 +31,7 @@ export const snapEdgeTerminal = (
     const node = store.cells[id];
     if (!isNodeCell(node) || isFrameCell(node) || node.hidden || node.locked)
       continue;
-    if (kind === 'workflow-edge' && !node.kind.startsWith('workflow-'))
-      continue;
-    if (kind === 'architecture-edge' && node.kind !== 'architecture-module')
-      continue;
+    if (registry.get(kind)?.canConnect?.(node) === false) continue;
     const ports =
       node.ports?.filter((port) =>
         end === 'source'
@@ -53,10 +52,10 @@ export const snapEdgeTerminal = (
         nearestPort.point[0] - point[0],
         nearestPort.point[1] - point[1],
       ) <= tolerance ||
-        (kind !== 'arrow' && inside))
+        (registry.get(kind)?.freeTerminals !== true && inside))
     )
       return { cellId: node.id, portId: nearestPort.port.id };
-    if (kind !== 'arrow' || !inside) continue;
+    if (registry.get(kind)?.freeTerminals !== true || !inside) continue;
     const g = node.geometry,
       local = unrotateNodePoint(g, point);
     const boundary = nodeShapeGeometry(g.outline)?.nearest?.(g, local) ?? local;
@@ -151,7 +150,11 @@ export const moveEdgeRoutePoint = (
     points.splice(index, 1, prevCorner, [...point], nextCorner);
     return {
       ...edge,
-      route: { mode: 'orthogonal', points: simplifyOrthogonal(points) },
+      route: {
+        mode: 'orthogonal',
+        points: simplifyOrthogonal(points),
+        ...(edge.route.strategy ? { strategy: edge.route.strategy } : {}),
+      },
     };
   }
   return {
@@ -184,7 +187,11 @@ export const moveEdgeSegment = (
     points.splice(index + 1, 0, ...corners);
     return {
       ...edge,
-      route: { mode: 'orthogonal', points: simplifyOrthogonal(points) },
+      route: {
+        mode: 'orthogonal',
+        points: simplifyOrthogonal(points),
+        ...(edge.route.strategy ? { strategy: edge.route.strategy } : {}),
+      },
     };
   }
   points.splice(index + 1, 0, [...point]);

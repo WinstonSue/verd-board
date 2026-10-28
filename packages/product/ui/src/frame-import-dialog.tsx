@@ -1,17 +1,17 @@
-import { useEffect, useRef, useState } from 'react';
+import { materializeArchitecturePositions } from '@sue/board-architecture';
+import type { CellRegistry, FrameSnapshot } from '@sue/board-core';
 import {
   FrameCanvas,
   type FrameCanvasController,
   type FrameRenderExtension,
 } from '@sue/board-react';
-import type { CellRegistry, FrameSnapshot } from '@sue/board-core';
 import { materializeWorkflowPositions } from '@sue/board-workflow';
-import { materializeArchitecturePositions } from '@sue/board-architecture';
+import { useEffect, useRef, useState } from 'react';
 import { useI18n } from './i18n';
 
 interface FrameImportDialogProps {
   registry: CellRegistry;
-  extensions: FrameRenderExtension[];
+  extensions: readonly FrameRenderExtension[];
   scene?:
     | 'whiteboard'
     | 'workflow'
@@ -92,7 +92,10 @@ export function FrameImportDialog({
     };
   }, [format, text, scene]);
   useEffect(() => {
-    if (preview) requestAnimationFrame(() => controller.current?.fit());
+    if (preview)
+      requestAnimationFrame(() =>
+        controller.current?.executeAction('canvas.view.fit'),
+      );
   }, [preview]);
   const insert = async () => {
     if (!preview || pending) return;

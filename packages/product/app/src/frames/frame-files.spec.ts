@@ -1,7 +1,5 @@
-import { describe, expect, it } from 'vitest';
 import {
   applyCellOperations,
-  createCellRegistry,
   createCellRuntime,
   createCellStore,
   createFrameCell,
@@ -16,10 +14,15 @@ import {
   type EdgeCell,
   type FrameCell,
   type GroupCell,
-  type MindRootData,
   type NodeCell,
   type PortSpec,
 } from '@sue/board-core';
+import { type MindRootData } from '@sue/board-mind';
+import { describe, expect, it } from 'vitest';
+import {
+  createTestCellRegistry as createFixtureRegistry,
+  createTestCellRegistry,
+} from '../../../../../tests/fixtures/plugins/registry';
 import {
   assembleFrameFiles,
   assembleWorkspaceStore,
@@ -31,14 +34,15 @@ import {
   frameExportBundle,
   frameFileFor,
   isFrameFileV2,
+  MIGRATION_REFERENCE_PREFIX,
   parseFrameExport,
   partitionCellStore,
   remapImportedFiles,
   validateFrameFiles,
   WORKSPACE_ROOT_ID,
-  MIGRATION_REFERENCE_PREFIX,
   type FrameFileV2,
 } from './frame-files';
+const testCellRegistry = createFixtureRegistry();
 
 const node = (id: string, kind = 'geometry'): NodeCell => ({
   id,
@@ -86,7 +90,7 @@ const legacyStore = (): CellStore => {
     kind: 'workflow-start',
     cellType: 'node',
     geometry: { x: 0, y: 0, width: 80, height: 40 },
-    data: { graphMode: 'dag', origin: [0, 0], memberIds: ['t1'] },
+    data: { graphMode: 'dag', origin: [0, 0], memberIds: ['ws1', 't1'] },
   };
   const task = node('t1', 'workflow-task');
   const rect = node('r1');
@@ -104,18 +108,22 @@ const legacyStore = (): CellStore => {
     cellType: 'group',
     members: ['mind-frame', 'wf-frame'],
   };
-  return applyCellOperations(createCellStore(createFrameCell('board')), [
-    { type: 'insert_cell', cell: mindFrame, parentId: 'board' },
-    { type: 'insert_cell', cell: wfFrame, parentId: 'board' },
-    { type: 'insert_cell', cell: rect, parentId: 'board' },
-    { type: 'insert_cell', cell: arrow, parentId: 'board' },
-    { type: 'insert_cell', cell: group, parentId: 'board' },
-    { type: 'insert_cell', cell: mindRoot, parentId: 'mind-frame' },
-    { type: 'insert_cell', cell: mindChild, parentId: 'mind-frame' },
-    { type: 'insert_cell', cell: branch, parentId: 'mind-frame' },
-    { type: 'insert_cell', cell: start, parentId: 'wf-frame' },
-    { type: 'insert_cell', cell: task, parentId: 'wf-frame' },
-  ]);
+  return applyCellOperations(
+    createCellStore(createFrameCell('board')),
+    [
+      { type: 'insert_cell', cell: mindFrame, parentId: 'board' },
+      { type: 'insert_cell', cell: wfFrame, parentId: 'board' },
+      { type: 'insert_cell', cell: rect, parentId: 'board' },
+      { type: 'insert_cell', cell: arrow, parentId: 'board' },
+      { type: 'insert_cell', cell: group, parentId: 'board' },
+      { type: 'insert_cell', cell: mindRoot, parentId: 'mind-frame' },
+      { type: 'insert_cell', cell: mindChild, parentId: 'mind-frame' },
+      { type: 'insert_cell', cell: branch, parentId: 'mind-frame' },
+      { type: 'insert_cell', cell: start, parentId: 'wf-frame' },
+      { type: 'insert_cell', cell: task, parentId: 'wf-frame' },
+    ],
+    testCellRegistry,
+  );
 };
 
 const refIdsOf = (store: CellStore) =>
@@ -215,7 +223,7 @@ describe('externalizeOwnedFrames', () => {
         );
         expect(owned).toBe(false);
       });
-    expect(validateCellStore(store)).toEqual([]);
+    expect(validateCellStore(store, testCellRegistry)).toEqual([]);
   });
 
   it('is deterministic and idempotent', () => {
@@ -274,7 +282,7 @@ describe('assembleWorkspaceStore', () => {
       if (id === WORKSPACE_ROOT_ID) return;
       expect(cell.id).toBe(id);
     });
-    expect(validateCellStore(store)).toEqual([]);
+    expect(validateCellStore(store, testCellRegistry)).toEqual([]);
   });
 
   it('round-trips file contents losslessly', () => {
@@ -323,13 +331,17 @@ describe('frame reference graph and validation', () => {
     ];
     const { store, diagnostics } = assembleWorkspaceStore(files);
     expect(diagnostics).toEqual([]);
-    const next = applyCellOperations(store, deleteCells(store, ['ra2']));
+    const next = applyCellOperations(
+      store,
+      deleteCells(store, ['ra2'], { registry: testCellRegistry }),
+      testCellRegistry,
+    );
     const a = next.cells['a'] as FrameCell;
     expect(a.children).toEqual(['ra1']);
     expect(next.cells['x']).toBeDefined();
     expect(next.cells['xn']).toBeDefined();
     expect(next.cells['ra1']).toBeDefined();
-    expect(validateCellStore(next)).toEqual([]);
+    expect(validateCellStore(next, testCellRegistry)).toEqual([]);
   });
 
   it('indexes file-level reference cycles without rejecting valid references', () => {
@@ -382,10 +394,12 @@ describe('frame-reference cells', () => {
       width: 10,
       height: 10,
     });
-    const store = applyCellOperations(base, [
-      { type: 'insert_cell', cell: valid, parentId: 'root' },
-    ]);
-    expect(validateCellStore(store)).toEqual([]);
+    const store = applyCellOperations(
+      base,
+      [{ type: 'insert_cell', cell: valid, parentId: 'root' }],
+      testCellRegistry,
+    );
+    expect(validateCellStore(store, testCellRegistry)).toEqual([]);
     const bad: Cell = {
       ...valid,
       id: 'bad',
@@ -395,10 +409,13 @@ describe('frame-reference cells', () => {
         mindOffsets: { m: [Number.NaN, 0] } as never,
       },
     };
-    const issues = validateCellStore({
-      rootId: 'root',
-      cells: { ...store.cells, bad },
-    });
+    const issues = validateCellStore(
+      {
+        rootId: 'root',
+        cells: { ...store.cells, bad },
+      },
+      testCellRegistry,
+    );
     const messages = issues.map((issue) => issue.message);
     expect(messages).toContain('Frame reference requires a target');
     expect(messages).toContain('Invalid mind offsets');
@@ -422,8 +439,8 @@ describe('frame-reference cells', () => {
       edit: true,
       connect: false,
     });
-    const runtime = createCellRuntime({ store }, createCellRegistry());
-    expect(runtime.registry.get('frame-reference')).toBeDefined();
+    const runtime = createCellRuntime({ store }, createTestCellRegistry());
+    expect(testCellRegistry.get('frame-reference')).toBeDefined();
   });
 
   it('is a node for grouping and deletion but keeps shell identity', () => {
@@ -444,6 +461,7 @@ describe('frameFileFor', () => {
     const store = applyCellOperations(
       createCellStore(createFrameCell('root')),
       [{ type: 'insert_cell', cell: node('n'), parentId: 'root' }],
+      testCellRegistry,
     );
     expect(() => frameFileFor(store, 'n')).toThrow('must be a frame');
   });

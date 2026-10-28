@@ -114,6 +114,49 @@ test('project content validates, package facts are current, refresh is idempoten
       );
       assert.ok(errors.some((e) => e.includes('Document identity differs')));
       assert.ok(errors.some((e) => e.includes('Missing linked file missing')));
+      const targetFile = entries.find(
+        (e) => e.file.format === 'verd-frame',
+      ).file;
+      const targetId = Object.keys(targetFile.cells)[0];
+      const withCellLink = structuredClone(document);
+      const cellLink = runtime.links.createWorkspaceLink({
+        kind: 'cell',
+        fileId: 'old-file-hint',
+        cellId: targetId,
+      });
+      withCellLink.file.text.content.content.push({
+        type: 'paragraph',
+        content: [
+          {
+            type: 'text',
+            text: 'target',
+            marks: [{ type: 'link', attrs: { href: cellLink } }],
+          },
+        ],
+      });
+      assert.deepEqual(
+        await validateWorkspace(
+          entries.map((e) => (e === document ? withCellLink : e)),
+          runtime,
+        ),
+        [],
+      );
+      const missingCell = structuredClone(withCellLink);
+      missingCell.file.text.content.content.at(
+        -1,
+      ).content[0].marks[0].attrs.href = runtime.links.createWorkspaceLink({
+        kind: 'cell',
+        fileId: targetFile.frame.id,
+        cellId: 'missing-cell',
+      });
+      assert.ok(
+        (
+          await validateWorkspace(
+            entries.map((e) => (e === document ? missingCell : e)),
+            runtime,
+          )
+        ).some((e) => e.includes('Missing linked cell missing-cell')),
+      );
       const invalidMarks = structuredClone(document);
       invalidMarks.file.text.content.content.push({
         type: 'paragraph',
@@ -195,4 +238,36 @@ test('atomic refresh refuses concurrent edits without leaving temporary files', 
   } finally {
     await rm(directory, { recursive: true, force: true });
   }
+});
+
+test('new packages append contiguously without moving existing modules', async () => {
+  const entries = await readWorkspace(),
+    model = await readPackageModel();
+  const file = structuredClone(
+    entries.find((e) => e.file.frame?.id === PACKAGE_FRAME_ID).file,
+  );
+  const layer = model.layers[2],
+    changed = structuredClone(model);
+  changed.layers[2].nodes.push(
+    { id: 'test:one', label: 'First new package' },
+    { id: 'test:two', label: 'Second new package' },
+  );
+  const before = structuredClone(file);
+  const next = refreshPackageFile(file, changed);
+  const a = next.cells['demo:packages/module/test:one'],
+    b = next.cells['demo:packages/module/test:two'];
+  const maxRight = Math.max(
+    ...layer.nodes
+      .map((node) => file.cells['demo:packages/module/' + node.id].geometry)
+      .map((g) => g.x + g.width),
+  );
+  assert.equal(a.geometry.x, maxRight + 96);
+  assert.equal(b.geometry.x, a.geometry.x + a.geometry.width + 96);
+  for (const node of layer.nodes)
+    assert.deepEqual(
+      next.cells['demo:packages/module/' + node.id],
+      before.cells['demo:packages/module/' + node.id],
+    );
+  assert.deepEqual(refreshPackageFile(next, changed), next);
+  assert.deepEqual(file, before);
 });

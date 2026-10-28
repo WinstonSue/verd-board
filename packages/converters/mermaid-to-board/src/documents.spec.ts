@@ -1,17 +1,20 @@
-import { describe, expect, it } from 'vitest';
+import { ArchitectureKind } from '@sue/board-architecture';
 import {
-  CellKind,
   createFrameCell,
-  isNodeCell,
   isEdgeCell,
   isFrameCell,
+  isNodeCell,
   validateCellStore,
 } from '@sue/board-core';
+import { WorkflowKind } from '@sue/board-workflow';
+import { describe, expect, it } from 'vitest';
+import { createTestCellRegistry as createFixtureRegistry } from '../../../../tests/fixtures/plugins/registry';
 import {
   parseMermaidToArchitectureFrame,
   parseMermaidToWorkflowFrame,
   serializeFrameToMermaid,
 } from './documents';
+const testCellRegistry = createFixtureRegistry();
 const nodes = (snapshot: ReturnType<typeof parseMermaidToArchitectureFrame>) =>
   Object.values(snapshot.store.cells)
     .filter(isNodeCell)
@@ -30,14 +33,14 @@ orphan["Loose"]
 desktop -->|uses| choice
 `);
     const layers = nodes(snapshot).filter(
-      (node) => node.kind === CellKind.architectureLayer,
+      (node) => node.kind === ArchitectureKind.architectureLayer,
     );
     expect(layers.map((node) => node.content?.label)).toEqual([
       'Apps',
       'Default',
     ]);
     const modules = nodes(snapshot).filter(
-      (node) => node.kind === CellKind.architectureModule,
+      (node) => node.kind === ArchitectureKind.architectureModule,
     );
     expect(modules.map((node) => node.data)).toEqual([
       { shape: 'box' },
@@ -46,7 +49,7 @@ desktop -->|uses| choice
       { shape: 'box' },
     ]);
     expect(edges(snapshot)[0].labels).toEqual([{ text: 'uses' }]);
-    expect(validateCellStore(snapshot.store)).toEqual([]);
+    expect(validateCellStore(snapshot.store, testCellRegistry)).toEqual([]);
     const exported = serializeFrameToMermaid(snapshot);
     const again = parseMermaidToArchitectureFrame(exported);
     expect(again).toEqual(snapshot);
@@ -60,10 +63,10 @@ review{"Review"}
 start --> review
 `);
     const start = nodes(snapshot).find(
-      (node) => node.kind === CellKind.workflowStart,
+      (node) => node.kind === WorkflowKind.workflowStart,
     )!;
     const review = nodes(snapshot).find(
-      (node) => node.kind === CellKind.workflowDecision,
+      (node) => node.kind === WorkflowKind.workflowDecision,
     )!;
     expect(start.content?.label).toBe('Start');
     expect(start.data).toMatchObject({
@@ -93,7 +96,9 @@ e --> b
 c --> d
 `);
     expect(
-      nodes(snapshot).filter((node) => node.kind === CellKind.workflowStart),
+      nodes(snapshot).filter(
+        (node) => node.kind === WorkflowKind.workflowStart,
+      ),
     ).toHaveLength(2);
     expect(
       parseMermaidToWorkflowFrame(serializeFrameToMermaid(snapshot)),
@@ -122,15 +127,15 @@ c --> d
     );
     expect(
       nodes(snapshot).filter(
-        (node) => node.kind === CellKind.architectureLayer,
+        (node) => node.kind === ArchitectureKind.architectureLayer,
       ),
     ).toHaveLength(2);
     expect(
       nodes(snapshot).filter(
-        (node) => node.kind === CellKind.architectureModule,
+        (node) => node.kind === ArchitectureKind.architectureModule,
       ),
     ).toHaveLength(1);
-    expect(validateCellStore(snapshot.store)).toEqual([]);
+    expect(validateCellStore(snapshot.store, testCellRegistry)).toEqual([]);
   });
   it('rejects nested frames, groups and mind maps instead of omitting them', () => {
     const frame = createFrameCell('root');

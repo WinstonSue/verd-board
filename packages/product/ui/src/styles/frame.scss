@@ -1,9 +1,13 @@
 @use './appearance.scss';
-@use '../../../../react/text/src/style.scss';
-@use '../../../../react/text/src/components/document/document-editor.scss';
 @use './workspace.scss';
 @use './chart-library.scss';
 @use './frame-properties.scss';
+@import '@sue/board-react/style.css';
+@import '@sue/board-react-draw/style.css';
+@import '@sue/board-react-mind/style.css';
+@import '@sue/board-react-workflow/style.css';
+@import '@sue/board-react-architecture/style.css';
+@import '@sue/board-react-uml/style.css';
 
 .verd-frame {
   position: relative;
@@ -38,23 +42,54 @@
   max-width: calc(100% - 16px);
 }
 .frame-tools {
+  --frame-tools-top: max(
+    56px,
+    calc(var(--frame-app-toolbar-height, 42px) + 14px)
+  );
+  box-sizing: border-box;
   left: 8px;
-  top: max(56px, calc(var(--frame-app-toolbar-height, 42px) + 14px));
+  top: var(--frame-tools-top);
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
-  gap: 6px;
-  width: auto;
-  max-width: min(220px, calc(100% - 16px));
-  max-height: calc(100% - 160px);
-  overflow: auto;
+  align-items: center;
+  gap: 8px;
+  width: 48px;
+  padding: 5px;
+  max-height: calc(
+    100% - var(--frame-tools-top) - var(--frame-bottom-controls-height, 40px) -
+      32px
+  );
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: none;
+  box-shadow: var(--vm-shadow-toolbar);
+  &::-webkit-scrollbar {
+    display: none;
+  }
+  .verd-frame & .frame-tool-button {
+    width: 36px;
+    height: 36px;
+  }
 }
 .frame-tool-group {
   display: flex;
   flex-direction: column;
+  flex-shrink: 0;
   gap: 4px;
+  &:empty {
+    display: none;
+  }
+  & + &::before {
+    content: '';
+    width: 24px;
+    align-self: center;
+    border-top: 1px solid var(--vm-border);
+    margin-bottom: 4px;
+  }
 }
-.frame-tool-button {
+.verd-frame .frame-tool-button {
+  box-sizing: border-box;
   position: relative;
   width: 32px;
   height: 32px;
@@ -62,6 +97,32 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  flex-shrink: 0;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: transparent;
+  transition:
+    background-color 120ms,
+    color 120ms;
+  &:hover:not(:disabled),
+  &[aria-expanded='true'] {
+    background: var(--vm-fill-hover);
+  }
+  &[aria-pressed='true'] {
+    color: var(--vm-primary);
+    border-color: transparent;
+    background: var(--vm-fill-active);
+  }
+  &:focus-visible {
+    outline: 2px solid var(--vm-focus);
+    outline-offset: 1px;
+  }
+  &:disabled {
+    color: var(--vm-foreground-tertiary);
+    opacity: 0.5;
+    background: transparent;
+    cursor: default;
+  }
 }
 .frame-shape-picker {
   position: fixed;
@@ -69,7 +130,7 @@
   display: flex;
   flex-direction: column;
   gap: 6px;
-  width: 214px;
+  width: 230px;
   box-sizing: border-box;
   overflow: auto;
   padding: 8px;
@@ -78,26 +139,37 @@
   border-radius: 12px;
   box-shadow: var(--vm-shadow-menu);
 }
-.frame-tools > select {
-  position: absolute;
-  left: 56px;
-  top: 120px;
-  z-index: 5;
-}
 .frame-shape-grid {
   display: grid;
-  grid-template-columns: repeat(6, 28px);
+  grid-template-columns: repeat(6, 32px);
   gap: 4px;
   max-height: 140px;
   overflow: auto;
 }
 .frame-shape-preview {
-  width: 28px;
-  height: 28px;
+  width: 32px;
+  height: 32px;
   padding: 0;
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  flex-shrink: 0;
+  color: var(--vm-foreground);
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: transparent;
+  cursor: pointer;
+  &:hover {
+    background: var(--vm-fill-hover);
+  }
+  &[aria-pressed='true'] {
+    background: var(--vm-fill-active);
+    color: var(--vm-primary);
+  }
+  &:focus-visible {
+    outline: 2px solid var(--vm-focus);
+    outline-offset: -2px;
+  }
   svg {
     fill: none;
     stroke: currentColor;
@@ -351,6 +423,85 @@
   display: inline-flex;
   flex-shrink: 0;
 }
+.frame-tooltip-control {
+  display: inline-flex;
+  min-width: 0;
+  > button:disabled {
+    pointer-events: none;
+  }
+}
+.frame-tooltip-block {
+  display: flex;
+  width: 100%;
+  > button {
+    width: 100%;
+  }
+}
+.frame-tooltip-control:focus-visible {
+  outline: 2px solid var(--vm-focus);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+.frame-tool-menu > .frame-tooltip-control {
+  display: flex;
+  > button {
+    width: 100%;
+  }
+}
+// The component owns its frame, including inside the inspector's button rules.
+.frame-routing-button {
+  display: flex;
+  gap: 0;
+  min-width: 0;
+  border: 1px solid var(--vm-border-strong);
+  border-radius: 6px;
+  background: var(--vm-background);
+  > .frame-tooltip-block {
+    flex: 1;
+    min-width: 0;
+    width: auto;
+    border-radius: 5px 0 0 5px;
+  }
+}
+.frame-routing-button > .frame-tooltip-block > button,
+.frame-routing-button > button.frame-routing-toggle {
+  box-sizing: border-box;
+  height: 30px;
+  margin: 0;
+  border: 0;
+  background: transparent;
+  &:disabled {
+    background: transparent;
+  }
+}
+.frame-routing-button > .frame-tooltip-block > button {
+  border-radius: 5px 0 0 5px;
+}
+.frame-routing-button > button.frame-routing-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 32px;
+  padding: 0;
+  border-radius: 0 5px 5px 0;
+  border-left: 1px solid var(--vm-border-strong);
+}
+.frame-routing-menu {
+  z-index: 60;
+  button[aria-disabled='true'] {
+    cursor: default;
+    color: var(--vm-foreground-secondary);
+  }
+  width: 280px;
+  button {
+    flex-direction: column;
+    align-items: flex-start;
+    small {
+      color: var(--vm-foreground-secondary);
+      font-size: 11px;
+    }
+  }
+}
 .frame-icon-tooltip {
   z-index: 100;
   max-width: 260px;
@@ -375,14 +526,21 @@
   display: flex;
   flex-direction: column;
   gap: 4px;
-  min-width: 170px;
+  box-sizing: border-box;
+  width: 220px;
   max-width: calc(100vw - 16px);
+  max-height: calc(100vh - 16px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
   padding: 6px;
   color: var(--vm-foreground);
   background: var(--vm-background);
   border: 1px solid var(--vm-border);
   border-radius: 12px;
   box-shadow: var(--vm-shadow-menu);
+  font:
+    13px/1.4 system-ui,
+    sans-serif;
   button {
     display: flex;
     align-items: center;
@@ -391,11 +549,26 @@
     padding: 6px 10px;
     text-align: left;
     border: 0;
+    border-radius: 8px;
     background: transparent;
-    &[aria-checked='true'],
-    &:hover,
-    &:focus-visible {
+    color: inherit;
+    font: inherit;
+    cursor: pointer;
+    &:hover:not(:disabled) {
       background: var(--vm-fill-hover);
+    }
+    &[aria-checked='true'] {
+      background: var(--vm-fill-active);
+      color: var(--vm-primary);
+    }
+    &:focus-visible {
+      outline: 2px solid var(--vm-focus);
+      outline-offset: -2px;
+    }
+    &:disabled {
+      color: var(--vm-foreground-tertiary);
+      background: transparent;
+      cursor: default;
     }
   }
   kbd {
@@ -409,6 +582,94 @@
   align-items: center;
   gap: 8px;
   min-height: 30px;
+  border: 0;
+  border-radius: 6px;
+  padding: 6px 8px;
+  color: var(--vm-foreground);
+  background: transparent;
+  font:
+    13px/1.4 system-ui,
+    sans-serif;
+  cursor: pointer;
+  &:hover {
+    background: var(--vm-fill-hover);
+  }
+  &:focus-visible {
+    outline: 2px solid var(--vm-focus);
+    outline-offset: -2px;
+  }
+}
+
+.frame-tool-popover {
+  box-sizing: border-box;
+  z-index: 10;
+  width: 280px;
+  overflow: auto;
+  overscroll-behavior: contain;
+  padding: 14px;
+  border: 1px solid var(--vm-border);
+  border-radius: 12px;
+  color: var(--vm-foreground);
+  background: var(--vm-background);
+  box-shadow: var(--vm-shadow-menu);
+  font:
+    13px/1.4 system-ui,
+    sans-serif;
+  &__title {
+    font-weight: 600;
+    margin-bottom: 12px;
+  }
+  form {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  &__field {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    gap: 6px;
+    > span {
+      color: var(--vm-foreground-secondary);
+      font-size: 12px;
+    }
+  }
+  select {
+    box-sizing: border-box;
+    width: 100%;
+    min-width: 0;
+    height: 34px;
+    padding: 0 8px;
+    border: 1px solid var(--vm-border);
+    border-radius: 6px;
+    color: inherit;
+    background: var(--vm-background);
+    font: inherit;
+  }
+  button[type='submit'] {
+    min-height: 34px;
+    border: 0;
+    border-radius: 8px;
+    padding: 6px 10px;
+    color: var(--vm-on-primary);
+    background: var(--vm-primary);
+    font: inherit;
+    cursor: pointer;
+    &:hover:not(:disabled) {
+      background: var(--vm-primary-hover);
+    }
+    &:disabled {
+      opacity: 0.5;
+      cursor: default;
+    }
+  }
+  :is(button, select):focus-visible {
+    outline: 2px solid var(--vm-focus);
+    outline-offset: 2px;
+  }
+  &__error {
+    color: var(--vm-danger);
+  }
 }
 
 .frame-app-menu {

@@ -31,6 +31,7 @@ jobs:
       - name: Install Playwright
         run: pnpm exec playwright install --with-deps
 
+      - run: pnpm check:plugins
       - run: pnpm lint
       - run: pnpm typecheck
       - run: pnpm workspace:check
@@ -40,4 +41,5 @@ jobs:
       - run: pnpm build:desktop
       - run: pnpm pack:dry
       - run: pnpm test:consumer
+      - run: pnpm test:plugin-consumers
       - run: pnpm test:e2e

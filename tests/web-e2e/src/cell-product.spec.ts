@@ -1,7 +1,7 @@
-import { bodyEditor, editBody } from './body-editor';
-import { selectAppAction } from './app-actions';
+import { expect, test, type Page } from '@playwright/test';
 import { readFileSync } from 'node:fs';
-import { test, expect, type Page } from '@playwright/test';
+import { selectAppAction } from './app-actions';
+import { bodyEditor, editBody } from './body-editor';
 import { selectDrawingTool } from './drawing-tools';
 import { expandPropertyGroup } from './property-group';
 import {
@@ -437,7 +437,7 @@ test('mind drags reorder siblings, change parents using the pointer and ignore c
     { steps: 10 },
   );
   await page.mouse.up();
-  await expect(canvas(page).locator('[data-mind-ghost]')).toHaveCount(0);
+  await expect(canvas(page).locator('[data-move-ghost]')).toHaveCount(0);
   await expect(
     page.getByRole('alert').filter({ hasText: 'cycle' }),
   ).toHaveCount(0);
@@ -481,14 +481,14 @@ for (const grip of ['left', 'right'] as const) {
       await page.mouse.move(destination.x, destination.y, { steps: 8 });
     };
     await begin();
-    const ghost = canvas(page).locator('[data-mind-ghost]');
+    const ghost = canvas(page).locator('[data-move-ghost]');
     await expect(ghost).toBeVisible();
     await expect(
       ghost.locator(`[data-draft-cell-id="${childId}"]`),
     ).toBeVisible();
     await expect(
-      canvas(page).locator('[data-mind-drop-target]'),
-    ).toHaveAttribute('data-mind-drop-target', bId);
+      canvas(page).locator('[data-move-drop-target]'),
+    ).toHaveAttribute('data-move-drop-target', bId);
     await expect.poll(() => persisted(page)).toEqual(before);
     await page.mouse.move(destination.x + 250, destination.y - 250, {
       steps: 5,

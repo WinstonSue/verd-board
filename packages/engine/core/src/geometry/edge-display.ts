@@ -1,5 +1,6 @@
 import type { Point } from '../interfaces/point';
 import { polylinePath } from './polyline';
+import { decoratedPolylinePath, type EdgeJump } from './edge-crossings';
 
 type Cubic = [Point, Point, Point, Point];
 const mix = (a: Point, b: Point, t: number): Point => [
@@ -29,6 +30,7 @@ export function edgeDisplayGeometry(
   curve: boolean,
   sourceRadius = 0,
   targetRadius = 0,
+  decoration?: { jumps?: readonly EdgeJump[]; cornerRadius?: number },
 ): { path: string; markerPoints: Point[] } {
   if (points.length < 2) return { path: '', markerPoints: [] };
   const segments: Cubic[] = points.slice(1).map((end, i) => {
@@ -91,7 +93,13 @@ export function edgeDisplayGeometry(
   const path =
     curve && points.length >= 3
       ? `M${first[0].join(' ')}${kept.map((c) => ` C${c[1].join(' ')} ${c[2].join(' ')} ${c[3].join(' ')}`).join('')}`
-      : polylinePath(retainedPoints);
+      : decoration
+        ? decoratedPolylinePath(
+            retainedPoints,
+            decoration.jumps,
+            decoration.cornerRadius,
+          )
+        : polylinePath(retainedPoints);
   return {
     path,
     markerPoints: [

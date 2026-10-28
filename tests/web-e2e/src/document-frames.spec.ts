@@ -108,6 +108,45 @@ async function edit(page: Page, id: string) {
   return editor;
 }
 
+test('palette shortcuts use the embedded document scope and restore its text selection', async ({
+  page,
+}) => {
+  await seed(page);
+  const editor = await edit(page, 'editor-a');
+  await editor.click();
+  await page.keyboard.press('ControlOrMeta+a');
+  const text = await editor.textContent();
+  const selection = await page.evaluate(() =>
+    window.getSelection()?.toString(),
+  );
+  await page.keyboard.press('ControlOrMeta+Shift+p');
+  const palette = page.getByRole('dialog', { name: '命令面板', exact: true });
+  await expect(palette).toHaveCount(1);
+  await expect(
+    shell(page, 'editor-a').locator('[data-document-editing] dialog'),
+  ).toHaveCount(1);
+  await expect(
+    palette.locator('[data-action-id="document.toggle-bold"]'),
+  ).toHaveAttribute('aria-disabled', 'false');
+  await page.keyboard.press('Escape');
+  await expect(editor).toBeFocused();
+  await expect(editor).toHaveText(text!);
+  await expect
+    .poll(() => page.evaluate(() => window.getSelection()?.toString()))
+    .toBe(selection);
+  const header = shell(page, 'editor-a')
+    .locator('[data-document-header-actions] button')
+    .first();
+  await header.focus();
+  await page.keyboard.press('ControlOrMeta+Shift+p');
+  await expect(palette).toHaveCount(1);
+  await expect(
+    palette.locator('[data-action-id="canvas.selection.delete"]'),
+  ).toHaveCount(1);
+  await page.keyboard.press('Escape');
+  await expect(header).toBeFocused();
+});
+
 test('document Frames edit one source, restore the originating occurrence and leave read-only references and locked Frames passive', async ({
   page,
 }) => {

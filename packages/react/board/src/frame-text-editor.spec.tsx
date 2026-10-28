@@ -1,7 +1,12 @@
 import React, { act } from 'react';
 import { createRoot } from 'react-dom/client';
 import { describe, expect, it, vi } from 'vitest';
-import { createBlockText, createInlineText } from '@sue/board-common';
+import {
+  createActionRegistry,
+  createBlockText,
+  createInlineText,
+} from '@sue/board-common';
+import { ActionScope } from '@sue/board-react-actions';
 import type { TextChangeData } from '@sue/board-react-text';
 
 vi.mock('@sue/board-react-text', () => ({
@@ -35,6 +40,64 @@ import { FrameTextEditor } from './frame-text-editor';
 ).IS_REACT_ACT_ENVIRONMENT = true;
 
 describe('FrameTextEditor', () => {
+  it('keeps editing while its action panel owns focus and still closes for outside controls', async () => {
+    const container = document.createElement('div');
+    document.body.append(container);
+    const root = createRoot(container);
+    const source = createActionRegistry({ getContext: () => ({}) });
+    source.seal();
+    const onClose = vi.fn();
+    try {
+      await act(async () =>
+        root.render(
+          <ActionScope registry={source}>
+            <FrameTextEditor
+              text={createInlineText('Original')}
+              readonly
+              onChange={() => {}}
+              onClose={onClose}
+              onHistory={() => {}}
+            />
+            <button data-outside>Outside</button>
+          </ActionScope>,
+        ),
+      );
+      const editor = container.querySelector<HTMLButtonElement>(
+        '[data-testid="editor-text"]',
+      )!;
+      await act(async () => editor.focus());
+      await act(async () =>
+        editor.dispatchEvent(
+          new KeyboardEvent('keydown', {
+            key: 'p',
+            ctrlKey: true,
+            shiftKey: true,
+            bubbles: true,
+            cancelable: true,
+          }),
+        ),
+      );
+      const input = container.querySelector<HTMLInputElement>('dialog input')!;
+      expect(document.activeElement).toBe(input);
+      expect(onClose).not.toHaveBeenCalled();
+      await act(async () =>
+        input.dispatchEvent(
+          new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }),
+        ),
+      );
+      expect(document.activeElement).toBe(editor);
+      expect(onClose).not.toHaveBeenCalled();
+      await act(async () =>
+        container.querySelector<HTMLButtonElement>('[data-outside]')!.focus(),
+      );
+      expect(onClose).toHaveBeenCalledOnce();
+    } finally {
+      await act(async () => root.unmount());
+      source.dispose();
+      container.remove();
+    }
+  });
+
   it('uses document kind and base styles, keeps controls outside the text box and ignores composition Enter', async () => {
     const container = document.createElement('div');
     document.body.append(container);

@@ -31,8 +31,20 @@ const enTranslations: Translations = {
   'arrange.ungroup': 'Ungroup',
   'arrange.lock': 'Lock',
   'arrange.unlock': 'Unlock',
-  'arrange.layout': 'Auto layout style',
-  'arrange.apply': 'Auto layout',
+  'arrange.layout': 'Node layout style',
+  'arrange.apply': 'Layout nodes',
+  'arrange.groupContents': 'Layout group contents',
+  'arrange.reroute': 'Reroute edges',
+  'arrange.relationships': 'By connections',
+  'arrange.overlap':
+    'Layout would overlap an outside or locked node. Nothing was changed; adjust the scope or positions and retry.',
+  'arrange.noRoutes': 'There are no editable paths to reset in this scope',
+  'arrange.scopeFrame': 'Scope: direct objects in the current canvas',
+  'arrange.scopeGroup': 'Scope: group contents; nested groups remain intact',
+  'arrange.scopeSelection':
+    'Scope: selected objects; multiple groups remain intact',
+  'arrange.rerouteHint':
+    'Rerouting includes connections to outside nodes, preserves attachment points, straight lines and curves, and may adjust nearby automatic routes.',
   'arrange.grid': 'Grid',
   'arrange.horizontal': 'Horizontal',
   'arrange.vertical': 'Vertical',

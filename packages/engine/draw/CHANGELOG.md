@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+新增 createDrawPlugin；Draw kind、VectorLineData 与路径编辑工具从 core 移入本包。
+
+本轮不升级版本或发布，随下一主版本交付；参见原生架构和迁移文档。
+
 ## 2.0.0
 
 ### Major Changes

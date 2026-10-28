@@ -1,11 +1,16 @@
-import { describe, expect, it } from 'vitest';
 import {
   createCellRuntime,
   createCellStore,
   createFrameCell,
   type NodeCell,
 } from '@sue/board-core';
+import { describe, expect, it } from 'vitest';
+import {
+  createTestCellRegistry as createFixtureRegistry,
+  createTestCellRegistry,
+} from '../../../../tests/fixtures/plugins/registry';
 import { openFrameOperations } from './frame-open';
+const testCellRegistry = createFixtureRegistry();
 
 describe('openFrameOperations', () => {
   it('replaces content and theme in one undoable transaction and keeps the frame id', () => {
@@ -29,9 +34,12 @@ describe('openFrameOperations', () => {
       geometry: { x: 8, y: 8, width: 20, height: 20 },
     };
     file.children = ['imported'];
-    const runtime = createCellRuntime({
-      store: current,
-    });
+    const runtime = createCellRuntime(
+      {
+        store: current,
+      },
+      testCellRegistry,
+    );
     runtime.transact({
       id: 'open',
       restoreView: true,
@@ -91,7 +99,7 @@ describe('openFrameOperations', () => {
       { store: { rootId: 'file', cells: { file, imported } } },
       (previous) => `next-${previous}`,
     );
-    const runtime = createCellRuntime({ store: current });
+    const runtime = createCellRuntime({ store: current }, testCellRegistry);
     runtime.transact({ id: 'open-locked', restoreView: true, operations });
     expect(runtime.store.cells.locked).toBeUndefined();
     expect(runtime.store.cells.board).toMatchObject({
@@ -115,8 +123,8 @@ describe('openFrameOperations', () => {
 it('opens a UML sequence by replacing its content while preserving its hidden root and undo history', async () => {
   const core = await import('@sue/board-core'),
     uml = await import('@sue/board-uml');
-  const registry = core.createCellRegistry();
-  uml.registerUmlCells(registry);
+  const registry = createTestCellRegistry();
+
   let store = uml.createUmlSequenceFrameSnapshot('f', 'root').store;
   store = core.applyCellOperations(
     store,

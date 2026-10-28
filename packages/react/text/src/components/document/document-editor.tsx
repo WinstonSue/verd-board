@@ -1,9 +1,21 @@
-import React, { useCallback, useEffect, useMemo, useRef } from 'react';
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { EditorContent, useEditor, getSchema } from '@tiptap/react';
 import { DocumentFrameReferenceContext } from './document-frame-reference';
 import { Selection, TextSelection } from '@tiptap/pm/state';
 import type { Transaction } from '@tiptap/pm/state';
-import type { BoardTextDocument } from '@sue/board-common';
+import type { ActionResult, BoardTextDocument } from '@sue/board-common';
+import {
+  ActionScope,
+  matchesActionShortcut,
+  resolveActionShortcut,
+  type ActionSource,
+} from '@sue/board-react-actions';
 import { createDocumentExtensions } from '../../constants/editor-config';
 import { documentFromEditor } from '../../utils/controller';
 import { safeFocus } from '../../utils/measure';
@@ -11,6 +23,7 @@ import { createDocumentController } from './document-controller';
 import { DocumentGroupTracker } from './document-groups';
 import type {
   DocumentChangeSource,
+  DocumentChangeReceipt,
   DocumentEditorController,
   DocumentEditorProps,
   DocumentSelection,
@@ -19,6 +32,28 @@ import './document-editor.scss';
 import '../../styles/content.scss';
 
 const RESTORE_META = 'verd-document-restore';
+// History and placeholder options do not change the standalone document schema.
+// Validation can share it while each editor keeps its own runtime and plugins.
+let validationSchema: ReturnType<typeof getSchema> | undefined;
+const getValidationSchema = () =>
+  (validationSchema ??= getSchema(createDocumentExtensions()));
+const emptyActions: ActionSource = {
+  actions: () => [],
+  subscribe: () => () => {},
+  revision: 0,
+  getActionState: () => ({ visible: false, enabled: false }),
+};
+const receiptResult = (receipt: DocumentChangeReceipt): ActionResult => {
+  if (!receipt) return { status: 'completed' };
+  if ('status' in receipt) return receipt;
+  return receipt.ok
+    ? { status: 'completed' }
+    : {
+        status: 'rejected',
+        code: 'host-rejected',
+        message: receipt.diagnostics?.map((item) => item.message).join('; '),
+      };
+};
 
 let changeSeq = 0;
 const nextChangeId = () => `doc-change-${++changeSeq}`;
@@ -36,7 +71,12 @@ export const DocumentEditor: React.FC<DocumentEditorProps> = ({
   onImageFile,
   renderFrameReference,
 }) => {
-  const schema = useMemo(() => getSchema(createDocumentExtensions()), []);
+  const schema = useMemo(getValidationSchema, []);
+  const localHistory = !history;
+  const extensions = useMemo(
+    () => createDocumentExtensions({ history: localHistory, placeholder }),
+    [localHistory, placeholder],
+  );
   const contentError = useMemo(() => {
     try {
       schema.nodeFromJSON(value.content).check();
@@ -50,7 +90,10 @@ export const DocumentEditor: React.FC<DocumentEditorProps> = ({
   const containerRef = useRef<HTMLDivElement>(null);
   const originalElementRef = useRef<BoardTextDocument>(value);
   /** JSON of the content the editor currently reflects (echo suppression). */
-  const baselineJsonRef = useRef(JSON.stringify(value.content));
+  const baselineJsonRef = useRef<string | undefined>(undefined);
+  if (baselineJsonRef.current === undefined)
+    baselineJsonRef.current = JSON.stringify(value.content);
+  const baselineEditorDocument = useRef<unknown>(null);
   const onChangeRef = useRef(onChange);
   onChangeRef.current = onChange;
   const onReadyRef = useRef(onReady);
@@ -61,6 +104,14 @@ export const DocumentEditor: React.FC<DocumentEditorProps> = ({
   onImageFileRef.current = onImageFile;
 
   const controllerRef = useRef<DocumentEditorController | null>(null);
+  const [actionSource, setActionSource] =
+    useState<DocumentEditorController | null>(null);
+  const pendingChanges = useRef(new Set<Promise<ActionResult>>());
+  const acknowledged = useRef({
+    sequence: 0,
+    result: { status: 'completed' } as ActionResult,
+  });
+  const emissionSequence = useRef(0);
   const pendingSourceRef = useRef<DocumentChangeSource | null>(null);
   const lastSelectionRef = useRef<DocumentSelection>({
     from: 0,
@@ -97,6 +148,10 @@ export const DocumentEditor: React.FC<DocumentEditorProps> = ({
   const insertImageFile = (file: File, position: number) => {
     const resolver = onImageFileRef.current;
     if (!resolver || !file.type.startsWith('image/')) return false;
+    const action = controllerRef.current
+      ?.actions()
+      .find((item) => item.id === 'document.insert-image')
+      ?.capture();
     void resolver(file)
       .then((src) => {
         const editor_ = editor;
@@ -106,12 +161,7 @@ export const DocumentEditor: React.FC<DocumentEditorProps> = ({
           0,
           Math.min(position, editor_.state.doc.content.size),
         );
-        withSource('insert', () => {
-          editor_
-            .chain()
-            .insertContentAt(at, { type: 'image', attrs: { src } })
-            .run();
-        });
+        void action?.execute({ src, position: at }, { source: 'native' });
       })
       .catch(() => undefined);
     return true;
@@ -142,22 +192,44 @@ export const DocumentEditor: React.FC<DocumentEditorProps> = ({
     };
     originalElementRef.current = newText;
     baselineJsonRef.current = JSON.stringify(newText.content);
+    baselineEditorDocument.current = editor_.state.doc;
     const source =
       pendingSourceRef.current ??
       (composingRef.current || Date.now() - compositionEndedAtRef.current < 100
         ? 'composition'
         : 'input');
     const selectionAfter = selectionOf(editor_);
-    oc({
+    const change = {
       value: newText,
       changeId: nextChangeId(),
       source,
       historyGroup: `${historyScope.current}:${groupFor(source, transaction)}`,
       selectionBefore: lastSelectionRef.current,
       selectionAfter,
+    };
+    const sequence = ++emissionSequence.current;
+    let work: Promise<ActionResult>;
+    try {
+      work = Promise.resolve(oc(change)).then(receiptResult);
+    } catch (error) {
+      work = Promise.reject(error);
+    }
+    work = work.catch((error): ActionResult => ({
+      status: 'failed',
+      code: 'host-commit-failed',
+      message: error instanceof Error ? error.message : String(error),
+    }));
+    pendingChanges.current.add(work);
+    void work.then((result) => {
+      pendingChanges.current.delete(work);
+      if (sequence >= acknowledged.current.sequence)
+        acknowledged.current = { sequence, result };
     });
     lastSelectionRef.current = selectionAfter;
   };
+
+  const emitChangeRef = useRef(emitChange);
+  emitChangeRef.current = emitChange;
 
   /**
    * Replays content without producing a change event or history — used by
@@ -194,6 +266,11 @@ export const DocumentEditor: React.FC<DocumentEditorProps> = ({
         editor_.view.dispatch(tr);
         originalElementRef.current = doc;
         baselineJsonRef.current = JSON.stringify(doc.content);
+        baselineEditorDocument.current = editor_.state.doc;
+        acknowledged.current = {
+          sequence: ++emissionSequence.current,
+          result: { status: 'completed' },
+        };
         lastSelectionRef.current = selectionOf(editor_);
         groupTrackerRef.current!.externalRestore();
       } catch {
@@ -205,10 +282,7 @@ export const DocumentEditor: React.FC<DocumentEditorProps> = ({
 
   const editor = useEditor(
     {
-      extensions: createDocumentExtensions({
-        history: !history,
-        placeholder,
-      }),
+      extensions,
       content: contentError
         ? { type: 'doc', content: [{ type: 'paragraph' }] }
         : originalElementRef.current.content,
@@ -217,21 +291,24 @@ export const DocumentEditor: React.FC<DocumentEditorProps> = ({
         attributes: { class: 'board-document-content' },
         handleKeyDown: (view, event) => {
           if (view.composing) return false;
-          const mod = event.metaKey || event.ctrlKey;
-          const hasLocalHistory = typeof editor?.commands.undo === 'function';
-          if (mod && !event.shiftKey && event.key.toLowerCase() === 'z') {
-            if (historyRef.current) historyRef.current.undo();
-            else if (hasLocalHistory) editor?.commands.undo();
+          const actions = controllerRef.current?.actions() ?? [];
+          const resolution = resolveActionShortcut(actions, event);
+          if (resolution.status === 'matched') {
+            event.preventDefault();
+            void resolution.action
+              .capture()
+              .execute(undefined, { source: 'shortcut' });
             return true;
           }
           if (
-            (mod && event.shiftKey && event.key.toLowerCase() === 'z') ||
-            (!event.metaKey && event.ctrlKey && event.key.toLowerCase() === 'y')
-          ) {
-            if (historyRef.current) historyRef.current.redo();
-            else if (hasLocalHistory) editor?.commands.redo();
+            resolution.status === 'conflict' ||
+            actions.some((action) =>
+              action.shortcuts?.some((shortcut) =>
+                matchesActionShortcut(event, shortcut),
+              ),
+            )
+          )
             return true;
-          }
           if (event.key === 'Enter') groupTrackerRef.current!.breakStructural();
           return false;
         },
@@ -301,15 +378,30 @@ export const DocumentEditor: React.FC<DocumentEditorProps> = ({
     const localHistory = () =>
       typeof editor.commands.undo === 'function' &&
       typeof editor.commands.redo === 'function';
+    baselineEditorDocument.current = editor.state.doc;
     const controller = createDocumentController(editor, {
       withSource,
       getBaseDocument: () => originalElementRef.current,
+      flushEditing: async () => {
+        if (editor.isDestroyed)
+          return { status: 'cancelled', code: 'scope-disposed' };
+        if (composingRef.current || editor.view.composing)
+          return { status: 'rejected', code: 'composition-active' };
+        await Promise.resolve();
+        if (editor.state.doc !== baselineEditorDocument.current)
+          withSource('flush', () =>
+            emitChangeRef.current(editor, editor.state.tr),
+          );
+        while (pendingChanges.current.size)
+          await Promise.all([...pendingChanges.current]);
+        return acknowledged.current.result;
+      },
       undo: () => {
-        if (historyRef.current) historyRef.current.undo();
+        if (historyRef.current) return historyRef.current.undo();
         else if (localHistory()) editor.commands.undo();
       },
       redo: () => {
-        if (historyRef.current) historyRef.current.redo();
+        if (historyRef.current) return historyRef.current.redo();
         else if (localHistory()) editor.commands.redo();
       },
       canUndo: () =>
@@ -322,6 +414,7 @@ export const DocumentEditor: React.FC<DocumentEditorProps> = ({
           : localHistory() && editor.can().redo(),
     });
     controllerRef.current = controller;
+    setActionSource(controller);
     onReadyRef.current?.(controller);
     return () => {
       controllerRef.current = null;
@@ -377,15 +470,17 @@ export const DocumentEditor: React.FC<DocumentEditorProps> = ({
   }
 
   return (
-    <div
-      ref={containerRef}
-      className={`board-document-editor${readonly ? ' readonly' : ''}${
-        className ? ` ${className}` : ''
-      }`}
-    >
-      <DocumentFrameReferenceContext.Provider value={renderFrameReference}>
-        <EditorContent editor={editor} />
-      </DocumentFrameReferenceContext.Provider>
-    </div>
+    <ActionScope registry={actionSource ?? emptyActions}>
+      <div
+        ref={containerRef}
+        className={`board-document-editor${readonly ? ' readonly' : ''}${
+          className ? ` ${className}` : ''
+        }`}
+      >
+        <DocumentFrameReferenceContext.Provider value={renderFrameReference}>
+          <EditorContent editor={editor} />
+        </DocumentFrameReferenceContext.Provider>
+      </div>
+    </ActionScope>
   );
 };

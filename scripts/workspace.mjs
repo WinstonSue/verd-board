@@ -60,7 +60,7 @@ export async function withWorkspaceRuntime(task) {
       load('packages/product/app/src/frames/frame-files.ts'),
       load('packages/product/app/src/documents/document-files.ts'),
       load('packages/engine/common/src/public-api.ts'),
-      load('packages/product/app/src/documents/document-links.ts'),
+      load('packages/engine/common/src/workspace-links.ts'),
       load('packages/react/text/src/utils/heading-slug.ts'),
       load('packages/react/text/src/constants/editor-config.ts'),
       load('packages/product/app/src/documents/workspace-references.ts'),
@@ -74,14 +74,15 @@ export async function withWorkspaceRuntime(task) {
     const documentSchema = getSchema(
       documentExtensions.createDocumentExtensions(),
     );
-    const registry = core.createCellRegistry();
-    [
-      draw.registerDrawCells,
-      mind.registerMindCells,
-      workflow.registerWorkflowCells,
-      architecture.registerArchitectureCells,
-      uml.registerUmlCells,
-    ].forEach((register) => register(registry));
+    const registry = core.createCellRegistry({
+      plugins: [
+        draw.createDrawPlugin(),
+        mind.createMindPlugin(),
+        workflow.createWorkflowPlugin(),
+        architecture.createArchitecturePlugin(),
+        uml.createUmlPlugin(),
+      ],
+    });
     return await task({
       core,
       mind,
@@ -241,6 +242,14 @@ export function refreshPackageFile(input, model) {
     desired.add(layerId);
     const existing = old[layerId];
     const members = [];
+    const occupied = (existing?.data?.memberIds ?? [])
+      .map((key) => old[key])
+      .filter((cell) => cell?.geometry);
+    let right = occupied.length
+      ? Math.max(
+          ...occupied.map((cell) => cell.geometry.x + cell.geometry.width),
+        )
+      : undefined;
     for (const [column, node] of layer.nodes.entries()) {
       const id = PREFIX + 'module/' + node.id;
       desired.add(id);
@@ -252,8 +261,8 @@ export function refreshPackageFile(input, model) {
             kind: 'architecture-module',
             cellType: 'node',
             geometry: {
-              x: 20 + column * 396,
-              y: index * 220 + 54,
+              x: 20 + column * 468,
+              y: index * 258 + 54,
               width: 372,
               height: 98,
               derived: false,
@@ -273,14 +282,8 @@ export function refreshPackageFile(input, model) {
             })),
           };
       if (!old[id]) {
-        const occupied = (existing?.data?.memberIds ?? [])
-          .map((key) => old[key])
-          .filter((c) => c?.geometry);
-        if (occupied.length)
-          cell.geometry.x =
-            Math.max(...occupied.map((c) => c.geometry.x + c.geometry.width)) +
-            24 +
-            column * 396;
+        if (right !== undefined) cell.geometry.x = right + 96;
+        right = cell.geometry.x + cell.geometry.width;
       }
       setLabel(cell, node.label);
       next[id] = cell;
@@ -447,57 +450,69 @@ export async function validateWorkspace(entries, runtime) {
       });
       anchors.set(id, found);
     }
-  for (const entry of entries)
-    if (entry.file.format === 'verd-document')
-      walk(entry.file.text.content, (node) => {
-        for (const mark of node.marks ?? [])
-          if (mark.type === 'link') {
-            const href = mark.attrs?.href;
-            const parsed =
-              typeof href === 'string'
-                ? runtime.links.parseDocumentLink(href, entry.file.id)
-                : null;
-            if (!parsed) {
-              report(entry.path, 'Unsupported or invalid link ' + href);
-              continue;
-            }
-            if (parsed.kind === 'file') {
-              if (!filesById.has(parsed.fileId))
-                report(entry.path, 'Missing linked file ' + parsed.fileId);
-              else if (
-                parsed.anchor &&
-                !anchors.get(parsed.fileId)?.has(parsed.anchor)
-              )
-                report(
-                  entry.path,
-                  'Missing linked heading ' +
-                    parsed.anchor +
-                    ' in ' +
-                    parsed.fileId,
-                );
-            } else {
-              const url = new URL(parsed.url),
-                prefix = '/WinstonSue/verd-board/blob/master/';
-              if (
-                url.hostname === 'github.com' &&
-                url.pathname.startsWith(prefix)
-              ) {
-                const local = decodeURIComponent(
-                  url.pathname.slice(prefix.length),
-                );
-                // Files may be moved during migration; report the concrete missing source.
-                if (local.startsWith('doc/'))
-                  report(entry.path, 'Old root documentation link ' + href);
-                else
-                  sourceChecks.push(
-                    access(path.resolve(REPO_ROOT, local)).catch(() =>
-                      report(entry.path, 'Missing repository source ' + local),
-                    ),
-                  );
-              }
-            }
-          }
-      });
+  const cellOwners = new Map();
+  for (const file of canvasFiles)
+    for (const id of [file.frame.id, ...Object.keys(file.cells)])
+      cellOwners.set(id, cellOwners.has(id) ? null : file.frame.id);
+  const validateLink = (sourcePath, href, sourceFileId) => {
+    const parsed = runtime.links.parseWorkspaceLink(href, sourceFileId);
+    if (parsed) {
+      if (parsed.kind === 'cell') {
+        // Global Cell identity follows moves between files. The URL file id
+        // is only a creation-time hint and a missing-target fallback.
+        const owner = cellOwners.get(parsed.cellId);
+        if (!owner)
+          report(
+            sourcePath,
+            (owner === null
+              ? 'Ambiguous linked cell '
+              : 'Missing linked cell ') + parsed.cellId,
+          );
+      } else if (!filesById.has(parsed.fileId))
+        report(sourcePath, 'Missing linked file ' + parsed.fileId);
+      else if (
+        parsed.kind === 'heading' &&
+        !anchors.get(parsed.fileId)?.has(parsed.slug)
+      )
+        report(
+          sourcePath,
+          'Missing linked heading ' + parsed.slug + ' in ' + parsed.fileId,
+        );
+      return href;
+    }
+    const external = runtime.links.parseExternalLink(href);
+    if (!external) {
+      report(sourcePath, 'Unsupported or invalid link ' + href);
+      return href;
+    }
+    const url = new URL(external),
+      prefix = '/WinstonSue/verd-board/blob/master/';
+    if (url.hostname === 'github.com' && url.pathname.startsWith(prefix)) {
+      const local = decodeURIComponent(url.pathname.slice(prefix.length));
+      if (local.startsWith('doc/'))
+        report(sourcePath, 'Old root documentation link ' + href);
+      else
+        sourceChecks.push(
+          access(path.resolve(REPO_ROOT, local)).catch(() =>
+            report(sourcePath, 'Missing repository source ' + local),
+          ),
+        );
+    }
+    return href;
+  };
+  for (const entry of entries) {
+    const file = entry.file;
+    const sourceId = documents.workspaceFileId(file);
+    const visitHref = (href) => validateLink(entry.path, href, sourceId);
+    if (file.format === 'verd-document')
+      runtime.common.mapBoardTextLinks(file.text, visitHref);
+    else if (file.format === 'verd-frame')
+      for (const cell of [file.frame, ...Object.values(file.cells)]) {
+        runtime.common.mapStandardCellLinks(cell, visitHref);
+        for (const plugin of registry.plugins)
+          plugin.mapLinks?.(cell, visitHref);
+      }
+  }
   await Promise.all(sourceChecks);
   return errors;
 }

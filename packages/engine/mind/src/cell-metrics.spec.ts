@@ -1,17 +1,14 @@
-import { describe, expect, it } from 'vitest';
 import { createBlockText, createInlineText } from '@sue/board-common';
+import { createCellRuntime, type NodeCell } from '@sue/board-core';
+import { describe, expect, it } from 'vitest';
+import { createTestCellRegistry } from '../../../../tests/fixtures/plugins/registry';
 import {
-  createCellRegistry,
-  createCellRuntime,
-  type NodeCell,
-} from '@sue/board-core';
-import {
-  createMindFrameSnapshot,
-  createMindChildCell,
   addMindChild,
+  createMindChildCell,
+  createMindFrameSnapshot,
 } from './cell-commands';
 import { mindCellMetrics, validMindMaxWidth } from './cell-metrics';
-import { layoutMindCells, registerMindCells } from './cell-utils';
+import { layoutMindCells } from './cell-utils';
 
 describe('native mind content layout', () => {
   it('expands the topic region for large wrapped rich text without shrinking media regions', () => {
@@ -104,8 +101,8 @@ describe('native mind content layout', () => {
     expect(metrics.height).toBe(506);
   });
   it('applies each root override to its tree and supports undo without persisting derived geometry', () => {
-    const registry = createCellRegistry();
-    registerMindCells(registry);
+    const registry = createTestCellRegistry();
+
     const runtime = createCellRuntime(
       createMindFrameSnapshot('frame', 'root'),
       registry,
@@ -154,8 +151,8 @@ describe('native mind content layout', () => {
     ).toBe(320);
   });
   it('omits collapsed descendants from layout without removing saved cells and restores them on undo', () => {
-    const registry = createCellRegistry();
-    registerMindCells(registry);
+    const registry = createTestCellRegistry();
+
     const runtime = createCellRuntime(
       createMindFrameSnapshot('frame', 'root'),
       registry,

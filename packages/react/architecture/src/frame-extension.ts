@@ -1,13 +1,13 @@
-import {
-  layoutArchitectureCells,
-  registerArchitectureCells,
-} from '@sue/board-architecture';
+import { layoutArchitectureCells } from '@sue/board-architecture';
 import { isNodeCell, type CellRegistry } from '@sue/board-core';
 import type { FrameRenderExtension } from '@sue/board-react';
 export const createArchitectureFrameExtensions = (
   registry: CellRegistry,
 ): FrameRenderExtension[] => {
-  registerArchitectureCells(registry);
+  if (!registry.plugins.some((plugin) => plugin.id === 'architecture'))
+    throw new Error(
+      'Install createArchitecturePlugin() through createCellRegistry before creating render extensions',
+    );
   return [
     {
       kind: 'architecture-layer',

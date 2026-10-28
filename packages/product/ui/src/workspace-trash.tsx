@@ -1,6 +1,11 @@
 import './workspace-trash.scss';
 import { useId, useMemo, useRef, useState } from 'react';
 import { FileArchive, RotateCcw, Trash2 } from 'lucide-react';
+import { useActionSource, type ActionSource } from '@sue/board-react-actions';
+import {
+  bindWorkspaceAction,
+  type WorkspaceActionBinding,
+} from './workspace-action-bindings';
 import { WorkspaceActionConfirmation } from './workspace-action-confirmation';
 
 export interface WorkspaceTrashEntry {
@@ -10,6 +15,7 @@ export interface WorkspaceTrashEntry {
 }
 
 export interface WorkspaceTrashProps {
+  actionSource?: ActionSource;
   entries: WorkspaceTrashEntry[];
   workspaceName: string;
   locale?: 'zh' | 'en';
@@ -22,6 +28,7 @@ export interface WorkspaceTrashProps {
 }
 
 export function WorkspaceTrash({
+  actionSource,
   entries,
   workspaceName,
   locale = 'zh',
@@ -32,6 +39,31 @@ export function WorkspaceTrash({
   onRetry,
   onBusyChange,
 }: WorkspaceTrashProps) {
+  useActionSource(actionSource);
+  const binding = (id: string, args?: unknown) =>
+    bindWorkspaceAction(actionSource, id, args);
+  const call = async (
+    id: string,
+    args: unknown,
+    fallback: () => void | Promise<void>,
+  ) => {
+    if (!actionSource) return fallback();
+    const result = await binding(id, args)?.execute();
+    if (!result || 'code' in result)
+      throw new Error(
+        result && 'code' in result
+          ? (result.message ?? result.code)
+          : 'unknown-action',
+      );
+  };
+  const visible = (id: string, args?: unknown) =>
+    actionSource ? !!binding(id, args)?.getState().visible : !readonly;
+  const disabled = (id: string, args?: unknown) =>
+    actionSource
+      ? !binding(id, args)?.getState().enabled
+      : busy || (id !== 'workspace.trash.retry' && unconfirmed);
+  const label = (id: string, fallback: string) =>
+    binding(id)?.label(locale) ?? fallback;
   const zh = locale === 'zh';
   const titleId = useId();
   const t = zh
@@ -69,6 +101,7 @@ export function WorkspaceTrash({
   const [confirmation, setConfirmation] = useState<{
     title: string;
     entryIds: string[];
+    purge?: WorkspaceActionBinding;
   } | null>(null);
   const [busy, setBusy] = useState(false);
   const busyRef = useRef(false);
@@ -92,7 +125,11 @@ export function WorkspaceTrash({
   };
   const confirmPurge = (entryIds: string[], title: string) => {
     setError('');
-    setConfirmation({ title, entryIds });
+    setConfirmation({
+      title,
+      entryIds,
+      purge: binding('workspace.trash.purge', { entryIds }),
+    });
   };
   const formatter = useMemo(
     () =>
@@ -129,34 +166,62 @@ export function WorkspaceTrash({
             {workspaceName}
           </p>
         </div>
-        {!readonly && (
+        {visible('workspace.trash.confirm-clear', {
+          entryIds: entries.map((entry) => entry.entryId),
+        }) && (
           <button
             type="button"
             className="workspace-trash-clear"
-            disabled={busy || unconfirmed || !entries.length}
+            data-action-id="workspace.trash.confirm-clear"
+            disabled={
+              disabled('workspace.trash.confirm-clear', {
+                entryIds: entries.map((entry) => entry.entryId),
+              }) || !entries.length
+            }
             onClick={() =>
-              confirmPurge(
-                entries.map((entry) => entry.entryId),
-                `${t.clear} (${entries.length})`,
+              void call(
+                'workspace.trash.confirm-clear',
+                {
+                  entryIds: entries.map((entry) => entry.entryId),
+                  present: () =>
+                    confirmPurge(
+                      entries.map((entry) => entry.entryId),
+                      `${t.clear} (${entries.length})`,
+                    ),
+                },
+                () =>
+                  confirmPurge(
+                    entries.map((entry) => entry.entryId),
+                    `${t.clear} (${entries.length})`,
+                  ),
               )
             }
           >
             <Trash2 size={16} aria-hidden />
-            {t.clear}
+            {label('workspace.trash.confirm-clear', t.clear)}
           </button>
         )}
       </div>
-      {readonly && <p>{t.readonly}</p>}
+      {(actionSource
+        ? binding('workspace.trash.purge', {
+            entryIds: entries.map((entry) => entry.entryId),
+          })?.getState().reason === 'readonly'
+        : readonly) && <p>{t.readonly}</p>}
       {unconfirmed && (
         <div className="workspace-trash-error" role="alert">
           <p>{t.unconfirmed}</p>
-          {!readonly && onRetry && (
+          {visible('workspace.trash.retry') && onRetry && (
             <button
               type="button"
-              disabled={busy}
-              onClick={() => void perform(onRetry)}
+              data-action-id="workspace.trash.retry"
+              disabled={disabled('workspace.trash.retry')}
+              onClick={() =>
+                void perform(() =>
+                  call('workspace.trash.retry', undefined, onRetry),
+                )
+              }
             >
-              {t.retry}
+              {label('workspace.trash.retry', t.retry)}
             </button>
           )}
         </div>
@@ -195,30 +260,59 @@ export function WorkspaceTrash({
                   >
                     {date(entry.trashedAt)}
                   </time>
-                  {!readonly && (
+                  {visible('workspace.trash.restore', {
+                    entryId: entry.entryId,
+                  }) && (
                     <div className="workspace-trash-actions">
                       <button
                         type="button"
-                        disabled={busy || unconfirmed}
-                        aria-label={`${t.restore} ${name}`}
+                        data-action-id="workspace.trash.restore"
+                        disabled={disabled('workspace.trash.restore', {
+                          entryId: entry.entryId,
+                        })}
+                        aria-label={`${label('workspace.trash.restore', t.restore)} ${name}`}
                         onClick={() =>
-                          void perform(() => onRestore(entry.entryId))
+                          void perform(() =>
+                            call(
+                              'workspace.trash.restore',
+                              { entryId: entry.entryId },
+                              () => onRestore(entry.entryId),
+                            ),
+                          )
                         }
                       >
                         <RotateCcw size={15} aria-hidden />
-                        {t.restore}
+                        {label('workspace.trash.restore', t.restore)}
                       </button>
                       <button
                         type="button"
                         className="workspace-trash-purge"
-                        disabled={busy || unconfirmed}
-                        aria-label={`${t.purge} ${name}`}
+                        data-action-id="workspace.trash.confirm-purge"
+                        disabled={disabled('workspace.trash.confirm-purge', {
+                          entryIds: [entry.entryId],
+                        })}
+                        aria-label={`${label('workspace.trash.confirm-purge', t.purge)} ${name}`}
                         onClick={() =>
-                          confirmPurge([entry.entryId], `${t.purge} ${name}`)
+                          void call(
+                            'workspace.trash.confirm-purge',
+                            {
+                              entryIds: [entry.entryId],
+                              present: () =>
+                                confirmPurge(
+                                  [entry.entryId],
+                                  `${t.purge} ${name}`,
+                                ),
+                            },
+                            () =>
+                              confirmPurge(
+                                [entry.entryId],
+                                `${t.purge} ${name}`,
+                              ),
+                          )
                         }
                       >
                         <Trash2 size={15} aria-hidden />
-                        {t.purge}
+                        {label('workspace.trash.confirm-purge', t.purge)}
                       </button>
                     </div>
                   )}
@@ -245,7 +339,17 @@ export function WorkspaceTrash({
             setError('');
           }}
           onConfirm={() => {
-            if (!readonly)
+            if (actionSource)
+              void perform(async () => {
+                const result = await confirmation.purge?.execute();
+                if (!result || 'code' in result)
+                  throw new Error(
+                    result && 'code' in result
+                      ? (result.message ?? result.code)
+                      : 'unknown-action',
+                  );
+              }, true);
+            else if (!readonly)
               void perform(() => onPurge(confirmation.entryIds), true);
           }}
         />

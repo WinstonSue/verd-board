@@ -1,26 +1,26 @@
-import { describe, it, expect } from 'vitest';
 import {
-  createDocumentReferenceCell,
   createDocumentFrameCell,
+  createDocumentReferenceCell,
   createFrameCell,
   isDocumentReferenceCell,
 } from '@sue/board-core';
+import { describe, expect, it } from 'vitest';
+import { createFrameFile } from '../frames/frame-files';
+import { createMemoryWorkspaceHost } from '../host/memory-workspace-host';
+import { openWorkspaceSession } from '../session/workspace-session';
 import {
   createDocumentFile,
   workspaceFileId,
   type WorkspaceFile,
 } from './document-files';
-import { createFrameFile } from '../frames/frame-files';
+import { createWorkspaceLink, parseWorkspaceLink } from '@sue/board-common';
 import {
-  workspaceFileClosure,
+  parseWorkspaceExport,
   remapWorkspaceFiles,
   validateWorkspaceReferences,
   workspaceExportBundle,
-  parseWorkspaceExport,
+  workspaceFileClosure,
 } from './workspace-references';
-import { createDocumentLink, parseDocumentLink } from './document-links';
-import { createMemoryWorkspaceHost } from '../host/memory-workspace-host';
-import { openWorkspaceSession } from '../session/workspace-session';
 
 const fixture = (): WorkspaceFile[] => {
   const board = createFrameFile(
@@ -44,14 +44,24 @@ const fixture = (): WorkspaceFile[] => {
           type: 'text',
           text: 'source',
           marks: [
-            { type: 'link', attrs: { href: createDocumentLink('board') } },
+            {
+              type: 'link',
+              attrs: {
+                href: createWorkspaceLink({ kind: 'file', fileId: 'board' }),
+              },
+            },
           ],
         },
         {
           type: 'text',
           text: 'outside',
           marks: [
-            { type: 'link', attrs: { href: createDocumentLink('outside') } },
+            {
+              type: 'link',
+              attrs: {
+                href: createWorkspaceLink({ kind: 'file', fileId: 'outside' }),
+              },
+            },
           ],
         },
       ],
@@ -110,11 +120,11 @@ describe('mixed workspace dependencies', () => {
       board.frame.id,
     );
     const links = doc.text.content.content?.[1]?.content?.map((node) =>
-      parseDocumentLink(String(node.marks?.[0]?.attrs?.['href'])),
+      parseWorkspaceLink(String(node.marks?.[0]?.attrs?.['href'])),
     );
     expect(links).toEqual([
-      { kind: 'file', fileId: board.frame.id, anchor: null },
-      { kind: 'file', fileId: 'outside', anchor: null },
+      { kind: 'file', fileId: board.frame.id },
+      { kind: 'file', fileId: 'outside' },
     ]);
     expect(doc.text.content.content?.[2]?.content?.[0]?.text).toBe(
       'board doc ref verd://file/board',

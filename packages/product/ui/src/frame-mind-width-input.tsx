@@ -1,3 +1,8 @@
+import {
+  ConfigPanel,
+  defineSettings,
+  type SettingEditorProps,
+} from '@sue/board-react';
 import { useEffect, useState } from 'react';
 import {
   MIN_MIND_MAX_WIDTH,
@@ -5,7 +10,7 @@ import {
   validMindMaxWidth,
 } from '@sue/board-mind';
 /** Keep incomplete number input local; only valid integer widths reach settings/transactions. */
-export function FrameMindWidthInput({
+function MindWidthDraft({
   value,
   onChange,
   label,
@@ -42,6 +47,45 @@ export function FrameMindWidthInput({
         if (validMindMaxWidth(next) && next !== value) onChange(next);
       }}
       onBlur={() => setDraft(value === undefined ? '' : String(value))}
+    />
+  );
+}
+
+export function FrameMindWidthInput(
+  props: Parameters<typeof MindWidthDraft>[0],
+) {
+  const definition = defineSettings<
+    { width: number | undefined },
+    void,
+    { mindWidth: typeof props }
+  >({
+    fields: [{ key: 'width', editor: 'mindWidth', props, commit: 'manual' }],
+  });
+  return (
+    <ConfigPanel
+      definition={definition}
+      values={{ width: props.value }}
+      identity={props.testId}
+      components={{ mindWidth: MindWidthEditor }}
+      renderField={({ editor }) => editor}
+      onCommit={({ changes }) => {
+        for (const change of changes)
+          if (change.kind === 'reset') props.onClear?.();
+          else if (change.value !== undefined) props.onChange(change.value);
+      }}
+    />
+  );
+}
+function MindWidthEditor({
+  props,
+  onCommit,
+  onReset,
+}: SettingEditorProps<unknown, Parameters<typeof MindWidthDraft>[0]>) {
+  return (
+    <MindWidthDraft
+      {...props}
+      onChange={onCommit}
+      onClear={props.onClear ? onReset : undefined}
     />
   );
 }

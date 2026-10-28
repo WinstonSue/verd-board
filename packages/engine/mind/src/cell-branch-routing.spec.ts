@@ -1,6 +1,5 @@
-import { describe, expect, it } from 'vitest';
+import { createInlineText } from '@sue/board-common';
 import {
-  createCellRegistry,
   createCellRuntime,
   portAnchor,
   terminalCurvePath,
@@ -8,14 +7,15 @@ import {
   type NodeCell,
   type Point,
 } from '@sue/board-core';
-import { createInlineText } from '@sue/board-common';
+import { describe, expect, it } from 'vitest';
+import { createTestCellRegistry } from '../../../../tests/fixtures/plugins/registry';
 import {
   addMindChild,
   createMindChildCell,
   createMindFrameSnapshot,
 } from './cell-commands';
-import { layoutMindCells, registerMindCells } from './cell-utils';
 import { mindBranchPorts } from './cell-link';
+import { layoutMindCells } from './cell-utils';
 
 const sample = (path: string): Point[] => {
   const p = path.match(/-?\d+(?:\.\d+)?(?:e[+-]?\d+)?/gi)!.map(Number);
@@ -33,8 +33,8 @@ const sample = (path: string): Point[] => {
 };
 describe('dense mind branch geometry', () => {
   it('keeps nine mixed-height siblings ordered in all facing layouts and preserves all nine layouts', () => {
-    const registry = createCellRegistry();
-    registerMindCells(registry);
+    const registry = createTestCellRegistry();
+
     const r = createCellRuntime(
       createMindFrameSnapshot('frame', 'root'),
       registry,

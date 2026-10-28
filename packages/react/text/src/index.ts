@@ -25,12 +25,12 @@ export type {
 export type {
   DocumentEditorProps,
   DocumentEditorChange,
+  DocumentChangeReceipt,
   DocumentEditorController,
   DocumentHistoryAdapter,
   DocumentSelection,
   DocumentChangeSource,
   DocumentToolbarState,
-  DocumentCommandName,
   DocumentHeading,
   DocumentSearchMatch,
   DocumentSearchOptions,

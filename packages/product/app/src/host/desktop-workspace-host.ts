@@ -9,6 +9,7 @@ import type {
   WorkspaceHandle,
   WorkspaceHost,
   WorkspaceHostSnapshot,
+  WorkspaceHistoryEntry,
 } from './workspace-host';
 
 interface DesktopBridge {
@@ -21,6 +22,7 @@ interface DesktopBridge {
     request?: OpenWorkspaceRequest,
   ): Promise<WorkspaceHandle | null>;
   activateWorkspace(handle: WorkspaceHandle): Promise<void>;
+  listWorkspaceHistory(): Promise<WorkspaceHistoryEntry[]>;
   readSnapshot(handle: WorkspaceHandle): Promise<WorkspaceHostSnapshot>;
   readFile(handle: WorkspaceHandle, path: string): Promise<RawFileRead>;
   commit(
@@ -66,6 +68,7 @@ export const createDesktopWorkspaceHost = (): WorkspaceHost => {
       bridge().writeGlobalConfig(value, expectedVersion),
     openWorkspace: (request) => bridge().openWorkspace(request),
     activateWorkspace: (handle) => bridge().activateWorkspace(handle),
+    listWorkspaceHistory: () => bridge().listWorkspaceHistory(),
     readSnapshot: (handle) => bridge().readSnapshot(handle),
     readFile: (handle, path) => bridge().readFile(handle, path),
     commit: (handle, request) => bridge().commit(handle, request),

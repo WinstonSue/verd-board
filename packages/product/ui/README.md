@@ -35,3 +35,11 @@ export function Editor() {
 画布容器必须有明确高度。独立文本/画布加载 `@sue/board-react-text/style.css`；`VerdFrame`/`WorkspaceApp` 加载 `@sue/verd-board-ui/style.css`（已包含文本样式）。
 
 完整发布摘要与迁移入口见 [VerdBoard 2.0](https://github.com/WinstonSue/verd-board#npm-2)；逐包变更见本包随附的 `CHANGELOG.md`。`FrameCanvas` 已存在于 1.0.0，早期 BoardCanvas/领域 Canvas 的删除不是本次新增变更。
+
+## 下一主版本：Action 与导航接入
+
+`VerdFrame`/`FrameEditor` controls consume the controller's shared Action source; domain plugins contribute `actions` and tool `actionId` references. User operation availability, toolbar/menu execution, shortcut help and command palette share the same definitions.
+
+`DocumentPage.navigation` is `{requestId,target:WorkspaceTarget,signal?}` with `onNavigationResult`; old anchor-only requests are removed. `FrameLinkHost` delegates workspace link generation/activation, and `revealTarget` replaces legacy reveal props. Document changes may return actual host commit receipts so navigation waits for accepted edits. The product composes `@sue/board-react-actions`; standalone document surfaces do not acquire a board-renderer dependency.
+
+`FrameDocumentEditingView` is re-exported for optional embedded-document adapters. `FrameDocumentReferences.captureEditingView` / `restoreEditingView` and the corresponding canvas controller methods carry opaque JSON view state; the workspace product waits for editor-ready, restores scroll and restores a caret only for matching content revisions. File tree, workspace menu, tabs/groups, library, trash, settings and banners consume the same semantic ActionSource; the canonical surface inventory is `packages/product/app/src/session/workspace-surface-actions.ts`.

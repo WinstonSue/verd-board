@@ -43,6 +43,13 @@ export function createPreviewRevisions() {
         JSON.stringify(['shell', kind, id]),
         JSON.stringify([Boolean(file), title ?? null]),
       );
+      const failure = [...(snapshot.failedFiles?.values() ?? [])].find(
+        (item) => item.fileId === id,
+      );
+      dependencies.set(
+        JSON.stringify(['failure', kind, id]),
+        failure ? JSON.stringify(failure) : null,
+      );
     };
     const recordBody = (id: string, file: WorkspaceFile) =>
       dependencies.set(JSON.stringify(['body', id]), file);

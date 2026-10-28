@@ -1,42 +1,39 @@
 import {
-  CellKind,
-  NodeUtil,
   EdgeUtil,
+  NodeUtil,
   isEdgeCell,
   isNodeCell,
   type Cell,
-  type CellStore,
-  type CellRegistry,
-  type EdgeCell,
-  type NodeCell,
-  type MindRootData,
-  type MindChildData,
-  type NodeGeometry,
   type CellCapabilities,
-  type FrameMount,
   type CellMoveContext,
+  type CellRegistry,
+  type CellStore,
+  type EdgeCell,
+  type FrameMount,
+  type NodeCell,
+  type NodeGeometry,
 } from '@sue/board-core';
-import { addMindChild, createMindChildCell } from './cell-commands';
 import {
-  GlobalLayout,
   ConnectingPosition,
+  GlobalLayout,
   MindLayoutType,
   isHorizontalLayout,
   isHorizontalLogicLayout,
   isIndentedLayout,
   type OriginNode,
 } from '@sue/board-layouts';
+import { moveMindChild } from './cell-drag';
 import {
   mindCellMetrics,
   validMindMaxWidth,
   type MindMetricsOptions,
 } from './cell-metrics';
-import { moveMindChild } from './cell-drag';
+import { MindKind, type MindChildData, type MindRootData } from './public-api';
 
 const branches = (store: CellStore) =>
   Object.values(store.cells).filter(
     (cell): cell is EdgeCell<{ order: string }> =>
-      isEdgeCell(cell) && cell.kind === CellKind.mindBranch,
+      isEdgeCell(cell) && cell.kind === MindKind.mindBranch,
   );
 export const mindChildIds = (store: CellStore, parentId: string): string[] =>
   branches(store)
@@ -75,23 +72,16 @@ export abstract class MindNodeUtil extends NodeUtil {
   }
 }
 export class MindRootNodeUtil extends MindNodeUtil {
-  readonly kind = CellKind.mindRoot;
-  override keyboard(
-    store: CellStore,
-    cell: Cell,
-    key: string,
-    allocateId: () => string,
-  ) {
-    return key === 'Tab'
-      ? addMindChild(
-          store,
-          cell.id,
-          createMindChildCell(allocateId()),
-          allocateId(),
-        )
-      : undefined;
-  }
+  readonly kind = MindKind.mindRoot;
   override validate(store: CellStore, cell: Cell): string | undefined {
+    const offset = (cell as NodeCell<MindRootData>).data?.embeddedOffset;
+    if (
+      offset !== undefined &&
+      (!Array.isArray(offset) ||
+        offset.length !== 2 ||
+        !offset.every(Number.isFinite))
+    )
+      return 'Invalid embedded mind offset';
     const maxWidth = (cell as NodeCell<MindRootData>).data?.maxNodeWidth;
     if (maxWidth !== undefined && !validMindMaxWidth(maxWidth))
       return 'Invalid Mind maximum width';
@@ -105,49 +95,7 @@ export class MindRootNodeUtil extends MindNodeUtil {
   }
 }
 export class MindChildNodeUtil extends MindNodeUtil {
-  readonly kind = CellKind.mindChild;
-  override keyboard(
-    store: CellStore,
-    cell: Cell,
-    key: string,
-    allocateId: () => string,
-  ) {
-    if (key === 'Tab')
-      return addMindChild(
-        store,
-        cell.id,
-        createMindChildCell(allocateId()),
-        allocateId(),
-      );
-    if (key === 'Enter') {
-      const incoming = branches(store).find(
-        (edge) => 'cellId' in edge.target && edge.target.cellId === cell.id,
-      );
-      if (incoming && 'cellId' in incoming.source)
-        return addMindChild(
-          store,
-          incoming.source.cellId,
-          createMindChildCell(allocateId()),
-          allocateId(),
-          mindChildIds(store, incoming.source.cellId).indexOf(cell.id) + 1,
-          cell.id,
-        );
-    }
-    if (key === 'Space' || key === '/')
-      return [
-        {
-          type: 'replace_cell' as const,
-          cell: {
-            ...cell,
-            data: {
-              ...(cell as NodeCell<MindChildData>).data,
-              collapsed: !(cell as NodeCell<MindChildData>).data?.collapsed,
-            },
-          },
-        },
-      ];
-    return undefined;
-  }
+  readonly kind = MindKind.mindChild;
   override move(
     store: CellStore,
     cell: Cell,
@@ -175,7 +123,7 @@ export class MindChildNodeUtil extends MindNodeUtil {
   }
 }
 export class MindSummaryNodeUtil extends MindNodeUtil {
-  readonly kind = CellKind.mindSummary;
+  readonly kind = MindKind.mindSummary;
   override capabilities(
     store: CellStore,
     cell: Cell,
@@ -191,7 +139,7 @@ export class MindSummaryNodeUtil extends MindNodeUtil {
     const edges = Object.values(store.cells).filter(
       (edge) =>
         isEdgeCell(edge) &&
-        edge.kind === CellKind.mindSummaryEdge &&
+        edge.kind === MindKind.mindSummaryEdge &&
         'cellId' in edge.target &&
         edge.target.cellId === cell.id,
     );
@@ -201,17 +149,17 @@ export class MindSummaryNodeUtil extends MindNodeUtil {
   }
 }
 export class MindBranchEdgeUtil extends EdgeUtil {
-  readonly kind = CellKind.mindBranch;
+  readonly kind = MindKind.mindBranch;
   override validateEdge(store: CellStore, edge: EdgeCell): string | undefined {
     if (!('cellId' in edge.source) || !('cellId' in edge.target))
       return 'Mind branches require node endpoints';
     const sourceId = edge.source.cellId,
       targetId = edge.target.cellId;
     if (
-      ![CellKind.mindRoot, CellKind.mindChild].includes(
+      ![MindKind.mindRoot, MindKind.mindChild].includes(
         store.cells[sourceId]?.kind as never,
       ) ||
-      store.cells[targetId]?.kind !== CellKind.mindChild
+      store.cells[targetId]?.kind !== MindKind.mindChild
     )
       return 'Invalid mind branch endpoints';
     const seen = new Set<string>();
@@ -243,11 +191,11 @@ export class MindBranchEdgeUtil extends EdgeUtil {
   }
 }
 export class MindSummaryEdgeUtil extends EdgeUtil {
-  readonly kind = CellKind.mindSummaryEdge;
+  readonly kind = MindKind.mindSummaryEdge;
   override validateEdge(store: CellStore, edge: EdgeCell): string | undefined {
     if (
       !('cellId' in edge.target) ||
-      store.cells[edge.target.cellId]?.kind !== CellKind.mindSummary
+      store.cells[edge.target.cellId]?.kind !== MindKind.mindSummary
     )
       return 'Summary target must be a summary node';
     const range = edge.data as
@@ -339,7 +287,7 @@ export const layoutMindCells = (
   for (const cell of Object.values(store.cells)) {
     if (
       !isEdgeCell(cell) ||
-      cell.kind !== CellKind.mindSummaryEdge ||
+      cell.kind !== MindKind.mindSummaryEdge ||
       !cell.data
     )
       continue;
@@ -371,7 +319,9 @@ export const layoutMindCells = (
   };
   const build = (id: string): CellLayoutNode => {
     const cell = store.cells[id] as NodeCell<MindRootData & MindChildData>;
-    const children = cell.data?.collapsed
+    const effectiveCollapsed =
+      !!cell.data?.collapsed && !options.expandedCellIds?.has(id);
+    const children = effectiveCollapsed
       ? []
       : (childrenByParent.get(id) ?? []).map(build);
     const rightNodeCount =
@@ -392,7 +342,7 @@ export const layoutMindCells = (
     return {
       id,
       children,
-      isCollapsed: cell.data?.collapsed,
+      isCollapsed: effectiveCollapsed,
       layout: cell.data?.layout,
       outline:
         typeof cell.geometry.outline === 'object'
@@ -403,7 +353,7 @@ export const layoutMindCells = (
   };
   (frame as import('@sue/board-core').FrameCell).children.forEach((id) => {
     const center = store.cells[id];
-    if (!isNodeCell(center) || center.kind !== CellKind.mindRoot) return;
+    if (!isNodeCell(center) || center.kind !== MindKind.mindRoot) return;
     effectiveOptions = {
       ...options,
       maxNodeWidth: validMindMaxWidth(

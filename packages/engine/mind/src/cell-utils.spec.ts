@@ -1,35 +1,29 @@
-import { describe, expect, it } from 'vitest';
+import { createInlineText, reviseBoardText } from '@sue/board-common';
 import {
-  createCellRegistry,
   createCellRuntime,
+  ThemeColorMode,
   type EdgeCell,
   type NodeCell,
-  type MindSummaryData,
-  type MindChildData,
 } from '@sue/board-core';
+import { describe, expect, it } from 'vitest';
+import { createTestCellRegistry } from '../../../../tests/fixtures/plugins/registry';
 import {
-  registerMindCells,
-  layoutMindCells,
-  mindChildIds,
-  MindChildNodeUtil,
-} from './cell-utils';
-import {
-  createMindFrameSnapshot,
-  createMindChildCell,
   addMindChild,
-  reparentMindChild,
-  createMindSummary,
+  createMindChildCell,
+  createMindFrameSnapshot,
   createMindSummaries,
+  createMindSummary,
+  reparentMindChild,
   setMindSummaryRange,
 } from './cell-commands';
 import { mindBranchPorts, resolvedMindBranchShape } from './cell-link';
-import { mindPresentation } from './cell-theme';
-import { ThemeColorMode } from '@sue/board-core';
-import { createInlineText, reviseBoardText } from '@sue/board-common';
 import { mindSummaryGeometry } from './cell-summary';
+import { mindPresentation } from './cell-theme';
+import { layoutMindCells, mindChildIds, MindChildNodeUtil } from './cell-utils';
+import { type MindChildData, type MindSummaryData } from './public-api';
 const runtime = () => {
-  const registry = createCellRegistry();
-  registerMindCells(registry);
+  const registry = createTestCellRegistry();
+
   const r = createCellRuntime(
     createMindFrameSnapshot('frame', 'root'),
     registry,
@@ -92,15 +86,16 @@ describe('native mind rules', () => {
     expect((r.store.cells['child-edge'] as EdgeCell).appearance).toEqual(
       styled.data?.branchAppearance,
     );
-    let sequence = 0;
     r.transact({
       id: 'sibling',
-      operations: new MindChildNodeUtil().keyboard(
+      operations: addMindChild(
         r.store,
-        styled,
-        'Enter',
-        () => `sibling-${++sequence}`,
-      )!,
+        'root',
+        createMindChildCell('sibling-1'),
+        'sibling-2',
+        mindChildIds(r.store, 'root').indexOf(styled.id) + 1,
+        styled.id,
+      ),
     });
     expect((r.store.cells['sibling-1'] as NodeCell).appearance).toEqual(
       styled.appearance,

@@ -13,7 +13,10 @@
   "dependencies": {
     "@sue/board-common": "workspace:*",
     "@sue/board-core": "workspace:*",
-    "@sue/board-react-text": "workspace:*"
+    "@sue/board-react-text": "workspace:*",
+    "lucide-react": "^0.468.0",
+    "@sue/schema-settings-react": "0.0.1",
+    "@sue/board-react-actions": "workspace:*"
   },
   "peerDependencies": {
     "react": ">=18",
@@ -31,6 +34,10 @@
       "import": "./dist/index.js",
       "require": "./dist/index.cjs",
       "default": "./dist/index.js"
+    },
+    "./style.css": {
+      "development": "./src/style.scss",
+      "default": "./dist/style.css"
     }
   },
   "type": "module",
@@ -49,7 +56,8 @@
         "import": "./dist/index.js",
         "require": "./dist/index.cjs",
         "default": "./dist/index.js"
-      }
+      },
+      "./style.css": "./dist/style.css"
     },
     "registry": "https://packages.aliyun.com/69f800449b7ce0afb00bda0e/npm/npm-registry/",
     "access": "public"

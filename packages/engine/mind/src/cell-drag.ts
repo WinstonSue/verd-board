@@ -1,21 +1,21 @@
 import {
-  isEdgeCell,
-  isNodeCell,
-  isFrameCell,
   indexCells,
+  isEdgeCell,
+  isFrameCell,
+  isNodeCell,
   lockedByAncestor,
   portAnchor,
-  type CellOperation,
-  type GeometrySide,
   type Cell,
-  type CellStore,
-  type NodeGeometry,
   type CellMoveContext,
+  type CellOperation,
+  type CellStore,
+  type GeometrySide,
+  type NodeGeometry,
   type Point,
 } from '@sue/board-core';
-import { layoutMindCells, mindChildIds } from './cell-utils';
 import { reparentMindChild } from './cell-commands';
 import { mindGrowthSide } from './cell-link';
+import { layoutMindCells, mindChildIds } from './cell-utils';
 
 export interface MindMovePlan {
   operations: CellOperation[];

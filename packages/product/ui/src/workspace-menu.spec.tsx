@@ -2,6 +2,7 @@ import React, { act, createRef } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, expect, it, vi } from 'vitest';
 import { WorkspaceMenu, type WorkspaceMenuProps } from './workspace-menu';
+import { createActionRegistry } from '@sue/board-common';
 
 vi.mock('@floating-ui/react', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@floating-ui/react')>();
@@ -87,4 +88,88 @@ it('hides unavailable switching actions and exposes the full name and trigger re
   );
   expect(trigger().disabled).toBe(true);
   expect(document.querySelector('[role="menu"]')).toBeNull();
+});
+
+it('puts the registered palette after settings and executes its captured action', async () => {
+  const execute = vi.fn(() => ({ status: 'completed' as const }));
+  const actions = createActionRegistry({ getContext: () => ({}) });
+  actions.register({
+    id: 'workspace.command-palette',
+    label: { zh: '命令面板', en: 'Command palette' },
+    effect: 'dialog',
+    execute,
+  });
+  const props = await setup({ actionSource: actions });
+  await act(async () => trigger().click());
+  expect(
+    [...document.querySelectorAll('[role="menuitem"]')].map(
+      (element) => element.textContent,
+    ),
+  ).toEqual(['工作区设置', '命令面板', '打开工作区文件夹', '回到内置工作区']);
+  await act(async () => item('workspace-command-palette').click());
+  expect(execute).toHaveBeenCalledOnce();
+  expect(props.onSettings).not.toHaveBeenCalled();
+  expect(document.querySelector('[role="menu"]')).toBeNull();
+  await act(async () => actions.dispose());
+});
+
+it('shows every recorded workspace, disambiguates names and disables the current entry', async () => {
+  const onOpenHistory = vi.fn();
+  const onRefreshHistory = vi.fn();
+  await setup({
+    history: [
+      { id: 'a', name: 'project', description: 'left/shared' },
+      { id: 'b', name: 'project', description: 'right/shared' },
+      ...Array.from({ length: 21 }, (_, index) => ({
+        id: `older-${index}`,
+        name: `Older ${index}`,
+      })),
+    ],
+    currentHistoryId: 'a',
+    onOpenHistory,
+    onRefreshHistory,
+  });
+  await act(async () => trigger().click());
+  expect(onRefreshHistory).toHaveBeenCalledOnce();
+  expect(
+    document.querySelector('.workspace-menu-group-label')?.textContent,
+  ).toBe('已打开的工作区');
+  expect(item('workspace-history-a').textContent).toBe(
+    'project · left/shared（当前）',
+  );
+  expect(item('workspace-history-a').disabled).toBe(true);
+  expect(
+    document.querySelectorAll('[data-testid^="workspace-history-"]'),
+  ).toHaveLength(23);
+  await act(async () => item('workspace-history-b').click());
+  expect(onOpenHistory).toHaveBeenCalledWith('b');
+  expect(document.querySelector('[role="menu"]')).toBeNull();
+});
+
+it('keeps contextual history labels when executing registered semantic actions', async () => {
+  const execute = vi.fn(() => ({ status: 'completed' as const }));
+  const actions = createActionRegistry({ getContext: () => ({}) });
+  actions.register({
+    id: 'workspace.open-history',
+    label: { zh: '打开历史工作区', en: 'Open recorded workspace' },
+    effect: 'dialog',
+    execute,
+  });
+  await setup({
+    actionSource: actions,
+    locale: 'en',
+    history: [{ id: 'a', name: 'My project' }],
+  });
+  await act(async () => trigger().click());
+  expect(item('workspace-history-a').textContent).toBe('My project');
+  expect(
+    document.querySelector('.workspace-menu-group-label')?.textContent,
+  ).toBe('Opened workspaces');
+  await act(async () => item('workspace-history-a').click());
+  expect(execute).toHaveBeenCalledWith(
+    expect.anything(),
+    { historyId: 'a' },
+    expect.anything(),
+  );
+  await act(async () => actions.dispose());
 });

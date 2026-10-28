@@ -1,4 +1,4 @@
-import React, { act, useEffect } from 'react';
+import React, { act, StrictMode, useEffect } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createBlockText } from '@sue/board-common';
@@ -11,7 +11,13 @@ import { DocumentPage, type DocumentPageProps } from './document-page';
 const { controller } = vi.hoisted(() => ({
   controller: {
     focus: vi.fn(),
+    actions: vi.fn(() => []),
+    getActionState: vi.fn(() => ({ visible: true, enabled: true })),
+    executeAction: vi.fn(async () => ({ status: 'completed' })),
+    flushEditing: vi.fn(async () => ({ status: 'completed' })),
+    revision: 0,
     locateHeading: vi.fn(),
+    locateFrameReference: vi.fn(() => true),
     getToolbarState: vi.fn(() => ({
       marks: {},
       block: 'paragraph',
@@ -108,6 +114,111 @@ afterEach(async () => {
 });
 
 describe('document navigation', () => {
+  it('locates an exact embedded occurrence and rejects a changed body before touching selection', async () => {
+    const onNavigationResult = vi.fn();
+    const reference = {
+      targetFrameId: 'board',
+      occurrence: 1,
+      revision: JSON.stringify(value.content),
+    };
+    const target = { kind: 'file' as const, fileId: value.id };
+    await render({
+      navigation: { requestId: 80, target, frameReference: reference },
+      onNavigationResult,
+    });
+    await flushFrames();
+    expect(controller.locateFrameReference).toHaveBeenCalledExactlyOnceWith(
+      'board',
+      1,
+    );
+    expect(onNavigationResult).toHaveBeenLastCalledWith(80, {
+      status: 'revealed',
+    });
+    await render({
+      navigation: {
+        requestId: 81,
+        target,
+        frameReference: { ...reference, revision: 'old-body' },
+      },
+      onNavigationResult,
+    });
+    await flushFrames();
+    expect(controller.locateFrameReference).toHaveBeenCalledTimes(1);
+    expect(onNavigationResult).toHaveBeenLastCalledWith(81, {
+      status: 'unavailable',
+      code: 'stale-reference',
+    });
+    expect(container.textContent).toContain('引用位置已变化');
+  });
+
+  it('keeps page actions usable through StrictMode effect replay and disposes on unmount', async () => {
+    const onExport = vi.fn();
+    await act(async () =>
+      root.render(
+        <StrictMode>
+          <DocumentPage
+            value={value}
+            title="Guide"
+            onChange={() => {}}
+            onTitleCommit={() => {}}
+            onExport={onExport}
+          />
+        </StrictMode>,
+      ),
+    );
+    const button = container.querySelector<HTMLButtonElement>(
+      '[data-action-id="document.command-palette"]',
+    )!;
+    expect(button.disabled).toBe(false);
+    await click(button);
+    const exportAction = container.querySelector<HTMLButtonElement>(
+      '[data-action-id="document.export-markdown"]',
+    )!;
+    expect(exportAction.getAttribute('aria-disabled')).toBe('false');
+    await click(exportAction);
+    expect(onExport).toHaveBeenCalledWith('markdown');
+    await click(button);
+    let finish!: (result: { status: string }) => void;
+    controller.flushEditing.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          finish = resolve;
+        }),
+    );
+    await click(
+      container.querySelector('[data-action-id="document.export-markdown"]')!,
+    );
+    await act(async () => root.render(null));
+    await act(async () => finish({ status: 'completed' }));
+    expect(onExport).toHaveBeenCalledTimes(1);
+  });
+
+  for (const readonly of [false, true])
+    it(`opens the document palette and restores its toolbar focus (readonly=${readonly})`, async () => {
+      await render({ readonly });
+      const button = container.querySelector<HTMLButtonElement>(
+        '[data-action-id="document.command-palette"]',
+      )!;
+      expect(button.disabled).toBe(false);
+      expect(button.title).toMatch(/命令面板.*(Ctrl\+Shift\+P|⌘⇧P)/);
+      await click(button);
+      expect(button.disabled).toBe(false);
+      const dialog = document.querySelector('dialog')!;
+      expect(dialog.getAttribute('aria-labelledby')).toBeTruthy();
+      expect(dialog.querySelector('input')).toBe(document.activeElement);
+      expect(document.querySelectorAll('dialog')).toHaveLength(1);
+      expect(
+        dialog.querySelector('[data-action-id="document.command-palette"]'),
+      ).toBeNull();
+      await act(async () =>
+        dialog.dispatchEvent(
+          new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }),
+        ),
+      );
+      expect(document.querySelector('dialog')).toBeNull();
+      expect(document.activeElement).toBe(button);
+    });
+
   it('keeps ordinary editing clicks local and activates modifier clicks', async () => {
     const onOpenLink = vi.fn();
     await render({ onOpenLink });
@@ -153,25 +264,47 @@ describe('document navigation', () => {
   });
 
   it('waits for the editor and applies each navigation request once', async () => {
-    await render({ navigation: { anchor: '章节-1', requestId: 1 } });
+    await render({
+      navigation: {
+        target: { kind: 'heading', fileId: value.id, slug: '章节-1' },
+        requestId: 1,
+      },
+    });
     expect(controller.locateHeading).not.toHaveBeenCalled();
     await flushFrames();
     expect(controller.locateHeading).toHaveBeenCalledExactlyOnceWith(20);
-    await render({ navigation: { anchor: '章节-1', requestId: 1 } });
+    await render({
+      navigation: {
+        target: { kind: 'heading', fileId: value.id, slug: '章节-1' },
+        requestId: 1,
+      },
+    });
     await flushFrames();
     expect(controller.locateHeading).toHaveBeenCalledTimes(1);
-    await render({ navigation: { anchor: '章节', requestId: 2 } });
+    await render({
+      navigation: {
+        target: { kind: 'heading', fileId: value.id, slug: '章节' },
+        requestId: 2,
+      },
+    });
     await flushFrames();
     expect(controller.locateHeading).toHaveBeenLastCalledWith(10);
-    await render({ navigation: { anchor: null, requestId: 3 } });
+    await render({
+      navigation: { target: { kind: 'file', fileId: value.id }, requestId: 3 },
+    });
     await flushFrames();
     expect(controller.focus).toHaveBeenCalledWith('start');
   });
 
-  it('reports a missing heading and returns to the document start', async () => {
-    await render({ navigation: { anchor: 'removed', requestId: 1 } });
+  it('reports a missing heading without moving the current selection', async () => {
+    await render({
+      navigation: {
+        target: { kind: 'heading', fileId: value.id, slug: 'removed' },
+        requestId: 1,
+      },
+    });
     await flushFrames();
-    expect(controller.focus).toHaveBeenCalledWith('start');
+    expect(controller.focus).not.toHaveBeenCalled();
     expect(container.querySelector('[role="status"]')?.textContent).toContain(
       '未找到目标章节',
     );

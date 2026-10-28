@@ -1,7 +1,7 @@
 import * as fs from 'fs/promises';
 import * as os from 'os';
 import * as path from 'path';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createFsWorkspaceHost } from './workspace-host-fs';
 import {
   createDesktopWorkspaceManager,
@@ -205,5 +205,137 @@ describe('desktop built-in workspace startup', () => {
     expect(
       await exists(path.join(target, '文档', 'reading.verd-doc.json')),
     ).toBe(true);
+  });
+});
+
+describe('desktop workspace history', () => {
+  it('records only activated directories, keeps all entries and deduplicates normalized paths', async () => {
+    const { dir, host, manager } = await setup();
+    const startup = manager({ now: () => 100 });
+    const builtin = (await startup.open({ default: true }))!;
+    await startup.activate(builtin);
+    expect(await startup.listHistory()).toEqual([]);
+    const first = (await startup.open({ path: path.join(dir, 'first') }))!;
+    expect(await startup.listHistory()).toEqual([]);
+    await startup.activate(first);
+    for (let index = 0; index < 21; index++) {
+      const handle = (await startup.open({
+        path: path.join(dir, `folder-${index}`),
+      }))!;
+      await startup.activate(handle);
+    }
+    const again = (await startup.open({
+      path: path.join(dir, 'first', '..', 'first'),
+    }))!;
+    await startup.activate(again);
+    const entries = await startup.listHistory();
+    expect(entries).toHaveLength(22);
+    expect(entries[0]).toMatchObject({ id: first.historyId, name: 'first' });
+    expect(entries[0].lastOpenedAt).toBeGreaterThan(entries[1].lastOpenedAt);
+    expect(again.historyId).toBe(first.historyId);
+    expect(first.historyId).not.toBe(first.key);
+    expect(await manager().listHistory()).toEqual(entries);
+    expect(JSON.stringify(entries)).not.toContain(dir);
+    expect(
+      (await host.readGlobalConfig()).value['desktopWorkspaceHistory'],
+    ).toHaveLength(22);
+    expect(await startup.open({ pick: true })).toBeNull();
+    expect(await startup.listHistory()).toEqual(entries);
+  });
+
+  it('migrates the old selection, preserves preferences and retains missing folders without recreating them', async () => {
+    const { dir, host, manager } = await setup();
+    const missing = path.join(dir, 'missing');
+    await host.writeGlobalConfig(
+      {
+        language: 'en',
+        desktopWorkspace: { kind: 'directory', path: missing },
+      },
+      0,
+    );
+    const startup = manager();
+    const entries = await startup.listHistory();
+    expect(entries).toEqual([
+      { id: expect.any(String), name: 'missing', lastOpenedAt: 0 },
+    ]);
+    await expect(
+      startup.open({ historyId: entries[0].id, create: true }),
+    ).rejects.toThrow('unavailable');
+    await expect(
+      startup.open({
+        historyId: 'unknown',
+        path: path.join(dir, 'accidental'),
+      }),
+    ).rejects.toThrow('Unknown');
+    expect(await exists(missing)).toBe(false);
+    expect(await exists(path.join(dir, 'accidental'))).toBe(false);
+    expect(await startup.listHistory()).toEqual(entries);
+    const builtin = (await startup.open({ default: true }))!;
+    await startup.activate(builtin);
+    expect(await manager().listHistory()).toEqual(entries);
+    expect((await host.readGlobalConfig()).value).toMatchObject({
+      language: 'en',
+      desktopWorkspace: { kind: 'default' },
+    });
+  });
+
+  it('reopens stable history identities after closing handles and distinguishes identical folder names', async () => {
+    const { dir, host, manager } = await setup();
+    const startup = manager();
+    const left = (await startup.open({
+      path: path.join(dir, 'left', 'shared', 'project'),
+    }))!;
+    await startup.activate(left);
+    const right = (await startup.open({
+      path: path.join(dir, 'right', 'shared', 'project'),
+    }))!;
+    await startup.activate(right);
+    const entries = await startup.listHistory();
+    expect(entries.map((entry) => entry.description)).toEqual([
+      'right/shared',
+      'left/shared',
+    ]);
+    await host.closeWorkspace(left);
+    const restarted = manager();
+    const reopened = (await restarted.open({ historyId: left.historyId }))!;
+    expect(reopened.key).not.toBe(left.key);
+    expect(reopened.historyId).toBe(left.historyId);
+    expect(await restarted.listHistory()).toEqual(entries);
+    await restarted.activate(reopened);
+    expect((await restarted.listHistory())[0].id).toBe(left.historyId);
+  });
+
+  it('retries conflicting config writes without losing history or unrelated preferences', async () => {
+    const { dir, host, manager } = await setup();
+    const startup = manager();
+    const first = (await startup.open({ path: path.join(dir, 'a') }))!;
+    await startup.activate(first);
+    const write = host.writeGlobalConfig.bind(host);
+    vi.spyOn(host, 'writeGlobalConfig').mockImplementationOnce(
+      async (_value, version) => {
+        await write(
+          { ...(await host.readGlobalConfig()).value, language: 'en' },
+          version,
+        );
+        return { applied: false, snapshot: await host.readGlobalConfig() };
+      },
+    );
+    const second = (await startup.open({ path: path.join(dir, 'b') }))!;
+    await startup.activate(second);
+    expect((await startup.listHistory()).map((entry) => entry.name)).toEqual([
+      'b',
+      'a',
+    ]);
+    expect((await host.readGlobalConfig()).value['language']).toBe('en');
+  });
+
+  it('serializes competing global configuration writes so CAS cannot silently lose history', async () => {
+    const { host } = await setup();
+    const results = await Promise.all([
+      host.writeGlobalConfig({ desktopWorkspaceHistory: [] }, 0),
+      host.writeGlobalConfig({ language: 'en' }, 0),
+    ]);
+    expect(results.filter((result) => result.applied)).toHaveLength(1);
+    expect((await host.readGlobalConfig()).version).toBe(1);
   });
 });

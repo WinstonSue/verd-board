@@ -16,14 +16,20 @@ export const FrameStaticShadow = memo(function FrameStaticShadow({
   shadow,
   bounds,
   content,
+  opacity,
 }: {
   shadow?: string;
   bounds: RectangleClient;
   content: ReactNode;
+  opacity?: number;
 }) {
   return (
     <FrameCellShadow shadow={shadow} bounds={bounds}>
-      {(filter) => <g filter={filter}>{content}</g>}
+      {(filter) => (
+        <g filter={filter} opacity={opacity}>
+          {content}
+        </g>
+      )}
     </FrameCellShadow>
   );
 });

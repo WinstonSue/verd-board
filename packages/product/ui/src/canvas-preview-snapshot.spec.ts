@@ -1,4 +1,3 @@
-import { describe, expect, it } from 'vitest';
 import {
   createDocumentReferenceCell,
   createFrameCell,
@@ -7,7 +6,10 @@ import {
   type CellStore,
   type NodeCell,
 } from '@sue/board-core';
+import { describe, expect, it } from 'vitest';
+import { createTestCellRegistry as createFixtureRegistry } from '../../../../tests/fixtures/plugins/registry';
 import { canvasPreviewSnapshot } from './canvas-preview-snapshot';
+const testCellRegistry = createFixtureRegistry();
 
 const geometry = { x: 0, y: 0, width: 100, height: 100 };
 const node = (id: string): NodeCell => ({
@@ -52,8 +54,8 @@ describe('canvasPreviewSnapshot', () => {
   it('keeps cyclic and shared canvas dependencies plus document shells, without unrelated files', () => {
     const source = fixture();
     const result = canvasPreviewSnapshot(source, 'board');
-    expect(validateCellStore(source)).toEqual([]);
-    expect(validateCellStore(result.store)).toEqual([]);
+    expect(validateCellStore(source, testCellRegistry)).toEqual([]);
+    expect(validateCellStore(result.store, testCellRegistry)).toEqual([]);
     expect(Object.keys(result.store.cells).sort()).toEqual([
       'back',
       'board',
@@ -94,7 +96,7 @@ describe('canvasPreviewSnapshot', () => {
     delete source.cells.target;
     delete source.cells.back;
     const previous = canvasPreviewSnapshot(source, 'board');
-    expect(validateCellStore(previous.store)).toEqual([]);
+    expect(validateCellStore(previous.store, testCellRegistry)).toEqual([]);
     const target = createFrameCell('target');
     const next = { ...source, cells: { ...source.cells, target } };
     const result = canvasPreviewSnapshot(next, 'board', previous);
@@ -117,7 +119,7 @@ describe('canvasPreviewSnapshot', () => {
     };
     const result = canvasPreviewSnapshot(source, inner.id);
     expect(result.store.rootId).toBe(outer.id);
-    expect(validateCellStore(result.store)).toEqual([]);
+    expect(validateCellStore(result.store, testCellRegistry)).toEqual([]);
     expect(result.store.cells.inner).toBe(inner);
   });
 });

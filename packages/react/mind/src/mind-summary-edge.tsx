@@ -1,12 +1,11 @@
-import { memo, useMemo, useRef, useState, type PointerEvent } from 'react';
+import { isEdgeCell, type EdgeCell, type Point } from '@sue/board-core';
 import {
-  isEdgeCell,
-  type EdgeCell,
+  mindSummaryGeometry,
+  setMindSummaryRange,
   type MindSummaryData,
-  type Point,
-} from '@sue/board-core';
-import { mindSummaryGeometry, setMindSummaryRange } from '@sue/board-mind';
+} from '@sue/board-mind';
 import { useFrameSelection, type FrameRenderContext } from '@sue/board-react';
+import { memo, useMemo, useRef, useState, type PointerEvent } from 'react';
 
 const VisibleBracket = memo(function VisibleBracket({
   path,
@@ -22,6 +21,7 @@ const VisibleBracket = memo(function VisibleBracket({
   return (
     <path
       d={path}
+      data-frame-node-outline
       fill="none"
       stroke={stroke}
       strokeWidth={width}
@@ -65,9 +65,7 @@ export function MindSummaryEdge(context: FrameRenderContext) {
   const selected =
     context.selected || selection.ids.includes(cell.target.cellId);
   const writable = !context.readonly && !context.pending && !cell.locked;
-  const stroke = selected
-    ? '#6366f1'
-    : (cell.appearance?.strokeColor ?? '#64748b');
+  const stroke = cell.appearance?.strokeColor ?? '#64748b';
   const begin = (event: PointerEvent<SVGElement>, end: 'start' | 'end') => {
     if (!writable || event.button !== 0) return;
     const matrix = group.current?.getScreenCTM()?.inverse();

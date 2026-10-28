@@ -1,26 +1,22 @@
-import { describe, expect, it } from 'vitest';
 import {
-  createCellRegistry,
   createCellRuntime,
   createFrameCell,
   planCellPaste,
   type CellStore,
   type NodeCell,
-  type ArchitectureLayerData,
 } from '@sue/board-core';
+import { describe, expect, it } from 'vitest';
+import { createTestCellRegistry } from '../../../../tests/fixtures/plugins/registry';
 import {
-  registerArchitectureCells,
-  architectureLayerIds,
-  layoutArchitectureCells,
-} from './cell-utils';
-import {
+  addArchitectureModule,
   createArchitectureFrameSnapshot,
   createArchitectureLayerCell,
   createArchitectureModuleCell,
-  addArchitectureModule,
-  reorderArchitectureLayers,
   moveArchitectureModuleToLayer,
+  reorderArchitectureLayers,
 } from './cell-commands';
+import { architectureLayerIds, layoutArchitectureCells } from './cell-utils';
+import { type ArchitectureLayerData } from './public-api';
 
 describe('architectureLayerIds', () => {
   it('sorts direct layers by order and preserves child order for equal or missing keys', () => {
@@ -86,8 +82,8 @@ describe('architectureLayerIds', () => {
 
 describe('native architecture rules', () => {
   it('reorders layers and transfers a dragged module atomically while preserving fixed positions and history', () => {
-    const registry = createCellRegistry();
-    registerArchitectureCells(registry);
+    const registry = createTestCellRegistry();
+
     const r = createCellRuntime(
       createArchitectureFrameSnapshot('frame', 'layer'),
       registry,
@@ -163,8 +159,8 @@ describe('native architecture rules', () => {
     );
   });
   it('protects the last layer and cascades deleting other layers', () => {
-    const registry = createCellRegistry();
-    registerArchitectureCells(registry);
+    const registry = createTestCellRegistry();
+
     const r = createCellRuntime(
       createArchitectureFrameSnapshot('frame', 'layer'),
       registry,
@@ -202,8 +198,8 @@ describe('native architecture rules', () => {
     expect(r.store.cells.module).toBeTruthy();
   });
   it('computes empty bands and respects explicit module positions', () => {
-    const registry = createCellRegistry();
-    registerArchitectureCells(registry);
+    const registry = createTestCellRegistry();
+
     const r = createCellRuntime(
       createArchitectureFrameSnapshot('frame', 'layer'),
       registry,
@@ -222,8 +218,8 @@ describe('native architecture rules', () => {
     ).toMatchObject({ x: 300, y: 200 });
   });
   it('pastes a module into the selected layer at its displayed position and appends a whole layer', () => {
-    const registry = createCellRegistry();
-    registerArchitectureCells(registry);
+    const registry = createTestCellRegistry();
+
     const runtime = createCellRuntime(
       createArchitectureFrameSnapshot('frame', 'layer'),
       registry,

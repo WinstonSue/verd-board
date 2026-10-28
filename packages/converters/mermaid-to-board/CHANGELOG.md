@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+对齐 Draw/Workflow/Architecture/UML 插件与模型入口，转换校验显式使用对应 registry。
+
+本轮不升级版本或发布，随下一主版本交付；参见原生架构和迁移文档。
+
 ## 2.0.0
 
 ### Major Changes

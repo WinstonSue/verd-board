@@ -1,17 +1,18 @@
-import type { CSSProperties } from 'react';
-import { createRoot } from 'react-dom/client';
-import { flushSync } from 'react-dom';
 import {
   copyCellFragment,
   isFrameCell,
   type CellRegistry,
   type FrameSnapshot,
 } from '@sue/board-core';
+import type { CSSProperties } from 'react';
+import { flushSync } from 'react-dom';
+import { createRoot } from 'react-dom/client';
 import {
   FrameCanvas,
-  type FrameRenderExtension,
   type FrameDocumentReferences,
+  type FrameRenderExtension,
 } from './frame-canvas';
+import type { FramePluginSet } from './frame-plugins';
 
 export interface FrameImageOptions {
   format?: 'svg' | 'png' | 'jpeg';
@@ -23,6 +24,7 @@ export interface FrameImageOptions {
   quality?: number;
 }
 export interface FrameImageRenderOptions extends FrameImageOptions {
+  pluginSet?: FramePluginSet;
   documentReferences?: FrameDocumentReferences;
   frameId?: string;
   registry?: CellRegistry;
@@ -112,6 +114,18 @@ export function cloneFrameImageSvg(
     node.setAttribute('opacity', '1');
     (node as SVGElement).style.opacity = '1';
   });
+  // Live interaction hides only authored strokes. Restore their frozen styles
+  // in the clone without ever changing the mounted canvas.
+  for (const [attribute, property] of [
+    ['data-frame-original-stroke-opacity', 'stroke-opacity'],
+    ['data-frame-original-opacity', 'opacity'],
+  ] as const)
+    clone.querySelectorAll<SVGElement>(`[${attribute}]`).forEach((node) => {
+      const value = node.getAttribute(attribute)!;
+      node.setAttribute(property, value);
+      node.style.setProperty(property, value);
+      node.removeAttribute(attribute);
+    });
   clone.querySelectorAll(excluded).forEach((node) => node.remove());
   if (included) {
     const contains = (node: Element) =>
@@ -299,6 +313,7 @@ export async function frameSnapshotToImage(
           value={{ store }}
           autoFit={false}
           frameId={frameId}
+          pluginSet={options.pluginSet}
           registry={options.registry}
           extensions={options.extensions}
           readonly
@@ -323,7 +338,13 @@ export async function frameSnapshotToImage(
     if (!source) throw new Error('Frame renderer did not produce SVG');
     const included = options.ids?.length
       ? new Set(
-          Object.keys(copyCellFragment(snapshot.store, options.ids).cells),
+          Object.keys(
+            copyCellFragment(
+              snapshot.store,
+              options.ids,
+              options.pluginSet?.registry ?? options.registry,
+            ).cells,
+          ),
         )
       : undefined;
     const svg = cloneFrameImageSvg(source, included);

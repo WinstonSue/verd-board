@@ -55,11 +55,11 @@ describe('graph arrangement', () => {
     );
     const left = positions.get('left')!,
       right = positions.get('right')!;
-    expect(right[0] - left[0] - 300).toBe(48);
+    expect(right[0] - left[0] - 300).toBe(96);
     expect(positions.get('start')![0] + 60).toBe(
       (left[0] + 150 + right[0] + 40) / 2,
     );
-    expect(left[1]).toBe(88 + 96);
+    expect(left[1]).toBe(88 + 160);
   });
 
   it('is independent of insertion order and the initial positions', () => {

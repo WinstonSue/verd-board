@@ -1,5 +1,8 @@
+import { createArchitecturePlugin } from '@sue/board-architecture';
+import { createInlineText } from '@sue/board-common';
 import {
   CellKind,
+  createCellRegistry,
   createFrameCell,
   isNodeCell,
   validateCellStore,
@@ -7,18 +10,19 @@ import {
   type EdgeCell,
   type EdgeTerminal,
   type FrameSnapshot,
-  type NodeCell,
   type NodeAppearance,
+  type NodeCell,
   type Point,
 } from '@sue/board-core';
-import { createInlineText } from '@sue/board-common';
-import { drawCellPorts } from '@sue/board-draw';
+import { createDrawPlugin, drawCellPorts, DrawKind } from '@sue/board-draw';
+import { createUmlPlugin } from '@sue/board-uml';
+import { createWorkflowPlugin } from '@sue/board-workflow';
+import type { Node } from './elementSkeleton.js';
+import type { GraphImage } from './interfaces.js';
+import { removeMarkdown } from './markdown-to-text.js';
+import type { Class } from './parser/class.js';
 import type { Flowchart } from './parser/flowchart.js';
 import type { Sequence } from './parser/sequence.js';
-import type { Class } from './parser/class.js';
-import type { GraphImage } from './interfaces.js';
-import type { Node } from './elementSkeleton.js';
-import { removeMarkdown } from './markdown-to-text.js';
 
 export interface FrameImportConfig {
   fontSize?: number;
@@ -75,7 +79,7 @@ export const graphToFrameSnapshot = (
     add(
       {
         id: unique('node', key),
-        kind: CellKind.geometry,
+        kind: DrawKind.geometry,
         cellType: 'node',
         geometry: {
           x,
@@ -153,7 +157,7 @@ export const graphToFrameSnapshot = (
     return add<EdgeCell>(
       {
         id: unique('edge', options.key),
-        kind: CellKind.arrow,
+        kind: DrawKind.arrow,
         cellType: 'edge',
         source: terminal(points[0], options.sourceId),
         target: terminal(points.at(-1)!, options.targetId),
@@ -276,7 +280,7 @@ export const graphToFrameSnapshot = (
   if (graph.type === 'graphImage')
     add({
       id: unique('image'),
-      kind: CellKind.image,
+      kind: DrawKind.image,
       cellType: 'node',
       geometry: { x: 0, y: 0, width: graph.width, height: graph.height },
       data: { url: graph.dataURL },
@@ -452,7 +456,17 @@ export const graphToFrameSnapshot = (
     frame.groups.push(id);
   }
   const snapshot = { store: { rootId: frame.id, cells } };
-  const errors = validateCellStore(snapshot.store);
+  const errors = validateCellStore(
+    snapshot.store,
+    createCellRegistry({
+      plugins: [
+        createDrawPlugin(),
+        createWorkflowPlugin(),
+        createArchitecturePlugin(),
+        createUmlPlugin(),
+      ],
+    }),
+  );
   if (errors.length)
     throw new Error(
       errors.map((error) => `${error.cellId}: ${error.message}`).join('; '),

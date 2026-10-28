@@ -1,10 +1,11 @@
-import type { NodeCell, MindNodeData } from '@sue/board-core';
 import {
   createInlineText,
   isBoardTextDocument,
   type BoardTextDocument,
   type BoardTextNode,
 } from '@sue/board-common';
+import type { NodeCell } from '@sue/board-core';
+import { type MindNodeData } from '@sue/board-mind';
 
 const labelDocuments = new WeakMap<object, BoardTextDocument>();
 const emojiDocuments = new WeakMap<object, BoardTextDocument>();
@@ -36,6 +37,8 @@ export const validMindMaxWidth = (value: unknown): value is number =>
   value >= MIN_MIND_MAX_WIDTH &&
   value <= MAX_MIND_MAX_WIDTH;
 export interface MindMetricsOptions {
+  /** Runtime-only reveal projection; never applied to saved node data. */
+  expandedCellIds?: ReadonlySet<string>;
   maxNodeWidth?: number;
   /** The already laid-out width used by renderers for media/text partitioning. */
   width?: number;

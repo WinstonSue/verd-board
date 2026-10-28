@@ -1,11 +1,4 @@
-import { normalizeCellPositionOperations } from './position';
-import {
-  deleteCells,
-  indexCells,
-  parentOf,
-  type CellOperation,
-  type CellRegistry,
-} from './index';
+import type { Point } from '../interfaces/point';
 import { frameScene } from './frame';
 import {
   cellDeletionLocked,
@@ -15,17 +8,25 @@ import {
   isGroupableCell,
   lockedByAncestor,
 } from './group';
-import type { Point } from '../interfaces/point';
 import {
-  isFrameCell,
-  isNodeCell,
-  isGroupCell,
+  deleteCells,
+  indexCells,
+  parentOf,
+  type CellOperation,
+  type CellRegistry,
+} from './index';
+import { normalizeCellPositionOperations } from './position';
+import { createCellRegistry } from './registry';
+import {
   isEdgeCell,
-  type CellStore,
-  type CellId,
-  type NodeCell,
+  isFrameCell,
+  isGroupCell,
+  isNodeCell,
   type Cell,
+  type CellId,
+  type CellStore,
   type NodeAppearance,
+  type NodeCell,
 } from './types';
 
 export const groupCells = (
@@ -33,18 +34,23 @@ export const groupCells = (
   frameId: string,
   ids: readonly CellId[],
   groupId: string,
+  registry: CellRegistry = createCellRegistry(),
 ): CellOperation[] => {
   const frame = store.cells[frameId];
   const unique = [...new Set(ids)];
   if (
     !isFrameCell(frame) ||
-    frameScene(store, frameId) === 'mind-root' ||
-    frameScene(store, frameId) === 'uml-sequence-root' ||
+    registry.scenes.some(
+      (scene) =>
+        scene.allowGroups === false &&
+        scene.anchorKinds.includes(frameScene(store, frameId, registry) ?? ''),
+    ) ||
     unique.length < 2
   )
     throw new Error('Grouping requires at least two frame children');
   const members = unique.filter(
-    (id) => parentOf(store, id) === frameId && isGroupableCell(store, id),
+    (id) =>
+      parentOf(store, id) === frameId && isGroupableCell(store, id, registry),
   );
   if (members.length !== unique.length)
     throw new Error('Invalid group members');
@@ -62,7 +68,7 @@ export const groupCells = (
   const order = frame.children.filter((id) => !drawn.includes(id));
   order.splice(Math.max(0, first), 0, ...drawn);
   return [
-    ...(!frameScene(store, frameId)
+    ...(!frameScene(store, frameId, registry)
       ? [{ type: 'replace_cell' as const, cell: { ...frame, children: order } }]
       : []),
     ...(isGroupCell(owner)
@@ -93,6 +99,7 @@ export const moveGroup = (
   store: CellStore,
   groupId: string,
   delta: Point,
+  registry: CellRegistry = createCellRegistry(),
 ): CellOperation[] => {
   const group = store.cells[groupId];
   if (!isGroupCell(group)) throw new Error('Missing group');
@@ -102,7 +109,7 @@ export const moveGroup = (
     lockedByAncestor(store, groupId)
   )
     return [];
-  return translateCellSelection(store, [groupId], delta);
+  return translateCellSelection(store, [groupId], delta, registry);
 };
 
 const selectionMovesAtomically = (store: CellStore, ids: readonly string[]) =>
@@ -117,16 +124,14 @@ export const translateCellSelection = (
   store: CellStore,
   ids: readonly string[],
   delta: Point,
+  registry: CellRegistry = createCellRegistry(),
 ): CellOperation[] => {
   // A locked object in the selection blocks the whole move. Skipping it would
   // leave the unlocked siblings shifted on their own.
   if (
     !selectionMovesAtomically(store, ids) ||
     ids.some(
-      (id) =>
-        store.cells[id]?.kind.startsWith('uml-') &&
-        store.cells[id]?.kind !== 'uml-class' &&
-        store.cells[id]?.kind !== 'uml-relation',
+      (id) => registry.get(store.cells[id]?.kind)?.translateable === false,
     )
   )
     return [];
@@ -154,26 +159,14 @@ export const translateCellSelection = (
           {
             type: 'replace_cell',
             cell: {
-              ...cell,
+              ...((registry.get(cell.kind)?.translate?.(cell, delta) ??
+                cell) as NodeCell),
               geometry: {
                 ...cell.geometry,
                 x: cell.geometry.x + delta[0],
                 y: cell.geometry.y + delta[1],
                 derived: false,
               },
-              ...(cell.kind === 'architecture-module'
-                ? { data: { ...(cell.data as object), placed: true } }
-                : cell.kind === 'workflow-start'
-                  ? {
-                      data: {
-                        ...(cell.data as import('./types').WorkflowStartData),
-                        origin: translate(
-                          (cell.data as import('./types').WorkflowStartData)
-                            .origin,
-                        ),
-                      },
-                    }
-                  : {}),
             },
           },
         ];
@@ -202,7 +195,7 @@ export const translateCellSelection = (
     }),
   );
 };
-export { alignCells, distributeCells, arrangeCells } from './arrangement';
+export { alignCells, arrangeCells, distributeCells } from './arrangement';
 export const reorderCells = (
   store: CellStore,
   frameId: string,
@@ -326,7 +319,8 @@ export const selectionAllows = (
   const allowed = (id: string): boolean => {
     const cell = store.cells[id];
     if (!cell || cell.locked || lockedByAncestor(store, id)) return false;
-    if (capability === 'delete' && cellDeletionLocked(store, id)) return false;
+    if (capability === 'delete' && cellDeletionLocked(store, id, registry))
+      return false;
     for (let owner = parents.get(id); owner; owner = parents.get(owner))
       if (store.cells[owner]?.locked) return false;
     if (isGroupCell(cell)) {
@@ -426,17 +420,23 @@ export const assertWholeGroupsMoved = (
 export const clearFrameCells = (
   store: CellStore,
   frameId: string,
+  registry: CellRegistry = createCellRegistry(),
 ): CellOperation[] => {
   const frame = store.cells[frameId];
   if (!isFrameCell(frame)) throw new Error('Missing frame');
-  const scene = frameScene(store, frameId);
+  const scene = frameScene(store, frameId, registry);
   const anchors = frame.children.filter((id) => store.cells[id].kind === scene);
-  // Workflow starts cannot be removed independently of their owning Frame.
+  // Scene plugins decide which anchors must survive clearing.
   const retained = new Set(
-    scene === 'workflow-start' ? anchors : anchors.slice(0, 1),
+    registry.scenes.find((definition) =>
+      definition.anchorKinds.includes(scene ?? ''),
+    )?.preserveAllAnchors
+      ? anchors
+      : anchors.slice(0, 1),
   );
-  return deleteCells(store, [
-    ...frame.groups,
-    ...frame.children.filter((id) => !retained.has(id)),
-  ]);
+  return deleteCells(
+    store,
+    [...frame.groups, ...frame.children.filter((id) => !retained.has(id))],
+    { registry },
+  );
 };

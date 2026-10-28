@@ -8,10 +8,11 @@ import {
   createDocumentFile,
   type DocumentFileV1,
 } from './documents/document-files';
-import {
-  createDocumentLink,
-  parseDocumentLink,
-} from './documents/document-links';
+import { createWorkspaceLink, parseWorkspaceLink } from '@sue/board-common';
+const createDocumentLink = (fileId: string, slug?: string) =>
+  createWorkspaceLink(
+    slug ? { kind: 'heading', fileId, slug } : { kind: 'file', fileId },
+  );
 import { createFrameFile } from './frames/frame-files';
 import { createMemoryWorkspaceHost } from './host/memory-workspace-host';
 import { openWorkspaceSession } from './session/workspace-session';
@@ -252,10 +253,10 @@ describe('WorkspaceApp document navigation', () => {
     for (const entry of docs) {
       const href = entry.file.text.content.content![0].content![0].marks![0]
         .attrs!.href as string;
-      expect(parseDocumentLink(href, entry.file.id)).toEqual({
-        kind: 'file',
+      expect(parseWorkspaceLink(href, entry.file.id)).toEqual({
+        kind: 'heading',
         fileId: entry.file.id,
-        anchor: '章节',
+        slug: '章节',
       });
     }
     session.dispose();

@@ -1,19 +1,23 @@
-import { describe, expect, it } from 'vitest';
+import { createInlineText } from '@sue/board-common';
 import {
   applyCellOperations,
-  createCellRegistry,
   createCellRuntime,
   createCellStore,
   createFrameCell,
   groupCells,
   type NodeCell,
 } from '@sue/board-core';
-import { createInlineText } from '@sue/board-common';
+import { describe, expect, it } from 'vitest';
+import {
+  createTestCellRegistry as createFixtureRegistry,
+  createTestCellRegistry,
+} from '../../../../tests/fixtures/plugins/registry';
 import {
   fitContentCandidates,
   fitContentOperations,
   fitNodeContent,
 } from './frame-fit-content';
+const testCellRegistry = createFixtureRegistry();
 const node = (id: string, label = 'Short'): NodeCell => ({
   id,
   kind: 'geometry',
@@ -36,6 +40,7 @@ const fixture = () =>
       parentId: 'root',
       cell: node(id, id === 'empty' ? '' : 'Short'),
     })),
+    testCellRegistry,
   );
 const measure = (_text: unknown, width: number) => ({
   width: width === Infinity ? 80 : width,
@@ -62,22 +67,27 @@ describe('fit selection to content', () => {
     expect(fitted.height).toBeGreaterThan(48);
   });
   it('expands selected groups, deduplicates members, and skips empty, locked and foreign-frame nodes', () => {
-    const registry = createCellRegistry();
+    const registry = createTestCellRegistry();
     let store = fixture();
     store = applyCellOperations(
       store,
-      groupCells(store, 'root', ['a', 'b'], 'group'),
+      groupCells(store, 'root', ['a', 'b'], 'group', registry),
+      registry,
     );
     const b = store.cells.b as NodeCell;
-    store = applyCellOperations(store, [
-      { type: 'replace_cell', cell: { ...b, locked: true } },
-      {
-        type: 'insert_cell',
-        parentId: 'root',
-        cell: createFrameCell('nested'),
-      },
-      { type: 'insert_cell', parentId: 'nested', cell: node('inside') },
-    ]);
+    store = applyCellOperations(
+      store,
+      [
+        { type: 'replace_cell', cell: { ...b, locked: true } },
+        {
+          type: 'insert_cell',
+          parentId: 'root',
+          cell: createFrameCell('nested'),
+        },
+        { type: 'insert_cell', parentId: 'nested', cell: node('inside') },
+      ],
+      registry,
+    );
     expect(
       fitContentCandidates(
         store,
@@ -88,13 +98,15 @@ describe('fit selection to content', () => {
     ).toEqual(['a']);
     expect(fitContentCandidates(store, 'root', [], registry)).toEqual([]);
     const group = store.cells.group;
-    store = applyCellOperations(store, [
-      { type: 'replace_cell', cell: { ...group, locked: true } },
-    ]);
+    store = applyCellOperations(
+      store,
+      [{ type: 'replace_cell', cell: { ...group, locked: true } }],
+      registry,
+    );
     expect(fitContentCandidates(store, 'root', ['a'], registry)).toEqual([]);
   });
   it('commits a batch with one undo and treats repeated fitting as a no-op', () => {
-    const registry = createCellRegistry();
+    const registry = createTestCellRegistry();
     const runtime = createCellRuntime({ store: fixture() }, registry);
     const operations = fitContentOperations(
       runtime.store,

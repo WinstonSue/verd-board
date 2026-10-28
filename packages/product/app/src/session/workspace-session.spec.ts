@@ -1,7 +1,7 @@
-import { describe, expect, it, vi } from 'vitest';
 import type { CellStore, FrameCell, FrameReferenceCell } from '@sue/board-core';
-import { WORKSPACE_ROOT_ID, type FrameFileV2 } from '../frames/frame-files';
+import { describe, expect, it, vi } from 'vitest';
 import { createDocumentFile } from '../documents/document-files';
+import { WORKSPACE_ROOT_ID, type FrameFileV2 } from '../frames/frame-files';
 import { createMemoryWorkspaceHost } from '../host/memory-workspace-host';
 import type {
   CommitRequest,
@@ -541,7 +541,7 @@ describe('WorkspaceSession', () => {
       'cell-1': {
         id: 'cell-1',
         cellType: 'node',
-        kind: 'rect',
+        kind: 'geometry',
         geometry: { x: 0, y: 0, width: 10, height: 10 },
       } as never,
     });

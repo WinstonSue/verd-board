@@ -1,17 +1,22 @@
-import React, { act, createRef } from 'react';
-import { createRoot } from 'react-dom/client';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { frameSelectionActionId } from './frame-actions';
 import {
   applyCellOperations,
   createCellStore,
   createFrameCell,
   groupCells,
-  type FrameSnapshot,
   type EdgeCell,
+  type FrameSnapshot,
   type GroupCell,
   type NodeCell,
 } from '@sue/board-core';
+import { act, createRef, useState } from 'react';
+import { createRoot } from 'react-dom/client';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { createTestCellRegistry as createFixtureRegistry } from '../../../../tests/fixtures/plugins/registry';
+import { createTestFramePluginSet } from '../../../../tests/fixtures/plugins/ui';
 import { FrameCanvas, type FrameCanvasController } from './frame-canvas';
+const testFramePluginSet = createTestFramePluginSet();
+const testCellRegistry = createFixtureRegistry();
 
 (
   globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }
@@ -22,28 +27,32 @@ afterEach(async () => {
   vi.restoreAllMocks();
 });
 const fixture = (): FrameSnapshot => ({
-  store: applyCellOperations(createCellStore(createFrameCell('root')), [
-    {
-      type: 'insert_cell',
-      parentId: 'root',
-      cell: {
-        ...createFrameCell('nested'),
-        geometry: { x: 100.4, y: 120.7, width: 320, height: 240 },
-        content: { label: 'Nested' },
+  store: applyCellOperations(
+    createCellStore(createFrameCell('root')),
+    [
+      {
+        type: 'insert_cell',
+        parentId: 'root',
+        cell: {
+          ...createFrameCell('nested'),
+          geometry: { x: 100.4, y: 120.7, width: 320, height: 240 },
+          content: { label: 'Nested' },
+        },
       },
-    },
-    {
-      type: 'insert_cell',
-      parentId: 'nested',
-      cell: {
-        id: 'leaf',
-        cellType: 'node',
-        kind: 'geometry',
-        geometry: { x: -10.4, y: 20.7, width: 600, height: 400 },
-        content: { label: 'Leaf' },
+      {
+        type: 'insert_cell',
+        parentId: 'nested',
+        cell: {
+          id: 'leaf',
+          cellType: 'node',
+          kind: 'geometry',
+          geometry: { x: -10.4, y: 20.7, width: 600, height: 400 },
+          content: { label: 'Leaf' },
+        },
       },
-    },
-  ]),
+    ],
+    testCellRegistry,
+  ),
 });
 const mount = async (
   options: {
@@ -70,6 +79,7 @@ const mount = async (
   await act(async () =>
     root.render(
       <FrameCanvas
+        pluginSet={testFramePluginSet}
         ref={controller}
         value={value}
         autoFit={false}
@@ -127,6 +137,12 @@ const mount = async (
       Object.defineProperty(event, 'pointerId', { value: pointerId });
       target.dispatchEvent(event);
     });
+    if (type === 'pointermove')
+      await act(async () => {
+        await new Promise<void>((resolve) =>
+          requestAnimationFrame(() => resolve()),
+        );
+      });
   };
   cleanups.push(async () => {
     await act(async () => root.unmount());
@@ -201,9 +217,13 @@ describe('Frame shell interactions', () => {
       });
       expect(runtime.store.cells.leaf).toEqual(original.cells.leaf);
       expect(runtime.history.undos).toHaveLength(1);
-      await act(async () => test.controller.current!.undo());
+      await act(async () =>
+        test.controller.current!.executeAction('canvas.history.undo'),
+      );
       expect(runtime.store).toEqual(original);
-      await act(async () => test.controller.current!.redo());
+      await act(async () =>
+        test.controller.current!.executeAction('canvas.history.redo'),
+      );
       expect((runtime.store.cells.nested as NodeCell).geometry).toMatchObject({
         x: 144,
         y: 148,
@@ -244,6 +264,7 @@ describe('Frame shell interactions', () => {
               'root',
               ['nested', 'second'],
               'group',
+              testCellRegistry,
             ),
           });
         runtime.select({
@@ -295,7 +316,9 @@ describe('Frame shell interactions', () => {
       );
       for (const id of ['nested', 'second'])
         expect(transform(id)).toEqual(previews.get(id));
-      await act(async () => test.controller.current!.undo());
+      await act(async () =>
+        test.controller.current!.executeAction('canvas.history.undo'),
+      );
       expect(runtime.store).toEqual(original);
     },
   );
@@ -341,7 +364,9 @@ describe('Frame shell interactions', () => {
       height: 271,
     });
     expect(runtime.store.cells.leaf).toEqual(original.cells.leaf);
-    await act(async () => test.controller.current!.undo());
+    await act(async () =>
+      test.controller.current!.executeAction('canvas.history.undo'),
+    );
     expect(runtime.store).toEqual(original);
   });
 
@@ -369,7 +394,11 @@ describe('Frame shell interactions', () => {
         });
         expect(test.onIntent).toHaveBeenCalledOnce();
       }
-      await act(async () => test.controller.current!.editText('nested'));
+      await act(async () =>
+        test.controller.current!.executeAction('canvas.selection.edit', {
+          cellId: 'nested',
+        }),
+      );
       expect(document.querySelector('[data-frame-title-editor]')).toBeNull();
       for (const selector of [
         '[data-frame-title-id] > rect',
@@ -399,37 +428,41 @@ describe('Frame shell interactions', () => {
 });
 
 const freeFixture = (): FrameSnapshot => ({
-  store: applyCellOperations(createCellStore(createFrameCell('root')), [
-    ...['a', 'b', 'c', 'd'].map((id, i) => ({
-      type: 'insert_cell' as const,
-      parentId: 'root',
-      cell: {
-        id,
-        kind: 'geometry',
-        cellType: 'node' as const,
-        geometry: { x: i * 100, y: 100, width: 40, height: 20 },
-        content: { label: id },
-      },
-    })),
-    {
-      type: 'insert_cell',
-      parentId: 'root',
-      cell: {
-        id: 'free-edge',
-        kind: 'arrow',
-        cellType: 'edge',
-        source: { point: [0, 140] },
-        target: { point: [40, 140] },
-        route: {
-          mode: 'fixed',
-          points: [
-            [0, 140],
-            [40, 140],
-          ],
+  store: applyCellOperations(
+    createCellStore(createFrameCell('root')),
+    [
+      ...['a', 'b', 'c', 'd'].map((id, i) => ({
+        type: 'insert_cell' as const,
+        parentId: 'root',
+        cell: {
+          id,
+          kind: 'geometry',
+          cellType: 'node' as const,
+          geometry: { x: i * 100, y: 100, width: 40, height: 20 },
+          content: { label: id },
         },
-      } as EdgeCell,
-    },
-  ]),
+      })),
+      {
+        type: 'insert_cell',
+        parentId: 'root',
+        cell: {
+          id: 'free-edge',
+          kind: 'arrow',
+          cellType: 'edge',
+          source: { point: [0, 140] },
+          target: { point: [40, 140] },
+          route: {
+            mode: 'fixed',
+            points: [
+              [0, 140],
+              [40, 140],
+            ],
+          },
+        } as EdgeCell,
+      },
+    ],
+    testCellRegistry,
+  ),
 });
 
 const groupedFixture = () => {
@@ -437,19 +470,221 @@ const groupedFixture = () => {
   value = {
     store: applyCellOperations(
       value.store,
-      groupCells(value.store, 'root', ['a', 'b', 'free-edge'], 'inner'),
+      groupCells(
+        value.store,
+        'root',
+        ['a', 'b', 'free-edge'],
+        'inner',
+        testCellRegistry,
+      ),
+      testCellRegistry,
     ),
   };
   value = {
     store: applyCellOperations(
       value.store,
-      groupCells(value.store, 'root', ['inner', 'c'], 'outer'),
+      groupCells(
+        value.store,
+        'root',
+        ['inner', 'c'],
+        'outer',
+        testCellRegistry,
+      ),
+      testCellRegistry,
     ),
   };
   return value;
 };
 
 describe('arrangement and group interaction', () => {
+  it.each([
+    'canvas.layout.vertical',
+    'canvas.edges.reroute',
+    'canvas.edges.optimize',
+  ])(
+    'cancels a captured %s if empty group focus changes before execution',
+    async (id) => {
+      const value = groupedFixture();
+      const test = await mount({ value });
+      const controller = test.controller.current!;
+      await act(async () =>
+        controller.runtime.select({ focus: ['root', 'outer'], ids: [] }),
+      );
+      const action = controller
+        .actions()
+        .find((action) => action.id === id)!
+        .capture();
+      await act(async () =>
+        controller.runtime.select({ focus: ['root'], ids: [] }),
+      );
+      let status = '';
+      await act(async () => {
+        status = (await action.execute()).status;
+      });
+      expect(status).toBe('cancelled');
+      expect(controller.runtime.store).toEqual(value.store);
+      expect(test.onChange).not.toHaveBeenCalled();
+    },
+  );
+
+  it('layouts a selected group or an empty focused group without expanding to outside nodes', async () => {
+    const value = groupedFixture();
+    const test = await mount({ value });
+    const runtime = test.controller.current!.runtime;
+    await act(async () => runtime.select({ focus: ['root'], ids: ['outer'] }));
+    expect(
+      test.controller.current!.getActionState('canvas.layout.vertical').enabled,
+    ).toBe(true);
+    await act(async () => {
+      await test.controller.current!.executeAction('canvas.layout.vertical');
+    });
+    expect(runtime.store.cells.d).toEqual(value.store.cells.d);
+    expect((runtime.store.cells.c as NodeCell).geometry.y).toBeGreaterThan(100);
+    expect(runtime.history.undos).toHaveLength(1);
+    await act(async () => {
+      await test.controller.current!.executeAction('canvas.history.undo');
+    });
+    expect(runtime.store).toEqual(value.store);
+    await act(async () =>
+      runtime.select({ focus: ['root', 'outer', 'inner'], ids: [] }),
+    );
+    await act(async () => {
+      await test.controller.current!.executeAction('canvas.layout.vertical');
+    });
+    expect(runtime.store.cells.c).toEqual(value.store.cells.c);
+    expect(runtime.store.cells.d).toEqual(value.store.cells.d);
+    expect((runtime.store.cells.b as NodeCell).geometry).toMatchObject({
+      x: 0,
+      y: 152,
+    });
+    const historySize = runtime.history.undos.length;
+    await act(async () => {
+      await test.controller.current!.executeAction('canvas.layout.vertical');
+    });
+    expect(runtime.history.undos).toHaveLength(historySize);
+    expect(
+      test.controller
+        .current!.actions()
+        .some((action) => action.id === 'canvas.layout.relationships'),
+    ).toBe(true);
+  });
+
+  it.each(['canvas.edges.reroute', 'canvas.edges.optimize'])(
+    'runs %s in one undo step without moving nodes',
+    async (actionId) => {
+      const value = groupedFixture();
+      const test = await mount({ value });
+      const runtime = test.controller.current!.runtime;
+      await act(async () =>
+        runtime.select({ focus: ['root'], ids: ['outer'] }),
+      );
+      expect(test.controller.current!.getActionState(actionId).enabled).toBe(
+        true,
+      );
+      await act(async () => {
+        await test.controller.current!.executeAction(actionId);
+      });
+      for (const id of ['a', 'b', 'c', 'd'])
+        expect(runtime.store.cells[id]).toEqual(value.store.cells[id]);
+      expect(
+        (runtime.store.cells['free-edge'] as EdgeCell).route,
+      ).toMatchObject(
+        actionId === 'canvas.edges.optimize'
+          ? { mode: 'orthogonal', points: expect.any(Array) }
+          : { mode: 'auto' },
+      );
+      expect(runtime.history.undos).toHaveLength(1);
+      expect(test.controller.current!.getActionState(actionId).enabled).toBe(
+        actionId === 'canvas.edges.optimize',
+      );
+      await act(async () => {
+        await test.controller.current!.executeAction(actionId);
+      });
+      expect(runtime.history.undos).toHaveLength(1);
+      await act(async () => {
+        await test.controller.current!.executeAction('canvas.history.undo');
+      });
+      expect(runtime.store).toEqual(value.store);
+      await act(async () => {
+        await test.controller.current!.executeAction('canvas.history.redo');
+      });
+      expect(
+        (runtime.store.cells['free-edge'] as EdgeCell).route,
+      ).toMatchObject(
+        actionId === 'canvas.edges.optimize'
+          ? { mode: 'orthogonal', points: expect.any(Array) }
+          : { mode: 'auto' },
+      );
+    },
+  );
+
+  it.each([
+    'canvas.layout.vertical',
+    'canvas.edges.reroute',
+    'canvas.edges.optimize',
+  ])(
+    'does not apply %s when the host rejects the transaction',
+    async (actionId) => {
+      const value = groupedFixture();
+      const test = await mount({ value, pending: true });
+      const runtime = test.controller.current!.runtime;
+      await act(async () =>
+        runtime.select({ focus: ['root'], ids: ['outer'] }),
+      );
+      let result!: ReturnType<FrameCanvasController['executeAction']>;
+      await act(async () => {
+        result = test.controller.current!.executeAction(actionId);
+      });
+      expect(test.onIntent).toHaveBeenCalledTimes(1);
+      expect(runtime.store).toEqual(value.store);
+      await act(async () => {
+        test.release();
+        await result;
+      });
+      expect(runtime.store).toEqual(value.store);
+      expect(runtime.history.undos).toHaveLength(0);
+    },
+  );
+
+  it('checks a conflicting layout at execution and never creates a transaction', async () => {
+    const value = freeFixture();
+    value.store = applyCellOperations(
+      value.store,
+      [
+        {
+          type: 'replace_cell',
+          cell: {
+            ...value.store.cells.b,
+            geometry: { x: 500, y: 500, width: 40, height: 20 },
+          } as NodeCell,
+        },
+        {
+          type: 'replace_cell',
+          cell: {
+            ...value.store.cells.c,
+            geometry: { x: 80, y: 100, width: 40, height: 20 },
+          } as NodeCell,
+        },
+      ],
+      testCellRegistry,
+    );
+    const test = await mount({ value });
+    await act(async () =>
+      test.controller.current!.runtime.select({
+        focus: ['root'],
+        ids: ['a', 'b'],
+      }),
+    );
+    expect(
+      test.controller.current!.getActionState('canvas.layout.horizontal'),
+    ).toMatchObject({ enabled: true });
+    await act(async () => {
+      await test.controller.current!.executeAction('canvas.layout.horizontal');
+    });
+    expect(test.onChange).not.toHaveBeenCalled();
+    expect(test.controller.current!.runtime.store).toEqual(value.store);
+  });
+
   it('fits the selected nodes in one transaction and preserves geometry on host rejection', async () => {
     const value = freeFixture();
     const test = await mount({ value });
@@ -460,19 +695,24 @@ describe('arrangement and group interaction', () => {
       }),
     );
     expect(
-      test.controller.current!.selectionCommandState({ type: 'fit-content' })
-        .enabled,
+      test.controller.current!.getActionState(
+        frameSelectionActionId({ type: 'fit-content' }),
+      ).enabled,
     ).toBe(true);
     await act(async () => {
-      await test.controller.current!.executeSelectionCommand({
-        type: 'fit-content',
-      });
+      await test.controller.current!.executeAction(
+        frameSelectionActionId({
+          type: 'fit-content',
+        }),
+      );
     });
     expect(test.onChange).toHaveBeenCalledTimes(1);
     const a = test.controller.current!.runtime.store.cells.a as NodeCell;
     expect(a.geometry.x).toBe((value.store.cells.a as NodeCell).geometry.x);
     expect(a.geometry.y).toBe((value.store.cells.a as NodeCell).geometry.y);
-    await act(async () => test.controller.current!.undo());
+    await act(async () =>
+      test.controller.current!.executeAction('canvas.history.undo'),
+    );
     expect(test.controller.current!.runtime.store.cells.a).toEqual(
       value.store.cells.a,
     );
@@ -483,15 +723,18 @@ describe('arrangement and group interaction', () => {
         ids: ['a', 'b'],
       }),
     );
-    let promise!: ReturnType<FrameCanvasController['executeSelectionCommand']>;
+    let promise!: ReturnType<FrameCanvasController['executeAction']>;
     await act(async () => {
-      promise = host.controller.current!.executeSelectionCommand({
-        type: 'fit-content',
-      });
+      promise = host.controller.current!.executeAction(
+        frameSelectionActionId({
+          type: 'fit-content',
+        }),
+      );
     });
     expect(
-      host.controller.current!.selectionCommandState({ type: 'fit-content' })
-        .enabled,
+      host.controller.current!.getActionState(
+        frameSelectionActionId({ type: 'fit-content' }),
+      ).enabled,
     ).toBe(false);
     expect(host.controller.current!.runtime.store).toEqual(value.store);
     await act(async () => {
@@ -527,16 +770,20 @@ describe('arrangement and group interaction', () => {
       ids: ['inner'],
     });
     await act(async () => {
-      await test.controller.current!.executeSelectionCommand({
-        type: 'ungroup',
-      });
+      await test.controller.current!.executeAction(
+        frameSelectionActionId({
+          type: 'ungroup',
+        }),
+      );
     });
     expect(test.controller.current!.runtime.selection).toEqual({
       focus: ['root', 'outer'],
       ids: ['a', 'b', 'free-edge'],
     });
     await act(async () => {
-      await test.controller.current!.executeSelectionCommand({ type: 'group' });
+      await test.controller.current!.executeAction(
+        frameSelectionActionId({ type: 'group' }),
+      );
     });
     const id = test.controller.current!.runtime.selection.ids[0];
     expect(
@@ -580,7 +827,9 @@ describe('arrangement and group interaction', () => {
         .source,
     ).toEqual({ point: [13, 157] });
     expect(test.onChange).toHaveBeenCalledTimes(1);
-    await act(async () => test.controller.current!.undo());
+    await act(async () =>
+      test.controller.current!.executeAction('canvas.history.undo'),
+    );
     expect(test.controller.current!.runtime.store).toEqual(value.store);
   });
 
@@ -601,7 +850,9 @@ describe('arrangement and group interaction', () => {
       (test.controller.current!.runtime.store.cells.a as NodeCell).geometry,
     ).toMatchObject({ x: 100, y: 100 });
     expect(test.container.querySelector('[data-alignment-guides]')).toBeNull();
-    await act(async () => test.controller.current!.undo());
+    await act(async () =>
+      test.controller.current!.executeAction('canvas.history.undo'),
+    );
     await test.fire(
       test.container.querySelector('[data-cell-id="a"]')!,
       'pointerdown',
@@ -632,11 +883,14 @@ describe('arrangement and group interaction', () => {
     const id = runtime.selection.ids[0];
     expect(runtime.store.cells[id].cellType).toBe('group');
     await act(async () => {
-      await test.controller.current!.executeSelectionCommand({ type: 'lock' });
+      await test.controller.current!.executeAction(
+        frameSelectionActionId({ type: 'lock' }),
+      );
     });
     expect(
-      test.controller.current!.selectionCommandState({ type: 'ungroup' })
-        .enabled,
+      test.controller.current!.getActionState(
+        frameSelectionActionId({ type: 'ungroup' }),
+      ).enabled,
     ).toBe(false);
     await test.fire(
       test.container.querySelector('[data-cell-id="a"]')!,
@@ -646,9 +900,11 @@ describe('arrangement and group interaction', () => {
     );
     expect(runtime.selection.focus).toEqual(['root']);
     await act(async () => {
-      await test.controller.current!.executeSelectionCommand({
-        type: 'unlock',
-      });
+      await test.controller.current!.executeAction(
+        frameSelectionActionId({
+          type: 'unlock',
+        }),
+      );
     });
     await act(async () =>
       test.svg.dispatchEvent(
@@ -669,16 +925,21 @@ describe('arrangement and group interaction', () => {
     value = {
       store: applyCellOperations(
         value.store,
-        groupCells(value.store, 'root', ['a', 'b'], 'group'),
+        groupCells(value.store, 'root', ['a', 'b'], 'group', testCellRegistry),
+        testCellRegistry,
       ),
     };
     value = {
-      store: applyCellOperations(value.store, [
-        {
-          type: 'replace_cell',
-          cell: { ...value.store.cells.a, locked: true },
-        },
-      ]),
+      store: applyCellOperations(
+        value.store,
+        [
+          {
+            type: 'replace_cell',
+            cell: { ...value.store.cells.a, locked: true },
+          },
+        ],
+        testCellRegistry,
+      ),
     };
     const test = await mount({ value });
     const a = test.container.querySelector('[data-cell-id="a"]')!;
@@ -690,9 +951,11 @@ describe('arrangement and group interaction', () => {
       ids: ['a'],
     });
     await act(async () => {
-      await test.controller.current!.executeSelectionCommand({
-        type: 'unlock',
-      });
+      await test.controller.current!.executeAction(
+        frameSelectionActionId({
+          type: 'unlock',
+        }),
+      );
     });
     expect(test.controller.current!.runtime.store.cells.a.locked).toBe(false);
   });
@@ -719,15 +982,18 @@ describe('arrangement and group interaction', () => {
         ids: ['a', 'b'],
       }),
     );
-    let promise!: ReturnType<FrameCanvasController['executeSelectionCommand']>;
+    let promise!: ReturnType<FrameCanvasController['executeAction']>;
     await act(async () => {
-      promise = pending.controller.current!.executeSelectionCommand({
-        type: 'group',
-      });
+      promise = pending.controller.current!.executeAction(
+        frameSelectionActionId({
+          type: 'group',
+        }),
+      );
     });
     expect(
-      pending.controller.current!.selectionCommandState({ type: 'group' })
-        .enabled,
+      pending.controller.current!.getActionState(
+        frameSelectionActionId({ type: 'group' }),
+      ).enabled,
     ).toBe(false);
     expect(pending.controller.current!.runtime.store).toEqual(
       freeFixture().store,
@@ -764,25 +1030,32 @@ describe('arrangement and group interaction', () => {
 
 it('a locked containing group makes an opened member Frame read-only', async () => {
   let store = fixture().store;
-  store = applyCellOperations(store, [
-    {
-      type: 'insert_cell',
-      parentId: 'root',
-      cell: {
-        id: 'sibling',
-        cellType: 'node',
-        kind: 'geometry',
-        geometry: { x: 500, y: 0, width: 40, height: 20 },
-      },
-    },
-  ]);
   store = applyCellOperations(
     store,
-    groupCells(store, 'root', ['nested', 'sibling'], 'group'),
+    [
+      {
+        type: 'insert_cell',
+        parentId: 'root',
+        cell: {
+          id: 'sibling',
+          cellType: 'node',
+          kind: 'geometry',
+          geometry: { x: 500, y: 0, width: 40, height: 20 },
+        },
+      },
+    ],
+    testCellRegistry,
   );
-  store = applyCellOperations(store, [
-    { type: 'replace_cell', cell: { ...store.cells.group, locked: true } },
-  ]);
+  store = applyCellOperations(
+    store,
+    groupCells(store, 'root', ['nested', 'sibling'], 'group', testCellRegistry),
+    testCellRegistry,
+  );
+  store = applyCellOperations(
+    store,
+    [{ type: 'replace_cell', cell: { ...store.cells.group, locked: true } }],
+    testCellRegistry,
+  );
   const container = document.createElement('div');
   document.body.append(container);
   const root = createRoot(container),
@@ -791,6 +1064,7 @@ it('a locked containing group makes an opened member Frame read-only', async () 
   await act(async () =>
     root.render(
       <FrameCanvas
+        pluginSet={testFramePluginSet}
         ref={controller}
         value={{ store }}
         frameId="nested"
@@ -803,7 +1077,8 @@ it('a locked containing group makes an opened member Frame read-only', async () 
     controller.current!.runtime.select({ focus: ['nested'], ids: ['leaf'] }),
   );
   expect(
-    controller.current!.selectionCommandState({ type: 'lock' }).enabled,
+    controller.current!.getActionState(frameSelectionActionId({ type: 'lock' }))
+      .enabled,
   ).toBe(false);
   await act(async () => {
     const result = await controller.current!.dispatch({
@@ -1045,4 +1320,300 @@ describe('released pointer button state', () => {
     expect(worldTransform(test.svg)).toBe('scale(1) translate(20 10)');
     expect(test.onChange).not.toHaveBeenCalled();
   });
+});
+
+describe('explicit and session automatic calculation', () => {
+  it('toggles without content writes, captures a stable scope, preserves moves and joins resizing into one undo', async () => {
+    const test = await mount({ value: freeFixture() });
+    const api = () => test.controller.current!;
+    const runtime = api().runtime;
+    await act(async () => runtime.select({ focus: ['root'], ids: ['a', 'b'] }));
+    api().setAutoLayoutStyle('vertical');
+    const original = runtime.store;
+    await act(async () => {
+      await api().executeAction('canvas.layout.auto.toggle');
+    });
+    expect(api().getActionState('canvas.layout.auto.toggle').checked).toBe(
+      true,
+    );
+    expect(api().getAutoCalculation().edges).toBeUndefined();
+    expect(runtime.store).toBe(original);
+    expect(test.onChange).not.toHaveBeenCalled();
+    expect(runtime.history.undos).toHaveLength(0);
+    await act(async () => runtime.select({ focus: ['root'], ids: ['c'] }));
+    const moved = {
+      ...(original.cells.a as NodeCell),
+      geometry: { ...(original.cells.a as NodeCell).geometry, x: 25 },
+    };
+    await act(async () => {
+      await api().executeAction('canvas.apply-operations', {
+        operations: [{ type: 'replace_cell', cell: moved }],
+      });
+    });
+    expect((runtime.store.cells.a as NodeCell).geometry.x).toBe(25);
+    expect(runtime.store.cells.b).toBe(original.cells.b);
+    const beforeResize = runtime.store;
+    await act(async () => {
+      await api().executeAction('canvas.apply-operations', {
+        operations: [
+          {
+            type: 'replace_cell',
+            cell: { ...moved, geometry: { ...moved.geometry, height: 60 } },
+          },
+        ],
+      });
+    });
+    expect((runtime.store.cells.b as NodeCell).geometry.x).toBe(25);
+    expect(runtime.store.cells.c).toEqual(original.cells.c);
+    expect(runtime.history.undos).toHaveLength(2);
+    await act(async () => {
+      await api().executeAction('canvas.history.undo');
+    });
+    expect(runtime.store).toEqual(beforeResize);
+    await act(async () => {
+      await api().executeAction('canvas.history.redo');
+    });
+    expect((runtime.store.cells.b as NodeCell).geometry.x).toBe(25);
+    const changes = test.onChange.mock.calls.length;
+    await act(async () => {
+      await api().executeAction('canvas.layout.auto.toggle');
+    });
+    expect(test.onChange).toHaveBeenCalledTimes(changes);
+    expect(api().getActionState('canvas.layout.auto.toggle').checked).toBe(
+      false,
+    );
+  });
+  it('prepares derived operations for the host but leaves every cell unchanged after rejection', async () => {
+    const value = freeFixture(),
+      test = await mount({ value, pending: true });
+    const api = () => test.controller.current!;
+    await act(async () =>
+      api().runtime.select({ focus: ['root'], ids: ['a', 'b'] }),
+    );
+    api().setAutoLayoutStyle('vertical');
+    await act(async () => {
+      await api().executeAction('canvas.layout.auto.toggle');
+    });
+    const a = value.store.cells.a as NodeCell;
+    let result!: Promise<unknown>;
+    await act(async () => {
+      result = api().executeAction('canvas.apply-operations', {
+        operations: [
+          {
+            type: 'replace_cell',
+            cell: { ...a, geometry: { ...a.geometry, width: 60 } },
+          },
+        ],
+      });
+    });
+    expect(test.onIntent).toHaveBeenCalledOnce();
+    expect(test.onIntent.mock.calls[0][0].operations.length).toBeGreaterThan(1);
+    expect(api().runtime.store).toEqual(value.store);
+    await act(async () => {
+      test.release();
+      await result;
+    });
+    expect(api().runtime.store).toEqual(value.store);
+    expect(api().runtime.history.undos).toHaveLength(0);
+  });
+  it('coalesces pointer preview paints and commits the final position even before the queued frame', async () => {
+    const test = await mount({ value: freeFixture() });
+    const callbacks = new Map<number, FrameRequestCallback>();
+    let sequence = 0;
+    vi.spyOn(window, 'requestAnimationFrame').mockImplementation((callback) => {
+      callbacks.set(++sequence, callback);
+      return sequence;
+    });
+    vi.spyOn(window, 'cancelAnimationFrame').mockImplementation((id) => {
+      callbacks.delete(id);
+    });
+    const shape = test.container.querySelector('[data-cell-id="a"] path')!;
+    const path = shape.getAttribute('d');
+    await test.fire(shape, 'pointerdown', 20, 110);
+    const move = (x: number, type = 'pointermove') => {
+      const event = new MouseEvent(type, {
+        bubbles: true,
+        button: 0,
+        buttons: type === 'pointermove' ? 1 : 0,
+        clientX: x,
+        clientY: 115,
+        altKey: true,
+      });
+      Object.defineProperty(event, 'pointerId', { value: 1 });
+      test.svg.dispatchEvent(event);
+    };
+    await act(async () => {
+      move(35);
+      move(45);
+      move(55);
+    });
+    expect(callbacks.size).toBe(1);
+    expect(
+      test.container
+        .querySelector('[data-cell-id="a"] path')
+        ?.getAttribute('d'),
+    ).toBe(path);
+    await act(async () => {
+      move(55, 'pointerup');
+    });
+    expect(
+      (test.controller.current!.runtime.store.cells.a as NodeCell).geometry.x,
+    ).toBe(35);
+    expect(test.controller.current!.runtime.history.undos).toHaveLength(1);
+    expect(callbacks.size).toBe(0);
+  });
+});
+
+it('uses the same automatic preparation for accepted host transactions and delayed echoes', async () => {
+  const original = freeFixture();
+  const container = document.createElement('div');
+  document.body.append(container);
+  const root = createRoot(container),
+    controller = createRef<FrameCanvasController>();
+  const sent: import('@sue/board-core').CellTransaction[] = [];
+  let echo!: () => void;
+  function Hosted() {
+    const [value, setValue] = useState(original);
+    return (
+      <FrameCanvas
+        ref={controller}
+        pluginSet={testFramePluginSet}
+        value={value}
+        adapter={{ toFrameSnapshot: (value: FrameSnapshot) => value }}
+        autoFit={false}
+        onIntent={async (transaction) => {
+          sent.push(transaction);
+          echo = () =>
+            setValue({
+              store: applyCellOperations(
+                value.store,
+                transaction.operations,
+                testCellRegistry,
+              ),
+            });
+          return { status: 'accepted' };
+        }}
+      />
+    );
+  }
+  cleanups.push(async () => {
+    await act(async () => root.unmount());
+    container.remove();
+  });
+  await act(async () => root.render(<Hosted />));
+  await act(async () =>
+    controller.current!.runtime.select({ focus: ['root'], ids: ['a', 'b'] }),
+  );
+  controller.current!.setAutoLayoutStyle('vertical');
+  await act(async () => {
+    await controller.current!.executeAction('canvas.layout.auto.toggle');
+  });
+  const a = original.store.cells.a as NodeCell;
+  let settled = false;
+  let result!: Promise<unknown>;
+  await act(async () => {
+    result = controller
+      .current!.executeAction('canvas.apply-operations', {
+        operations: [
+          {
+            type: 'replace_cell',
+            cell: { ...a, geometry: { ...a.geometry, width: 60 } },
+          },
+        ],
+      })
+      .then((value) => {
+        settled = true;
+        return value;
+      });
+  });
+  expect(sent).toHaveLength(1);
+  expect(sent[0].operations.length).toBeGreaterThan(1);
+  expect(settled).toBe(false);
+  expect(controller.current!.runtime.store).toEqual(original.store);
+  await act(async () => echo());
+  await act(async () => {
+    await expect(result).resolves.toMatchObject({ status: 'completed' });
+  });
+  expect(settled).toBe(true);
+  expect(controller.current!.runtime.store).toEqual(
+    applyCellOperations(original.store, sent[0].operations, testCellRegistry),
+  );
+  expect(sent).toHaveLength(1);
+});
+
+it('does no full optimization while dragging and runs it exactly once on release when enabled', async () => {
+  const value = freeFixture();
+  value.store = applyCellOperations(
+    value.store,
+    [
+      {
+        type: 'insert_cell',
+        parentId: 'root',
+        cell: {
+          id: 'connected',
+          kind: 'arrow',
+          cellType: 'edge',
+          source: { cellId: 'a', anchor: [1, 0.5] },
+          target: { cellId: 'b', anchor: [0, 0.5] },
+          route: { mode: 'auto' },
+        },
+      },
+    ],
+    testCellRegistry,
+  );
+  const test = await mount({ value });
+  const api = () => test.controller.current!;
+  await act(async () =>
+    api().runtime.select({ focus: ['root'], ids: ['a', 'b'] }),
+  );
+  await act(async () => {
+    await api().executeAction('canvas.edges.auto.toggle');
+  });
+  await act(async () => api().runtime.select({ focus: ['root'], ids: ['a'] }));
+  const optimization =
+    await import('../../../engine/core/src/geometry/route-optimization');
+  const optimize = vi.spyOn(optimization, 'optimizeFrameRoutes');
+  const crossingModule =
+    await import('../../../engine/core/src/geometry/edge-crossings');
+  const crossings = vi.spyOn(crossingModule, 'frameEdgeCrossingJumps');
+  const shape = test.container.querySelector('[data-cell-id="a"] path')!;
+  await test.fire(shape, 'pointerdown', 20, 110);
+  crossings.mockClear();
+  await test.fire(test.svg, 'pointermove', 32, 115, { altKey: true });
+  await test.fire(test.svg, 'pointermove', 45, 120, { altKey: true });
+  expect(optimize).not.toHaveBeenCalled();
+  expect(crossings).not.toHaveBeenCalled();
+  expect(api().runtime.history.undos).toHaveLength(0);
+  await test.fire(test.svg, 'pointerup', 45, 120, { altKey: true });
+  expect(optimize).toHaveBeenCalledTimes(1);
+  expect((api().runtime.store.cells.connected as EdgeCell).route).toMatchObject(
+    { mode: 'orthogonal', points: expect.any(Array) },
+  );
+  expect(api().runtime.store.cells.b).toEqual(value.store.cells.b);
+  expect(api().runtime.history.undos).toHaveLength(1);
+  await act(async () => {
+    await api().executeAction('canvas.history.undo');
+  });
+  expect(api().runtime.store).toEqual(value.store);
+  expect(optimize).toHaveBeenCalledTimes(1);
+});
+
+it('does not plan node layouts when querying action availability', async () => {
+  const test = await mount({ value: freeFixture() });
+  const planner = await import('../../../engine/core/src/cell/layout-plan');
+  const plan = vi.spyOn(planner, 'planCellLayout');
+  for (let i = 0; i < 10; i++) {
+    expect(
+      test.controller.current!.getActionState('canvas.layout.grid').enabled,
+    ).toBe(true);
+    expect(
+      test.controller.current!.getActionState('canvas.layout.relationships')
+        .enabled,
+    ).toBe(true);
+  }
+  expect(plan).not.toHaveBeenCalled();
+  await act(async () => {
+    await test.controller.current!.executeAction('canvas.layout.grid');
+  });
+  expect(plan).toHaveBeenCalledTimes(1);
 });

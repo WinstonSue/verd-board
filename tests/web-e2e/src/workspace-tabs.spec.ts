@@ -145,6 +145,10 @@ test('groups retain independent tab sets, share one editor, rename, delete and r
   );
   await createGroup(page, '  Research  ');
   await expect(page.locator('.workspace-empty')).toBeVisible();
+  await expect(page.locator('.workspace-content')).toHaveAttribute(
+    'aria-busy',
+    'false',
+  );
   await expect(strip(page).getByRole('tab')).toHaveCount(0);
   await page
     .locator('.file-tree-name')
@@ -173,7 +177,7 @@ test('groups retain independent tab sets, share one editor, rename, delete and r
     .getByRole('button', { name: 'Research', exact: true })
     .hover();
   await strip(page)
-    .getByRole('button', { name: '重命名 Research', exact: true })
+    .getByRole('button', { name: '重命名分组 Research', exact: true })
     .click();
   await page.getByRole('dialog').getByRole('textbox').fill('Writing');
   await page

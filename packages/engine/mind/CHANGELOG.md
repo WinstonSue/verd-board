@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+新增 createMindPlugin；Mind 模型、删除闭包、概要归一化、复制粘贴与重映射归领域所有，保留既有字段。
+
+本轮不升级版本或发布，随下一主版本交付；参见原生架构和迁移文档。
+
 ## 2.0.0
 
 ### Major Changes

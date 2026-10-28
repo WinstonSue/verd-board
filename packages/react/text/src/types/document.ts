@@ -1,11 +1,22 @@
 import type {
   Alignment,
+  ActionInvocation,
+  ActionResult,
+  ActionState,
+  BoundAction,
   BoardTextDocument,
   BoardTextMarks,
   BoardTextSelection,
 } from '@sue/board-common';
 
 export type DocumentSelection = BoardTextSelection;
+export type DocumentChangeReceipt =
+  | void
+  | ActionResult
+  | {
+      ok: boolean;
+      diagnostics?: readonly { message: string }[];
+    };
 
 /**
  * Why the document changed. The workspace uses it for history labels and to
@@ -41,8 +52,8 @@ export interface DocumentEditorChange {
 export interface DocumentHistoryAdapter {
   canUndo(): boolean;
   canRedo(): boolean;
-  undo(): void;
-  redo(): void;
+  undo(): void | Promise<unknown>;
+  redo(): void | Promise<unknown>;
 }
 
 export interface DocumentEditorProps {
@@ -50,7 +61,9 @@ export interface DocumentEditorProps {
   value: BoardTextDocument;
   readonly?: boolean;
   history?: DocumentHistoryAdapter;
-  onChange(change: DocumentEditorChange): void;
+  onChange(
+    change: DocumentEditorChange,
+  ): DocumentChangeReceipt | Promise<DocumentChangeReceipt>;
   onReady?(controller: DocumentEditorController | null): void;
   /**
    * Explicit content replay (undo/redo, adopt-disk, external sync). Bumping
@@ -93,37 +106,6 @@ export interface DocumentToolbarState {
   editable: boolean;
 }
 
-export type DocumentCommandName =
-  | 'toggleBold'
-  | 'toggleItalic'
-  | 'toggleUnderline'
-  | 'toggleStrike'
-  | 'toggleCode'
-  | 'toggleSuperscript'
-  | 'toggleSubscript'
-  | 'setParagraph'
-  | 'setHeading'
-  | 'toggleBlockquote'
-  | 'toggleCodeBlock'
-  | 'toggleBulletList'
-  | 'toggleOrderedList'
-  | 'setTextAlign'
-  | 'insertHorizontalRule'
-  | 'insertTable'
-  | 'addTableRowBefore'
-  | 'addTableRowAfter'
-  | 'addTableColumnBefore'
-  | 'addTableColumnAfter'
-  | 'deleteTableRow'
-  | 'deleteTableColumn'
-  | 'deleteTable'
-  | 'toggleTableHeaderRow'
-  | 'toggleTableHeaderColumn'
-  | 'toggleTableHeaderCell'
-  | 'clearFormatting'
-  | 'undo'
-  | 'redo';
-
 export interface DocumentHeading {
   level: number;
   /** Visible text; empty when the heading has no text. */
@@ -150,71 +132,27 @@ export interface DocumentSearchOptions {
  */
 export interface DocumentEditorController {
   focus(position?: 'start' | 'end' | 'preserve'): void;
-  /** Emits any pending change and returns the current document. */
   commit(): BoardTextDocument;
+  /** Waits for IME-safe content emission and the host's actual commit receipt. */
+  flushEditing(): Promise<ActionResult>;
   getDocument(): BoardTextDocument;
   getSelection(): DocumentSelection | null;
-
-  toggleMark(
-    mark:
-      | keyof Pick<
-          BoardTextMarks,
-          'bold' | 'italic' | 'underline' | 'strike' | 'code'
-        >
-      | 'superscript'
-      | 'subscript',
-  ): void;
-  setTextColor(color: string | null): void;
-  setFontSize(size: string | null): void;
-  setHighlight(color: string | null): void;
-  setLink(href: string | null): void;
-  clearFormatting(): void;
-
-  setParagraph(): void;
-  setHeading(level: 1 | 2 | 3 | 4 | 5 | 6): void;
-  toggleBlockquote(): void;
-  toggleCodeBlock(): void;
-  toggleBulletList(): void;
-  toggleOrderedList(): void;
-  setTextAlign(align: Alignment): void;
-  insertHorizontalRule(): void;
-
-  insertImage(image: { src: string; alt?: string; title?: string }): void;
-  insertFrameReference(targetFrameId: string): void;
-  insertTable(options?: {
-    rows?: number;
-    cols?: number;
-    withHeaderRow?: boolean;
-  }): void;
-  addTableRow(position: 'before' | 'after'): void;
-  addTableColumn(position: 'before' | 'after'): void;
-  deleteTableRow(): void;
-  deleteTableColumn(): void;
-  deleteTable(): void;
-  toggleTableHeader(kind: 'row' | 'column' | 'cell'): void;
-
-  can(command: DocumentCommandName): boolean;
+  restoreSelection(selection: DocumentSelection): void;
   getToolbarState(): DocumentToolbarState;
-  /** Fires when toolbar-relevant state may have changed. */
   subscribe(listener: () => void): () => void;
-
+  readonly revision: number;
+  actions(): readonly BoundAction[];
+  getActionState(id: string, args?: unknown): ActionState;
+  executeAction(
+    id: string,
+    args?: unknown,
+    invocation?: ActionInvocation,
+  ): Promise<ActionResult>;
   getHeadings(): DocumentHeading[];
-  /** Scrolls a heading into view and places the caret inside it. */
   locateHeading(pos: number): void;
-
+  /** Reveals the zero-based direct embed occurrence in the current body. */
+  locateFrameReference(targetFrameId: string, occurrence: number): boolean;
   find(query: string, options?: DocumentSearchOptions): DocumentSearchMatch[];
   selectMatch(match: DocumentSearchMatch): void;
-  replace(match: DocumentSearchMatch, text: string): void;
-  /** One transaction = one undo step. Returns the match count. */
-  replaceAll(
-    query: string,
-    text: string,
-    options?: DocumentSearchOptions,
-  ): number;
-
-  /** Non-whitespace character count for the status bar. */
   getCharacterCount(): number;
-
-  undo(): void;
-  redo(): void;
 }

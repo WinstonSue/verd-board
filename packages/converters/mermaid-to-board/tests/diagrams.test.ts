@@ -1,5 +1,6 @@
 import { validateCellStore } from '@sue/board-core';
 import { afterEach, describe, expect, it } from 'vitest';
+import { createTestCellRegistry as createFixtureRegistry } from '../../../../tests/fixtures/plugins/registry';
 import {
   graphToFrameSnapshot,
   parseMermaid,
@@ -9,6 +10,7 @@ import { CLASS_DIAGRAM_TESTCASES } from './fixtures/class';
 import { FLOWCHART_DIAGRAM_TESTCASES } from './fixtures/flowchart';
 import { SEQUENCE_DIAGRAM_TESTCASES } from './fixtures/sequence';
 import { UNSUPPORTED_DIAGRAM_TESTCASES } from './fixtures/unsupported';
+const testCellRegistry = createFixtureRegistry();
 
 const removeLeftoverMermaidDom = () => {
   document.getElementById('mermaid-diagram')?.remove();
@@ -28,7 +30,7 @@ describe.sequential('parseMermaid fixtures', () => {
       expect(graph.type).toBe('flowchart');
       const snapshot = graphToFrameSnapshot(graph);
       expect(Object.keys(snapshot.store.cells).length).toBeGreaterThan(1);
-      expect(validateCellStore(snapshot.store)).toEqual([]);
+      expect(validateCellStore(snapshot.store, testCellRegistry)).toEqual([]);
     },
   );
 
@@ -39,7 +41,7 @@ describe.sequential('parseMermaid fixtures', () => {
       expect(graph.type).toBe('sequence');
       const snapshot = graphToFrameSnapshot(graph);
       expect(Object.keys(snapshot.store.cells).length).toBeGreaterThan(1);
-      expect(validateCellStore(snapshot.store)).toEqual([]);
+      expect(validateCellStore(snapshot.store, testCellRegistry)).toEqual([]);
     },
   );
 
@@ -48,7 +50,7 @@ describe.sequential('parseMermaid fixtures', () => {
     expect(graph.type).toBe('class');
     const snapshot = graphToFrameSnapshot(graph);
     expect(Object.keys(snapshot.store.cells).length).toBeGreaterThan(1);
-    expect(validateCellStore(snapshot.store)).toEqual([]);
+    expect(validateCellStore(snapshot.store, testCellRegistry)).toEqual([]);
   });
 
   it.each(UNSUPPORTED_DIAGRAM_TESTCASES)(
@@ -58,7 +60,7 @@ describe.sequential('parseMermaid fixtures', () => {
       expect(graph.type).toBe('graphImage');
       const snapshot = graphToFrameSnapshot(graph);
       expect(Object.keys(snapshot.store.cells).length).toBeGreaterThan(1);
-      expect(validateCellStore(snapshot.store)).toEqual([]);
+      expect(validateCellStore(snapshot.store, testCellRegistry)).toEqual([]);
     },
   );
 });
@@ -91,7 +93,7 @@ describe('native Mermaid imports', () => {
         (cell) => cell.kind === 'workflow-task',
       ),
     ).toHaveLength(2);
-    expect(validateCellStore(snapshot.store)).toEqual([]);
+    expect(validateCellStore(snapshot.store, testCellRegistry)).toEqual([]);
     expect(document.querySelectorAll('[id^="verd-mermaid-"]')).toHaveLength(0);
   });
 });

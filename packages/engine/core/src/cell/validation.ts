@@ -1,23 +1,15 @@
-import type { CellRegistry } from './index';
-import {
-  CellKind,
-  sceneAnchorKind,
-  isMindNodeKind,
-  isWorkflowNodeKind,
-  isArchitectureNodeKind,
-} from './kinds';
 import { groupLeafMembers } from './group';
+import { createCellRegistry, type CellRegistry } from './registry';
 import {
+  isDocumentCell,
+  isDocumentReferenceCell,
   isEdgeCell,
   isFrameCell,
   isFrameReferenceCell,
-  isDocumentReferenceCell,
-  isDocumentCell,
   isGroupCell,
   isNodeCell,
-  type CellStore,
   type CellId,
-  type MindRootData,
+  type CellStore,
 } from './types';
 
 export interface CellValidationIssue {
@@ -28,7 +20,7 @@ export interface CellValidationIssue {
 /** Validation is independent of DOM and never changes the candidate store. */
 export const validateCellStore = (
   store: CellStore,
-  registry?: CellRegistry,
+  registry: CellRegistry = createCellRegistry(),
 ): CellValidationIssue[] => {
   const issues: CellValidationIssue[] = [];
   const report = (cellId: string, message: string) =>
@@ -37,6 +29,8 @@ export const validateCellStore = (
   const root = store.cells[store.rootId];
   if (!root || !isFrameCell(root)) report(store.rootId, 'Root must be a frame');
   Object.entries(store.cells).forEach(([id, cell]) => {
+    if (!registry.get(cell.kind))
+      report(id, `Unregistered cell kind: ${cell.kind}`);
     if (id !== cell.id) report(id, 'Cell key does not match id');
     if (isFrameCell(cell)) {
       if (cell.geometry.rotation) report(id, 'Frames cannot rotate');
@@ -57,66 +51,21 @@ export const validateCellStore = (
       const children = cell.children
         .map((childId) => store.cells[childId])
         .filter(Boolean);
-      const anchors = new Set(
-        children
-          .map((child) => child.kind)
-          .filter((kind) =>
-            [
-              CellKind.mindRoot,
-              CellKind.workflowStart,
-              CellKind.architectureLayer,
-              CellKind.umlClassRoot,
-              CellKind.umlSequenceRoot,
-            ].includes(kind as never),
-          ),
+      const scenes = registry.scenes.filter((scene) =>
+        children.some((child) => scene.anchorKinds.includes(child.kind)),
       );
-      if (anchors.size > 1) report(id, 'Mixed frame scenes');
-      const anchor = sceneAnchorKind(children.map((child) => child.kind));
-      children
-        .filter((child) => !isFrameCell(child))
-        .forEach((child) => {
-          const compatible =
-            isDocumentReferenceCell(child) ||
-            (anchor === CellKind.umlClassRoot
-              ? ['uml-class-root', 'uml-class', 'uml-relation'].includes(
-                  child.kind,
-                )
-              : anchor === CellKind.umlSequenceRoot
-                ? [
-                    'uml-sequence-root',
-                    'uml-participant',
-                    'uml-message',
-                    'uml-note',
-                    'uml-fragment',
-                  ].includes(child.kind)
-                : anchor === CellKind.mindRoot
-                  ? isMindNodeKind(child.kind) ||
-                    child.kind === CellKind.mindBranch ||
-                    child.kind === CellKind.mindSummaryEdge
-                  : anchor === CellKind.workflowStart
-                    ? isWorkflowNodeKind(child.kind) ||
-                      child.kind === CellKind.workflowEdge
-                    : anchor === CellKind.architectureLayer
-                      ? isArchitectureNodeKind(child.kind) ||
-                        child.kind === CellKind.architectureEdge
-                      : !isMindNodeKind(child.kind) &&
-                        !isWorkflowNodeKind(child.kind) &&
-                        !isArchitectureNodeKind(child.kind) &&
-                        ![
-                          CellKind.mindBranch,
-                          CellKind.mindSummaryEdge,
-                          CellKind.workflowEdge,
-                          CellKind.architectureEdge,
-                        ].includes(child.kind as never) &&
-                        !child.kind.startsWith('uml-'));
-          if (!compatible)
-            report(child.id, 'Cell does not belong to the frame scene');
-        });
-      if (
-        (anchor === CellKind.mindRoot || anchor === CellKind.umlSequenceRoot) &&
-        cell.groups.length
-      )
-        report(id, 'Groups are not allowed in mind frames');
+      if (scenes.length > 1) report(id, 'Mixed frame scenes');
+      const scene = scenes[0];
+      for (const child of children) {
+        if (isFrameCell(child) || isDocumentReferenceCell(child)) continue;
+        const childScene = registry.scenes.find((candidate) =>
+          candidate.kinds.includes(child.kind),
+        );
+        if (scene ? !scene.kinds.includes(child.kind) : !!childScene)
+          report(child.id, 'Cell does not belong to the frame scene');
+      }
+      if (scene?.allowGroups === false && cell.groups.length)
+        report(id, 'Groups are not allowed in this scene');
     }
     if (isNodeCell(cell)) {
       if (isDocumentCell(cell)) {
@@ -130,16 +79,6 @@ export const validateCellStore = (
         if (cell.ports?.length)
           report(id, 'Document references cannot have ports');
       }
-      if (cell.kind === CellKind.mindRoot) {
-        const offset = (cell.data as MindRootData | undefined)?.embeddedOffset;
-        if (
-          offset !== undefined &&
-          (!Array.isArray(offset) ||
-            offset.length !== 2 ||
-            !offset.every(Number.isFinite))
-        )
-          report(id, 'Invalid embedded mind offset');
-      }
       if (isFrameReferenceCell(cell)) {
         // An absent target is a legitimate placeholder state, not an issue.
         if (
@@ -147,19 +86,6 @@ export const validateCellStore = (
           !cell.data.targetFrameId
         )
           report(id, 'Frame reference requires a target');
-        if (
-          cell.data?.mindOffsets !== undefined &&
-          (typeof cell.data.mindOffsets !== 'object' ||
-            cell.data.mindOffsets === null ||
-            Array.isArray(cell.data.mindOffsets) ||
-            Object.values(cell.data.mindOffsets).some(
-              (offset) =>
-                !Array.isArray(offset) ||
-                offset.length !== 2 ||
-                !offset.every(Number.isFinite),
-            ))
-        )
-          report(id, 'Invalid mind offsets');
         if (cell.geometry.rotation)
           report(id, 'Frame references cannot rotate');
       }
@@ -228,6 +154,13 @@ export const validateCellStore = (
           ))
       )
         report(cell.id, 'Invalid route points');
+      if (
+        'strategy' in cell.route &&
+        cell.route.strategy !== undefined &&
+        (!['auto', 'orthogonal'].includes(cell.route.mode) ||
+          cell.route.strategy !== 'optimized')
+      )
+        report(cell.id, 'Invalid routing strategy');
       const error = registry?.validateEdge(store, cell);
       if (error) report(cell.id, error);
     }
@@ -255,9 +188,8 @@ export const validateCellStore = (
         const allowed =
           isGroupCell(member) ||
           (isNodeCell(member) &&
-            !member.kind.startsWith('mind-') &&
-            member.kind !== CellKind.architectureLayer) ||
-          (isEdgeCell(member) && member.kind === 'arrow');
+            registry.get(member.kind)?.groupable !== false) ||
+          (isEdgeCell(member) && registry.get(member.kind)?.groupable === true);
         if (!allowed) report(cell.id, 'Invalid group member');
         if (parents.get(id) !== parents.get(cell.id))
           report(cell.id, 'Group crosses frame');
@@ -272,10 +204,12 @@ export const validateCellStore = (
       if (
         parent &&
         isFrameCell(parent) &&
-        !parent.children.some((id) =>
-          [CellKind.workflowStart, CellKind.architectureLayer].includes(
-            store.cells[id]?.kind as never,
-          ),
+        !registry.scenes.some(
+          (scene) =>
+            scene.consecutiveGroups === false &&
+            parent.children.some((id) =>
+              scene.anchorKinds.includes(store.cells[id]?.kind),
+            ),
         )
       ) {
         const leafPositions = groupLeafMembers(store, cell.id)

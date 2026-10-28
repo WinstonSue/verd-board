@@ -1,12 +1,12 @@
-import { createShutdownCoordinator } from './shutdown';
-import { createFullscreenTransition } from './fullscreen-transition';
-import { app, BrowserWindow, ipcMain, session, dialog, shell } from 'electron';
+import { app, BrowserWindow, dialog, ipcMain, session, shell } from 'electron';
 import * as path from 'path';
 import {
   contentSecurityPolicy,
   shouldAttachContentSecurityPolicy,
 } from './content-security-policy';
+import { createFullscreenTransition } from './fullscreen-transition';
 import { resolveStoragePath, STORAGE_FILE } from './migrate-storage';
+import { createShutdownCoordinator } from './shutdown';
 import {
   archiveAndReplaceStorage,
   clearStorage,
@@ -84,6 +84,9 @@ function registerWorkspaceHostIpc() {
   );
   ipcMain.handle('workspace-host:activate', (_, handle) =>
     workspaceManager.activate(handle),
+  );
+  ipcMain.handle('workspace-host:history', () =>
+    workspaceManager.listHistory(),
   );
   ipcMain.handle('workspace-host:snapshot', (_, handle) =>
     workspaceHost.readSnapshot(handle),
@@ -165,14 +168,32 @@ function createWindow() {
       contextIsolation: true,
       nodeIntegration: false,
       sandbox: true,
+      // Keep HTML fullscreen independent of the macOS Spaces animation. Electron
+      // 28 can leave the renderer stuck while that native transition is pending.
+      disableHtmlFullscreenWindowResize: process.platform === 'darwin',
     },
   });
 
   const transition = createFullscreenTransition();
   let nativeFullscreen = mainWindow.isFullScreen();
+  let ownsSimpleFullscreen = false;
   fullscreenReady = transition.ready;
   mainWindow.on('enter-html-full-screen', () => {
-    if (process.platform === 'darwin' && !nativeFullscreen) transition.begin();
+    const window = mainWindow;
+    if (
+      process.platform === 'darwin' &&
+      window &&
+      !nativeFullscreen &&
+      !window.isSimpleFullScreen()
+    ) {
+      transition.begin();
+      ownsSimpleFullscreen = true;
+      try {
+        window.setSimpleFullScreen(true);
+      } finally {
+        transition.settle();
+      }
+    }
   });
   mainWindow.on('enter-full-screen', () => {
     nativeFullscreen = true;
@@ -182,11 +203,17 @@ function createWindow() {
     nativeFullscreen = false;
     transition.settle();
   });
+  mainWindow.on('leave-html-full-screen', () => {
+    if (ownsSimpleFullscreen) {
+      ownsSimpleFullscreen = false;
+      mainWindow?.setSimpleFullScreen(false);
+    }
+    transition.settle();
+  });
   mainWindow.on('closed', transition.settle);
 
   if (process.env['VITE_DEV_SERVER_URL']) {
     mainWindow.loadURL(process.env['VITE_DEV_SERVER_URL']);
-    mainWindow.webContents.openDevTools();
   } else {
     mainWindow.loadFile(path.join(__dirname, '../dist/index.html'));
   }

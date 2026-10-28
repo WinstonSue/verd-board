@@ -1,20 +1,22 @@
-import React, { act, createRef, useLayoutEffect, useState } from 'react';
-import { createRoot } from 'react-dom/client';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { createInlineText } from '@sue/board-common';
 import * as Core from '@sue/board-core';
 import {
   createCellStore,
   createFrameCell,
   type FrameSnapshot,
 } from '@sue/board-core';
-import { createInlineText } from '@sue/board-common';
+import React, { act, createRef, useLayoutEffect, useState } from 'react';
+import { createRoot } from 'react-dom/client';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { createTestFramePluginSet } from '../../../../tests/fixtures/plugins/ui';
 import {
   FrameCanvas,
   type FrameCanvasController,
-  type FrameRenderExtension,
-  type FrameCanvasViewState,
   type FrameCanvasInteractionSettings,
+  type FrameCanvasViewState,
+  type FrameRenderExtension,
 } from './frame-canvas';
+const testFramePluginSet = createTestFramePluginSet();
 
 (
   globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }
@@ -90,6 +92,7 @@ const mount = async (
     renderedValue = nextValue;
     root.render(
       <FrameCanvas
+        pluginSet={testFramePluginSet}
         ref={controller}
         value={renderedValue}
         frameId={frameId}
@@ -431,6 +434,526 @@ describe('memory-only canvas camera', () => {
     expect(shape).toHaveBeenCalledTimes(shapes);
     expect(test.onChange).not.toHaveBeenCalled();
   });
+  it('highlights a hovered connector and its endpoints without rebuilding routes, and omits the highlight from export', async () => {
+    const value = sample();
+    const frame = value.store.cells.root as Core.FrameCell;
+    value.store.cells.b = {
+      ...value.store.cells.a,
+      id: 'b',
+      geometry: { x: 300, y: 200, width: 100, height: 50 },
+    } as Core.NodeCell;
+    value.store.cells.edge = {
+      id: 'edge',
+      cellType: 'edge',
+      kind: 'arrow',
+      source: { cellId: 'a' },
+      target: { cellId: 'b' },
+      route: { mode: 'auto' },
+    };
+    frame.children.push('b', 'edge');
+    const routing = vi.spyOn(Core, 'routeOrthogonalAvoiding');
+    const test = await mount(value);
+    const builds = test.layout.mock.calls.length,
+      searches = routing.mock.calls.length;
+    const edge = test.svg.querySelector('[data-cell-id="edge"]')!;
+    const visiblePath = edge
+      .querySelector('[data-edge-display]')!
+      .getAttribute('d');
+    const hitPath = edge.querySelector('[data-edge-hit]')!.getAttribute('d');
+    await act(async () => {
+      edge.dispatchEvent(new MouseEvent('pointerover', { bubbles: true }));
+    });
+    expect(
+      test.svg.querySelectorAll('[data-relation-highlight="edge"]'),
+    ).toHaveLength(1);
+    expect(
+      test.svg.querySelectorAll('[data-relation-highlight="node"]'),
+    ).toHaveLength(2);
+    const outline = test.svg.querySelector('[data-relation-highlight="node"]')!;
+    expect(outline.getAttribute('stroke-width')).toBe('2');
+    expect(outline.getAttribute('opacity')).toBeNull();
+    expect(outline.getAttribute('vector-effect')).toBeNull();
+    expect(
+      outline.querySelector('path,rect')!.getAttribute('d') ??
+        outline.querySelector('rect')!.getAttribute('x'),
+    ).toBeTruthy();
+    const relatedLine = test.svg.querySelector(
+      '[data-relation-highlight="edge"]',
+    )!;
+    expect(relatedLine.getAttribute('opacity')).toBeNull();
+    expect(relatedLine.getAttribute('stroke-width')).toBe('2');
+    const select = async (ids: string[]) =>
+      act(async () => {
+        test.controller.current!.runtime.select({ focus: ['root'], ids });
+      });
+    await select(['a']);
+    const selectedOutline = test.svg.querySelector(
+      '[data-node-highlight="a"][data-interaction-stroke="selected"]',
+    )!;
+    expect(selectedOutline.getAttribute('stroke-width')).toBe('3');
+    expect(selectedOutline.getAttribute('vector-effect')).toBeNull();
+    expect(
+      selectedOutline.compareDocumentPosition(
+        test.svg.querySelector('[data-selection-handles="a"]')!,
+      ) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    expect(selectedOutline.getAttribute('stroke')).toBe(
+      outline.getAttribute('stroke'),
+    );
+    expect(
+      test.svg
+        .querySelector('[data-selection-handles="a"]')!
+        .getAttribute('stroke-width'),
+    ).toBe('1');
+    expect(
+      test.svg.querySelectorAll('[data-relation-highlight="node"]'),
+    ).toHaveLength(1);
+    expect(
+      test.svg
+        .querySelector('[data-relation-highlight="node"]')!
+        .getAttribute('data-node-highlight'),
+    ).toBe('b');
+    await select(['a', 'b']);
+    expect(
+      test.svg.querySelectorAll('[data-relation-highlight="node"]'),
+    ).toHaveLength(0);
+    await select(['edge']);
+    expect(
+      test.svg.querySelectorAll('[data-relation-highlight="edge"]'),
+    ).toHaveLength(0);
+    expect(
+      test.svg.querySelectorAll('[data-relation-highlight="node"]'),
+    ).toHaveLength(2);
+    await select([]);
+    const { cloneFrameImageSvg } = await import('./frame-export');
+    expect(
+      cloneFrameImageSvg(test.svg).querySelectorAll(
+        '[data-relation-highlight]',
+      ),
+    ).toHaveLength(0);
+    expect(edge.querySelector('[data-edge-display]')!.getAttribute('d')).toBe(
+      visiblePath,
+    );
+    expect(edge.querySelector('[data-edge-hit]')!.getAttribute('d')).toBe(
+      hitPath,
+    );
+    const node = test.svg.querySelector('[data-cell-id="a"]')!;
+    await act(async () => {
+      edge.dispatchEvent(
+        new MouseEvent('pointerout', { bubbles: true, relatedTarget: node }),
+      );
+    });
+    expect(
+      test.svg.querySelectorAll('[data-relation-highlight="edge"]'),
+    ).toHaveLength(1);
+    expect(
+      test.svg.querySelectorAll('[data-relation-highlight="node"]'),
+    ).toHaveLength(1);
+    expect(test.layout).toHaveBeenCalledTimes(builds);
+    expect(routing).toHaveBeenCalledTimes(searches);
+    expect(test.onChange).not.toHaveBeenCalled();
+  });
+  it.each(
+    [0, 1, 1.5, 2, 8].flatMap((width) =>
+      ['#000000', '#6366f1'].flatMap((color) =>
+        [1, 0.15].map((opacity) => ({
+          width,
+          color,
+          opacity,
+          mode:
+            width === 2
+              ? ('orthogonal' as const)
+              : width === 8
+                ? ('curve' as const)
+                : ('straight' as const),
+        })),
+      ),
+    ),
+  )(
+    'scales replacement strokes while keeping shadows screen-sized ($mode, $width px, $color, opacity=$opacity)',
+    async ({ width, color, mode, opacity }) => {
+      const frames = controlledFrames();
+      const value = sample(),
+        frame = value.store.cells.root as Core.FrameCell;
+      const appearance = {
+        strokeColor: color,
+        strokeWidth: width,
+        opacity,
+        shadow: 'lg',
+        strokeStyle: 'dashed' as const,
+      };
+      (value.store.cells.a as Core.NodeCell).appearance = appearance;
+      value.store.cells.b = {
+        ...value.store.cells.a,
+        id: 'b',
+        geometry: { x: 300, y: 10, width: 100, height: 50 },
+      } as Core.NodeCell;
+      value.store.cells.edge = {
+        id: 'edge',
+        cellType: 'edge',
+        kind: 'arrow',
+        source: { cellId: 'a' },
+        target: { cellId: 'b' },
+        route: { mode },
+        appearance,
+        data: { targetMarker: 'solid-triangle' },
+        labels: [{ text: 'Label' }],
+      };
+      frame.children.push('b', 'edge');
+      const original = JSON.stringify(value);
+      const routing = vi.spyOn(Core, 'routeOrthogonalAvoiding');
+      const test = await mount(value);
+      const layouts = test.layout.mock.calls.length,
+        routes = routing.mock.calls.length;
+      const select = async (ids: string[]) =>
+        act(async () => {
+          test.controller.current!.runtime.select({ focus: ['root'], ids });
+        });
+      const edge = test.svg.querySelector('[data-cell-id="edge"]')!;
+      const display = edge.querySelector('[data-edge-display]')!;
+      const path = display.getAttribute('d');
+      const hit = edge.querySelector('[data-edge-hit]')!;
+      const hitPath = hit.getAttribute('d');
+      const normal = display.parentElement!.parentElement!;
+      const normalFilter = normal.getAttribute('filter');
+      expect(normal.getAttribute('opacity')).toBe(String(opacity));
+      expect(normal.querySelector('[data-edge-label]')).not.toBeNull();
+      await act(async () =>
+        edge.dispatchEvent(new MouseEvent('pointerover', { bubbles: true })),
+      );
+      const related = edge.querySelector(
+        '[data-interaction-stroke="related"]',
+      )!;
+      expect(related.getAttribute('stroke-width')).toBe(String(width));
+      expect(related.closest('[opacity]')).toBeNull();
+      expect(related.parentElement!.closest('[filter]')).toBeNull();
+      expect(related.querySelector('foreignObject')).toBeNull();
+      await select(['a', 'edge']);
+      expect(edge.querySelector('[data-relation-highlight]')).toBeNull();
+      const selectedEdge = edge.querySelector(
+        '[data-interaction-stroke="selected"]',
+      )!;
+      const selectedNode = test.svg.querySelector(
+        '[data-node-highlight="a"][data-interaction-stroke="selected"]',
+      )!;
+      for (const zoom of [0.5, 1, 2]) {
+        await act(async () =>
+          test.controller.current!.executeAction('canvas.view.set-zoom', {
+            zoom,
+          }),
+        );
+        await frames.paint();
+        for (const outline of [selectedEdge, selectedNode]) {
+          expect(outline.getAttribute('stroke')).toBe('#6366f1');
+          expect(outline.getAttribute('stroke-width')).toBe(String(width + 1));
+          expect(outline.getAttribute('stroke-dasharray')).toBe(
+            outline === selectedEdge ? '8 4' : 'none',
+          );
+          expect(outline.closest('[opacity]')).toBeNull();
+          const filter = test.svg.querySelector(
+            `[id="${outline.getAttribute('filter')!.slice(5, -1)}"]`,
+          )!;
+          const blurs = filter.querySelectorAll('feGaussianBlur');
+          expect(Number(blurs[0].getAttribute('stdDeviation')) * zoom).toBe(
+            2.25,
+          );
+          expect(Number(blurs[1].getAttribute('stdDeviation')) * zoom).toBe(
+            1.25,
+          );
+          const spread = filter.querySelector('feMorphology')!;
+          expect(spread.getAttribute('operator')).toBe('dilate');
+          expect(Number(spread.getAttribute('radius')) * zoom).toBe(0.75);
+          expect(filter.getAttribute('filterUnits')).toBe('userSpaceOnUse');
+          expect(Number(filter.getAttribute('height'))).toBeGreaterThan(0);
+        }
+        for (const part of selectedEdge.querySelectorAll('path'))
+          expect(part.getAttribute('vector-effect')).toBeNull();
+        expect(selectedNode.getAttribute('vector-effect')).toBeNull();
+        expect(display.getAttribute('d')).toBe(path);
+        expect(hit.getAttribute('d')).toBe(hitPath);
+      }
+      expect(display.getAttribute('stroke-width')).toBe(String(width));
+      expect(display.getAttribute('stroke')).toBe(color);
+      expect(normal.getAttribute('filter')).toBe(normalFilter);
+      expect(hit.closest('[filter]')).toBeNull();
+      expect(selectedNode.parentElement!.closest('[filter]')).toBeNull();
+      const { cloneFrameImageSvg } = await import('./frame-export');
+      const exported = cloneFrameImageSvg(test.svg);
+      expect(exported.querySelector('[data-interaction-stroke]')).toBeNull();
+      expect(
+        exported.querySelector('filter[id^="frame-interaction-"]'),
+      ).toBeNull();
+      expect(
+        exported
+          .querySelector('[data-edge-display]')!
+          .getAttribute('stroke-width'),
+      ).toBe(String(width));
+      expect(
+        exported
+          .querySelector('[data-edge-display]')!
+          .parentElement!.parentElement!.getAttribute('filter'),
+      ).toBe(normalFilter);
+      await select([]);
+      await act(async () =>
+        edge.dispatchEvent(new MouseEvent('pointerout', { bubbles: true })),
+      );
+      expect(test.svg.querySelector('[data-interaction-stroke]')).toBeNull();
+      expect(JSON.stringify(value)).toBe(original);
+      expect(test.layout).toHaveBeenCalledTimes(layouts);
+      expect(routing).toHaveBeenCalledTimes(routes);
+      expect(test.onChange).not.toHaveBeenCalled();
+    },
+  );
+  it.each([
+    'geometry',
+    'frame',
+    'frame-reference',
+    'document-frame',
+    'document-reference',
+  ] as const)(
+    'highlights an isolated %s itself, restores its authored paint and exports without interaction state',
+    async (kind) => {
+      const value = sample();
+      const geometry = { x: 10, y: 10, width: 300, height: 180 };
+      const appearance = {
+        strokeColor: '#000000',
+        strokeWidth: 1.5,
+        fill: '#dbeafe',
+        opacity: 0.2,
+      };
+      const create = () => {
+        if (kind === 'frame') return Core.createFrameCell('a', geometry);
+        if (kind === 'frame-reference')
+          return Core.createFrameReferenceCell('a', 'missing', geometry);
+        if (kind === 'document-frame')
+          return Core.createDocumentFrameCell('a', 'document', geometry);
+        if (kind === 'document-reference')
+          return Core.createDocumentReferenceCell('a', 'document', geometry);
+        return { ...value.store.cells.a, geometry } as Core.NodeCell;
+      };
+      value.store.cells.a = { ...create(), appearance };
+      const original = JSON.stringify(value);
+      const test = await mount(value);
+      const node = test.svg.querySelector('[data-cell-id="a"]')!;
+      const hover = async (type: string) =>
+        act(async () =>
+          node.dispatchEvent(new MouseEvent(type, { bubbles: true })),
+        );
+      await hover('pointerover');
+      const secondary = test.svg.querySelector('[data-node-highlight="a"]')!;
+      expect(secondary.getAttribute('data-interaction-stroke')).toBe('related');
+      expect(secondary.getAttribute('stroke-width')).toBe('1.5');
+      const authored = node.querySelector<SVGElement>(
+        '[data-frame-original-stroke-opacity]',
+      )!;
+      expect(authored).not.toBeNull();
+      expect(authored.style.strokeOpacity).toBe('0');
+      expect(
+        secondary.querySelector('[stroke="#6366f1"]')!.getAttribute('fill'),
+      ).toBe('none');
+      const { cloneFrameImageSvg } = await import('./frame-export');
+      const cloned = cloneFrameImageSvg(test.svg);
+      expect(cloned.querySelector('[data-node-highlight]')).toBeNull();
+      expect(
+        cloned.querySelector('[data-frame-original-stroke-opacity]'),
+      ).toBeNull();
+      const restored = cloned.querySelector<SVGElement>(
+        '[data-cell-id="a"] [data-frame-node-outline]',
+      );
+      expect(restored).not.toBeNull();
+      await act(async () =>
+        test.controller.current!.runtime.select({
+          focus: ['root'],
+          ids: ['a'],
+        }),
+      );
+      const primary = test.svg.querySelector('[data-node-highlight="a"]')!;
+      expect(primary.getAttribute('data-interaction-stroke')).toBe('selected');
+      expect(primary.getAttribute('stroke-width')).toBe('2.5');
+      expect(
+        test.svg.querySelectorAll('[data-node-highlight="a"]'),
+      ).toHaveLength(1);
+      await hover('pointerout');
+      expect(primary.getAttribute('data-interaction-stroke')).toBe('selected');
+      await act(async () =>
+        test.controller.current!.runtime.select({ focus: ['root'], ids: [] }),
+      );
+      expect(test.svg.querySelector('[data-node-highlight="a"]')).toBeNull();
+      expect(
+        node.querySelector('[data-frame-original-stroke-opacity]'),
+      ).toBeNull();
+      expect(authored.style.strokeOpacity).toBe('');
+      expect(JSON.stringify(value)).toBe(original);
+      expect(test.onChange).not.toHaveBeenCalled();
+    },
+  );
+  it.each([
+    { marker: 'solid-triangle', fill: '#6366f1', authored: '#000000' },
+    { marker: 'hollow-triangle', fill: '#fff', authored: '#fff' },
+    { marker: 'arrow', fill: 'none', authored: 'none' },
+  ])(
+    'replaces $marker arrow paint without changing its fill meaning or dash semantics',
+    async ({ marker, fill, authored }) => {
+      const value = sample();
+      (value.store.cells.root as Core.FrameCell).children.push('edge');
+      value.store.cells.edge = {
+        id: 'edge',
+        kind: 'arrow',
+        cellType: 'edge',
+        source: { point: [0, 100] },
+        target: { point: [300, 100] },
+        route: { mode: 'straight' },
+        appearance: {
+          strokeColor: '#000000',
+          strokeWidth: 8,
+          strokeStyle: 'dashed',
+        },
+        data: { targetMarker: marker },
+      };
+      const test = await mount(value);
+      await act(async () =>
+        test.controller.current!.runtime.select({
+          focus: ['root'],
+          ids: ['edge'],
+        }),
+      );
+      const edge = test.svg.querySelector('[data-cell-id="edge"]')!;
+      const overlay = edge.querySelector(
+        '[data-interaction-stroke="selected"]',
+      )!;
+      expect(overlay.getAttribute('stroke-width')).toBe('9');
+      expect(overlay.getAttribute('stroke-dasharray')).toBe('8 4');
+      const arrow = overlay.querySelectorAll('path')[1];
+      expect(arrow.getAttribute('fill')).toBe(fill);
+      expect(arrow.getAttribute('stroke-dasharray')).toBe('none');
+      expect(
+        edge
+          .querySelector('[data-frame-original-opacity]')!
+          .getAttribute('opacity'),
+      ).toBe('0');
+      const { cloneFrameImageSvg } = await import('./frame-export');
+      const exported = cloneFrameImageSvg(test.svg);
+      expect(
+        exported.querySelector('[data-arrow-marker]')!.getAttribute('fill'),
+      ).toBe(authored);
+      expect(
+        exported
+          .querySelector('[data-edge-display]')!
+          .getAttribute('stroke-width'),
+      ).toBe('8');
+      expect(exported.querySelector('[data-interaction-stroke]')).toBeNull();
+    },
+  );
+  it('replaces explicit custom contours while preserving fill, internal dividers and text through export', async () => {
+    const value = sample();
+    (value.store.cells.a as Core.NodeCell).geometry.rotation = Math.PI / 4;
+    const test = await mount(value, {
+      extensions: [
+        {
+          kind: 'geometry',
+          renderShape: ({ geometry: bounds }) => (
+            <g>
+              <rect
+                data-custom-outline
+                x={bounds!.x}
+                y={bounds!.y}
+                width={bounds!.width}
+                height={bounds!.height}
+                stroke="#000000"
+                strokeWidth={8}
+                fill="#abcdee"
+              />
+              <path
+                data-frame-interaction-ignore
+                data-divider
+                d="M10 30 H110"
+                stroke="#333333"
+              />
+              <text fill="#111111" stroke="none">
+                Original text
+              </text>
+            </g>
+          ),
+        },
+      ],
+    });
+    const node = test.svg.querySelector('[data-cell-id="a"]')!;
+    const paths = node.innerHTML;
+    await act(async () =>
+      node.dispatchEvent(new MouseEvent('pointerover', { bubbles: true })),
+    );
+    const overlay = test.svg.querySelector('[data-node-highlight="a"]')!;
+    expect(overlay.getAttribute('stroke-width')).toBe('8');
+    expect(overlay.querySelector('rect')!.getAttribute('stroke')).toBe(
+      '#6366f1',
+    );
+    expect(overlay.querySelector('rect')!.getAttribute('stroke-width')).toBe(
+      '8',
+    );
+    expect(overlay.querySelector('text')).toBeNull();
+    expect(overlay.querySelector('[data-divider]')).toBeNull();
+    const outline = node.querySelector<SVGElement>('[data-custom-outline]')!;
+    expect(outline.getAttribute('fill')).toBe('#abcdee');
+    expect(outline.getAttribute('stroke')).toBe('#000000');
+    expect(outline.style.strokeOpacity).toBe('0');
+    const divider = node.querySelector<SVGElement>('[data-divider]')!;
+    expect(divider.style.strokeOpacity).toBe('');
+    expect(divider.getAttribute('stroke')).toBe('#333333');
+    const { cloneFrameImageSvg } = await import('./frame-export');
+    const clone = cloneFrameImageSvg(test.svg);
+    expect(
+      clone.querySelector<SVGElement>('[data-custom-outline]')!.style
+        .strokeOpacity,
+    ).toBe('1');
+    expect(
+      clone
+        .querySelector('[data-custom-outline]')!
+        .getAttribute('stroke-width'),
+    ).toBe('8');
+    expect(clone.querySelector('[data-node-highlight]')).toBeNull();
+    await act(async () =>
+      node.dispatchEvent(new MouseEvent('pointerout', { bubbles: true })),
+    );
+    expect(node.innerHTML).toBe(paths);
+  });
+  it('suppresses relationship outlines on an actively edited node even when canvas selection is cleared', async () => {
+    const value = sample(),
+      frame = value.store.cells.root as Core.FrameCell;
+    value.store.cells.b = {
+      ...value.store.cells.a,
+      id: 'b',
+      geometry: { x: 300, y: 200, width: 100, height: 50 },
+    } as Core.NodeCell;
+    value.store.cells.edge = {
+      id: 'edge',
+      cellType: 'edge',
+      kind: 'arrow',
+      source: { cellId: 'a' },
+      target: { cellId: 'b' },
+      route: { mode: 'auto' },
+    };
+    frame.children.push('b', 'edge');
+    const test = await mount(value);
+    await act(async () =>
+      test.controller.current!.executeAction('canvas.selection.edit', {
+        cellId: 'a',
+      }),
+    );
+    await act(async () =>
+      test.controller.current!.runtime.select({ focus: ['root'], ids: [] }),
+    );
+    expect(test.svg.querySelector('[data-frame-text-editor]')).not.toBeNull();
+    await act(async () =>
+      test.svg
+        .querySelector('[data-cell-id="edge"]')!
+        .dispatchEvent(new MouseEvent('pointerover', { bubbles: true })),
+    );
+    const outlines = test.svg.querySelectorAll(
+      '[data-relation-highlight="node"]',
+    );
+    expect(outlines).toHaveLength(1);
+    expect(outlines[0].getAttribute('data-node-highlight')).toBe('b');
+  });
   it.each([false, true])(
     'reuses actual shape geometry after text updates (derived=%s) while extensions receive the latest store',
     async (derived) => {
@@ -493,7 +1016,11 @@ describe('memory-only canvas camera', () => {
     expect(plate().getAttribute('stroke')).toBe('#cbd5e1');
     expect(plate().getAttribute('stroke-width')).toBe('1');
     expect(plate().hasAttribute('vector-effect')).toBe(false);
-    await act(async () => test.controller.current!.setZoom(2));
+    await act(async () =>
+      test.controller.current!.executeAction('canvas.view.set-zoom', {
+        zoom: 2,
+      }),
+    );
     await test.paint();
     expect(test.transform()).toContain('scale(2)');
     expect(plate().getAttribute('stroke-width')).toBe('1');
@@ -520,7 +1047,12 @@ describe('memory-only canvas camera', () => {
         ids: ['nested'],
       }),
     );
-    expect(plate().getAttribute('stroke')).toBe('#6366f1');
+    expect(plate().getAttribute('stroke')).toBe('none');
+    const interaction = test.svg.querySelector(
+      '[data-node-highlight="nested"][data-interaction-stroke="selected"]',
+    )!;
+    expect(interaction.getAttribute('stroke')).toBe('#6366f1');
+    expect(interaction.getAttribute('stroke-width')).toBe('1');
   });
   it.each([
     { host: false, readonly: false },
@@ -541,9 +1073,11 @@ describe('memory-only canvas camera', () => {
         revision = runtime.revision,
         history = runtime.history;
       await act(async () => {
-        test.controller.current!.setZoom(2);
+        test.controller.current!.executeAction('canvas.view.set-zoom', {
+          zoom: 2,
+        });
         expect(frames.callbacks.size).toBe(1);
-        test.controller.current!.centerSelection();
+        test.controller.current!.executeAction('canvas.view.center');
       });
       expect(test.transform()).toBe('scale(2) translate(83 127)');
       expect(frames.callbacks.size).toBe(0);
@@ -599,7 +1133,9 @@ describe('memory-only canvas camera', () => {
     expect(initialBounds.y).toBeCloseTo(-15);
     expect(initialBounds.width).toBeCloseTo(665);
     expect(initialBounds.height).toBeCloseTo(295);
-    await act(async () => test.controller.current!.centerSelection());
+    await act(async () =>
+      test.controller.current!.executeAction('canvas.view.center'),
+    );
     const camera = viewport(test.transform());
     expect(camera.zoom).toBe(1);
     expect(camera.origin[0]).toBeCloseTo(-32.5);
@@ -641,7 +1177,9 @@ describe('memory-only canvas camera', () => {
     for (const ids of [[], ['edge'], ['hidden', 'collapsed']]) {
       await act(async () => runtime.select({ focus: ['root'], ids }));
       const camera = test.transform();
-      await act(async () => test.controller.current!.centerSelection());
+      await act(async () =>
+        test.controller.current!.executeAction('canvas.view.center'),
+      );
       expect(test.transform()).toBe(camera);
       expect(test.controller.current!.selectionScreenBounds()).toBeNull();
     }
@@ -651,7 +1189,9 @@ describe('memory-only canvas camera', () => {
         ids: ['a', 'hidden', 'collapsed', 'edge'],
       }),
     );
-    await act(async () => test.controller.current!.centerSelection());
+    await act(async () =>
+      test.controller.current!.executeAction('canvas.view.center'),
+    );
     expect(test.transform()).toBe('scale(1) translate(340 265)');
     await act(async () =>
       test.controller.current!.dispatch({
@@ -662,7 +1202,9 @@ describe('memory-only canvas camera', () => {
     const camera = test.transform(),
       revision = runtime.revision,
       changes = test.onChange.mock.calls.length;
-    await act(async () => test.controller.current!.centerSelection());
+    await act(async () =>
+      test.controller.current!.executeAction('canvas.view.center'),
+    );
     expect(test.transform()).toBe(camera);
     expect(runtime.revision).toBe(revision);
     expect(test.onChange).toHaveBeenCalledTimes(changes);
@@ -729,14 +1271,20 @@ describe('memory-only canvas camera', () => {
         ids: ['target'],
       }),
     );
-    await act(async () => test.controller.current!.centerSelection());
+    await act(async () =>
+      test.controller.current!.executeAction('canvas.view.center'),
+    );
     const camera = viewport(test.transform());
     expect(camera.zoom).toBe(1);
     // Inner content scales to 56 / 250; outer content remains at 1:1.
     // The selected center becomes (96.4, 119.2), then (676.4, 595.2).
     expect(camera.origin[0]).toBeCloseTo(276.4);
     expect(camera.origin[1]).toBeCloseTo(295.2);
-    await act(async () => test.controller.current!.setZoom(2));
+    await act(async () =>
+      test.controller.current!.executeAction('canvas.view.set-zoom', {
+        zoom: 2,
+      }),
+    );
     await frames.paint();
     const bounds = onViewStateChange.mock.lastCall![0].selectionScreenBounds;
     expect(bounds.x).toBeCloseTo(755.2);
@@ -762,8 +1310,10 @@ describe('memory-only canvas camera', () => {
       test.controller.current!.runtime.select({ focus: ['root'], ids: ['a'] }),
     );
     await act(async () => {
-      test.controller.current!.setZoom(2);
-      test.controller.current!.centerSelection();
+      test.controller.current!.executeAction('canvas.view.set-zoom', {
+        zoom: 2,
+      });
+      test.controller.current!.executeAction('canvas.view.center');
     });
     expect(test.transform()).toBe('scale(2) translate(-265 -110)');
   });
@@ -773,20 +1323,26 @@ describe('memory-only canvas camera', () => {
       test.controller.current!.runtime.select({ focus: ['root'], ids: ['a'] }),
     );
     await act(async () => {
-      test.controller.current!.setZoom(2);
+      test.controller.current!.executeAction('canvas.view.set-zoom', {
+        zoom: 2,
+      });
       test.fire('pointerdown', 100, 100);
       test.fire('pointermove', 200, 100);
     });
     await test.paint();
     const camera = test.transform();
-    await act(async () => test.controller.current!.centerSelection());
+    await act(async () =>
+      test.controller.current!.executeAction('canvas.view.center'),
+    );
     expect(test.transform()).toBe(camera);
     await act(async () => {
       test.fire('pointerup', 200, 100);
-      test.controller.current!.centerSelection();
+      test.controller.current!.executeAction('canvas.view.center');
     });
     // The public handle receives the finished gesture's view on the next commit.
-    await act(async () => test.controller.current!.centerSelection());
+    await act(async () =>
+      test.controller.current!.executeAction('canvas.view.center'),
+    );
     expect(test.transform()).toBe('scale(2) translate(140 115)');
     expect(test.onChange).not.toHaveBeenCalled();
   });
@@ -804,7 +1360,9 @@ describe('memory-only canvas camera', () => {
     await act(async () => test.fire('pointermove', 300, 100, 0, 2));
     await test.paint();
     const camera = test.transform();
-    await act(async () => test.controller.current!.centerSelection());
+    await act(async () =>
+      test.controller.current!.executeAction('canvas.view.center'),
+    );
     expect(test.transform()).toBe(camera);
     await act(async () => {
       test.fire('pointerup', 300, 100, 0, 2);
@@ -812,7 +1370,9 @@ describe('memory-only canvas camera', () => {
     });
     expect(onViewStateChange.mock.lastCall![0].dragging).toBe(false);
     expect(test.controller.current!.runtime.selection.ids).toEqual(['a']);
-    await act(async () => test.controller.current!.centerSelection());
+    await act(async () =>
+      test.controller.current!.executeAction('canvas.view.center'),
+    );
     expect(test.transform()).toBe('scale(2) translate(140 115)');
     expect(test.onChange).not.toHaveBeenCalled();
   });
@@ -850,11 +1410,15 @@ describe('memory-only canvas camera', () => {
     });
     expect(onViewStateChange.mock.lastCall![0].dragging).toBe(true);
     const camera = test.transform();
-    await act(async () => test.controller.current!.centerSelection());
+    await act(async () =>
+      test.controller.current!.executeAction('canvas.view.center'),
+    );
     expect(test.transform()).toBe(camera);
     await act(async () => test.fire('pointercancel', 150, 100));
     expect(onViewStateChange.mock.lastCall![0].dragging).toBe(false);
-    await act(async () => test.controller.current!.centerSelection());
+    await act(async () =>
+      test.controller.current!.executeAction('canvas.view.center'),
+    );
     expect(test.transform()).toBe('scale(1) translate(340 265)');
     expect(test.onChange).not.toHaveBeenCalled();
   });
@@ -935,7 +1499,11 @@ describe('memory-only canvas camera', () => {
     ];
     const query = vi.spyOn(test.svg, 'querySelectorAll');
     for (const zoom of [2, 3, 0.75]) {
-      await act(async () => test.controller.current!.setZoom(zoom));
+      await act(async () =>
+        test.controller.current!.executeAction('canvas.view.set-zoom', {
+          zoom: zoom,
+        }),
+      );
       await frames.paint();
       expect(onViewStateChange.mock.lastCall![0]).toMatchObject({
         zoom,
@@ -991,7 +1559,11 @@ describe('memory-only canvas camera', () => {
     await act(async () =>
       test.controller.current!.runtime.select({ focus: ['root'], ids: ['a'] }),
     );
-    await act(async () => test.controller.current!.setZoom(2));
+    await act(async () =>
+      test.controller.current!.executeAction('canvas.view.set-zoom', {
+        zoom: 2,
+      }),
+    );
     await frames.paint();
     expect(onViewStateChange.mock.lastCall![0].selectionScreenBounds).toEqual({
       x: 20,
@@ -1085,7 +1657,11 @@ describe('memory-only canvas camera', () => {
         },
       );
     }
-    await act(async () => test.controller.current!.setZoom(2));
+    await act(async () =>
+      test.controller.current!.executeAction('canvas.view.set-zoom', {
+        zoom: 2,
+      }),
+    );
     const reads = rect.mock.calls.length;
     await frames.paint();
     expect(rect.mock.calls.length).toBe(reads);
@@ -1140,7 +1716,11 @@ describe('memory-only canvas camera', () => {
     });
     expect(elementMatrix).toHaveBeenCalledTimes(1);
     expect(worldMatrix).toHaveBeenCalledTimes(1);
-    await act(async () => test.controller.current!.setZoom(2));
+    await act(async () =>
+      test.controller.current!.executeAction('canvas.view.set-zoom', {
+        zoom: 2,
+      }),
+    );
     // Public queries retain immediate-input semantics while the producer stays painted.
     expect(test.controller.current!.selectionScreenBounds()).toEqual({
       x: 1520,
@@ -1184,9 +1764,17 @@ describe('memory-only canvas camera', () => {
     await act(async () =>
       test.controller.current!.runtime.select({ focus: ['root'], ids: ['a'] }),
     );
-    await act(async () => test.controller.current!.setZoom(2));
+    await act(async () =>
+      test.controller.current!.executeAction('canvas.view.set-zoom', {
+        zoom: 2,
+      }),
+    );
     await frames.paint();
-    await act(async () => test.controller.current!.setZoom(3));
+    await act(async () =>
+      test.controller.current!.executeAction('canvas.view.set-zoom', {
+        zoom: 3,
+      }),
+    );
     expect(frames.callbacks.size).toBe(1);
     onViewStateChange.mockClear();
     await act(async () => test.render('nested'));
@@ -1204,7 +1792,11 @@ describe('memory-only canvas camera', () => {
         ids: ['b'],
       }),
     );
-    await act(async () => test.controller.current!.setZoom(4));
+    await act(async () =>
+      test.controller.current!.executeAction('canvas.view.set-zoom', {
+        zoom: 4,
+      }),
+    );
     await frames.paint();
     expect(onViewStateChange.mock.lastCall![0].selectionScreenBounds).toEqual({
       x: 800,
@@ -1232,14 +1824,22 @@ describe('memory-only canvas camera', () => {
     expect(
       onViewStateChange.mock.lastCall![0].selectionScreenBounds,
     ).not.toBeNull();
-    await act(async () => test.controller.current!.setZoom(3));
+    await act(async () =>
+      test.controller.current!.executeAction('canvas.view.set-zoom', {
+        zoom: 3,
+      }),
+    );
     await frames.paint();
     expect(test.svg.querySelector('[data-cell-id="a"]')).toBeNull();
     expect(
       onViewStateChange.mock.lastCall![0].selectionScreenBounds,
     ).toBeNull();
     expect(onViewStateChange.mock.lastCall![0].zoom).toBe(3);
-    await act(async () => test.controller.current!.setZoom(1));
+    await act(async () =>
+      test.controller.current!.executeAction('canvas.view.set-zoom', {
+        zoom: 1,
+      }),
+    );
     await frames.paint();
     expect(test.svg.querySelector('[data-cell-id="a"]')).not.toBeNull();
     expect(
@@ -1280,7 +1880,11 @@ describe('memory-only canvas camera', () => {
     expect(test.transform()).toBe(camera);
     expect(test.svg.style.backgroundPosition).toBe('-40px -80px');
     expect(test.svg.style.backgroundSize).toBe('30px 30px');
-    await act(async () => test.controller.current!.setZoom(1.5));
+    await act(async () =>
+      test.controller.current!.executeAction('canvas.view.set-zoom', {
+        zoom: 1.5,
+      }),
+    );
     await frames.paint();
     expect(test.transform()).toBe('scale(1.5) translate(-40 -80)');
     expect(test.svg.style.backgroundPosition).toBe('-60px -120px');
@@ -1335,7 +1939,11 @@ describe('memory-only canvas camera', () => {
         },
       ],
     });
-    await act(async () => test.controller.current!.setZoom(2));
+    await act(async () =>
+      test.controller.current!.executeAction('canvas.view.set-zoom', {
+        zoom: 2,
+      }),
+    );
     await frames.paint();
     await act(async () => test.render('nested'));
     const shape = test.container.querySelector('[data-initial-scale]')!;
@@ -1436,7 +2044,11 @@ describe('memory-only canvas camera', () => {
         [8, -100],
         [0.1, 100],
       ]) {
-        await act(async () => test.controller.current!.setZoom(limit));
+        await act(async () =>
+          test.controller.current!.executeAction('canvas.view.set-zoom', {
+            zoom: limit,
+          }),
+        );
         await frames.paint();
         const before = test.transform();
         await act(async () =>
@@ -1581,7 +2193,11 @@ describe('memory-only canvas camera', () => {
       ],
     });
     const shapes = shape.mock.calls.length;
-    await act(async () => test.controller.current!.setZoom(2));
+    await act(async () =>
+      test.controller.current!.executeAction('canvas.view.set-zoom', {
+        zoom: 2,
+      }),
+    );
     // Unpublished input must not leak into the React scene before its frame.
     expect(renderShape.mock.lastCall![0].scale).toBe(1);
     await frames.paint();
@@ -1605,11 +2221,19 @@ describe('memory-only canvas camera', () => {
         .getAttribute('r'),
     ).toBe('2.5');
     expect(shape).toHaveBeenCalledTimes(shapes);
-    await act(async () => test.controller.current!.setZoom(3));
+    await act(async () =>
+      test.controller.current!.executeAction('canvas.view.set-zoom', {
+        zoom: 3,
+      }),
+    );
     await frames.paint();
     expect(test.container.querySelector('[data-cell-id="a"]')).toBeNull();
     expect(test.container.querySelector('[data-extension-control]')).toBeNull();
-    await act(async () => test.controller.current!.setZoom(1));
+    await act(async () =>
+      test.controller.current!.executeAction('canvas.view.set-zoom', {
+        zoom: 1,
+      }),
+    );
     await frames.paint();
     expect(
       test.container
@@ -1729,7 +2353,11 @@ describe('memory-only canvas camera', () => {
         .querySelector('[data-cached-hover]')!
         .getAttribute('data-cached-hover'),
     ).toBe('true');
-    await act(async () => test.controller.current!.setZoom(2));
+    await act(async () =>
+      test.controller.current!.executeAction('canvas.view.set-zoom', {
+        zoom: 2,
+      }),
+    );
     await frames.paint();
     expect(
       test.svg
@@ -1757,7 +2385,11 @@ describe('memory-only canvas camera', () => {
     expect(shape.getAttribute('data-cached-label')).toBe('Latest');
     expect(shape.getAttribute('x')).toBe('120');
     expect(shape.getAttribute('width')).toBe('150');
-    await act(async () => test.controller.current!.setZoom(1));
+    await act(async () =>
+      test.controller.current!.executeAction('canvas.view.set-zoom', {
+        zoom: 1,
+      }),
+    );
     await frames.paint();
     await act(async () => test.fire('pointerdown', 140, 30, 0, 1, node));
     await act(async () => test.fire('pointermove', 160, 30));
@@ -1837,7 +2469,11 @@ describe('memory-only canvas camera', () => {
     );
     const setAttribute = vi.spyOn(SVGElement.prototype, 'setAttribute');
     for (const zoom of [0.1, 2, 8, 0.75]) {
-      await act(async () => test.controller.current!.setZoom(zoom));
+      await act(async () =>
+        test.controller.current!.executeAction('canvas.view.set-zoom', {
+          zoom: zoom,
+        }),
+      );
       await frames.paint();
       for (const [index, id] of ['edge', 'deep-edge'].entries()) {
         const hit = test.svg.querySelector(`[data-edge-hit="${id}"]`)!;
@@ -1845,11 +2481,26 @@ describe('memory-only canvas camera', () => {
         expect(hit.getAttribute('stroke-width')).toBe('12');
         expect(hit.getAttribute('vector-effect')).toBe('non-scaling-stroke');
         expect(hit.getAttribute('stroke')).toBe('transparent');
-        const visible = test.svg.querySelector(`[data-cell-id="${id}"] path`)!;
+        const visible = test.svg.querySelector(`[data-edge-display="${id}"]`)!;
         expect(visible.getAttribute('stroke-width')).toBe('3');
         expect(visible.getAttribute('stroke-dasharray')).toBe('8 4');
         expect(visible.getAttribute('vector-effect')).toBeNull();
       }
+      const highlight = test.svg.querySelector(
+        '[data-cell-id="deep-edge"] [data-interaction-stroke="selected"]',
+      )!;
+      expect(highlight.getAttribute('stroke-width')).toBe('4');
+      expect(highlight.getAttribute('vector-effect')).toBeNull();
+      const filter = test.svg.querySelector(
+        `[id="${highlight.getAttribute('filter')!.slice(5, -1)}"]`,
+      )!;
+      expect(
+        Number(
+          filter.querySelector('feGaussianBlur')!.getAttribute('stdDeviation'),
+        ) *
+          zoom *
+          nestedScale,
+      ).toBeCloseTo(2.25);
       expect(
         Number(
           test.svg
@@ -1932,7 +2583,11 @@ describe('memory-only canvas camera', () => {
       }),
     );
     for (const zoom of [2, 4, 0.75]) {
-      await act(async () => test.controller.current!.setZoom(zoom));
+      await act(async () =>
+        test.controller.current!.executeAction('canvas.view.set-zoom', {
+          zoom: zoom,
+        }),
+      );
       await frames.paint();
       const scale = zoom * nestedScale;
       expect(
@@ -1982,7 +2637,11 @@ describe('memory-only canvas camera', () => {
         },
       ],
     });
-    await act(async () => test.controller.current!.editText('a'));
+    await act(async () =>
+      test.controller.current!.executeAction('canvas.selection.edit', {
+        cellId: 'a',
+      }),
+    );
     const editor = test.container.querySelector<HTMLElement>(
       '[data-frame-text-editor] [contenteditable="true"]',
     )!;
@@ -1996,7 +2655,11 @@ describe('memory-only canvas camera', () => {
     selection.removeAllRanges();
     selection.addRange(range);
     for (const zoom of [1.5, 2, 0.8]) {
-      await act(async () => test.controller.current!.setZoom(zoom));
+      await act(async () =>
+        test.controller.current!.executeAction('canvas.view.set-zoom', {
+          zoom: zoom,
+        }),
+      );
       await frames.paint();
       expect(test.container.querySelector('[data-frame-text-editor]')).toBe(
         shell,
@@ -2021,7 +2684,11 @@ describe('memory-only canvas camera', () => {
     const options = { onSelectionChange: first };
     const test = await mount(sample(), options);
     const createElement = vi.spyOn(document, 'createElement');
-    await act(async () => test.controller.current!.setZoom(2));
+    await act(async () =>
+      test.controller.current!.executeAction('canvas.view.set-zoom', {
+        zoom: 2,
+      }),
+    );
     await frames.paint();
     expect(
       createElement.mock.calls.filter(([tag]) => tag === 'div'),
@@ -2108,15 +2775,23 @@ describe('memory-only canvas camera', () => {
         ],
       }),
     );
-    await act(async () => test.controller.current!.setZoom(2));
+    await act(async () =>
+      test.controller.current!.executeAction('canvas.view.set-zoom', {
+        zoom: 2,
+      }),
+    );
     await test.paint();
     const camera = test.transform();
-    await act(async () => test.controller.current!.undo());
+    await act(async () =>
+      test.controller.current!.executeAction('canvas.history.undo'),
+    );
     expect(runtime.store.cells.a).toMatchObject({ content: { label: 'Node' } });
     expect(test.transform()).toBe(camera);
     const changes = test.onChange.mock.calls.length,
       documentRevision = runtime.revision;
-    await act(async () => test.controller.current!.fit());
+    await act(async () =>
+      test.controller.current!.executeAction('canvas.view.fit'),
+    );
     expect(test.transform()).toContain('scale(1)');
     expect(test.onChange).toHaveBeenCalledTimes(changes);
     expect(runtime.revision).toBe(documentRevision);
@@ -2124,7 +2799,9 @@ describe('memory-only canvas camera', () => {
   it('starts a pan from the latest camera even before its scheduled frame paints', async () => {
     const test = await mount(sample(), { tool: 'hand' });
     await act(async () => {
-      test.controller.current!.setZoom(2);
+      test.controller.current!.executeAction('canvas.view.set-zoom', {
+        zoom: 2,
+      });
       test.fire('pointerdown', 100, 100);
       test.fire('pointermove', 200, 100);
       test.fire('pointerup', 200, 100);
@@ -2367,4 +3044,87 @@ describe('interactive ports and display paths', () => {
       expect(test.svg.querySelector('[data-port-id]')).toBeNull();
     },
   );
+});
+
+describe('asynchronous target reveal', () => {
+  it('waits for layout, keeps content/history unchanged and only applies the latest request', async () => {
+    const value = sample(),
+      before = JSON.stringify(value);
+    const test = await mount(value, { readonly: true });
+    let first!: ReturnType<FrameCanvasController['revealTarget']>,
+      second!: typeof first;
+    await act(async () => {
+      first = test.controller.current!.revealTarget({
+        cellId: 'a',
+        requestId: 1,
+      });
+      second = test.controller.current!.revealTarget({
+        cellId: 'a',
+        requestId: 2,
+      });
+    });
+    expect(await first).toMatchObject({ status: 'cancelled' });
+    expect(await second).toEqual({ status: 'revealed', cellId: 'a' });
+    expect(test.controller.current!.runtime.selection.ids).toEqual(['a']);
+    expect(
+      test.container.querySelector('[data-reveal-highlight="a"]'),
+    ).toBeTruthy();
+    expect(JSON.stringify(value)).toBe(before);
+    expect(test.onChange).not.toHaveBeenCalled();
+    expect(test.controller.current!.runtime.history.undos).toHaveLength(0);
+    const abort = new AbortController();
+    abort.abort();
+    let cancelled!: typeof first;
+    await act(async () => {
+      cancelled = test.controller.current!.revealTarget({
+        cellId: 'a',
+        requestId: 3,
+        signal: abort.signal,
+      });
+    });
+    expect(await cancelled).toMatchObject({ status: 'cancelled' });
+    await act(async () => test.controller.current!.clearRevealOverrides());
+    expect(test.container.querySelector('[data-reveal-highlight]')).toBeNull();
+  });
+  it('locates a group containing only a path and reports hidden and missing targets explicitly', async () => {
+    const value = sample();
+    value.store.cells.root = {
+      ...(value.store.cells.root as Core.FrameCell),
+      children: ['a', 'edge', 'edge2'],
+      groups: ['paths'],
+    };
+    value.store.cells.edge = {
+      id: 'edge',
+      kind: 'arrow',
+      cellType: 'edge',
+      source: { point: [1500, 900] },
+      target: { point: [1800, 1200] },
+      route: { mode: 'straight' },
+    };
+    value.store.cells.edge2 = { ...value.store.cells.edge, id: 'edge2' };
+    value.store.cells.paths = {
+      id: 'paths',
+      kind: 'group',
+      cellType: 'group',
+      members: ['edge', 'edge2'],
+    };
+    value.store.cells.a = { ...value.store.cells.a, hidden: true };
+    const test = await mount(value);
+    let reveal!: ReturnType<FrameCanvasController['revealTarget']>;
+    await act(async () => {
+      reveal = test.controller.current!.revealTarget({
+        cellId: 'paths',
+        requestId: 1,
+      });
+    });
+    expect(await reveal).toEqual({ status: 'revealed', cellId: 'paths' });
+    expect(test.controller.current!.runtime.selection.ids).toEqual(['paths']);
+    expect(viewport(test.transform()).zoom).toBeLessThanOrEqual(1);
+    await expect(
+      test.controller.current!.revealTarget({ cellId: 'a', requestId: 2 }),
+    ).resolves.toEqual({ status: 'unavailable', code: 'hidden' });
+    await expect(
+      test.controller.current!.revealTarget({ cellId: 'gone', requestId: 3 }),
+    ).resolves.toEqual({ status: 'unavailable', code: 'missing-cell' });
+  });
 });

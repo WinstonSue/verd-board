@@ -1,6 +1,3 @@
-import React, { act, createRef } from 'react';
-import { createRoot } from 'react-dom/client';
-import { afterEach, expect, it, vi } from 'vitest';
 import {
   createDocumentFrameCell,
   createDocumentReferenceCell,
@@ -10,11 +7,16 @@ import {
   frameTitleBounds,
   type NodeCell,
 } from '@sue/board-core';
+import { act, createRef } from 'react';
+import { createRoot } from 'react-dom/client';
+import { afterEach, expect, it, vi } from 'vitest';
+import { createTestFramePluginSet } from '../../../../tests/fixtures/plugins/ui';
 import {
   FrameCanvas,
   type FrameCanvasController,
   type FrameDocumentReferences,
 } from './frame-canvas';
+const testFramePluginSet = createTestFramePluginSet();
 
 (
   globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }
@@ -44,6 +46,7 @@ it('keeps document reading and active document editing outside native drag cance
   await act(() =>
     root.render(
       <FrameCanvas
+        pluginSet={testFramePluginSet}
         value={{
           store: {
             rootId: frame.id,
@@ -138,6 +141,7 @@ it('invalidates one document body by dependency token on a stable adapter instea
     act(() =>
       root.render(
         <FrameCanvas
+          pluginSet={testFramePluginSet}
           ref={controller}
           value={value}
           autoFit={false}
@@ -210,6 +214,7 @@ it('keeps document bodies cached during parent selection and refreshes editing o
     act(() =>
       root.render(
         <FrameCanvas
+          pluginSet={testFramePluginSet}
           ref={controller}
           value={value}
           autoFit={false}
@@ -274,6 +279,7 @@ it('renders owned Frames and canvas/document references through one clipped shel
   await act(() =>
     root.render(
       <FrameCanvas
+        pluginSet={testFramePluginSet}
         value={value}
         autoFit={false}
         documentReferences={{

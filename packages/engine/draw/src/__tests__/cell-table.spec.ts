@@ -1,11 +1,11 @@
+import { createBlockText } from '@sue/board-common';
 import {
-  createCellRegistry,
   createCellRuntime,
   createCellStore,
   createFrameCell,
 } from '@sue/board-core';
-import { registerDrawCells } from '../cell-utils';
 import { describe, expect, it } from 'vitest';
+import { createTestCellRegistry } from '../../../../../tests/fixtures/plugins/registry';
 import { createTableCell } from '../cell-commands';
 import {
   createSwimlaneCell,
@@ -24,7 +24,6 @@ import {
   updateTableText,
   validateTableData,
 } from '../cell-table';
-import { createBlockText } from '@sue/board-common';
 const allocate = () => {
   let id = 0;
   return () => `generated-${id++}`;
@@ -41,8 +40,8 @@ const table = () =>
   );
 describe('native table structure', () => {
   it('rejects an invalid grid atomically and restores every resize dimension through history', () => {
-    const registry = createCellRegistry();
-    registerDrawCells(registry);
+    const registry = createTestCellRegistry();
+
     const runtime = createCellRuntime(
       { store: createCellStore(createFrameCell('root')) },
       registry,

@@ -1,19 +1,24 @@
 import {
-  CellKind,
+  ArchitectureKind,
+  architectureLayerIds,
+  type ArchitectureLayerData,
+} from '@sue/board-architecture';
+import {
   groupAncestors,
   groupLeafMembers,
   isEdgeCell,
   isFrameCell,
   isGroupCell,
   isNodeCell,
-  type ArchitectureLayerData,
   type CellStore,
-  type MindChildData,
-  type MindSummaryData,
   type NodeCell,
 } from '@sue/board-core';
-import { architectureLayerIds } from '@sue/board-architecture';
-import { mindChildIds } from '@sue/board-mind';
+import {
+  mindChildIds,
+  MindKind,
+  type MindChildData,
+  type MindSummaryData,
+} from '@sue/board-mind';
 
 export type PresentationScene =
   | 'whiteboard'
@@ -24,16 +29,16 @@ export type PresentationScene =
   | 'uml-sequence';
 
 const isMind = (cell: CellStore['cells'][string] | undefined) =>
-  cell?.kind === CellKind.mindRoot ||
-  cell?.kind === CellKind.mindChild ||
-  cell?.kind === CellKind.mindSummary;
+  cell?.kind === MindKind.mindRoot ||
+  cell?.kind === MindKind.mindChild ||
+  cell?.kind === MindKind.mindSummary;
 
 const collapsed = (cell: CellStore['cells'][string] | undefined) =>
   isNodeCell(cell) && !!(cell.data as MindChildData | undefined)?.collapsed;
 
 const isMindRelation = (cell: CellStore['cells'][string] | undefined) =>
   isEdgeCell(cell) &&
-  (cell.kind === CellKind.mindBranch || cell.kind === CellKind.mindSummaryEdge);
+  (cell.kind === MindKind.mindBranch || cell.kind === MindKind.mindSummaryEdge);
 
 const visible = (store: CellStore, id: string) =>
   !!store.cells[id] &&
@@ -61,7 +66,7 @@ export function presentationMindIds(
     for (const edge of Object.values(store.cells)) {
       if (
         !isEdgeCell(edge) ||
-        edge.kind !== CellKind.mindSummaryEdge ||
+        edge.kind !== MindKind.mindSummaryEdge ||
         !('cellId' in edge.target) ||
         !visible(store, edge.id)
       )
@@ -96,7 +101,7 @@ const frameVisibleIds = (store: CellStore, frameId: string): Set<string> => {
     ),
   );
   for (const id of frame.children) {
-    if (store.cells[id]?.kind === CellKind.mindRoot)
+    if (store.cells[id]?.kind === MindKind.mindRoot)
       presentationMindIds(store, id).forEach((member) => ids.add(member));
   }
   // Relationship edges are drawable only while both topics are mounted. They
@@ -135,7 +140,7 @@ export function presentationSteps(
     return architectureLayerIds(store, frameId).filter((id) => shown.has(id));
   if (scene !== 'mind') return [];
   const roots = frame.children.filter(
-    (id) => store.cells[id]?.kind === CellKind.mindRoot && shown.has(id),
+    (id) => store.cells[id]?.kind === MindKind.mindRoot && shown.has(id),
   );
   return roots.flatMap((id) =>
     collapsed(store.cells[id])
@@ -172,7 +177,7 @@ export function presentationTargetIds(
     );
     return [...new Set([cellId, ...endpoints])];
   }
-  if (cell.kind === CellKind.architectureLayer) {
+  if (cell.kind === ArchitectureKind.architectureLayer) {
     const members =
       (cell as NodeCell<ArchitectureLayerData>).data?.memberIds ?? [];
     return [cellId, ...members.filter((id) => shown.has(id))];

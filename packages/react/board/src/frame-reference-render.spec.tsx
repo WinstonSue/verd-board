@@ -1,6 +1,3 @@
-import React, { act, createRef } from 'react';
-import { createRoot } from 'react-dom/client';
-import { afterEach, expect, it, vi } from 'vitest';
 import {
   createCellRuntime,
   createDocumentReferenceCell,
@@ -11,12 +8,19 @@ import {
   type CellRuntime,
   type NodeCell,
 } from '@sue/board-core';
+import { act, createRef } from 'react';
+import { createRoot } from 'react-dom/client';
+import { afterEach, expect, it, vi } from 'vitest';
+import { createTestCellRegistry as createFixtureRegistry } from '../../../../tests/fixtures/plugins/registry';
+import { createTestFramePluginSet } from '../../../../tests/fixtures/plugins/ui';
 import {
   FrameCanvas,
   type FrameCanvasController,
   type FrameDocumentReferences,
   type FrameInstanceQuery,
 } from './frame-canvas';
+const testFramePluginSet = createTestFramePluginSet();
+const testCellRegistry = createFixtureRegistry();
 
 (
   globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }
@@ -50,7 +54,7 @@ it.each([false, true])(
       rootId: target.id,
       cells: { target, document: documentCell },
     };
-    const runtime = createCellRuntime({ store: targetStore });
+    const runtime = createCellRuntime({ store: targetStore }, testCellRegistry);
     const reference = createFrameReferenceCell('reference', target.id, {
       x: 10,
       y: 10,
@@ -95,6 +99,7 @@ it.each([false, true])(
       act(() =>
         root.render(
           <FrameCanvas
+            pluginSet={testFramePluginSet}
             value={value}
             autoFit={false}
             instanceHost={nested ? host : undefined}
@@ -128,9 +133,12 @@ it('uses target revision tokens across unrelated commits and adapter replacement
     geometry: { x: 0, y: 0, width: 100, height: 50 },
   };
   const target = { ...createFrameCell('target'), children: [shape.id] };
-  const runtime = createCellRuntime({
-    store: { rootId: target.id, cells: { target, shape } },
-  });
+  const runtime = createCellRuntime(
+    {
+      store: { rootId: target.id, cells: { target, shape } },
+    },
+    testCellRegistry,
+  );
   const reference = createFrameReferenceCell('reference', target.id, {
     x: 0,
     y: 100,
@@ -185,6 +193,7 @@ it('uses target revision tokens across unrelated commits and adapter replacement
     act(() =>
       root.render(
         <FrameCanvas
+          pluginSet={testFramePluginSet}
           ref={controller}
           value={value}
           instanceHost={host}
@@ -257,9 +266,12 @@ it.each([false, true])(
         acquisitions.push(query);
         runtimes.set(
           query.appearance.join('/'),
-          createCellRuntime({
-            store: sources[query.targetFrameId as keyof typeof sources],
-          }),
+          createCellRuntime(
+            {
+              store: sources[query.targetFrameId as keyof typeof sources],
+            },
+            testCellRegistry,
+          ),
         );
       },
       get(query: FrameInstanceQuery) {
@@ -288,6 +300,7 @@ it.each([false, true])(
     await act(() =>
       root.render(
         <FrameCanvas
+          pluginSet={testFramePluginSet}
           value={{ store: sources.a }}
           instanceHost={host}
           autoFit={false}
@@ -320,9 +333,12 @@ it('refits nested content immediately when its parent reference shell changes ge
     geometry: { x: 10, y: 20, width: 100, height: 50 },
   };
   const target = { ...createFrameCell('target'), children: [shape.id] };
-  const runtime = createCellRuntime({
-    store: { rootId: target.id, cells: { target, shape } },
-  });
+  const runtime = createCellRuntime(
+    {
+      store: { rootId: target.id, cells: { target, shape } },
+    },
+    testCellRegistry,
+  );
   const reference = createFrameReferenceCell('reference', target.id, {
     x: 10,
     y: 10,
@@ -353,6 +369,7 @@ it('refits nested content immediately when its parent reference shell changes ge
   await act(() =>
     root.render(
       <FrameCanvas
+        pluginSet={testFramePluginSet}
         ref={controller}
         value={value}
         instanceHost={host}
@@ -404,9 +421,12 @@ it('isolates nested rendering from parent selection, retains child subscriptions
     content: { label: 'Child' },
   };
   const target = { ...createFrameCell('target'), children: [shape.id] };
-  const runtime = createCellRuntime({
-    store: { rootId: target.id, cells: { target, shape } },
-  });
+  const runtime = createCellRuntime(
+    {
+      store: { rootId: target.id, cells: { target, shape } },
+    },
+    testCellRegistry,
+  );
   const reference = createFrameReferenceCell('reference', target.id, {
     ...geometry,
     width: 400,
@@ -446,6 +466,7 @@ it('isolates nested rendering from parent selection, retains child subscriptions
     act(() =>
       root.render(
         <FrameCanvas
+          pluginSet={testFramePluginSet}
           ref={controller}
           value={value}
           instanceHost={host}

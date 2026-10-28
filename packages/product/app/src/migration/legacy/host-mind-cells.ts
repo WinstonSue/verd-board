@@ -1,11 +1,11 @@
 import {
-  CellKind,
   createCellStore,
   createFrameCell,
   type Cell,
   type CellStore,
   type EdgeCell,
 } from '@sue/board-core';
+import { MindKind } from '@sue/board-mind';
 import {
   type LegacyMindHostNode,
   type MindDocument,
@@ -22,7 +22,7 @@ const append = (
   children.push(node.id);
   cells[node.id] = {
     id: node.id,
-    kind: depth === 0 ? CellKind.mindRoot : CellKind.mindChild,
+    kind: depth === 0 ? MindKind.mindRoot : MindKind.mindChild,
     cellType: 'node',
     geometry: { x: 0, y: 0, width: 0, height: 0, derived: depth > 0 },
     content: { label: node.label },
@@ -32,7 +32,7 @@ const append = (
     append(cells, children, child, depth + 1);
     const branch: EdgeCell<{ order: string }> = {
       id: `branch:${node.id}:${child.id}:${index}`,
-      kind: CellKind.mindBranch,
+      kind: MindKind.mindBranch,
       cellType: 'edge',
       source: { cellId: node.id },
       target: { cellId: child.id },

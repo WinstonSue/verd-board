@@ -1,4 +1,5 @@
-import { useEffect, useLayoutEffect, useRef } from 'react';
+import { actionLabel } from '@sue/board-common';
+import { useActionSource } from '@sue/board-react-actions';
 import {
   autoUpdate,
   FloatingPortal,
@@ -8,17 +9,17 @@ import {
 import {
   frameScene,
   isFrameCell,
-  reorderCells,
   selectionAllows,
-  type CellStore,
-  type CellSelection,
   type CellOperation,
+  type CellSelection,
+  type CellStore,
 } from '@sue/board-core';
 import type { FrameCanvasController } from '@sue/board-react';
+import { useEffect, useLayoutEffect, useMemo, useRef } from 'react';
+import { FrameTooltip, frameDisabledReason } from './frame-tooltip';
 import { FrameArrangement } from './frame-arrangement';
 import { FrameSelectionAppearance } from './frame-selection-appearance';
 import { FrameSelectionText } from './frame-selection-text';
-import { selectionCommands } from './frame-commands';
 import { useI18n } from './i18n';
 
 export function FrameActionsPopover({
@@ -26,21 +27,26 @@ export function FrameActionsPopover({
   store,
   selection,
   controller,
-  dispatch,
   onClose,
   onFailure,
-  onDuplicateReference,
 }: {
   point: [number, number];
   store: CellStore;
   selection: CellSelection;
   controller: FrameCanvasController;
-  dispatch(operations: CellOperation[]): void;
   onClose(): void;
   onFailure(message: string): void;
-  onDuplicateReference?(refIds: string[]): void;
 }) {
-  const { t } = useI18n();
+  const { t, language } = useI18n();
+  useActionSource(controller.actionSource);
+  const selectionKey = JSON.stringify(selection);
+  const captured = useMemo(
+    () =>
+      new Map(
+        controller.actions().map((action) => [action.id, action.capture()]),
+      ),
+    [controller, selectionKey],
+  );
   const { refs, elements, floatingStyles } = useFloating({
     open: true,
     placement: 'bottom-start',
@@ -92,21 +98,30 @@ export function FrameActionsPopover({
     JSON.stringify(controller.runtime.selection) ===
       JSON.stringify(selection) &&
     selection.ids.every((id) => !!controller.runtime.store.cells[id]);
-  const originalController = controller;
   controller = {
     ...controller,
-    clipboard: (...args) =>
+    actions: () => [...captured.values()],
+    getActionState: (id, args) =>
       valid()
-        ? originalController.clipboard(...args)
-        : Promise.resolve({ status: 'rejected' }),
-    executeSelectionCommand: (...args) =>
+        ? (captured.get(id)?.getState(args) ?? {
+            visible: false,
+            enabled: false,
+          })
+        : { visible: true, enabled: false, reason: 'stale-context' },
+    executeAction: (id, args, invocation) =>
       valid()
-        ? originalController.executeSelectionCommand(...args)
-        : Promise.resolve({ status: 'rejected' }),
+        ? (captured.get(id)?.execute(args, invocation) ??
+          Promise.resolve({ status: 'rejected', code: 'unknown-action' }))
+        : Promise.resolve({ status: 'cancelled', code: 'stale-context' }),
   };
-  const originalDispatch = dispatch;
-  dispatch = (operations) => {
-    if (valid()) originalDispatch(operations);
+  const dispatch = (operations: CellOperation[]) => {
+    if (!valid()) return;
+    void controller
+      .executeAction('canvas.apply-operations', { operations })
+      .then((result) => {
+        if (result.status === 'rejected' || result.status === 'failed')
+          onFailure(result.message ?? result.code);
+      });
   };
   const run = async (action: () => void | Promise<unknown>) => {
     try {
@@ -130,21 +145,37 @@ export function FrameActionsPopover({
         style={floatingStyles}
       >
         <div className="frame-actions-row">
-          {selectionCommands(
-            store,
-            selection,
-            controller,
-            dispatch,
-            onDuplicateReference,
-          ).map((command) => (
-            <button
-              key={command.label}
-              disabled={command.disabled}
-              onClick={() => void run(() => command.run())}
-            >
-              {command.label}
-            </button>
-          ))}
+          {[
+            'canvas.clipboard.copy',
+            'canvas.clipboard.cut',
+            'canvas.clipboard.paste',
+            'canvas.selection.delete',
+            'canvas.link.copy',
+            'product.reference.duplicate',
+          ].flatMap((id) => {
+            const action = controller.actions().find((item) => item.id === id);
+            if (!action) return [];
+            const state = action.getState();
+            if (!state.visible) return [];
+            return [
+              <FrameTooltip
+                key={id}
+                disabled={!state.enabled}
+                content={
+                  !state.enabled
+                    ? frameDisabledReason(state.reason, language)
+                    : undefined
+                }
+              >
+                <button
+                  disabled={!state.enabled}
+                  onClick={() => void run(() => controller.executeAction(id))}
+                >
+                  {actionLabel(action.label, language)}
+                </button>
+              </FrameTooltip>,
+            ];
+          })}
         </div>
         <FrameArrangement
           store={store}
@@ -186,41 +217,44 @@ export function FrameActionsPopover({
               : undefined
           }
         />
-        {!!selection.ids.length && !frameScene(store, frameId) && (
-          <div className="frame-actions-row">
-            {(['front', 'forward', 'backward', 'back'] as const).map(
-              (direction, index) => (
-                <button
-                  key={direction}
-                  aria-label={
-                    [
-                      t('layer.toTop'),
-                      t('layer.moveUp'),
-                      t('layer.moveDown'),
-                      t('layer.toBottom'),
-                    ][index]
-                  }
-                  onClick={() =>
-                    void run(() =>
-                      dispatch(
-                        reorderCells(store, frameId, selection.ids, direction),
-                      ),
-                    )
-                  }
-                >
-                  {
-                    [
-                      t('layer.toTop'),
-                      t('layer.moveUp'),
-                      t('layer.moveDown'),
-                      t('layer.toBottom'),
-                    ][index]
-                  }
-                </button>
-              ),
-            )}
-          </div>
-        )}
+        {!!selection.ids.length &&
+          !frameScene(store, frameId, controller.runtime.registry) && (
+            <div className="frame-actions-row">
+              {(['front', 'forward', 'backward', 'back'] as const).map(
+                (direction, index) => (
+                  <button
+                    key={direction}
+                    aria-label={
+                      [
+                        t('layer.toTop'),
+                        t('layer.moveUp'),
+                        t('layer.moveDown'),
+                        t('layer.toBottom'),
+                      ][index]
+                    }
+                    disabled={
+                      !controller.getActionState(`canvas.order.${direction}`)
+                        .enabled
+                    }
+                    onClick={() =>
+                      void run(() =>
+                        controller.executeAction(`canvas.order.${direction}`),
+                      )
+                    }
+                  >
+                    {
+                      [
+                        t('layer.toTop'),
+                        t('layer.moveUp'),
+                        t('layer.moveDown'),
+                        t('layer.toBottom'),
+                      ][index]
+                    }
+                  </button>
+                ),
+              )}
+            </div>
+          )}
         <button aria-label="Close selection actions" onClick={onClose}>
           关闭
         </button>

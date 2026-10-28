@@ -1,37 +1,39 @@
-import { describe, it, expect } from 'vitest';
 import {
-  edgeLabelLayout,
   applyCellOperations,
-  createCellRegistry,
-  createCellRuntime,
-  validateCellStore,
-  copyCellFragment,
-  planCellPaste,
   clearFrameCells,
-  groupCells,
-  umlRoot,
+  copyCellFragment,
+  createCellRuntime,
+  edgeLabelLayout,
+  planCellPaste,
+  validateCellStore,
   type NodeCell,
-  type UmlSequenceData,
-  type UmlFragmentData,
 } from '@sue/board-core';
+import { describe, expect, it } from 'vitest';
 import {
-  createUmlClassFrameSnapshot,
-  createUmlSequenceFrameSnapshot,
-  createUmlClassCell,
-  createUmlParticipantCell,
-  createUmlMessageCell,
-  createUmlFragmentCell,
-  createUmlNoteCell,
-  createUmlRelationCell,
-  addUmlCell,
+  createTestCellRegistry as createFixtureRegistry,
+  createTestCellRegistry,
+} from '../../../../tests/fixtures/plugins/registry';
+import {
   addUmlActivation,
-  moveUmlEvent,
-  registerUmlCells,
+  addUmlCell,
+  createUmlClassCell,
+  createUmlClassFrameSnapshot,
+  createUmlFragmentCell,
+  createUmlMessageCell,
+  createUmlNoteCell,
+  createUmlParticipantCell,
+  createUmlRelationCell,
+  createUmlSequenceFrameSnapshot,
   layoutUmlSequence,
+  moveUmlEvent,
+  umlRoot,
+  type UmlFragmentData,
+  type UmlSequenceData,
 } from './public-api';
+const testCellRegistry = createFixtureRegistry();
 const registry = () => {
-  const r = createCellRegistry();
-  registerUmlCells(r);
+  const r = createTestCellRegistry();
+
   return r;
 };
 const sequence = () => {
@@ -86,7 +88,11 @@ describe('native UML domains', () => {
         r,
       ),
     ).toThrow();
-    store = applyCellOperations(store, clearFrameCells(store, 'f'), r);
+    store = applyCellOperations(
+      store,
+      clearFrameCells(store, 'f', testCellRegistry),
+      r,
+    );
     expect(Object.keys(store.cells).sort()).toEqual(['f', 'root']);
     expect(() =>
       applyCellOperations(store, [{ type: 'remove_cell', cellId: 'root' }], r),
@@ -222,7 +228,7 @@ describe('native UML domains', () => {
       addUmlCell(store, 'f', createUmlMessageCell('m', 'a', 'b')),
       r,
     );
-    const fragment = copyCellFragment(store, ['m']);
+    const fragment = copyCellFragment(store, ['m'], testCellRegistry);
     let i = 0;
     for (let n = 0; n < 2; n++)
       store = applyCellOperations(

@@ -1,7 +1,10 @@
 import React, { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import type { DocumentEditorController } from '@sue/verd-board-ui';
+import type {
+  DocumentChangeReceipt,
+  DocumentEditorController,
+} from '@sue/verd-board-ui';
 import { createFrameCell } from '@sue/board-core';
 import { parseMarkdownToTextDocument } from '@sue/board-markdown-to-text';
 import { createDocumentFile } from './document-files';
@@ -136,6 +139,210 @@ const setup = async () => {
 };
 
 describe('canvas document editing', () => {
+  for (const changedRevision of [false, true])
+    it(`restores an embedded view only after ready, retaining scroll and guarding its caret revision (changed=${changedRevision})`, async () => {
+      const { options, file } = await setup();
+      const cache = createWorkspaceDocumentPreviewCache();
+      const adapter = cache(options);
+      const render = async (editing: boolean, instanceId = 'occurrence') =>
+        act(async () =>
+          root!.render(
+            adapter.render({
+              kind: 'document-frame',
+              targetDocumentId: 'document',
+              instanceId,
+              cellId: 'document-shell',
+              ownerFrameId: 'canvas',
+              editing,
+              readonly: false,
+              onExitEdit: vi.fn(),
+              suspended: false,
+              exporting: false,
+            }),
+          ),
+        );
+      const ready = () =>
+        act(
+          async () =>
+            new Promise<void>((resolve) =>
+              requestAnimationFrame(() => resolve()),
+            ),
+        );
+      await render(true);
+      expect(adapter.captureEditingView!('occurrence')).not.toBeNull();
+      await ready();
+      controller!.restoreSelection({ from: 2, to: 4, collapsed: false });
+      const body = container.querySelector<HTMLElement>(
+        '[data-document-preview-scroll]',
+      )!;
+      body.scrollTop = 235;
+      body.scrollLeft = 3;
+      const saved = adapter.captureEditingView!('occurrence')!;
+      expect(JSON.parse(JSON.stringify(saved))).toEqual(saved);
+      expect(saved).toMatchObject({
+        cellId: 'document-shell',
+        state: { targetDocumentId: 'document', scroll: { top: 235, left: 3 } },
+      });
+      await render(false);
+      if (changedRevision) {
+        const documents = new Map(options.snapshot.documents);
+        documents.set(file.id, {
+          ...documents.get(file.id)!,
+          file: {
+            ...file,
+            text: parseMarkdownToTextDocument('Changed source body', {
+              id: file.id,
+            }).document,
+          },
+        });
+        cache({ ...options, snapshot: { ...options.snapshot, documents } });
+      }
+      // Canonical-file fallback uses a new occurrence identity for the same cell.
+      await render(false, 'canonical-occurrence');
+      let settled = false;
+      const activate = vi.fn();
+      const restored = adapter.restoreEditingView!(saved, activate).then(
+        (result) => {
+          settled = true;
+          return result;
+        },
+      );
+      await act(async () => {
+        await Promise.resolve();
+      });
+      expect(activate).toHaveBeenCalledWith('canonical-occurrence');
+      expect(settled).toBe(false);
+      await render(true, 'canonical-occurrence');
+      const restoreSelection = vi.spyOn(controller!, 'restoreSelection');
+      await ready();
+      expect(await restored).toMatchObject({ status: 'completed' });
+      expect(restoreSelection.mock.calls).toHaveLength(changedRevision ? 0 : 1);
+      expect(
+        container.querySelector<HTMLElement>('[data-document-preview-scroll]')!
+          .scrollTop,
+      ).toBe(235);
+      expect(options.edit).not.toHaveBeenCalled();
+      restoreSelection.mockRestore();
+    });
+
+  for (const cancelledBy of ['abort', 'deleted-source'] as const)
+    it(`cancels an embedded editor-ready wait on ${cancelledBy}`, async () => {
+      const { options, file } = await setup();
+      const cache = createWorkspaceDocumentPreviewCache();
+      const adapter = cache(options);
+      await act(async () =>
+        root!.render(
+          adapter.render({
+            kind: 'document-frame',
+            targetDocumentId: file.id,
+            instanceId: 'occurrence',
+            cellId: 'document-shell',
+            ownerFrameId: 'canvas',
+            editing: false,
+            readonly: false,
+            onExitEdit: vi.fn(),
+            suspended: false,
+            exporting: false,
+          }),
+        ),
+      );
+      const abort = new AbortController();
+      const activate = vi.fn();
+      const result = adapter.restoreEditingView!(
+        {
+          cellId: 'document-shell',
+          state: {
+            targetDocumentId: file.id,
+            revision: JSON.stringify(file.text.content),
+            selection: null,
+            scroll: { top: 100, left: 0 },
+          },
+        },
+        activate,
+        abort.signal,
+      );
+      expect(activate).toHaveBeenCalledWith('occurrence');
+      if (cancelledBy === 'abort') abort.abort();
+      else
+        cache({
+          ...options,
+          snapshot: { ...options.snapshot, documents: new Map() },
+        });
+      expect(await result).toMatchObject({ status: 'cancelled' });
+      expect(options.edit).not.toHaveBeenCalled();
+    });
+
+  for (const outcome of ['accepted', 'rejected'] as const)
+    it(`keeps an in-flight ${outcome} occurrence flush waiting when its editor unmounts`, async () => {
+      const { options } = await setup();
+      let acknowledge!: (receipt: DocumentChangeReceipt) => void;
+      const edit = vi.fn(
+        () =>
+          new Promise<DocumentChangeReceipt>((resolve) => {
+            acknowledge = resolve;
+          }),
+      );
+      const cache = createWorkspaceDocumentPreviewCache();
+      const adapter = cache({ ...options, edit });
+      const render = async (editing: boolean) =>
+        act(async () =>
+          root!.render(
+            adapter.render({
+              kind: 'document-frame',
+              targetDocumentId: 'document',
+              instanceId: 'occurrence',
+              cellId: 'document-shell',
+              ownerFrameId: 'canvas',
+              editing,
+              readonly: false,
+              onExitEdit: vi.fn(),
+              suspended: false,
+              exporting: false,
+            }),
+          ),
+        );
+      await render(true);
+      let change!: ReturnType<DocumentEditorController['executeAction']>;
+      await act(async () => {
+        change = controller!.executeAction('document.replace-all', {
+          query: 'First',
+          text: 'Changed',
+        });
+        await Promise.resolve();
+        await Promise.resolve();
+        await Promise.resolve();
+      });
+      expect(edit).toHaveBeenCalledOnce();
+      let settled = false;
+      const barrier = adapter.flushEditing!('occurrence').then((result) => {
+        settled = true;
+        return result;
+      });
+      await render(false);
+      expect(container.querySelector('[contenteditable="true"]')).toBeNull();
+      await act(async () => {
+        await Promise.resolve();
+        await Promise.resolve();
+      });
+      expect(settled).toBe(false);
+      await act(async () =>
+        acknowledge(
+          outcome === 'accepted'
+            ? { ok: true }
+            : { ok: false, diagnostics: [{ message: 'Conflict' }] },
+        ),
+      );
+      // Action scope disposal may cancel its result. The already submitted
+      // change still has an independent receipt that the flush must report.
+      await change;
+      expect(await barrier).toMatchObject({
+        status: outcome === 'accepted' ? 'completed' : 'rejected',
+      });
+      expect(await adapter.flushEditing!('occurrence')).toMatchObject({
+        status: 'noop',
+      });
+    });
+
   it('keeps preview revisions through save notifications and forwards the latest callbacks', async () => {
     const { options, file } = await setup();
     const cache = createWorkspaceDocumentPreviewCache();
@@ -229,7 +436,12 @@ describe('canvas document editing', () => {
   it('keeps source edits, history and restores while handling search, links and IME Escape locally', async () => {
     const { options, render, key, exit, file } = await setup();
     await render(true);
-    await act(async () => controller!.replaceAll('First', 'Changed'));
+    await act(async () =>
+      controller!.executeAction('document.replace-all', {
+        query: 'First',
+        text: 'Changed',
+      }),
+    );
     expect(options.edit).toHaveBeenCalledWith(
       'document',
       expect.objectContaining({

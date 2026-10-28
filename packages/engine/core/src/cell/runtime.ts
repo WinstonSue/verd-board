@@ -1,23 +1,17 @@
 import {
   applyCellOperations,
   commitCellOperations,
+  createCellRegistry,
   emptyCellHistory,
   emptySelection,
   indexCells,
-  undoCells,
   redoCells,
+  undoCells,
   type CellOperation,
   type CellRegistry,
   type CellSelection,
 } from './index';
-import { createCellRegistry } from './index';
-import {
-  FrameUtil,
-  FrameReferenceUtil,
-  DocumentReferenceUtil,
-  DocumentFrameUtil,
-  GroupUtil,
-} from './util';
+import { assertRegisteredCellKinds } from './registry';
 import {
   isFrameCell,
   isFrameReferenceCell,
@@ -27,6 +21,13 @@ import {
   type CellStore,
   type FrameSnapshot,
 } from './types';
+import {
+  DocumentFrameUtil,
+  DocumentReferenceUtil,
+  FrameReferenceUtil,
+  FrameUtil,
+  GroupUtil,
+} from './util';
 import { validateCellStore } from './validation';
 
 /**
@@ -83,12 +84,14 @@ export const createCellRuntime = (
   if (!registry.get('document-frame'))
     registry.register(new DocumentFrameUtil());
   if (!registry.get('group')) registry.register(new GroupUtil());
+  assertRegisteredCellKinds(snapshot.store, registry);
   const issues = validateCellStore(snapshot.store, registry);
   if (issues.length)
     throw new Error(issues.map((issue) => issue.message).join('; '));
+  registry.seal();
   let store: CellStore = stripFrameViewports(snapshot.store);
   let indexedStore = store;
-  let cachedIndex = indexCells(store);
+  let cachedIndex = indexCells(store, registry);
   let history = emptyCellHistory();
   let selection: CellSelection = emptySelection(store.rootId);
   let revision = 0;
@@ -96,7 +99,7 @@ export const createCellRuntime = (
   const reconcileSelection = () => {
     if (store.cells[mountedRootId]?.cellType !== 'frame')
       mountedRootId = store.rootId;
-    const index = indexCells(store);
+    const index = indexCells(store, registry);
     const focus = [mountedRootId];
     if (selection.focus[0] === mountedRootId) {
       for (const id of selection.focus.slice(1)) {
@@ -153,7 +156,7 @@ export const createCellRuntime = (
     get index() {
       if (indexedStore !== store) {
         indexedStore = store;
-        cachedIndex = indexCells(store);
+        cachedIndex = indexCells(store, registry);
       }
       return cachedIndex;
     },
@@ -207,6 +210,7 @@ export const createCellRuntime = (
       return { snapshot: { store }, transaction };
     },
     replace(next: FrameSnapshot) {
+      assertRegisteredCellKinds(next.store, registry);
       const errors = validateCellStore(next.store, registry);
       if (errors.length)
         throw new Error(errors.map((error) => error.message).join('; '));
@@ -217,7 +221,7 @@ export const createCellRuntime = (
       notify();
     },
     select(next: CellSelection) {
-      const index = indexCells(store);
+      const index = indexCells(store, registry);
       if (!next.focus.length || next.focus[0] !== mountedRootId)
         throw new Error('Selection must start at mounted root');
       next.focus.forEach((id, at) => {

@@ -1,28 +1,25 @@
-import React, { act, createRef } from 'react';
-import { createRoot } from 'react-dom/client';
-import { it, expect, vi } from 'vitest';
-import {
-  createCellRegistry,
-  applyCellOperations,
-  type EdgeCell,
-} from '@sue/board-core';
+import { applyCellOperations, type EdgeCell } from '@sue/board-core';
 import { FrameCanvas, type FrameCanvasController } from '@sue/board-react';
-import { cloneFrameImageSvg } from '../../board/src/frame-export';
 import {
-  createUmlSequenceFrameSnapshot,
-  createUmlParticipantCell,
-  createUmlMessageCell,
-  createUmlFragmentCell,
-  addUmlCell,
   addUmlActivation,
+  addUmlCell,
+  createUmlFragmentCell,
+  createUmlMessageCell,
+  createUmlParticipantCell,
+  createUmlSequenceFrameSnapshot,
   layoutUmlSequence,
 } from '@sue/board-uml';
+import { act, createRef } from 'react';
+import { createRoot } from 'react-dom/client';
+import { expect, it, vi } from 'vitest';
+import { createTestCellRegistry } from '../../../../tests/fixtures/plugins/registry';
+import { cloneFrameImageSvg } from '../../board/src/frame-export';
 import { createUmlFrameExtensions } from './index';
 (
   globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }
 ).IS_REACT_ACT_ENVIRONMENT = true;
 it('renders projected message routes, activation and fragments without persisting derived geometry', async () => {
-  const registry = createCellRegistry(),
+  const registry = createTestCellRegistry(),
     extensions = createUmlFrameExtensions(registry);
   let store = createUmlSequenceFrameSnapshot('f', 'root').store;
   for (const id of ['a', 'b'])

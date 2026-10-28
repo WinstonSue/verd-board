@@ -1,15 +1,6 @@
+import { createArchitecturePlugin } from '@sue/board-architecture';
 import { createCellRegistry, createCellRuntime } from '@sue/board-core';
-import { registerMindCells } from '@sue/board-mind';
-import { registerDrawCells } from '@sue/board-draw';
-import { registerWorkflowCells } from '@sue/board-workflow';
-import { registerArchitectureCells } from '@sue/board-architecture';
-import { registerUmlCells } from '@sue/board-uml';
-import {
-  createDocumentFile,
-  createWebWorkspaceHost,
-  frameFileFor,
-  openWorkspaceSession,
-} from '@sue/verd-board-app';
+import { createDrawPlugin } from '@sue/board-draw';
 import {
   parseMarkdownToFrameSnapshot,
   serializeFrameToMarkdown,
@@ -22,17 +13,27 @@ import {
   parseMermaidToFrameSnapshot,
   serializeFrameToMermaid,
 } from '@sue/board-mermaid-to-board';
+import { createMindPlugin } from '@sue/board-mind';
+import { createUmlPlugin } from '@sue/board-uml';
+import { createWorkflowPlugin } from '@sue/board-workflow';
+import {
+  createDocumentFile,
+  createWebWorkspaceHost,
+  frameFileFor,
+  openWorkspaceSession,
+} from '@sue/verd-board-app';
 
 /** Runs in the browser against installed packages, including real IndexedDB. */
 export async function verifyReleaseExamples() {
-  const registry = createCellRegistry();
-  [
-    registerDrawCells,
-    registerMindCells,
-    registerWorkflowCells,
-    registerArchitectureCells,
-    registerUmlCells,
-  ].forEach((register) => register(registry));
+  const registry = createCellRegistry({
+    plugins: [
+      createDrawPlugin(),
+      createMindPlugin(),
+      createWorkflowPlugin(),
+      createArchitecturePlugin(),
+      createUmlPlugin(),
+    ],
+  });
   const mind = parseMarkdownToFrameSnapshot('# Center\n## Topic');
   if (!serializeFrameToMarkdown(mind).includes('Topic'))
     throw new Error('Mind Markdown round-trip failed');

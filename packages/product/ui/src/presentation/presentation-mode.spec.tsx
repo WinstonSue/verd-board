@@ -1,14 +1,14 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { act, StrictMode } from 'react';
-import { createRoot, type Root } from 'react-dom/client';
 import {
-  CellKind,
-  createCellRegistry,
   createFrameCell,
   type FrameSnapshot,
   type NodeCell,
 } from '@sue/board-core';
+import { MindKind } from '@sue/board-mind';
 import type { FrameCanvasController, FrameCanvasProps } from '@sue/board-react';
+import { act, StrictMode } from 'react';
+import { createRoot, type Root } from 'react-dom/client';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { createTestCellRegistry } from '../../../../../tests/fixtures/plugins/registry';
 import { I18nProvider } from '../i18n';
 import {
   PresentationMode,
@@ -30,7 +30,12 @@ const probe = vi.hoisted(() => ({
 }));
 vi.mock('@sue/board-react', async () => {
   const { forwardRef, useImperativeHandle } = await import('react');
+  const actual =
+    await vi.importActual<typeof import('@sue/board-react')>(
+      '@sue/board-react',
+    );
   return {
+    ...actual,
     FrameCanvas: forwardRef<FrameCanvasController, FrameCanvasProps>(
       function Canvas(props, ref) {
         probe.props = props;
@@ -61,7 +66,7 @@ vi.mock('@sue/board-react', async () => {
   };
 });
 
-const node = (id: string, kind: string = CellKind.mindChild): NodeCell => ({
+const node = (id: string, kind: string = MindKind.mindChild): NodeCell => ({
   id,
   kind,
   cellType: 'node',
@@ -84,14 +89,14 @@ const snapshot = (): FrameSnapshot => ({
           'a-child-edge',
         ],
       },
-      root: node('root', CellKind.mindRoot),
+      root: node('root', MindKind.mindRoot),
       a: node('a'),
       b: node('b'),
       'a-child': node('a-child'),
       other: node('other', 'rectangle'),
       'root-a': {
         id: 'root-a',
-        kind: CellKind.mindBranch,
+        kind: MindKind.mindBranch,
         cellType: 'edge',
         source: { cellId: 'root' },
         target: { cellId: 'a' },
@@ -100,7 +105,7 @@ const snapshot = (): FrameSnapshot => ({
       },
       'root-b': {
         id: 'root-b',
-        kind: CellKind.mindBranch,
+        kind: MindKind.mindBranch,
         cellType: 'edge',
         source: { cellId: 'root' },
         target: { cellId: 'b' },
@@ -109,7 +114,7 @@ const snapshot = (): FrameSnapshot => ({
       },
       'a-child-edge': {
         id: 'a-child-edge',
-        kind: CellKind.mindBranch,
+        kind: MindKind.mindBranch,
         cellType: 'edge',
         source: { cellId: 'a' },
         target: { cellId: 'a-child' },
@@ -230,7 +235,7 @@ const button = (label: string) =>
   hud().querySelector<HTMLButtonElement>(`button[aria-label="${label}"]`)!;
 const counter = () =>
   host.querySelector('[data-testid="presentation-step"]')?.textContent;
-const key = (
+const key = async (
   key: string,
   options: KeyboardEventInit = {},
   target: EventTarget = surface(),
@@ -242,7 +247,9 @@ const key = (
     key,
     ...options,
   });
-  act(() => target.dispatchEvent(event));
+  await act(async () => {
+    target.dispatchEvent(event);
+  });
   return event;
 };
 const tap = (id: string | null) => act(() => probe.props!.onPresentTap!(id));
@@ -251,7 +258,7 @@ const tick = (ms: number) => act(() => vi.advanceTimersByTime(ms));
 describe('PresentationMode', () => {
   it('passes the original readonly canvas inputs and begins at padded overview', async () => {
     const value = snapshot(),
-      registry = createCellRegistry(),
+      registry = createTestCellRegistry(),
       extensions: FrameCanvasProps['extensions'] = [];
     const interactionSettings: FrameCanvasProps['interactionSettings'] = {};
     await render({ value, registry, extensions, interactionSettings });
@@ -279,32 +286,32 @@ describe('PresentationMode', () => {
 
   it('clamps arrows/page/Enter and handles 0/Home, laser and exit within its surface', async () => {
     const props = await render();
-    key('ArrowRight');
+    await key('ArrowRight');
     expect(counter()).toBe('1 / 2');
     expect(probe.fitCells.mock.lastCall?.[0]).toEqual(['a', 'a-child']);
-    key('PageDown');
-    key('Enter');
-    key('ArrowDown');
+    await key('PageDown');
+    await key('Enter');
+    await key('ArrowDown');
     expect(counter()).toBe('2 / 2');
     expect(button('Next').disabled).toBe(true);
-    key('ArrowLeft');
-    key('PageUp');
-    key('ArrowUp');
+    await key('ArrowLeft');
+    await key('PageUp');
+    await key('ArrowUp');
     expect(counter()).toBe('Overview');
-    key('Enter');
-    key('Home');
+    await key('Enter');
+    await key('Home');
     expect(counter()).toBe('Overview');
-    key('Enter');
-    key('0');
+    await key('Enter');
+    await key('0');
     expect(counter()).toBe('Overview');
-    key('L');
+    await key('L');
     expect(surface().classList.contains('is-laser')).toBe(true);
-    key('l', { repeat: true });
+    await key('l', { repeat: true });
     expect(surface().classList.contains('is-laser')).toBe(true);
-    key('l');
+    await key('l');
     expect(surface().classList.contains('is-laser')).toBe(false);
-    key('Escape');
-    key('Escape');
+    await key('Escape');
+    await key('Escape');
     expect(props.onExit).toHaveBeenCalledTimes(1);
   });
 
@@ -319,26 +326,51 @@ describe('PresentationMode', () => {
     expect(counter()).toBe('1 / 2');
     tap('a-child');
     expect(counter()).toBe('1 / 2');
-    key('ArrowRight');
+    await key('ArrowRight');
     expect(counter()).toBe('2 / 2');
     tap(null);
     expect(counter()).toBe('Overview');
   });
 
+  it('derives presentation help from its own actions and preserves navigation while help owns focus', async () => {
+    const props = await render();
+    await key('ArrowRight');
+    await key('l');
+    await act(async () => button('Keyboard shortcuts').click());
+    expect(
+      host.querySelector('[data-action-id="presentation.next"]'),
+    ).toBeTruthy();
+    expect(
+      host.querySelector('[data-action-id="canvas.history.undo"]'),
+    ).toBeNull();
+    const search = host.querySelector<HTMLInputElement>(
+      '.verd-actions-help input',
+    )!;
+    expect(document.activeElement).toBe(search);
+    await key('ArrowRight', {}, search);
+    await key('l', {}, search);
+    expect(counter()).toBe('1 / 2');
+    expect(surface().classList.contains('is-laser')).toBe(true);
+    await key('Escape', {}, search);
+    expect(host.querySelector('.verd-actions-help')).toBeNull();
+    expect(document.activeElement).toBe(button('Keyboard shortcuts'));
+    expect(props.onExit).not.toHaveBeenCalled();
+  });
+
   it('returns navigation focus to the surface before a boundary button disables', async () => {
     await render();
-    key('ArrowRight');
+    await key('ArrowRight');
     act(() => button('Previous').focus());
     act(() => button('Previous').click());
     expect(counter()).toBe('Overview');
     expect(document.activeElement).toBe(surface());
-    key('ArrowRight', {}, document.activeElement!);
+    await key('ArrowRight', {}, document.activeElement!);
     expect(counter()).toBe('1 / 2');
     act(() => button('Next').focus());
     act(() => button('Next').click());
     expect(counter()).toBe('2 / 2');
     expect(document.activeElement).toBe(surface());
-    key('ArrowLeft', {}, document.activeElement!);
+    await key('ArrowLeft', {}, document.activeElement!);
     expect(counter()).toBe('1 / 2');
   });
 
@@ -348,29 +380,33 @@ describe('PresentationMode', () => {
     document.addEventListener('keydown', outside);
     await render();
     canvas().addEventListener('keydown', inside);
-    expect(key('ArrowRight', {}, canvas()).defaultPrevented).toBe(true);
-    key('z', { ctrlKey: true }, canvas());
+    expect((await key('ArrowRight', {}, canvas())).defaultPrevented).toBe(true);
+    await key('z', { ctrlKey: true }, canvas());
     expect(inside).not.toHaveBeenCalled();
     expect(outside).not.toHaveBeenCalled();
-    expect(key(' ', { code: 'Space' }, canvas()).defaultPrevented).toBe(false);
-    key(' ', { code: 'Space' }, canvas(), 'keyup');
-    expect(probe.spaceDown).toHaveBeenCalledTimes(1);
-    expect(probe.spaceUp).toHaveBeenCalledTimes(1);
-    expect(key(' ', { code: 'Space' }, button('Laser')).defaultPrevented).toBe(
+    expect((await key(' ', { code: 'Space' }, canvas())).defaultPrevented).toBe(
       false,
     );
-    expect(key('Enter', {}, button('Laser')).defaultPrevented).toBe(false);
+    await key(' ', { code: 'Space' }, canvas(), 'keyup');
     expect(probe.spaceDown).toHaveBeenCalledTimes(1);
-    key('ArrowLeft', {}, window);
+    expect(probe.spaceUp).toHaveBeenCalledTimes(1);
+    expect(
+      (await key(' ', { code: 'Space' }, button('Laser'))).defaultPrevented,
+    ).toBe(false);
+    expect((await key('Enter', {}, button('Laser'))).defaultPrevented).toBe(
+      false,
+    );
+    expect(probe.spaceDown).toHaveBeenCalledTimes(1);
+    await key('ArrowLeft', {}, window);
     expect(counter()).toBe('1 / 2');
     document.removeEventListener('keydown', outside);
   });
 
   it('traps Tab/Shift-Tab and keeps HUD visible while a control holds focus', async () => {
     await render();
-    key('Tab');
+    await key('Tab');
     expect(document.activeElement).toBe(button('Overview'));
-    key('Tab', { shiftKey: true });
+    await key('Tab', { shiftKey: true });
     expect(document.activeElement).toBe(button('Exit'));
     tick(3000);
     expect(hud().classList.contains('is-hidden')).toBe(false);
@@ -417,11 +453,11 @@ describe('PresentationMode', () => {
     expect(counter()).toBeUndefined();
     expect(button('Previous')).toBeNull();
     expect(button('Next')).toBeNull();
-    key('ArrowRight');
+    await key('ArrowRight');
     expect(probe.fitCells).not.toHaveBeenCalled();
     document.dispatchEvent(new Event('fullscreenchange'));
     expect(props.onExit).not.toHaveBeenCalled();
-    key('Escape');
+    await key('Escape');
     expect(props.onExit).toHaveBeenCalledTimes(1);
   });
 

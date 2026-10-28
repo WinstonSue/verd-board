@@ -1,5 +1,7 @@
 # @sue/verd-board-app
 
+Next-major source navigation also preserves an embedded document editing view through optional canvas adapter hooks. The workspace preview cache keeps canonical document identity, content revision, selection and scroll in opaque JSON; it waits for editor-ready before restoration, checks the revision before restoring a caret, and cancels on abort, source deletion or cache release. Returning through a different occurrence resolves the stable cell again. View restoration changes no file content or history.
+
 ## 2.0.0 接入与变更
 
 文件工作区与会话。VerdBoardApp 改为 WorkspaceApp({host})；WorkspaceHost、WorkspaceSession 统一保存/历史/冲突，支持 FrameFileV2 与 DocumentFileV1。旧 StorageAdapter 仍作为迁移边界保留。
@@ -52,3 +54,13 @@ export function App() {
 `importLegacy` 只在尚未初始化、无现有文件的可写默认工作区被调用；显式目录不导入设备旧数据。迁移前备份原存储，保留迁移备份；新文件不是 1.0.0 应用的可回写格式。
 
 完整发布摘要与迁移入口见 [VerdBoard 2.0](https://github.com/WinstonSue/verd-board#npm-2)；逐包变更见本包随附的 `CHANGELOG.md`。`FrameCanvas` 已存在于 1.0.0，早期 BoardCanvas/领域 Canvas 的删除不是本次新增变更。
+
+## 下一主版本：稳定链接与可取消导航
+
+Import `WorkspaceTarget` and the link codecs from `@sue/board-common`; the application package no longer exports `DocumentLink`, `createDocumentLink` or `parseDocumentLink`. Cell links use a typed `cell:` fragment and the workspace-global Cell owner index, so a move preserves the existing target. The URL file ID is a creation-time hint and a missing-target fallback, not a persistent redirect.
+
+Workspace navigation captures its source, waits for `DocumentEditorController.flushEditing()` / canvas editing receipts, and sends an abortable request to the mounted target. Return context, selection, camera and temporary Mind reveals remain in memory. Single-file and mixed graph copies/imports rewrite links once with the final identity/owner mapping; ordinary navigation links do not enlarge embedded-reference export closures.
+
+These next-major source APIs accompany major Changesets only; do not infer availability from the still-2.0.0 package version.
+
+File navigation shows the current source file, its latest successful entry, and grouped direct embed locations across canvases and documents. Ownership is displayed separately in file information. Direct opens clear that file’s return context; tab activation preserves it. Document embed locations include a body revision and are revalidated before selection; ordinary text links and repeated nested preview appearances are excluded from embed counts.

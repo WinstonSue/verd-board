@@ -1,11 +1,4 @@
 import {
-  layoutMindCells,
-  type MindMetricsOptions,
-  mindPresentation,
-  registerMindCells,
-  resolveMindChildMove,
-} from '@sue/board-mind';
-import {
   isEdgeCell,
   type Cell,
   type CellRegistry,
@@ -13,41 +6,55 @@ import {
   type NodeGeometry,
   type RectangleClient,
 } from '@sue/board-core';
-import { measureBoardText } from '@sue/board-react';
+import {
+  layoutMindCells,
+  mindPresentation,
+  resolveMindChildMove,
+  type MindMetricsOptions,
+} from '@sue/board-mind';
 import type {
+  FrameMovePreviewContext,
   FramePresentation,
   FrameRenderContext,
   FrameRenderExtension,
-  FrameMovePreviewContext,
+  FrameViewProjection,
 } from '@sue/board-react';
+import { canonicalFrameProjection, measureBoardText } from '@sue/board-react';
+import { createElement } from 'react';
+import { renderMindBranch } from './mind-branch';
 import { mindCellTextBounds, renderMindCellShape } from './mind-cell-renderer';
 import { renderMindControls } from './mind-controls';
-import { createElement } from 'react';
 import { MindSummaryEdge } from './mind-summary-edge';
-import { renderMindBranch } from './mind-branch';
 export const createMindFrameExtensions = (
   registry: CellRegistry,
   options: MindMetricsOptions = {},
 ): FrameRenderExtension[] => {
+  if (!registry.plugins.some((plugin) => plugin.id === 'mind'))
+    throw new Error(
+      'Install createMindPlugin() through createCellRegistry before creating render extensions',
+    );
   const metricsOptions = { measureText: measureBoardText, ...options };
-  registerMindCells(registry);
+
   const caches = new WeakMap<
-    CellStore,
-    Map<string, Map<string, NodeGeometry>>
+    object,
+    WeakMap<CellStore, Map<string, Map<string, NodeGeometry>>>
   >();
   // The store, cell and derived geometry are immutable. Camera changes do not
   // alter these inputs, so keep content measurements out of the zoom path.
   const nodeCaches = new WeakMap<
-    CellStore,
+    object,
     WeakMap<
-      Cell,
-      Map<
-        string,
-        {
-          geometry?: NodeGeometry;
-          textBounds?: RectangleClient;
-          presentation?: FramePresentation;
-        }
+      CellStore,
+      WeakMap<
+        Cell,
+        Map<
+          string,
+          {
+            geometry?: NodeGeometry;
+            textBounds?: RectangleClient;
+            presentation?: FramePresentation;
+          }
+        >
       >
     >
   >();
@@ -61,11 +68,15 @@ export const createMindFrameExtensions = (
     cell,
     geometry,
     frameId,
+    viewProjection,
   }: FrameRenderContext) => {
-    let cells = nodeCaches.get(store);
+    let stores = nodeCaches.get(viewProjection.identity);
+    if (!stores)
+      nodeCaches.set(viewProjection.identity, (stores = new WeakMap()));
+    let cells = stores.get(store);
     if (!cells) {
       cells = new WeakMap();
-      nodeCaches.set(store, cells);
+      stores.set(store, cells);
     }
     let frames = cells.get(cell);
     if (!frames) {
@@ -79,15 +90,27 @@ export const createMindFrameExtensions = (
     }
     return result;
   };
-  const layout = (store: CellStore, frameId: string) => {
-    let frames = caches.get(store);
+  const layout = (
+    store: CellStore,
+    frameId: string,
+    projection: FrameViewProjection = canonicalFrameProjection,
+  ) => {
+    let stores = caches.get(projection.identity);
+    if (!stores) caches.set(projection.identity, (stores = new WeakMap()));
+    let frames = stores.get(store);
     if (!frames) {
       frames = new Map();
-      caches.set(store, frames);
+      stores.set(store, frames);
     }
     let result = frames.get(frameId);
     if (!result) {
-      result = layoutMindCells(store, frameId, metricsOptions);
+      result = layoutMindCells(store, frameId, {
+        ...metricsOptions,
+        expandedCellIds:
+          projection.purpose === 'export'
+            ? undefined
+            : projection.expandedCellIds,
+      });
       frames.set(frameId, result);
     }
     return result;
@@ -95,9 +118,9 @@ export const createMindFrameExtensions = (
   return [
     {
       layout,
-      visible: ({ store, cell, frameId }) => {
+      visible: ({ store, cell, frameId, viewProjection }) => {
         if (!cell.kind.startsWith('mind-')) return true;
-        const nodes = layout(store, frameId);
+        const nodes = layout(store, frameId, viewProjection);
         return isEdgeCell(cell)
           ? 'cellId' in cell.source &&
               'cellId' in cell.target &&

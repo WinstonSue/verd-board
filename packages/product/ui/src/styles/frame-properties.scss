@@ -266,3 +266,20 @@
     opacity: 0;
   }
 }
+
+.frame-arrangement .frame-arrangement-auto {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  input[type='checkbox'] {
+    width: 14px;
+    height: 14px;
+    margin: 0;
+    flex: none;
+  }
+  span {
+    color: var(--vm-foreground-secondary);
+    font-size: 11px;
+  }
+}

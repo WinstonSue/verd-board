@@ -1,29 +1,36 @@
-import { serializeUmlToMermaid } from './uml.js';
-import { umlRoot } from '@sue/board-core';
 import {
-  CellKind,
-  createFrameCell,
+  ArchitectureKind,
+  createArchitecturePlugin,
+  type ArchitectureLayerData,
+} from '@sue/board-architecture';
+import { createDrawPlugin } from '@sue/board-draw';
+import { createUmlPlugin, umlRoot } from '@sue/board-uml';
+import {
+  createWorkflowPlugin,
+  WorkflowKind,
+  type WorkflowStartData,
+} from '@sue/board-workflow';
+import { serializeUmlToMermaid } from './uml.js';
+
+import {
+  createArchitectureLayerCell,
+  createArchitectureModuleCell,
+} from '@sue/board-architecture';
+import {
   createCellRegistry,
+  createFrameCell,
+  isEdgeCell,
   isFrameCell,
   isNodeCell,
-  isEdgeCell,
   validateCellStore,
   type Cell,
   type FrameSnapshot,
   type NodeCell,
-  type ArchitectureLayerData,
-  type WorkflowStartData,
   type Point,
 } from '@sue/board-core';
 import {
-  createArchitectureLayerCell,
-  createArchitectureModuleCell,
-  registerArchitectureCells,
-} from '@sue/board-architecture';
-import {
   createWorkflowStartCell,
   createWorkflowTaskCell,
-  registerWorkflowCells,
 } from '@sue/board-workflow';
 import type { Flowchart } from './parser/flowchart.js';
 
@@ -364,8 +371,8 @@ const nativeSnapshot = (
       id,
       kind:
         scene === 'architecture'
-          ? CellKind.architectureEdge
-          : CellKind.workflowEdge,
+          ? ArchitectureKind.architectureEdge
+          : WorkflowKind.workflowEdge,
       cellType: 'edge',
       source: {
         cellId: source,
@@ -383,9 +390,15 @@ const nativeSnapshot = (
       labels: edge.label !== undefined ? [{ text: edge.label }] : [],
     });
   }
-  const registry = createCellRegistry();
-  registerArchitectureCells(registry);
-  registerWorkflowCells(registry);
+  const registry = createCellRegistry({
+    plugins: [
+      createDrawPlugin(),
+      createWorkflowPlugin(),
+      createArchitecturePlugin(),
+      createUmlPlugin(),
+    ],
+  });
+
   const issues = validateCellStore({ rootId: frame.id, cells }, registry);
   if (issues.length)
     throw new Error(issues.map((issue) => issue.message).join('; '));
@@ -491,9 +504,11 @@ export const serializeFrameToMermaid = (
     .map((id) => snapshot.store.cells[id])
     .filter(isEdgeCell);
   const layers = nodes.filter(
-    (node) => node.kind === CellKind.architectureLayer,
+    (node) => node.kind === ArchitectureKind.architectureLayer,
   );
-  const starts = nodes.filter((node) => node.kind === CellKind.workflowStart);
+  const starts = nodes.filter(
+    (node) => node.kind === WorkflowKind.workflowStart,
+  );
   const aliases = new Map<string, string>();
   const meta: VerdMeta = { frameId, cellIds: {}, positions: {}, edges: [] };
   for (const [at, node] of nodes.entries()) {
@@ -508,7 +523,7 @@ export const serializeFrameToMermaid = (
     const geometry = node.geometry.outline;
     const outline = typeof geometry === 'string' ? geometry : geometry?.kind;
     const shape: NodeShape =
-      node.kind === CellKind.workflowStart
+      node.kind === WorkflowKind.workflowStart
         ? 'stadium'
         : outline === 'diamond'
           ? 'decision'

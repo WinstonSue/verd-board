@@ -1,4 +1,23 @@
 import {
+  Alignment,
+  isBoardTextDocument,
+  sameBoardText,
+  type BoardTextDocument,
+} from '@sue/board-common';
+import { isNodeCell, nodeShapeGeometry } from '@sue/board-core';
+import {
+  mindCellMetrics,
+  mindNoteColor,
+  type MindMetricsOptions,
+  type MindNodeData,
+} from '@sue/board-mind';
+import {
+  FrameRichText,
+  FrameTextEditor,
+  measureBoardText,
+  type FrameRenderContext,
+} from '@sue/board-react';
+import {
   memo,
   useCallback,
   useMemo,
@@ -7,28 +26,6 @@ import {
   type RefObject,
 } from 'react';
 import { createPortal } from 'react-dom';
-import {
-  isNodeCell,
-  nodeShapeGeometry,
-  type MindNodeData,
-} from '@sue/board-core';
-import {
-  mindCellMetrics,
-  mindNoteColor,
-  type MindMetricsOptions,
-} from '@sue/board-mind';
-import {
-  FrameRichText,
-  measureBoardText,
-  FrameTextEditor,
-  type FrameRenderContext,
-} from '@sue/board-react';
-import {
-  Alignment,
-  isBoardTextDocument,
-  sameBoardText,
-  type BoardTextDocument,
-} from '@sue/board-common';
 
 const defaultMetricsOptions: MindMetricsOptions = {
   measureText: measureBoardText,
@@ -68,6 +65,7 @@ type MindTopicShapeProps = {
   | 'pending'
   | 'select'
   | 'dispatch'
+  | 'commitEditing'
   | 'history'
 >;
 function MindTopicShape(context: MindTopicShapeProps) {
@@ -77,6 +75,11 @@ function MindTopicShape(context: MindTopicShapeProps) {
   const dispatch = useCallback(
     (...args: Parameters<MindTopicShapeProps['dispatch']>) =>
       latest.current.dispatch(...args),
+    [],
+  );
+  const commitEditing = useCallback(
+    (...args: Parameters<MindTopicShapeProps['dispatch']>) =>
+      (latest.current.commitEditing ?? latest.current.dispatch)(...args),
     [],
   );
   const history = useCallback(
@@ -95,6 +98,7 @@ function MindTopicShape(context: MindTopicShapeProps) {
       latest={latest}
       select={select}
       dispatch={dispatch}
+      commitEditing={commitEditing}
       history={history}
     />
   );
@@ -139,7 +143,7 @@ const MindTopicContent = memo(function MindTopicContent(
     if (!isNodeCell(latest)) return;
     const previous = (latest.data as MindNodeData | undefined)?.note;
     if (isBoardTextDocument(previous) && sameBoardText(previous, text)) return;
-    return context.dispatch({
+    return (context.commitEditing ?? context.dispatch)({
       id: crypto.randomUUID(),
       operations: [
         {
@@ -288,6 +292,7 @@ export const renderMindCellShape = (
     pending={context.pending}
     select={context.select}
     dispatch={context.dispatch}
+    commitEditing={context.commitEditing}
     history={context.history}
     noteColor={mindNoteColor(context.store, context.cell.id, context.frameId)}
   />

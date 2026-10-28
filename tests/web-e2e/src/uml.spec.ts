@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect, type Page } from '@playwright/test';
 import { readFile } from 'node:fs/promises';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
@@ -8,14 +8,24 @@ import { selectAppAction } from './app-actions';
 const nodes = (page: Parameters<typeof umlCanvas>[0], kind: string) =>
   umlCanvas(page).locator(`[data-cell-kind="${kind}"]`);
 
+async function createWithParameters(page: Page, label: string) {
+  await page
+    .getByRole('group', { name: 'UML 工具' })
+    .getByRole('button', { name: label, exact: true })
+    .click();
+  const dialog = page.getByRole('dialog', { name: label, exact: true });
+  await dialog.getByRole('button', { name: label, exact: true }).click();
+  await expect(dialog).toHaveCount(0);
+}
+
 test('UML class editing, six-way relationship settings, native save and Mermaid/image export', async ({
   page,
 }, testInfo) => {
   await page.goto('/');
   await createUmlDiagram(page, 'class');
   const tools = page.getByRole('group', { name: 'UML 工具' });
-  await tools.getByRole('button', { name: '类', exact: true }).click();
-  await tools.getByRole('button', { name: '接口', exact: true }).click();
+  await tools.getByRole('button', { name: '添加类', exact: true }).click();
+  await tools.getByRole('button', { name: '添加接口', exact: true }).click();
   await page.getByRole('button', { name: '适配画布', exact: true }).click();
   await nodes(page, 'uml-class')
     .first()
@@ -24,7 +34,7 @@ test('UML class editing, six-way relationship settings, native save and Mermaid/
   await attributes.fill('+id: string\n-name: string');
   await attributes.press('Tab');
   await expect(nodes(page, 'uml-class').first()).toContainText('+id: string');
-  await tools.getByRole('button', { name: '关系', exact: true }).click();
+  await createWithParameters(page, '添加关系');
   await nodes(page, 'uml-relation').click();
   await page.getByLabel('关系类型').selectOption('realization');
   await page.getByLabel('来源多重性').fill('1');
@@ -121,10 +131,9 @@ test('UML structural drags reorder messages and participants and preserve one-st
   await page.goto('/');
   await createUmlDiagram(page, 'sequence');
   const tools = page.getByRole('group', { name: 'UML 工具' });
-  await tools.getByRole('button', { name: '参与者', exact: true }).click();
-  await tools.getByRole('button', { name: 'Actor', exact: true }).click();
-  for (let i = 0; i < 3; i++)
-    await tools.getByRole('button', { name: '消息', exact: true }).click();
+  await tools.getByRole('button', { name: '添加参与者', exact: true }).click();
+  await tools.getByRole('button', { name: '添加 Actor', exact: true }).click();
+  for (let i = 0; i < 3; i++) await createWithParameters(page, '添加消息');
   await page.getByRole('button', { name: '适配画布', exact: true }).click();
   const saved = async () =>
     Object.values((await persistedWorkspace(page))?.records ?? {}).find(
@@ -172,14 +181,28 @@ test('UML structural drags reorder messages and participants and preserve one-st
   await expect
     .poll(async () => (await root()).data.participantIds)
     .toEqual([...before.participantIds].reverse());
-  await tools.getByRole('button', { name: 'loop', exact: true }).click();
-  const insert = tools.getByLabel('插入分支');
+  await tools.getByRole('button', { name: '组合片段', exact: true }).click();
+  const fragment = page.getByRole('dialog', { name: '组合片段', exact: true });
+  await fragment.getByLabel('片段类型').selectOption('loop');
+  await fragment
+    .getByRole('button', { name: '添加 loop 片段', exact: true })
+    .click();
+  await tools
+    .getByRole('button', { name: '添加激活区间', exact: true })
+    .click();
+  const activation = page.getByRole('dialog', {
+    name: '添加激活区间',
+    exact: true,
+  });
+  const insert = activation.getByLabel('插入分支');
   const options = await insert
     .locator('option')
     .evaluateAll((options) =>
       options.map((o) => (o as HTMLOptionElement).value),
     );
   await insert.selectOption(options[1]);
-  await tools.getByRole('button', { name: '激活区间', exact: true }).click();
+  await activation
+    .getByRole('button', { name: '添加激活区间', exact: true })
+    .click();
   await expect(umlCanvas(page).locator('[data-uml-activation]')).toHaveCount(1);
 });

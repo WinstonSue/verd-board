@@ -482,6 +482,11 @@ test('Desktop camera navigation leaves a 156-cell workspace untouched and reopen
   const initial = await canvas(page)
     .locator(':scope > [data-frame-world]')
     .getAttribute('transform');
+  // Legacy migration writes the six native files asynchronously. Establish
+  // the baseline only after all of them exist, before measuring camera work.
+  await expect
+    .poll(async () => Object.keys(await canvasFiles()).length)
+    .toBe(6);
   const before = await workspaceDigest();
   const undoWasDisabled = await page
     .getByRole('button', { name: '撤销', exact: true })

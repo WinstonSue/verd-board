@@ -3,7 +3,7 @@ import type { Point } from '../interfaces/point';
 import type { RectangleClient } from '../interfaces/rectangle-client';
 import type { EdgeRoutingContext } from './edge';
 import { polylinePointAt } from './polyline';
-import { routingBatches, copyLabelLayouts } from './routing-cache';
+import { copyLabelLayouts, routingBatches } from './routing-cache';
 
 export interface EdgeLabelLayout {
   /** Point on the route, also used as the label drag origin. */
@@ -40,46 +40,11 @@ const place = (
   points: readonly Point[],
   obstacles: readonly RectangleClient[],
   routes: readonly (readonly Point[])[],
+  registry?: import('../cell/registry').CellRegistry,
 ): EdgeLabelLayout => {
+  const custom = registry?.get(edge.kind)?.labelLayout?.(edge, index, points);
+  if (custom) return custom;
   const label = edge.labels?.[index];
-  if (edge.kind === 'uml-message' && points.length >= 2) {
-    const width = Math.max(
-      140,
-      Math.min(
-        400,
-        points[0][0] === points.at(-1)![0]
-          ? 200
-          : Math.abs(points.at(-1)![0] - points[0][0]) - 32,
-      ),
-    );
-    const lines = (label?.text ?? '')
-      .split('\n')
-      .reduce(
-        (sum, line) =>
-          sum +
-          Math.max(
-            1,
-            Math.ceil(
-              [...line].reduce(
-                (n, c) => n + (c.charCodeAt(0) > 255 ? 16 : 8),
-                0,
-              ) / width,
-            ),
-          ),
-        0,
-      );
-    const height = lines * 20 + 12;
-    const point: Point = [(points[0][0] + points[1][0]) / 2, points[0][1]];
-    return {
-      point,
-      bounds: {
-        x: point[0] - width / 2,
-        y: point[1] - height - 8,
-        width,
-        height,
-      },
-    };
-  }
   const midpoint = polylinePointAt(points, label?.position ?? 0.5);
   if (
     label?.position !== undefined ||
@@ -174,9 +139,48 @@ export function edgeLabelLayout(
   points: readonly Point[],
   routing?: EdgeRoutingContext,
 ): EdgeLabelLayout {
+  if (routing?.preview) {
+    const previous = routing.preview.labelLayouts?.get(`${edge.id}:${index}`);
+    const route = routing.preview.routes.get(edge.id)?.result.points;
+    if (previous && route) {
+      const before = polylinePointAt(
+        route,
+        edge.labels?.[index]?.position ?? 0.5,
+      );
+      const after = polylinePointAt(
+        points,
+        edge.labels?.[index]?.position ?? 0.5,
+      );
+      const dx = after[0] - before[0],
+        dy = after[1] - before[1];
+      return {
+        point: [previous.point[0] + dx, previous.point[1] + dy],
+        bounds: {
+          ...previous.bounds,
+          x: previous.bounds.x + dx,
+          y: previous.bounds.y + dy,
+        },
+      };
+    }
+    return place(
+      { ...edge, route: { mode: 'orthogonal', points: [...points] } },
+      index,
+      points,
+      [],
+      [],
+      routing.registry,
+    );
+  }
   routing?.prepare?.();
   if (!routing || edge.labels?.[index]?.position !== undefined)
-    return place(edge, index, points, routing?.obstacles ?? [], []);
+    return place(
+      edge,
+      index,
+      points,
+      routing?.obstacles ?? [],
+      [],
+      routing?.registry,
+    );
   if (!routing.labelLayouts) {
     const obstacles: RectangleClient[] = [...routing.obstacles];
     const routes = [...routing.routes.values()];
@@ -208,6 +212,7 @@ export function edgeLabelLayout(
             route.result.points,
             obstacles,
             routes.map((value) => value.result.points),
+            routing.registry,
           );
           routing.labelLayouts!.set(`${route.edge.id}:${at}`, layout);
           obstacles.push(layout.bounds);
@@ -229,6 +234,7 @@ export function edgeLabelLayout(
       points,
       routing.obstacles,
       [...routing.routes.values()].map((route) => route.result.points),
+      routing.registry,
     )
   );
 }

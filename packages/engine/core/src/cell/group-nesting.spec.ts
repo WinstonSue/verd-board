@@ -1,8 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import {
+  createTestCellRegistry as createFixtureRegistry,
+  createTestCellRegistry,
+} from '../../../../../tests/fixtures/plugins/registry';
+import {
   applyCellOperations,
   copyCellFragment,
-  createCellRegistry,
   createCellRuntime,
   deleteCells,
   groupCells,
@@ -24,6 +27,7 @@ import {
   type NodeCell,
 } from './types';
 import { NodeUtil } from './util';
+const testCellRegistry = createFixtureRegistry();
 
 const node = (id: string, x: number): NodeCell => ({
   id,
@@ -32,57 +36,75 @@ const node = (id: string, x: number): NodeCell => ({
   geometry: { x, y: 0, width: 40, height: 20 },
 });
 const build = () => {
-  let store = applyCellOperations(createCellStore(createFrameCell('root')), [
-    ...['n1', 'n2', 'n3', 'n4'].map((id, index) => ({
-      type: 'insert_cell' as const,
-      parentId: 'root',
-      cell: node(id, index * 50),
-    })),
-    {
-      type: 'insert_cell',
-      parentId: 'root',
-      cell: createFrameCell('shell', { x: 300, y: 0, width: 80, height: 40 }),
-    },
-    {
-      type: 'insert_cell',
-      parentId: 'shell',
-      cell: node('inner', 4),
-    },
-    {
-      type: 'insert_cell',
-      parentId: 'root',
-      cell: {
-        id: 'arrow',
-        kind: 'arrow',
-        cellType: 'edge',
-        source: { point: [0, 0] },
-        target: { point: [20, 0] },
-        route: {
-          mode: 'fixed',
-          points: [
-            [0, 0],
-            [20, 0],
-          ],
-        },
-      } satisfies EdgeCell,
-    },
-    {
-      type: 'insert_cell',
-      parentId: 'root',
-      cell: createFrameCell('board2', { x: 0, y: 400, width: 200, height: 80 }),
-    },
-  ]);
-  store = applyCellOperations(
-    store,
-    groupCells(store, 'root', ['n1', 'n2'], 'g1'),
+  let store = applyCellOperations(
+    createCellStore(createFrameCell('root')),
+    [
+      ...['n1', 'n2', 'n3', 'n4'].map((id, index) => ({
+        type: 'insert_cell' as const,
+        parentId: 'root',
+        cell: node(id, index * 50),
+      })),
+      {
+        type: 'insert_cell',
+        parentId: 'root',
+        cell: createFrameCell('shell', { x: 300, y: 0, width: 80, height: 40 }),
+      },
+      {
+        type: 'insert_cell',
+        parentId: 'shell',
+        cell: node('inner', 4),
+      },
+      {
+        type: 'insert_cell',
+        parentId: 'root',
+        cell: {
+          id: 'arrow',
+          kind: 'arrow',
+          cellType: 'edge',
+          source: { point: [0, 0] },
+          target: { point: [20, 0] },
+          route: {
+            mode: 'fixed',
+            points: [
+              [0, 0],
+              [20, 0],
+            ],
+          },
+        } satisfies EdgeCell,
+      },
+      {
+        type: 'insert_cell',
+        parentId: 'root',
+        cell: createFrameCell('board2', {
+          x: 0,
+          y: 400,
+          width: 200,
+          height: 80,
+        }),
+      },
+    ],
+    testCellRegistry,
   );
   store = applyCellOperations(
     store,
-    groupCells(store, 'root', ['g1', 'n3'], 'g2'),
+    groupCells(store, 'root', ['n1', 'n2'], 'g1', testCellRegistry),
+    testCellRegistry,
   );
   store = applyCellOperations(
     store,
-    groupCells(store, 'root', ['g2', 'n4', 'shell', 'arrow'], 'g3'),
+    groupCells(store, 'root', ['g1', 'n3'], 'g2', testCellRegistry),
+    testCellRegistry,
+  );
+  store = applyCellOperations(
+    store,
+    groupCells(
+      store,
+      'root',
+      ['g2', 'n4', 'shell', 'arrow'],
+      'g3',
+      testCellRegistry,
+    ),
+    testCellRegistry,
   );
   return store;
 };
@@ -90,7 +112,7 @@ const build = () => {
 describe('three-level groups', () => {
   it('keeps nodes, arrows and a nested frame across move, copy, ungroup, reorder, transfer, delete and undo', () => {
     const store = build();
-    const runtime = createCellRuntime({ store });
+    const runtime = createCellRuntime({ store }, testCellRegistry);
     const before = {
       n1: (store.cells.n1 as NodeCell).geometry.x,
       inner: (store.cells.inner as NodeCell).geometry.x,
@@ -98,7 +120,12 @@ describe('three-level groups', () => {
     };
     runtime.transact({
       id: 'move',
-      operations: translateCellSelection(store, ['g3'], [15, 0]),
+      operations: translateCellSelection(
+        store,
+        ['g3'],
+        [15, 0],
+        testCellRegistry,
+      ),
     });
     expect((runtime.store.cells.n1 as NodeCell).geometry.x).toBe(
       before.n1 + 15,
@@ -129,13 +156,19 @@ describe('three-level groups', () => {
     runtime.redo();
     runtime.undo();
 
-    const locked = applyCellOperations(store, [
-      {
-        type: 'replace_cell',
-        cell: { ...store.cells.n3, locked: true },
-      },
-    ]);
-    expect(translateCellSelection(locked, ['g3'], [15, 0])).toEqual([]);
+    const locked = applyCellOperations(
+      store,
+      [
+        {
+          type: 'replace_cell',
+          cell: { ...store.cells.n3, locked: true },
+        },
+      ],
+      testCellRegistry,
+    );
+    expect(
+      translateCellSelection(locked, ['g3'], [15, 0], testCellRegistry),
+    ).toEqual([]);
 
     runtime.transact({
       id: 'ungroup',
@@ -150,8 +183,9 @@ describe('three-level groups', () => {
     runtime.undo();
     expect(isGroupCell(runtime.store.cells.g3)).toBe(true);
 
-    const fragment = copyCellFragment(runtime.store, ['g3']);
+    const fragment = copyCellFragment(runtime.store, ['g3'], testCellRegistry);
     const plan = planCellPaste({
+      registry: runtime.registry,
       store: runtime.store,
       frameId: 'root',
       selectionIds: [],
@@ -187,7 +221,13 @@ describe('three-level groups', () => {
 
     runtime.transact({
       id: 'transfer',
-      operations: moveWhiteboardCells(runtime.store, ['g3'], 'board2'),
+      operations: moveWhiteboardCells(
+        runtime.store,
+        ['g3'],
+        'board2',
+        undefined,
+        testCellRegistry,
+      ),
     });
     expect((runtime.store.cells.board2 as FrameCell).groups).toContain('g3');
     expect((runtime.store.cells.inner as NodeCell).geometry.x).toBe(
@@ -198,7 +238,9 @@ describe('three-level groups', () => {
 
     runtime.transact({
       id: 'delete',
-      operations: deleteCells(runtime.store, ['g3']),
+      operations: deleteCells(runtime.store, ['g3'], {
+        registry: runtime.registry,
+      }),
     });
     expect(runtime.store.cells.n1).toBeUndefined();
     expect(runtime.store.cells.shell).toBeUndefined();
@@ -213,7 +255,7 @@ describe('three-level groups', () => {
   it('refuses a mixed delete when one object cannot be deleted', () => {
     const store = build();
     class Fixed extends NodeUtil {
-      readonly kind = 'geometry';
+      readonly kind = 'fixed-geometry';
       override capabilities() {
         return {
           move: true,
@@ -225,8 +267,9 @@ describe('three-level groups', () => {
         };
       }
     }
-    const registry = createCellRegistry();
+    const registry = createTestCellRegistry();
     registry.register(new Fixed());
+    store.cells.n1 = { ...store.cells.n1, kind: 'fixed-geometry' };
     expect(selectionAllows(store, ['n1', 'n4'], registry, 'delete')).toBe(
       false,
     );
@@ -236,16 +279,17 @@ describe('three-level groups', () => {
   it('pastes a nested frame without shifting its interior and selects only the shell', () => {
     const store = build();
     const plan = planCellPaste({
+      registry: testCellRegistry,
       store,
       frameId: 'root',
       selectionIds: [],
-      fragment: copyCellFragment(store, ['shell']),
+      fragment: copyCellFragment(store, ['shell'], testCellRegistry),
       allocateId: (id) => `f-${id}`,
       offset: [10, 6],
       intent: 'paste',
     });
     expect(plan.selection).toEqual({ focus: ['root'], ids: ['f-shell'] });
-    const next = applyCellOperations(store, plan.operations);
+    const next = applyCellOperations(store, plan.operations, testCellRegistry);
     expect((next.cells['f-shell'] as NodeCell).geometry.x).toBe(
       (store.cells.shell as NodeCell).geometry.x + 10,
     );
@@ -259,11 +303,15 @@ describe('three-level groups', () => {
     const pasted = applyCellOperations(
       store,
       pasteCellFragment(
-        copyCellFragment(store, ['g1']),
+        copyCellFragment(store, ['g1'], testCellRegistry),
         'root',
         (id) => `p-${id}`,
         [8, 0],
+        undefined,
+        undefined,
+        testCellRegistry,
       ),
+      testCellRegistry,
     );
     expect(isGroupCell(pasted.cells['p-g1'])).toBe(true);
     expect((pasted.cells['p-n1'] as NodeCell).geometry.x).toBe(
@@ -276,6 +324,7 @@ describe('three-level groups', () => {
     const store = createCellStore(board);
     expect(() =>
       planCellPaste({
+        registry: testCellRegistry,
         store,
         frameId: 'root',
         selectionIds: [],

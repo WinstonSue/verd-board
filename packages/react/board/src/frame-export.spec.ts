@@ -27,6 +27,23 @@ describe('native frame image clone', () => {
     expect(reader.scrollTop).toBe(150);
     source.parentElement!.remove();
   });
+  it('restores temporarily hidden authored strokes and arrow bodies only in the export clone', () => {
+    const source = svg(
+      '<g opacity="0.2"><g opacity="0" data-frame-original-opacity="1"><path stroke="#000" stroke-width="8" d="M0 0L100 0"/><path fill="#000" d="M90 -5L100 0L90 5Z"/></g></g><rect stroke="#000" style="stroke-opacity:0" data-frame-original-stroke-opacity="0.7"/><g data-frame-export-exclude="interaction-stroke"><path stroke="#6366f1"/></g>',
+    );
+    const clone = cloneFrameImageSvg(source);
+    expect(clone.querySelector<SVGElement>('g > g')!.style.opacity).toBe('1');
+    expect(clone.querySelector<SVGElement>('rect')!.style.strokeOpacity).toBe(
+      '0.7',
+    );
+    expect(clone.querySelector('[data-frame-export-exclude]')).toBeNull();
+    expect(clone.querySelector('[data-frame-original-opacity]')).toBeNull();
+    expect(source.querySelector('g > g')!.getAttribute('opacity')).toBe('0');
+    expect(source.querySelector<SVGElement>('rect')!.style.strokeOpacity).toBe(
+      '0',
+    );
+    source.parentElement!.remove();
+  });
   it('rejects invalid export options before mounting a renderer', async () => {
     const snapshot = { store: createCellStore(createFrameCell('root')) };
     const before = document.body.childElementCount;

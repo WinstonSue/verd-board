@@ -11,6 +11,8 @@ import { DocumentGroupTracker, INPUT_GROUP_MS } from './document-groups';
 import { findInDocument } from './document-search';
 import type { DocumentChangeSource } from '../../types/document';
 
+HTMLElement.prototype.scrollIntoView ??= () => {};
+
 const editors: Editor[] = [];
 afterEach(() => editors.splice(0).forEach((editor) => editor.destroy()));
 
@@ -58,10 +60,13 @@ const heading = (level: number, t: string) => ({
 });
 
 describe('createDocumentExtensions', () => {
-  it('inserts native canvas references, keeps their identity through HTML, and undoes insertion', () => {
+  it('inserts native canvas references, keeps their identity through HTML, and undoes insertion', async () => {
     const editor = makeEditor();
     const { controller, sources } = makeController(editor);
-    controller.insertFrameReference('board/图:1');
+    await controller.executeAction(
+      'document.insert-frame-reference',
+      'board/图:1',
+    );
     expect(
       editor
         .getJSON()
@@ -80,12 +85,50 @@ describe('createDocumentExtensions', () => {
     expect(
       pasted.getJSON().content?.some((node) => node.type === 'frameReference'),
     ).toBe(true);
-    controller.undo();
+    await controller.executeAction('document.undo');
     expect(
       editor.getJSON().content?.some((node) => node.type === 'frameReference'),
     ).toBe(false);
   });
-  it('permits workspace links only in standalone documents', () => {
+  it('reveals repeated frame embeds in read-only documents without changing content or history', () => {
+    const reference = (id: string) => ({
+      type: 'frameReference',
+      attrs: { targetFrameId: id },
+    });
+    const editor = makeEditor(
+      doc(
+        paragraph(text('Before')),
+        reference('a'),
+        reference('b'),
+        reference('a'),
+      ),
+    );
+    editor.setEditable(false);
+    const { controller } = makeController(editor);
+    const content = editor.getJSON();
+    const update = vi.fn();
+    editor.on('update', update);
+    const scroll = vi
+      .spyOn(HTMLElement.prototype, 'scrollIntoView')
+      .mockImplementation(() => {});
+    expect(controller.locateFrameReference('a', 0)).toBe(true);
+    const firstPosition = editor.state.selection.from;
+    expect(controller.locateFrameReference('a', 1)).toBe(true);
+    const selection = editor.state.selection;
+    expect(
+      editor.state.doc.nodeAt(selection.from)?.attrs['targetFrameId'],
+    ).toBe('a');
+    expect(selection.from).toBeGreaterThan(firstPosition);
+    expect(scroll).toHaveBeenCalled();
+    expect(controller.locateFrameReference('a', 2)).toBe(false);
+    expect(controller.locateFrameReference('a', -1)).toBe(false);
+    expect(editor.state.selection).toBe(selection);
+    expect(editor.getJSON()).toEqual(content);
+    expect(update).not.toHaveBeenCalled();
+    scroll.mockRestore();
+  });
+
+  it('permits workspace links only in standalone documents', async () => {
     const content = doc(
       paragraph(
         text('Guide', [
@@ -107,7 +150,7 @@ describe('createDocumentExtensions', () => {
     );
   });
 
-  it('disables the local undo history when a central adapter is used', () => {
+  it('disables the local undo history when a central adapter is used', async () => {
     const withHistory = makeEditor(undefined, true);
     const withoutHistory = makeEditor(undefined, false);
     expect(withHistory.can().undo()).toBe(false);
@@ -119,7 +162,7 @@ describe('createDocumentExtensions', () => {
 });
 
 describe('findInDocument', () => {
-  it('matches across marks inside one block but never across blocks', () => {
+  it('matches across marks inside one block but never across blocks', async () => {
     const editor = makeEditor(
       doc(
         paragraph(text('foo'), text('bar', [{ type: 'bold' }]), text('baz')),
@@ -134,7 +177,7 @@ describe('findInDocument', () => {
     expect(findInDocument(editor.state.doc, 'bazbar')).toEqual([]);
   });
 
-  it('never matches across atom nodes and honors case sensitivity', () => {
+  it('never matches across atom nodes and honors case sensitivity', async () => {
     const editor = makeEditor(
       doc(
         paragraph(
@@ -165,7 +208,7 @@ describe('DocumentGroupTracker', () => {
     return { steps: [step] } as never;
   };
 
-  it('merges a typing burst and splits on the 500ms boundary', () => {
+  it('merges a typing burst and splits on the 500ms boundary', async () => {
     const t = tracker();
     const t0 = 1_000_000;
     const g1 = t.groupFor('input', fakeTr(1, 0), t0);
@@ -175,7 +218,7 @@ describe('DocumentGroupTracker', () => {
     ).not.toBe(g1);
   });
 
-  it('keeps insertion and deletion runs in separate groups', () => {
+  it('keeps insertion and deletion runs in separate groups', async () => {
     const t = tracker();
     const t0 = 2_000_000;
     const insert = t.groupFor('input', fakeTr(1, 0), t0);
@@ -184,7 +227,7 @@ describe('DocumentGroupTracker', () => {
     expect(t.groupFor('input', fakeTr(0, 1), t0 + 20)).toBe(erase);
   });
 
-  it('gives Enter, non-input sources and IME compositions their own groups', () => {
+  it('gives Enter, non-input sources and IME compositions their own groups', async () => {
     const t = tracker();
     const t0 = 3_000_000;
     t.groupFor('input', fakeTr(1, 0), t0);
@@ -200,7 +243,7 @@ describe('DocumentGroupTracker', () => {
     expect(t.groupFor('input', fakeTr(1, 0), t0 + 6000)).not.toBe(ime1);
   });
 
-  it('ends the run on explicit caret moves and external restores', () => {
+  it('ends the run on explicit caret moves and external restores', async () => {
     const t = tracker();
     const t0 = 4_000_000;
     const g1 = t.groupFor('input', fakeTr(1, 0), t0);
@@ -213,13 +256,47 @@ describe('DocumentGroupTracker', () => {
 });
 
 describe('createDocumentController', () => {
-  it('commits content, keeps identity and reports toolbar state', () => {
+  it('snapshots the focused native range before the model selection observer without changing state', () => {
+    const editor = makeEditor(createBlockText('Origin').content);
+    const { controller, sources } = makeController(editor);
+    const input = document.createElement('input');
+    document.body.append(editor.view.dom, input);
+    editor.commands.setTextSelection(1);
+    editor.view.focus();
+    const before = editor.state;
+    const text = editor.view.dom.querySelector('p')!.firstChild!;
+    const range = document.createRange();
+    range.setStart(text, 0);
+    range.setEnd(text, 1);
+    const native = document.getSelection()!;
+    native.removeAllRanges();
+    native.addRange(range);
+    expect(editor.state.selection.empty).toBe(true);
+    expect(native.toString()).toBe('O');
+    expect(controller.getSelection()).toEqual({
+      from: 1,
+      to: 2,
+      collapsed: false,
+    });
+    expect(editor.state).toBe(before);
+    expect(sources).toEqual([]);
+    input.focus();
+    expect(controller.getSelection()).toEqual({
+      from: 1,
+      to: 1,
+      collapsed: true,
+    });
+    editor.view.dom.remove();
+    input.remove();
+  });
+
+  it('commits content, keeps identity and reports toolbar state', async () => {
     const document = createBlockText('hello');
     const editor = makeEditor(document.content);
     const { controller } = makeController(editor, document);
     editor.commands.selectAll();
-    controller.toggleMark('bold');
-    controller.setHeading(2);
+    await controller.executeAction('document.toggle-bold');
+    await controller.executeAction('document.set-heading', 2);
     const committed = controller.commit();
     expect(committed.id).toBe(document.id);
     expect(committed.content.content?.[0].type).toBe('heading');
@@ -232,7 +309,7 @@ describe('createDocumentController', () => {
     expect(state.marks.bold).toBe(true);
   });
 
-  it('lists headings for the table of contents and locates them', () => {
+  it('lists headings for the table of contents and locates them', async () => {
     const editor = makeEditor(
       doc(
         heading(1, 'Intro'),
@@ -253,7 +330,7 @@ describe('createDocumentController', () => {
     expect($from.parent.textContent).toBe('Deep');
   });
 
-  it('uses visible text and document order for heading anchors', () => {
+  it('uses visible text and document order for heading anchors', async () => {
     const editor = makeEditor(
       doc(
         {
@@ -275,7 +352,7 @@ describe('createDocumentController', () => {
     ]);
   });
 
-  it('scrolls readonly headings and the document start without requiring a DOM caret', () => {
+  it('scrolls readonly headings and the document start without requiring a DOM caret', async () => {
     const editor = makeEditor(
       doc(heading(2, 'Read section'), paragraph(text('Body'))),
     );
@@ -306,50 +383,70 @@ describe('createDocumentController', () => {
     expect(editor.can().undo()).toBe(false);
   });
 
-  it('finds, replaces one match and replaces all in a single undo step', () => {
+  it('finds, replaces one match and replaces all in a single undo step', async () => {
     const editor = makeEditor(
       doc(paragraph(text('cat sat cat')), paragraph(text('CAT'))),
     );
     const { controller } = makeController(editor);
     const matches = controller.find('cat');
     expect(matches).toHaveLength(3);
-    controller.replace(matches[0], 'dog');
+    await controller.executeAction('document.replace', {
+      match: matches[0],
+      text: 'dog',
+    });
     expect(editor.getText()).toContain('dog sat cat');
 
-    expect(controller.replaceAll('cat', 'fox')).toBe(2);
+    expect(
+      await controller.executeAction('document.replace-all', {
+        query: 'cat',
+        text: 'fox',
+      }),
+    ).toEqual({ status: 'completed' });
     expect(editor.getText()).toContain('dog sat fox');
     // replaceAll is one transaction → one local undo restores both.
     editor.commands.undo();
     expect(editor.getText()).toContain('dog sat cat');
   });
 
-  it('inserts images and tables and guards table commands via can()', () => {
+  it('inserts images and tables and guards table commands via can()', async () => {
     const editor = makeEditor(doc(paragraph(text('x'))));
     const { controller } = makeController(editor);
-    controller.insertImage({ src: 'data:image/png;base64,a', alt: 'a' });
+    await controller.executeAction('document.insert-image', {
+      src: 'data:image/png;base64,a',
+      alt: 'a',
+    });
     expect(editor.getText()).toContain('x');
     expect(editor.getJSON().content?.some((n) => n.type === 'image')).toBe(
       true,
     );
 
-    expect(controller.can('addTableRowAfter')).toBe(false);
-    controller.insertTable();
+    expect(controller.getActionState('document.add-row-after').enabled).toBe(
+      false,
+    );
+    await controller.executeAction('document.insert-table');
     expect(controller.getToolbarState().inTable).toBe(true);
-    expect(controller.can('addTableRowAfter')).toBe(true);
-    controller.addTableRow('after');
-    controller.deleteTable();
+    expect(controller.getActionState('document.add-row-after').enabled).toBe(
+      true,
+    );
+    await controller.executeAction('document.add-row-after');
+    await controller.executeAction('document.delete-table');
     expect(editor.getJSON().content?.some((n) => n.type === 'table')).toBe(
       false,
     );
   });
 
-  it('blocks mutating commands in readonly mode but keeps find working', () => {
+  it('blocks mutating commands in readonly mode but keeps find working', async () => {
     const editor = makeEditor(doc(paragraph(text('alpha beta'))));
     editor.setEditable(false);
     const { controller } = makeController(editor);
-    controller.toggleMark('bold');
-    controller.insertImage({ src: 'x' });
-    expect(controller.replaceAll('beta', 'gamma')).toBe(0);
+    await controller.executeAction('document.toggle-bold');
+    await controller.executeAction('document.insert-image', { src: 'x' });
+    expect(
+      await controller.executeAction('document.replace-all', {
+        query: 'beta',
+        text: 'gamma',
+      }),
+    ).toMatchObject({ status: 'rejected', code: 'readonly' });
     expect(editor.getJSON().content?.[0].content?.[0].marks).toBeUndefined();
     expect(editor.getText()).toBe('alpha beta');
     expect(controller.find('beta')).toHaveLength(1);

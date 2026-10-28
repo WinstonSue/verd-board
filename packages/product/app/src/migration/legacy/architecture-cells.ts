@@ -1,5 +1,5 @@
+import { ArchitectureKind } from '@sue/board-architecture';
 import {
-  CellKind,
   createCellStore,
   createFrameCell,
   type Cell,
@@ -46,7 +46,7 @@ export const architectureDocumentToStore = (
     children.push(layer.id);
     cells[layer.id] = {
       id: layer.id,
-      kind: CellKind.architectureLayer,
+      kind: ArchitectureKind.architectureLayer,
       cellType: 'node',
       geometry: { x: 0, y: 0, width: 0, height: 0, derived: true },
       content: { label: layer.label },
@@ -57,7 +57,7 @@ export const architectureDocumentToStore = (
       children.push(node.id);
       cells[node.id] = {
         id: node.id,
-        kind: CellKind.architectureModule,
+        kind: ArchitectureKind.architectureModule,
         cellType: 'node',
         geometry: {
           x: node.position?.x ?? 0,
@@ -76,7 +76,7 @@ export const architectureDocumentToStore = (
     children.push(edge.id);
     const cell: EdgeCell = {
       id: edge.id,
-      kind: CellKind.architectureEdge,
+      kind: ArchitectureKind.architectureEdge,
       cellType: 'edge',
       source: { cellId: edge.source },
       target: { cellId: edge.target },

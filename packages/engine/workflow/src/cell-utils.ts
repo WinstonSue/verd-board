@@ -1,25 +1,24 @@
 import {
-  CellKind,
-  groupLeafMembers,
   assertWholeGroupsMoved,
-  NodeUtil,
   EdgeUtil,
+  groupLeafMembers,
   indexCells,
   isEdgeCell,
   isNodeCell,
+  NodeUtil,
   type Cell,
-  type CellStore,
-  type CellRegistry,
-  type EdgeCell,
-  type NodeCell,
-  type WorkflowStartData,
-  type PortSpec,
-  type FrameMount,
   type CellCapabilities,
-  type NodeGeometry,
   type CellOperation,
+  type CellRegistry,
+  type CellStore,
+  type EdgeCell,
+  type FrameMount,
+  type NodeCell,
+  type NodeGeometry,
   type Point,
+  type PortSpec,
 } from '@sue/board-core';
+import { WorkflowKind, type WorkflowStartData } from './public-api';
 
 export const workflowCellPorts = (start = false): PortSpec[] =>
   (['top', 'right', 'bottom', 'left'] as const).map((side) => ({
@@ -38,7 +37,7 @@ const isIdList = (value: unknown): value is string[] =>
 export const workflowStartData = (
   cell: Cell | undefined,
 ): WorkflowStartData | undefined => {
-  if (!isNodeCell(cell) || cell.kind !== CellKind.workflowStart) return;
+  if (!isNodeCell(cell) || cell.kind !== WorkflowKind.workflowStart) return;
   const data = cell.data;
   if (!data || typeof data !== 'object' || Array.isArray(data)) return;
   const record = data as Partial<WorkflowStartData>;
@@ -72,7 +71,7 @@ export abstract class WorkflowNodeUtil extends NodeUtil {
   }
 }
 export class WorkflowStartNodeUtil extends WorkflowNodeUtil {
-  readonly kind = CellKind.workflowStart;
+  readonly kind = WorkflowKind.workflowStart;
   override move(
     store: CellStore,
     cell: Cell,
@@ -142,9 +141,9 @@ export class WorkflowStartNodeUtil extends WorkflowNodeUtil {
         return (
           !isNodeCell(member) ||
           ![
-            CellKind.workflowStart,
-            CellKind.workflowTask,
-            CellKind.workflowDecision,
+            WorkflowKind.workflowStart,
+            WorkflowKind.workflowTask,
+            WorkflowKind.workflowDecision,
           ].includes(member.kind as never)
         );
       })
@@ -192,7 +191,7 @@ const workflowPasteOwner = (
   for (const id of selectionIds.flatMap((id) => groupLeafMembers(store, id))) {
     const cell = store.cells[id];
     if (!cell) return undefined;
-    if (cell.kind === CellKind.workflowStart) owners.add(cell.id);
+    if (cell.kind === WorkflowKind.workflowStart) owners.add(cell.id);
     else {
       const start = workflowStartOf(store, id);
       if (!start) return undefined;
@@ -214,8 +213,8 @@ const workflowPasteExtras = (
   const data = workflowStartData(start);
   if (!isNodeCell(start) || !data) return [];
   const added = Object.values(cells).flatMap((cell) =>
-    cell.kind === CellKind.workflowTask ||
-    cell.kind === CellKind.workflowDecision
+    cell.kind === WorkflowKind.workflowTask ||
+    cell.kind === WorkflowKind.workflowDecision
       ? [mapping.get(cell.id) ?? cell.id]
       : [],
   );
@@ -255,7 +254,7 @@ const placeDerivedWorkflowNode = (
   };
 };
 export class WorkflowTaskNodeUtil extends WorkflowNodeUtil {
-  readonly kind = CellKind.workflowTask;
+  readonly kind = WorkflowKind.workflowTask;
   requiresPasteOwner(cell: Cell, fragment: { cells: Record<string, Cell> }) {
     return !fragmentOwnsWorkflowCell(cell, fragment);
   }
@@ -264,7 +263,7 @@ export class WorkflowTaskNodeUtil extends WorkflowNodeUtil {
   completePaste = workflowPasteExtras;
 }
 export class WorkflowDecisionNodeUtil extends WorkflowNodeUtil {
-  readonly kind = CellKind.workflowDecision;
+  readonly kind = WorkflowKind.workflowDecision;
   requiresPasteOwner(cell: Cell, fragment: { cells: Record<string, Cell> }) {
     return !fragmentOwnsWorkflowCell(cell, fragment);
   }
@@ -285,8 +284,8 @@ const rejectWorkflowCycle = (
     Object.values(cells)
       .filter(
         (cell) =>
-          cell.kind === CellKind.workflowTask ||
-          cell.kind === CellKind.workflowDecision,
+          cell.kind === WorkflowKind.workflowTask ||
+          cell.kind === WorkflowKind.workflowDecision,
       )
       .map((cell) => cell.id),
   );
@@ -294,7 +293,7 @@ const rejectWorkflowCycle = (
   Object.values(cells).forEach((cell) => {
     if (
       !isEdgeCell(cell) ||
-      cell.kind !== CellKind.workflowEdge ||
+      cell.kind !== WorkflowKind.workflowEdge ||
       !('cellId' in cell.source) ||
       !('cellId' in cell.target) ||
       !ids.has(cell.source.cellId) ||
@@ -319,7 +318,7 @@ const rejectWorkflowCycle = (
     : undefined;
 };
 export class WorkflowEdgeUtil extends EdgeUtil {
-  readonly kind = CellKind.workflowEdge;
+  readonly kind = WorkflowKind.workflowEdge;
   rejectPaste = rejectWorkflowCycle;
   override validateEdge(store: CellStore, edge: EdgeCell): string | undefined {
     if (!('cellId' in edge.source) || !('cellId' in edge.target))
@@ -331,7 +330,7 @@ export class WorkflowEdgeUtil extends EdgeUtil {
       target = store.cells[targetId];
     if (!isNodeCell(source) || !isNodeCell(target))
       return 'Invalid workflow endpoints';
-    if (target.kind === CellKind.workflowStart)
+    if (target.kind === WorkflowKind.workflowStart)
       return 'Cannot connect to a start';
     const graph = workflowStartOf(store, sourceId);
     if (!graph || workflowStartOf(store, targetId)?.id !== graph.id)
@@ -354,7 +353,7 @@ export class WorkflowEdgeUtil extends EdgeUtil {
     const edges = Object.values(store.cells).filter(
       (cell): cell is EdgeCell =>
         isEdgeCell(cell) &&
-        cell.kind === CellKind.workflowEdge &&
+        cell.kind === WorkflowKind.workflowEdge &&
         cell.id !== edge.id,
     );
     if (

@@ -1,16 +1,16 @@
+import { FrameAppearanceSettings } from '@sue/board-react';
 import {
   appearanceCells,
+  isDocumentCell,
   isFrameCell,
   isFrameReferenceCell,
-  isDocumentCell,
   isNodeCell,
   updateCellAppearance,
-  type CellStore,
   type CellOperation,
+  type CellStore,
   type NodeAppearance,
 } from '@sue/board-core';
 import { useI18n } from './i18n';
-import { FramePropertyNumber } from './frame-property-number';
 
 export function FrameSelectionAppearance({
   store,
@@ -28,8 +28,6 @@ export function FrameSelectionAppearance({
   disabled?: boolean;
 }) {
   const { language } = useI18n();
-  const noFill = language === 'zh' ? '无填充' : 'No fill';
-  const noStroke = language === 'zh' ? '无描边' : 'No stroke';
   const cells = appearanceCells(store, ids);
   if (!cells.length) return null;
   const frameLike = (cell: (typeof cells)[number]) =>
@@ -53,155 +51,31 @@ export function FrameSelectionAppearance({
     const latest = getStore ? getStore() : store;
     if (!disabled && latest) dispatch(updateCellAppearance(latest, ids, patch));
   };
-  const mixed = (
-    <option value="" disabled>
-      {language === 'zh' ? '混合值' : 'Mixed values'}
-    </option>
-  );
   return (
-    <>
-      {
-        <>
-          {cells.some(isNodeCell) && (
-            <label>
-              {language === 'zh' ? '填充' : 'Fill'}
-              <input
-                aria-label={single && language === 'zh' ? '填充' : 'Fill color'}
-                type="color"
-                data-mixed={
-                  common('fill', '#ffffff') === undefined || undefined
-                }
-                title={
-                  common('fill', '#ffffff') === undefined
-                    ? language === 'zh'
-                      ? '混合值'
-                      : 'Mixed values'
-                    : undefined
-                }
-                aria-description={
-                  common('fill', '#ffffff') === undefined
-                    ? language === 'zh'
-                      ? '混合值'
-                      : 'Mixed values'
-                    : undefined
-                }
-                value={
-                  /^#[0-9a-f]{6}$/i.test(common('fill', '#ffffff') ?? '')
-                    ? common('fill', '#ffffff')
-                    : '#ffffff'
-                }
-                onChange={(event) => change({ fill: event.target.value })}
-              />
-              <button
-                aria-label={noFill}
-                onClick={() => change({ fill: 'none' })}
-              >
-                {noFill}
-              </button>
-            </label>
-          )}
-          <label>
-            {language === 'zh' ? '描边' : 'Stroke'}
-            <input
-              aria-label={single && language === 'zh' ? '描边' : 'Stroke color'}
-              type="color"
-              data-mixed={
-                common('strokeColor', defaultStroke) === undefined || undefined
-              }
-              title={
-                common('strokeColor', defaultStroke) === undefined
-                  ? language === 'zh'
-                    ? '混合值'
-                    : 'Mixed values'
-                  : undefined
-              }
-              aria-description={
-                common('strokeColor', defaultStroke) === undefined
-                  ? language === 'zh'
-                    ? '混合值'
-                    : 'Mixed values'
-                  : undefined
-              }
-              value={
-                /^#[0-9a-f]{6}$/i.test(
-                  common('strokeColor', defaultStroke) ?? '',
-                )
-                  ? common('strokeColor', defaultStroke)
-                  : defaultStroke
-              }
-              onChange={(event) => change({ strokeColor: event.target.value })}
-            />
-            <button
-              aria-label={noStroke}
-              onClick={() => change({ strokeColor: 'none' })}
-            >
-              {noStroke}
-            </button>
-          </label>
-        </>
-      }
-      <label>
-        {language === 'zh' ? '线宽' : 'Stroke width'}
-        <FramePropertyNumber
-          aria-label="Stroke width"
-          min={0}
-          step={0.5}
-          identity={JSON.stringify(ids)}
-          disabled={disabled}
-          mixed={common('strokeWidth', 2) === undefined}
-          value={common('strokeWidth', 2)}
-          onCommit={(strokeWidth) => change({ strokeWidth })}
-        />
-      </label>
-      <label>
-        {language === 'zh' ? '线型' : 'Stroke style'}
-        <select
-          aria-label="Stroke style"
-          value={common('strokeStyle', 'solid') ?? ''}
-          onChange={(event) =>
-            change({
-              strokeStyle: event.target.value as NodeAppearance['strokeStyle'],
-            })
-          }
-        >
-          {mixed}
-          <option value="solid">{language === 'zh' ? '实线' : 'Solid'}</option>
-          <option value="dashed">
-            {language === 'zh' ? '虚线' : 'Dashed'}
-          </option>
-          <option value="dotted">
-            {language === 'zh' ? '点线' : 'Dotted'}
-          </option>
-        </select>
-      </label>
-      <label>
-        {language === 'zh' ? '不透明度' : 'Opacity'}
-        <FramePropertyNumber
-          aria-label="Opacity"
-          min={0}
-          max={1}
-          step={0.05}
-          identity={JSON.stringify(ids)}
-          disabled={disabled}
-          mixed={common('opacity', 1) === undefined}
-          value={common('opacity', 1)}
-          onCommit={(opacity) => change({ opacity })}
-        />
-      </label>
-      <label>
-        {language === 'zh' ? '阴影' : 'Shadow'}
-        <select
-          aria-label="Shadow"
-          value={common('shadow', 'none') ?? ''}
-          onChange={(event) => change({ shadow: event.target.value })}
-        >
-          {mixed}
-          <option value="none">{language === 'zh' ? '无' : 'None'}</option>
-          <option value="sm">{language === 'zh' ? '小' : 'Small'}</option>
-          <option value="md">{language === 'zh' ? '中' : 'Medium'}</option>
-          <option value="lg">{language === 'zh' ? '大' : 'Large'}</option>
-        </select>
-      </label>
-    </>
+    <FrameAppearanceSettings
+      values={{
+        fill: common('fill', '#ffffff'),
+        strokeColor: common('strokeColor', defaultStroke),
+        strokeWidth: common('strokeWidth', 2),
+        opacity: common('opacity', 1),
+        strokeStyle: common('strokeStyle', 'solid'),
+        shadow: common('shadow', 'none'),
+      }}
+      identity={JSON.stringify(ids)}
+      language={language}
+      profile="product"
+      includeFill={cells.some(isNodeCell)}
+      single={single}
+      disabled={disabled}
+      strokeFallback={defaultStroke}
+      onCommit={({ changes }) => {
+        const patch: Partial<NodeAppearance> = {};
+        for (const edit of changes)
+          if (edit.kind === 'set')
+            Object.assign(patch, { [edit.key]: edit.value });
+        change(patch);
+      }}
+      onClear={(key) => change({ [key]: 'none' })}
+    />
   );
 }

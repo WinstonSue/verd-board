@@ -1,8 +1,10 @@
-import { normalizeCellPositionOperations } from './position';
-import { indexCells, type CellOperation } from './index';
+import { portAnchor, relativeAnchor } from '../geometry/edge';
+import type { Point } from '../interfaces/point';
 import { copyCellFragment } from './clipboard';
 import { convertFramePoint, frameScene } from './frame';
-import { portAnchor, relativeAnchor } from '../geometry/edge';
+import { indexCells, type CellOperation } from './index';
+import { normalizeCellPositionOperations } from './position';
+import { createCellRegistry, type CellRegistry } from './registry';
 import {
   isEdgeCell,
   isFrameCell,
@@ -11,7 +13,6 @@ import {
   type CellStore,
   type EdgeTerminal,
 } from './types';
-import type { Point } from '../interfaces/point';
 
 const terminalPosition = (store: CellStore, terminal: EdgeTerminal): Point => {
   if ('point' in terminal) return [...terminal.point];
@@ -33,9 +34,10 @@ export const moveWhiteboardCells = (
   ids: readonly string[],
   targetFrameId: string,
   geometryStore: CellStore = store,
+  registry: CellRegistry = createCellRegistry(),
 ): CellOperation[] => {
   const target = store.cells[targetFrameId];
-  if (!isFrameCell(target) || frameScene(store, targetFrameId))
+  if (!isFrameCell(target) || frameScene(store, targetFrameId, registry))
     throw new Error('Transfer target must be a whiteboard frame');
   const index = indexCells(store);
   const sourceIds = new Set(ids.map((id) => index.parentOf.get(id)));
@@ -43,9 +45,9 @@ export const moveWhiteboardCells = (
     throw new Error('Transfer selection must have one source frame');
   const sourceFrameId = [...sourceIds][0]!;
   if (sourceFrameId === targetFrameId) return [];
-  if (frameScene(store, sourceFrameId))
+  if (frameScene(store, sourceFrameId, registry))
     throw new Error('Transfer source must be a whiteboard frame');
-  const fragment = copyCellFragment(store, ids);
+  const fragment = copyCellFragment(store, ids, registry);
   const included = new Set(Object.keys(fragment.cells));
   if (
     target.locked ||
@@ -72,7 +74,7 @@ export const moveWhiteboardCells = (
         'cellId' in cell.target && moved.has(cell.target.cellId);
       if (!sourceMoved && !targetMoved) return;
       operations.push(
-        cell.kind === 'arrow'
+        registry.get(cell.kind)?.freeTerminals === true
           ? {
               type: 'replace_cell',
               cell: {

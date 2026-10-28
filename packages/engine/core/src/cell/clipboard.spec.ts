@@ -1,10 +1,12 @@
 import { describe, expect, it } from 'vitest';
+import { createTestCellRegistry as createFixtureRegistry } from '../../../../../tests/fixtures/plugins/registry';
 import {
   applyCellOperations,
   copyCellFragment,
   pasteCellFragment,
 } from './index';
 import { createCellStore, createFrameCell, type NodeCell } from './types';
+const testCellRegistry = createFixtureRegistry();
 const node = (id: string): NodeCell => ({
   id,
   kind: 'geometry',
@@ -32,8 +34,9 @@ describe('cell clipboard closure', () => {
           },
         },
       ],
+      testCellRegistry,
     );
-    const fragment = copyCellFragment(store, ['e']);
+    const fragment = copyCellFragment(store, ['e'], testCellRegistry);
     expect(fragment.cells.e).toMatchObject({
       source: { point: [110, 45] },
       target: { point: [60, 45] },
@@ -46,11 +49,21 @@ describe('cell clipboard closure', () => {
         { type: 'insert_cell', cell: createFrameCell('f'), parentId: 'root' },
         { type: 'insert_cell', cell: node('a'), parentId: 'f' },
       ],
+      testCellRegistry,
     );
-    const fragment = copyCellFragment(store, ['f']);
+    const fragment = copyCellFragment(store, ['f'], testCellRegistry);
     const pasted = applyCellOperations(
       store,
-      pasteCellFragment(fragment, 'root', (id) => `copy-${id}`, [30, 40]),
+      pasteCellFragment(
+        fragment,
+        'root',
+        (id) => `copy-${id}`,
+        [30, 40],
+        undefined,
+        undefined,
+        testCellRegistry,
+      ),
+      testCellRegistry,
     );
     expect(pasted.cells['copy-f']).toMatchObject({
       geometry: { x: 30, y: 40 },

@@ -1,12 +1,14 @@
 import { describe, expect, it } from 'vitest';
+import { createTestCellRegistry as createFixtureRegistry } from '../../../../../tests/fixtures/plugins/registry';
 import {
   applyCellOperations,
   commitCellOperations,
   emptyCellHistory,
   undoCells,
 } from './index';
-import { createCellStore, createFrameCell, type NodeCell } from './types';
 import { moveWhiteboardCells } from './transfer';
+import { createCellStore, createFrameCell, type NodeCell } from './types';
+const testCellRegistry = createFixtureRegistry();
 const node = (id: string): NodeCell => ({
   id,
   kind: 'geometry',
@@ -15,44 +17,62 @@ const node = (id: string): NodeCell => ({
   ports: [{ id: 'r', side: 'right', direction: 'both' }],
 });
 const setup = () =>
-  applyCellOperations(createCellStore(createFrameCell('root')), [
-    { type: 'insert_cell', cell: createFrameCell('nested'), parentId: 'root' },
-    { type: 'insert_cell', cell: node('a'), parentId: 'root' },
-    { type: 'insert_cell', cell: node('b'), parentId: 'root' },
-    {
-      type: 'insert_cell',
-      cell: { id: 'g', kind: 'group', cellType: 'group', members: ['a', 'b'] },
-      parentId: 'root',
-    },
-    {
-      type: 'insert_cell',
-      cell: {
-        id: 'e',
-        kind: 'arrow',
-        cellType: 'edge',
-        source: { cellId: 'a', portId: 'r' },
-        target: { cellId: 'b' },
-        route: { mode: 'auto' },
+  applyCellOperations(
+    createCellStore(createFrameCell('root')),
+    [
+      {
+        type: 'insert_cell',
+        cell: createFrameCell('nested'),
+        parentId: 'root',
       },
-      parentId: 'root',
-    },
-  ]);
+      { type: 'insert_cell', cell: node('a'), parentId: 'root' },
+      { type: 'insert_cell', cell: node('b'), parentId: 'root' },
+      {
+        type: 'insert_cell',
+        cell: {
+          id: 'g',
+          kind: 'group',
+          cellType: 'group',
+          members: ['a', 'b'],
+        },
+        parentId: 'root',
+      },
+      {
+        type: 'insert_cell',
+        cell: {
+          id: 'e',
+          kind: 'arrow',
+          cellType: 'edge',
+          source: { cellId: 'a', portId: 'r' },
+          target: { cellId: 'b' },
+          route: { mode: 'auto' },
+        },
+        parentId: 'root',
+      },
+    ],
+    testCellRegistry,
+  );
 describe('whiteboard frame transfers', () => {
   it('rejects locked group members and locked targets without changing the store', () => {
     const store = setup();
     store.cells.a = { ...store.cells.a, locked: true };
-    expect(() => moveWhiteboardCells(store, ['g'], 'nested')).toThrow('locked');
+    expect(() =>
+      moveWhiteboardCells(store, ['g'], 'nested', undefined, testCellRegistry),
+    ).toThrow('locked');
     expect(store.cells.nested).toMatchObject({ children: [] });
     store.cells.a = { ...store.cells.a, locked: false };
     store.cells.nested = { ...store.cells.nested, locked: true };
-    expect(() => moveWhiteboardCells(store, ['g'], 'nested')).toThrow('locked');
+    expect(() =>
+      moveWhiteboardCells(store, ['g'], 'nested', undefined, testCellRegistry),
+    ).toThrow('locked');
   });
   it('dissolves partial groups and frees arrows across the boundary, with complete undo', () => {
     const store = setup();
     const next = commitCellOperations(
       store,
       emptyCellHistory(),
-      moveWhiteboardCells(store, ['a'], 'nested'),
+      moveWhiteboardCells(store, ['a'], 'nested', undefined, testCellRegistry),
+      testCellRegistry,
     );
     expect(next.store.cells.g).toBeUndefined();
     expect(next.store.cells.e).toMatchObject({
@@ -65,7 +85,14 @@ describe('whiteboard frame transfers', () => {
   it('moves full groups with their internal edges', () => {
     const next = applyCellOperations(
       setup(),
-      moveWhiteboardCells(setup(), ['g'], 'nested'),
+      moveWhiteboardCells(
+        setup(),
+        ['g'],
+        'nested',
+        undefined,
+        testCellRegistry,
+      ),
+      testCellRegistry,
     );
     expect(next.cells.nested).toMatchObject({
       children: ['a', 'b', 'e'],
@@ -77,16 +104,26 @@ describe('whiteboard frame transfers', () => {
     });
   });
   it('rejects a frame being moved into a descendant before changing anything', () => {
-    const store = applyCellOperations(setup(), [
-      {
-        type: 'insert_cell',
-        cell: createFrameCell('child'),
-        parentId: 'nested',
-      },
-    ]);
-    expect(() => moveWhiteboardCells(store, ['nested'], 'child')).toThrow(
-      'descendant',
+    const store = applyCellOperations(
+      setup(),
+      [
+        {
+          type: 'insert_cell',
+          cell: createFrameCell('child'),
+          parentId: 'nested',
+        },
+      ],
+      testCellRegistry,
     );
+    expect(() =>
+      moveWhiteboardCells(
+        store,
+        ['nested'],
+        'child',
+        undefined,
+        testCellRegistry,
+      ),
+    ).toThrow('descendant');
     expect(store.cells.root).toMatchObject({
       children: ['nested', 'a', 'b', 'e'],
     });

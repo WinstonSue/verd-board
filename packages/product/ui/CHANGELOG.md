@@ -1,5 +1,11 @@
 # @sue/verd-board-ui
 
+## Unreleased
+
+VerdFrame 提供全量插件薄组合入口；预览共用 createVerdFramePluginSet。领域渲染与 Mind/UML 属性移至各 React 包，产品样式只组合公开 CSS。
+
+本轮不升级版本或发布，随下一主版本交付；参见原生架构和迁移文档。
+
 ## 2.0.0
 
 ### Major Changes

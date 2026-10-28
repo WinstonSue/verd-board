@@ -14,7 +14,8 @@ import {
   isRightLayout,
   isTopLayout,
 } from '@sue/board-layouts';
-import type { MindNodeData } from '@sue/board-core';
+import { type MindNodeData } from '@sue/board-mind';
+
 import { mindChildIds } from './cell-utils';
 
 export interface MindPort {

@@ -1,15 +1,6 @@
-export * from './model';
+export { validateUmlSequence } from './cell-utils';
+export * from './kinds';
 export * from './layout';
-export * from './cell-utils';
-export type {
-  UmlClassifier,
-  UmlClassData,
-  UmlRelation,
-  UmlRelationData,
-  UmlEvent,
-  UmlSequenceData,
-  UmlParticipantData,
-  UmlFragmentData,
-  UmlNoteData,
-  UmlMessageData,
-} from '@sue/board-core';
+export * from './model';
+export * from './plugin';
+export * from './relations';

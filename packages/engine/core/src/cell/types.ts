@@ -73,20 +73,8 @@ export type FrameAspectRatio =
   | 'tablet'
   | 'phone';
 
-export type MindColorScheme =
-  'default' | 'colorful' | 'soft' | 'retro' | 'dark' | 'starry';
-
-/**
- * Mind-specific view settings. Absent fields inherit the owning file's
- * canvas theme; an explicit value overrides it for every tree in the file.
- */
-export interface MindViewSettings {
-  colorScheme?: MindColorScheme;
-}
-
 export interface FrameView {
   theme?: BoardTheme;
-  mind?: MindViewSettings;
 }
 
 /** 唯一带 children 的节点。不区分场景，场景由内部锚点节点决定。 */
@@ -101,13 +89,11 @@ export interface FrameCell extends NodeCell {
 export interface FrameReferenceData {
   /** Stable identity of the target file's root Frame. Absent targets stay unresolved. */
   targetFrameId: CellId;
-  /** Per-instance pan offsets for embedded mind trees, keyed by mind-root id. */
-  mindOffsets?: Record<CellId, Point>;
 }
 
 /**
  * Occurrence shell: embeds another file's root Frame without owning it.
- * Position, size, appearance, hidden/locked, aspect ratio and mind offsets are
+ * Position, size, appearance, hidden/locked, aspect ratio and plugin settings are
  * per instance; content, domain relations and theme live in the target file.
  */
 export interface FrameReferenceCell extends NodeCell<FrameReferenceData> {
@@ -183,9 +169,10 @@ export interface EdgeLabel {
   richText?: unknown;
 }
 
+/** Legacy strategy flags are readable for compatibility; optimization is explicitly requested. */
 export type EdgeRoute =
-  | { mode: 'auto' }
-  | { mode: 'orthogonal'; points?: Point[] }
+  | { mode: 'auto'; strategy?: 'optimized' }
+  | { mode: 'orthogonal'; points?: Point[]; strategy?: 'optimized' }
   | { mode: 'straight'; points?: Point[] }
   | { mode: 'curve'; points?: Point[] }
   | { mode: 'fixed'; points: Point[] };
@@ -237,54 +224,6 @@ export const nodeRectangle = (cell: NodeCell): RectangleClient => ({
   width: cell.geometry.width,
   height: cell.geometry.height,
 });
-
-export interface MindNodeData {
-  layout?: string;
-  rightNodeCount?: number;
-  manualWidth?: number;
-  note?: unknown;
-  noteCollapsed?: boolean;
-  image?: { url: string; width: number; height: number };
-  emojis?: { name: string }[];
-  branchAppearance?: NodeAppearance;
-  branchShape?: 'bight' | 'polyline';
-}
-export interface MindRootData extends MindNodeData {
-  collapsed?: boolean;
-  /** Maximum outer topic width; absent inherits the application default. */
-  maxNodeWidth?: number;
-  /** Presentation offset inside an embedded Frame; detail layout stays canonical. */
-  embeddedOffset?: Point;
-}
-export interface MindChildData extends MindNodeData {
-  collapsed?: boolean;
-}
-
-export interface MindSummaryData {
-  startSiblingId: CellId;
-  endSiblingId: CellId;
-}
-
-export interface MindBranchData {
-  order: string;
-}
-
-export interface WorkflowStartData {
-  graphMode: 'dag' | 'process';
-  origin: Point;
-  memberIds: CellId[];
-}
-
-export interface ArchitectureLayerData {
-  order: string;
-  memberIds: CellId[];
-}
-
-export interface ArchitectureModuleData {
-  shape: 'box' | 'decision' | 'store';
-  /** 拖动过后记住的坐标。没有它时仍按层排成一行。 */
-  placed?: boolean;
-}
 
 export const createFrameCell = (
   id: CellId,

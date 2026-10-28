@@ -385,6 +385,33 @@ button.workspace-reference-action,
 .workspace-pane.is-active {
   display: flex;
 }
+.workspace-navigation-progress {
+  position: absolute;
+  inset: 0 0 auto;
+  height: 2px;
+  z-index: 20;
+  overflow: hidden;
+  pointer-events: none;
+  opacity: 0;
+  background: color-mix(in srgb, var(--vm-primary) 15%, transparent);
+  &[data-loading='true'] {
+    opacity: 1;
+  }
+
+  > span {
+    display: block;
+    width: 35%;
+    height: 100%;
+    background: var(--vm-primary);
+    transform: translateX(-100%);
+  }
+  &.is-pending {
+    will-change: opacity;
+    > span {
+      will-change: transform;
+    }
+  }
+}
 .workspace-pane-body {
   position: relative;
   flex: 1;
@@ -395,54 +422,94 @@ button.workspace-reference-action,
   position: absolute;
   inset: 0;
 }
-.workspace-breadcrumb {
+.workspace-file-navigation {
   display: flex;
   align-items: center;
   flex: none;
   gap: 6px;
   height: 36px;
+  min-width: 0;
   padding: 0 12px;
   background: var(--vm-background);
   border-bottom: 1px solid var(--vm-border);
-  white-space: nowrap;
-  overflow: hidden;
+  color: var(--vm-foreground);
+  font: 13px/1.5 var(--vm-font);
   button {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
     flex: none;
+    min-width: 0;
+    max-width: 100%;
     border: 0;
     border-radius: 6px;
     padding: 3px 6px;
     color: var(--vm-foreground-secondary);
     background: transparent;
     font: inherit;
+    white-space: nowrap;
     cursor: pointer;
-    &:hover {
+    &:hover:not(:disabled),
+    &:focus-visible {
       background: var(--vm-fill-hover);
       color: var(--vm-primary);
     }
+    &:disabled {
+      opacity: 0.5;
+      cursor: default;
+    }
   }
 }
-.workspace-breadcrumb-current {
+.workspace-file-navigation-title {
+  flex: 0 1 auto;
+  min-width: 32px;
   font-weight: 500;
   overflow: hidden;
   text-overflow: ellipsis;
+  white-space: nowrap;
 }
-.workspace-breadcrumb-return {
-  margin-left: auto;
-}
-.workspace-reference-locations {
+.workspace-file-navigation-actions {
   display: flex;
+  align-items: center;
+  justify-content: flex-end;
   gap: 6px;
-  overflow-x: auto;
-  min-width: 0;
   margin-left: auto;
-  color: var(--vm-foreground-secondary);
-  > div {
-    display: flex;
-    align-items: center;
-    gap: 4px;
-    border-radius: 6px;
-    padding: 0 4px;
-    background: var(--vm-background-subtle);
+  min-width: 0;
+  max-width: 65%;
+  .workspace-file-navigation-return {
+    flex: 0 1 auto;
+    span {
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    svg {
+      flex: none;
+    }
+  }
+}
+.workspace-menu-group-label {
+  max-width: min(360px, calc(100vw - 48px));
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding: 6px 8px 3px;
+  color: var(--vm-foreground-tertiary);
+  font-size: 12px;
+  &:not(:first-child) {
+    margin-top: 4px;
+    border-top: 1px solid var(--vm-border);
+  }
+}
+.workspace-menu:has(.workspace-menu-group-label) {
+  max-width: min(400px, calc(100vw - 16px));
+  button > span {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  button > svg {
+    flex: none;
   }
 }
 
@@ -546,6 +613,18 @@ button.workspace-reference-action,
   }
 }
 @media (prefers-reduced-motion: reduce) {
+  .workspace-pane.is-active {
+    animation: none;
+  }
+  .workspace-navigation-progress.is-pending {
+    will-change: auto;
+    > span {
+      animation: none;
+      transform: none;
+      width: 100%;
+      will-change: auto;
+    }
+  }
   .workspace-loading svg {
     animation: none;
   }
@@ -669,4 +748,35 @@ button.workspace-reference-action,
 .file-tree button:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+}
+
+.workspace-menu.workspace-switch-menu {
+  max-width: min(480px, calc(100vw - 16px));
+
+  button {
+    > svg {
+      flex-shrink: 0;
+    }
+
+    > span {
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+  }
+}
+
+.workspace-recovery-history {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 40vh;
+  overflow-y: auto;
+  margin: 16px 0;
+
+  h2 {
+    font-size: 14px;
+    margin: 0;
+  }
 }

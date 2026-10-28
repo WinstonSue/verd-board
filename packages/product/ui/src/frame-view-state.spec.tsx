@@ -1,11 +1,3 @@
-import React, {
-  act,
-  forwardRef,
-  type ComponentProps,
-  type RefObject,
-} from 'react';
-import { createRoot } from 'react-dom/client';
-import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createInlineText } from '@sue/board-common';
 import {
   createCellStore,
@@ -19,9 +11,14 @@ import type {
   FrameCanvasViewState,
   FrameRichTextField,
 } from '@sue/board-react';
+import { act, forwardRef, type ComponentProps, type RefObject } from 'react';
+import { createRoot } from 'react-dom/client';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { createTestCellRegistry as createFixtureRegistry } from '../../../../tests/fixtures/plugins/registry';
+import { createFrameViewStateStore } from './frame-view-state';
 import { I18nProvider } from './i18n';
 import { VerdFrame } from './verd-frame';
-import { createFrameViewStateStore } from './frame-view-state';
+const testCellRegistry = createFixtureRegistry();
 
 const renders = vi.hoisted(() => ({ canvas: vi.fn(), field: vi.fn() }));
 vi.mock('@sue/board-react', async (importOriginal) => {
@@ -213,7 +210,9 @@ describe('local canvas view subscriptions', () => {
           .node as import('@sue/board-core').NodeCell
       ).content?.label,
     ).toBe('Keep this editor');
-    await act(async () => test.controller.current!.undo());
+    await act(async () =>
+      test.controller.current!.executeAction('canvas.history.undo'),
+    );
     expect((editor() as HTMLInputElement).value).toBe('Keep this editor');
     const first = editor();
     await test.select(['other']);
@@ -283,21 +282,21 @@ describe('local canvas view subscriptions', () => {
     expect(test.container.querySelector('[data-testid="inspector-name"]')).toBe(
       editor,
     );
-    const setZoom = vi
-      .spyOn(test.controller.current!, 'setZoom')
+    const executeAction = vi
+      .spyOn(test.controller.current!, 'executeAction')
       .mockImplementation(() => {});
     await act(async () =>
       test.container
         .querySelector<HTMLButtonElement>('[data-testid="canvas-zoom-in"]')!
         .click(),
     );
-    expect(setZoom.mock.lastCall![0]).toBeCloseTo(2.3);
+    expect(executeAction).toHaveBeenLastCalledWith('canvas.view.zoom-in');
     await act(async () =>
       test.container
         .querySelector<HTMLButtonElement>('[data-testid="canvas-zoom-out"]')!
         .click(),
     );
-    expect(setZoom.mock.lastCall![0]).toBeCloseTo(2.1);
+    expect(executeAction).toHaveBeenLastCalledWith('canvas.view.zoom-out');
   });
 
   it('centers the selection at its current zoom, including offscreen and readonly selections', async () => {
@@ -306,22 +305,20 @@ describe('local canvas view subscriptions', () => {
     await test.publish(
       view({ zoom: 2, readonly: true, selectionScreenBounds: offscreen }),
     );
-    const center = vi.spyOn(test.controller.current!, 'centerSelection');
-    const setZoom = vi.spyOn(test.controller.current!, 'setZoom');
+    const executeAction = vi.spyOn(test.controller.current!, 'executeAction');
     const button = test.container.querySelector<HTMLButtonElement>(
       '[data-testid="canvas-recenter"]',
     )!;
     expect(button.textContent).toBe('Re-center');
     expect(button.disabled).toBe(false);
     await act(async () => button.click());
-    expect(center).toHaveBeenCalledOnce();
-    expect(setZoom).not.toHaveBeenCalled();
+    expect(executeAction).toHaveBeenCalledExactlyOnceWith('canvas.view.center');
     await test.publish(
       view({ dragging: true, selectionScreenBounds: offscreen }),
     );
     expect(button.disabled).toBe(true);
     await act(async () => button.click());
-    expect(center).toHaveBeenCalledOnce();
+    expect(executeAction).toHaveBeenCalledTimes(1);
     await test.select([]);
     expect(
       test.container.querySelector('[data-testid="canvas-recenter"]'),
@@ -379,9 +376,11 @@ describe('local canvas view subscriptions', () => {
     await act(async () =>
       test.controller.current!.dispatch({
         id: 'delete-target',
-        operations: deleteCells(test.controller.current!.runtime.store, [
-          'node',
-        ]),
+        operations: deleteCells(
+          test.controller.current!.runtime.store,
+          ['node'],
+          { registry: testCellRegistry },
+        ),
       }),
     );
     expect(recenter()).toBeNull();
@@ -453,7 +452,7 @@ describe('local canvas view subscriptions', () => {
     ).toBe('80px');
   });
 
-  it('still updates history, pending, readonly and dragging consumers', async () => {
+  it('keeps history availability in Actions while updating readonly and dragging projections', async () => {
     const test = await mount();
     const before = renders.canvas.mock.calls.length;
     await test.publish(
@@ -465,14 +464,15 @@ describe('local canvas view subscriptions', () => {
       }),
     );
     expect(renders.canvas.mock.calls.length).toBeGreaterThan(before);
+    // Publishing a camera/view projection cannot grant history permission.
     expect(
       test.container.querySelector<HTMLButtonElement>('[aria-label="撤销"]')
         ?.disabled,
-    ).toBe(false);
+    ).toBe(true);
     expect(
       test.container.querySelector<HTMLButtonElement>('[aria-label="重做"]')
         ?.disabled,
-    ).toBe(false);
+    ).toBe(true);
     await test.publish(view({ readonly: true }));
     expect(
       test.container.querySelector<HTMLButtonElement>('[aria-label="撤销"]')
@@ -547,9 +547,13 @@ it('commits a geometry draft once, preserves concurrent fields and has one-step 
   await act(async () => {
     input.dispatchEvent(new FocusEvent('focusout', { bubbles: true }));
   });
-  await act(async () => test.controller.current!.undo());
+  await act(async () =>
+    test.controller.current!.executeAction('canvas.history.undo'),
+  );
   expect(node().geometry).toMatchObject({ x: 100, width: 188 });
-  await act(async () => test.controller.current!.redo());
+  await act(async () =>
+    test.controller.current!.executeAction('canvas.history.redo'),
+  );
   expect(node().geometry).toMatchObject({ x: 240, width: 188 });
 });
 it('cancels numeric drafts after locking, readonly, selection changes and deletion', async () => {
@@ -575,7 +579,9 @@ it('cancels numeric drafts after locking, readonly, selection changes and deleti
       .disabled,
   ).toBe(true);
   expect(node().geometry.x).toBe(100);
-  await act(async () => test.controller.current!.undo());
+  await act(async () =>
+    test.controller.current!.executeAction('canvas.history.undo'),
+  );
   await editNumber(test, 'x', '333');
   await test.select([]);
   await test.select(['node']);
@@ -586,7 +592,11 @@ it('cancels numeric drafts after locking, readonly, selection changes and deleti
   await act(async () => {
     await test.controller.current!.dispatch({
       id: 'delete',
-      operations: deleteCells(test.controller.current!.runtime.store, ['node']),
+      operations: deleteCells(
+        test.controller.current!.runtime.store,
+        ['node'],
+        { registry: testCellRegistry },
+      ),
     });
   });
   await numberEnter(input);
@@ -642,7 +652,9 @@ it('applies mixed appearance numbers in one transaction while preserving latest 
     fill: '#123456',
   });
   expect(cell('other').appearance?.strokeWidth).toBe(3.5);
-  await act(async () => test.controller.current!.undo());
+  await act(async () =>
+    test.controller.current!.executeAction('canvas.history.undo'),
+  );
   expect(cell('node').appearance).toMatchObject({
     strokeWidth: 2,
     fill: '#123456',

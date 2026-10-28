@@ -1,5 +1,11 @@
 # @sue/board-react-architecture
 
+## Unreleased
+
+新增 createArchitectureUIPlugin；独立层/模块工具、属性、连接和布局接入，不依赖产品或转换器。
+
+本轮不升级版本或发布，随下一主版本交付；参见原生架构和迁移文档。
+
 ## 2.0.0
 
 ### Major Changes

@@ -1,35 +1,32 @@
-import { describe, expect, it } from 'vitest';
-
-(
-  globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }
-).IS_REACT_ACT_ENVIRONMENT = true;
-import { createElement, type ComponentProps } from 'react';
-import { createRoot } from 'react-dom/client';
-import { act } from 'react';
+import { createBlockText } from '@sue/board-common';
 import {
-  createCellRegistry,
   createCellRuntime,
-  createFrameCell,
   isFrameCell,
   type CellOperation,
   type FrameCell,
   type NodeCell,
-  type MindNodeData,
-  type MindRootData,
 } from '@sue/board-core';
 import {
   addMindChild,
   createMindChildCell,
   createMindFrameSnapshot,
-  registerMindCells,
+  type MindNodeData,
+  type MindRootData,
 } from '@sue/board-mind';
-import { createBlockText } from '@sue/board-common';
-import { I18nProvider } from './i18n';
+import { act, createElement, type ComponentProps } from 'react';
+import { createRoot } from 'react-dom/client';
+import { describe, expect, it } from 'vitest';
+import { createTestCellRegistry } from '../../../../tests/fixtures/plugins/registry';
 import { FrameMindProperties } from './frame-mind-properties';
+import { I18nProvider } from './i18n';
+
+(
+  globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }
+).IS_REACT_ACT_ENVIRONMENT = true;
 
 const runtime = () => {
-  const registry = createCellRegistry();
-  registerMindCells(registry);
+  const registry = createTestCellRegistry();
+
   const r = createCellRuntime(
     createMindFrameSnapshot('frame', 'root'),
     registry,

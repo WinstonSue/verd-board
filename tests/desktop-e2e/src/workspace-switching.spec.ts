@@ -95,6 +95,9 @@ test('Desktop remembers a selected folder, recovers a missing folder and returns
     await expect(page.locator('.workspace-sidebar-header')).toHaveText(
       'initial',
     );
+    const initialFrame = await page
+      .getByRole('tab', { selected: true })
+      .getAttribute('data-tab-id');
     await chooseFolder();
     await openWorkspaceMenu(page);
     await page.getByTestId('workspace-open-folder').click();
@@ -106,6 +109,13 @@ test('Desktop remembers a selected folder, recovers a missing folder and returns
         '.workspace-pane.is-active [data-cell-kind="frame-reference"]',
       ),
     ).toHaveCount(0);
+    await page
+      .getByRole('button', { name: /^(新建文档|New document)$/ })
+      .click();
+    await expect(page.getByRole('tab')).toHaveCount(2);
+    const selectedTab = await page
+      .getByRole('tab', { selected: true })
+      .getAttribute('data-tab-id');
     await close();
 
     delete env.VERDBOARD_WORKSPACE_PATH;
@@ -113,11 +123,49 @@ test('Desktop remembers a selected folder, recovers a missing folder and returns
     await expect(page.locator('.workspace-sidebar-header')).toHaveText(
       'selected',
     );
+    let menu = await openWorkspaceMenu(page);
+    await expect(
+      menu.getByRole('menuitem', { name: /selected.*(当前|current)/ }),
+    ).toBeDisabled();
+    await expect(
+      menu.getByRole('menuitem', { name: 'initial', exact: true }),
+    ).toBeVisible();
+    await page.screenshot({
+      path: test.info().outputPath('workspace-history.png'),
+    });
+    await page.keyboard.press('End');
+    await expect(
+      menu.getByRole('menuitem', { name: 'initial', exact: true }),
+    ).toBeFocused();
+    await page.keyboard.press('Enter');
+    await expect(page.locator('.workspace-sidebar-header')).toHaveText(
+      'initial',
+    );
+    await expect(page.getByRole('tab')).toHaveCount(1);
+    await expect(page.getByRole('tab', { selected: true })).toHaveAttribute(
+      'data-tab-id',
+      initialFrame!,
+    );
+    menu = await openWorkspaceMenu(page);
+    await menu.getByRole('menuitem', { name: 'selected', exact: true }).click();
+    await expect(page.locator('.workspace-sidebar-header')).toHaveText(
+      'selected',
+    );
+    await expect(page.getByRole('tab')).toHaveCount(2);
+    await expect(page.getByRole('tab', { selected: true })).toHaveAttribute(
+      'data-tab-id',
+      selectedTab!,
+    );
+    await openWorkspaceMenu(page);
+    await page.keyboard.press('Escape');
+    await expect(page.getByTestId('workspace-menu-trigger')).toBeFocused();
     await openWorkspaceMenu(page);
     await page.getByTestId('workspace-open-builtin').click();
     await openWorkspaceMenu(page);
     await expect(page.getByTestId('workspace-open-builtin')).toBeDisabled();
-    await page.keyboard.press('End');
+    await page.keyboard.press('Home');
+    await page.keyboard.press('ArrowDown');
+    await page.keyboard.press('ArrowDown');
     await expect(page.getByTestId('workspace-open-folder')).toBeFocused();
     await page.keyboard.press('Escape');
     await expect(page.getByTestId('workspace-menu-trigger')).toBeFocused();
@@ -172,9 +220,24 @@ test('Desktop remembers a selected folder, recovers a missing folder and returns
 
     page = await launch();
     await expect(page.getByRole('alert')).toContainText('unavailable');
-    await page
-      .getByRole('button', { name: /回到内置工作区|Open built-in workspace/ })
-      .click();
+    await expect(
+      page.getByRole('button', { name: 'initial', exact: true }),
+    ).toBeVisible();
+    await page.getByRole('button', { name: 'initial', exact: true }).click();
+    await expect(page.locator('.workspace-sidebar-header')).toHaveText(
+      'initial',
+    );
+    menu = await openWorkspaceMenu(page);
+    await menu.getByRole('menuitem', { name: 'selected', exact: true }).click();
+    await expect(page.locator('.workspace-banners')).toContainText(
+      'unavailable',
+    );
+    await expect(page.locator('.workspace-sidebar-header')).toHaveText(
+      'initial',
+    );
+    expect(await readdir(directory)).not.toContain('selected');
+    await openWorkspaceMenu(page);
+    await page.getByTestId('workspace-open-builtin').click();
     await expect(
       page.locator(
         '.workspace-pane.is-active [data-cell-kind="frame-reference"]',
@@ -182,7 +245,9 @@ test('Desktop remembers a selected folder, recovers a missing folder and returns
     ).toHaveCount(8);
     await openWorkspaceMenu(page);
     await expect(page.getByTestId('workspace-open-builtin')).toBeDisabled();
-    await page.keyboard.press('End');
+    await page.keyboard.press('Home');
+    await page.keyboard.press('ArrowDown');
+    await page.keyboard.press('ArrowDown');
     await expect(page.getByTestId('workspace-open-folder')).toBeFocused();
     await page.keyboard.press('Escape');
     await expect(page.getByTestId('workspace-menu-trigger')).toBeFocused();

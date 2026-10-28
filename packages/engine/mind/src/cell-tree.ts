@@ -1,27 +1,29 @@
 import {
-  CellKind,
   isEdgeCell,
   isFrameCell,
   isNodeCell,
   type CellOperation,
   type CellStore,
   type EdgeCell,
-  type MindNodeData,
-  type MindRootData,
-  type MindSummaryData,
   type NodeCell,
   type NodeGeometry,
   type RectangleClient,
 } from '@sue/board-core';
 import { MindLayoutType } from '@sue/board-layouts';
-import { mindChildIds, layoutMindCells } from './cell-utils';
 import type { MindMetricsOptions } from './cell-metrics';
+import { layoutMindCells, mindChildIds } from './cell-utils';
+import {
+  MindKind,
+  type MindNodeData,
+  type MindRootData,
+  type MindSummaryData,
+} from './public-api';
 
 const branchTo = (store: CellStore, nodeId: string) =>
   Object.values(store.cells).find(
     (cell): cell is EdgeCell =>
       isEdgeCell(cell) &&
-      cell.kind === CellKind.mindBranch &&
+      cell.kind === MindKind.mindBranch &&
       'cellId' in cell.target &&
       cell.target.cellId === nodeId,
   );
@@ -37,8 +39,8 @@ export const mindTreeRootId = (
     seen.add(current);
     const cell = store.cells[current];
     if (!isNodeCell(cell)) return undefined;
-    if (cell.kind === CellKind.mindRoot) return cell.id;
-    if (cell.kind !== CellKind.mindChild && cell.kind !== CellKind.mindSummary)
+    if (cell.kind === MindKind.mindRoot) return cell.id;
+    if (cell.kind !== MindKind.mindChild && cell.kind !== MindKind.mindSummary)
       return undefined;
     const edge = branchTo(store, cell.id);
     current = edge && 'cellId' in edge.source ? edge.source.cellId : undefined;
@@ -58,7 +60,7 @@ export const mindTreeNodeIds = (store: CellStore, rootId: string): string[] => {
   for (const cell of Object.values(store.cells)) {
     if (
       isEdgeCell(cell) &&
-      cell.kind === CellKind.mindSummaryEdge &&
+      cell.kind === MindKind.mindSummaryEdge &&
       'cellId' in cell.target &&
       memberSet.has(
         (cell.data as MindSummaryData | undefined)?.startSiblingId ?? '',
@@ -114,7 +116,7 @@ export const setMindTreeLayout = (
 ): CellOperation[] => {
   const rootId = mindTreeRootId(store, nodeId);
   const root = rootId ? store.cells[rootId] : undefined;
-  if (!root || !isNodeCell(root) || root.kind !== CellKind.mindRoot)
+  if (!root || !isNodeCell(root) || root.kind !== MindKind.mindRoot)
     throw new Error('Missing mind tree root');
   const operations: CellOperation[] = [];
   const rootData = { ...(root.data as MindRootData | undefined) };
@@ -155,7 +157,7 @@ export const setMindTreeRightNodeCount = (
 ): CellOperation[] => {
   const rootId = mindTreeRootId(store, nodeId);
   const root = rootId ? store.cells[rootId] : undefined;
-  if (!root || !isNodeCell(root) || root.kind !== CellKind.mindRoot)
+  if (!root || !isNodeCell(root) || root.kind !== MindKind.mindRoot)
     throw new Error('Missing mind tree root');
   const total = mindChildIds(store, root.id).length;
   const data = { ...(root.data as MindRootData | undefined) };
@@ -190,7 +192,7 @@ export const mindLayoutBounds = (
   const frame = store.cells[frameId];
   if (!isFrameCell(frame)) return undefined;
   const roots = frame.children.filter(
-    (id) => store.cells[id]?.kind === CellKind.mindRoot,
+    (id) => store.cells[id]?.kind === MindKind.mindRoot,
   );
   if (!roots.length) return undefined;
   const geometry = layoutMindCells(store, frameId, options);
@@ -245,7 +247,7 @@ export const stackMindTreeRoots = (
   const frame = store.cells[frameId];
   if (!isFrameCell(frame)) return store;
   const rootIds = frame.children.filter(
-    (id) => store.cells[id]?.kind === CellKind.mindRoot,
+    (id) => store.cells[id]?.kind === MindKind.mindRoot,
   );
   if (rootIds.length < 2) return store;
   const geometry = layoutMindCells(store, frameId, options);
@@ -282,7 +284,7 @@ export const offsetMindTreeRoots = (
   const cells = { ...store.cells };
   for (const id of frame.children) {
     const cell = cells[id];
-    if (!isNodeCell(cell) || cell.kind !== CellKind.mindRoot) continue;
+    if (!isNodeCell(cell) || cell.kind !== MindKind.mindRoot) continue;
     cells[id] = {
       ...cell,
       geometry: {

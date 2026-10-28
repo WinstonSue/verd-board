@@ -1,28 +1,27 @@
-import { it, expect } from 'vitest';
 import {
   applyCellOperations,
-  createCellRegistry,
   validateCellStore,
   type NodeCell,
-  type UmlSequenceData,
 } from '@sue/board-core';
 import {
-  createUmlSequenceFrameSnapshot,
-  createUmlParticipantCell,
-  createUmlMessageCell,
-  addUmlCell,
   addUmlActivation,
-  registerUmlCells,
+  addUmlCell,
+  createUmlMessageCell,
+  createUmlParticipantCell,
+  createUmlSequenceFrameSnapshot,
+  type UmlSequenceData,
 } from '@sue/board-uml';
+import { expect, it } from 'vitest';
+import { createTestCellRegistry } from '../../../../../tests/fixtures/plugins/registry';
 import {
+  assembleWorkspaceStore,
   partitionCellStore,
   remapFrameFileIds,
-  assembleWorkspaceStore,
   remapImportedFiles,
 } from './frame-files';
 it('remaps all UML identities in independent file copies and collision imports', () => {
-  const registry = createCellRegistry();
-  registerUmlCells(registry);
+  const registry = createTestCellRegistry();
+
   let store = createUmlSequenceFrameSnapshot('f', 'root').store;
   for (const id of ['a', 'b'])
     store = applyCellOperations(

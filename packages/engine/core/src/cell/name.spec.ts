@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { createTestCellRegistry as createFixtureRegistry } from '../../../../../tests/fixtures/plugins/registry';
 import {
   createCellRuntime,
   createCellStore,
@@ -6,6 +7,7 @@ import {
   type NodeCell,
 } from '../public-api';
 import { nodeContentName } from './name';
+const testCellRegistry = createFixtureRegistry();
 const node = (label = ''): NodeCell => ({
   id: 'n',
   kind: 'text',
@@ -15,9 +17,12 @@ const node = (label = ''): NodeCell => ({
 });
 describe('independent node names', () => {
   it('initializes insertion transactionally and restores absence on undo', () => {
-    const runtime = createCellRuntime({
-      store: createCellStore(createFrameCell('root')),
-    });
+    const runtime = createCellRuntime(
+      {
+        store: createCellStore(createFrameCell('root')),
+      },
+      testCellRegistry,
+    );
     runtime.transact({
       id: 'insert',
       operations: [
@@ -31,9 +36,12 @@ describe('independent node names', () => {
     expect((runtime.store.cells.n as NodeCell).name).toBe('Hello world');
   });
   it('defers empty-node naming through all keystrokes and preserves explicit empty names', () => {
-    const runtime = createCellRuntime({
-      store: createCellStore(createFrameCell('root')),
-    });
+    const runtime = createCellRuntime(
+      {
+        store: createCellStore(createFrameCell('root')),
+      },
+      testCellRegistry,
+    );
     runtime.transact({
       id: 'insert',
       operations: [{ type: 'insert_cell', parentId: 'root', cell: node() }],
@@ -104,7 +112,7 @@ describe('independent node names', () => {
     expect(nodeContentName(snapshot.store.cells.n as NodeCell)).toBe(
       'Rich body',
     );
-    const runtime = createCellRuntime(snapshot);
+    const runtime = createCellRuntime(snapshot, testCellRegistry);
     runtime.transact({
       id: 'edit',
       operations: [{ type: 'replace_cell', cell: { ...node('new') } }],

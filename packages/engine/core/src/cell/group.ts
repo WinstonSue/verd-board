@@ -1,19 +1,19 @@
-import { umlReferences } from './uml';
-import type { RectangleClient } from '../interfaces/rectangle-client';
 import {
   createEdgeRoutingContext,
   edgePolyline,
   flattenCurve,
   type EdgeRoutingContext,
 } from '../geometry/edge';
+import type { RectangleClient } from '../interfaces/rectangle-client';
+import { createCellRegistry, type CellRegistry } from './registry';
 import {
   isEdgeCell,
   isFrameCell,
   isFrameReferenceCell,
   isGroupCell,
   isNodeCell,
-  type CellStore,
   type CellId,
+  type CellStore,
   type NodeGeometry,
 } from './types';
 
@@ -86,7 +86,11 @@ export const lockedByAncestor = (store: CellStore, id: CellId): boolean => {
 };
 
 /** Deleting a structural owner must also respect locks on its cascaded contents. */
-export const cellDeletionLocked = (store: CellStore, id: CellId): boolean => {
+export const cellDeletionLocked = (
+  store: CellStore,
+  id: CellId,
+  registry: CellRegistry = createCellRegistry(),
+): boolean => {
   const seen = new Set<string>();
   const visit = (id: string): boolean => {
     if (seen.has(id)) return false;
@@ -98,8 +102,14 @@ export const cellDeletionLocked = (store: CellStore, id: CellId): boolean => {
       ? [...cell.children, ...cell.groups]
       : isGroupCell(cell)
         ? cell.members
-        : ((cell as { data?: { memberIds?: string[] } }).data?.memberIds ?? []);
-    return [...members, ...umlReferences(cell)].some(visit);
+        : (registry.get(cell.kind)?.members?.(cell) ?? []);
+    return [
+      ...members,
+      ...registry.plugins.flatMap((plugin) => [
+        ...(plugin.references?.(cell) ?? []),
+        ...(plugin.deletionClosure?.(store, cell) ?? []),
+      ]),
+    ].some(visit);
   };
   return visit(id);
 };
@@ -168,7 +178,7 @@ export const cellArrangementBounds = (
         }),
       );
     if (isNodeCell(cell)) return geometryBounds(cell.geometry);
-    if (isEdgeCell(cell) && cell.kind === 'arrow') {
+    if (isEdgeCell(cell)) {
       const automatic =
         (cell.route.mode === 'auto' || cell.route.mode === 'orthogonal') &&
         !('points' in cell.route && cell.route.points?.length);
@@ -195,16 +205,16 @@ export const groupBounds = (
   return cellArrangementBounds(store, id);
 };
 
-export const isGroupableCell = (store: CellStore, id: CellId): boolean => {
+export const isGroupableCell = (
+  store: CellStore,
+  id: CellId,
+  registry: CellRegistry = createCellRegistry(),
+): boolean => {
   const cell = store.cells[id];
   if (!cell) return false;
   if (isGroupCell(cell)) return true;
-  if (isEdgeCell(cell)) return cell.kind === 'arrow';
-  return (
-    isNodeCell(cell) &&
-    !cell.kind.startsWith('mind-') &&
-    cell.kind !== 'architecture-layer'
-  );
+  if (isEdgeCell(cell)) return registry.get(cell.kind)?.groupable === true;
+  return isNodeCell(cell) && registry.get(cell.kind)?.groupable !== false;
 };
 
 /** Resolve a leaf to the direct object in the current group/Frame focus. */

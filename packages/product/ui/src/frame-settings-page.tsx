@@ -1,3 +1,9 @@
+import {
+  ConfigPanel,
+  defineSettings,
+  type SettingEditorProps,
+} from '@sue/board-react';
+import type { ControlProps } from '@sue/schema-settings-react';
 import { useId } from 'react';
 import { SettingsPageShell } from './settings-page-shell';
 import { useI18n } from './i18n';
@@ -10,10 +16,36 @@ import {
   type AppearancePreference,
 } from './appearance-preferences';
 import {
+  readInteractionPreferences,
   defaultInteractionPreferences,
   setInteractionPreferences,
   useInteractionPreferences,
 } from './interaction-preferences';
+
+type ApplicationValues = {
+  appearance: AppearancePreference;
+  language: 'zh' | 'en';
+  mindWidth: number;
+  zoomSensitivity: number;
+  dragPanSpeed: number;
+  smartGuides: boolean;
+};
+type ApplicationControls = ControlProps & { mindWidth: { testId: string } };
+const applicationComponents = {
+  mindWidth: ({
+    value,
+    label,
+    props,
+    onCommit,
+  }: SettingEditorProps<unknown, { testId: string }>) => (
+    <FrameMindWidthInput
+      value={value as number}
+      label={label}
+      testId={props.testId}
+      onChange={onCommit}
+    />
+  ),
+};
 
 export function FrameSettingsContent({
   headingLevel = 2,
@@ -22,125 +54,163 @@ export function FrameSettingsContent({
   const id = useId();
   const { t, language, setLanguage } = useI18n();
   const preferences = useInteractionPreferences();
-  const mindMaxWidth = useMindMaxWidth();
+  const mindWidth = useMindMaxWidth();
   const { preference } = useAppearancePreference();
+  const values: ApplicationValues = {
+    ...preferences,
+    appearance: preference,
+    language,
+    mindWidth,
+  };
+  const definition = defineSettings<
+    ApplicationValues,
+    void,
+    ApplicationControls
+  >({
+    groups: [
+      { id: 'general', label: t('settings.general') },
+      { id: 'mind', label: t('settings.mind') },
+      { id: 'interaction', label: t('settings.interaction') },
+    ],
+    fields: [
+      {
+        key: 'appearance',
+        editor: 'select',
+        group: 'general',
+        label: t('settings.appearance'),
+        description: t('settings.appearance.description'),
+        props: { attributes: { 'data-testid': 'settings-appearance' } },
+        options: (['system', 'light', 'dark'] as const).map((value) => ({
+          value: value as AppearancePreference,
+          label: t(`settings.appearance.${value}`),
+        })),
+      },
+      {
+        key: 'language',
+        editor: 'select',
+        group: 'general',
+        label: t('language.switcher'),
+        props: { attributes: { 'data-testid': 'settings-language' } },
+        options: [
+          { value: 'zh', label: t('language.chinese') },
+          { value: 'en', label: t('language.english') },
+        ],
+      },
+      {
+        key: 'mindWidth',
+        editor: 'mindWidth',
+        group: 'mind',
+        label: t('settings.mindMaxWidth'),
+        description: t('settings.mindMaxWidthDescription'),
+        commit: 'change',
+        props: { testId: 'settings-mind-max-width' },
+      },
+      ...(['zoomSensitivity', 'dragPanSpeed'] as const).map((key) => ({
+        key,
+        editor: 'range' as const,
+        group: 'interaction',
+        label: t(`settings.${key}`),
+        description: t(`settings.${key}Description`),
+        props: {
+          min: 0.25,
+          max: 3,
+          step: 0.05,
+          attributes: {
+            id: `${id}-${key}`,
+            'data-testid': `settings-${key}`,
+            'aria-valuetext': `${Number(values[key].toFixed(2))}×`,
+          },
+        },
+      })),
+      {
+        key: 'smartGuides',
+        editor: 'checkbox',
+        group: 'interaction',
+        label: t('settings.smartGuides'),
+        description: t('settings.smartGuidesDescription'),
+        props: { attributes: { 'data-testid': 'settings-smart-guides' } },
+      },
+    ],
+  });
   return (
-    <>
-      <section aria-labelledby={`${id}-general`}>
-        <Heading id={`${id}-general`}>{t('settings.general')}</Heading>
-        <label className="frame-settings-row">
-          <span>{t('settings.appearance')}</span>
-          <select
-            aria-label={t('settings.appearance')}
-            data-testid="settings-appearance"
-            value={preference}
-            onChange={(event) =>
-              setAppearancePreference(
-                event.target.value as AppearancePreference,
-              )
-            }
-          >
-            <option value="system">{t('settings.appearance.system')}</option>
-            <option value="light">{t('settings.appearance.light')}</option>
-            <option value="dark">{t('settings.appearance.dark')}</option>
-          </select>
-        </label>
-        <p>{t('settings.appearance.description')}</p>
-        <label className="frame-settings-row">
-          <span>{t('language.switcher')}</span>
-          <select
-            aria-label={t('language.switcher')}
-            data-testid="settings-language"
-            value={language}
-            onChange={(event) => setLanguage(event.target.value as 'zh' | 'en')}
-          >
-            <option value="zh">{t('language.chinese')}</option>
-            <option value="en">{t('language.english')}</option>
-          </select>
-        </label>
-      </section>
-      <section aria-labelledby={`${id}-mind`}>
-        <Heading id={`${id}-mind`}>{t('settings.mind')}</Heading>
-        <label className="frame-settings-row">
-          <span>{t('settings.mindMaxWidth')}</span>
-          <FrameMindWidthInput
-            value={mindMaxWidth}
-            onChange={setMindMaxWidth}
-            label={t('settings.mindMaxWidth')}
-            testId="settings-mind-max-width"
-          />
-        </label>
-        <p>{t('settings.mindMaxWidthDescription')}</p>
-        <button
-          type="button"
-          onClick={() => setMindMaxWidth(DEFAULT_MIND_MAX_WIDTH)}
-        >
-          {t('settings.resetMindWidth')}
-        </button>
-      </section>
-      <section aria-labelledby={`${id}-interaction`}>
-        <Heading id={`${id}-interaction`}>{t('settings.interaction')}</Heading>
-        <p>{t('settings.interactionDescription')}</p>
-        {(['zoomSensitivity', 'dragPanSpeed'] as const).map((key) => (
-          <div className="frame-settings-control" key={key}>
+    <ConfigPanel
+      definition={definition}
+      values={values}
+      identity="application-settings"
+      components={applicationComponents}
+      onCommit={({ changes }) => {
+        for (const change of changes) {
+          if (change.kind !== 'set') continue;
+          if (change.key === 'appearance')
+            setAppearancePreference(change.value);
+          else if (change.key === 'language') setLanguage(change.value);
+          else if (change.key === 'mindWidth') setMindMaxWidth(change.value);
+          else
+            setInteractionPreferences({
+              ...readInteractionPreferences(),
+              [change.key]: change.value,
+            });
+        }
+      }}
+      renderField={({ key, label, description, editor }) =>
+        key === 'zoomSensitivity' || key === 'dragPanSpeed' ? (
+          <div className="frame-settings-control">
             <label htmlFor={`${id}-${key}`}>
-              {t(`settings.${key}`)}
+              {label}
               <output htmlFor={`${id}-${key}`}>
-                {Number(preferences[key].toFixed(2))}×
+                {Number(values[key].toFixed(2))}×
               </output>
             </label>
-            <p>{t(`settings.${key}Description`)}</p>
-            <input
-              id={`${id}-${key}`}
-              data-testid={`settings-${key}`}
-              type="range"
-              min={0.25}
-              max={3}
-              step={0.05}
-              value={preferences[key]}
-              aria-valuetext={`${Number(preferences[key].toFixed(2))}×`}
-              onChange={(event) =>
-                setInteractionPreferences({
-                  ...preferences,
-                  [key]: Number(event.target.value),
-                })
-              }
-            />
+            <p>{description}</p>
+            {editor}
             <div className="frame-settings-range" aria-hidden>
               <span>0.25×</span>
               <span>3×</span>
             </div>
           </div>
-        ))}
-        <label className="frame-settings-row">
-          <span>{t('settings.smartGuides')}</span>
-          <input
-            type="checkbox"
-            data-testid="settings-smart-guides"
-            checked={preferences.smartGuides}
-            onChange={(event) =>
-              setInteractionPreferences({
-                ...preferences,
-                smartGuides: event.target.checked,
-              })
-            }
-          />
-        </label>
-        <p>{t('settings.smartGuidesDescription')}</p>
-        <button
-          type="button"
-          onClick={() =>
-            setInteractionPreferences({
-              ...preferences,
-              zoomSensitivity: defaultInteractionPreferences.zoomSensitivity,
-              dragPanSpeed: defaultInteractionPreferences.dragPanSpeed,
-            })
-          }
-        >
-          {t('settings.resetInteraction')}
-        </button>
-      </section>
-    </>
+        ) : (
+          <>
+            <label className="frame-settings-row">
+              <span>{label}</span>
+              {editor}
+            </label>
+            {description && <p>{description}</p>}
+          </>
+        )
+      }
+      renderGroup={({ id: group, label, children }) => (
+        <section aria-labelledby={`${id}-${group}`}>
+          <Heading id={`${id}-${group}`}>{label}</Heading>
+          {group === 'interaction' && (
+            <p>{t('settings.interactionDescription')}</p>
+          )}
+          {children}
+          {group === 'mind' && (
+            <button
+              type="button"
+              onClick={() => setMindMaxWidth(DEFAULT_MIND_MAX_WIDTH)}
+            >
+              {t('settings.resetMindWidth')}
+            </button>
+          )}
+          {group === 'interaction' && (
+            <button
+              type="button"
+              onClick={() =>
+                setInteractionPreferences({
+                  ...readInteractionPreferences(),
+                  zoomSensitivity:
+                    defaultInteractionPreferences.zoomSensitivity,
+                  dragPanSpeed: defaultInteractionPreferences.dragPanSpeed,
+                })
+              }
+            >
+              {t('settings.resetInteraction')}
+            </button>
+          )}
+        </section>
+      )}
+    />
   );
 }
 

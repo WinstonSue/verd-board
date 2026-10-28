@@ -1,41 +1,44 @@
-import React, { act } from 'react';
-import { createRoot } from 'react-dom/client';
-import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   createCellStore,
   createFrameCell,
-  moveVectorLinePoint,
   polylinePath,
-  vectorLineMidpoints,
-  vectorLinePath,
   type NodeCell,
 } from '@sue/board-core';
 import {
-  createTableCell,
   createFreehandCell,
   createGeometryCell,
+  createTableCell,
   createVectorLineCell,
   drawCellShapePaths,
+  moveVectorLinePoint,
   tableSelectionRange,
+  vectorLineMidpoints,
+  vectorLinePath,
 } from '@sue/board-draw';
 import type { FrameRenderContext } from '@sue/board-react';
+import { act } from 'react';
+import { createRoot } from 'react-dom/client';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { frameDrawExtensions } from './frame-draw-extension';
 import { FrameTable } from './frame-table';
 import { FrameVectorLine } from './frame-vector-line';
-import { frameDrawExtensions } from './frame-draw-extension';
 
 vi.mock('@sue/board-core', async (original) => {
   const actual = await original<typeof import('@sue/board-core')>();
   return {
     ...actual,
-    vectorLinePath: vi.fn(actual.vectorLinePath),
-    vectorLineMidpoints: vi.fn(actual.vectorLineMidpoints),
-    moveVectorLinePoint: vi.fn(actual.moveVectorLinePoint),
     polylinePath: vi.fn(actual.polylinePath),
   };
 });
 vi.mock('@sue/board-draw', async (original) => {
   const actual = await original<typeof import('@sue/board-draw')>();
-  return { ...actual, tableSelectionRange: vi.fn(actual.tableSelectionRange) };
+  return {
+    ...actual,
+    tableSelectionRange: vi.fn(actual.tableSelectionRange),
+    vectorLinePath: vi.fn(actual.vectorLinePath),
+    vectorLineMidpoints: vi.fn(actual.vectorLineMidpoints),
+    moveVectorLinePoint: vi.fn(actual.moveVectorLinePoint),
+  };
 });
 (
   globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }

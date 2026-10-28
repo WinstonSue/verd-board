@@ -1,0 +1,127 @@
+.verd-actions-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding: min(16vh, 120px) 16px 24px;
+  background: var(--verd-actions-backdrop, rgb(0 0 0 / 24%));
+  color: var(--verd-actions-text, CanvasText);
+  font:
+    14px/1.5 system-ui,
+    sans-serif;
+}
+.verd-actions-panel {
+  position: relative;
+  inset: auto;
+  margin: 0;
+  padding: 0;
+  color: inherit;
+  width: min(580px, 100%);
+  max-height: 72vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--verd-actions-background, Canvas);
+  border: 1px solid var(--verd-actions-border, GrayText);
+  border-radius: 10px;
+  overflow: hidden;
+}
+.verd-actions-panel header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+}
+.verd-actions-panel h2 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+}
+.verd-actions-panel header button {
+  background: transparent;
+  border: 0;
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+  padding: 2px 8px;
+}
+.verd-actions-panel > input {
+  margin: 0 12px 8px;
+  padding: 9px 12px;
+  border: 1px solid var(--verd-actions-border, GrayText);
+  border-radius: 5px;
+  font: inherit;
+  color: inherit;
+  background: inherit;
+}
+.verd-actions-list {
+  overflow: auto;
+  padding: 4px 8px 10px;
+}
+.verd-actions-list > button {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 9px 10px;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: inherit;
+  text-align: start;
+  cursor: pointer;
+  font: inherit;
+}
+.verd-actions-list > button[aria-selected='true'] {
+  background: var(--verd-actions-selection, Highlight);
+  color: var(--verd-actions-selection-text, HighlightText);
+}
+.verd-actions-list > button[aria-disabled='true'] {
+  opacity: 0.5;
+  cursor: default;
+}
+.verd-actions-label {
+  min-width: 0;
+}
+.verd-actions-label small {
+  display: block;
+  font-size: 11px;
+  opacity: 0.75;
+}
+.verd-actions-keys {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.verd-actions-keys kbd {
+  font:
+    11px/1.5 system-ui,
+    sans-serif;
+  border: 1px solid currentColor;
+  border-radius: 3px;
+  padding: 0 4px;
+  white-space: nowrap;
+  opacity: 0.8;
+}
+.verd-actions-list h3 {
+  margin: 14px 8px 4px;
+  font-size: 12px;
+  opacity: 0.7;
+}
+.verd-actions-help-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 8px;
+}
+.verd-actions-list p {
+  margin: 16px 10px;
+}
+
+.verd-actions-panel::backdrop {
+  background: var(--verd-actions-backdrop, rgb(0 0 0 / 24%));
+}

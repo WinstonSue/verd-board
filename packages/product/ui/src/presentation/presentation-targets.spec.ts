@@ -1,12 +1,13 @@
-import { describe, expect, it } from 'vitest';
+import { ArchitectureKind } from '@sue/board-architecture';
 import {
-  CellKind,
   createFrameCell,
   type Cell,
   type CellStore,
   type EdgeCell,
   type NodeCell,
 } from '@sue/board-core';
+import { MindKind } from '@sue/board-mind';
+import { describe, expect, it } from 'vitest';
 import {
   clampPresentationIndex,
   hasVisibleContent,
@@ -17,7 +18,7 @@ import {
 
 const node = (
   id: string,
-  kind: string = CellKind.mindChild,
+  kind: string = MindKind.mindChild,
   data?: unknown,
 ): NodeCell => ({
   id,
@@ -29,7 +30,7 @@ const node = (
 const branch = (source: string, target: string, order = '0'): EdgeCell => ({
   id: `${source}-${target}`,
   cellType: 'edge',
-  kind: CellKind.mindBranch,
+  kind: MindKind.mindBranch,
   source: { cellId: source },
   target: { cellId: target },
   route: { mode: 'auto' },
@@ -59,18 +60,18 @@ const summary = (
   start: string,
   end: string,
 ): Cell[] => [
-  node(id, CellKind.mindSummary),
+  node(id, MindKind.mindSummary),
   {
     ...branch(parent, id),
-    kind: CellKind.mindSummaryEdge,
+    kind: MindKind.mindSummaryEdge,
     data: { startSiblingId: start, endSiblingId: end },
   },
 ];
 
 const multiRoot = () =>
   storeOf(
-    node('root-z', CellKind.mindRoot),
-    node('root-a', CellKind.mindRoot),
+    node('root-z', MindKind.mindRoot),
+    node('root-a', MindKind.mindRoot),
     node('b'),
     node('a'),
     node('c'),
@@ -84,7 +85,7 @@ const multiRoot = () =>
 describe('presentation targets', () => {
   it('does not count leftover relationship edges when the sole root is hidden', () => {
     const store = storeOf(
-      { ...node('root', CellKind.mindRoot), hidden: true },
+      { ...node('root', MindKind.mindRoot), hidden: true },
       node('a'),
       branch('root', 'a'),
       ...summary('summary', 'root', 'a', 'a'),
@@ -122,7 +123,7 @@ describe('presentation targets', () => {
 
   it('includes complete visible summaries and summaries under summary topics', () => {
     const store = storeOf(
-      node('root', CellKind.mindRoot),
+      node('root', MindKind.mindRoot),
       node('a'),
       node('b'),
       node('c'),
@@ -150,7 +151,7 @@ describe('presentation targets', () => {
 
   it('filters hidden summary nodes and hidden summary edges', () => {
     const store = storeOf(
-      node('root', CellKind.mindRoot),
+      node('root', MindKind.mindRoot),
       node('a'),
       branch('root', 'a'),
       ...summary('s', 'root', 'a', 'a'),
@@ -210,20 +211,26 @@ describe('presentation targets', () => {
 
   it('uses architecture layout order with stable ties and focuses layer members', () => {
     const store = storeOf(
-      node('z', CellKind.architectureLayer, {
+      node('z', ArchitectureKind.architectureLayer, {
         order: '20',
         memberIds: ['module'],
       }),
-      node('a', CellKind.architectureLayer, { order: '10', memberIds: [] }),
-      node('tie', CellKind.architectureLayer, { order: '10', memberIds: [] }),
+      node('a', ArchitectureKind.architectureLayer, {
+        order: '10',
+        memberIds: [],
+      }),
+      node('tie', ArchitectureKind.architectureLayer, {
+        order: '10',
+        memberIds: [],
+      }),
       {
-        ...node('hidden', CellKind.architectureLayer, {
+        ...node('hidden', ArchitectureKind.architectureLayer, {
           order: '00',
           memberIds: [],
         }),
         hidden: true,
       },
-      node('module', CellKind.architectureModule),
+      node('module', ArchitectureKind.architectureModule),
     );
     expect(presentationSteps(store, 'frame', 'architecture')).toEqual([
       'a',

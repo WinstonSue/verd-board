@@ -1,51 +1,52 @@
 import {
-  stripFrameViewports,
   createCellStore,
   createFrameCell,
-  isFrameCell,
-  isNodeCell,
   isEdgeCell,
+  isFrameCell,
   isGroupCell,
+  isNodeCell,
+  stripFrameViewports,
   validateCellStore,
   type Cell,
-  type CellStore,
-  type NodeOutline,
-  type FrameCell,
   type CellRegistry,
+  type CellStore,
+  type FrameCell,
   type FrameSnapshot,
+  type NodeOutline,
 } from '@sue/board-core';
-import { architectureDocumentToStore } from './legacy/architecture-cells';
-import { isArchitectureDocument } from './legacy/architecture-document';
-import { workflowDocumentToStore } from './legacy/workflow-cells';
-import { isWorkflowDocument } from './legacy/workflow-document';
 import { workflowCellPorts } from '@sue/board-workflow';
-import { mindDocumentToStore } from './legacy/mind-cells';
-import { isMindDocument, mindElementToDocument } from './legacy/mind-document';
-import type { MindElement } from './legacy/mind-element';
-import type { LegacyBoardElement as BoardElement } from './legacy/board-element';
-import { migrateLegacyTextDocument } from './legacy/text-document';
-import { legacyMindToStore } from './legacy/host-mind-cells';
-import { isMindDocument as isHostMindDocument } from './legacy/host-mind-document';
-import {
-  isCellEnvelope,
-  envelopeToBoardSnapshot,
-  type CellEnvelope,
-} from './legacy/cell-envelope';
+import { createWorkspaceCellRegistry } from '../frames/plugins';
 import {
   isWorkspaceManifest,
   loadCellWorkspace,
-  saveCellWorkspace,
   MIGRATION_BACKUP_KEY,
+  saveCellWorkspace,
   WORKSPACE_KEY,
   type WorkspaceSnapshot,
 } from '../frames/workspace-storage';
 import type { StorageAdapter } from '../storage-adapter';
 import {
   normalizeArchitectureIds,
-  normalizeWorkflowIds,
-  normalizeMindIds,
   normalizeHostMindIds,
+  normalizeMindIds,
+  normalizeWorkflowIds,
 } from './legacy-ids';
+import { architectureDocumentToStore } from './legacy/architecture-cells';
+import { isArchitectureDocument } from './legacy/architecture-document';
+import type { LegacyBoardElement as BoardElement } from './legacy/board-element';
+import {
+  envelopeToBoardSnapshot,
+  isCellEnvelope,
+  type CellEnvelope,
+} from './legacy/cell-envelope';
+import { legacyMindToStore } from './legacy/host-mind-cells';
+import { isMindDocument as isHostMindDocument } from './legacy/host-mind-document';
+import { mindDocumentToStore } from './legacy/mind-cells';
+import { isMindDocument, mindElementToDocument } from './legacy/mind-document';
+import type { MindElement } from './legacy/mind-element';
+import { migrateLegacyTextDocument } from './legacy/text-document';
+import { workflowDocumentToStore } from './legacy/workflow-cells';
+import { isWorkflowDocument } from './legacy/workflow-document';
 
 const clone = <T>(value: T): T => JSON.parse(JSON.stringify(value)) as T;
 const namespace = (scope: string, id: string) => `${scope}/${id.length}:${id}`;
@@ -332,7 +333,7 @@ const repairSnapshot = (
 };
 const decodeBackup = async (
   backup: Record<string, unknown>,
-  registry?: CellRegistry,
+  registry: CellRegistry = createWorkspaceCellRegistry(),
 ) => {
   const values = new Map(Object.entries(clone(backup)));
   values.delete(MIGRATION_BACKUP_KEY);
@@ -350,7 +351,7 @@ const decodeBackup = async (
 };
 const upgradeWorkspaceV1 = async (
   adapter: StorageAdapter,
-  registry?: CellRegistry,
+  registry: CellRegistry = createWorkspaceCellRegistry(),
 ): Promise<WorkspaceSnapshot> => {
   let loaded: WorkspaceSnapshot | undefined;
   let loadError: Error | undefined;
@@ -389,7 +390,7 @@ const upgradeWorkspaceV1 = async (
 /** IDs are deterministic per source and per container, so shared documents become independent copies. */
 export const migrateLegacyCellWorkspace = async (
   adapter: StorageAdapter,
-  cellRegistry?: CellRegistry,
+  cellRegistry: CellRegistry = createWorkspaceCellRegistry(),
 ): Promise<WorkspaceSnapshot> => {
   const existing = await adapter.getItem(WORKSPACE_KEY);
   if (isWorkspaceManifest(existing)) {
@@ -826,7 +827,7 @@ export const migrateLegacyCellWorkspace = async (
 /** Parse a file into a snapshot without writing the user's storage. */
 export const parseLegacyFrameDocument = async (
   definition: string,
-  registry?: CellRegistry,
+  registry: CellRegistry = createWorkspaceCellRegistry(),
 ): Promise<FrameSnapshot> => {
   let parsed: unknown;
   try {

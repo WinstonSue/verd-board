@@ -1,50 +1,56 @@
 import { describe, expect, it } from 'vitest';
+import { createTestCellRegistry as createFixtureRegistry } from '../../../../../tests/fixtures/plugins/registry';
+import { copyCellFragment, planCellPaste } from './clipboard';
+import { groupCells, translateCellSelection } from './commands';
 import { applyCellOperations } from './index';
 import {
   normalizeCellPositionOperations,
-  roundNodePosition,
   roundNodeDimensions,
   roundNodeGeometry,
+  roundNodePosition,
 } from './position';
 import { createCellRuntime } from './runtime';
-import { translateCellSelection, groupCells } from './commands';
-import { copyCellFragment, planCellPaste } from './clipboard';
 import {
   createCellStore,
   createFrameCell,
-  type NodeCell,
   type EdgeCell,
+  type NodeCell,
 } from './types';
+const testCellRegistry = createFixtureRegistry();
 
 const fixture = () =>
-  applyCellOperations(createCellStore(createFrameCell('root')), [
-    {
-      type: 'insert_cell',
-      parentId: 'root',
-      cell: {
-        id: 'a',
-        kind: 'geometry',
-        cellType: 'node',
-        geometry: {
-          x: -10.4,
-          y: 20.7,
-          width: 80.5,
-          height: 40.25,
-          rotation: 0.37,
+  applyCellOperations(
+    createCellStore(createFrameCell('root')),
+    [
+      {
+        type: 'insert_cell',
+        parentId: 'root',
+        cell: {
+          id: 'a',
+          kind: 'geometry',
+          cellType: 'node',
+          geometry: {
+            x: -10.4,
+            y: 20.7,
+            width: 80.5,
+            height: 40.25,
+            rotation: 0.37,
+          },
         },
       },
-    },
-    {
-      type: 'insert_cell',
-      parentId: 'root',
-      cell: {
-        id: 'b',
-        kind: 'geometry',
-        cellType: 'node',
-        geometry: { x: 90.1, y: 21.2, width: 80, height: 40 },
+      {
+        type: 'insert_cell',
+        parentId: 'root',
+        cell: {
+          id: 'b',
+          kind: 'geometry',
+          cellType: 'node',
+          geometry: { x: 90.1, y: 21.2, width: 80, height: 40 },
+        },
       },
-    },
-  ]);
+    ],
+    testCellRegistry,
+  );
 
 describe('authored integer positions', () => {
   it('rounds dimensions without hiding invalid sizes or changing angles', () => {
@@ -88,7 +94,7 @@ describe('authored integer positions', () => {
         cells: { a: { ...a, geometry: { ...a.geometry, height: 50.6 } } },
       },
     ]);
-    const runtime = createCellRuntime({ store });
+    const runtime = createCellRuntime({ store }, testCellRegistry);
     runtime.transact({ id: 'resize', operations });
     expect((runtime.store.cells.a as NodeCell).geometry).toMatchObject({
       x: -10.4,
@@ -132,16 +138,25 @@ describe('authored integer positions', () => {
   });
   it('rounds every group member once and undo restores the exact legacy coordinates', () => {
     const store = fixture();
-    const runtime = createCellRuntime({
-      store: applyCellOperations(
-        store,
-        groupCells(store, 'root', ['a', 'b'], 'group'),
-      ),
-    });
+    const runtime = createCellRuntime(
+      {
+        store: applyCellOperations(
+          store,
+          groupCells(store, 'root', ['a', 'b'], 'group', testCellRegistry),
+          testCellRegistry,
+        ),
+      },
+      testCellRegistry,
+    );
     const before = runtime.store;
     runtime.transact({
       id: 'move',
-      operations: translateCellSelection(before, ['group', 'a'], [2.2, 3.8]),
+      operations: translateCellSelection(
+        before,
+        ['group', 'a'],
+        [2.2, 3.8],
+        testCellRegistry,
+      ),
     });
     expect((runtime.store.cells.a as NodeCell).geometry).toMatchObject({
       x: -8,
@@ -158,7 +173,7 @@ describe('authored integer positions', () => {
   });
   it('snaps pasted placement but file opening preserves original positions', () => {
     const store = fixture();
-    const fragment = copyCellFragment(store, ['a']);
+    const fragment = copyCellFragment(store, ['a'], testCellRegistry);
     const request = {
       store,
       frameId: 'root',
@@ -167,8 +182,16 @@ describe('authored integer positions', () => {
       allocateId: () => 'copy',
       offset: [0, 0] as [number, number],
     };
-    const pasted = planCellPaste({ ...request, intent: 'paste' }).operations[0];
-    const opened = planCellPaste({ ...request, intent: 'open' }).operations[0];
+    const pasted = planCellPaste({
+      registry: testCellRegistry,
+      ...request,
+      intent: 'paste',
+    }).operations[0];
+    const opened = planCellPaste({
+      registry: testCellRegistry,
+      ...request,
+      intent: 'open',
+    }).operations[0];
     expect(pasted).toMatchObject({
       cell: { geometry: { x: -10, y: 21, width: 81, height: 40 } },
     });

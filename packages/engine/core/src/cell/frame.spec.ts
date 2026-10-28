@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { applyCellOperations } from './index';
-import { createCellStore, createFrameCell } from './types';
+import { createTestCellRegistry as createFixtureRegistry } from '../../../../../tests/fixtures/plugins/registry';
 import {
   convertFramePoint,
   fitFrameContent,
@@ -9,6 +8,9 @@ import {
   frameTitleBounds,
   parentToFramePoint,
 } from './frame';
+import { applyCellOperations } from './index';
+import { createCellStore, createFrameCell } from './types';
+const testCellRegistry = createFixtureRegistry();
 
 describe('frame content coordinates', () => {
   it('contains the title and content in the outer shell without extending its bounds', () => {
@@ -21,6 +23,7 @@ describe('frame content coordinates', () => {
     const store = applyCellOperations(
       createCellStore(createFrameCell('root')),
       [{ type: 'insert_cell', parentId: 'root', cell: nested }],
+      testCellRegistry,
     );
     expect(frameContentBounds(store, 'root')).toEqual({
       x: 40,
@@ -92,6 +95,7 @@ describe('frame content coordinates', () => {
           },
         },
       ],
+      testCellRegistry,
     );
     const global = convertFramePoint(store, [20, 30], 'inner', 'root');
     const restored = convertFramePoint(store, global, 'root', 'inner');
@@ -125,6 +129,7 @@ describe('frame content coordinates', () => {
           },
         },
       ],
+      testCellRegistry,
     );
     expect(frameContentBounds(store, 'root')).toEqual({
       x: -20,

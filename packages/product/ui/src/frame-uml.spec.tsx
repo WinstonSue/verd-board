@@ -1,18 +1,20 @@
-import React, { act } from 'react';
-import { createRoot } from 'react-dom/client';
-import { afterEach, describe, it, expect, vi } from 'vitest';
+import { applyCellOperations } from '@sue/board-core';
+import { createActionRegistry } from '@sue/board-common';
 import {
-  createCellRegistry,
-  applyCellOperations,
-  type CellStore,
-} from '@sue/board-core';
+  canonicalFrameProjection,
+  type FrameActionContext,
+} from '@sue/board-react';
+import { createUmlUIPlugin } from '@sue/board-react-uml';
 import {
-  createUmlClassFrameSnapshot,
-  createUmlClassCell,
-  createUmlSequenceFrameSnapshot,
   addUmlCell,
-  registerUmlCells,
+  createUmlClassCell,
+  createUmlClassFrameSnapshot,
+  createUmlSequenceFrameSnapshot,
 } from '@sue/board-uml';
+import { act } from 'react';
+import { createRoot } from 'react-dom/client';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { createTestCellRegistry } from '../../../../tests/fixtures/plugins/registry';
 import { UmlPalette, UmlProperties } from './frame-uml';
 (
   globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }
@@ -25,8 +27,8 @@ async function mount(sequence = false) {
   const container = document.createElement('div');
   document.body.append(container);
   const root = createRoot(container),
-    registry = createCellRegistry();
-  registerUmlCells(registry);
+    registry = createTestCellRegistry();
+
   let store = (
     sequence
       ? createUmlSequenceFrameSnapshot('f', 'r')
@@ -43,6 +45,35 @@ async function mount(sequence = false) {
       store = applyCellOperations(store, operations, registry);
     },
   );
+  const actions = createActionRegistry<FrameActionContext>({
+    getContext: () => ({
+      surface: 'product',
+      store,
+      frameId: 'f',
+      cell: store.cells.class,
+      selectionIds: sequence ? [] : ['class'],
+      language: 'zh',
+      disabled: false,
+      readonly: false,
+      pending: false,
+      locked: false,
+      controller: null,
+      registry,
+      allocateId: () => crypto.randomUUID(),
+      viewProjection: canonicalFrameProjection,
+      dispatch: async (operations) => dispatch(operations),
+      runOperations: async (operations) => {
+        dispatch(operations);
+        return { status: 'completed' };
+      },
+      executeAction: (id, args, invocation) =>
+        actions.executeAction(id, args, invocation),
+      getActionState: (id, args) => actions.getActionState(id, args),
+    }),
+  });
+  for (const definition of createUmlUIPlugin().actions ?? [])
+    actions.register(definition);
+  actions.seal();
   const render = async () =>
     act(async () => {
       root.render(
@@ -53,6 +84,7 @@ async function mount(sequence = false) {
             zh
             disabled={false}
             dispatch={dispatch}
+            executeAction={actions.executeAction}
           />
         ) : (
           <UmlProperties
@@ -62,6 +94,7 @@ async function mount(sequence = false) {
             zh
             disabled={false}
             dispatch={dispatch}
+            executeAction={actions.executeAction}
           />
         ),
       );

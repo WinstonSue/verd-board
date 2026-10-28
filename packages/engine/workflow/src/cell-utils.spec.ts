@@ -1,26 +1,29 @@
-import { describe, expect, it } from 'vitest';
 import {
   copyCellFragment,
   createCellRuntime,
-  createCellRegistry,
   planCellPaste,
   type EdgeCell,
   type NodeCell,
-  type WorkflowStartData,
 } from '@sue/board-core';
-import { registerWorkflowCells } from './cell-utils';
+import { describe, expect, it } from 'vitest';
 import {
-  createWorkflowFrameSnapshot,
-  createWorkflowTaskCell,
+  createTestCellRegistry as createFixtureRegistry,
+  createTestCellRegistry,
+} from '../../../../tests/fixtures/plugins/registry';
+import {
   addWorkflowTask,
-  createWorkflowStartCell,
   autoLayoutWorkflow,
   canAutoLayoutWorkflow,
+  createWorkflowFrameSnapshot,
+  createWorkflowStartCell,
+  createWorkflowTaskCell,
   layoutWorkflowCells,
 } from './cell-commands';
+import { type WorkflowStartData } from './public-api';
+const testCellRegistry = createFixtureRegistry();
 const runtime = () => {
-  const registry = createCellRegistry();
-  registerWorkflowCells(registry);
+  const registry = createTestCellRegistry();
+
   const result = createCellRuntime(
     createWorkflowFrameSnapshot('frame', 'start'),
     registry,
@@ -46,8 +49,8 @@ const edge = (id: string, source: string, target: string): EdgeCell => ({
 });
 describe('native workflow rules', () => {
   it('anchors disconnected DAG components to the fixed start regardless of id sorting', () => {
-    const registry = createCellRegistry();
-    registerWorkflowCells(registry);
+    const registry = createTestCellRegistry();
+
     const r = createCellRuntime(
       createWorkflowFrameSnapshot('frame', 'z-start'),
       registry,
@@ -282,8 +285,8 @@ describe('native workflow rules', () => {
     expect(r.store.cells.ba).toBeTruthy();
   });
   it('reports malformed workflow data without throwing', () => {
-    const registry = createCellRegistry();
-    registerWorkflowCells(registry);
+    const registry = createTestCellRegistry();
+
     const base = createWorkflowFrameSnapshot('frame', 'start');
     const start = base.store.cells.start as NodeCell<WorkflowStartData>;
     const cases: unknown[] = [
@@ -318,8 +321,8 @@ describe('native workflow rules', () => {
     expect(registry.validate(zero, zero.cells.start)).toBeUndefined();
   });
   it('pastes a standalone task only into an explicit start and offsets a complete graph together', () => {
-    const registry = createCellRegistry();
-    registerWorkflowCells(registry);
+    const registry = createTestCellRegistry();
+
     const runtime = createCellRuntime(
       createWorkflowFrameSnapshot('frame', 'start'),
       registry,
@@ -379,7 +382,7 @@ describe('native workflow rules', () => {
         },
       ],
     });
-    const whole = copyCellFragment(runtime.store, ['start']);
+    const whole = copyCellFragment(runtime.store, ['start'], testCellRegistry);
     const graph = planCellPaste({
       store: runtime.store,
       frameId: 'frame',

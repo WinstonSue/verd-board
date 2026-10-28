@@ -1632,7 +1632,25 @@
         "portId": "left"
       },
       "route": {
-        "mode": "orthogonal"
+        "mode": "orthogonal",
+        "points": [
+          [
+            330,
+            426
+          ],
+          [
+            388,
+            426
+          ],
+          [
+            388,
+            773
+          ],
+          [
+            400,
+            773
+          ]
+        ]
       },
       "labels": [
         {

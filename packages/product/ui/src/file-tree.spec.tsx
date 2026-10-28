@@ -1,6 +1,7 @@
 import React, { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { createActionRegistry } from '@sue/board-common';
 import { FileTree, type FileTreeProps } from './file-tree';
 
 // jsdom has no layout; pointer placement and focus return are covered in Playwright.
@@ -71,6 +72,74 @@ afterEach(async () => {
 });
 
 describe('FileTree', () => {
+  it('opens unavailable files by real path without inventing file identities', async () => {
+    const onOpenFailedFile = vi.fn();
+    await setup({
+      failedFiles: [
+        { path: 'docs/broken.verd.json' },
+        { path: 'unfinished.verd-doc.json' },
+      ],
+      activeFailedPath: 'docs/broken.verd.json',
+      onOpenFailedFile,
+    });
+    const row = container.querySelector<HTMLElement>(
+      '[data-failed-path="docs/broken.verd.json"]',
+    )!;
+    expect(row.classList.contains('is-active')).toBe(true);
+    expect(row.hasAttribute('data-file-id')).toBe(false);
+    await click(row.querySelector('button')!);
+    expect(onOpenFailedFile).toHaveBeenCalledWith('docs/broken.verd.json');
+    expect(container.querySelector('[data-file-id="b"]')).not.toBeNull();
+  });
+
+  it('sources menu labels/state/execution from actions and keeps the original right-click target', async () => {
+    let workspace = 'one';
+    const existing = new Set(['a', 'b']);
+    const seen: string[] = [];
+    const registry = createActionRegistry({
+      getContext: () => ({ workspace }),
+      refresh: (captured) =>
+        captured.workspace === workspace ? { workspace } : null,
+    });
+    registry.register({
+      id: 'workspace.file.trash',
+      label: { zh: '动作删除', en: 'Action trash' },
+      category: 'workspace',
+      effect: 'content',
+      validateArgs: (args): args is { fileId: string } =>
+        !!args && typeof args === 'object' && 'fileId' in args,
+      getState: (_c, args) => ({ enabled: existing.has(args.fileId) }),
+      execute: (_c, args) => {
+        seen.push(args.fileId);
+        return { status: 'completed' };
+      },
+    });
+    registry.seal();
+    const props = await setup({ actionSource: registry });
+    await click(button('「Alpha」的操作'));
+    await act(async () =>
+      root.render(
+        <React.StrictMode>
+          <FileTree {...props} activeFileId="b" />
+        </React.StrictMode>,
+      ),
+    );
+    expect(button('Beta').getAttribute('aria-current')).toBe('page');
+    await click(button('动作删除'));
+    expect(seen).toEqual(['a']);
+    expect(props.onTrash).not.toHaveBeenCalled();
+    await click(button('「Alpha」的操作'));
+    existing.delete('a');
+    await act(async () => registry.invalidate());
+    expect(button('动作删除').disabled).toBe(true);
+    await click(button('动作删除'));
+    expect(seen).toEqual(['a']);
+    workspace = 'two';
+    await act(async () => registry.invalidate());
+    expect(button('动作删除').disabled).toBe(true);
+    await act(async () => registry.dispose());
+  });
+
   it('confirms folder trash and allows cancellation', async () => {
     const onTrashDirectory = vi.fn(async () => {});
     await setup({ onTrashDirectory });

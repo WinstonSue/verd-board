@@ -41,8 +41,9 @@
       "output": "release"
     },
     "files": [
-      "dist/**/*",
-      "dist-electron/**/*"
+      "dist{,/**/*}",
+      "dist-electron{,/{main,preload}.js}",
+      "!node_modules{,/**/*}"
     ],
     "mac": {
       "target": [

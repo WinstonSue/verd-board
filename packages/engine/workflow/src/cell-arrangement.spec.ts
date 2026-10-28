@@ -1,19 +1,21 @@
-import { describe, expect, it } from 'vitest';
 import {
   applyCellOperations,
   arrangeCells,
   arrangementAvailability,
   copyCellFragment,
-  createCellRegistry,
   createCellRuntime,
   deleteCells,
   groupCells,
   planCellPaste,
   translateCellSelection,
-  type NodeCell,
   type EdgeCell,
-  type WorkflowStartData,
+  type NodeCell,
 } from '@sue/board-core';
+import { describe, expect, it } from 'vitest';
+import {
+  createTestCellRegistry as createFixtureRegistry,
+  createTestCellRegistry,
+} from '../../../../tests/fixtures/plugins/registry';
 import {
   addWorkflowTask,
   createWorkflowFrameSnapshot,
@@ -22,11 +24,12 @@ import {
   layoutWorkflowCells,
   materializeWorkflowPositions,
 } from './cell-commands';
-import { registerWorkflowCells } from './cell-utils';
+import { type WorkflowStartData } from './public-api';
+const testCellRegistry = createFixtureRegistry();
 
 const fixture = () => {
-  const registry = createCellRegistry();
-  registerWorkflowCells(registry);
+  const registry = createTestCellRegistry();
+
   const runtime = createCellRuntime(
     createWorkflowFrameSnapshot('frame', 'start'),
     registry,
@@ -96,14 +99,26 @@ describe('workflow arrangement and domain groups', () => {
     });
     runtime.transact({
       id: 'group',
-      operations: groupCells(runtime.store, 'frame', ['a', 'c'], 'group'),
+      operations: groupCells(
+        runtime.store,
+        'frame',
+        ['a', 'c'],
+        'group',
+        testCellRegistry,
+      ),
     });
     expect(runtime.index.groupOf.get('a')).toBe('group');
     expect(runtime.index.domainOwnerOf.get('a')).toBe('start');
-    const state = arrangementAvailability(runtime.store, 'frame', [], {
-      type: 'layout',
-      style: 'flow',
-    });
+    const state = arrangementAvailability(
+      runtime.store,
+      'frame',
+      [],
+      {
+        type: 'layout',
+        style: 'flow',
+      },
+      testCellRegistry,
+    );
     expect(state).toMatchObject({ enabled: false });
     expect(state.reason).toContain('cyclic');
     const before = runtime.store.cells.b;
@@ -117,6 +132,8 @@ describe('workflow arrangement and domain groups', () => {
         'frame',
         ['group', 'b'],
         'horizontal',
+        32,
+        testCellRegistry,
       ),
     });
     expect(
@@ -150,30 +167,42 @@ describe('workflow arrangement and domain groups', () => {
     });
     runtime.transact({
       id: 'group',
-      operations: groupCells(runtime.store, 'frame', ['a', 'foreign'], 'group'),
+      operations: groupCells(
+        runtime.store,
+        'frame',
+        ['a', 'foreign'],
+        'group',
+        testCellRegistry,
+      ),
     });
-    const fragment = copyCellFragment(runtime.store, ['group']);
+    const fragment = copyCellFragment(
+      runtime.store,
+      ['group'],
+      testCellRegistry,
+    );
     expect(fragment.source?.ownerById).toEqual({
       a: 'start',
       foreign: 'other',
     });
     const start = runtime.store.cells.start as NodeCell;
     expect(() =>
-      runtime.registry.get('workflow-start')!.move!(runtime.store, start, {
+      testCellRegistry.get('workflow-start')!.move!(runtime.store, start, {
         ...start.geometry,
         x: 500,
       }),
     ).toThrow('Ungroup first');
     runtime.transact({
       id: 'cut',
-      operations: deleteCells(runtime.store, ['group']),
+      operations: deleteCells(runtime.store, ['group'], {
+        registry: runtime.registry,
+      }),
     });
     const plan = planCellPaste({
       store: runtime.store,
       frameId: 'frame',
       selectionIds: [],
       fragment,
-      registry: runtime.registry,
+      registry: testCellRegistry,
       allocateId: (id) => `copy-${id}`,
     });
     runtime.transact({ id: 'paste', operations: plan.operations });
@@ -196,8 +225,13 @@ describe('workflow arrangement and domain groups', () => {
     const start = runtime.store.cells.start as NodeCell;
     const next = applyCellOperations(
       runtime.store,
-      translateCellSelection(runtime.store, ['start'], [30, 40]),
-      runtime.registry,
+      translateCellSelection(
+        runtime.store,
+        ['start'],
+        [30, 40],
+        testCellRegistry,
+      ),
+      testCellRegistry,
     );
     expect(next.cells.b).toEqual(before);
     expect(

@@ -107,7 +107,7 @@ test('library highlights navigation and clicking the active tab returns to editi
   await expect(canvas(page)).toBeVisible();
 });
 
-test('owned subgraphs indent and the breadcrumb stays above the canvas', async ({
+test('owned subgraphs indent and file navigation stays above the canvas', async ({
   page,
 }) => {
   await selectDrawingTool(page, '流程图');
@@ -124,7 +124,7 @@ test('owned subgraphs indent and the breadcrumb stays above the canvas', async (
     .click({ position: { x: 12, y: 12 } });
   await page.getByTestId('frame-open').click();
   await expect(activePane(page).getByTestId('verd-workflow')).toBeVisible();
-  const breadcrumb = activePane(page).locator('.workspace-breadcrumb');
+  const breadcrumb = activePane(page).locator('.workspace-file-navigation');
   await expect(breadcrumb).toBeVisible();
   const owned = page.locator('.file-tree-subgraph.is-active');
   await expect(owned).toBeVisible();
@@ -244,7 +244,7 @@ test('sidebar keeps only My at the bottom and groups workspace actions under the
   );
   await page.getByTestId('workspace-menu-trigger').press('ArrowDown');
   const menu = page.getByRole('menu', { name: '工作区', exact: true });
-  await expect(menu.getByRole('menuitem')).toHaveCount(1);
+  await expect(menu.getByRole('menuitem')).toHaveCount(2);
   await expect(
     menu.getByRole('menuitem', { name: '工作区设置', exact: true }),
   ).toBeFocused();

@@ -1,13 +1,13 @@
 import {
-  CellKind,
   createCellStore,
   createFrameCell,
   type Cell,
   type CellStore,
   type EdgeCell,
 } from '@sue/board-core';
-import type { MindElement } from './mind-element';
+import { MindKind } from '@sue/board-mind';
 import { type MindDocument } from './mind-document';
+import type { MindElement } from './mind-element';
 
 const ROOT_ID = 'mind-root-frame';
 
@@ -15,12 +15,12 @@ const clone = <T>(value: T): T => JSON.parse(JSON.stringify(value)) as T;
 
 const kindFor = (element: MindElement, depth: number) => {
   if (depth === 0 || element.type === 'mind') {
-    return CellKind.mindRoot;
+    return MindKind.mindRoot;
   }
   if (typeof element.start === 'number' && typeof element.end === 'number') {
-    return CellKind.mindSummary;
+    return MindKind.mindSummary;
   }
-  return CellKind.mindChild;
+  return MindKind.mindChild;
 };
 
 const edgeId = (parentId: string, childId: string, index: number) =>
@@ -53,7 +53,7 @@ const appendTree = (
     appendTree(cells, children, child, depth + 1);
     const branch: EdgeCell<{ order: string }> = {
       id: edgeId(id, child.id, index),
-      kind: CellKind.mindBranch,
+      kind: MindKind.mindBranch,
       cellType: 'edge',
       source: { cellId: id },
       target: { cellId: child.id },
@@ -71,7 +71,7 @@ const appendTree = (
           endSiblingId: string;
         }> = {
           id: `summary:${id}:${child.id}`,
-          kind: CellKind.mindSummaryEdge,
+          kind: MindKind.mindSummaryEdge,
           cellType: 'edge',
           source: { cellId: startSibling.id },
           target: { cellId: child.id },

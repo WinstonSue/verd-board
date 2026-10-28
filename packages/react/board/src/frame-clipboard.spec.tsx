@@ -1,30 +1,38 @@
-import React, { act, createRef } from 'react';
+import {
+  applyCellOperations,
+  createCellStore,
+  createFrameCell,
+  type CellTransaction,
+  type FrameSnapshot,
+} from '@sue/board-core';
+import { act, createRef } from 'react';
 import { createRoot } from 'react-dom/client';
 import { describe, expect, it, vi } from 'vitest';
-import {
-  createFrameCell,
-  createCellStore,
-  applyCellOperations,
-  type FrameSnapshot,
-  type CellTransaction,
-} from '@sue/board-core';
+import { createTestCellRegistry as createFixtureRegistry } from '../../../../tests/fixtures/plugins/registry';
+import { createTestFramePluginSet } from '../../../../tests/fixtures/plugins/ui';
 import { FrameCanvas, type FrameCanvasController } from './frame-canvas';
+const testFramePluginSet = createTestFramePluginSet();
+const testCellRegistry = createFixtureRegistry();
 
 const snapshot = (kind = 'geometry'): FrameSnapshot => ({
-  store: applyCellOperations(createCellStore(createFrameCell('root')), [
-    {
-      type: 'insert_cell',
-      parentId: 'root',
-      cell: {
-        id: 'a',
-        kind,
-        cellType: 'node',
-        geometry: { x: 10, y: 10, width: 100, height: 50 },
-        appearance: { shadow: 'md' },
-        content: { label: 'Topic' },
+  store: applyCellOperations(
+    createCellStore(createFrameCell('root')),
+    [
+      {
+        type: 'insert_cell',
+        parentId: 'root',
+        cell: {
+          id: 'a',
+          kind,
+          cellType: 'node',
+          geometry: { x: 10, y: 10, width: 100, height: 50 },
+          appearance: { shadow: 'md' },
+          content: { label: 'Topic' },
+        },
       },
-    },
-  ]),
+    ],
+    testCellRegistry,
+  ),
 });
 const clipboardEvent = (type: string, data: Map<string, string>) => {
   const event = new Event(type, { bubbles: true, cancelable: true });
@@ -41,6 +49,67 @@ const clipboardEvent = (type: string, data: Map<string, string>) => {
 ).IS_REACT_ACT_ENVIRONMENT = true;
 
 describe('Frame clipboard and rendering', () => {
+  it('keeps an accepted clipboard action pending until the controlled host value echoes its transaction', async () => {
+    const descriptor = Object.getOwnPropertyDescriptor(navigator, 'clipboard');
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: { writeText: vi.fn(async () => {}) },
+    });
+    const container = document.createElement('div'),
+      root = createRoot(container),
+      ref = createRef<FrameCanvasController>(),
+      original = snapshot();
+    let intent: CellTransaction | undefined,
+      settled = false;
+    const onIntent = (transaction: CellTransaction) => {
+      intent = transaction;
+      return { status: 'accepted' as const };
+    };
+    const paint = (value: FrameSnapshot) => (
+      <FrameCanvas
+        pluginSet={testFramePluginSet}
+        ref={ref}
+        value={value}
+        adapter={{ toFrameSnapshot: (v: FrameSnapshot) => v }}
+        onIntent={onIntent}
+      />
+    );
+    try {
+      await act(async () => root.render(paint(original)));
+      let pending!: ReturnType<FrameCanvasController['executeAction']>;
+      await act(async () => {
+        ref.current!.runtime.select({ focus: ['root'], ids: ['a'] });
+        pending = ref.current!.executeAction('canvas.clipboard.cut');
+        void pending.then(() => {
+          settled = true;
+        });
+      });
+      expect(intent).toBeDefined();
+      expect(settled).toBe(false);
+      expect(
+        ref.current!.actionSource.getActionState('canvas.clipboard.cut').reason,
+      ).toBe('pending');
+      expect(ref.current!.runtime.store.cells.a).toBeDefined();
+      await act(async () =>
+        root.render(
+          paint({
+            store: applyCellOperations(
+              original.store,
+              intent!.operations,
+              testCellRegistry,
+            ),
+          }),
+        ),
+      );
+      await expect(pending).resolves.toEqual({ status: 'completed' });
+      expect(ref.current!.runtime.store.cells.a).toBeUndefined();
+    } finally {
+      await act(async () => root.unmount());
+      if (descriptor) Object.defineProperty(navigator, 'clipboard', descriptor);
+      else delete (navigator as unknown as { clipboard?: unknown }).clipboard;
+    }
+  });
+
   it('keeps cut cells when the system clipboard fails or a new host snapshot arrives while writing', async () => {
     const descriptor = Object.getOwnPropertyDescriptor(navigator, 'clipboard');
     try {
@@ -64,35 +133,51 @@ describe('Frame clipboard and rendering', () => {
         });
         await act(async () =>
           root.render(
-            <FrameCanvas ref={ref} value={original} onChange={onChange} />,
+            <FrameCanvas
+              pluginSet={testFramePluginSet}
+              ref={ref}
+              value={original}
+              onChange={onChange}
+            />,
           ),
         );
         await act(async () =>
           ref.current!.runtime.select({ focus: ['root'], ids: ['a'] }),
         );
-        let result!: Promise<import('./frame-canvas').FrameIntentResult>;
+        let result!: Promise<import('@sue/board-common').ActionResult>;
         await act(async () => {
-          result = ref.current!.clipboard('cut');
+          result = ref.current!.executeAction(`canvas.clipboard.${'cut'}`);
         });
         if (!failure) {
-          expect(await ref.current!.clipboard('cut')).toMatchObject({
+          expect(
+            await ref.current!.executeAction(`canvas.clipboard.${'cut'}`),
+          ).toMatchObject({
             status: 'rejected',
-            message: 'A transaction is pending',
+            code: 'pending',
           });
           const changed = {
-            store: applyCellOperations(original.store, [
-              {
-                type: 'replace_cell',
-                cell: {
-                  ...original.store.cells.a,
-                  content: { label: 'Host update' },
+            store: applyCellOperations(
+              original.store,
+              [
+                {
+                  type: 'replace_cell',
+                  cell: {
+                    ...original.store.cells.a,
+                    content: { label: 'Host update' },
+                  },
                 },
-              },
-            ]),
+              ],
+              testCellRegistry,
+            ),
           };
           await act(async () =>
             root.render(
-              <FrameCanvas ref={ref} value={changed} onChange={onChange} />,
+              <FrameCanvas
+                pluginSet={testFramePluginSet}
+                ref={ref}
+                value={changed}
+                onChange={onChange}
+              />,
             ),
           );
           await act(async () => release());
@@ -115,7 +200,12 @@ describe('Frame clipboard and rendering', () => {
       data = new Map<string, string>();
     await act(async () =>
       root.render(
-        <FrameCanvas ref={ref} value={snapshot()} onChange={onChange} />,
+        <FrameCanvas
+          pluginSet={testFramePluginSet}
+          ref={ref}
+          value={snapshot()}
+          onChange={onChange}
+        />,
       ),
     );
     await act(async () => {
@@ -130,9 +220,9 @@ describe('Frame clipboard and rendering', () => {
       JSON.parse(data.get('application/x-verd-cells')!).cells.a.appearance
         .shadow,
     ).toBe('md');
-    await act(async () => ref.current!.undo());
+    await act(async () => ref.current!.executeAction('canvas.history.undo'));
     expect(ref.current!.runtime.store.cells.a).toBeTruthy();
-    await act(async () => ref.current!.redo());
+    await act(async () => ref.current!.executeAction('canvas.history.redo'));
     expect(ref.current!.runtime.store.cells.a).toBeUndefined();
     await act(async () =>
       container
@@ -176,6 +266,7 @@ describe('Frame clipboard and rendering', () => {
       const render = (value: FrameSnapshot) =>
         root.render(
           <FrameCanvas
+            pluginSet={testFramePluginSet}
             ref={ref}
             value={value}
             adapter={{ toFrameSnapshot: (value) => value }}
@@ -202,7 +293,11 @@ describe('Frame clipboard and rendering', () => {
       if (status === 'accepted') {
         await act(async () =>
           render({
-            store: applyCellOperations(original.store, transaction.operations),
+            store: applyCellOperations(
+              original.store,
+              transaction.operations,
+              testCellRegistry,
+            ),
           }),
         );
         expect(ref.current!.runtime.store.cells.a).toBeUndefined();
@@ -225,6 +320,7 @@ describe('Frame clipboard and rendering', () => {
     await act(async () =>
       root.render(
         <FrameCanvas
+          pluginSet={testFramePluginSet}
           ref={ref}
           value={value}
           onChange={onChange}
@@ -256,8 +352,18 @@ describe('Frame clipboard and rendering', () => {
     await act(async () =>
       root.render(
         <>
-          <FrameCanvas ref={first} value={snapshot()} onChange={() => {}} />
-          <FrameCanvas ref={second} value={snapshot()} onChange={() => {}} />
+          <FrameCanvas
+            pluginSet={testFramePluginSet}
+            ref={first}
+            value={snapshot()}
+            onChange={() => {}}
+          />
+          <FrameCanvas
+            pluginSet={testFramePluginSet}
+            ref={second}
+            value={snapshot()}
+            onChange={() => {}}
+          />
         </>,
       ),
     );

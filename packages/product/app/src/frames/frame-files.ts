@@ -1,7 +1,11 @@
-import { remapUmlCell } from '@sue/board-core';
+import { type MindRootData } from '@sue/board-mind';
+import { remapUmlCell } from '@sue/board-uml';
+import { createWorkspaceCellRegistry } from './plugins';
+
 import {
   createFrameCell,
   isEdgeCell,
+  isDocumentCell,
   isFrameCell,
   isFrameReferenceCell,
   isGroupCell,
@@ -14,9 +18,9 @@ import {
   type EdgeTerminal,
   type FrameCell,
   type FrameReferenceCell,
-  type MindRootData,
   type Point,
 } from '@sue/board-core';
+import type { WorkspaceFile } from '../documents/document-files';
 import {
   organizationForCopy,
   ownedSubgraphIds,
@@ -25,14 +29,7 @@ import {
   type CopyOwnershipMode,
   type FrameOrganization,
 } from './frame-organization';
-import type { WorkspaceFile } from '../documents/document-files';
 
-export type {
-  FrameOrganization,
-  DiagramKind,
-  FrameOrganizationIndex,
-  OrganizeRecommendation,
-} from './frame-organization';
 export {
   buildOrganizationIndex,
   diagramKindOf,
@@ -40,14 +37,20 @@ export {
   isSpecializedDiagram,
   organizationChangeError,
   organizationForCopy,
-  parseFrameOrganization,
   organizePreviewIsStale,
+  parseFrameOrganization,
   recommendOrganization,
   referenceSourceKey,
   referenceSourcesOf,
   sameFrameContent,
   sameFrameFile,
   settleImportedOrganization,
+} from './frame-organization';
+export type {
+  DiagramKind,
+  FrameOrganization,
+  FrameOrganizationIndex,
+  OrganizeRecommendation,
 } from './frame-organization';
 
 /**
@@ -415,7 +418,7 @@ export const assembleFrameFiles = (files: FrameFileV2[]): AssembledFiles => {
  */
 export const assembleWorkspaceStore = (
   files: FrameFileV2[],
-  registry?: CellRegistry,
+  registry: CellRegistry = createWorkspaceCellRegistry(),
 ): { store: CellStore; diagnostics: FrameFileDiagnostic[] } => {
   const { cells, fileRoots, diagnostics } = assembleFrameFiles(files);
   const roots = fileRoots.filter((id) => {
@@ -555,8 +558,25 @@ export const frameClosure = (
 export const remapFrameFileIds = (
   file: FrameFileV2,
   idMap: ReadonlyMap<CellId, CellId>,
+  options: {
+    registry?: CellRegistry;
+    targetOwnerOf?(cellId: CellId): CellId | undefined;
+  } = {},
 ): FrameFileV2 => {
   const remap = (id: CellId) => idMap.get(id) ?? id;
+  const registry = options.registry ?? createWorkspaceCellRegistry();
+  const owned = new Set([
+    remap(file.frame.id),
+    ...Object.keys(file.cells).map(remap),
+  ]);
+  const linkContext = {
+    idMap,
+    sourceFileId: file.frame.id,
+    targetFileId: remap(file.frame.id),
+    targetOwnerOf:
+      options.targetOwnerOf ??
+      ((id: CellId) => (owned.has(id) ? remap(file.frame.id) : undefined)),
+  };
   const remapTerminal = (terminal: EdgeTerminal): EdgeTerminal =>
     'cellId' in terminal
       ? { ...terminal, cellId: remap(terminal.cellId) }
@@ -600,6 +620,14 @@ export const remapFrameFileIds = (
         },
       };
     }
+    if (isDocumentCell(cell))
+      cell = {
+        ...cell,
+        data: {
+          ...cell.data,
+          targetDocumentId: remap(cell.data.targetDocumentId),
+        },
+      };
     const data = (cell as { data?: Record<string, unknown> }).data;
     if (data && typeof data === 'object') {
       const next = { ...data };
@@ -621,14 +649,17 @@ export const remapFrameFileIds = (
       });
       if (touched) cell = { ...cell, data: next } as Cell;
     }
-    cells[cell.id] = cell;
+    cells[cell.id] = registry.remapLinks(cell, linkContext);
   });
-  const frame = {
-    ...file.frame,
-    id: remap(file.frame.id),
-    children: file.frame.children.map(remap),
-    groups: file.frame.groups.map(remap),
-  };
+  const frame = registry.remapLinks(
+    {
+      ...file.frame,
+      id: remap(file.frame.id),
+      children: file.frame.children.map(remap),
+      groups: file.frame.groups.map(remap),
+    },
+    linkContext,
+  ) as FrameCell;
   const organization = file.organization
     ? file.organization.kind === 'subgraph' && file.organization.ownerFrameId
       ? {
@@ -673,10 +704,21 @@ export const duplicateFrameClosure = (
     Object.keys(file.cells).forEach((id) => idMap.set(id, allocate()));
   });
   const mode = ownership.mode ?? 'retarget';
+  const copiedOwners = new Map(
+    order.flatMap((id) => {
+      const file = byId.get(id)!;
+      const owner = idMap.get(file.frame.id)!;
+      return [file.frame.id, ...Object.keys(file.cells)].map(
+        (cellId) => [idMap.get(cellId)!, owner] as const,
+      );
+    }),
+  );
   return {
     files: order.map((fileId) => {
       const original = byId.get(fileId)!;
-      const mapped = remapFrameFileIds(original, idMap);
+      const mapped = remapFrameFileIds(original, idMap, {
+        targetOwnerOf: (id) => copiedOwners.get(id),
+      });
       const organization = organizationForCopy(original, idMap, {
         mode,
         isRoot: fileId === rootId,
@@ -719,8 +761,20 @@ export const remapImportedFiles = (
       if (collide(id)) idMap.set(id, allocate());
     });
   });
+  const importedOwners = new Map(
+    files.flatMap((file) => {
+      const owner = idMap.get(file.frame.id) ?? file.frame.id;
+      return [file.frame.id, ...Object.keys(file.cells)].map(
+        (id) => [idMap.get(id) ?? id, owner] as const,
+      );
+    }),
+  );
   return settleImportedOrganization(
-    files.map((file) => remapFrameFileIds(file, idMap)),
+    files.map((file) =>
+      remapFrameFileIds(file, idMap, {
+        targetOwnerOf: (id) => importedOwners.get(id),
+      }),
+    ),
   );
 };
 
@@ -781,7 +835,7 @@ export const parseFrameExport = (value: unknown): FrameFileV2[] | null => {
 
 export const validateFrameFiles = (
   files: FrameFileV2[],
-  registry?: CellRegistry,
+  registry: CellRegistry = createWorkspaceCellRegistry(),
 ): FrameFileDiagnostic[] => {
   const diagnostics: FrameFileDiagnostic[] = [];
   const claimed = new Map<CellId, CellId>();

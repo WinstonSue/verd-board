@@ -1,7 +1,7 @@
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test, type Page, type Locator } from '@playwright/test';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
-import { selectAppAction } from './app-actions';
+import { selectAppAction, setAppLanguage } from './app-actions';
 import { expandPropertyGroup } from './property-group';
 import {
   type FrameCell,
@@ -43,7 +43,7 @@ async function openSnapshot(page: Page, snapshot: FrameSnapshot) {
       for (const cell of Object.values(snapshot.store.cells)) {
         if (cell.cellType !== 'frame') continue;
         const frame = cell as FrameCell;
-        const key = `frames/${frame.id}/fixture`;
+        const key = `frames/fixture-${Object.keys(frames).length}/fixture`;
         frames[frame.id] = key;
         const cells = Object.fromEntries(
           [...frame.children, ...frame.groups]
@@ -99,7 +99,342 @@ async function routes(page: Page) {
     );
 }
 
-for (const name of ['layered', 'data-flow']) {
+async function expectJoinedRoutingButton(scope: Locator) {
+  const box = await scope.locator('.frame-routing-button').evaluate((group) => {
+    const main = group.querySelector('[data-testid="frame-reroute-edges"]')!;
+    const arrow = group.querySelector('.frame-routing-toggle')!;
+    const outer = group.getBoundingClientRect(),
+      a = main.getBoundingClientRect(),
+      b = arrow.getBoundingClientRect();
+    const style = getComputedStyle(group),
+      left = getComputedStyle(main),
+      right = getComputedStyle(arrow);
+    return {
+      gap: b.left - a.right,
+      y: a.top - b.top,
+      height: a.height - b.height,
+      outerHeight: outer.height - a.height,
+      border: [
+        style.borderTopWidth,
+        style.borderRightWidth,
+        style.borderBottomWidth,
+        style.borderLeftWidth,
+      ],
+      radii: [
+        style.borderTopLeftRadius,
+        style.borderTopRightRadius,
+        style.borderBottomLeftRadius,
+        style.borderBottomRightRadius,
+      ],
+      mainBorder: [
+        left.borderTopWidth,
+        left.borderRightWidth,
+        left.borderBottomWidth,
+        left.borderLeftWidth,
+      ],
+      arrowBorder: [
+        right.borderTopWidth,
+        right.borderRightWidth,
+        right.borderBottomWidth,
+        right.borderLeftWidth,
+      ],
+      overflow: style.overflow,
+    };
+  });
+  expect(Math.abs(box.gap)).toBeLessThan(0.5);
+  expect(Math.abs(box.y)).toBeLessThan(0.5);
+  expect(Math.abs(box.height)).toBeLessThan(0.5);
+  expect(box.outerHeight).toBeCloseTo(2);
+  expect(box.border).toEqual(['1px', '1px', '1px', '1px']);
+  expect(box.radii).toEqual(['6px', '6px', '6px', '6px']);
+  expect(box.mainBorder).toEqual(['0px', '0px', '0px', '0px']);
+  expect(box.arrowBorder).toEqual(['0px', '0px', '0px', '1px']);
+  expect(box.overflow).toBe('visible');
+}
+
+test('one-shot edge optimization saves editable paths and shares the routing choice', async ({
+  page,
+}) => {
+  const snapshot = fixture('architecture-layered');
+  await openSnapshot(page, snapshot);
+  await expandPropertyGroup(page);
+  const panel = page
+    .getByRole('complementary')
+    .getByTestId('frame-arrangement');
+  const main = panel.getByTestId('frame-reroute-edges');
+  await expect(main).toHaveText('优化全部连线');
+  await expect(main).toBeEnabled();
+  await expectJoinedRoutingButton(panel);
+  await main.hover();
+  await expectJoinedRoutingButton(panel);
+  await expect
+    .poll(async () => Object.keys(await savedCells(page)).length)
+    .toBe(Object.keys(snapshot.store.cells).length);
+  const before = await savedCells(page);
+  await main.click();
+  await expect(main).toBeEnabled();
+  await expect(panel.getByTestId('frame-auto-layout-toggle')).not.toBeChecked();
+  await expect(panel.getByTestId('frame-auto-edges-toggle')).not.toBeChecked();
+  await expect
+    .poll(
+      async () =>
+        Object.values(await savedCells(page)).filter(
+          (cell: any) =>
+            cell.route?.mode === 'orthogonal' && cell.route.points?.length,
+        ).length,
+    )
+    .toBeGreaterThan(0);
+  const optimized = await savedCells(page);
+  for (const node of Object.values(before).filter(
+    (cell) => cell.cellType === 'node',
+  ))
+    expect(optimized[node.id]).toEqual(node);
+  await panel.getByRole('button', { name: '选择连线整理方式' }).click();
+  await page.getByRole('menuitemradio', { name: /^重置手工走线/ }).click();
+  await expect(main).toHaveText('重置手工走线');
+  await expect(main).toBeDisabled();
+  await expectJoinedRoutingButton(panel);
+  await expect
+    .poll(
+      async () =>
+        Object.values(await savedCells(page)).filter(
+          (cell: any) => cell.route?.points?.length,
+        ).length,
+    )
+    .toBe(0);
+  const reset = await savedCells(page);
+  for (const node of Object.values(before).filter(
+    (cell) => cell.cellType === 'node',
+  ))
+    expect(reset[node.id]).toEqual(node);
+  await main.locator('..').focus();
+  await expect(page.getByRole('tooltip')).toContainText('手工折点');
+  await page.keyboard.press('Escape');
+  await panel.locator('.frame-routing-button').screenshot({
+    path: test.info().outputPath('routing-disabled-joined.png'),
+  });
+  await page.getByRole('button', { name: '撤销', exact: true }).click();
+  await expect.poll(() => savedCells(page)).toEqual(optimized);
+  await page.getByRole('button', { name: '重做', exact: true }).click();
+  await expect.poll(() => savedCells(page)).toEqual(reset);
+  const firstNode = Object.values(snapshot.store.cells).find(
+    (cell) => cell.kind === 'architecture-module',
+  )!;
+  await cell(page, firstNode.id).click({ button: 'right' });
+  const menu = page.getByRole('dialog', { name: 'Selection actions' });
+  await expect(menu.getByTestId('frame-reroute-edges')).toHaveText(
+    '重置手工走线',
+  );
+  await expectJoinedRoutingButton(menu);
+  await menu.getByRole('button', { name: '选择连线整理方式' }).focus();
+  await page.keyboard.press('ArrowDown');
+  const resetItem = page.getByRole('menuitemradio', { name: /^重置手工走线/ });
+  const optimizeItem = page.getByRole('menuitemradio', {
+    name: /^优化全部连线/,
+  });
+  await expect(resetItem).toBeFocused();
+  await expect(resetItem).toHaveAttribute('aria-disabled', 'true');
+  await page.keyboard.press('Space');
+  await expect(resetItem).toBeVisible();
+  expect(await savedCells(page)).toEqual(reset);
+  await page.keyboard.press('Home');
+  await expect(optimizeItem).toBeFocused();
+  await page.keyboard.press('End');
+  await expect(resetItem).toBeFocused();
+  await page.keyboard.press('ArrowUp');
+  await expect(optimizeItem).toBeFocused();
+  await page.keyboard.press('Enter');
+  await expect(menu.getByTestId('frame-reroute-edges')).toHaveText(
+    '优化全部连线',
+  );
+  await expect
+    .poll(
+      async () =>
+        Object.values(await savedCells(page)).filter(
+          (cell: any) => cell.route?.points?.length,
+        ).length,
+    )
+    .toBeGreaterThan(0);
+  const optimizedSelection = await savedCells(page);
+  await expectJoinedRoutingButton(menu);
+  await menu
+    .locator('.frame-routing-button')
+    .screenshot({ path: test.info().outputPath('routing-popover-joined.png') });
+  // Choosing the current mode runs again, but equal paths add no undo entry.
+  await menu.getByRole('button', { name: '选择连线整理方式' }).click();
+  await expect(optimizeItem).toBeFocused();
+  await page.keyboard.press('Space');
+  await expect(optimizeItem).toHaveCount(0);
+  expect(await savedCells(page)).toEqual(optimizedSelection);
+  await page.keyboard.press('Escape');
+  await expect(menu).toHaveCount(0);
+  await expect(main).toHaveText('优化全部连线');
+  await page.getByRole('button', { name: '撤销', exact: true }).click();
+  await expect.poll(() => savedCells(page)).toEqual(reset);
+  await page.getByRole('button', { name: '重做', exact: true }).click();
+  await expect.poll(() => savedCells(page)).toEqual(optimizedSelection);
+  const paths = await routes(page);
+  await page.reload();
+  await expect.poll(() => routes(page)).toEqual(paths);
+  await setAppLanguage(page, 'en');
+  await expandPropertyGroup(page);
+  await expect(main).toHaveText('Optimize all edges');
+  await expect(main).toBeEnabled();
+  await expectJoinedRoutingButton(panel);
+  await panel.getByRole('button', { name: 'Choose routing method' }).focus();
+  await page.keyboard.press('ArrowDown');
+  await expect(
+    page.getByRole('menuitemradio', { name: /^Optimize all edges/ }),
+  ).toBeFocused();
+  await expect(
+    page.getByRole('menuitemradio', { name: /^Reset manual paths/ }),
+  ).toContainText('restore automatic routing');
+  await page.keyboard.press('Tab');
+  await expect(
+    page.getByRole('menu', { name: 'Routing method', exact: true }),
+  ).toHaveCount(0);
+  await page.screenshot({
+    path: test.info().outputPath('one-shot-routing.png'),
+  });
+});
+
+test('group node layout and edge rerouting are independent, undoable and survive reload', async ({
+  page,
+}) => {
+  const node = (id: string, x: number, y: number): NodeCell => ({
+    id,
+    cellType: 'node',
+    kind: 'geometry',
+    geometry: { x, y, width: 60, height: 40 },
+    content: { label: id },
+  });
+  const snapshot: FrameSnapshot = {
+    store: {
+      rootId: 'root',
+      cells: {
+        root: {
+          id: 'root',
+          kind: 'frame',
+          cellType: 'frame',
+          geometry: { x: 0, y: 0, width: 960, height: 640 },
+          children: ['a', 'b', 'outside', 'inside', 'boundary'],
+          groups: ['g'],
+        },
+        a: node('a', 80, 100),
+        b: node('b', 400, 300),
+        outside: node('outside', 700, 100),
+        g: { id: 'g', cellType: 'group', kind: 'group', members: ['a', 'b'] },
+        inside: {
+          id: 'inside',
+          cellType: 'edge',
+          kind: 'arrow',
+          source: { cellId: 'a', anchor: [1, 0.5] },
+          target: { cellId: 'b', anchor: [0, 0.5] },
+          route: {
+            mode: 'orthogonal',
+            points: [
+              [140, 120],
+              [220, 120],
+              [220, 320],
+              [400, 320],
+            ],
+          },
+        },
+        boundary: {
+          id: 'boundary',
+          cellType: 'edge',
+          kind: 'arrow',
+          source: { cellId: 'b' },
+          target: { cellId: 'outside' },
+          route: {
+            mode: 'fixed',
+            points: [
+              [460, 320],
+              [600, 320],
+              [600, 120],
+              [700, 120],
+            ],
+          },
+        },
+      },
+    },
+  };
+  await openSnapshot(page, snapshot);
+  await expect
+    .poll(async () => (await savedCells(page)).b?.geometry)
+    .toEqual((snapshot.store.cells.b as NodeCell).geometry);
+  await cell(page, 'a').click();
+  await expandPropertyGroup(page);
+  const panel = page
+    .getByRole('complementary')
+    .getByTestId('frame-arrangement');
+  await expect(panel.getByTestId('frame-auto-layout')).toHaveText(
+    '布局组内节点',
+  );
+  await cell(page, 'a').click({ button: 'right' });
+  const menu = page.getByRole('dialog', { name: 'Selection actions' });
+  await expect(
+    menu.getByRole('button', { name: '布局组内节点', exact: true }),
+  ).toBeEnabled();
+  await expect(
+    menu.getByRole('button', { name: '优化全部连线', exact: true }),
+  ).toBeEnabled();
+  await expect(menu.getByTestId('frame-arrangement-scope')).toContainText(
+    'Group 内部',
+  );
+  await page.keyboard.press('Escape');
+  await expect(menu).toHaveCount(0);
+  await page.getByRole('button', { name: '命令面板', exact: true }).click();
+  const palette = page.getByRole('dialog', { name: '命令面板', exact: true });
+  await palette
+    .getByRole('combobox', { name: '搜索命令' })
+    .fill('重置手工走线');
+  await expect(
+    palette.locator('[data-action-id="canvas.edges.reroute"]'),
+  ).toHaveAttribute('aria-disabled', 'false');
+  await expect(
+    palette.locator('[data-action-id="canvas.edges.reroute"]'),
+  ).toContainText('组内');
+  await page.keyboard.press('Escape');
+  await panel.locator('select').selectOption('horizontal');
+  await panel.getByTestId('frame-auto-layout').click();
+  await expect
+    .poll(async () => (await savedCells(page)).b?.geometry)
+    .toMatchObject({ x: 236, y: 100 });
+  const arranged = await savedCells(page);
+  expect(arranged.outside).toEqual(snapshot.store.cells.outside);
+  expect(arranged.inside).toEqual(snapshot.store.cells.inside);
+  expect(arranged.boundary).toEqual(snapshot.store.cells.boundary);
+  await page.screenshot({
+    path: test.info().outputPath('group-local-layout.png'),
+  });
+  await panel.getByRole('button', { name: '选择连线整理方式' }).click();
+  await page.getByRole('menuitemradio', { name: /^重置手工走线/ }).click();
+  await expect
+    .poll(async () => (await savedCells(page)).inside?.route)
+    .toEqual({ mode: 'orthogonal' });
+  const rerouted = await savedCells(page);
+  expect(rerouted.boundary.route).toEqual({ mode: 'auto' });
+  for (const id of ['a', 'b', 'outside'])
+    expect(rerouted[id]).toEqual(arranged[id]);
+  expect(rerouted.inside.source).toEqual(arranged.inside.source);
+  expect(rerouted.inside.target).toEqual(arranged.inside.target);
+  await page.getByRole('button', { name: '撤销', exact: true }).click();
+  await expect
+    .poll(async () => (await savedCells(page)).inside?.route)
+    .toEqual(arranged.inside.route);
+  await page.getByRole('button', { name: '重做', exact: true }).click();
+  await expect
+    .poll(async () => (await savedCells(page)).inside?.route)
+    .toEqual({ mode: 'orthogonal' });
+  await page.reload();
+  await expect
+    .poll(async () => (await savedCells(page)).boundary?.route)
+    .toEqual({ mode: 'auto' });
+  expect((await savedCells(page)).b?.geometry).toEqual(rerouted.b.geometry);
+});
+
+for (const name of ['layered', 'data-flow', 'packages']) {
   test(`real ${name} diagram arranges explicitly, saves once and restores stable routes`, async ({
     page,
   }) => {
@@ -126,6 +461,11 @@ for (const name of ['layered', 'data-flow']) {
       .not.toEqual(moduleGeometry(before));
     const after = await savedCells(page);
     const arrangedRoutes = await routes(page);
+    const displayedRoutes = await canvas(page)
+      .locator('[data-edge-display]')
+      .evaluateAll((elements) =>
+        elements.map((element) => element.getAttribute('d')!),
+      );
     for (const node of Object.values(before).filter(
       (cell) => cell.kind === 'architecture-layer',
     ))
@@ -150,14 +490,65 @@ for (const name of ['layered', 'data-flow']) {
     expect(moduleGeometry(await savedCells(page))).toEqual(
       moduleGeometry(after),
     );
+    if (name === 'packages') {
+      await page.setViewportSize({ width: 1600, height: 1000 });
+      await page
+        .getByTestId('canvas-status-fit')
+        .locator('visible=true')
+        .click();
+      expect(displayedRoutes.some((path) => path.includes(' A'))).toBe(true);
+      await page.screenshot({
+        path: test.info().outputPath('package-layout-fit.png'),
+      });
+      const connector = cell(page, 'demo:packages/edge/23');
+      expect(
+        (await connector.locator('[data-edge-hit]').getAttribute('d'))!.match(
+          /L/g,
+        ),
+      ).toHaveLength(3);
+      await connector.dispatchEvent('pointerover');
+      await expect(
+        canvas(page).locator('[data-relation-highlight="node"]'),
+      ).toHaveCount(2);
+      await expect(
+        canvas(page).locator('[data-relation-highlight="node"]').first(),
+      ).toHaveAttribute('stroke-width', '1');
+      await expect(
+        canvas(page).locator('[data-relation-highlight="node"]').first(),
+      ).toHaveAttribute('vector-effect', 'non-scaling-stroke');
+      expect(
+        await canvas(page)
+          .locator('[data-relation-highlight="node"]')
+          .first()
+          .getAttribute('opacity'),
+      ).toBeNull();
+      await expect(
+        canvas(page).locator('[data-relation-highlight="edge"]'),
+      ).toHaveAttribute('opacity', '0.45');
+      await connector.dispatchEvent('pointerdown', { button: 0, pointerId: 1 });
+      await canvas(page).dispatchEvent('pointerup', {
+        button: 0,
+        pointerId: 1,
+      });
+      await expect(
+        connector.locator('[data-relation-highlight="edge"]'),
+      ).toHaveCount(0);
+      await page.screenshot({
+        path: test.info().outputPath('package-layout-relationship.png'),
+      });
+      await connector.dispatchEvent('pointerout');
+      await canvas(page).press('Escape');
+      await expect(
+        canvas(page).locator('[data-relation-highlight="node"]'),
+      ).toHaveCount(0);
+    }
     await selectAppAction(page, '图像导出');
     const dialog = page.getByRole('dialog', { name: '图像导出', exact: true });
     await dialog.getByLabel('Image format').selectOption('svg');
     const download = page.waitForEvent('download');
     await dialog.getByTestId('image-export-button').click();
     const svg = readFileSync((await (await download).path())!, 'utf8');
-    for (const d of Object.values(arrangedRoutes))
-      expect(svg).toContain(`d="${d}"`);
+    for (const d of displayedRoutes) expect(svg).toContain(`d="${d}"`);
   });
 }
 
@@ -282,4 +673,68 @@ test('embedded root moves only its own visible tree, stays in bounds and survive
   expect((await textPosition(page, 'first'))[0]).toBe(
     (snapshot.store.cells.first as NodeCell).geometry.x + 8,
   );
+});
+
+test('automatic calculation switches are independent, survive tab switches and reset when a tab closes', async ({
+  page,
+}) => {
+  const snapshot = fixture('architecture-layered');
+  await openSnapshot(page, snapshot);
+  await setAppLanguage(page, 'zh');
+  await expandPropertyGroup(page);
+  const panel = page
+    .getByRole('complementary')
+    .getByTestId('frame-arrangement');
+  const nodes = panel.getByTestId('frame-auto-layout-toggle');
+  const edges = panel.getByTestId('frame-auto-edges-toggle');
+  await expect(nodes).not.toBeChecked();
+  await expect(edges).not.toBeChecked();
+  const before = await savedCells(page);
+  await nodes.check();
+  await expect(nodes).toBeChecked();
+  await expect(edges).not.toBeChecked();
+  await edges.check();
+  expect(await savedCells(page)).toEqual(before);
+  await page
+    .locator('ylib-tabs')
+    .getByRole('button', { name: '新建画布', exact: true })
+    .click();
+  await expect(page.getByRole('tab')).toHaveCount(2);
+  await expandPropertyGroup(page);
+  await expect(nodes).not.toBeChecked();
+  await expect(edges).not.toBeChecked();
+  const original = page.locator(
+    `[role="tab"][data-tab-id="${snapshot.store.rootId}"]`,
+  );
+  await original.click();
+  await expect(nodes).toBeChecked();
+  await expect(edges).toBeChecked();
+  const firstNode = Object.values(snapshot.store.cells).find(
+    (cell) => cell.kind === 'architecture-module',
+  )!;
+  await cell(page, firstNode.id).click({ button: 'right' });
+  const menu = page.getByRole('dialog', { name: 'Selection actions' });
+  await expect(menu.getByTestId('frame-auto-layout-toggle')).toBeChecked();
+  await expect(menu.getByTestId('frame-auto-edges-toggle')).toBeChecked();
+  await menu.getByTestId('frame-auto-edges-toggle').uncheck();
+  await page.keyboard.press('Escape');
+  await expect(edges).not.toBeChecked();
+  await expect(nodes).toBeChecked();
+  await original.getByRole('button', { name: /^关闭/ }).focus();
+  await page.keyboard.press('Enter');
+  await expect(page.getByRole('tab')).toHaveCount(1);
+  await page
+    .locator(`[data-file-id="${snapshot.store.rootId}"] .file-tree-name`)
+    .click();
+  await expect(original).toHaveAttribute('aria-selected', 'true');
+  await expect(page.getByRole('progressbar')).toHaveCount(0);
+  await expandPropertyGroup(page);
+  await expect(nodes).not.toBeChecked();
+  await expect(edges).not.toBeChecked();
+  await nodes.check();
+  await page.reload();
+  await expect(canvas(page)).toBeVisible();
+  await expandPropertyGroup(page);
+  await expect(nodes).not.toBeChecked();
+  await expect(edges).not.toBeChecked();
 });

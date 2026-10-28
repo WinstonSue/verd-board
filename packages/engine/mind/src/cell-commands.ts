@@ -1,30 +1,32 @@
 import {
-  CellKind,
-  createFrameCell,
-  isNodeCell,
-  indexCells,
-  isEdgeCell,
-  type NodeCell,
-  type CellStore,
-  type CellOperation,
-  type FrameSnapshot,
-  type Point,
-  type MindSummaryData,
-  type EdgeCell,
-  type MindChildData,
-} from '@sue/board-core';
-import { mindChildIds } from './cell-utils';
-import {
   createInlineText,
   inheritTextFormatting,
   isBoardTextDocument,
 } from '@sue/board-common';
+import {
+  createFrameCell,
+  indexCells,
+  isEdgeCell,
+  isNodeCell,
+  type CellOperation,
+  type CellStore,
+  type EdgeCell,
+  type FrameSnapshot,
+  type NodeCell,
+  type Point,
+} from '@sue/board-core';
+import { mindChildIds } from './cell-utils';
+import {
+  MindKind,
+  type MindChildData,
+  type MindSummaryData,
+} from './public-api';
 export const createMindRootCell = (
   id: string,
   position: Point = [0, 0],
 ): NodeCell => ({
   id,
-  kind: CellKind.mindRoot,
+  kind: MindKind.mindRoot,
   cellType: 'node',
   geometry: {
     x: position[0],
@@ -38,7 +40,7 @@ export const createMindRootCell = (
 });
 export const createMindChildCell = (id: string): NodeCell => ({
   id,
-  kind: CellKind.mindChild,
+  kind: MindKind.mindChild,
   cellType: 'node',
   geometry: {
     x: 0,
@@ -75,13 +77,13 @@ export const addMindChild = (
   const parent = store.cells[parentId];
   if (
     !parent ||
-    ![CellKind.mindRoot, CellKind.mindChild].includes(parent.kind as never)
+    ![MindKind.mindRoot, MindKind.mindChild].includes(parent.kind as never)
   )
     throw new Error('Invalid mind parent');
   const parentFrame = indexCells(store).parentOf.get(parentId)!;
   const seed = store.cells[inheritId];
   const inherit =
-    isNodeCell(seed) && seed.kind === CellKind.mindChild ? seed : undefined;
+    isNodeCell(seed) && seed.kind === MindKind.mindChild ? seed : undefined;
   const seedData = inherit?.data as MindChildData | undefined,
     nodeData = node.data as MindChildData | undefined;
   const inheritedAppearance = inherit?.appearance && {
@@ -95,7 +97,7 @@ export const addMindChild = (
     Object.values(store.cells).find(
       (cell): cell is EdgeCell =>
         isEdgeCell(cell) &&
-        cell.kind === CellKind.mindBranch &&
+        cell.kind === MindKind.mindBranch &&
         'cellId' in cell.target &&
         cell.target.cellId === inherit.id,
     );
@@ -114,7 +116,7 @@ export const addMindChild = (
       parentId: parentFrame,
       cell: {
         ...node,
-        kind: CellKind.mindChild,
+        kind: MindKind.mindChild,
         geometry: {
           ...node.geometry,
           outline:
@@ -147,7 +149,7 @@ export const addMindChild = (
         parentId: parentFrame,
         cell: {
           id: edgeId,
-          kind: CellKind.mindBranch,
+          kind: MindKind.mindBranch,
           cellType: 'edge',
           source: { cellId: parentId },
           target: { cellId: id },
@@ -167,7 +169,7 @@ export const addMindChild = (
       const edge = Object.values(store.cells).find(
         (cell) =>
           isEdgeCell(cell) &&
-          cell.kind === CellKind.mindBranch &&
+          cell.kind === MindKind.mindBranch &&
           'cellId' in cell.target &&
           cell.target.cellId === id,
       );
@@ -207,7 +209,7 @@ const ancestorBranch = (
     const edge = Object.values(store.cells).find(
       (item): item is EdgeCell<{ order: string }> =>
         isEdgeCell(item) &&
-        item.kind === CellKind.mindBranch &&
+        item.kind === MindKind.mindBranch &&
         'cellId' in item.target &&
         item.target.cellId === current,
     );
@@ -219,12 +221,12 @@ const branchTo = (store: CellStore, nodeId: string) =>
   Object.values(store.cells).find(
     (cell): cell is EdgeCell<{ order: string }> =>
       isEdgeCell(cell) &&
-      cell.kind === CellKind.mindBranch &&
+      cell.kind === MindKind.mindBranch &&
       'cellId' in cell.target &&
       cell.target.cellId === nodeId,
   );
 const splitRoot = (cell: NodeCell) =>
-  cell.kind === CellKind.mindRoot &&
+  cell.kind === MindKind.mindRoot &&
   (cell.data as { layout?: string } | undefined)?.layout === 'standard';
 const rightCount = (cell: NodeCell, count: number) =>
   Math.min(
@@ -250,9 +252,9 @@ export const reparentMindChild = (
     parent = store.cells[parentId];
   if (
     !isNodeCell(node) ||
-    node.kind !== CellKind.mindChild ||
+    node.kind !== MindKind.mindChild ||
     !isNodeCell(parent) ||
-    ![CellKind.mindRoot, CellKind.mindChild].includes(parent.kind as never)
+    ![MindKind.mindRoot, MindKind.mindChild].includes(parent.kind as never)
   )
     throw new Error('Only child topics can change parent');
   const current = branchTo(store, nodeId);
@@ -381,7 +383,7 @@ export const createMindSummary = (
       parentId: frameId,
       cell: {
         ...createMindChildCell(nodeId),
-        kind: CellKind.mindSummary,
+        kind: MindKind.mindSummary,
         content: { label: 'Summary' },
       },
     },
@@ -390,7 +392,7 @@ export const createMindSummary = (
       parentId: frameId,
       cell: {
         id: edgeId,
-        kind: CellKind.mindSummaryEdge,
+        kind: MindKind.mindSummaryEdge,
         cellType: 'edge',
         source: { cellId: startId },
         target: { cellId: nodeId },
@@ -441,13 +443,13 @@ export const setMindSummaryRange = (
   endSiblingId: string,
 ): CellOperation[] => {
   const edge = store.cells[edgeId];
-  if (!isEdgeCell(edge) || edge.kind !== CellKind.mindSummaryEdge)
+  if (!isEdgeCell(edge) || edge.kind !== MindKind.mindSummaryEdge)
     throw new Error('Missing summary edge');
   const previous = edge.data as MindSummaryData;
   const branch = Object.values(store.cells).find(
     (cell): cell is EdgeCell =>
       isEdgeCell(cell) &&
-      cell.kind === CellKind.mindBranch &&
+      cell.kind === MindKind.mindBranch &&
       'cellId' in cell.target &&
       cell.target.cellId === previous.startSiblingId,
   );

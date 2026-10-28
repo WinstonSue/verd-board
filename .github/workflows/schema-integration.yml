@@ -1,0 +1,81 @@
+name: Schema candidate integration
+
+on:
+  workflow_dispatch:
+    inputs:
+      schema_repository:
+        description: Schema repository in owner/repository format
+        required: true
+        type: string
+      schema_ref:
+        description: Full immutable Schema commit SHA
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  candidate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - name: Validate immutable source
+        env:
+          SCHEMA_REF: ${{ inputs.schema_ref }}
+        run: '[[ "$SCHEMA_REF" =~ ^[0-9a-f]{40}$ ]]'
+      - uses: actions/checkout@v4
+        with:
+          path: verd
+      - uses: actions/checkout@v4
+        with:
+          repository: ${{ inputs.schema_repository }}
+          ref: ${{ inputs.schema_ref }}
+          path: schema
+          token: ${{ secrets.SCHEMA_READ_TOKEN || github.token }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.0
+      - name: Build Schema candidates
+        working-directory: schema
+        env:
+          ARTIFACT_DIR: ${{ runner.temp }}/schema-artifacts
+        run: |
+          pnpm install --frozen-lockfile --ignore-scripts
+          pnpm build:settings
+          pnpm test:settings --runInBand
+          node scripts/pack-settings.cjs "$ARTIFACT_DIR"
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.18.0
+      - name: Prepare isolated Verd workspace
+        id: prepare
+        working-directory: verd
+        env:
+          SCHEMA_MANIFEST: ${{ runner.temp }}/schema-artifacts/manifest.json
+        run: |
+          target=$(node scripts/prepare-schema-integration.mjs --schema-artifacts "$SCHEMA_MANIFEST")
+          printf 'path=%s\n' "$target" >> "$GITHUB_OUTPUT"
+      - name: Verify integration
+        working-directory: ${{ steps.prepare.outputs.path }}
+        env:
+          VERD_SCHEMA_ARTIFACTS: ${{ runner.temp }}/schema-artifacts/manifest.json
+        run: |
+          pnpm install --ignore-scripts
+          pnpm exec playwright install --with-deps chromium
+          pnpm check:plugins
+          pnpm typecheck
+          pnpm workspace:check
+          pnpm test
+          pnpm build
+          pnpm build:desktop
+          pnpm test:e2e:prod
+          pnpm test:consumer
+          pnpm test:plugin-consumers
+      - uses: actions/upload-artifact@v4
+        with:
+          name: schema-settings-${{ inputs.schema_ref }}
+          path: ${{ runner.temp }}/schema-artifacts/

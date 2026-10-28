@@ -1,15 +1,14 @@
-import { describe, expect, it } from 'vitest';
-import { CellKind, isNodeCell, validateCellStore } from '@sue/board-core';
-import { createCellRegistry } from '@sue/board-core';
-import { mindChildIds, registerMindCells } from '@sue/board-mind';
 import type { BoardTextDocument } from '@sue/board-common';
+import { isNodeCell, validateCellStore } from '@sue/board-core';
+import { mindChildIds, MindKind } from '@sue/board-mind';
+import { describe, expect, it } from 'vitest';
+import { createTestCellRegistry } from '../../../../tests/fixtures/plugins/registry';
 import {
   parseMarkdownToFrameSnapshot,
   serializeFrameToMarkdown,
 } from './index';
 
-const registry = createCellRegistry();
-registerMindCells(registry);
+const registry = createTestCellRegistry();
 
 type Snapshot = ReturnType<typeof parseMarkdownToFrameSnapshot>;
 
@@ -17,7 +16,7 @@ const tree = (snapshot: Snapshot, parentId?: string): unknown => {
   const id =
     parentId ??
     Object.values(snapshot.store.cells).find(
-      (cell) => cell.kind === CellKind.mindRoot,
+      (cell) => cell.kind === MindKind.mindRoot,
     )!.id;
   const node = snapshot.store.cells[id];
   return {
@@ -36,7 +35,7 @@ const tree = (snapshot: Snapshot, parentId?: string): unknown => {
 
 const rootTrees = (snapshot: Snapshot) =>
   Object.values(snapshot.store.cells)
-    .filter((cell) => cell.kind === CellKind.mindRoot)
+    .filter((cell) => cell.kind === MindKind.mindRoot)
     .map((root) => tree(snapshot, root.id));
 
 describe('Markdown import', () => {
@@ -199,7 +198,7 @@ describe('Markdown import', () => {
       '# A\n## a1\n## a2\n\n# B\n## b1',
     );
     const roots = Object.values(snapshot.store.cells).filter(
-      (cell) => cell.kind === CellKind.mindRoot,
+      (cell) => cell.kind === MindKind.mindRoot,
     );
     expect(roots).toHaveLength(2);
     const ys = roots.map((root) => (isNodeCell(root) ? root.geometry.y : 0));

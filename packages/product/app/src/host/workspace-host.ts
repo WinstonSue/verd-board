@@ -14,6 +14,16 @@ export interface WorkspaceHandle {
   name: string;
   /** Desktop's editable built-in default; absent on other hosts. */
   isDefault?: boolean;
+  /** Durable history identity, independent of the process-local handle key. */
+  historyId?: string;
+}
+
+export interface WorkspaceHistoryEntry {
+  id: string;
+  name: string;
+  /** Host-generated parent-folder hint for otherwise identical names. */
+  description?: string;
+  lastOpenedAt: number;
 }
 
 export interface GlobalConfigSnapshot {
@@ -256,6 +266,8 @@ export interface CommitReceipt {
 }
 
 export interface OpenWorkspaceRequest {
+  /** Reopen a recorded workspace without creating a missing directory. */
+  historyId?: string;
   /** Open an existing or create a missing workspace at this location. */
   path?: string;
   /** Host-defined default location (fresh install / first run). */
@@ -296,6 +308,8 @@ export interface WorkspaceHost {
   ): Promise<WorkspaceHandle | null>;
   /** Remember a successfully loaded workspace; paths remain host-private. */
   activateWorkspace?(handle: WorkspaceHandle): Promise<void>;
+  /** Most recently opened first; filesystem locations remain host-private. */
+  listWorkspaceHistory?(): Promise<WorkspaceHistoryEntry[]>;
   readSnapshot(handle: WorkspaceHandle): Promise<WorkspaceHostSnapshot>;
   /** Read raw bytes for plain (non-canvas) files on demand. */
   readFile(handle: WorkspaceHandle, path: string): Promise<RawFileRead>;

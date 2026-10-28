@@ -1,54 +1,38 @@
-import { createUmlFrameExtensions } from '@sue/board-react-uml';
-import { useMemo, useRef, useState } from 'react';
 import {
-  FrameCanvas,
-  type FrameCanvasController,
-  type FrameAdapter,
-  type FrameRenderExtension,
-} from '@sue/board-react';
+  addArchitectureModule,
+  createArchitectureFrameSnapshot,
+  createArchitectureModuleCell,
+} from '@sue/board-architecture';
 import {
-  createCellRegistry,
   applyCellOperations,
   createFrameCell,
   isNodeCell,
+  type CellStore,
   type CellTransaction,
   type FrameSnapshot,
-  type CellStore,
   type NodeCell,
 } from '@sue/board-core';
-import { createWorkflowFrameExtensions } from '@sue/board-react-workflow';
-import { createMindFrameExtensions } from '@sue/board-react-mind';
-import { createArchitectureFrameExtensions } from '@sue/board-react-architecture';
 import {
-  createWorkflowStartCell,
-  createWorkflowTaskCell,
-  createWorkflowFrameSnapshot,
-  addWorkflowTask,
-} from '@sue/board-workflow';
-import {
-  createMindRootCell,
   createMindChildCell,
   createMindFrameSnapshot,
+  createMindRootCell,
 } from '@sue/board-mind';
 import {
-  createArchitectureModuleCell,
-  createArchitectureFrameSnapshot,
-  addArchitectureModule,
-} from '@sue/board-architecture';
+  FrameCanvas,
+  type FrameAdapter,
+  type FrameCanvasController,
+  type FrameRenderExtension,
+} from '@sue/board-react';
+import {
+  addWorkflowTask,
+  createWorkflowFrameSnapshot,
+  createWorkflowStartCell,
+  createWorkflowTaskCell,
+} from '@sue/board-workflow';
+import { createVerdFramePluginSet } from '@sue/verd-board-ui';
+import { useMemo, useRef, useState } from 'react';
 
-const useExtensions = () =>
-  useMemo(() => {
-    const registry = createCellRegistry();
-    return {
-      registry,
-      extensions: [
-        ...createMindFrameExtensions(registry),
-        ...createWorkflowFrameExtensions(registry),
-        ...createArchitectureFrameExtensions(registry),
-        ...createUmlFrameExtensions(registry),
-      ],
-    };
-  }, []);
+const useExtensions = () => useMemo(() => createVerdFramePluginSet(), []);
 const initialGraph = () => ({
   nodes: [{ key: 'cmd-1', kind: 'command', config: { name: 'Run' } }],
 });

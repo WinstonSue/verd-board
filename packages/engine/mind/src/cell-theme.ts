@@ -1,14 +1,14 @@
+import { isBoardTextDocument, type BoardTextNode } from '@sue/board-common';
 import {
+  isFrameCell,
+  isNodeCell,
   ThemeColorMode,
   type CellStore,
   type FrameCell,
-  type MindColorScheme,
   type NodeCell,
-  isFrameCell,
-  isNodeCell,
 } from '@sue/board-core';
-import { isBoardTextDocument, type BoardTextNode } from '@sue/board-common';
-import type { MindNodeData } from '@sue/board-core';
+import { type MindNodeData } from '@sue/board-mind';
+import { type MindColorScheme } from './public-api';
 
 export interface MindPalette {
   branches: string[];

@@ -1,3 +1,8 @@
+import { useActionSource, type ActionSource } from '@sue/board-react-actions';
+import {
+  bindWorkspaceAction,
+  type WorkspaceActionBinding,
+} from './workspace-action-bindings';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ArrowLeft,
@@ -40,6 +45,7 @@ export type ChartOrganization =
   { kind: 'standalone' } | { kind: 'subgraph'; ownerFrameId?: string };
 
 export interface ChartLibraryProps {
+  actionSource?: ActionSource;
   rows: ChartLibraryRow[];
   owners: { frameId: string; name: string }[];
   readonly?: boolean;
@@ -99,6 +105,7 @@ const placementLabel = (row: ChartLibraryRow, locale: 'zh' | 'en') => {
 };
 
 export function ChartLibrary({
+  actionSource,
   rows,
   owners,
   readonly = false,
@@ -119,10 +126,31 @@ export function ChartLibrary({
   onPickerMode,
   onPick,
 }: ChartLibraryProps) {
+  useActionSource(actionSource);
+  const bind = (id: string, args?: unknown) =>
+    bindWorkspaceAction(actionSource, `workspace.${id}`, args);
+  const available = (
+    binding: WorkspaceActionBinding | undefined,
+    fallback = true,
+  ) =>
+    binding?.getState() ?? {
+      visible: !actionSource,
+      enabled: !actionSource && fallback,
+    };
+  const run = (
+    binding: WorkspaceActionBinding | undefined,
+    fallback: () => unknown,
+  ) => {
+    if (binding) void binding.execute();
+    else if (!actionSource) fallback();
+  };
+  const back = bind('library.back', { present: onBack });
+  const organize = bind('library.organize-dialog', { present: onOrganize });
   const [editingFile, setEditingFile] = useState<string | null>(null);
   const editTrigger = useRef<HTMLButtonElement | null>(null);
   const editingRow = rows.find((row) => row.frameId === editingFile);
-  const canEdit = !readonly && !picker && !!onChangeOrganization;
+  const canEdit =
+    !picker && !!onChangeOrganization && (!!actionSource || !readonly);
   const [localQuery, setLocalQuery] = useState('');
   const [localDiagram, setLocalDiagram] = useState<
     'all' | ChartLibraryRow['diagram']
@@ -174,10 +202,12 @@ export function ChartLibrary({
         <button
           type="button"
           className="workspace-button-ghost"
-          onClick={onBack}
+          disabled={!available(back).enabled}
+          onClick={() => run(back, onBack)}
         >
           <ArrowLeft size={16} aria-hidden />
-          {locale === 'zh' ? '返回编辑' : 'Back to editor'}
+          {back?.label(locale) ??
+            (locale === 'zh' ? '返回编辑' : 'Back to editor')}
         </button>
         <h2>
           {picker
@@ -215,13 +245,15 @@ export function ChartLibrary({
             </button>
           </div>
         ) : null}
-        {!readonly && onOrganize ? (
+        {available(organize, !readonly).visible && onOrganize ? (
           <button
             type="button"
             className="workspace-button-secondary chart-library-organize"
-            onClick={onOrganize}
+            disabled={!available(organize, !readonly).enabled}
+            onClick={() => run(organize, onOrganize)}
           >
-            {locale === 'zh' ? '整理已有图表' : 'Organize existing charts'}
+            {organize?.label(locale) ??
+              (locale === 'zh' ? '整理已有图表' : 'Organize existing charts')}
           </button>
         ) : null}
       </header>
@@ -308,6 +340,14 @@ export function ChartLibrary({
             <tbody>
               {filtered.map((row) => {
                 const Icon = diagramIcons[row.diagram];
+                const open = bind(picker ? 'library.pick' : 'file.open', {
+                  fileId: row.frameId,
+                  ...(picker ? { present: () => onPick?.(row.frameId) } : {}),
+                });
+                const ownership = bind('library.organization-dialog', {
+                  fileId: row.frameId,
+                });
+
                 return (
                   <tr
                     key={row.frameId}
@@ -361,33 +401,53 @@ export function ChartLibrary({
                             ? 'workspace-button-primary'
                             : 'workspace-button-ghost'
                         }
+                        disabled={!available(open).enabled}
                         onClick={() =>
-                          picker && onPick
-                            ? onPick(row.frameId)
-                            : onOpen(row.frameId)
+                          run(open, () =>
+                            picker && onPick
+                              ? onPick(row.frameId)
+                              : onOpen(row.frameId),
+                          )
                         }
                       >
-                        {picker
-                          ? locale === 'zh'
-                            ? '选用'
-                            : 'Use'
-                          : locale === 'zh'
-                            ? '打开'
-                            : 'Open'}
+                        {open?.label(locale) ??
+                          (picker
+                            ? locale === 'zh'
+                              ? '选用'
+                              : 'Use'
+                            : locale === 'zh'
+                              ? '打开'
+                              : 'Open')}
                       </button>
-                      {canEdit && row.diagram !== 'canvas' && (
-                        <button
-                          type="button"
-                          className="workspace-button-ghost"
-                          aria-label={`${locale === 'zh' ? '调整归属' : 'Change ownership'} ${row.name}`}
-                          onClick={(event) => {
-                            editTrigger.current = event.currentTarget;
-                            setEditingFile(row.frameId);
-                          }}
-                        >
-                          {locale === 'zh' ? '调整归属…' : 'Change ownership…'}
-                        </button>
-                      )}
+                      {canEdit &&
+                        row.diagram !== 'canvas' &&
+                        available(ownership, !readonly).visible && (
+                          <button
+                            type="button"
+                            className="workspace-button-ghost"
+                            aria-label={`${ownership?.label(locale)?.replace(/…$/, '') ?? (locale === 'zh' ? '调整归属' : 'Change ownership')} ${row.name}`}
+                            disabled={!available(ownership, !readonly).enabled}
+                            onClick={(event) => {
+                              const trigger = event.currentTarget;
+                              const present = () => {
+                                editTrigger.current = trigger;
+                                setEditingFile(row.frameId);
+                              };
+                              run(
+                                bind('library.organization-dialog', {
+                                  fileId: row.frameId,
+                                  present,
+                                }),
+                                present,
+                              );
+                            }}
+                          >
+                            {ownership?.label(locale) ??
+                              (locale === 'zh'
+                                ? '调整归属…'
+                                : 'Change ownership…')}
+                          </button>
+                        )}
                     </td>
                   </tr>
                 );
@@ -402,9 +462,23 @@ export function ChartLibrary({
           row={editingRow}
           owners={owners}
           locale={locale}
-          onConfirm={(organization) =>
-            onChangeOrganization(editingRow.frameId, organization)
-          }
+          onConfirm={async (organization) => {
+            const commit = bind('library.organization', {
+              fileId: editingRow.frameId,
+              organization,
+            });
+            if (commit) {
+              const result = await commit.execute();
+              if (result.status !== 'completed' && result.status !== 'noop')
+                throw new Error(
+                  'message' in result
+                    ? (result.message ?? result.code)
+                    : result.status,
+                );
+            } else if (!actionSource)
+              await onChangeOrganization(editingRow.frameId, organization);
+            else throw new Error('Action unavailable');
+          }}
           onClose={() => {
             setEditingFile(null);
             requestAnimationFrame(() => editTrigger.current?.focus());
@@ -539,6 +613,7 @@ export interface OrganizePreviewRow {
 }
 
 export function OrganizePreview({
+  actionSource,
   rows,
   owners,
   locale = 'zh',
@@ -546,6 +621,7 @@ export function OrganizePreview({
   onCancel,
   onConfirm,
 }: {
+  actionSource?: ActionSource;
   rows: OrganizePreviewRow[];
   owners: { frameId: string; name: string }[];
   locale?: 'zh' | 'en';
@@ -557,6 +633,16 @@ export function OrganizePreview({
   onCancel(): void;
   onConfirm(): void;
 }) {
+  useActionSource(actionSource);
+  const confirm = bindWorkspaceAction(
+    actionSource,
+    'workspace.library.organize-confirm',
+    { fileIds: rows.map((row) => row.fileId), present: onConfirm },
+  );
+  const confirmState = confirm?.getState() ?? {
+    visible: !actionSource,
+    enabled: !actionSource && rows.length > 0,
+  };
   const dialog = useRef<HTMLDialogElement>(null);
   useEffect(() => {
     const element = dialog.current!;
@@ -655,10 +741,13 @@ export function OrganizePreview({
         <button
           className="workspace-button-primary"
           type="button"
-          disabled={!rows.length}
-          onClick={onConfirm}
+          disabled={!confirmState.enabled}
+          onClick={() => {
+            if (confirm) void confirm.execute();
+            else if (!actionSource) onConfirm();
+          }}
         >
-          {locale === 'zh' ? '确认整理' : 'Confirm'}
+          {confirm?.label(locale) ?? (locale === 'zh' ? '确认整理' : 'Confirm')}
         </button>
       </footer>
     </dialog>

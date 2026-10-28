@@ -1,20 +1,21 @@
-import type { RectangleClient } from '../interfaces/rectangle-client';
-import type { Point } from '../interfaces/point';
-import {
-  isFrameCell,
-  isNodeCell,
-  isEdgeCell,
-  type CellStore,
-  type CellId,
-  type FrameCell,
-} from './types';
-import { sceneAnchorKind } from './kinds';
 import {
   createEdgeRoutingContext,
   edgePolyline,
   type EdgeRoutingContext,
 } from '../geometry/edge';
 import { edgeLabelLayout } from '../geometry/edge-label';
+import type { Point } from '../interfaces/point';
+import type { RectangleClient } from '../interfaces/rectangle-client';
+import { sceneAnchorKind } from './kinds';
+import { createCellRegistry, type CellRegistry } from './registry';
+import {
+  isEdgeCell,
+  isFrameCell,
+  isNodeCell,
+  type CellId,
+  type CellStore,
+  type FrameCell,
+} from './types';
 
 export interface FrameTransform {
   scale: number;
@@ -55,13 +56,18 @@ export const frameContentViewport = (
 export const frameVisualBounds = (
   geometry: FrameCell['geometry'],
 ): RectangleClient => ({ ...geometry });
-export const frameScene = (store: CellStore, frameId: CellId) => {
+export const frameScene = (
+  store: CellStore,
+  frameId: CellId,
+  registry: CellRegistry = createCellRegistry(),
+) => {
   const frame = store.cells[frameId];
   return frame && isFrameCell(frame)
     ? sceneAnchorKind(
         frame.children.flatMap((id) =>
           store.cells[id] ? [store.cells[id].kind] : [],
         ),
+        registry,
       )
     : undefined;
 };
@@ -97,8 +103,7 @@ export const frameContentBounds = (
           if (
             (edge.route.mode === 'auto' || edge.route.mode === 'orthogonal') &&
             !('points' in edge.route && edge.route.points?.length) &&
-            edge.kind !== 'mind-branch' &&
-            edge.kind !== 'mind-summary-edge'
+            routing?.registry?.get(edge.kind)?.routable !== false
           ) {
             const points = edgePolyline(store, edge, undefined, routing);
             return [

@@ -26,14 +26,6 @@ export abstract class BaseCellUtil implements RegisteredUtil {
   validate(_store: CellStore, _cell: Cell): string | undefined {
     return undefined;
   }
-  keyboard(
-    _store: CellStore,
-    _cell: Cell,
-    _key: string,
-    _allocateId: () => string,
-  ): CellOperation[] | undefined {
-    return undefined;
-  }
   move(
     _store: CellStore,
     cell: Cell,

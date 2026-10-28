@@ -1,10 +1,11 @@
-import { replaceVectorLinePoints, type VectorLineData } from '@sue/board-core';
-import { type NodeCell, type Point, type PortSpec } from '@sue/board-core';
+import { replaceVectorLinePoints, type VectorLineData } from './path';
+
 import {
-  createInlineText,
   createBlockText,
+  createInlineText,
   type BoardTextDocument,
 } from '@sue/board-common';
+import { type NodeCell, type Point, type PortSpec } from '@sue/board-core';
 import { createSwimlaneCell } from './cell-table';
 export interface FreehandCellData {
   points: Point[];

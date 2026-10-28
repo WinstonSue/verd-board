@@ -1,13 +1,23 @@
 import * as fs from 'fs/promises';
 import * as path from 'path';
+import { createHash } from 'crypto';
 import type {
   OpenWorkspaceRequest,
   WorkspaceHandle,
   WorkspaceHost,
+  WorkspaceHistoryEntry,
 } from '../../../packages/product/app/src/host/workspace-host';
 import { listStorageKeys } from './storage-file';
 
 const selectionKey = 'desktopWorkspace';
+const historyKey = 'desktopWorkspaceHistory';
+
+interface StoredWorkspaceHistory extends WorkspaceHistoryEntry {
+  path: string;
+}
+
+const historyIdFor = (root: string) =>
+  createHash('sha256').update(root).digest('hex');
 
 async function hasWorkspaceState(target: string): Promise<boolean> {
   try {
@@ -146,18 +156,93 @@ export function createDesktopWorkspaceManager(options: {
   development: boolean;
   explicitRoot?: string;
   pickDirectory(): Promise<string | null>;
+  now?(): number;
 }) {
   const candidates = new Map<string, { root: string; isDefault: boolean }>();
   const opening = new Map<string, Promise<WorkspaceHandle | null>>();
   let preparing: Promise<void> | undefined;
+  const readHistory = (value: Record<string, unknown>) => {
+    const entries = new Map<string, StoredWorkspaceHistory>();
+    const builtin = path.resolve(options.defaultRoot());
+    const add = (item: Partial<StoredWorkspaceHistory>) => {
+      if (typeof item.path !== 'string' || !path.isAbsolute(item.path)) return;
+      const root = path.resolve(item.path);
+      if (root === builtin || entries.has(root)) return;
+      entries.set(root, {
+        id: historyIdFor(root),
+        path: root,
+        name:
+          typeof item.name === 'string' && item.name
+            ? item.name
+            : path.basename(root),
+        lastOpenedAt:
+          typeof item.lastOpenedAt === 'number' &&
+          Number.isFinite(item.lastOpenedAt)
+            ? item.lastOpenedAt
+            : 0,
+      });
+    };
+    const stored = value[historyKey];
+    if (Array.isArray(stored))
+      for (const item of stored)
+        if (item && typeof item === 'object') add(item);
+    // Old releases already confirmed this selection by activating it. Keep
+    // that one recoverable entry even when its directory is now unavailable.
+    const selected = value[selectionKey] as
+      { kind?: unknown; path?: unknown } | undefined;
+    if (selected?.kind === 'directory' && typeof selected.path === 'string')
+      add({ path: selected.path });
+    return [...entries.values()].sort(
+      (a, b) => b.lastOpenedAt - a.lastOpenedAt,
+    );
+  };
   return {
+    async listHistory(): Promise<WorkspaceHistoryEntry[]> {
+      const entries = readHistory(
+        (await options.host.readGlobalConfig()).value,
+      );
+      return entries.map((entry) => {
+        const peers = entries.filter((item) => item.name === entry.name);
+        let description: string | undefined;
+        if (peers.length > 1) {
+          const parents = peers.map((item) =>
+            path.dirname(item.path).split(path.sep).filter(Boolean),
+          );
+          const own = path.dirname(entry.path).split(path.sep).filter(Boolean);
+          let depth = 1;
+          while (
+            depth < own.length &&
+            parents.filter(
+              (parts) =>
+                parts.slice(-depth).join('/') === own.slice(-depth).join('/'),
+            ).length > 1
+          )
+            depth++;
+          description = own.slice(-depth).join('/');
+        }
+        return {
+          id: entry.id,
+          name: entry.name,
+          lastOpenedAt: entry.lastOpenedAt,
+          ...(description ? { description } : {}),
+        };
+      });
+    },
     async open(
       request?: OpenWorkspaceRequest,
     ): Promise<WorkspaceHandle | null> {
       let root: string;
       let isDefault = false;
       let create = request?.create !== false;
-      if (request?.pick) {
+      if (request?.historyId !== undefined) {
+        const entries = readHistory(
+          (await options.host.readGlobalConfig()).value,
+        );
+        const entry = entries.find((item) => item.id === request.historyId);
+        if (!entry) throw new Error('Unknown workspace history entry');
+        root = entry.path;
+        create = false;
+      } else if (request?.pick) {
         const picked = await options.pickDirectory();
         if (!picked) return null;
         root = path.resolve(picked);
@@ -183,7 +268,9 @@ export function createDesktopWorkspaceManager(options: {
         root = options.defaultRoot();
         isDefault = true;
       }
+      root = path.resolve(root);
       const explicitEnvironment =
+        !request?.historyId &&
         !request?.path &&
         !request?.pick &&
         !request?.default &&
@@ -220,7 +307,11 @@ export function createDesktopWorkspaceManager(options: {
       }
       if (!handle) throw new Error(`Workspace folder is unavailable: ${root}`);
       candidates.set(handle.key, { root, isDefault });
-      return { ...handle, isDefault };
+      return {
+        ...handle,
+        isDefault,
+        ...(!isDefault ? { historyId: historyIdFor(root) } : {}),
+      };
     },
     async activate(handle: WorkspaceHandle): Promise<void> {
       const candidate = candidates.get(handle.key);
@@ -230,8 +321,29 @@ export function createDesktopWorkspaceManager(options: {
         const next = candidate.isDefault
           ? { kind: 'default' }
           : { kind: 'directory', path: candidate.root };
+        const history = readHistory(config.value);
+        if (!candidate.isDefault) {
+          const existing = history.find((item) => item.path === candidate.root);
+          // A monotonic timestamp keeps repeated activations ordered even
+          // when the clock resolution is coarse or the device clock moves.
+          const lastOpenedAt = Math.max(
+            (options.now ?? Date.now)(),
+            (history[0]?.lastOpenedAt ?? 0) + 1,
+          );
+          if (existing) {
+            existing.name = handle.name;
+            existing.lastOpenedAt = lastOpenedAt;
+          } else
+            history.push({
+              id: historyIdFor(candidate.root),
+              path: candidate.root,
+              name: handle.name,
+              lastOpenedAt,
+            });
+          history.sort((a, b) => b.lastOpenedAt - a.lastOpenedAt);
+        }
         const result = await options.host.writeGlobalConfig(
-          { ...config.value, [selectionKey]: next },
+          { ...config.value, [selectionKey]: next, [historyKey]: history },
           config.version,
         );
         if (result.applied) return;

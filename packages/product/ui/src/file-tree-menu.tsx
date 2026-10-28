@@ -1,4 +1,7 @@
-import { useLayoutEffect, useRef, useState } from 'react';
+import { Fragment, useLayoutEffect, useRef, useState } from 'react';
+import { flushSync } from 'react-dom';
+import { useActionSource, type ActionSource } from '@sue/board-react-actions';
+import type { WorkspaceActionBinding } from './workspace-action-bindings';
 import type { LucideIcon } from 'lucide-react';
 import {
   autoUpdate,
@@ -21,9 +24,12 @@ export interface FileTreeMenuItem {
   icon: LucideIcon;
   danger?: boolean;
   groupStart?: boolean;
+  groupLabel?: string;
   disabled?: boolean;
   testId?: string;
+  title?: string;
   onSelect(): void;
+  action?: WorkspaceActionBinding;
 }
 
 export function FileTreeMenu({
@@ -32,13 +38,38 @@ export function FileTreeMenu({
   items,
   onClose,
   placement,
+  actionSource,
+  locale = 'zh',
+  onError,
+  preserveItemLabels = false,
+  className,
 }: {
   label: string;
   anchor: HTMLElement | { x: number; y: number };
   items: FileTreeMenuItem[];
   onClose(): void;
   placement?: 'bottom-start' | 'bottom-end';
+  actionSource?: ActionSource;
+  locale?: 'zh' | 'en';
+  onError?(message: string): void;
+  /** Contextual navigation labels may include the source and instance name. */
+  preserveItemLabels?: boolean;
+  className?: string;
 }) {
+  useActionSource(actionSource);
+  items = items.flatMap((item) => {
+    if (!item.action) return [item];
+    const state = item.action.getState();
+    return state.visible
+      ? [
+          {
+            ...item,
+            label: preserveItemLabels ? item.label : item.action.label(locale),
+            disabled: !state.enabled,
+          },
+        ]
+      : [];
+  });
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
   const [returnFocus, setReturnFocus] = useState(true);
   const listRef = useRef<Array<HTMLButtonElement | null>>([]);
@@ -107,34 +138,51 @@ export function FileTreeMenu({
         <div
           ref={refs.setFloating}
           style={floatingStyles}
-          className="workspace-menu"
+          className={['workspace-menu', className].filter(Boolean).join(' ')}
           {...getFloatingProps({ 'aria-label': label })}
         >
           {items.map((item, index) => (
-            <button
-              type="button"
-              role="menuitem"
-              key={item.id}
-              disabled={item.disabled}
-              data-testid={item.testId}
-              ref={(node) => {
-                listRef.current[index] = node;
-              }}
-              tabIndex={activeIndex === index ? 0 : -1}
-              data-danger={item.danger || undefined}
-              data-group-start={item.groupStart ? '' : undefined}
-              {...getItemProps({
-                onClick: () => {
-                  if (item.disabled) return;
-                  setReturnFocus(false);
-                  onClose();
-                  item.onSelect();
-                },
-              })}
-            >
-              <item.icon size={15} aria-hidden />
-              <span>{item.label}</span>
-            </button>
+            <Fragment key={item.id}>
+              {item.groupLabel ? (
+                <div
+                  className="workspace-menu-group-label"
+                  title={item.groupLabel}
+                >
+                  {item.groupLabel}
+                </div>
+              ) : null}
+              <button
+                type="button"
+                role="menuitem"
+                key={item.id}
+                disabled={item.disabled}
+                data-testid={item.testId}
+                title={item.title}
+                data-action-id={item.action?.id}
+                ref={(node) => {
+                  listRef.current[index] = node;
+                }}
+                tabIndex={activeIndex === index ? 0 : -1}
+                data-danger={item.danger || undefined}
+                data-group-start={item.groupStart ? '' : undefined}
+                {...getItemProps({
+                  onClick: () => {
+                    if (item.disabled) return;
+                    flushSync(() => setReturnFocus(false));
+                    onClose();
+                    if (item.action)
+                      void item.action.execute().then((result) => {
+                        if ('code' in result && result.status !== 'cancelled')
+                          onError?.(result.message ?? result.code);
+                      });
+                    else item.onSelect();
+                  },
+                })}
+              >
+                <item.icon size={15} aria-hidden />
+                <span>{item.label}</span>
+              </button>
+            </Fragment>
           ))}
         </div>
       </FloatingFocusManager>

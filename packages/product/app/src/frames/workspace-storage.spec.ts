@@ -1,16 +1,18 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   applyCellOperations,
   createCellStore,
   createFrameCell,
   type NodeCell,
 } from '@sue/board-core';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { createTestCellRegistry as createFixtureRegistry } from '../../../../../tests/fixtures/plugins/registry';
 import {
   loadCellWorkspace,
   saveCellWorkspace,
-  workspaceMaintenanceError,
   WORKSPACE_KEY,
+  workspaceMaintenanceError,
 } from './workspace-storage';
+const testCellRegistry = createFixtureRegistry();
 afterEach(() => vi.restoreAllMocks());
 const node: NodeCell = {
   id: 'n',
@@ -19,10 +21,18 @@ const node: NodeCell = {
   geometry: { x: 10, y: 20, width: 40, height: 30 },
 };
 const makeSnapshot = () => ({
-  store: applyCellOperations(createCellStore(createFrameCell('root')), [
-    { type: 'insert_cell', cell: createFrameCell('nested'), parentId: 'root' },
-    { type: 'insert_cell', cell: node, parentId: 'nested' },
-  ]),
+  store: applyCellOperations(
+    createCellStore(createFrameCell('root')),
+    [
+      {
+        type: 'insert_cell',
+        cell: createFrameCell('nested'),
+        parentId: 'root',
+      },
+      { type: 'insert_cell', cell: node, parentId: 'nested' },
+    ],
+    testCellRegistry,
+  ),
   detachedFrameIds: [],
 });
 const memory = () => {

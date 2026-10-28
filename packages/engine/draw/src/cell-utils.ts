@@ -1,29 +1,31 @@
 import {
-  NodeUtil,
+  distanceToPolyline,
   EdgeUtil,
-  CellKind,
+  NodeUtil,
+  unrotateNodePoint,
+  type Cell,
   type CellRegistry,
   type CellStore,
   type NodeCell,
-  type Point,
   type NodeGeometry,
-  type Cell,
-  distanceToPolyline,
-  unrotateNodePoint,
-  hitVectorLine,
-  type VectorLineData,
+  type Point,
 } from '@sue/board-core';
-import { validateTableData } from './cell-table';
 import type { TableCellData } from './cell-commands';
+import { validateTableData } from './cell-table';
+import { hitVectorLine, type VectorLineData } from './path';
+import { DrawKind } from './public-api';
+export class TextNodeUtil extends NodeUtil {
+  readonly kind = 'text';
+}
 export class GeometryNodeUtil extends NodeUtil {
-  readonly kind = CellKind.geometry;
+  readonly kind = DrawKind.geometry;
 }
 export class ImageNodeUtil extends NodeUtil {
-  readonly kind = CellKind.image;
+  readonly kind = DrawKind.image;
 }
 export class TableNodeUtil extends NodeUtil {
-  readonly kind: typeof CellKind.table | typeof CellKind.swimlane =
-    CellKind.table;
+  readonly kind: typeof DrawKind.table | typeof DrawKind.swimlane =
+    DrawKind.table;
   override validate(_store: CellStore, cell: Cell) {
     return cell.cellType === 'node'
       ? validateTableData(cell as NodeCell<TableCellData>)
@@ -57,11 +59,11 @@ export class TableNodeUtil extends NodeUtil {
   }
 }
 export class SwimlaneNodeUtil extends TableNodeUtil {
-  override readonly kind: typeof CellKind.table | typeof CellKind.swimlane =
-    CellKind.swimlane;
+  override readonly kind: typeof DrawKind.table | typeof DrawKind.swimlane =
+    DrawKind.swimlane;
 }
 export class FreehandNodeUtil extends NodeUtil {
-  readonly kind: string = CellKind.freehand;
+  readonly kind: string = DrawKind.freehand;
   override resize(_store: CellStore, cell: Cell, geometry: NodeGeometry) {
     if (cell.cellType !== 'node') return [];
     const data = cell.data as { points?: Point[] } | undefined;
@@ -104,7 +106,7 @@ export class FreehandNodeUtil extends NodeUtil {
   }
 }
 export class VectorLineNodeUtil extends FreehandNodeUtil {
-  override readonly kind = CellKind.vectorLine;
+  override readonly kind = DrawKind.vectorLine;
   override validate(_store: CellStore, cell: Cell) {
     const data =
       cell.cellType === 'node'
@@ -134,11 +136,12 @@ export class VectorLineNodeUtil extends FreehandNodeUtil {
   }
 }
 export class ArrowEdgeUtil extends EdgeUtil {
-  readonly kind = CellKind.arrow;
+  readonly kind = DrawKind.arrow;
 }
 export const registerDrawCells = (registry: CellRegistry) => {
   [
     new GeometryNodeUtil(),
+    new TextNodeUtil(),
     new ImageNodeUtil(),
     new TableNodeUtil(),
     new SwimlaneNodeUtil(),

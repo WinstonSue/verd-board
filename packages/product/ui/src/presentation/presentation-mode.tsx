@@ -1,14 +1,6 @@
-import {
-  useCallback,
-  useEffect,
-  useLayoutEffect,
-  useMemo,
-  useRef,
-  useState,
-  type RefObject,
-  type KeyboardEvent as ReactKeyboardEvent,
-} from 'react';
 import { frameScene, type FrameSnapshot } from '@sue/board-core';
+import { createActionRegistry } from '@sue/board-common';
+import { ActionHelp, resolveActionShortcut } from '@sue/board-react-actions';
 import {
   FrameCanvas,
   type FrameCanvasController,
@@ -22,9 +14,19 @@ import {
   LogOut,
   Pointer,
 } from 'lucide-react';
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  type KeyboardEvent as ReactKeyboardEvent,
+  type RefObject,
+} from 'react';
+import { createVerdFramePluginSet } from '../frame-plugins';
 import { useI18n } from '../i18n';
-import { ShortcutHelp } from '../shortcut-help';
-import { shortcutLabels } from '../shortcut-catalog';
+import { shortcutLabels } from '../shortcut-labels';
 import { exitPresentationFullscreen } from './fullscreen-owner';
 import {
   clampPresentationIndex,
@@ -37,6 +39,7 @@ import './presentation.scss';
 export interface PresentationModeProps {
   value: FrameSnapshot;
   frameId?: string;
+  pluginSet?: FrameCanvasProps['pluginSet'];
   registry?: FrameCanvasProps['registry'];
   extensions?: FrameCanvasProps['extensions'];
   instanceHost?: FrameCanvasProps['instanceHost'];
@@ -54,10 +57,16 @@ const insets = { top: 48, right: 48, bottom: 48, left: 48 };
 const HUD_DELAY = 2500;
 
 export function PresentationMode(props: PresentationModeProps) {
-  const { value, registry, extensions, instanceHost, interactionSettings } =
-    props;
+  const { value, instanceHost, interactionSettings } = props;
+  const defaultPlugins = useMemo(() => createVerdFramePluginSet(), []);
+  const registry =
+    props.pluginSet?.registry ?? props.registry ?? defaultPlugins.registry;
+  const extensions =
+    props.pluginSet?.extensions ??
+    props.extensions ??
+    defaultPlugins.extensions;
   const frameId = props.frameId ?? value.store.rootId;
-  const sourceScene = props.scene ?? frameScene(value.store, frameId);
+  const sourceScene = props.scene ?? frameScene(value.store, frameId, registry);
   const scene: PresentationScene =
     sourceScene === 'mind-root'
       ? 'mind'
@@ -202,6 +211,112 @@ export function PresentationMode(props: PresentationModeProps) {
     [focusTarget, overview],
   );
 
+  const actionContext = useRef({ frameId, index, steps, laser });
+  actionContext.current = { frameId, index, steps, laser };
+  const actionServices = useRef({ overview, step, exit });
+  actionServices.current = { overview, step, exit };
+  const actions = useMemo(() => {
+    const actions = createActionRegistry({
+      getContext: () => actionContext.current,
+      refresh: (captured) =>
+        captured.frameId === actionContext.current.frameId
+          ? actionContext.current
+          : null,
+    });
+    const add = actions.register.bind(actions);
+    add({
+      id: 'presentation.overview',
+      label: { zh: '总览', en: 'Overview' },
+      category: 'presentation',
+      effect: 'view',
+      shortcuts: [{ key: '0' }, { key: 'Home' }],
+      execute: () => {
+        actionServices.current.overview();
+        return { status: 'completed' };
+      },
+    });
+    for (const [direction, delta, keys, label] of [
+      [
+        'next',
+        1,
+        ['ArrowRight', 'ArrowDown', 'PageDown', 'Enter'],
+        { zh: '下一步', en: 'Next' },
+      ],
+      [
+        'previous',
+        -1,
+        ['ArrowLeft', 'ArrowUp', 'PageUp'],
+        { zh: '上一步', en: 'Previous' },
+      ],
+    ] as const)
+      add({
+        id: `presentation.${direction}`,
+        label,
+        category: 'presentation',
+        effect: 'view',
+        shortcuts: keys.map((key) => ({ key, repeat: true })),
+        getState: (context) => ({
+          visible: context.steps.length > 0,
+          enabled:
+            delta > 0
+              ? context.index < context.steps.length
+              : context.index > 0,
+        }),
+        execute: () => {
+          actionServices.current.step(delta);
+          return { status: 'completed' };
+        },
+      });
+    add({
+      id: 'presentation.laser',
+      label: { zh: '激光笔', en: 'Laser' },
+      category: 'presentation',
+      effect: 'view',
+      shortcuts: [{ key: 'l' }, { key: 'l', shift: true }],
+      getState: (context) => ({ checked: context.laser }),
+      execute: () => {
+        setLaser((current) => !current);
+        return { status: 'completed' };
+      },
+    });
+    add({
+      id: 'presentation.help',
+      label: { zh: '快捷键', en: 'Keyboard shortcuts' },
+      category: 'presentation',
+      effect: 'dialog',
+      execute: () => {
+        setShortcutsOpen(true);
+        return { status: 'completed' };
+      },
+    });
+    add({
+      id: 'presentation.exit',
+      label: { zh: '退出演示', en: 'Exit' },
+      category: 'presentation',
+      effect: 'view',
+      shortcuts: [{ key: 'Escape' }],
+      execute: () => {
+        actionServices.current.exit();
+        return { status: 'completed' };
+      },
+    });
+    actions.seal();
+    return actions;
+  }, []);
+  useLayoutEffect(
+    () => actions.invalidate(),
+    [actions, frameId, index, steps, laser],
+  );
+  const actionLease = useMemo(() => ({ generation: 0 }), []);
+  useEffect(() => {
+    const lease = ++actionLease.generation;
+    return () => {
+      queueMicrotask(() => {
+        if (actionLease.generation === lease) actions.dispose();
+      });
+    };
+  }, [actions, actionLease]);
+
   useLayoutEffect(() => {
     scheduleRefit();
   }, [value, frameId, extensions, registry, instanceHost, scheduleRefit]);
@@ -281,6 +396,7 @@ export function PresentationMode(props: PresentationModeProps) {
 
   const onKeyDownCapture = (event: ReactKeyboardEvent<HTMLDivElement>) => {
     if (shortcutsOpen) return;
+    if (event.nativeEvent.isComposing || event.key === 'Process') return;
     if (
       event.key !== 'Escape' &&
       (event.target as Element).closest?.('[data-document-preview-body]')
@@ -289,11 +405,6 @@ export function PresentationMode(props: PresentationModeProps) {
     if (event.code === 'Space' || event.key === ' ') return;
     event.stopPropagation();
     showHud();
-    if (event.key === 'Escape') {
-      event.preventDefault();
-      exit();
-      return;
-    }
     if (event.key === 'Tab') {
       event.preventDefault();
       const buttons = [
@@ -310,45 +421,12 @@ export function PresentationMode(props: PresentationModeProps) {
       buttons[next]?.focus();
       return;
     }
-    if (event.ctrlKey || event.metaKey || event.altKey) return;
-    const handled = [
-      'ArrowRight',
-      'ArrowDown',
-      'PageDown',
-      'ArrowLeft',
-      'ArrowUp',
-      'PageUp',
-      'Enter',
-      '0',
-      'Home',
-      'l',
-      'L',
-    ].includes(event.key);
     if (event.key === 'Enter' && hud.current?.contains(event.target as Node))
       return;
-    if (handled) event.preventDefault();
-    switch (event.key) {
-      case 'ArrowRight':
-      case 'ArrowDown':
-      case 'PageDown':
-        step(1);
-        break;
-      case 'ArrowLeft':
-      case 'ArrowUp':
-      case 'PageUp':
-        step(-1);
-        break;
-      case 'Enter':
-        step(1);
-        break;
-      case '0':
-      case 'Home':
-        overview();
-        break;
-      case 'l':
-      case 'L':
-        if (!event.repeat) setLaser((current) => !current);
-        break;
+    const match = resolveActionShortcut(actions.actions(), event);
+    if (match.status === 'matched') {
+      event.preventDefault();
+      void match.action.execute(undefined, { source: 'shortcut' });
     }
   };
 
@@ -427,7 +505,7 @@ export function PresentationMode(props: PresentationModeProps) {
           title={`${overviewLabel} (0 / Home)`}
           aria-label={overviewLabel}
           aria-pressed={focusedTarget === null}
-          onClick={overview}
+          onClick={() => void actions.executeAction('presentation.overview')}
         >
           <Expand size={18} aria-hidden="true" />
         </button>
@@ -438,7 +516,9 @@ export function PresentationMode(props: PresentationModeProps) {
               title={`${previousLabel} (←)`}
               aria-label={previousLabel}
               disabled={index === 0}
-              onClick={() => step(-1)}
+              onClick={() =>
+                void actions.executeAction('presentation.previous')
+              }
             >
               <ChevronLeft size={18} aria-hidden="true" />
             </button>
@@ -455,7 +535,7 @@ export function PresentationMode(props: PresentationModeProps) {
               title={`${nextLabel} (→ / Enter)`}
               aria-label={nextLabel}
               disabled={index >= steps.length}
-              onClick={() => step(1)}
+              onClick={() => void actions.executeAction('presentation.next')}
             >
               <ChevronRight size={18} aria-hidden="true" />
             </button>
@@ -467,7 +547,7 @@ export function PresentationMode(props: PresentationModeProps) {
           title={`${laserLabel} (L)`}
           aria-label={laserLabel}
           aria-pressed={laser}
-          onClick={() => setLaser((current) => !current)}
+          onClick={() => void actions.executeAction('presentation.laser')}
         >
           <Pointer size={18} aria-hidden="true" />
         </button>
@@ -476,7 +556,7 @@ export function PresentationMode(props: PresentationModeProps) {
           type="button"
           title={shortcutLabels[language].title}
           aria-label={shortcutLabels[language].title}
-          onClick={() => setShortcutsOpen(true)}
+          onClick={() => void actions.executeAction('presentation.help')}
         >
           <Keyboard size={18} aria-hidden />
         </button>
@@ -484,16 +564,17 @@ export function PresentationMode(props: PresentationModeProps) {
           type="button"
           title={`${exitLabel} (Esc)`}
           aria-label={exitLabel}
-          onClick={exit}
+          onClick={() => void actions.executeAction('presentation.exit')}
         >
           <LogOut size={18} aria-hidden="true" />
         </button>
       </div>
       {shortcutsOpen && (
-        <ShortcutHelp
-          scene="presentation"
-          locale={language}
-          returnFocusRef={shortcutsButton}
+        <ActionHelp
+          actions={actions.actions()}
+          sources={[actions]}
+          language={language}
+          returnFocus={() => shortcutsButton.current}
           onClose={() => setShortcutsOpen(false)}
         />
       )}

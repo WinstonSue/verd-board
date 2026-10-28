@@ -1,9 +1,9 @@
-import rough from 'roughjs';
 import {
   nodeShapeGeometry,
   type NodeCell,
   type NodeGeometry,
 } from '@sue/board-core';
+import rough from 'roughjs';
 
 export interface GeometryCellData {
   roughness?: number;

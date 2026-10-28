@@ -98,7 +98,16 @@ function reduceCrossings(rows: Vertex[][]) {
                   delta += Math.sign(
                     neighborOrder.get(right)! - neighborOrder.get(left)!,
                   );
-            if (delta < 0) {
+            let closerPeers = false;
+            if (delta === 0 && (a.peers.length || b.peers.length)) {
+              const oldScore = orderingScore(rows);
+              rows[rank][i] = b;
+              rows[rank][i + 1] = a;
+              closerPeers = improves(orderingScore(rows), oldScore);
+              rows[rank][i] = a;
+              rows[rank][i + 1] = b;
+            }
+            if (delta < 0 || closerPeers) {
               rows[rank][i] = b;
               rows[rank][i + 1] = a;
               changed = true;
@@ -157,8 +166,8 @@ function alignRow(row: Vertex[], forward: boolean, nodeSep: number) {
 export function graphArrangementPositions(
   inputRows: readonly (readonly LayoutNode[])[],
   links: readonly ArrangementLink[],
-  nodeSep = 48,
-  rankSep = 96,
+  nodeSep = 96,
+  rankSep = 160,
 ): Map<string, Point> {
   let rows: Vertex[][] = inputRows.map((row, rank) =>
     row.map((node) => ({
@@ -246,7 +255,8 @@ export function graphArrangementPositions(
           Math.round(node.center - node.width / 2 - left),
           y + Math.round((height - node.height) / 2),
         ]);
-    y += height + rankSep;
+    const connections = row.reduce((sum, node) => sum + node.after.length, 0);
+    y += height + Math.max(rankSep, 48 + connections * 12);
   }
   return result;
 }

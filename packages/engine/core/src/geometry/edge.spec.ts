@@ -1,14 +1,14 @@
 import { describe, expect, it } from 'vitest';
+import type { EdgeCell } from '../cell/types';
 import {
   arrowMarkerGeometry,
+  curvePath,
   edgeRoutePoints,
   portAnchor,
   relativeAnchor,
-  curvePath,
   terminalCurvePath,
 } from './edge';
 import { polylinePointAt } from './polyline';
-import type { EdgeCell } from '../cell/types';
 describe('shared edge geometry', () => {
   it('fans nine siblings out in order without reversing along the growth axis', () => {
     for (const [sourceSide, targetSide, vertical, sign] of [

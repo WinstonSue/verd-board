@@ -1,18 +1,16 @@
-import { describe, expect, it } from 'vitest';
 import {
   createCellRuntime,
-  createCellRegistry,
   createCellStore,
   createFrameCell,
-  moveVectorLinePoint,
-  pathNodePoints,
 } from '@sue/board-core';
+import { moveVectorLinePoint, pathNodePoints } from '@sue/board-draw';
+import { describe, expect, it } from 'vitest';
+import { createTestCellRegistry } from '../../../../../tests/fixtures/plugins/registry';
 import { createVectorLineCell } from '../cell-commands';
-import { registerDrawCells } from '../cell-utils';
 describe('native vector line runtime', () => {
   it('rejects malformed path data atomically and restores inserted vertices with history', () => {
-    const registry = createCellRegistry();
-    registerDrawCells(registry);
+    const registry = createTestCellRegistry();
+
     const runtime = createCellRuntime(
       { store: createCellStore(createFrameCell('root')) },
       registry,

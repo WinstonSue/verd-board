@@ -1,22 +1,25 @@
 import { describe, expect, it } from 'vitest';
-import { applyCellOperations } from './index';
-import { createCellRuntime } from './runtime';
-import {
-  createCellStore,
-  createFrameCell,
-  type FrameCell,
-  type NodeCell,
-  type EdgeCell,
-} from './types';
+import { createTestCellRegistry as createFixtureRegistry } from '../../../../../tests/fixtures/plugins/registry';
 import {
   alignCells,
   groupCells,
   moveGroup,
   reorderCells,
+  selectionAllows,
   translateCellSelection,
   updateCellAppearance,
-  selectionAllows,
 } from './commands';
+import { applyCellOperations } from './index';
+import { createCellRegistry } from './registry';
+import { createCellRuntime } from './runtime';
+import {
+  createCellStore,
+  createFrameCell,
+  type EdgeCell,
+  type FrameCell,
+  type NodeCell,
+} from './types';
+const testCellRegistry = createFixtureRegistry();
 
 const fixture = () =>
   applyCellOperations(
@@ -31,37 +34,46 @@ const fixture = () =>
         geometry: { x: index * 100, y: 0, width: 80, height: 50 },
       },
     })),
+    testCellRegistry,
   );
 
 describe('selection commands', () => {
   it('distinguishes owned Frame shells from global and mounted roots without changing ordinary node capabilities', () => {
-    const store = applyCellOperations(fixture(), [
-      { type: 'insert_cell', parentId: 'root', cell: createFrameCell('outer') },
-      {
-        type: 'insert_cell',
-        parentId: 'outer',
-        cell: createFrameCell('inner'),
-      },
-    ]);
-    const runtime = createCellRuntime({ store });
+    const store = applyCellOperations(
+      fixture(),
+      [
+        {
+          type: 'insert_cell',
+          parentId: 'root',
+          cell: createFrameCell('outer'),
+        },
+        {
+          type: 'insert_cell',
+          parentId: 'outer',
+          cell: createFrameCell('inner'),
+        },
+      ],
+      testCellRegistry,
+    );
+    const runtime = createCellRuntime({ store }, testCellRegistry);
     for (const capability of ['move', 'resize', 'delete'] as const) {
       expect(
-        selectionAllows(store, ['root'], runtime.registry, capability),
+        selectionAllows(store, ['root'], testCellRegistry, capability),
       ).toBe(false);
       expect(
-        selectionAllows(store, ['root'], runtime.registry, capability, 'outer'),
+        selectionAllows(store, ['root'], testCellRegistry, capability, 'outer'),
       ).toBe(false);
       expect(
-        selectionAllows(store, ['outer'], runtime.registry, capability),
+        selectionAllows(store, ['outer'], testCellRegistry, capability),
       ).toBe(true);
       expect(
-        selectionAllows(store, ['inner'], runtime.registry, capability),
+        selectionAllows(store, ['inner'], testCellRegistry, capability),
       ).toBe(true);
       expect(
         selectionAllows(
           store,
           ['outer'],
-          runtime.registry,
+          testCellRegistry,
           capability,
           'outer',
         ),
@@ -70,7 +82,7 @@ describe('selection commands', () => {
         selectionAllows(
           store,
           ['inner'],
-          runtime.registry,
+          testCellRegistry,
           capability,
           'outer',
         ),
@@ -78,10 +90,11 @@ describe('selection commands', () => {
     }
     for (const capability of ['rotate', 'connect'] as const)
       expect(
-        selectionAllows(store, ['outer'], runtime.registry, capability),
+        selectionAllows(store, ['outer'], testCellRegistry, capability),
       ).toBe(false);
     const mounts: string[] = [];
-    runtime.registry.register({
+    const capabilityRegistry = createCellRegistry();
+    capabilityRegistry.register({
       kind: 'geometry',
       capabilities: (_store, _cell, mount) => {
         mounts.push(mount);
@@ -89,7 +102,7 @@ describe('selection commands', () => {
       },
     });
     expect(
-      selectionAllows(store, ['a'], runtime.registry, 'move', 'outer'),
+      selectionAllows(store, ['a'], capabilityRegistry, 'move', 'outer'),
     ).toBe(true);
     expect(mounts).toEqual(['root']);
     runtime.mount('outer');
@@ -99,81 +112,99 @@ describe('selection commands', () => {
   });
 
   it('blocks Frame modifications under a locked ancestor or group and preserves whole-selection capability checks', () => {
-    let store = applyCellOperations(fixture(), [
-      { type: 'insert_cell', parentId: 'root', cell: createFrameCell('outer') },
-      {
-        type: 'insert_cell',
-        parentId: 'outer',
-        cell: createFrameCell('inner'),
-      },
-    ]);
-    const runtime = createCellRuntime({ store });
-    const locked = applyCellOperations(store, [
-      { type: 'replace_cell', cell: { ...store.cells.outer, locked: true } },
-    ]);
+    let store = applyCellOperations(
+      fixture(),
+      [
+        {
+          type: 'insert_cell',
+          parentId: 'root',
+          cell: createFrameCell('outer'),
+        },
+        {
+          type: 'insert_cell',
+          parentId: 'outer',
+          cell: createFrameCell('inner'),
+        },
+      ],
+      testCellRegistry,
+    );
+    const runtime = createCellRuntime({ store }, testCellRegistry);
+    const locked = applyCellOperations(
+      store,
+      [{ type: 'replace_cell', cell: { ...store.cells.outer, locked: true } }],
+      testCellRegistry,
+    );
     for (const capability of ['move', 'resize', 'delete', 'edit'] as const) {
       expect(
-        selectionAllows(locked, ['outer'], runtime.registry, capability),
+        selectionAllows(locked, ['outer'], testCellRegistry, capability),
       ).toBe(false);
       expect(
-        selectionAllows(locked, ['inner'], runtime.registry, capability),
+        selectionAllows(locked, ['inner'], testCellRegistry, capability),
       ).toBe(false);
       expect(
-        selectionAllows(locked, ['a', 'outer'], runtime.registry, capability),
+        selectionAllows(locked, ['a', 'outer'], testCellRegistry, capability),
       ).toBe(false);
     }
     store = applyCellOperations(
       store,
-      groupCells(store, 'root', ['a', 'outer'], 'group'),
+      groupCells(store, 'root', ['a', 'outer'], 'group', testCellRegistry),
+      testCellRegistry,
     );
-    const lockedGroup = applyCellOperations(store, [
-      { type: 'replace_cell', cell: { ...store.cells.group, locked: true } },
-    ]);
+    const lockedGroup = applyCellOperations(
+      store,
+      [{ type: 'replace_cell', cell: { ...store.cells.group, locked: true } }],
+      testCellRegistry,
+    );
     expect(
-      selectionAllows(lockedGroup, ['outer'], runtime.registry, 'move'),
+      selectionAllows(lockedGroup, ['outer'], testCellRegistry, 'move'),
     ).toBe(false);
   });
 
   it('translates selected groups and Frame shells once, keeps nested coordinates and restores the whole selection in one undo', () => {
     let store = fixture();
-    store = applyCellOperations(store, [
-      ...groupCells(store, 'root', ['b', 'c'], 'group'),
-      {
-        type: 'insert_cell',
-        parentId: 'root',
-        cell: createFrameCell('nested'),
-      },
-      {
-        type: 'insert_cell',
-        parentId: 'nested',
-        cell: { ...store.cells.a, id: 'inner' },
-      },
-      {
-        type: 'insert_cell',
-        parentId: 'root',
-        cell: {
-          id: 'edge',
-          kind: 'arrow',
-          cellType: 'edge',
-          source: { cellId: 'a' },
-          target: { point: [50, 50] },
-          route: {
-            mode: 'fixed',
-            points: [
-              [25, 30],
-              [50, 50],
-            ],
+    store = applyCellOperations(
+      store,
+      [
+        ...groupCells(store, 'root', ['b', 'c'], 'group', testCellRegistry),
+        {
+          type: 'insert_cell',
+          parentId: 'root',
+          cell: createFrameCell('nested'),
+        },
+        {
+          type: 'insert_cell',
+          parentId: 'nested',
+          cell: { ...store.cells.a, id: 'inner' },
+        },
+        {
+          type: 'insert_cell',
+          parentId: 'root',
+          cell: {
+            id: 'edge',
+            kind: 'arrow',
+            cellType: 'edge',
+            source: { cellId: 'a' },
+            target: { point: [50, 50] },
+            route: {
+              mode: 'fixed',
+              points: [
+                [25, 30],
+                [50, 50],
+              ],
+            },
           },
         },
-      },
-    ]);
-    const runtime = createCellRuntime({ store });
+      ],
+      testCellRegistry,
+    );
+    const runtime = createCellRuntime({ store }, testCellRegistry);
     runtime.transact({
       id: 'move',
       operations: translateCellSelection(
         store,
         ['a', 'group', 'b', 'nested', 'edge'],
         [20, 40],
+        testCellRegistry,
       ),
     });
     for (const id of ['a', 'b', 'c', 'nested'])
@@ -193,23 +224,37 @@ describe('selection commands', () => {
     });
     runtime.undo();
     expect(runtime.store).toEqual(store);
-    const locked = applyCellOperations(store, [
-      { type: 'replace_cell', cell: { ...store.cells.c, locked: true } },
-    ]);
-    expect(translateCellSelection(locked, ['group'], [20, 40])).toEqual([]);
-    expect(moveGroup(locked, 'group', [20, 40])).toEqual([]);
-    expect(translateCellSelection(locked, ['a', 'c'], [20, 40])).toEqual([]);
-    expect(alignCells(locked, ['a', 'c'], 'left')).toEqual([]);
+    const locked = applyCellOperations(
+      store,
+      [{ type: 'replace_cell', cell: { ...store.cells.c, locked: true } }],
+      testCellRegistry,
+    );
+    expect(
+      translateCellSelection(locked, ['group'], [20, 40], testCellRegistry),
+    ).toEqual([]);
+    expect(moveGroup(locked, 'group', [20, 40], testCellRegistry)).toEqual([]);
+    expect(
+      translateCellSelection(locked, ['a', 'c'], [20, 40], testCellRegistry),
+    ).toEqual([]);
+    expect(alignCells(locked, ['a', 'c'], 'left', testCellRegistry)).toEqual(
+      [],
+    );
   });
   it('aligns a group bounding block without changing the spacing of its members', () => {
     const store = applyCellOperations(
       fixture(),
-      groupCells(fixture(), 'root', ['b', 'c'], 'group'),
+      groupCells(fixture(), 'root', ['b', 'c'], 'group', testCellRegistry),
+      testCellRegistry,
     );
-    const runtime = createCellRuntime({ store });
+    const runtime = createCellRuntime({ store }, testCellRegistry);
     runtime.transact({
       id: 'align',
-      operations: alignCells(store, ['a', 'group', 'd'], 'right'),
+      operations: alignCells(
+        store,
+        ['a', 'group', 'd'],
+        'right',
+        testCellRegistry,
+      ),
     });
     const nodes = runtime.store.cells as Record<string, NodeCell>;
     expect(nodes.a.geometry.x).toBe(300);
@@ -220,12 +265,16 @@ describe('selection commands', () => {
     expect(runtime.store).toEqual(store);
   });
   it('moves a group as a contiguous layer block with one-step history', () => {
-    const runtime = createCellRuntime({
-      store: applyCellOperations(
-        fixture(),
-        groupCells(fixture(), 'root', ['b', 'c'], 'group'),
-      ),
-    });
+    const runtime = createCellRuntime(
+      {
+        store: applyCellOperations(
+          fixture(),
+          groupCells(fixture(), 'root', ['b', 'c'], 'group', testCellRegistry),
+          testCellRegistry,
+        ),
+      },
+      testCellRegistry,
+    );
     for (const [direction, expected] of [
       ['front', ['a', 'd', 'b', 'c']],
       ['back', ['b', 'c', 'a', 'd']],
@@ -256,33 +305,37 @@ describe('selection commands', () => {
   });
   it('formats mixed groups, edges and nested Frames atomically without editing locked cells or Frame descendants', () => {
     let store = fixture();
-    store = applyCellOperations(store, [
-      ...groupCells(store, 'root', ['a', 'b'], 'group'),
-      { type: 'replace_cell', cell: { ...store.cells.b, locked: true } },
-      {
-        type: 'insert_cell',
-        parentId: 'root',
-        cell: createFrameCell('nested'),
-      },
-      {
-        type: 'insert_cell',
-        parentId: 'nested',
-        cell: { ...store.cells.c, id: 'inner' },
-      },
-      {
-        type: 'insert_cell',
-        parentId: 'root',
-        cell: {
-          id: 'edge',
-          kind: 'arrow',
-          cellType: 'edge',
-          source: { point: [0, 0] },
-          target: { point: [50, 50] },
-          route: { mode: 'straight' },
+    store = applyCellOperations(
+      store,
+      [
+        ...groupCells(store, 'root', ['a', 'b'], 'group', testCellRegistry),
+        { type: 'replace_cell', cell: { ...store.cells.b, locked: true } },
+        {
+          type: 'insert_cell',
+          parentId: 'root',
+          cell: createFrameCell('nested'),
         },
-      },
-    ]);
-    const runtime = createCellRuntime({ store });
+        {
+          type: 'insert_cell',
+          parentId: 'nested',
+          cell: { ...store.cells.c, id: 'inner' },
+        },
+        {
+          type: 'insert_cell',
+          parentId: 'root',
+          cell: {
+            id: 'edge',
+            kind: 'arrow',
+            cellType: 'edge',
+            source: { point: [0, 0] },
+            target: { point: [50, 50] },
+            route: { mode: 'straight' },
+          },
+        },
+      ],
+      testCellRegistry,
+    );
+    const runtime = createCellRuntime({ store }, testCellRegistry);
     runtime.transact({
       id: 'appearance',
       operations: updateCellAppearance(
@@ -312,13 +365,18 @@ describe('selection commands', () => {
   });
   it('keeps locked group members in place when changing layer order', () => {
     let store = fixture();
-    store = applyCellOperations(store, [
-      ...groupCells(store, 'root', ['b', 'c'], 'group'),
-      { type: 'replace_cell', cell: { ...store.cells.c, locked: true } },
-    ]);
+    store = applyCellOperations(
+      store,
+      [
+        ...groupCells(store, 'root', ['b', 'c'], 'group', testCellRegistry),
+        { type: 'replace_cell', cell: { ...store.cells.c, locked: true } },
+      ],
+      testCellRegistry,
+    );
     const next = applyCellOperations(
       store,
       reorderCells(store, 'root', ['group'], 'front'),
+      testCellRegistry,
     );
     expect((next.cells.root as FrameCell).children).toEqual([
       'a',

@@ -1,19 +1,20 @@
-import { selectWorkspaceAction } from './app-actions';
-import { test, expect, type Page, type Locator } from '@playwright/test';
+import { expect, test, type Locator, type Page } from '@playwright/test';
+import { createArchitectureFrameSnapshot } from '../../../packages/engine/architecture/src/cell-commands';
+import { applyCellOperations } from '../../../packages/engine/core/src/cell/index';
 import {
-  createFrameCell,
   createCellStore,
+  createFrameCell,
   type FrameSnapshot,
 } from '../../../packages/engine/core/src/cell/types';
 import {
-  createMindFrameSnapshot,
-  createMindChildCell,
   addMindChild,
+  createMindChildCell,
+  createMindFrameSnapshot,
 } from '../../../packages/engine/mind/src/cell-commands';
 import { createWorkflowFrameSnapshot } from '../../../packages/engine/workflow/src/cell-commands';
-import { createArchitectureFrameSnapshot } from '../../../packages/engine/architecture/src/cell-commands';
-import { applyCellOperations } from '../../../packages/engine/core/src/cell/index';
-import { setAppLanguage } from './app-actions';
+import { createTestCellRegistry as createFixtureRegistry } from '../../fixtures/plugins/registry';
+import { selectWorkspaceAction, setAppLanguage } from './app-actions';
+const testCellRegistry = createFixtureRegistry();
 test.use({ actionTimeout: 6000 });
 
 const pane = (page: Page) => page.locator('.workspace-pane.is-active');
@@ -293,6 +294,7 @@ for (const viewport of [
       snapshot.store = applyCellOperations(
         snapshot.store,
         addMindChild(snapshot.store, 'topic', child, 'branch'),
+        testCellRegistry,
       );
       await selectDomain(page, snapshot, 'mind', viewport, language);
       await selectWorkspaceAction(
@@ -349,7 +351,7 @@ for (const viewport of [
         .locator('[data-property-group="arrangement"] > button')
         .click();
       await expect(
-        panel(page).getByLabel('Move layer up', { exact: true }),
+        panel(page).locator('[data-action-id="architecture.layer-up"]'),
       ).toBeDisabled();
     });
   }

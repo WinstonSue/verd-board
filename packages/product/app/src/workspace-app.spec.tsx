@@ -4,8 +4,8 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { I18nProvider } from '@sue/verd-board-ui';
 import type { FrameCell, NodeCell } from '@sue/board-core';
 import { createMemoryWorkspaceHost } from './host/memory-workspace-host';
-import { FrameBreadcrumb, WorkspaceApp } from './workspace-app';
-import { buildOrganizationIndex } from './frames/frame-files';
+import { WorkspaceApp } from './workspace-app';
+import { createDocumentFile } from './documents/document-files';
 import type { WorkspaceSnapshot } from './frames/workspace-storage';
 
 HTMLDialogElement.prototype.showModal ??= function (this: HTMLDialogElement) {
@@ -32,7 +32,11 @@ vi.mock('../../ui/src/file-tree-menu', () => ({
     items,
     label,
     onClose,
+    locale = 'zh',
+    preserveItemLabels = false,
   }: {
+    preserveItemLabels?: boolean;
+    locale?: 'zh' | 'en';
     items: import('../../ui/src/file-tree-menu').FileTreeMenuItem[];
     label: string;
     onClose(): void;
@@ -44,13 +48,18 @@ vi.mock('../../ui/src/file-tree-menu', () => ({
           type="button"
           role="menuitem"
           data-testid={item.testId}
-          disabled={item.disabled}
+          disabled={
+            item.action ? !item.action.getState().enabled : item.disabled
+          }
           onClick={() => {
             onClose();
-            item.onSelect();
+            if (item.action) void item.action.execute();
+            else item.onSelect();
           }}
         >
-          {item.label}
+          {preserveItemLabels
+            ? item.label
+            : (item.action?.label(locale) ?? item.label)}
         </button>
       ))}
     </div>
@@ -74,12 +83,13 @@ vi.mock('@sue/verd-board-ui', async (importOriginal) => {
 let container: HTMLDivElement;
 let root: Root | null = null;
 
-const render = async (element: React.ReactElement) => {
+const render = async (element: React.ReactElement, strict = false) => {
   container = document.createElement('div');
   document.body.appendChild(container);
   root = createRoot(container);
   await act(async () => {
-    root!.render(<I18nProvider defaultLanguage="zh">{element}</I18nProvider>);
+    const app = <I18nProvider defaultLanguage="zh">{element}</I18nProvider>;
+    root!.render(strict ? <React.StrictMode>{app}</React.StrictMode> : app);
   });
   // Flush pending session async work.
   await act(async () => {});
@@ -255,6 +265,12 @@ describe('WorkspaceApp', () => {
     await act(async () => {
       name.dispatchEvent(new MouseEvent('click', { bubbles: true }));
     });
+    await act(
+      async () =>
+        new Promise<void>((resolve) =>
+          requestAnimationFrame(() => setTimeout(resolve, 0)),
+        ),
+    );
     expect(container.querySelector('[data-testid="verd-frame"]')).toBeTruthy();
   });
 
@@ -352,140 +368,103 @@ describe('WorkspaceApp', () => {
     );
   });
 
-  it('shows a back control only while the source file still exists', async () => {
-    const mind = {
-      format: 'verd-frame' as const,
-      version: 2 as const,
-      organization: { kind: 'subgraph' as const, ownerFrameId: 'A' },
+  it('shows independent file identity and groups every direct canvas and document embed', async () => {
+    const { host, handle, path } = await hostWith('reference-navigation');
+    let shutdown = async () => {};
+    host.onShutdown = (flush) => {
+      shutdown = flush;
+      return () => {};
+    };
+    const frame = (id: string, cells: Record<string, unknown> = {}) => ({
+      format: 'verd-frame',
+      version: 2,
       frame: {
-        id: 'C',
+        id,
         kind: 'frame',
         cellType: 'frame',
-        name: '需求脑图',
-        geometry: { x: 0, y: 0, width: 10, height: 10 },
-        children: ['topic'],
+        geometry: { x: 0, y: 0, width: 100, height: 100 },
+        children: Object.keys(cells),
         groups: [],
       },
-      cells: {
-        topic: {
-          id: 'topic',
-          kind: 'mind-root',
-          cellType: 'node',
-          geometry: { x: 0, y: 0, width: 10, height: 10 },
-        },
-      },
-    };
-    const owner = {
-      ...mind,
-      organization: { kind: 'standalone' as const },
-      frame: { ...mind.frame, id: 'A', name: '产品规划', children: ['r1'] },
-      cells: {
-        r1: {
-          id: 'r1',
-          kind: 'frame-reference',
-          cellType: 'node',
-          geometry: { x: 0, y: 0, width: 10, height: 10 },
-          data: { targetFrameId: 'C' },
-        },
-      },
-    };
-    const files = new Map([
-      ['A', { file: owner, path: 'a.verd.json', dirty: false }],
-      ['C', { file: mind, path: 'c.verd.json', dirty: false }],
-    ]);
-    const organization = buildOrganizationIndex([owner, mind]);
-    await render(
-      <FrameBreadcrumb
-        fileId="C"
-        files={files as never}
-        organization={organization}
-        source={{
-          sourceFileId: 'A',
-          refId: 'r1',
-          occurrenceId: 'ref:A/r1',
-        }}
-        sourceRev={1}
-        locale="zh"
-        onOpen={() => {}}
-        onReturn={() => {}}
-      />,
-    );
-    expect(container.textContent).toContain('返回');
-    expect(container.textContent).toContain('产品规划');
-    await render(
-      <FrameBreadcrumb
-        fileId="C"
-        files={files as never}
-        organization={organization}
-        sourceRev={2}
-        locale="zh"
-        onOpen={() => {}}
-        onReturn={() => {}}
-      />,
-    );
-    expect(container.textContent).not.toContain('返回');
-  });
-
-  it('uses the owner file name when the frame itself has no name', async () => {
-    const mind = {
-      format: 'verd-frame' as const,
-      version: 2 as const,
-      organization: {
-        kind: 'subgraph' as const,
-        ownerFrameId: 'd999fdcb-70f9-4c81-abb3-bece3576ced4',
-      },
-      frame: {
-        id: 'C',
-        kind: 'frame',
-        cellType: 'frame',
-        geometry: { x: 0, y: 0, width: 10, height: 10 },
-        children: ['topic'],
-        groups: [],
-      },
-      cells: {
-        topic: {
-          id: 'topic',
-          kind: 'mind-root',
-          cellType: 'node',
-          geometry: { x: 0, y: 0, width: 10, height: 10 },
-        },
-      },
-    };
-    const owner = {
-      format: 'verd-frame' as const,
-      version: 2 as const,
-      frame: {
-        id: 'd999fdcb-70f9-4c81-abb3-bece3576ced4',
-        kind: 'frame',
-        cellType: 'frame',
-        geometry: { x: 0, y: 0, width: 10, height: 10 },
-        children: [],
-        groups: [],
-      },
-      cells: {},
-    };
-    const files = new Map([
-      [
-        owner.frame.id,
-        { file: owner, path: '未命名画布.verd.json', dirty: false },
+      cells,
+    });
+    const reference = (id: string) => ({
+      id,
+      kind: 'frame-reference',
+      cellType: 'node',
+      geometry: { x: 0, y: 0, width: 100, height: 100 },
+      data: { targetFrameId: 'target' },
+    });
+    const target = frame('target');
+    const source = frame('source', {
+      r1: reference('r1'),
+      r2: reference('r2'),
+    });
+    const document = createDocumentFile('doc', '包索引');
+    document.text.content = {
+      type: 'doc',
+      content: [
+        { type: 'frameReference', attrs: { targetFrameId: 'target' } },
+        { type: 'frameReference', attrs: { targetFrameId: 'target' } },
       ],
-      ['C', { file: mind, path: '未命名画布 6.verd.json', dirty: false }],
-    ]);
-    await render(
-      <FrameBreadcrumb
-        fileId="C"
-        files={files as never}
-        organization={buildOrganizationIndex([owner, mind])}
-        sourceRev={1}
-        locale="zh"
-        onOpen={() => {}}
-        onReturn={() => {}}
-      />,
+    };
+    await host.commit(handle, {
+      transactionId: 'seed-references',
+      writes: [
+        {
+          path: '未命名画布.verd.json',
+          content: JSON.stringify(target),
+          expectedVersion: null,
+        },
+        {
+          path: '项目导览.verd.json',
+          content: JSON.stringify(source),
+          expectedVersion: null,
+        },
+        {
+          path: '包索引.verd-doc.json',
+          content: JSON.stringify(document),
+          expectedVersion: null,
+        },
+      ],
+      session: {
+        tabs: [{ fileId: 'target' }],
+        activeTabId: 'target',
+        expandedDirs: [],
+      },
+    });
+    await render(<WorkspaceApp host={host} workspace={{ path }} />);
+    expect(
+      container.querySelector('.workspace-file-navigation-title')?.textContent,
+    ).toBe('未命名画布');
+    expect(container.querySelector('.workspace-breadcrumb')).toBeNull();
+    expect(
+      container.querySelector('[data-testid="navigation-return"]'),
+    ).toBeNull();
+    const references = () =>
+      container.querySelector<HTMLButtonElement>(
+        '[data-testid="reference-locations-trigger"]',
+      )!;
+    expect(references().textContent).toBe('被引用 4 处');
+    await act(async () => references().click());
+    expect(container.querySelectorAll('[role="menuitem"]')).toHaveLength(4);
+    expect(container.querySelector('[role="menu"]')?.textContent).toContain(
+      '第 2 处',
     );
-    expect(container.textContent).toContain('未命名画布');
-    expect(container.textContent).not.toContain(
-      'd999fdcb-70f9-4c81-abb3-bece3576ced4',
-    );
+    await act(async () => {
+      await shutdown();
+      const sourceBytes = await host.readFile(handle, '项目导览.verd.json');
+      const removed = await host.commit(handle, {
+        transactionId: 'remove-source',
+        trash: [
+          { path: '项目导览.verd.json', expectedVersion: sourceBytes.version },
+        ],
+      });
+      expect(removed.outcome).toBe('applied');
+      await new Promise((resolve) => setTimeout(resolve, 15));
+    });
+    expect(references().textContent).toBe('被引用 2 处');
+    expect(container.querySelectorAll('[role="menuitem"]')).toHaveLength(2);
   });
 });
 
@@ -507,6 +486,12 @@ describe('workspace shell navigation', () => {
           new CustomEvent('tab-activate', { detail: { tabId: frameId } }),
         );
     });
+    await act(
+      async () =>
+        new Promise<void>((resolve) =>
+          requestAnimationFrame(() => setTimeout(resolve, 0)),
+        ),
+    );
     expect(container.querySelector('.chart-library')).toBeNull();
     expect(
       container.querySelector(
@@ -863,4 +848,153 @@ describe('workspace shell navigation', () => {
     ).toContain('导入失败');
     expect(container.querySelector('.file-tree')).toBeTruthy();
   });
+});
+
+let historyHostCounter = 0;
+const historyHost = async () => {
+  const { host, handle, path } = await hostWith(
+    `history-current-${historyHostCounter++}`,
+  );
+  const open = host.openWorkspace.bind(host);
+  const other = (await open({ path: `${path}-other` }))!;
+  const entries = [
+    { id: 'current', name: 'Current', lastOpenedAt: 2 },
+    { id: 'other', name: 'Other', lastOpenedAt: 1 },
+  ];
+  host.listWorkspaceHistory = vi.fn(async () => entries);
+  host.activateWorkspace = vi.fn(async () => {});
+  host.openWorkspace = vi.fn(async (request) => {
+    if (request?.historyId === 'other') return { ...other, historyId: 'other' };
+    const opened = await open(request);
+    return opened
+      ? {
+          ...opened,
+          historyId: opened.key === handle.key ? 'current' : undefined,
+        }
+      : null;
+  });
+  return { host, path, other, entries };
+};
+
+it('reopens history through the workspace lifecycle and disables the active stable identity', async () => {
+  const { host, path, other } = await historyHost();
+  await render(
+    <WorkspaceApp host={host} workspace={{ path }} allowWorkspaceSwitching />,
+  );
+  const initial = container
+    .querySelector('[data-testid="verd-frame"]')
+    ?.getAttribute('data-frame');
+  await openWorkspaceMenu();
+  expect(workspaceAction('workspace-history-current').disabled).toBe(true);
+  await act(async () => {
+    workspaceAction('workspace-history-other').click();
+    await new Promise((resolve) => setTimeout(resolve, 15));
+  });
+  expect(host.openWorkspace).toHaveBeenLastCalledWith({ historyId: 'other' });
+  expect(host.activateWorkspace).toHaveBeenLastCalledWith({
+    ...other,
+    historyId: 'other',
+  });
+  expect(
+    container
+      .querySelector('[data-testid="verd-frame"]')
+      ?.getAttribute('data-frame'),
+  ).not.toBe(initial);
+  await openWorkspaceMenu();
+  expect(workspaceAction('workspace-history-other').disabled).toBe(true);
+  expect(workspaceAction('workspace-history-current').disabled).toBe(false);
+});
+
+it('blocks history switching before opening or recording a candidate when the current save fails', async () => {
+  const { host, path } = await historyHost();
+  await render(
+    <WorkspaceApp host={host} workspace={{ path }} allowWorkspaceSwitching />,
+  );
+  vi.spyOn(host, 'commit').mockResolvedValue({
+    transactionId: 'failed',
+    outcome: 'rejected',
+    reason: 'io-error',
+  });
+  await openWorkspaceMenu();
+  await act(async () => {
+    workspaceAction('workspace-history-other').click();
+    await new Promise((resolve) => setTimeout(resolve, 15));
+  });
+  expect(host.openWorkspace).toHaveBeenCalledTimes(1);
+  expect(host.activateWorkspace).toHaveBeenCalledTimes(1);
+  expect(container.querySelector('.workspace-banners')?.textContent).toContain(
+    '当前工作区未能保存',
+  );
+  expect(container.querySelector('[data-testid="verd-frame"]')).toBeTruthy();
+});
+
+it('keeps the current session and history after a recorded directory cannot load', async () => {
+  const { host, path, other } = await historyHost();
+  const close = vi.spyOn(host, 'closeWorkspace');
+  const read = host.readSnapshot.bind(host);
+  host.readSnapshot = async (target) => {
+    if (target.key === other.key)
+      throw new Error('Workspace folder is unavailable');
+    return read(target);
+  };
+  await render(
+    <WorkspaceApp host={host} workspace={{ path }} allowWorkspaceSwitching />,
+  );
+  const initial = container
+    .querySelector('[data-testid="verd-frame"]')
+    ?.getAttribute('data-frame');
+  await openWorkspaceMenu();
+  await act(async () => {
+    workspaceAction('workspace-history-other').click();
+    await new Promise((resolve) => setTimeout(resolve, 15));
+  });
+  expect(host.activateWorkspace).toHaveBeenCalledTimes(1);
+  expect(close).toHaveBeenCalledWith({ ...other, historyId: 'other' });
+  expect(
+    container
+      .querySelector('[data-testid="verd-frame"]')
+      ?.getAttribute('data-frame'),
+  ).toBe(initial);
+  expect(container.querySelector('.workspace-banners')?.textContent).toContain(
+    'unavailable',
+  );
+  await openWorkspaceMenu();
+  expect(workspaceAction('workspace-history-other')).toBeTruthy();
+});
+
+it('offers recorded workspaces after startup fails and can recover through the same action', async () => {
+  const { host, other } = await historyHost();
+  const open = host.openWorkspace.bind(host);
+  host.openWorkspace = vi.fn(async (request) => {
+    if (!request?.historyId) throw new Error('Workspace folder is unavailable');
+    return open(request);
+  });
+  await render(<WorkspaceApp host={host} allowWorkspaceSwitching />);
+  expect(container.querySelector('[role="alert"]')?.textContent).toContain(
+    '已打开的工作区',
+  );
+  await act(async () => {
+    workspaceAction('workspace-history-other').click();
+    await new Promise((resolve) => setTimeout(resolve, 15));
+  });
+  expect(container.querySelector('.workspace-error')).toBeNull();
+  expect(container.querySelector('[data-testid="verd-frame"]')).toBeTruthy();
+  expect(host.activateWorkspace).toHaveBeenLastCalledWith({
+    ...other,
+    historyId: 'other',
+  });
+});
+
+it('keeps shared startup handles open across StrictMode effect replay while loading history', async () => {
+  const { host, path } = await historyHost();
+  const close = vi.spyOn(host, 'closeWorkspace');
+  await render(
+    <WorkspaceApp host={host} workspace={{ path }} allowWorkspaceSwitching />,
+    true,
+  );
+  expect(container.querySelector('[data-testid="verd-frame"]')).toBeTruthy();
+  expect(host.activateWorkspace).toHaveBeenCalledTimes(1);
+  expect(close).not.toHaveBeenCalled();
+  await openWorkspaceMenu();
+  expect(workspaceAction('workspace-history-current').disabled).toBe(true);
 });

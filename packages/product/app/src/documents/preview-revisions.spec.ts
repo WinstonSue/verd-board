@@ -1,10 +1,10 @@
-import { beforeAll, describe, expect, it } from 'vitest';
 import {
   createDocumentFrameCell,
   createDocumentReferenceCell,
   createFrameCell,
   createFrameReferenceCell,
 } from '@sue/board-core';
+import { beforeAll, describe, expect, it } from 'vitest';
 import { createFrameFile, type FrameFileV2 } from '../frames/frame-files';
 import { createMemoryWorkspaceHost } from '../host/memory-workspace-host';
 import {

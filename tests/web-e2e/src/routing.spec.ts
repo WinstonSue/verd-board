@@ -1,25 +1,30 @@
-import { selectAppAction } from './app-actions';
+import { expect, test, type Page } from '@playwright/test';
 import { readFileSync } from 'node:fs';
-import { test, expect, type Page } from '@playwright/test';
+import { createInlineText } from '../../../packages/engine/common/src/public-api';
+import { applyCellOperations } from '../../../packages/engine/core/src/cell/index';
 import {
   createCellStore,
   createFrameCell,
+  type EdgeCell,
+  type FrameCell,
   type FrameSnapshot,
   type NodeCell,
-  type FrameCell,
 } from '../../../packages/engine/core/src/cell/types';
-import { applyCellOperations } from '../../../packages/engine/core/src/cell/index';
 import {
-  createMindFrameSnapshot,
-  createMindChildCell,
   addMindChild,
+  createMindChildCell,
+  createMindFrameSnapshot,
 } from '../../../packages/engine/mind/src/cell-commands';
-import { createInlineText } from '../../../packages/engine/common/src/public-api';
+import { createTestCellRegistry as createFixtureRegistry } from '../../fixtures/plugins/registry';
+import { selectAppAction } from './app-actions';
+import { interactionShadowPixels, setCanvasZoom } from './shadow-pixels';
+import { ThemeColorMode } from '../../../packages/engine/core/src/interfaces/theme';
 import {
   clearWorkspaceStorage,
   persistedWorkspace,
   waitForWorkspacePersisted,
 } from './workspace-nav';
+const testCellRegistry = createFixtureRegistry();
 
 const canvas = (page: Page) =>
   page.locator('svg[aria-label="Frame canvas"][data-surface="root"]:visible');
@@ -211,13 +216,16 @@ test('embedded routing fits the full detour, matches detail and exports the same
     return true;
   });
   expect(insideShell).toBe(true);
-  expect(await exportedSvg(page)).toContain(`d="${original}"`);
+  const display = canvas(page).locator('[data-edge-display="edge"]');
+  const displayPath = await display.getAttribute('d');
+  expect(await exportedSvg(page)).toContain(`d="${displayPath}"`);
   await canvas(page)
     .locator('[data-cell-id="frame-ref:diagram"] [data-frame-title-id]')
     .click();
   await page.getByTestId('frame-open').locator('visible=true').click();
   await expect(path).toHaveAttribute('d', original);
-  expect(await exportedSvg(page)).toContain(`d="${original}"`);
+  await expect(display).toHaveAttribute('d', displayPath!);
+  expect(await exportedSvg(page)).toContain(`d="${displayPath}"`);
 });
 
 const mindFixture = (): FrameSnapshot => {
@@ -233,6 +241,7 @@ const mindFixture = (): FrameSnapshot => {
       store: applyCellOperations(
         snapshot.store,
         addMindChild(snapshot.store, 'center', child, `branch-${i}`),
+        testCellRegistry,
       ),
     };
   }
@@ -282,3 +291,225 @@ test('dense mind curves keep common origins and sibling order with expanded note
   const svg = await exportedSvg(page);
   for (const d of paths) expect(svg).toContain(`d="${d}"`);
 });
+
+for (const { background, opacity, color } of ['#000000', '#6366f1'].flatMap(
+  (color) => [
+    { background: '#ffffff', opacity: 1, color },
+    { background: '#0f172a', opacity: 1, color },
+    { background: '#ffffff', opacity: 0.2, color },
+    { background: '#0f172a', opacity: 0.2, color },
+  ],
+)) {
+  test(`interaction strokes stay readable and export authored appearance on ${background} at opacity ${opacity}, stroke ${color}`, async ({
+    page,
+  }, info) => {
+    await page.setViewportSize({ width: 1440, height: 1000 });
+    const root = createFrameCell('root');
+    root.view = {
+      theme: {
+        themeColorMode: ThemeColorMode.default,
+        boardBackground: background,
+        gridEnabled: false,
+      },
+    };
+    const store = createCellStore(root);
+    const cases = [
+      { width: 1, mode: 'straight' as const, y: 0, dy: 0 },
+      { width: 1.5, mode: 'straight' as const, y: 150, dy: 0 },
+      { width: 2, mode: 'orthogonal' as const, y: 300, dy: 50 },
+      { width: 8, mode: 'curve' as const, y: 450, dy: 70 },
+    ];
+    for (const { width, mode, y, dy } of cases) {
+      const appearance = {
+        strokeColor: color,
+        strokeWidth: width,
+        opacity,
+        shadow: 'md',
+      };
+      const source = {
+        ...node(`source-${width}`, y),
+        appearance,
+        content: { label: `${width}px / ${opacity * 100}%` },
+      };
+      const target = {
+        ...node(`target-${width}`, y),
+        geometry: { ...source.geometry, x: 520, y: y + dy },
+        appearance,
+        content: { label: `Target ${width}` },
+      };
+      const edge: EdgeCell = {
+        id: `edge-${width}`,
+        kind: 'arrow',
+        cellType: 'edge',
+        source: { cellId: source.id },
+        target: { cellId: target.id },
+        route: {
+          mode,
+        },
+        appearance,
+        data: { targetMarker: 'solid-triangle' },
+        labels: [{ text: `${width}px line` }],
+      };
+      for (const cell of [source, target, edge]) {
+        root.children.push(cell.id);
+        store.cells[cell.id] = cell;
+      }
+    }
+    await loadFixture(page, { store });
+    const surface = canvas(page);
+    const paths = await surface
+      .locator('[data-edge-display]')
+      .evaluateAll((elements) =>
+        elements.map((element) => element.getAttribute('d')),
+      );
+    await expect
+      .poll(async () => (await savedCells(page))['edge-1'])
+      .toBeDefined();
+    const saved = await savedCells(page);
+    const first = surface.locator('[data-cell-id="edge-1"]');
+    const hoverPoint = await first
+      .locator('[data-edge-hit]')
+      .evaluate((element) => {
+        const path = element as SVGPathElement;
+        const point = path
+          .getPointAtLength(path.getTotalLength() / 4)
+          .matrixTransform(path.getScreenCTM()!);
+        return { x: point.x, y: point.y };
+      });
+    await page.mouse.move(hoverPoint.x, hoverPoint.y);
+    await expect(
+      surface.locator('[data-relation-highlight="edge"]'),
+    ).toHaveAttribute('stroke-width', '1');
+    await expect(
+      surface.locator('[data-relation-highlight="node"]'),
+    ).toHaveCount(2);
+    await page.screenshot({ path: info.outputPath('related-fit.png') });
+    await page.mouse.move(0, 0);
+    for (const [at, id] of [
+      'source-1',
+      'edge-1',
+      'edge-2',
+      'edge-8',
+    ].entries()) {
+      await surface
+        .locator(`[data-cell-id="${id}"]`)
+        .dispatchEvent('pointerdown', {
+          button: 0,
+          pointerId: 1,
+          shiftKey: at > 0,
+        });
+      await surface.dispatchEvent('pointerup', { button: 0, pointerId: 1 });
+    }
+    await expect(
+      surface.locator('[data-interaction-stroke="selected"]'),
+    ).toHaveCount(4);
+    await expect(
+      surface.locator('[data-relation-highlight="edge"]'),
+    ).toHaveCount(0);
+    const checkPaint = async (name: string) => {
+      const paint = await surface
+        .locator('[data-interaction-stroke]')
+        .evaluateAll((elements) =>
+          elements.map((element) => {
+            const shape = element as SVGGraphicsElement;
+            const matrix = shape.getScreenCTM()!;
+            const scale = Math.hypot(matrix.a, matrix.b);
+            const filter = document.getElementById(
+              shape.getAttribute('filter')!.slice(5, -1),
+            )!;
+            const id =
+              shape.getAttribute('data-node-highlight') ??
+              shape.closest('[data-cell-id]')!.getAttribute('data-cell-id')!;
+            const base = Number(id.split('-').at(-1));
+            const expected =
+              base +
+              (shape.getAttribute('data-interaction-stroke') === 'selected'
+                ? 1
+                : 0);
+            return {
+              expected,
+              width: parseFloat(getComputedStyle(shape).strokeWidth),
+              scaledWidth:
+                parseFloat(getComputedStyle(shape).strokeWidth) * scale,
+              expectedScaledWidth: expected * scale,
+              vectorEffect: getComputedStyle(shape).vectorEffect,
+              color: getComputedStyle(shape).stroke,
+              blurred: Array.from(
+                filter.querySelectorAll('feGaussianBlur'),
+              ).map(
+                (blur) => Number(blur.getAttribute('stdDeviation')) * scale,
+              ),
+              spread:
+                Number(
+                  filter.querySelector('feMorphology')!.getAttribute('radius'),
+                ) * scale,
+              region: [
+                Number(filter.getAttribute('width')),
+                Number(filter.getAttribute('height')),
+              ],
+              hasOpacityAncestor: !!shape.closest('[opacity]'),
+            };
+          }),
+        );
+      for (const hint of paint) {
+        expect(hint.color).toBe('rgb(99, 102, 241)');
+        expect(hint.width).toBe(hint.expected);
+        expect(hint.scaledWidth).toBeCloseTo(hint.expectedScaledWidth, 5);
+        expect(hint.vectorEffect).not.toBe('non-scaling-stroke');
+        expect(hint.blurred[0]).toBeCloseTo(2.25, 5);
+        expect(hint.blurred[1]).toBeCloseTo(1.25, 5);
+        expect(hint.spread).toBeCloseTo(0.75, 5);
+        expect(hint.region.every((size) => size > 0)).toBe(true);
+        expect(hint.hasOpacityAncestor).toBe(false);
+      }
+      const hiddenPaint = await surface
+        .locator(
+          '[data-frame-original-stroke-opacity],[data-frame-original-opacity]',
+        )
+        .evaluateAll((elements) =>
+          elements.map((element) => {
+            const style = getComputedStyle(element);
+            return element.hasAttribute('data-frame-original-opacity')
+              ? style.opacity
+              : style.strokeOpacity;
+          }),
+        );
+      expect(hiddenPaint.length).toBeGreaterThan(0);
+      expect(hiddenPaint.every((opacity) => Number(opacity) === 0)).toBe(true);
+      const pixels = await interactionShadowPixels(
+        surface.locator('[data-node-highlight="source-1"]'),
+        background,
+        opacity,
+      );
+      for (const sample of pixels)
+        expect(
+          sample.difference,
+          JSON.stringify(sample),
+        ).toBeGreaterThanOrEqual(8);
+      await info.attach(`${name}-shadow-pixels`, {
+        body: JSON.stringify(pixels, null, 2),
+        contentType: 'application/json',
+      });
+      await page.screenshot({ path: info.outputPath(name) });
+    };
+    for (const percentage of [50, 100, 200]) {
+      await setCanvasZoom(page, percentage);
+      await checkPaint(`selected-${percentage}.png`);
+    }
+    expect(
+      await surface
+        .locator('[data-edge-display]')
+        .evaluateAll((elements) =>
+          elements.map((element) => element.getAttribute('d')),
+        ),
+    ).toEqual(paths);
+    const svg = await exportedSvg(page);
+    expect(svg).not.toContain('data-interaction-stroke');
+    expect(svg).not.toContain('frame-interaction-');
+    expect(svg).not.toContain('data-frame-original-');
+    for (const width of [1, 1.5, 2, 8]) {
+      expect(svg).toContain(`stroke-width="${width}"`);
+    }
+    expect(await savedCells(page)).toEqual(saved);
+  });
+}

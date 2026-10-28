@@ -80,6 +80,10 @@ test('More is the only low-frequency entry on wide and narrow screens and suppor
     ).toBeFocused();
     await page.keyboard.press('End');
     await expect(
+      menu.getByRole('menuitem', { name: '命令面板', exact: true }),
+    ).toBeFocused();
+    await page.keyboard.press('ArrowUp');
+    await expect(
       menu.getByRole('menuitem', { name: '我的', exact: true }),
     ).toBeFocused();
     await page.keyboard.press('Enter');

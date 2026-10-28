@@ -1,29 +1,24 @@
-import { describe, expect, it } from 'vitest';
-import {
-  createCellRegistry,
-  createCellRuntime,
-  type NodeCell,
-  type MindChildData,
-  type MindRootData,
-} from '@sue/board-core';
+import { createCellRuntime, type NodeCell } from '@sue/board-core';
 import { MindLayoutType } from '@sue/board-layouts';
-import { registerMindCells } from './cell-utils';
+import { describe, expect, it } from 'vitest';
+import { createTestCellRegistry } from '../../../../tests/fixtures/plugins/registry';
 import {
-  createMindFrameSnapshot,
-  createMindChildCell,
   addMindChild,
+  createMindChildCell,
+  createMindFrameSnapshot,
 } from './cell-commands';
 import {
-  mindTreeRootId,
   mindTreeLayout,
   mindTreeLayoutOverrides,
+  mindTreeRootId,
   setMindTreeLayout,
   setMindTreeRightNodeCount,
 } from './cell-tree';
+import { type MindChildData, type MindRootData } from './public-api';
 
 const runtime = (count = 3) => {
-  const registry = createCellRegistry();
-  registerMindCells(registry);
+  const registry = createTestCellRegistry();
+
   const r = createCellRuntime(
     createMindFrameSnapshot('frame', 'root'),
     registry,

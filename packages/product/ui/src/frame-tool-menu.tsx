@@ -7,6 +7,7 @@ import {
   FloatingPortal,
   offset,
   shift,
+  size,
   useClick,
   useDismiss,
   useFloating,
@@ -14,6 +15,8 @@ import {
   useListNavigation,
   useRole,
 } from '@floating-ui/react';
+import { FrameTooltip, frameDisabledReason } from './frame-tooltip';
+import { useI18n } from './i18n';
 import { FrameIconButton } from './frame-icon-button';
 
 export interface FrameToolMenuItem {
@@ -21,6 +24,9 @@ export interface FrameToolMenuItem {
   label: string;
   icon: LucideIcon;
   shortcut?: string;
+  checked?: boolean;
+  disabled?: boolean;
+  reason?: string;
 }
 
 export function FrameToolMenu({
@@ -38,6 +44,7 @@ export function FrameToolMenu({
   disabled?: boolean;
   onChange(tool: string): void;
 }) {
+  const { language } = useI18n();
   const [open, setOpen] = useState(false);
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
   const listRef = useRef<Array<HTMLButtonElement | null>>([]);
@@ -46,7 +53,19 @@ export function FrameToolMenu({
     open,
     onOpenChange: setOpen,
     placement: 'right-start',
-    middleware: [offset(8), flip(), shift({ padding: 8 })],
+    strategy: 'fixed',
+    middleware: [
+      offset(8),
+      flip(),
+      shift({ padding: 8 }),
+      size({
+        padding: 8,
+        apply({ availableHeight, availableWidth, elements }) {
+          elements.floating.style.maxHeight = `${Math.max(0, availableHeight)}px`;
+          elements.floating.style.maxWidth = `${Math.max(0, availableWidth)}px`;
+        },
+      }),
+    ],
     whileElementsMounted: autoUpdate,
   });
   const click = useClick(context, { enabled: !disabled });
@@ -93,30 +112,53 @@ export function FrameToolMenu({
               className="frame-tool-menu"
               {...getFloatingProps({ 'aria-label': label })}
             >
-              {items.map(({ id, label, icon: Icon, shortcut }, index) => (
-                <button
-                  key={id}
-                  ref={(node) => {
-                    listRef.current[index] = node;
-                  }}
-                  type="button"
-                  role="menuitemradio"
-                  aria-label={label}
-                  aria-keyshortcuts={shortcut}
-                  aria-checked={id === value}
-                  tabIndex={activeIndex === index ? 0 : -1}
-                  {...getItemProps({
-                    onClick: () => {
-                      onChange(id);
-                      setOpen(false);
-                    },
-                  })}
-                >
-                  <Icon size={16} aria-hidden />
-                  <span>{label}</span>
-                  {shortcut && <kbd aria-hidden>{shortcut}</kbd>}
-                </button>
-              ))}
+              {items.map(
+                (
+                  {
+                    id,
+                    label,
+                    icon: Icon,
+                    shortcut,
+                    checked,
+                    disabled: itemDisabled,
+                    reason,
+                  },
+                  index,
+                ) => (
+                  <FrameTooltip
+                    key={id}
+                    disabled={itemDisabled}
+                    content={
+                      itemDisabled
+                        ? frameDisabledReason(reason, language)
+                        : undefined
+                    }
+                  >
+                    <button
+                      ref={(node) => {
+                        listRef.current[index] = node;
+                      }}
+                      type="button"
+                      role="menuitemradio"
+                      disabled={itemDisabled}
+                      aria-label={label}
+                      aria-keyshortcuts={shortcut}
+                      aria-checked={checked ?? id === value}
+                      tabIndex={activeIndex === index ? 0 : -1}
+                      {...getItemProps({
+                        onClick: () => {
+                          onChange(id);
+                          setOpen(false);
+                        },
+                      })}
+                    >
+                      <Icon size={16} aria-hidden />
+                      <span>{label}</span>
+                      {shortcut && <kbd aria-hidden>{shortcut}</kbd>}
+                    </button>
+                  </FrameTooltip>
+                ),
+              )}
             </div>
           </FloatingFocusManager>
         </FloatingPortal>

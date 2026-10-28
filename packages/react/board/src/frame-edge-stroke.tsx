@@ -1,11 +1,14 @@
-import type { FrameCameraStore } from './frame-camera-store';
-import { memo, useMemo, useSyncExternalStore } from 'react';
 import {
-  edgeDisplayGeometry,
   arrowMarkerGeometry,
-  type Point,
+  edgeDisplayGeometry,
   type NodeAppearance,
+  type EdgeJump,
+  type Point,
+  type RectangleClient,
 } from '@sue/board-core';
+import { memo, useMemo, useSyncExternalStore, type ReactNode } from 'react';
+import { FrameScaleContent, type FrameCameraStore } from './frame-camera-store';
+import { FrameInteractionStroke } from './frame-interaction-stroke';
 
 /** No event closures or store dependencies in the expensive native path body. */
 export const FrameEdgeStroke = memo(function FrameEdgeStroke({
@@ -15,58 +18,126 @@ export const FrameEdgeStroke = memo(function FrameEdgeStroke({
   appearance,
   stroke,
   preview,
+  hitPath,
+  highlighted,
+  selected,
+  camera,
+  scale,
+  bounds,
+  filter,
+  children,
 }: {
   id: string;
+  camera: FrameCameraStore;
+  scale: number;
+  bounds: RectangleClient;
+  filter?: string;
+  children?: ReactNode;
+  hitPath?: string;
+  highlighted?: boolean;
+  selected?: boolean;
   path: string;
   markers: ReturnType<typeof arrowMarkerGeometry>[];
   appearance?: NodeAppearance;
   stroke: string;
   preview: boolean;
 }) {
+  const dash =
+    appearance?.strokeStyle === 'dashed'
+      ? '8 4'
+      : appearance?.strokeStyle === 'dotted'
+        ? '2 4'
+        : undefined;
   return (
     <>
-      <path
-        d={path}
-        fill="none"
-        stroke={stroke}
-        strokeWidth={appearance?.strokeWidth ?? 2}
-        strokeDasharray={
-          appearance?.strokeStyle === 'dashed'
-            ? '8 4'
-            : appearance?.strokeStyle === 'dotted'
-              ? '2 4'
-              : undefined
-        }
-      />
+      {!preview && (selected || highlighted) && (
+        <FrameScaleContent
+          camera={camera}
+          render={(zoom) => (
+            <FrameInteractionStroke
+              bounds={bounds}
+              scale={zoom * scale}
+              selected={selected}
+              baseWidth={appearance?.strokeWidth ?? 2}
+              dash={dash}
+            >
+              {(paint) => (
+                <g
+                  {...paint}
+                  data-relation-highlight={selected ? undefined : 'edge'}
+                >
+                  <path d={path} />
+                  {markers.map(
+                    (marker, at) =>
+                      marker && (
+                        <path
+                          key={at}
+                          d={marker.path}
+                          strokeLinejoin="round"
+                          strokeDasharray="none"
+                          fill={
+                            marker.fill === 'stroke'
+                              ? paint.stroke
+                              : marker.fill === 'background'
+                                ? '#fff'
+                                : 'none'
+                          }
+                        />
+                      ),
+                  )}
+                </g>
+              )}
+            </FrameInteractionStroke>
+          )}
+        />
+      )}
+      <g filter={filter} opacity={appearance?.opacity}>
+        <g
+          opacity={!preview && (selected || highlighted) ? 0 : undefined}
+          data-frame-original-opacity={
+            !preview && (selected || highlighted) ? '1' : undefined
+          }
+        >
+          <path
+            data-edge-display={id}
+            d={path}
+            fill="none"
+            stroke={stroke}
+            strokeWidth={appearance?.strokeWidth ?? 2}
+            strokeDasharray={dash}
+          />
+          {markers.map(
+            (marker, at) =>
+              marker && (
+                <path
+                  key={at}
+                  data-arrow-marker={at === 0 ? 'source' : 'target'}
+                  d={marker.path}
+                  strokeLinejoin="round"
+                  stroke={stroke}
+                  strokeWidth={appearance?.strokeWidth ?? 2}
+                  fill={
+                    marker.fill === 'stroke'
+                      ? stroke
+                      : marker.fill === 'background'
+                        ? '#fff'
+                        : 'none'
+                  }
+                />
+              ),
+          )}
+        </g>
+        {children}
+      </g>
       {!preview && (
         <path
-          d={path}
+          d={hitPath ?? path}
           fill="none"
           stroke="transparent"
           strokeWidth={12}
           vectorEffect="non-scaling-stroke"
           data-edge-hit={id}
         />
-      )}
-      {markers.map(
-        (marker, at) =>
-          marker && (
-            <path
-              key={at}
-              data-arrow-marker={at === 0 ? 'source' : 'target'}
-              d={marker.path}
-              strokeLinejoin="round"
-              stroke={stroke}
-              strokeWidth={appearance?.strokeWidth ?? 2}
-              fill={
-                marker.fill === 'stroke'
-                  ? stroke
-                  : marker.fill === 'background'
-                    ? '#fff'
-                    : 'none'
-              }
-            />
-          ),
       )}
     </>
   );
@@ -80,9 +151,21 @@ export function FrameInteractiveEdge({
   source,
   target,
   markerKinds,
+  sourceId,
+  targetId,
+  jumps,
+  rounded,
+  relatedSelected,
+  interactive = true,
   ...props
 }: Omit<Parameters<typeof FrameEdgeStroke>[0], 'path' | 'markers'> & {
   camera: FrameCameraStore;
+  sourceId?: string;
+  targetId?: string;
+  jumps?: readonly EdgeJump[];
+  rounded?: boolean;
+  relatedSelected?: boolean;
+  interactive?: boolean;
   points: Point[];
   curve: boolean;
   source?: { id: string; visible: boolean; radius: number };
@@ -91,18 +174,28 @@ export function FrameInteractiveEdge({
 }) {
   const subscribe = useMemo(
     () => (notify: () => void) => {
-      const a = camera.subscribeCell(source?.id, notify),
-        b = camera.subscribeCell(target?.id, notify);
+      const a = camera.subscribeCell(sourceId ?? source?.id, notify),
+        b = camera.subscribeCell(targetId ?? target?.id, notify),
+        c = camera.subscribeCell(props.id, notify);
       return () => {
         a();
         b();
+        c();
       };
     },
-    [camera, source?.id, target?.id],
+    [camera, source?.id, target?.id, sourceId, targetId, props.id],
   );
   const getSnapshot = () =>
     Number(!!source && (source.visible || camera.isHovered(source.id))) +
-    2 * Number(!!target && (target.visible || camera.isHovered(target.id)));
+    2 * Number(!!target && (target.visible || camera.isHovered(target.id))) +
+    4 *
+      Number(
+        interactive &&
+          (!!relatedSelected ||
+            camera.isHovered(props.id) ||
+            camera.isHovered(sourceId) ||
+            camera.isHovered(targetId)),
+      );
   const visible = useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
   const geometry = useMemo(
     () =>
@@ -115,12 +208,17 @@ export function FrameInteractiveEdge({
         visible & 2
           ? (target?.radius ?? 0) + (props.appearance?.strokeWidth ?? 2) / 2
           : 0,
+        rounded || jumps?.length
+          ? { jumps, cornerRadius: rounded ? 6 : 0 }
+          : undefined,
       ),
     [
       points,
       curve,
       visible,
       props.appearance?.strokeWidth,
+      jumps,
+      rounded,
       source?.radius,
       target?.radius,
     ],
@@ -133,5 +231,18 @@ export function FrameInteractiveEdge({
     ],
     [geometry, sourceMarker, targetMarker],
   );
-  return <FrameEdgeStroke {...props} path={geometry.path} markers={markers} />;
+  const hitGeometry = useMemo(
+    () => edgeDisplayGeometry(points, curve),
+    [points, curve],
+  );
+  return (
+    <FrameEdgeStroke
+      {...props}
+      camera={camera}
+      path={geometry.path}
+      hitPath={interactive ? hitGeometry.path : geometry.path}
+      markers={markers}
+      highlighted={!!(visible & 4)}
+    />
+  );
 }

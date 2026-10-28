@@ -1,3 +1,5 @@
+import { useActionSource } from '@sue/board-react-actions';
+import { actionLabel } from '@sue/board-common';
 import { useSyncExternalStore, type RefObject } from 'react';
 import type {
   FrameCanvasController,
@@ -66,6 +68,7 @@ export function FrameZoomControls({
   viewStateStore: FrameViewStateStore;
   controller: RefObject<FrameCanvasController | null>;
 }) {
+  useActionSource(controller.current?.actionSource);
   const zoom = useSyncExternalStore(
     viewStateStore.subscribe,
     viewStateStore.getZoom,
@@ -75,14 +78,22 @@ export function FrameZoomControls({
     <>
       <button
         data-testid="canvas-zoom-out"
-        onClick={() => controller.current?.setZoom(zoom - 0.1)}
+        disabled={
+          !controller.current?.getActionState('canvas.view.zoom-out').enabled
+        }
+        onClick={() =>
+          controller.current?.executeAction('canvas.view.zoom-out')
+        }
       >
         −
       </button>
       <span data-testid="canvas-zoom-label">{Math.round(zoom * 100)}%</span>
       <button
         data-testid="canvas-zoom-in"
-        onClick={() => controller.current?.setZoom(zoom + 0.1)}
+        disabled={
+          !controller.current?.getActionState('canvas.view.zoom-in').enabled
+        }
+        onClick={() => controller.current?.executeAction('canvas.view.zoom-in')}
       >
         +
       </button>
@@ -94,11 +105,17 @@ export function FrameRecenterControl({
   viewStateStore,
   controller,
   label,
+  language = 'zh',
 }: {
   viewStateStore: FrameViewStateStore;
   controller: RefObject<FrameCanvasController | null>;
   label: string;
+  language?: 'zh' | 'en';
 }) {
+  useActionSource(controller.current?.actionSource);
+  const action = controller.current
+    ?.actions()
+    .find((action) => action.id === 'canvas.view.center');
   const recenter = useSyncExternalStore(
     viewStateStore.subscribe,
     viewStateStore.getRecenter,
@@ -110,10 +127,10 @@ export function FrameRecenterControl({
       <button
         type="button"
         data-testid="canvas-recenter"
-        disabled={recenter === 2}
-        onClick={() => controller.current?.centerSelection()}
+        disabled={recenter === 2 || !action?.getState().enabled}
+        onClick={() => controller.current?.executeAction('canvas.view.center')}
       >
-        {label}
+        {action ? actionLabel(action.label, language) : label}
       </button>
     </div>
   );

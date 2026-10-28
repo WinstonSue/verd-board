@@ -641,7 +641,7 @@ test('architecture layer sorting and module ownership changes survive undo, casc
   await layer.click({ position: { x: 15, y: 15 } });
   await expandPropertyGroup(archPane);
   await archPane
-    .getByRole('button', { name: 'Move layer up', exact: true })
+    .getByRole('button', { name: /^(上移层|Move layer up)$/, exact: true })
     .click();
   await expect
     .poll(async () =>

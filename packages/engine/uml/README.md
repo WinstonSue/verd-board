@@ -1,32 +1,31 @@
 # @sue/board-uml
 
-## 2.0.0 接入与变更
+以下为下一主版本的源码接入方式。本轮只交付代码与 Changesets，不升级版本、不发布；请用本仓构建的真实 tarball 验证，已发布的 2.0.0 不包含这些新入口。
 
-首次发布：UML 类图与时序图模型、工厂、命令、布局、关系校验和注册。首次发布版本随整套包为 2.0.0。
+Uml 领域模型、命令、校验、布局、关系与几何策略。不依赖 React 或其他领域。领域 kind 常量与数据类型从 board-core 移至本包。
 
-在项目 `.npmrc` 配置两个 scope：
+在项目 .npmrc 配置两个 scope，访问权限和令牌由仓库管理员提供；令牌保存在用户配置或 CI secret。最小编辑器只使用 @sue，完整产品的 @ylib 传递依赖也需要相应授权。
 
 ```ini
 @sue:registry=https://packages.aliyun.com/69f800449b7ce0afb00bda0e/npm/npm-registry/
 @ylib:registry=https://packages.aliyun.com/6141c43fdd62cdb60fbbdbda/npm/npm-registry/
 ```
 
-两个仓库都需要获得访问授权。令牌放在用户级 `.npmrc` 或 CI secret，通过仓库管理员获取；不要提交令牌。`@ylib/tabs` 是产品包的传递依赖，只有 `@sue` 配置不足以安装完整产品。
-
 ```bash
-pnpm add @sue/board-uml@2.0.0
+pnpm add @sue/board-core @sue/board-uml
 ```
-
-React 组件面向浏览器，支持 React 18/19；TypeScript 使用现代 Bundler 模块解析。ESM、CJS 与声明从 `dist` 加载，不导入 `src` 或未声明的深层路径。仓库开发的 Node/pnpm 要求不等同于浏览器运行时要求。
 
 <!-- consumer-example -->
 
 ```ts
-import { createUmlClassFrameSnapshot } from '@sue/board-uml';
+import { createCellRegistry, createCellRuntime } from '@sue/board-core';
+import { createUmlPlugin, createUmlClassFrameSnapshot } from '@sue/board-uml';
+const registry = createCellRegistry({ plugins: [createUmlPlugin()] });
 const snapshot = createUmlClassFrameSnapshot('frame', 'uml-root');
-console.log(snapshot.store.rootId);
+const runtime = createCellRuntime(snapshot, registry);
+console.log(runtime.store.rootId);
 ```
 
-画布容器必须有明确高度。独立文本/画布加载 `@sue/board-react-text/style.css`；`VerdFrame`/`WorkspaceApp` 加载 `@sue/verd-board-ui/style.css`（已包含文本样式）。
+独立调用 applyCellOperations、copyCellFragment、planCellPaste、frameScene、排列和路由等辅助函数时，显式传入同一个 registry。事务失败不改变状态、历史或通知。缺少插件会拒绝对应文件，不执行归一化或保存。
 
-完整发布摘要与迁移入口见 [VerdBoard 2.0](https://github.com/WinstonSue/verd-board#npm-2)；逐包变更见本包随附的 `CHANGELOG.md`。`FrameCanvas` 已存在于 1.0.0，早期 BoardCanvas/领域 Canvas 的删除不是本次新增变更。
+序列化字段不改名；FrameFileV2、DocumentFileV1 不升格式版本。完整契约见原生架构文档。

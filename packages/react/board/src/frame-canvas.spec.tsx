@@ -1,20 +1,26 @@
-import React, { act, createRef } from 'react';
-import { createRoot } from 'react-dom/client';
-import { describe, expect, it, vi } from 'vitest';
 import {
-  createFrameCell,
-  createCellStore,
-  createCellRuntime,
   applyCellOperations,
-  createCellRegistry,
+  createCellRuntime,
+  createCellStore,
+  createFrameCell,
   frameContentViewport,
-  NodeUtil,
   isNodeCell,
+  NodeUtil,
   type Cell,
   type CellStore,
   type FrameSnapshot,
 } from '@sue/board-core';
+import { act, createRef } from 'react';
+import { createRoot } from 'react-dom/client';
+import { describe, expect, it, vi } from 'vitest';
+import {
+  createTestCellRegistry as createFixtureRegistry,
+  createTestCellRegistry,
+} from '../../../../tests/fixtures/plugins/registry';
+import { createTestFramePluginSet } from '../../../../tests/fixtures/plugins/ui';
 import { FrameCanvas, type FrameCanvasController } from './frame-canvas';
+const testFramePluginSet = createTestFramePluginSet();
+const testCellRegistry = createFixtureRegistry();
 // Admission is intentionally deferred; let each admitted tree commit before
 // advancing the shared queue to the next reference.
 const waitForReference = async (ready: () => boolean) => {
@@ -26,24 +32,146 @@ const waitForReference = async (ready: () => boolean) => {
   expect(ready()).toBe(true);
 };
 const snapshot = (): FrameSnapshot => ({
-  store: applyCellOperations(createCellStore(createFrameCell('root')), [
-    {
-      type: 'insert_cell',
-      parentId: 'root',
-      cell: {
-        id: 'a',
-        kind: 'geometry',
-        cellType: 'node',
-        geometry: { x: 10, y: 10, width: 100, height: 50 },
-        content: { label: 'Hello' },
+  store: applyCellOperations(
+    createCellStore(createFrameCell('root')),
+    [
+      {
+        type: 'insert_cell',
+        parentId: 'root',
+        cell: {
+          id: 'a',
+          kind: 'geometry',
+          cellType: 'node',
+          geometry: { x: 10, y: 10, width: 100, height: 50 },
+          content: { label: 'Hello' },
+        },
       },
-    },
-  ]),
+    ],
+    testCellRegistry,
+  ),
 });
 (
   globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }
 ).IS_REACT_ACT_ENVIRONMENT = true;
 describe('FrameCanvas', () => {
+  it('gives an active pointer gesture the keyboard until Escape cancels it', async () => {
+    const container = document.createElement('div'),
+      root = createRoot(container),
+      ref = createRef<FrameCanvasController>(),
+      onChange = vi.fn();
+    try {
+      await act(async () =>
+        root.render(
+          <FrameCanvas
+            ref={ref}
+            value={snapshot()}
+            registry={testCellRegistry}
+            onChange={onChange}
+          />,
+        ),
+      );
+      const svg = container.querySelector('svg')!;
+      svg.setPointerCapture = vi.fn();
+      await act(async () => {
+        container.querySelector('[data-cell-id="a"]')!.dispatchEvent(
+          new MouseEvent('pointerdown', {
+            bubbles: true,
+            button: 0,
+            clientX: 30,
+            clientY: 30,
+          }),
+        );
+        svg.dispatchEvent(
+          new KeyboardEvent('keydown', {
+            bubbles: true,
+            cancelable: true,
+            key: 'Delete',
+          }),
+        );
+      });
+      expect(ref.current!.runtime.store.cells.a).toBeDefined();
+      expect(onChange).not.toHaveBeenCalled();
+      await act(async () =>
+        svg.dispatchEvent(
+          new KeyboardEvent('keydown', {
+            bubbles: true,
+            cancelable: true,
+            key: 'Escape',
+          }),
+        ),
+      );
+      await act(async () =>
+        svg.dispatchEvent(
+          new KeyboardEvent('keydown', {
+            bubbles: true,
+            cancelable: true,
+            key: 'Delete',
+          }),
+        ),
+      );
+      expect(ref.current!.runtime.store.cells.a).toBeUndefined();
+      expect(onChange).toHaveBeenCalledOnce();
+    } finally {
+      await act(async () => root.unmount());
+    }
+  });
+
+  it('runs extension actions when the consumer does not request an imperative ref', async () => {
+    const container = document.createElement('div'),
+      root = createRoot(container),
+      onChange = vi.fn();
+    try {
+      await act(async () =>
+        root.render(
+          <FrameCanvas
+            value={snapshot()}
+            registry={testCellRegistry}
+            onChange={onChange}
+            extensions={[
+              {
+                kind: 'geometry',
+                render: ({ cell, geometry, dispatch }) => (
+                  <foreignObject
+                    x={geometry!.x}
+                    y={geometry!.y}
+                    width={100}
+                    height={40}
+                  >
+                    <button
+                      onClick={() =>
+                        void dispatch({
+                          id: 'extension-edit',
+                          operations: [
+                            {
+                              type: 'replace_cell',
+                              cell: {
+                                ...cell,
+                                content: { label: 'Updated' },
+                              } as Cell,
+                            },
+                          ],
+                        })
+                      }
+                    >
+                      Update
+                    </button>
+                  </foreignObject>
+                ),
+              },
+            ]}
+          />,
+        ),
+      );
+      await act(async () => container.querySelector('button')!.click());
+      expect(onChange).toHaveBeenCalledOnce();
+      expect(
+        onChange.mock.calls[0][0].snapshot.store.cells.a.content.label,
+      ).toBe('Updated');
+    } finally {
+      await act(async () => root.unmount());
+    }
+  });
+
   it('keeps complete appearance paths for inner references reached through different shells', async () => {
     const reference = (id: string, targetFrameId: string): Cell =>
       ({
@@ -86,6 +214,7 @@ describe('FrameCanvas', () => {
             id,
             createCellRuntime(
               query.targetFrameId === 'middle' ? middle : snapshot(),
+              testCellRegistry,
             ),
           );
         return {
@@ -103,6 +232,7 @@ describe('FrameCanvas', () => {
       await act(async () =>
         root.render(
           <FrameCanvas
+            pluginSet={testFramePluginSet}
             value={board}
             instanceHost={host}
             autoFit={false}
@@ -122,7 +252,7 @@ describe('FrameCanvas', () => {
 
   it('presents a shared reference without resetting its editor selection or activating it', async () => {
     const target = snapshot();
-    const runtime = createCellRuntime(target);
+    const runtime = createCellRuntime(target, testCellRegistry);
     const shell: FrameSnapshot = {
       store: {
         rootId: 'board',
@@ -164,6 +294,7 @@ describe('FrameCanvas', () => {
       root.render(
         <>
           <FrameCanvas
+            pluginSet={testFramePluginSet}
             key="editor"
             value={shell}
             frameId="board"
@@ -173,6 +304,7 @@ describe('FrameCanvas', () => {
           />
           {present && (
             <FrameCanvas
+              pluginSet={testFramePluginSet}
               key="present"
               value={shell}
               frameId="board"
@@ -241,27 +373,20 @@ describe('FrameCanvas', () => {
 
   it('selects a keyboard-created cell only after an accepted transaction and host snapshot arrive', async () => {
     class CreateTopic extends NodeUtil {
-      readonly kind = 'geometry';
-      keyboard(_store: CellStore, cell: Cell, key: string) {
-        return key === 'Tab' && isNodeCell(cell)
-          ? [
-              {
-                type: 'insert_cell' as const,
-                parentId: 'root',
-                cell: { ...cell, id: 'new-topic' },
-              },
-            ]
-          : undefined;
-      }
+      readonly kind = 'custom-topic';
     }
     for (const hostMode of [false, true]) {
       const container = document.createElement('div'),
         root = createRoot(container),
         ref = createRef<FrameCanvasController>();
-      const registry = createCellRegistry();
+      const registry = createTestCellRegistry();
       registry.register(new CreateTopic());
       const original = snapshot(),
         onSelectionChange = vi.fn();
+      original.store.cells.a = {
+        ...original.store.cells.a,
+        kind: 'custom-topic',
+      };
       let release!: (result: { status: 'accepted' | 'rejected' }) => void;
       let intent: import('@sue/board-core').CellTransaction | undefined;
       const adapter = { toFrameSnapshot: (value: FrameSnapshot) => value };
@@ -272,6 +397,27 @@ describe('FrameCanvas', () => {
               ref={ref}
               value={value}
               registry={registry}
+              actionHost={{
+                actions: [
+                  {
+                    id: 'custom.add',
+                    label: 'Add',
+                    effect: 'content',
+                    shortcuts: [{ key: 'Tab' }],
+                    execute: (c) =>
+                      c.runOperations(
+                        [
+                          {
+                            type: 'insert_cell',
+                            parentId: 'root',
+                            cell: { ...c.store.cells.a, id: 'new-topic' },
+                          },
+                        ],
+                        { selectionIds: ['new-topic'] },
+                      ),
+                  },
+                ],
+              }}
               adapter={adapter}
               onSelectionChange={onSelectionChange}
               onIntent={(transaction) => {
@@ -286,6 +432,27 @@ describe('FrameCanvas', () => {
               ref={ref}
               value={value}
               registry={registry}
+              actionHost={{
+                actions: [
+                  {
+                    id: 'custom.add',
+                    label: 'Add',
+                    effect: 'content',
+                    shortcuts: [{ key: 'Tab' }],
+                    execute: (c) =>
+                      c.runOperations(
+                        [
+                          {
+                            type: 'insert_cell',
+                            parentId: 'root',
+                            cell: { ...c.store.cells.a, id: 'new-topic' },
+                          },
+                        ],
+                        { selectionIds: ['new-topic'] },
+                      ),
+                  },
+                ],
+              }}
               onChange={() => {}}
               onSelectionChange={onSelectionChange}
             />
@@ -324,7 +491,11 @@ describe('FrameCanvas', () => {
         expect(ref.current!.runtime.selection.ids).toEqual(['a']);
         await act(async () =>
           render({
-            store: applyCellOperations(original.store, intent!.operations),
+            store: applyCellOperations(
+              original.store,
+              intent!.operations,
+              registry,
+            ),
           }),
         );
       }
@@ -347,12 +518,18 @@ describe('FrameCanvas', () => {
       root.render(
         <>
           <FrameCanvas
+            pluginSet={testFramePluginSet}
             ref={left}
             value={value}
             onChange={() => {}}
             onSelectionChange={onSelectionChange}
           />
-          <FrameCanvas ref={right} value={value} onChange={() => {}} />
+          <FrameCanvas
+            pluginSet={testFramePluginSet}
+            ref={right}
+            value={value}
+            onChange={() => {}}
+          />
         </>,
       ),
     );
@@ -381,6 +558,7 @@ describe('FrameCanvas', () => {
     await act(async () =>
       root.render(
         <FrameCanvas
+          pluginSet={testFramePluginSet}
           ref={ref}
           value={snapshot()}
           readonly
@@ -415,6 +593,7 @@ describe('FrameCanvas', () => {
     const render = (value: FrameSnapshot) =>
       root.render(
         <FrameCanvas
+          pluginSet={testFramePluginSet}
           ref={ref}
           value={value}
           adapter={adapter}
@@ -431,15 +610,17 @@ describe('FrameCanvas', () => {
     });
     expect(ref.current!.runtime.store.cells.a).toBeTruthy();
     const accepted = {
-      store: applyCellOperations(value.store, [
-        { type: 'remove_cell', cellId: 'a' },
-      ]),
+      store: applyCellOperations(
+        value.store,
+        [{ type: 'remove_cell', cellId: 'a' }],
+        testCellRegistry,
+      ),
     };
     await act(async () => render(accepted));
     expect(ref.current!.runtime.store.cells.a).toBeUndefined();
     await act(async () => {
-      ref.current!.undo();
-      ref.current!.redo();
+      ref.current!.executeAction('canvas.history.undo');
+      ref.current!.executeAction('canvas.history.redo');
     });
     expect(history.undo).toHaveBeenCalledOnce();
     expect(history.redo).toHaveBeenCalledOnce();
@@ -453,7 +634,12 @@ describe('FrameCanvas', () => {
       onChange = vi.fn();
     await act(async () =>
       root.render(
-        <FrameCanvas ref={ref} value={snapshot()} onChange={onChange} />,
+        <FrameCanvas
+          pluginSet={testFramePluginSet}
+          ref={ref}
+          value={snapshot()}
+          onChange={onChange}
+        />,
       ),
     );
     expect(container.textContent).toContain('Hello');
@@ -464,7 +650,7 @@ describe('FrameCanvas', () => {
       });
     });
     expect(onChange.mock.calls[0][0].snapshot.store.cells.a).toBeUndefined();
-    await act(async () => ref.current!.undo());
+    await act(async () => ref.current!.executeAction('canvas.history.undo'));
     expect(ref.current!.runtime.store.cells.a).toBeTruthy();
     await act(async () => root.unmount());
     container.remove();
@@ -485,6 +671,7 @@ describe('FrameCanvas', () => {
     await act(async () =>
       root.render(
         <FrameCanvas
+          pluginSet={testFramePluginSet}
           ref={ref}
           value={value}
           adapter={{ toFrameSnapshot: (value) => value }}
@@ -516,18 +703,22 @@ describe('FrameCanvas', () => {
   it('selects a pasted cell for either host arrival order and ignores a rejected or superseded request', async () => {
     const adapter = { toFrameSnapshot: (value: FrameSnapshot) => value };
     const pasted = (value: FrameSnapshot, id: string): FrameSnapshot => ({
-      store: applyCellOperations(value.store, [
-        {
-          type: 'insert_cell',
-          parentId: 'root',
-          cell: {
-            id,
-            kind: 'geometry',
-            cellType: 'node',
-            geometry: { x: 200, y: 10, width: 40, height: 20 },
+      store: applyCellOperations(
+        value.store,
+        [
+          {
+            type: 'insert_cell',
+            parentId: 'root',
+            cell: {
+              id,
+              kind: 'geometry',
+              cellType: 'node',
+              geometry: { x: 200, y: 10, width: 40, height: 20 },
+            },
           },
-        },
-      ]),
+        ],
+        testCellRegistry,
+      ),
     });
     const run = async (
       order: 'accept-first' | 'write-first' | 'reject' | 'reselect' | 'delay',
@@ -543,6 +734,7 @@ describe('FrameCanvas', () => {
       const render = (value: FrameSnapshot) =>
         root.render(
           <FrameCanvas
+            pluginSet={testFramePluginSet}
             ref={ref}
             value={value}
             adapter={adapter}
@@ -574,7 +766,13 @@ describe('FrameCanvas', () => {
       );
       const nextId =
         inserted && inserted.type === 'insert_cell' ? inserted.cell.id : '';
-      const next = pasted(original, nextId);
+      const next = {
+        store: applyCellOperations(
+          original.store,
+          intent!.operations,
+          testCellRegistry,
+        ),
+      };
       const resultPromise = Promise.resolve({ status: 'accepted' as const });
       if (order === 'write-first') {
         await act(async () => render(next));
@@ -652,7 +850,13 @@ describe('FrameCanvas', () => {
     const root = createRoot(container);
     const onChange = vi.fn();
     await act(async () =>
-      root.render(<FrameCanvas value={snapshot()} onChange={onChange} />),
+      root.render(
+        <FrameCanvas
+          pluginSet={testFramePluginSet}
+          value={snapshot()}
+          onChange={onChange}
+        />,
+      ),
     );
     const svg = container.querySelector('svg')!;
     svg.getBoundingClientRect = () =>
@@ -727,7 +931,13 @@ describe('FrameCanvas', () => {
       const root = createRoot(container);
       const onChange = vi.fn();
       await act(async () =>
-        root.render(<FrameCanvas value={snapshot()} onChange={onChange} />),
+        root.render(
+          <FrameCanvas
+            pluginSet={testFramePluginSet}
+            value={snapshot()}
+            onChange={onChange}
+          />,
+        ),
       );
       const svg = container.querySelector('svg')!;
       svg.getBoundingClientRect = () =>
@@ -872,7 +1082,12 @@ describe('FrameCanvas', () => {
     const ref = createRef<FrameCanvasController>();
     await act(async () =>
       root.render(
-        <FrameCanvas ref={ref} value={snapshot()} onChange={onChange} />,
+        <FrameCanvas
+          pluginSet={testFramePluginSet}
+          ref={ref}
+          value={snapshot()}
+          onChange={onChange}
+        />,
       ),
     );
     const svg = container.querySelector('svg')!;
@@ -966,6 +1181,7 @@ describe('FrameCanvas', () => {
     await act(async () =>
       root.render(
         <FrameCanvas
+          pluginSet={testFramePluginSet}
           ref={ref}
           value={{ store }}
           frameId="board"
@@ -1004,6 +1220,7 @@ describe('FrameCanvas', () => {
     await act(async () =>
       root.render(
         <FrameCanvas
+          pluginSet={testFramePluginSet}
           ref={ref}
           value={{ store }}
           frameId="board"
@@ -1071,6 +1288,7 @@ describe('FrameCanvas', () => {
     await act(async () =>
       root.render(
         <FrameCanvas
+          pluginSet={testFramePluginSet}
           value={{ store }}
           frameId="board"
           onChange={() => {}}
@@ -1166,14 +1384,17 @@ describe('reference instance editing', () => {
     inputMode?: 'edit' | 'present';
     tool?: { mode: 'hand' };
   }) => {
-    const left = createCellRuntime({ store: mindStore() });
-    const right = createCellRuntime({ store: mindStore() });
-    const empty = createCellRuntime({
-      store: {
-        rootId: 'empty',
-        cells: { empty: createFrameCell('empty') as Cell },
+    const left = createCellRuntime({ store: mindStore() }, testCellRegistry);
+    const right = createCellRuntime({ store: mindStore() }, testCellRegistry);
+    const empty = createCellRuntime(
+      {
+        store: {
+          rootId: 'empty',
+          cells: { empty: createFrameCell('empty') as Cell },
+        },
       },
-    });
+      testCellRegistry,
+    );
     const commits: { id: string; cellIds: string[] }[] = [];
     const active: string[] = [];
     const host = {
@@ -1237,6 +1458,7 @@ describe('reference instance editing', () => {
     await act(async () =>
       root.render(
         <FrameCanvas
+          pluginSet={testFramePluginSet}
           value={{ store: boardStore() }}
           frameId="board"
           onChange={() => {}}
@@ -1414,6 +1636,7 @@ describe('reference instance editing', () => {
     const first = view.cell('r1', 'topic')!;
     await act(async () => {
       first.dispatchEvent(pointer('pointerdown'));
+      first.dispatchEvent(pointer('pointerup'));
     });
     const nested = view.container.querySelector(
       '[data-reference-instance="r1"] svg',
@@ -1502,7 +1725,7 @@ describe('reference instance editing', () => {
 
   it('keeps an inner mind node inside the reference surface so a pointer selects it', async () => {
     const shell = { x: 400, y: 280, width: 280, height: 180 };
-    const mind = createCellRuntime({ store: mindStore() });
+    const mind = createCellRuntime({ store: mindStore() }, testCellRegistry);
     const store: CellStore = {
       rootId: 'board',
       cells: {
@@ -1536,6 +1759,7 @@ describe('reference instance editing', () => {
     await act(async () =>
       root.render(
         <FrameCanvas
+          pluginSet={testFramePluginSet}
           value={{ store }}
           frameId="board"
           onChange={() => {}}
@@ -1569,22 +1793,25 @@ describe('reference instance editing', () => {
   });
 
   it('renders a regular-canvas preview and selects only the immediate shell on an inner background tap', async () => {
-    const mind = createCellRuntime({ store: mindStore() });
-    const page = createCellRuntime({
-      store: {
-        rootId: 'page',
-        cells: {
-          page: { ...createFrameCell('page'), children: ['inner'] } as Cell,
-          inner: {
-            id: 'inner',
-            kind: 'frame-reference',
-            cellType: 'node',
-            geometry: { x: 24, y: 24, width: 200, height: 120 },
-            data: { targetFrameId: 'mind' },
-          } as Cell,
+    const mind = createCellRuntime({ store: mindStore() }, testCellRegistry);
+    const page = createCellRuntime(
+      {
+        store: {
+          rootId: 'page',
+          cells: {
+            page: { ...createFrameCell('page'), children: ['inner'] } as Cell,
+            inner: {
+              id: 'inner',
+              kind: 'frame-reference',
+              cellType: 'node',
+              geometry: { x: 24, y: 24, width: 200, height: 120 },
+              data: { targetFrameId: 'mind' },
+            } as Cell,
+          },
         },
       },
-    });
+      testCellRegistry,
+    );
     const store: CellStore = {
       rootId: 'board',
       cells: {
@@ -1630,6 +1857,7 @@ describe('reference instance editing', () => {
     await act(async () =>
       root.render(
         <FrameCanvas
+          pluginSet={testFramePluginSet}
           value={{ store }}
           frameId="board"
           onChange={() => {}}

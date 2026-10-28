@@ -1,13 +1,13 @@
+import { isNodeCell, validateCellStore } from '@sue/board-core';
+import { mindChildIds, MindKind } from '@sue/board-mind';
 import { describe, expect, it } from 'vitest';
-import { CellKind, isNodeCell, validateCellStore } from '@sue/board-core';
-import { mindChildIds, registerMindCells } from '@sue/board-mind';
-import { createCellRegistry } from '@sue/board-core';
+import { createTestCellRegistry } from '../../../../tests/fixtures/plugins/registry';
 import {
   parseMarkdownToFrameSnapshot,
   serializeFrameToMarkdown,
 } from './index';
-const registry = createCellRegistry();
-registerMindCells(registry);
+const registry = createTestCellRegistry();
+
 const labels = (
   snapshot: ReturnType<typeof parseMarkdownToFrameSnapshot>,
   parentId = 'markdown:root',
@@ -78,14 +78,14 @@ describe('Markdown Frame conversion', () => {
         { label: 'Source', children: [{ label: 'Child', children: [] }] },
       ],
     });
-    expect(snapshot.store.cells['markdown:root'].kind).toBe(CellKind.mindRoot);
+    expect(snapshot.store.cells['markdown:root'].kind).toBe(MindKind.mindRoot);
   });
   it('retains independent central topics and includes visible notes in export', () => {
     const snapshot = parseMarkdownToFrameSnapshot(
       '# First\n## A\n# Second\n## B',
     );
     const roots = Object.values(snapshot.store.cells).filter(
-      (cell) => cell.kind === CellKind.mindRoot,
+      (cell) => cell.kind === MindKind.mindRoot,
     );
     expect(roots).toHaveLength(2);
     expect(roots.map((root) => labels(snapshot, root.id))).toEqual([
@@ -96,7 +96,7 @@ describe('Markdown Frame conversion', () => {
     const again = parseMarkdownToFrameSnapshot(exported);
     expect(
       Object.values(again.store.cells).filter(
-        (cell) => cell.kind === CellKind.mindRoot,
+        (cell) => cell.kind === MindKind.mindRoot,
       ),
     ).toHaveLength(2);
     if (!isNodeCell(roots[0])) throw new Error('Missing root');

@@ -20,7 +20,9 @@
     "@sue/board-common": "workspace:*",
     "@sue/board-core": "workspace:*",
     "@sue/board-mind": "workspace:*",
-    "@sue/board-react": "workspace:*"
+    "@sue/board-react": "workspace:*",
+    "@sue/board-layouts": "workspace:*",
+    "@sue/board-react-text": "workspace:*"
   },
   "peerDependencies": {
     "react": ">=18",
@@ -38,6 +40,10 @@
       "import": "./dist/index.js",
       "require": "./dist/index.cjs",
       "default": "./dist/index.js"
+    },
+    "./style.css": {
+      "development": "./src/style.scss",
+      "default": "./dist/style.css"
     }
   },
   "publishConfig": {
@@ -50,7 +56,8 @@
         "import": "./dist/index.js",
         "require": "./dist/index.cjs",
         "default": "./dist/index.js"
-      }
+      },
+      "./style.css": "./dist/style.css"
     },
     "registry": "https://packages.aliyun.com/69f800449b7ce0afb00bda0e/npm/npm-registry/",
     "access": "public"
@@ -59,5 +66,10 @@
     "type": "git",
     "url": "git+https://github.com/WinstonSue/verd-board.git",
     "directory": "packages/react/mind"
-  }
+  },
+  "sideEffects": [
+    "**/*.css",
+    "**/*.scss",
+    "./src/style.ts"
+  ]
 }

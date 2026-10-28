@@ -1,26 +1,23 @@
-import { describe, expect, it } from 'vitest';
 import {
-  createCellRegistry,
   createCellRuntime,
   createEdgeRoutingContext,
   edgePolyline,
   type EdgeCell,
 } from '@sue/board-core';
+import { describe, expect, it } from 'vitest';
+import { createTestCellRegistry } from '../../../../tests/fixtures/plugins/registry';
 import {
-  registerArchitectureCells,
-  layoutArchitectureCells,
-} from './cell-utils';
-import {
+  addArchitectureModule,
   createArchitectureFrameSnapshot,
   createArchitectureLayerCell,
   createArchitectureModuleCell,
-  addArchitectureModule,
 } from './cell-commands';
+import { layoutArchitectureCells } from './cell-utils';
 
 describe('architecture long-edge routing', () => {
   it('avoids modules across eleven transparent layers without moving any geometry', () => {
-    const registry = createCellRegistry();
-    registerArchitectureCells(registry);
+    const registry = createTestCellRegistry();
+
     const r = createCellRuntime(
       createArchitectureFrameSnapshot('frame', 'layer-0'),
       registry,
@@ -65,7 +62,13 @@ describe('architecture long-edge routing', () => {
     });
     const before = structuredClone(r.store),
       geometry = layoutArchitectureCells(r.store, 'frame');
-    const context = createEdgeRoutingContext(r.store, 'frame', geometry);
+    const context = createEdgeRoutingContext(
+      r.store,
+      'frame',
+      geometry,
+      undefined,
+      registry,
+    );
     expect(context.obstacles).toHaveLength(15);
     const points = edgePolyline(r.store, edge, geometry, context);
     expect(context.routes.get(edge.id)?.result.status).not.toBe('blocked');

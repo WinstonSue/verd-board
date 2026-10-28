@@ -50,6 +50,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
       ipcRenderer.invoke('workspace-host:open', request),
     activateWorkspace: (handle: unknown) =>
       ipcRenderer.invoke('workspace-host:activate', handle),
+    listWorkspaceHistory: () => ipcRenderer.invoke('workspace-host:history'),
     readSnapshot: (handle: unknown) =>
       ipcRenderer.invoke('workspace-host:snapshot', handle),
     readFile: (handle: unknown, path: string) =>

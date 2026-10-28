@@ -1,22 +1,24 @@
-import { expect, test, type Page, type Locator } from '@playwright/test';
+import { expect, test, type Locator, type Page } from '@playwright/test';
 import {
-  createInlineText,
   createBlockText,
+  createInlineText,
 } from '../../../packages/engine/common/src/public-api';
+import { applyCellOperations } from '../../../packages/engine/core/src/cell/index';
 import {
   createCellStore,
   createFrameCell,
   type FrameSnapshot,
   type NodeCell,
 } from '../../../packages/engine/core/src/cell/types';
-import { applyCellOperations } from '../../../packages/engine/core/src/cell/index';
 import {
-  createMindFrameSnapshot,
-  createMindChildCell,
   addMindChild,
+  createMindChildCell,
+  createMindFrameSnapshot,
 } from '../../../packages/engine/mind/src/cell-commands';
+import { createTestCellRegistry as createFixtureRegistry } from '../../fixtures/plugins/registry';
 import { openSettings } from './app-actions';
 import { expandPropertyGroup } from './property-group';
+const testCellRegistry = createFixtureRegistry();
 test.use({ actionTimeout: 6000 });
 const canvas = (page: Page) =>
   page.locator('svg[aria-label="Frame canvas"][data-surface="root"]:visible');
@@ -116,6 +118,7 @@ function mindFixture() {
     store: applyCellOperations(
       snapshot.store,
       addMindChild(snapshot.store, 'root', topic, 'edge'),
+      testCellRegistry,
     ),
   };
   return snapshot;
@@ -195,6 +198,7 @@ test('selected shapes fit content with their current width as a cap and undo res
         parentId: 'frame',
         cell,
       })),
+      testCellRegistry,
     ),
   });
   await node(page, 'topic').click();

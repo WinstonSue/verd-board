@@ -194,6 +194,14 @@ export function FrameTextEditor({
       onBlur={(event) => {
         if (restoringRef.current) return;
         const next = event.relatedTarget as Node | null;
+        const scope = event.currentTarget.closest('[data-action-scope]');
+        if (
+          scope &&
+          next instanceof Element &&
+          next.closest('[data-action-panel]') &&
+          next.closest('[data-action-scope]') === scope
+        )
+          return;
         if (
           !event.currentTarget.contains(next) &&
           !toolbarRef.current?.contains(next)

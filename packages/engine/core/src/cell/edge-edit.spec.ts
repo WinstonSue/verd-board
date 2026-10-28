@@ -1,48 +1,58 @@
 import { describe, expect, it } from 'vitest';
-import { createCellStore, createFrameCell, type EdgeCell } from './types';
+import { createTestCellRegistry as createFixtureRegistry } from '../../../../../tests/fixtures/plugins/registry';
+import { edgePolyline } from '../geometry/edge';
 import type { Point } from '../interfaces/point';
-import { applyCellOperations } from './index';
 import {
-  snapEdgeTerminal,
-  replaceEdgeTerminal,
+  bindEdgeRouteTerminals,
   moveEdgeRoutePoint,
   moveEdgeSegment,
   polylineClosestPosition,
-  bindEdgeRouteTerminals,
+  replaceEdgeTerminal,
+  snapEdgeTerminal,
 } from './edge-edit';
-import { edgePolyline } from '../geometry/edge';
+import { applyCellOperations } from './index';
 import { normalizeCellPositionOperations } from './position';
+import { createCellStore, createFrameCell, type EdgeCell } from './types';
+const testCellRegistry = createFixtureRegistry();
 describe('native edge editing', () => {
-  const store = applyCellOperations(createCellStore(createFrameCell('root')), [
-    {
-      type: 'insert_cell',
-      parentId: 'root',
-      cell: {
-        id: 'a',
-        kind: 'geometry',
-        cellType: 'node',
-        geometry: {
-          x: 100,
-          y: 100,
-          width: 160,
-          height: 100,
-          outline: 'diamond',
+  const store = applyCellOperations(
+    createCellStore(createFrameCell('root')),
+    [
+      {
+        type: 'insert_cell',
+        parentId: 'root',
+        cell: {
+          id: 'a',
+          kind: 'geometry',
+          cellType: 'node',
+          geometry: {
+            x: 100,
+            y: 100,
+            width: 160,
+            height: 100,
+            outline: 'diamond',
+          },
+          ports: [{ id: 'right', side: 'right', direction: 'both' }],
         },
-        ports: [{ id: 'right', side: 'right', direction: 'both' }],
       },
-    },
-    { type: 'insert_cell', parentId: 'root', cell: createFrameCell('nested') },
-    {
-      type: 'insert_cell',
-      parentId: 'nested',
-      cell: {
-        id: 'b',
-        kind: 'geometry',
-        cellType: 'node',
-        geometry: { x: 400, y: 100, width: 100, height: 100 },
+      {
+        type: 'insert_cell',
+        parentId: 'root',
+        cell: createFrameCell('nested'),
       },
-    },
-  ]);
+      {
+        type: 'insert_cell',
+        parentId: 'nested',
+        cell: {
+          id: 'b',
+          kind: 'geometry',
+          cellType: 'node',
+          geometry: { x: 400, y: 100, width: 100, height: 100 },
+        },
+      },
+    ],
+    testCellRegistry,
+  );
   const edge: EdgeCell = {
     id: 'e',
     kind: 'arrow',
@@ -59,17 +69,53 @@ describe('native edge editing', () => {
     },
   };
   it('snaps to actual ports or shape boundaries and never to another Frame child', () => {
-    expect(snapEdgeTerminal(store, 'root', [259, 150], 'target')).toEqual({
+    expect(
+      snapEdgeTerminal(
+        store,
+        'root',
+        [259, 150],
+        'target',
+        'arrow',
+        12,
+        testCellRegistry,
+      ),
+    ).toEqual({
       cellId: 'a',
       portId: 'right',
     });
-    const anchor = snapEdgeTerminal(store, 'root', [180, 101], 'source');
+    const anchor = snapEdgeTerminal(
+      store,
+      'root',
+      [180, 101],
+      'source',
+      'arrow',
+      12,
+      testCellRegistry,
+    );
     expect(anchor).toMatchObject({ cellId: 'a' });
-    expect(snapEdgeTerminal(store, 'root', [450, 150], 'source')).toEqual({
+    expect(
+      snapEdgeTerminal(
+        store,
+        'root',
+        [450, 150],
+        'source',
+        'arrow',
+        12,
+        testCellRegistry,
+      ),
+    ).toEqual({
       point: [450, 150],
     });
     expect(
-      snapEdgeTerminal(store, 'root', [102, 102], 'source', 'arrow', 0),
+      snapEdgeTerminal(
+        store,
+        'root',
+        [102, 102],
+        'source',
+        'arrow',
+        0,
+        testCellRegistry,
+      ),
     ).toEqual({ point: [102, 102] });
   });
   it('updates explicit route endpoints when binding and releasing an arrow', () => {
@@ -100,7 +146,11 @@ describe('native edge editing', () => {
     ];
     const orthogonal = {
       ...edge,
-      route: { mode: 'orthogonal' as const, points },
+      route: {
+        mode: 'orthogonal' as const,
+        points,
+        strategy: 'optimized' as const,
+      },
     };
     for (const edited of [
       moveEdgeRoutePoint(orthogonal, points, 1, [80, -40]),
@@ -108,6 +158,9 @@ describe('native edge editing', () => {
     ]) {
       if (!('points' in edited.route))
         throw new Error('Missing explicit route');
+      expect('strategy' in edited.route && edited.route.strategy).toBe(
+        'optimized',
+      );
       const result = edited.route.points!;
       expect(result[0]).toEqual(points[0]);
       expect(result.at(-1)).toEqual(points.at(-1));
@@ -202,12 +255,12 @@ describe('native edge editing', () => {
     const connector = graph.cells['edge-first'] as EdgeCell;
     const points = edgePolyline(graph, connector);
     expect(points[0][0]).toBe(120);
-    expect(points[0][1]).toBeCloseTo(100 / 3);
+    expect(points[0][1]).toBe(16);
     const bound = bindEdgeRouteTerminals(graph, connector, points);
     expect(bound.source).toMatchObject({ cellId: 'source' });
     if (!('cellId' in bound.source)) throw new Error('Missing bound source');
     expect(bound.source.anchor![0]).toBe(1);
-    expect(bound.source.anchor![1]).toBeCloseTo(1 / 3);
+    expect(bound.source.anchor![1]).toBeCloseTo(0.16);
     for (const edited of [
       moveEdgeRoutePoint(bound, points, 1, [
         points[1][0] + 16,

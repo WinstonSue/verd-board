@@ -1,4 +1,5 @@
 import { useRef, useState, type RefObject } from 'react';
+import { flushSync } from 'react-dom';
 import { MoreHorizontal, type LucideIcon } from 'lucide-react';
 import {
   autoUpdate,
@@ -16,28 +17,52 @@ import {
   useRole,
 } from '@floating-ui/react';
 import { FrameIconButton } from './frame-icon-button';
+import {
+  formatActionShortcut,
+  useActionSource,
+  type ActionSource,
+} from '@sue/board-react-actions';
 import { useI18n } from './i18n';
 
 export interface FrameAppMenuItem {
   id: string;
+  actionId?: string;
   label: string;
   icon: LucideIcon;
   group: string;
   disabled?: boolean;
   shortcut?: string;
-  onSelect(): void;
+  onSelect(): void | Promise<void>;
 }
 
 export function FrameAppMenu({
   items,
   buttonRef,
   onOpen,
+  source,
 }: {
   items: readonly FrameAppMenuItem[];
+  source?: ActionSource;
   buttonRef: RefObject<HTMLButtonElement | null>;
   onOpen(): void;
 }) {
   const { t } = useI18n();
+  useActionSource(source);
+  items = items.map((item) => {
+    const action = item.actionId
+      ? source?.actions().find((action) => action.id === item.actionId)
+      : undefined;
+    if (!action) return item;
+    const state = action.getState();
+    return {
+      ...item,
+      disabled: !state.visible || !state.enabled,
+      shortcut:
+        action.shortcuts
+          ?.map((shortcut) => formatActionShortcut(shortcut))
+          .join(' / ') || item.shortcut,
+    };
+  });
   const [open, setOpen] = useState(false);
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
   const [returnFocus, setReturnFocus] = useState(true);
@@ -141,7 +166,10 @@ export function FrameAppMenu({
                     tabIndex={activeIndex === index ? 0 : -1}
                     {...getItemProps({
                       onClick: () => {
-                        setReturnFocus(false);
+                        // Commit before unmount so the menu's focus manager
+                        // cannot steal focus from the action's newly opened panel.
+                        // Keep execution in this event stack for user activation.
+                        flushSync(() => setReturnFocus(false));
                         setOpen(false);
                         onSelect();
                       },

@@ -1,3 +1,4 @@
+import { createBlockText, type BoardTextDocument } from '@sue/board-common';
 import type {
   CellOperation,
   NodeCell,
@@ -5,7 +6,6 @@ import type {
   Point,
   RectangleClient,
 } from '@sue/board-core';
-import { createBlockText, type BoardTextDocument } from '@sue/board-common';
 import type { TableCellData, TableEntry } from './cell-commands';
 
 export type TableTrack = 'row' | 'column';

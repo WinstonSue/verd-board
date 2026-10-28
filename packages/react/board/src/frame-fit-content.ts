@@ -1,4 +1,9 @@
 import {
+  createInlineText,
+  isBoardTextDocument,
+  type BoardTextDocument,
+} from '@sue/board-common';
+import {
   BaseCellUtil,
   groupLeafMembers,
   indexCells,
@@ -6,26 +11,14 @@ import {
   isNodeCell,
   nodeShapeGeometry,
   selectionAllows,
-  type CellStore,
+  type CellOperation,
   type CellRegistry,
+  type CellStore,
   type NodeCell,
   type NodeGeometry,
-  type CellOperation,
 } from '@sue/board-core';
-import {
-  createInlineText,
-  isBoardTextDocument,
-  type BoardTextDocument,
-} from '@sue/board-common';
 import { measureBoardText } from '@sue/board-react-text';
 
-const supported = new Set([
-  'geometry',
-  'workflow-start',
-  'workflow-task',
-  'workflow-decision',
-  'architecture-module',
-]);
 export function fitContentCandidates(
   store: CellStore,
   frameId: string,
@@ -42,7 +35,7 @@ export function fitContentCandidates(
     const cell = store.cells[id];
     if (
       !isNodeCell(cell) ||
-      !supported.has(cell.kind) ||
+      registry.get(cell.kind)?.fitText !== true ||
       cell.hidden ||
       parents.get(id) !== frameId ||
       !selectionAllows(store, [id], registry, 'resize', frameId)

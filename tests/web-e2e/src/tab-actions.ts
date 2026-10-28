@@ -4,7 +4,7 @@ export const openGroups = async (page: Page) => {
   const toggle = strip(page).getByLabel('选择分组', { exact: true });
   if (
     !(await strip(page)
-      .getByRole('button', { name: '＋ 新建分组', exact: true })
+      .getByRole('button', { name: '新建分组', exact: true })
       .isVisible())
   )
     await toggle.click();
@@ -12,7 +12,7 @@ export const openGroups = async (page: Page) => {
 export const createGroup = async (page: Page, name: string) => {
   await openGroups(page);
   await strip(page)
-    .getByRole('button', { name: '＋ 新建分组', exact: true })
+    .getByRole('button', { name: '新建分组', exact: true })
     .click();
   const dialog = page.getByRole('dialog', { name: '新建分组', exact: true });
   await expect(
@@ -29,6 +29,6 @@ export const deleteGroup = async (page: Page, name: string) => {
   await openGroups(page);
   await strip(page).getByRole('button', { name, exact: true }).hover();
   await strip(page)
-    .getByRole('button', { name: `删除 ${name}`, exact: true })
+    .getByRole('button', { name: `删除分组 ${name}`, exact: true })
     .click();
 };

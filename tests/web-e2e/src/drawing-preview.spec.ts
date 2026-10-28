@@ -139,14 +139,19 @@ test('text grids container content and pen styles preview their final appearance
   }
   await selectDrawingTool(page, '画笔');
   for (const [pen, width, opacity] of [
-    ['nibPen', 3, 1],
-    ['feltTipPen', 3, 1],
-    ['artisticBrush', 6, 1],
-    ['markerHighlight', 16, 0.35],
+    ['钢笔', 3, 1],
+    ['毡头笔', 3, 1],
+    ['艺术画笔', 6, 1],
+    ['荧光笔', 16, 0.35],
   ] as const) {
-    if (!(await page.getByLabel('Pen', { exact: true }).isVisible()))
+    if (
+      !(await page
+        .getByRole('button', { name: '笔型', exact: true })
+        .isVisible())
+    )
       await selectDrawingTool(page, '画笔');
-    await page.getByLabel('Pen', { exact: true }).selectOption(pen);
+    await page.getByRole('button', { name: '笔型', exact: true }).click();
+    await page.getByRole('menuitemradio', { name: pen, exact: true }).click();
     await start(page);
     const preview = draft(page).locator('[data-draft-cell-kind="freehand"]');
     await expect(preview).toHaveAttribute('stroke-width', String(width));
@@ -178,7 +183,10 @@ test('long freehand paths survive continuous zoom and remain movable without cam
     }
   });
   await selectDrawingTool(page, '画笔');
-  await page.getByLabel('Pen', { exact: true }).selectOption('feltTipPen');
+  await page.getByRole('button', { name: '笔型', exact: true }).click();
+  await page
+    .getByRole('menuitemradio', { name: '毡头笔', exact: true })
+    .click();
   const box = (await canvas(page).boundingBox())!;
   await page.mouse.move(box.x + 320, box.y + 250);
   await page.mouse.down();

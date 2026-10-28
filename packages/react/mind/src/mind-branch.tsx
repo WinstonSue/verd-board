@@ -1,19 +1,19 @@
-import { memo, useMemo } from 'react';
 import {
+  edgeRoutePoints,
   isEdgeCell,
   isNodeCell,
-  portAnchor,
-  edgeRoutePoints,
-  terminalCurvePath,
   polylinePath,
+  portAnchor,
+  terminalCurvePath,
   type NodeGeometry,
 } from '@sue/board-core';
-import type { FrameRenderContext } from '@sue/board-react';
 import {
   mindBranchColor,
   mindBranchPorts,
   resolvedMindBranchShape,
 } from '@sue/board-mind';
+import type { FrameRenderContext } from '@sue/board-react';
+import { memo, useMemo } from 'react';
 
 const branchDrawing = (
   context: Pick<
@@ -72,9 +72,7 @@ const branchDrawing = (
             target,
           ),
         );
-  const stroke = context.selected
-    ? '#6366f1'
-    : (mindBranchColor(store, targetNode.id, frameId) ?? '#64748b');
+  const stroke = mindBranchColor(store, targetNode.id, frameId) ?? '#64748b';
   const width =
     (
       targetNode.data as
@@ -105,6 +103,7 @@ const VisibleBranch = memo(function VisibleBranch({
   return (
     <path
       d={drawing.path}
+      data-frame-node-outline
       fill="none"
       stroke={drawing.stroke}
       strokeWidth={drawing.width}

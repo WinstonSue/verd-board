@@ -1,3 +1,4 @@
+import { createActionRegistry } from '@sue/board-common';
 import React, { act } from 'react';
 import { createRoot } from 'react-dom/client';
 import { describe, expect, it, vi } from 'vitest';
@@ -250,4 +251,80 @@ it('keeps failed ownership changes available for retry and blocks duplicate subm
   expect(submit.disabled).toBe(false);
   await act(async () => root.unmount());
   container.remove();
+});
+
+it('uses captured workspace actions for names, availability and execution instead of legacy callbacks', async () => {
+  let paused = false,
+    exists = true;
+  const execute = vi.fn(),
+    legacyOpen = vi.fn();
+  const actions = createActionRegistry({
+    getContext: () => ({ paused, exists }),
+    refresh: () => ({ paused, exists }),
+  });
+  actions.register({
+    id: 'workspace.file.open',
+    label: { zh: '动作打开', en: 'Action open' },
+    category: 'workspace',
+    effect: 'view',
+    validateArgs: (args: unknown): args is { fileId: string } =>
+      !!args &&
+      typeof args === 'object' &&
+      (args as { fileId?: unknown }).fileId === 'chart',
+    getState: (c) => ({
+      enabled: !c.paused && c.exists,
+      reason: !c.exists ? 'missing-target' : c.paused ? 'pending' : undefined,
+    }),
+    execute: (_c, args) => {
+      execute(args.fileId);
+      return { status: 'completed' };
+    },
+  });
+  actions.seal();
+  const container = document.createElement('div'),
+    root = createRoot(container);
+  try {
+    await act(async () =>
+      root.render(
+        <ChartLibrary
+          actionSource={actions}
+          locale="en"
+          rows={[
+            {
+              frameId: 'chart',
+              name: 'Plan',
+              path: 'plan.verd.json',
+              diagram: 'mind',
+              placement: 'standalone',
+              referenceLabel: '0 references',
+            },
+          ]}
+          owners={[]}
+          onOpen={legacyOpen}
+          onBack={() => {}}
+        />,
+      ),
+    );
+    const button = [...container.querySelectorAll('button')].find(
+      (button) => button.textContent === 'Action open',
+    )!;
+    expect(button.disabled).toBe(false);
+    await act(async () => button.click());
+    expect(execute).toHaveBeenCalledWith('chart');
+    expect(legacyOpen).not.toHaveBeenCalled();
+    await act(async () => {
+      paused = true;
+      actions.invalidate();
+    });
+    expect(button.disabled).toBe(true);
+    await act(async () => {
+      paused = false;
+      exists = false;
+      actions.invalidate();
+    });
+    expect(button.disabled).toBe(true);
+  } finally {
+    await act(async () => root.unmount());
+    actions.dispose();
+  }
 });

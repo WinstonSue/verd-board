@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { createTestCellRegistry as createFixtureRegistry } from '../../../../../tests/fixtures/plugins/registry';
 import {
   applyCellOperations,
   commitCellOperations,
@@ -7,6 +8,7 @@ import {
   undoCells,
 } from './index';
 import { createCellStore, createFrameCell, type NodeCell } from './types';
+const testCellRegistry = createFixtureRegistry();
 afterEach(() => vi.restoreAllMocks());
 describe('transaction structural sharing', () => {
   it('keeps unaffected frames and memberships identical and records only the edited cell', () => {
@@ -32,12 +34,17 @@ describe('transaction structural sharing', () => {
     root.groups.push('group');
     const previous = store.cells['node-0'] as NodeCell;
     const stringify = vi.spyOn(JSON, 'stringify');
-    const committed = commitCellOperations(store, emptyCellHistory(), [
-      {
-        type: 'replace_cell',
-        cell: { ...previous, content: { label: 'Edited' } },
-      },
-    ]);
+    const committed = commitCellOperations(
+      store,
+      emptyCellHistory(),
+      [
+        {
+          type: 'replace_cell',
+          cell: { ...previous, content: { label: 'Edited' } },
+        },
+      ],
+      testCellRegistry,
+    );
     expect(committed.store.cells.root).toBe(root);
     expect(committed.store.cells.group).toBe(store.cells.group);
     expect(committed.store.cells['node-1']).toBe(store.cells['node-1']);
@@ -54,12 +61,17 @@ describe('transaction structural sharing', () => {
     expect(redoCells(undone.store, undone.history).store).toEqual(
       committed.store,
     );
-    const noop = commitCellOperations(committed.store, committed.history, [
-      {
-        type: 'replace_cell',
-        cell: structuredClone(committed.store.cells['node-0']),
-      },
-    ]);
+    const noop = commitCellOperations(
+      committed.store,
+      committed.history,
+      [
+        {
+          type: 'replace_cell',
+          cell: structuredClone(committed.store.cells['node-0']),
+        },
+      ],
+      testCellRegistry,
+    );
     expect(noop.store).toBe(committed.store);
     expect(noop.history).toBe(committed.history);
   });
@@ -87,9 +99,11 @@ describe('transaction structural sharing', () => {
         },
       },
     };
-    const next = applyCellOperations(store, [
-      { type: 'remove_cell', cellId: 'a' },
-    ]);
+    const next = applyCellOperations(
+      store,
+      [{ type: 'remove_cell', cellId: 'a' }],
+      testCellRegistry,
+    );
     expect(next.cells.root).not.toBe(root);
     expect(next.cells.root).toMatchObject({ children: ['b'], groups: [] });
     expect(next.cells.group).toBeUndefined();

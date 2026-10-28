@@ -1,0 +1,4 @@
+/* Public draw UI stylesheet. Rendering uses SVG presentation attributes. */
+:where([data-frame-editor]) {
+  --board-draw-installed: 1;
+}

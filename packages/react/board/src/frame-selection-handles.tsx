@@ -1,11 +1,12 @@
-import type { PointerEvent } from 'react';
 import {
-  resizeHandles,
-  resizeHandlePoint,
   resizeHandleDirection,
+  resizeHandlePoint,
+  resizeHandles,
   type NodeGeometry,
   type ResizeHandle,
 } from '@sue/board-core';
+import type { PointerEvent } from 'react';
+import { FrameInteractionStroke } from './frame-interaction-stroke';
 
 export function FrameSelectionHandles({
   id,
@@ -15,6 +16,7 @@ export function FrameSelectionHandles({
   rotate,
   inset = false,
   outline = true,
+  baseWidth = 1.5,
   onStart,
 }: {
   id: string;
@@ -25,6 +27,7 @@ export function FrameSelectionHandles({
   /** Keep Frame handles inside their outer container. */
   inset?: boolean;
   outline?: boolean;
+  baseWidth?: number;
   onStart(
     event: PointerEvent<SVGElement>,
     mode: 'resize' | 'rotate',
@@ -36,15 +39,22 @@ export function FrameSelectionHandles({
   return (
     <g data-selection-handles={id} fill="#fff" stroke="#6366f1" strokeWidth={1}>
       {outline && (
-        <rect
-          x={geometry.x}
-          y={geometry.y}
-          width={geometry.width}
-          height={geometry.height}
-          fill="none"
-          vectorEffect="non-scaling-stroke"
-          pointerEvents="none"
-        />
+        <FrameInteractionStroke
+          bounds={geometry}
+          scale={scale}
+          selected
+          baseWidth={baseWidth}
+        >
+          {(paint) => (
+            <rect
+              {...paint}
+              x={geometry.x}
+              y={geometry.y}
+              width={geometry.width}
+              height={geometry.height}
+            />
+          )}
+        </FrameInteractionStroke>
       )}
       {resize &&
         resizeHandles.map((handle) => {

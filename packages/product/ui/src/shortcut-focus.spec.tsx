@@ -2,6 +2,7 @@ import React, { act, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { describe, expect, it, vi } from 'vitest';
 import { createMindFrameSnapshot } from '@sue/board-mind';
+import { createFrameCell } from '@sue/board-core';
 import { I18nProvider } from './i18n';
 import { VerdFrame } from './verd-frame';
 
@@ -28,6 +29,95 @@ window.matchMedia = (query: string) =>
   }) as MediaQueryList;
 
 describe('tool shortcuts and real focus', () => {
+  it('transfers menu focus to shared help and restores the logical menu opener on close', async () => {
+    const container = document.createElement('div');
+    document.body.append(container);
+    const root = createRoot(container);
+    await act(async () =>
+      root.render(
+        <I18nProvider language="zh" persistLanguage={false}>
+          <VerdFrame
+            value={createMindFrameSnapshot('frame', 'topic')}
+            frameId="frame"
+            onChange={() => {}}
+          />
+        </I18nProvider>,
+      ),
+    );
+    const opener = container.querySelector<HTMLButtonElement>(
+      '[data-testid="app-menu-trigger"]',
+    )!;
+    await act(async () => opener.click());
+    const menuItem = [
+      ...document.querySelectorAll<HTMLButtonElement>('[role="menuitem"]'),
+    ].find((item) => item.textContent === '快捷键')!;
+    await act(async () => menuItem.click());
+    const search = document.querySelector<HTMLInputElement>(
+      '.verd-actions-help input',
+    )!;
+    expect(search).toBeTruthy();
+    expect(document.activeElement).toBe(search);
+    await act(async () => {
+      search.dispatchEvent(
+        new KeyboardEvent('keydown', {
+          key: 'Escape',
+          bubbles: true,
+          cancelable: true,
+        }),
+      );
+    });
+    expect(document.querySelector('.verd-actions-help')).toBeNull();
+    expect(document.activeElement).toBe(opener);
+    await act(async () => root.unmount());
+    container.remove();
+  });
+
+  it('reflects action-created drawing tools in the product toolbar', async () => {
+    const container = document.createElement('div');
+    document.body.append(container);
+    const root = createRoot(container);
+    await act(async () =>
+      root.render(
+        <I18nProvider language="zh" persistLanguage={false}>
+          <VerdFrame
+            value={{
+              store: {
+                rootId: 'frame',
+                cells: { frame: createFrameCell('frame') },
+              },
+            }}
+            frameId="frame"
+            onChange={() => {}}
+          />
+        </I18nProvider>,
+      ),
+    );
+    const canvas = container.querySelector('svg[aria-label="Frame canvas"]')!;
+    for (const [key, label] of [
+      ['p', '画笔'],
+      ['o', '形状'],
+      ['v', '选择'],
+      ['h', '手型'],
+    ] as const) {
+      await act(async () => {
+        canvas.dispatchEvent(
+          new KeyboardEvent('keydown', {
+            key,
+            bubbles: true,
+            cancelable: true,
+          }),
+        );
+      });
+      expect(
+        container
+          .querySelector(`[aria-label="${label}"]`)
+          ?.getAttribute('aria-pressed'),
+      ).toBe('true');
+    }
+    await act(async () => root.unmount());
+    container.remove();
+  });
+
   it('opens preferences directly in standalone My and closes once without remounting the canvas', async () => {
     HTMLDialogElement.prototype.showModal ??= function (
       this: HTMLDialogElement,
@@ -109,6 +199,14 @@ describe('tool shortcuts and real focus', () => {
           clientY: 30,
         }),
       );
+      topic.dispatchEvent(
+        new MouseEvent('pointerup', {
+          bubbles: true,
+          button: 0,
+          clientX: 30,
+          clientY: 30,
+        }),
+      );
     });
     await act(async () => {
       await new Promise((resolve) => setTimeout(resolve, 200));
@@ -181,6 +279,9 @@ describe('tool shortcuts and real focus', () => {
       topic().dispatchEvent(
         new MouseEvent('pointerdown', { bubbles: true, button: 0 }),
       );
+      topic().dispatchEvent(
+        new MouseEvent('pointerup', { bubbles: true, button: 0 }),
+      );
     });
     await act(async () => {
       await new Promise((resolve) => setTimeout(resolve, 200));
@@ -215,6 +316,9 @@ describe('tool shortcuts and real focus', () => {
       child.dispatchEvent(
         new MouseEvent('pointerdown', { bubbles: true, button: 0 }),
       );
+      child.dispatchEvent(
+        new MouseEvent('pointerup', { bubbles: true, button: 0 }),
+      );
     });
     await keyOn(document.activeElement!, 'Enter');
     expect(
@@ -225,15 +329,22 @@ describe('tool shortcuts and real focus', () => {
       topic().dispatchEvent(
         new MouseEvent('pointerdown', { bubbles: true, button: 0 }),
       );
+      topic().dispatchEvent(
+        new MouseEvent('pointerup', { bubbles: true, button: 0 }),
+      );
     });
     const beforeIme = topic().textContent;
+    const beforeTool = container
+      .querySelector('[aria-label="选择"]')
+      ?.getAttribute('aria-pressed');
+    expect(beforeTool).toBe('true');
     await keyOn(document.activeElement!, 'h', { isComposing: true });
     expect(topic().textContent).toBe(beforeIme);
     expect(
       container
         .querySelector('[aria-label="选择"]')
         ?.getAttribute('aria-pressed'),
-    ).not.toBe('false');
+    ).toBe(beforeTool);
 
     const field = container.querySelector(
       '[data-testid="inspector-name"]',
@@ -287,6 +398,9 @@ describe('tool shortcuts and real focus', () => {
     await act(async () => {
       topic.dispatchEvent(
         new MouseEvent('pointerdown', { bubbles: true, button: 0 }),
+      );
+      topic.dispatchEvent(
+        new MouseEvent('pointerup', { bubbles: true, button: 0 }),
       );
     });
     await act(async () => {

@@ -1,29 +1,28 @@
 import {
-  CellKind,
-  groupLeafMembers,
-  NodeUtil,
   EdgeUtil,
+  groupLeafMembers,
   indexCells,
+  isFrameCell,
   isNodeCell,
+  NodeUtil,
   type Cell,
-  type CellStore,
-  type CellRegistry,
-  type EdgeCell,
-  type NodeCell,
-  type ArchitectureLayerData,
   type CellCapabilities,
-  type FrameMount,
-  type NodeGeometry,
   type CellMoveContext,
   type CellOperation,
+  type CellRegistry,
+  type CellStore,
+  type EdgeCell,
+  type FrameMount,
+  type NodeCell,
+  type NodeGeometry,
   type Point,
-  isFrameCell,
 } from '@sue/board-core';
 import { moveArchitectureModuleToLayer } from './cell-commands';
+import { ArchitectureKind, type ArchitectureLayerData } from './public-api';
 
 export abstract class ArchitectureNodeUtil extends NodeUtil {}
 export class ArchitectureLayerNodeUtil extends ArchitectureNodeUtil {
-  readonly kind = CellKind.architectureLayer;
+  readonly kind = ArchitectureKind.architectureLayer;
   override capabilities(
     store: CellStore,
     cell: Cell,
@@ -52,7 +51,7 @@ export class ArchitectureLayerNodeUtil extends ArchitectureNodeUtil {
     if (
       data.memberIds.some(
         (id) =>
-          store.cells[id]?.kind !== CellKind.architectureModule ||
+          store.cells[id]?.kind !== ArchitectureKind.architectureModule ||
           index.parentOf.get(id) !== index.parentOf.get(cell.id),
       )
     )
@@ -68,10 +67,10 @@ export class ArchitectureLayerNodeUtil extends ArchitectureNodeUtil {
     const frame = store.cells[frameId];
     if (!isFrameCell(frame)) return [];
     const existing = frame.children.filter(
-      (id) => store.cells[id]?.kind === CellKind.architectureLayer,
+      (id) => store.cells[id]?.kind === ArchitectureKind.architectureLayer,
     ).length;
     return Object.values(cells)
-      .filter((cell) => cell.kind === CellKind.architectureLayer)
+      .filter((cell) => cell.kind === ArchitectureKind.architectureLayer)
       .sort((left, right) =>
         (
           (left as NodeCell<ArchitectureLayerData>).data?.order ?? ''
@@ -97,7 +96,7 @@ export class ArchitectureLayerNodeUtil extends ArchitectureNodeUtil {
   }
 }
 export class ArchitectureModuleNodeUtil extends ArchitectureNodeUtil {
-  readonly kind = CellKind.architectureModule;
+  readonly kind = ArchitectureKind.architectureModule;
   override move(
     store: CellStore,
     cell: Cell,
@@ -123,7 +122,7 @@ export class ArchitectureModuleNodeUtil extends ArchitectureNodeUtil {
       context &&
       Object.values(store.cells).find((candidate) => {
         if (
-          candidate.kind !== CellKind.architectureLayer ||
+          candidate.kind !== ArchitectureKind.architectureLayer ||
           index.parentOf.get(candidate.id) !== parent
         )
           return false;
@@ -149,7 +148,7 @@ export class ArchitectureModuleNodeUtil extends ArchitectureNodeUtil {
   override validate(store: CellStore, cell: Cell): string | undefined {
     const layers = Object.values(store.cells).filter(
       (candidate) =>
-        candidate.kind === CellKind.architectureLayer &&
+        candidate.kind === ArchitectureKind.architectureLayer &&
         Array.isArray(
           (candidate as NodeCell<ArchitectureLayerData>).data?.memberIds,
         ) &&
@@ -164,7 +163,7 @@ export class ArchitectureModuleNodeUtil extends ArchitectureNodeUtil {
   requiresPasteOwner(cell: Cell, fragment: { cells: Record<string, Cell> }) {
     return !Object.values(fragment.cells).some(
       (candidate) =>
-        candidate.kind === CellKind.architectureLayer &&
+        candidate.kind === ArchitectureKind.architectureLayer &&
         Array.isArray(
           (candidate as NodeCell<ArchitectureLayerData>).data?.memberIds,
         ) &&
@@ -184,11 +183,11 @@ export class ArchitectureModuleNodeUtil extends ArchitectureNodeUtil {
       groupLeafMembers(store, id),
     )) {
       const cell = store.cells[id];
-      if (cell?.kind === CellKind.architectureLayer) owners.add(id);
+      if (cell?.kind === ArchitectureKind.architectureLayer) owners.add(id);
       else {
         const layer = Object.values(store.cells).find(
           (candidate) =>
-            candidate.kind === CellKind.architectureLayer &&
+            candidate.kind === ArchitectureKind.architectureLayer &&
             Array.isArray(
               (candidate as NodeCell<ArchitectureLayerData>).data?.memberIds,
             ) &&
@@ -237,7 +236,7 @@ export class ArchitectureModuleNodeUtil extends ArchitectureNodeUtil {
     if (
       !ownerId ||
       Object.values(cells).some(
-        (cell) => cell.kind === CellKind.architectureLayer,
+        (cell) => cell.kind === ArchitectureKind.architectureLayer,
       )
     )
       return [];
@@ -246,7 +245,7 @@ export class ArchitectureModuleNodeUtil extends ArchitectureNodeUtil {
     if (!isNodeCell(layer) || !data || !Array.isArray(data.memberIds))
       return [];
     const added = Object.values(cells).flatMap((cell) =>
-      cell.kind === CellKind.architectureModule
+      cell.kind === ArchitectureKind.architectureModule
         ? [mapping.get(cell.id) ?? cell.id]
         : [],
     );
@@ -263,7 +262,7 @@ export class ArchitectureModuleNodeUtil extends ArchitectureNodeUtil {
   }
 }
 export class ArchitectureEdgeUtil extends EdgeUtil {
-  readonly kind = CellKind.architectureEdge;
+  readonly kind = ArchitectureKind.architectureEdge;
   override validateEdge(store: CellStore, edge: EdgeCell): string | undefined {
     if (
       !('cellId' in edge.source) ||
@@ -272,8 +271,10 @@ export class ArchitectureEdgeUtil extends EdgeUtil {
     )
       return 'Invalid architecture dependency';
     if (
-      store.cells[edge.source.cellId]?.kind !== CellKind.architectureModule ||
-      store.cells[edge.target.cellId]?.kind !== CellKind.architectureModule
+      store.cells[edge.source.cellId]?.kind !==
+        ArchitectureKind.architectureModule ||
+      store.cells[edge.target.cellId]?.kind !==
+        ArchitectureKind.architectureModule
     )
       return 'Only modules can connect';
     return undefined;
@@ -298,7 +299,7 @@ export const architectureLayerIds = (
     .map((id) => store.cells[id])
     .filter(
       (cell): cell is NodeCell<ArchitectureLayerData> =>
-        isNodeCell(cell) && cell.kind === CellKind.architectureLayer,
+        isNodeCell(cell) && cell.kind === ArchitectureKind.architectureLayer,
     )
     .sort((a, b) => (a.data?.order ?? '').localeCompare(b.data?.order ?? ''))
     .map((layer) => layer.id);

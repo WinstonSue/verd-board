@@ -4,6 +4,7 @@ export default createLibViteConfig({
   dirname: __dirname,
   name: 'react-mind',
   entry: 'src/index.ts',
+  styleEntry: 'src/style.ts',
   react: true,
   cacheDir: '../../../node_modules/.vite/packages/react-mind',
 });

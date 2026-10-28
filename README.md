@@ -130,9 +130,9 @@ Desktop 产品验收：先 `pnpm build:desktop`，再 `pnpm test:e2e:desktop`，
 
 Desktop acceptance: run `pnpm build:desktop` then `pnpm test:e2e:desktop` to verify saves, migration and restart recovery with temporary data.
 
-画布支持六向对齐、等距分布、拖动参考线和显式自动排列；嵌套 Group 可整体操作、逐层编辑与独立锁定。规则与 API 见 [排列与组合](workspace/文档/包/排列与组合.verd-doc.json)。
+画布支持六向对齐、等距分布、拖动参考线，以及独立的节点布局和连线整理；普通白板支持按连接关系布局，Group 支持局部布局、逐层编辑与独立锁定。规则与 API 见 [排列与组合](workspace/文档/包/排列与组合.verd-doc.json)。
 
-The canvas supports six-way alignment, equal-gap distribution, drag snapping, explicit layouts, nested groups and independent group locking. Layouts affect the selection or the current Frame’s direct objects and preserve nested Frame contents.
+The canvas supports alignment, equal-gap distribution, drag snapping, separate node layout and edge rerouting, and connection-based whiteboard layouts. Layouts can target Group contents or the current focused container; nested groups stay rigid, nested Frame contents remain intact, and conflicting layouts leave the document unchanged.
 
 产品属性使用画布外 300px Sidebar；节点名称与富文本正文独立，Port 按交互上下文显示，连线菜单支持双向箭头。语义与 API 见 [Sidebar 与节点交互](workspace/文档/包/React接入.verd-doc.json)。
 
@@ -151,3 +151,45 @@ Workspace folders move to trash and restore as complete subtrees. Confirm before
 当前画布内容可在独立只读覆盖层中全屏演示，复用相同渲染扩展，支持点击聚焦、总览和激光笔；脑图与架构图提供结构步骤。`0` 总览、`L` 激光笔、`Esc` 退出并恢复编辑视口。演示状态只在内存中，不再生成或保存幻灯片稿，也不提供观众窗口。范围见 [画布模式](workspace/文档/包/画布模式.verd-doc.json)。
 
 Present current canvas content in a separate read-only fullscreen overlay using the same render extensions, with click-to-focus, overview and a laser pointer; mind maps and architecture diagrams provide structural steps. Use `0` for overview, `L` for laser and `Esc` to exit and restore the editing viewport. Presentation state stays in memory, with no persisted slide deck or audience window. See [canvas modes](workspace/文档/包/画布模式.verd-doc.json).
+
+## 下一主版本：四层插件接入（源码）
+
+以下为下一主版本的源码接入方式。本轮只交付代码与 Changesets，不升级版本、不发布；请用本仓构建的真实 tarball 验证，已发布的 2.0.0 不包含这些新入口。
+
+最小 Mind 直接安装 core、mind、react、react-mind 四个包；共享文本与布局自动安装。白板、Workflow、Architecture、UML 使用各自对应的两层插件。
+
+```tsx
+import { useState } from 'react';
+import { createMindFrameSnapshot } from '@sue/board-mind';
+import { FrameEditor } from '@sue/board-react';
+import { createMindUIPlugin } from '@sue/board-react-mind';
+import '@sue/board-react/style.css';
+import '@sue/board-react-mind/style.css';
+const plugins = [createMindUIPlugin()];
+export function Editor() {
+  const [value, setValue] = useState(createMindFrameSnapshot('frame', 'topic'));
+  return (
+    <div style={{ height: 600 }}>
+      <FrameEditor plugins={plugins} value={value} onChange={(change) => setValue(change.snapshot)} />
+    </div>
+  );
+}
+```
+
+引擎使用 createCellRegistry({plugins})，底层画布使用 createFramePluginSet 与 FrameCanvas({pluginSet})。领域类型移至领域包；缺少插件时拒绝文件且零写入，格式版本保持兼容。详细说明见原生[系统架构](workspace/文档/架构/系统架构.verd-doc.json)与[React 接入](workspace/文档/包/React接入.verd-doc.json)。
+
+验证：pnpm check:plugins、pnpm test:plugin-consumers。完整产品默认组合全部插件。
+
+## Schema 配置面板
+
+普通设置与属性使用独立 Schema SDK 的类型化声明，保留业务事务、历史、继承及现有输入行为。完整说明与迁移清单见原生系统架构；开发指南说明真实 tarball 联调和先发布 SDK、再验证 registry 依赖的顺序。候选联调入口为 `node scripts/prepare-schema-integration.mjs --schema-artifacts /absolute/manifest.json`。
+
+## 下一主版本：统一操作与图元链接（源码）
+
+当前源码把工具栏、菜单、快捷键、命令面板和帮助统一为实例级 Actions。`Ctrl/Cmd+Shift+P` 打开最近编辑实例的命令面板。新增 [`@sue/board-react-actions`](packages/react/actions/README.md)，仅依赖 common 与 React；独立文档共用面板而不引入画布渲染器。
+
+工作区内部链接可指向单个图元；移动后按稳定 Cell 身份找到当前源文件。导航等待源编辑提交与目标布局，支持取消及返回来源；临时展开折叠 Mind 祖先只影响当前视图，不写内容或撤销，图像导出保持原始折叠状态。
+
+**破坏性 API 迁移：** 画布和独立文档的用户操作改为 `getActionState` / `executeAction` / `actions`，领域插件通过 `actions` 与工具 `actionId` 贡献命令；`revealTarget`、`FrameLinkHost` 与 common 的 `WorkspaceTarget` codec 替代分散的定位/链接入口。详细说明在原生 [React 接入](workspace/文档/包/React接入.verd-doc.json)和[迁移指南](workspace/文档/包/2.0接入与迁移.verd-doc.json)末节。本轮仅准备 major Changesets，不升级版本、不发布。
+
+The next-major source shares Actions across editor controls, keyboard shortcuts, palettes and help, with a renderer-independent React actions package. Stable Cell links follow moves, navigation awaits host commit receipts, and temporary Mind reveals stay out of files, history and exports. Controllers and plugins migrate to Actions and typed reveal/link contracts; no version bump or publication is performed here.

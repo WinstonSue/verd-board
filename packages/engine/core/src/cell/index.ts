@@ -1,7 +1,12 @@
-import { normalizeUmlRelations } from './uml';
-import { initializeNodeName } from './name';
-export * from './name';
 import type { NodeOutline } from '../geometry/shape';
+import type { Point } from '../interfaces/point';
+import { cellDeletionLocked, groupLeafMembers } from './group';
+import { initializeNodeName } from './name';
+import {
+  assertRegisteredCellKinds,
+  createCellRegistry,
+  type CellRegistry,
+} from './registry';
 import type {
   Cell,
   CellId,
@@ -11,12 +16,6 @@ import type {
   GroupCell,
   NodeGeometry,
 } from './types';
-import type { Point } from '../interfaces/point';
-import {
-  cellDeletionLocked,
-  groupLeafMembers,
-  lockedByAncestor,
-} from './group';
 import {
   isEdgeCell,
   isFrameCell,
@@ -24,12 +23,20 @@ import {
   stripFrameViewports,
 } from './types';
 import { validateCellStore } from './validation';
-export * from './validation';
-export * from './frame';
-export * from './util';
-export * from './runtime';
+export * from './arrangement';
+export * from './layout-plan';
 export * from './clipboard';
+export * from './commands';
+export * from './edge-edit';
+export * from './frame';
+export * from './group';
+export * from './name';
+export * from './position';
+export * from './registry';
+export * from './runtime';
 export * from './transfer';
+export * from './util';
+export * from './validation';
 
 export interface CellIndex {
   parentOf: Map<CellId, CellId>;
@@ -42,7 +49,10 @@ export interface CellIndex {
   outgoing: Map<CellId, CellId[]>;
 }
 
-export const indexCells = (store: CellStore): CellIndex => {
+export const indexCells = (
+  store: CellStore,
+  registry?: CellRegistry,
+): CellIndex => {
   const parentOf = new Map<CellId, CellId>();
   const orderOf = new Map<CellId, CellId[]>();
   Object.values(store.cells).forEach((cell) => {
@@ -59,7 +69,7 @@ export const indexCells = (store: CellStore): CellIndex => {
   const incoming = new Map<CellId, CellId[]>();
   const outgoing = new Map<CellId, CellId[]>();
   Object.values(store.cells).forEach((cell) => {
-    listedMembers(cell).forEach((id) =>
+    listedMembers(cell, registry).forEach((id) =>
       (isGroupCell(cell) ? groupOf : domainOwnerOf).set(id, cell.id),
     );
     if (isEdgeCell(cell)) {
@@ -180,6 +190,7 @@ const descendantIds = (store: CellStore, cellId: CellId): CellId[] => {
 const applyUnchecked = (
   store: CellStore,
   operation: CellOperation,
+  registry?: CellRegistry,
 ): CellStore => {
   const cells = { ...store.cells };
   if (operation.type === 'patch_cells') {
@@ -244,25 +255,9 @@ const applyUnchecked = (
   for (let at = 0; at < removing.length; at++) {
     const removed = cells[removing[at]];
     if (!removed) continue;
-    if (removed.kind === 'architecture-layer') {
-      listedMembers(removed).forEach((id) => {
+    for (const plugin of registry?.plugins ?? [])
+      for (const id of plugin.deletionClosure?.(store, removed) ?? [])
         if (!removing.includes(id)) removing.push(id);
-      });
-    }
-    if (removed.kind === 'mind-root' || removed.kind === 'mind-child') {
-      Object.values(cells).forEach((edge) => {
-        if (
-          isEdgeCell(edge) &&
-          edge.kind === 'mind-branch' &&
-          'cellId' in edge.source &&
-          edge.source.cellId === removed.id &&
-          'cellId' in edge.target
-        ) {
-          if (!removing.includes(edge.target.cellId))
-            removing.push(edge.target.cellId);
-        }
-      });
-    }
   }
   const parentId = parentOf(store, operation.cellId);
   if (parentId && cells[parentId] && isFrameCell(cells[parentId])) {
@@ -280,7 +275,7 @@ const applyUnchecked = (
     if (
       (sourceId &&
         removing.includes(sourceId) &&
-        cell.kind !== 'mind-summary-edge') ||
+        registry?.get(cell.kind)?.retainOnSourceDeletion !== true) ||
       (targetId && removing.includes(targetId))
     ) {
       delete cells[cell.id];
@@ -296,7 +291,7 @@ const applyUnchecked = (
 export const deleteCells = (
   store: CellStore,
   ids: readonly CellId[],
-  options?: { ignoreLock?: boolean },
+  options?: { ignoreLock?: boolean; registry?: CellRegistry },
 ): CellOperation[] => {
   for (const id of ids)
     if (!store.cells[id])
@@ -311,7 +306,7 @@ export const deleteCells = (
   ids.forEach(expand);
   if (
     !options?.ignoreLock &&
-    selected.some((id) => cellDeletionLocked(store, id))
+    selected.some((id) => cellDeletionLocked(store, id, options?.registry))
   )
     throw new Error('Cannot delete locked content');
   let candidate = store;
@@ -319,18 +314,20 @@ export const deleteCells = (
   for (const cellId of new Set(selected)) {
     if (!candidate.cells[cellId]) continue;
     const operation: CellOperation = { type: 'remove_cell', cellId };
-    candidate = applyUnchecked(candidate, operation);
+    candidate = applyUnchecked(candidate, operation, options?.registry);
     operations.push(operation);
   }
   return operations;
 };
 
-const memberIdsOf = (cell: Cell): CellId[] | undefined => {
+const memberIdsOf = (
+  cell: Cell,
+  registry?: CellRegistry,
+): readonly CellId[] | undefined => {
   if (isGroupCell(cell)) {
     return cell.members;
   }
-  const data = (cell as { data?: { memberIds?: CellId[] } }).data;
-  return data?.memberIds;
+  return registry?.get(cell.kind)?.members?.(cell);
 };
 
 const sameIds = (a: readonly string[], b: readonly string[]) =>
@@ -351,13 +348,17 @@ const pruneFrameRelations = (
 };
 
 /** Prune memberships after the entire transaction, so intermediate states are allowed. */
-const normalizeRelations = (before: CellStore, store: CellStore): CellStore => {
+const normalizeRelations = (
+  before: CellStore,
+  store: CellStore,
+  registry: CellRegistry,
+): CellStore => {
   const cells = { ...store.cells };
   const index = indexCells(store);
   Object.values(cells).forEach((cell) => {
     if (isFrameCell(cell))
       cells[cell.id] = pruneFrameRelations(cell, before, store, cells);
-    const members = memberIdsOf(cell);
+    const members = memberIdsOf(cell, registry);
     if (members) {
       const parent = index.parentOf.get(cell.id);
       const next = members.filter(
@@ -383,10 +384,8 @@ const normalizeRelations = (before: CellStore, store: CellStore): CellStore => {
         } else if (!sameIds(members, next))
           cells[cell.id] = { ...cell, members: next };
       } else if (!sameIds(members, next)) {
-        cells[cell.id] = {
-          ...cell,
-          data: { ...(cell as { data?: object }).data, memberIds: next },
-        } as Cell;
+        cells[cell.id] =
+          registry.get(cell.kind)?.withMembers?.(cell, next) ?? cell;
       }
     }
   });
@@ -431,79 +430,6 @@ const normalizeRelations = (before: CellStore, store: CellStore): CellStore => {
         cells[parent!] = detach(frame, current.id);
     }
   }
-  // Summary endpoints refer to a consecutive range in the previous sibling list.
-  Object.values(cells).forEach((cell) => {
-    if (!isEdgeCell(cell) || cell.kind !== 'mind-summary-edge') return;
-    const range = cell.data as
-      { startSiblingId: string; endSiblingId: string } | undefined;
-    if (!range) return;
-    const oldBranches = Object.values(before.cells).filter(
-      (edge): edge is EdgeCell<{ order: string }> =>
-        isEdgeCell(edge) && edge.kind === 'mind-branch',
-    );
-    const first = oldBranches.find(
-      (edge) =>
-        'cellId' in edge.target && edge.target.cellId === range.startSiblingId,
-    );
-    if (!first || !('cellId' in first.source)) return;
-    const sourceId = first.source.cellId;
-    const siblings = oldBranches
-      .filter(
-        (edge) => 'cellId' in edge.source && edge.source.cellId === sourceId,
-      )
-      .sort((a, b) => (a.data?.order ?? '').localeCompare(b.data?.order ?? ''))
-      .flatMap((edge) => ('cellId' in edge.target ? [edge.target.cellId] : []));
-    const start = siblings.indexOf(range.startSiblingId),
-      end = siblings.indexOf(range.endSiblingId);
-    const covered = new Set(
-      siblings
-        .slice(start, end + 1)
-        .filter(
-          (id) =>
-            !!cells[id] &&
-            Object.values(cells).some(
-              (edge) =>
-                isEdgeCell(edge) &&
-                edge.kind === 'mind-branch' &&
-                'cellId' in edge.source &&
-                edge.source.cellId === sourceId &&
-                'cellId' in edge.target &&
-                edge.target.cellId === id,
-            ),
-        ),
-    );
-    const surviving = Object.values(cells)
-      .filter(
-        (edge): edge is EdgeCell<{ order: string }> =>
-          isEdgeCell(edge) &&
-          edge.kind === 'mind-branch' &&
-          'cellId' in edge.source &&
-          edge.source.cellId === sourceId &&
-          'cellId' in edge.target &&
-          covered.has(edge.target.cellId),
-      )
-      .sort((a, b) => (a.data?.order ?? '').localeCompare(b.data?.order ?? ''))
-      .flatMap((edge) => ('cellId' in edge.target ? [edge.target.cellId] : []));
-    if (!surviving.length) {
-      delete cells[cell.id];
-      if ('cellId' in cell.target) delete cells[cell.target.cellId];
-    } else if (
-      !('cellId' in cell.source) ||
-      cell.source.cellId !== surviving[0] ||
-      range.startSiblingId !== surviving[0] ||
-      range.endSiblingId !== surviving[surviving.length - 1] ||
-      Object.keys(cell.source).length !== 1 ||
-      Object.keys(range).length !== 2
-    )
-      cells[cell.id] = {
-        ...cell,
-        source: { cellId: surviving[0] },
-        data: {
-          startSiblingId: surviving[0],
-          endSiblingId: surviving[surviving.length - 1],
-        },
-      };
-  });
   // Pruning may have removed summaries or groups after their parent was visited.
   Object.values(cells).forEach((cell) => {
     if (isFrameCell(cell))
@@ -517,44 +443,41 @@ export const applyCellOperations = (
   operations: readonly CellOperation[],
   registry?: CellRegistry,
 ): CellStore => {
-  let candidate = normalizeUmlRelations(
+  const context = registry ?? createCellRegistry();
+  assertRegisteredCellKinds(store, context);
+  let candidate = operations.reduce(
+    (next, operation) => applyUnchecked(next, operation, context),
     store,
-    normalizeRelations(store, operations.reduce(applyUnchecked, store)),
   );
-  // A domain frame cannot lose its last anchor, and starts cannot be deleted independently.
-  Object.values(store.cells).forEach((cell) => {
-    if (
-      cell.kind === 'workflow-start' &&
-      candidate.cells[cell.id]?.kind !== 'workflow-start'
-    ) {
-      const parentId = parentOf(store, cell.id);
-      if (parentId && candidate.cells[parentId])
-        throw new Error('Cannot delete a workflow start');
-    }
-    if (isFrameCell(cell) && candidate.cells[cell.id]) {
-      const anchors = cell.children
-        .map((id) => store.cells[id])
-        .filter(
-          (child) =>
-            child &&
-            [
-              'mind-root',
-              'architecture-layer',
-              'uml-class-root',
-              'uml-sequence-root',
-            ].includes(child.kind),
-        );
+  assertRegisteredCellKinds(candidate, context);
+  candidate = normalizeRelations(store, candidate, context);
+  for (const plugin of context.plugins)
+    candidate = plugin.normalize?.(store, candidate) ?? candidate;
+  candidate = normalizeRelations(store, candidate, context);
+  for (const plugin of context.plugins) {
+    const error = plugin.validateTransaction?.(store, candidate);
+    if (error) throw new Error(error);
+  }
+  for (const scene of context.scenes) {
+    if (!scene.preserveAnchor) continue;
+    for (const cell of Object.values(store.cells)) {
+      if (!isFrameCell(cell) || !candidate.cells[cell.id]) continue;
+      const hadAnchor = cell.children.some((id) =>
+        scene.anchorKinds.includes(store.cells[id]?.kind),
+      );
+      const next = candidate.cells[cell.id];
       if (
-        anchors.length &&
-        !(candidate.cells[cell.id] as FrameCell).children.some((id) =>
-          anchors.some((anchor) => candidate.cells[id]?.kind === anchor.kind),
+        hadAnchor &&
+        isFrameCell(next) &&
+        !next.children.some((id) =>
+          scene.anchorKinds.includes(candidate.cells[id]?.kind),
         )
       )
         throw new Error('Cannot delete the last scene anchor');
     }
-  });
+  }
   candidate = stripFrameViewports(candidate);
-  const issues = validateCellStore(candidate, registry);
+  const issues = validateCellStore(candidate, context);
   if (issues.length)
     throw new Error(issues.map((issue) => issue.message).join('; '));
   return candidate;
@@ -563,7 +486,8 @@ export const applyCellOperations = (
 export const applyCellOperation = (
   store: CellStore,
   operation: CellOperation,
-): CellStore => applyCellOperations(store, [operation]);
+  registry?: CellRegistry,
+): CellStore => applyCellOperations(store, [operation], registry);
 
 export interface CellHistoryEntry {
   forward: CellOperation[];
@@ -631,7 +555,10 @@ export const undoCells = (store: CellStore, history: CellHistory) => {
   const entry = history.undos.at(-1);
   if (!entry) return { store, history };
   return {
-    store: entry.inverse.reduce(applyUnchecked, store),
+    store: entry.inverse.reduce(
+      (next, operation) => applyUnchecked(next, operation),
+      store,
+    ),
     history: {
       undos: history.undos.slice(0, -1),
       redos: [...history.redos, entry],
@@ -642,7 +569,10 @@ export const redoCells = (store: CellStore, history: CellHistory) => {
   const entry = history.redos.at(-1);
   if (!entry) return { store, history };
   return {
-    store: entry.forward.reduce(applyUnchecked, store),
+    store: entry.forward.reduce(
+      (next, operation) => applyUnchecked(next, operation),
+      store,
+    ),
     history: {
       undos: [...history.undos, entry],
       redos: history.redos.slice(0, -1),
@@ -671,6 +601,25 @@ export interface CellPasteAdjustContext {
 }
 export interface CellUtil {
   kind: string;
+  labelLayout?: (
+    edge: EdgeCell,
+    index: number,
+    points: readonly Point[],
+  ) => import('../geometry/edge-label').EdgeLabelLayout | undefined;
+  members?: (cell: Cell) => readonly CellId[];
+  withMembers?: (cell: Cell, ids: readonly CellId[]) => Cell;
+  fitText?: boolean;
+  copyWithEndpoints?: boolean;
+  translateable?: boolean;
+  routingObstacle?: boolean;
+  translate?: (cell: Cell, delta: Point) => Cell;
+  retainOnSourceDeletion?: boolean;
+  groupable?: boolean;
+  arrangeable?: boolean;
+  routable?: boolean;
+  freeTerminals?: boolean;
+  ownerKind?: string;
+  canConnect?: (node: Cell) => boolean;
   capabilities?: (
     store: CellStore,
     cell: Cell,
@@ -711,31 +660,6 @@ export interface CellUtil {
     ownerId: string | undefined,
   ) => CellOperation[];
 }
-
-export interface CellRegistry {
-  register: (util: CellUtil) => void;
-  get: (kind: string) => CellUtil | undefined;
-  validate: (store: CellStore, cell: Cell) => string | undefined;
-  validateEdge: (store: CellStore, edge: EdgeCell) => string | undefined;
-}
-
-export const createCellRegistry = (): CellRegistry => {
-  const utils = new Map<string, CellUtil>();
-  return {
-    register(util) {
-      utils.set(util.kind, util);
-    },
-    get(kind) {
-      return utils.get(kind);
-    },
-    validate(store, cell) {
-      return utils.get(cell.kind)?.validate?.(store, cell);
-    },
-    validateEdge(store, edge) {
-      return utils.get(edge.kind)?.validateEdge?.(store, edge);
-    },
-  };
-};
 
 export interface PaintedCell {
   id: CellId;
@@ -798,9 +722,5 @@ export const terminalCellId = (terminal: EdgeCell['source']) =>
 
 export const groupMembers = (cell: GroupCell) => cell.members;
 
-export const listedMembers = (cell: Cell) => memberIdsOf(cell) ?? [];
-export * from './commands';
-export * from './group';
-export * from './arrangement';
-export * from './edge-edit';
-export * from './position';
+export const listedMembers = (cell: Cell, registry?: CellRegistry) =>
+  memberIdsOf(cell, registry) ?? [];

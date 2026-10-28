@@ -1,5 +1,4 @@
 import {
-  CellKind,
   createCellStore,
   createFrameCell,
   type Cell,
@@ -7,6 +6,7 @@ import {
   type EdgeCell,
   type Point,
 } from '@sue/board-core';
+import { WorkflowKind } from '@sue/board-workflow';
 import {
   WORKFLOW_START_KEY,
   resolveWorkflowGraphMode,
@@ -37,8 +37,8 @@ const pushNode = (
     id,
     kind:
       node.kind === 'decision'
-        ? CellKind.workflowDecision
-        : CellKind.workflowTask,
+        ? WorkflowKind.workflowDecision
+        : WorkflowKind.workflowTask,
     cellType: 'node',
     geometry: {
       x: position?.[0] ?? 0,
@@ -62,7 +62,7 @@ const pushEdge = (
   children.push(id);
   const cell: EdgeCell = {
     id,
-    kind: CellKind.workflowEdge,
+    kind: WorkflowKind.workflowEdge,
     cellType: 'edge',
     source: {
       cellId: cellIdFor(graphId, edge.source.nodeKey),
@@ -107,7 +107,7 @@ const pushGraph = (
   children.push(startId);
   cells[startId] = {
     id: startId,
-    kind: CellKind.workflowStart,
+    kind: WorkflowKind.workflowStart,
     cellType: 'node',
     geometry: {
       x: startPosition[0],

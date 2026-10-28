@@ -1,5 +1,11 @@
 # @sue/board-react-workflow
 
+## Unreleased
+
+新增 createWorkflowUIPlugin；独立流程图工具、属性、连接和布局接入，不依赖产品或转换器。
+
+本轮不升级版本或发布，随下一主版本交付；参见原生架构和迁移文档。
+
 ## 2.0.0
 
 ### Major Changes

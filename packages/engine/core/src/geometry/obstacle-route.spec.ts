@@ -1,11 +1,13 @@
 import { describe, expect, it } from 'vitest';
+import { createTestCellRegistry as createFixtureRegistry } from '../../../../../tests/fixtures/plugins/registry';
+import { frameContentBounds } from '../cell/frame';
 import {
   createCellStore,
   createFrameCell,
   type EdgeCell,
   type NodeCell,
 } from '../cell/types';
-import { frameContentBounds } from '../cell/frame';
+import type { Point } from '../interfaces/point';
 import {
   createEdgeRoutingContext,
   edgePolyline,
@@ -15,7 +17,7 @@ import {
   routeOrthogonalAvoiding,
   type RoutingObstacle,
 } from './obstacle-route';
-import type { Point } from '../interfaces/point';
+const testCellRegistry = createFixtureRegistry();
 
 const assertClear = (points: Point[], boxes: RoutingObstacle[]) => {
   for (let i = 1; i < points.length; i++) {
@@ -77,7 +79,13 @@ describe('obstacle-avoiding orthogonal routing', () => {
   it('routes a vertical long edge around siblings without changing stored geometry or routes', () => {
     const { store, edge } = fixture(),
       before = structuredClone(store);
-    const context = createEdgeRoutingContext(store, 'frame');
+    const context = createEdgeRoutingContext(
+      store,
+      'frame',
+      undefined,
+      undefined,
+      testCellRegistry,
+    );
     const points = edgePolyline(store, edge, undefined, context);
     assertClear(
       points,
@@ -111,7 +119,13 @@ describe('obstacle-avoiding orthogonal routing', () => {
       ];
     edge.source = { cellId: 'source', portId: 'fixed' };
     edge.target = { cellId: 'target', portId: 'fixed' };
-    const context = createEdgeRoutingContext(store, 'frame');
+    const context = createEdgeRoutingContext(
+      store,
+      'frame',
+      undefined,
+      undefined,
+      testCellRegistry,
+    );
     const points = edgePolyline(store, edge, undefined, context);
     assertClear(
       points,
@@ -150,7 +164,13 @@ describe('obstacle-avoiding orthogonal routing', () => {
     store.cells.layer = layer;
     frame.children.push('layer');
     (store.cells.middle as NodeCell).hidden = true;
-    const clear = createEdgeRoutingContext(store, frame.id);
+    const clear = createEdgeRoutingContext(
+      store,
+      frame.id,
+      undefined,
+      undefined,
+      testCellRegistry,
+    );
     expect(clear.obstacles.map((b) => b.id)).toEqual(['source', 'target']);
     expect(edgePolyline(store, edge, undefined, clear)).toEqual([
       [50, 50],
@@ -158,13 +178,25 @@ describe('obstacle-avoiding orthogonal routing', () => {
     ]);
     store.cells.nested = nested;
     frame.children.push('nested');
-    const blocked = createEdgeRoutingContext(store, frame.id);
+    const blocked = createEdgeRoutingContext(
+      store,
+      frame.id,
+      undefined,
+      undefined,
+      testCellRegistry,
+    );
     assertClear(
       edgePolyline(store, edge, undefined, blocked),
       blocked.obstacles.filter((b) => b.id === 'nested'),
     );
     const geometry = new Map([['nested', { ...nested.geometry, x: 300 }]]);
-    const preview = createEdgeRoutingContext(store, frame.id, geometry);
+    const preview = createEdgeRoutingContext(
+      store,
+      frame.id,
+      geometry,
+      undefined,
+      testCellRegistry,
+    );
     expect(edgePolyline(store, edge, geometry, preview)).toEqual([
       [50, 50],
       [50, 300],
@@ -179,7 +211,13 @@ describe('obstacle-avoiding orthogonal routing', () => {
     source.geometry.outline = 'diamond';
     source.ports = [{ id: 'bottom', side: 'bottom', direction: 'output' }];
     edge.source = { cellId: 'source', portId: 'bottom', anchor: [0.5, 1] };
-    const context = createEdgeRoutingContext(store, 'frame');
+    const context = createEdgeRoutingContext(
+      store,
+      'frame',
+      undefined,
+      undefined,
+      testCellRegistry,
+    );
     const box = context.obstacles.find((b) => b.id === 'middle')!;
     expect(box.width).toBeGreaterThan(middle.geometry.width);
     assertClear(edgePolyline(store, edge, undefined, context), [box]);
@@ -191,10 +229,22 @@ describe('obstacle-avoiding orthogonal routing', () => {
     const distant = node('distant', 400, 150);
     store.cells.distant = distant;
     frame.children.push(distant.id);
-    const base = createEdgeRoutingContext(store, frame.id);
+    const base = createEdgeRoutingContext(
+      store,
+      frame.id,
+      undefined,
+      undefined,
+      testCellRegistry,
+    );
     const points = edgePolyline(store, edge, undefined, base);
     const farGeometry = new Map([['distant', { ...distant.geometry, x: 500 }]]);
-    const far = createEdgeRoutingContext(store, frame.id, farGeometry, base);
+    const far = createEdgeRoutingContext(
+      store,
+      frame.id,
+      farGeometry,
+      base,
+      testCellRegistry,
+    );
     expect(edgePolyline(store, edge, farGeometry, far)).toBe(points);
     const movedGeometry = new Map([
       ['middle', { ...(store.cells.middle as NodeCell).geometry, x: 300 }],
@@ -204,6 +254,7 @@ describe('obstacle-avoiding orthogonal routing', () => {
       frame.id,
       movedGeometry,
       base,
+      testCellRegistry,
     );
     expect(edgePolyline(store, edge, movedGeometry, moved)).toEqual([
       [50, 50],
@@ -214,7 +265,13 @@ describe('obstacle-avoiding orthogonal routing', () => {
 
   it('leaves explicit bends, straight and curve modes under manual control', () => {
     const { store, edge } = fixture(),
-      context = createEdgeRoutingContext(store, 'frame');
+      context = createEdgeRoutingContext(
+        store,
+        'frame',
+        undefined,
+        undefined,
+        testCellRegistry,
+      );
     for (const mode of ['fixed', 'orthogonal', 'straight', 'curve'] as const) {
       const manual = {
         ...edge,
