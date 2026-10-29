@@ -389,6 +389,27 @@ it('refits nested content immediately when its parent reference shell changes ge
     )!;
   const original = content().getAttribute('transform');
   const childRevision = runtime.revision;
+  const nested = container.querySelector('svg[data-surface="nested"]')!;
+  const measure = vi.spyOn(nested, 'getBoundingClientRect');
+  for (const delta of [20, 40, 80]) {
+    await act(() =>
+      controller.current!.runtime.transact({
+        id: `move-reference-${delta}`,
+        operations: [
+          {
+            type: 'replace_cell',
+            cell: {
+              ...reference,
+              geometry: { ...reference.geometry, x: delta, y: delta },
+            },
+          },
+        ],
+      }),
+    );
+    expect(content().getAttribute('transform')).toBe(original);
+    expect(container.querySelector('svg[data-surface="nested"]')).toBe(nested);
+  }
+  expect(measure).not.toHaveBeenCalled();
   const nextReference = {
     ...reference,
     geometry: { x: 60, y: 90, width: 700, height: 360 },
@@ -400,13 +421,14 @@ it('refits nested content immediately when its parent reference shell changes ge
     }),
   );
   const fit = fitFrameContent(
-    { ...target, geometry: nextReference.geometry },
+    { ...target, geometry: { ...nextReference.geometry, x: 0, y: 0 } },
     frameContentBounds(runtime.store, target.id),
   );
   expect(content().getAttribute('transform')).toBe(
     `translate(${fit.offset[0]} ${fit.offset[1]}) scale(${fit.scale})`,
   );
   expect(content().getAttribute('transform')).not.toBe(original);
+  expect(measure).toHaveBeenCalled();
   expect(runtime.revision).toBe(childRevision);
   expect(runtime.selection.ids).toEqual([]);
 });

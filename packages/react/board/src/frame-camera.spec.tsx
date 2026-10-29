@@ -198,6 +198,114 @@ const viewport = (transform: string | null) => {
   return { zoom, origin: [-x, -y] };
 };
 describe('memory-only canvas camera', () => {
+  it('measures once per wheel burst, preserves accumulated anchors and invalidates only for host motion', async () => {
+    const frames = controlledFrames();
+    const test = await mount();
+    const rect = vi.mocked(SVGSVGElement.prototype.getBoundingClientRect);
+    const original = rect.mock.results.at(-1)!.value as DOMRect;
+    const time = vi.spyOn(performance, 'now').mockReturnValue(100);
+    const wheel = () =>
+      test.svg.dispatchEvent(
+        new WheelEvent('wheel', {
+          bubbles: true,
+          cancelable: true,
+          ctrlKey: true,
+          deltaY: -6,
+          clientX: 300,
+          clientY: 200,
+        }),
+      );
+    rect.mockClear();
+    for (let i = 0; i < 10; i++) {
+      await act(async () => {
+        wheel();
+        wheel();
+      });
+      await frames.paint();
+    }
+    expect(rect).toHaveBeenCalledTimes(1);
+    const camera = test.controller.current!.getCamera()!;
+    expect(camera.zoom).toBeCloseTo(Math.exp(1.2));
+    expect(camera.origination![0]).toBeCloseTo(300 - 300 / camera.zoom!);
+    expect(camera.origination![1]).toBeCloseTo(200 - 200 / camera.zoom!);
+    // A document scrolling inside this canvas cannot move the root viewport.
+    await act(async () =>
+      test.svg
+        .querySelector('[data-frame-world]')!
+        .dispatchEvent(new Event('scroll')),
+    );
+    expect(rect).toHaveBeenCalledTimes(1);
+    rect.mockReturnValue({ ...original, left: 100, top: 40 } as DOMRect);
+    await act(async () => {
+      test.container.style.marginLeft = '100px';
+    });
+    await act(async () => {
+      wheel();
+    });
+    expect(rect).toHaveBeenCalledTimes(2);
+    await act(async () => test.container.dispatchEvent(new Event('scroll')));
+    expect(rect).toHaveBeenCalledTimes(3);
+    await act(async () => {
+      wheel();
+    });
+    expect(rect).toHaveBeenCalledTimes(3);
+    time.mockReturnValue(1100);
+    await act(async () => {
+      wheel();
+    });
+    expect(rect).toHaveBeenCalledTimes(4);
+    time.mockRestore();
+  });
+  it('keeps measuring input coordinates while an ancestor animates', async () => {
+    const frames = controlledFrames();
+    const test = await mount();
+    Object.defineProperty(test.container, 'getAnimations', {
+      value: () => [{ playState: 'running' }],
+      configurable: true,
+    });
+    const rect = vi.mocked(SVGSVGElement.prototype.getBoundingClientRect);
+    rect.mockClear();
+    for (let i = 0; i < 3; i++) {
+      await act(async () =>
+        test.svg.dispatchEvent(
+          new WheelEvent('wheel', {
+            bubbles: true,
+            cancelable: true,
+            ctrlKey: true,
+            deltaY: -6,
+            clientX: 300,
+            clientY: 200,
+          }),
+        ),
+      );
+      await frames.paint();
+    }
+    expect(rect).toHaveBeenCalledTimes(3);
+  });
+  it('uses fresh coordinates for hand input on an already animated host', async () => {
+    const frames = controlledFrames();
+    const test = await mount(sample(), { tool: 'hand' });
+    Object.defineProperty(test.container, 'getAnimations', {
+      value: () => [{ playState: 'running' }],
+      configurable: true,
+    });
+    await act(async () => {
+      test.fire('pointerdown', 100, 100);
+    });
+    const rect = vi.mocked(SVGSVGElement.prototype.getBoundingClientRect);
+    const original = rect.mock.results.at(-1)!.value as DOMRect;
+    rect.mockClear();
+    rect.mockReturnValue({ ...original, left: 50 } as DOMRect);
+    await act(async () => {
+      test.fire('pointermove', 200, 100);
+    });
+    await frames.paint();
+    expect(rect).toHaveBeenCalledTimes(1);
+    expect(test.controller.current!.getCamera().origination[0]).toBe(-50);
+    await act(async () => {
+      test.fire('pointerup', 200, 100);
+    });
+  });
   it.each([false, true])(
     'cancels native text selection only when an ordinary shape move is allowed (readonly=%s)',
     async (readonly) => {

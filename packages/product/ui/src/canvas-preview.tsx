@@ -1,3 +1,5 @@
+import { useFrameAppearance } from '@sue/board-react';
+import { useAppearancePreference } from './appearance-preferences';
 import { type FrameSnapshot } from '@sue/board-core';
 import {
   FrameCanvas,
@@ -20,6 +22,8 @@ export function CanvasPreview({
   documentReferences?: FrameDocumentReferences;
   exporting?: boolean;
 }) {
+  const inheritedAppearance = useFrameAppearance();
+  const { appearance } = useAppearancePreference();
   const controller = useRef<FrameCanvasController>(null);
   const container = useRef<HTMLDivElement>(null);
   const [ready, setReady] = useState(false);
@@ -60,6 +64,7 @@ export function CanvasPreview({
       style={{ height: '100%', width: '100%', pointerEvents: 'none' }}
     >
       <FrameCanvas
+        appearance={inheritedAppearance ?? appearance}
         ref={controller}
         value={preview}
         frameId={frameId}

@@ -178,6 +178,11 @@ describe('canvas document editing', () => {
       body.scrollTop = 235;
       body.scrollLeft = 3;
       const saved = adapter.captureEditingView!('occurrence')!;
+      expect(controller!.getSelection()).toEqual({
+        from: 2,
+        to: 4,
+        collapsed: false,
+      });
       expect(JSON.parse(JSON.stringify(saved))).toEqual(saved);
       expect(saved).toMatchObject({
         cellId: 'document-shell',
@@ -213,16 +218,18 @@ describe('canvas document editing', () => {
       expect(activate).toHaveBeenCalledWith('canonical-occurrence');
       expect(settled).toBe(false);
       await render(true, 'canonical-occurrence');
-      const restoreSelection = vi.spyOn(controller!, 'restoreSelection');
       await ready();
       expect(await restored).toMatchObject({ status: 'completed' });
-      expect(restoreSelection.mock.calls).toHaveLength(changedRevision ? 0 : 1);
+      expect(controller!.getSelection()).toEqual(
+        changedRevision
+          ? { from: 1, to: 1, collapsed: true }
+          : { from: 2, to: 4, collapsed: false },
+      );
       expect(
         container.querySelector<HTMLElement>('[data-document-preview-scroll]')!
           .scrollTop,
       ).toBe(235);
       expect(options.edit).not.toHaveBeenCalled();
-      restoreSelection.mockRestore();
     });
 
   for (const cancelledBy of ['abort', 'deleted-source'] as const)

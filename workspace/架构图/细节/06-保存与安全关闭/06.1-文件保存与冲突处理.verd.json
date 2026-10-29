@@ -1,0 +1,2008 @@
+{
+  "format": "verd-frame",
+  "version": 2,
+  "frame": {
+    "id": "project:detail/06/01",
+    "kind": "frame",
+    "cellType": "frame",
+    "geometry": {
+      "x": 0,
+      "y": 0,
+      "width": 960,
+      "height": 640,
+      "derived": false
+    },
+    "children": [
+      "demo:save/start",
+      "demo:save/queue",
+      "demo:save/channel",
+      "demo:save/same",
+      "demo:save/reuse",
+      "demo:save/write",
+      "demo:save/verify",
+      "demo:save/manifest",
+      "demo:save/saved",
+      "demo:save/newer",
+      "demo:save/done",
+      "demo:save/fail",
+      "demo:save/retry",
+      "demo:save/gc",
+      "demo:save/edge/0",
+      "demo:save/edge/1",
+      "demo:save/edge/2",
+      "demo:save/edge/3",
+      "demo:save/edge/4",
+      "demo:save/edge/5",
+      "demo:save/edge/6",
+      "demo:save/edge/7",
+      "demo:save/edge/8",
+      "demo:save/edge/9",
+      "demo:save/edge/10",
+      "demo:save/edge/11",
+      "demo:save/edge/12",
+      "demo:save/edge/13",
+      "demo:save/edge/14",
+      "demo:save/edge/15",
+      "demo:save/edge/16",
+      "demo:save/edge/17",
+      "project:detail/06/01/unknown",
+      "project:detail/06/01/bridge/0",
+      "project:detail/06/01/bridge/1",
+      "project:detail/06/01/document"
+    ],
+    "groups": [],
+    "data": {},
+    "content": {
+      "label": "06.1 文件保存与冲突处理"
+    },
+    "appearance": {
+      "fill": "#ffffff",
+      "strokeColor": "#cbd5e1",
+      "strokeWidth": 2
+    },
+    "view": {
+      "theme": {
+        "themeColorMode": "default",
+        "boardBackground": "#ffffff"
+      }
+    },
+    "name": "06.1 文件保存与冲突处理"
+  },
+  "cells": {
+    "demo:save/start": {
+      "id": "demo:save/start",
+      "kind": "workflow-start",
+      "cellType": "node",
+      "geometry": {
+        "x": 0,
+        "y": 300,
+        "width": 360,
+        "height": 106,
+        "derived": false,
+        "outline": "terminal"
+      },
+      "ports": [
+        {
+          "id": "top",
+          "side": "top",
+          "direction": "output",
+          "offset": 0.5
+        },
+        {
+          "id": "right",
+          "side": "right",
+          "direction": "output",
+          "offset": 0.5
+        },
+        {
+          "id": "bottom",
+          "side": "bottom",
+          "direction": "output",
+          "offset": 0.5
+        },
+        {
+          "id": "left",
+          "side": "left",
+          "direction": "output",
+          "offset": 0.5
+        }
+      ],
+      "content": {
+        "label": "当前文件 / 引用源内容变化",
+        "text": {
+          "schemaVersion": 1,
+          "id": "demo:save/start/text",
+          "kind": "inline",
+          "plainText": "当前文件 / 引用源内容变化",
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "当前文件 / 引用源内容变化",
+                    "marks": [
+                      {
+                        "type": "bold"
+                      },
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "20px"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "appearance": {
+        "fill": "#0f766e",
+        "strokeColor": "#0f766e",
+        "strokeWidth": 1.5
+      },
+      "data": {
+        "graphMode": "process",
+        "origin": [
+          0,
+          0
+        ],
+        "memberIds": [
+          "demo:save/start",
+          "demo:save/queue",
+          "demo:save/channel",
+          "demo:save/same",
+          "demo:save/reuse",
+          "demo:save/write",
+          "demo:save/verify",
+          "demo:save/manifest",
+          "demo:save/saved",
+          "demo:save/newer",
+          "demo:save/done",
+          "demo:save/fail",
+          "demo:save/retry",
+          "demo:save/gc",
+          "project:detail/06/01/unknown"
+        ]
+      }
+    },
+    "demo:save/queue": {
+      "id": "demo:save/queue",
+      "kind": "workflow-task",
+      "cellType": "node",
+      "geometry": {
+        "x": 400,
+        "y": 300,
+        "width": 360,
+        "height": 106,
+        "derived": false,
+        "outline": "roundRectangle"
+      },
+      "ports": [
+        {
+          "id": "top",
+          "side": "top",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "right",
+          "side": "right",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "bottom",
+          "side": "bottom",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "left",
+          "side": "left",
+          "direction": "both",
+          "offset": 0.5
+        }
+      ],
+      "content": {
+        "label": "按文件合并待保存内容\n防抖自动保存 / 显式 flush",
+        "text": {
+          "schemaVersion": 1,
+          "id": "demo:save/queue/text",
+          "kind": "inline",
+          "plainText": "按文件合并待保存内容\n防抖自动保存 / 显式 flush",
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "按文件合并待保存内容",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "20px",
+                          "color": "#1e293b"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "防抖自动保存 / 显式 flush",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "20px",
+                          "color": "#1e293b"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "appearance": {
+        "fill": "#f0fdfa",
+        "strokeColor": "#94a3b8",
+        "strokeWidth": 1.5
+      }
+    },
+    "demo:save/channel": {
+      "id": "demo:save/channel",
+      "kind": "workflow-task",
+      "cellType": "node",
+      "geometry": {
+        "x": 800,
+        "y": 300,
+        "width": 360,
+        "height": 106,
+        "derived": false,
+        "outline": "roundRectangle"
+      },
+      "ports": [
+        {
+          "id": "top",
+          "side": "top",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "right",
+          "side": "right",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "bottom",
+          "side": "bottom",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "left",
+          "side": "left",
+          "direction": "both",
+          "offset": 0.5
+        }
+      ],
+      "content": {
+        "label": "构建 WorkspaceHost.commit\ntransactionId + expectedVersion",
+        "text": {
+          "schemaVersion": 1,
+          "id": "demo:save/channel/text",
+          "kind": "inline",
+          "plainText": "构建 WorkspaceHost.commit\ntransactionId + expectedVersion",
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "构建 WorkspaceHost.commit",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "20px",
+                          "color": "#1e293b"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "transactionId + expectedVersion",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "20px",
+                          "color": "#1e293b"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "appearance": {
+        "fill": "#f0fdfa",
+        "strokeColor": "#94a3b8",
+        "strokeWidth": 1.5
+      }
+    },
+    "demo:save/same": {
+      "id": "demo:save/same",
+      "kind": "workflow-decision",
+      "cellType": "node",
+      "geometry": {
+        "x": 1230,
+        "y": 300,
+        "width": 300,
+        "height": 132,
+        "derived": false,
+        "outline": "diamond"
+      },
+      "ports": [
+        {
+          "id": "top",
+          "side": "top",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "right",
+          "side": "right",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "bottom",
+          "side": "bottom",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "left",
+          "side": "left",
+          "direction": "both",
+          "offset": 0.5
+        }
+      ],
+      "content": {
+        "label": "文件内容未变？",
+        "text": {
+          "schemaVersion": 1,
+          "id": "demo:save/same/text",
+          "kind": "inline",
+          "plainText": "文件内容未变？",
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "文件内容未变？",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "20px",
+                          "color": "#1e293b"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "appearance": {
+        "fill": "#fffbeb",
+        "strokeColor": "#d97706",
+        "strokeWidth": 1.5
+      }
+    },
+    "demo:save/reuse": {
+      "id": "demo:save/reuse",
+      "kind": "workflow-task",
+      "cellType": "node",
+      "geometry": {
+        "x": 1200,
+        "y": 480,
+        "width": 360,
+        "height": 106,
+        "derived": false,
+        "outline": "roundRectangle"
+      },
+      "ports": [
+        {
+          "id": "top",
+          "side": "top",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "right",
+          "side": "right",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "bottom",
+          "side": "bottom",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "left",
+          "side": "left",
+          "direction": "both",
+          "offset": 0.5
+        }
+      ],
+      "content": {
+        "label": "内容未变：保留文件版本与时间\n导航元数据单独持久化",
+        "text": {
+          "schemaVersion": 1,
+          "id": "demo:save/reuse/text",
+          "kind": "inline",
+          "plainText": "内容未变：保留文件版本与时间\n导航元数据单独持久化",
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "内容未变：保留文件版本与时间",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "20px",
+                          "color": "#1e293b"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "导航元数据单独持久化",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "20px",
+                          "color": "#1e293b"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "appearance": {
+        "fill": "#f0fdfa",
+        "strokeColor": "#94a3b8",
+        "strokeWidth": 1.5
+      }
+    },
+    "demo:save/write": {
+      "id": "demo:save/write",
+      "kind": "workflow-task",
+      "cellType": "node",
+      "geometry": {
+        "x": 800,
+        "y": 480,
+        "width": 360,
+        "height": 106,
+        "derived": false,
+        "outline": "roundRectangle"
+      },
+      "ports": [
+        {
+          "id": "top",
+          "side": "top",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "right",
+          "side": "right",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "bottom",
+          "side": "bottom",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "left",
+          "side": "left",
+          "direction": "both",
+          "offset": 0.5
+        }
+      ],
+      "content": {
+        "label": "Desktop：暂存文件与 prepared 日志\nWeb：准备 IndexedDB 原子事务",
+        "text": {
+          "schemaVersion": 1,
+          "id": "demo:save/write/text",
+          "kind": "inline",
+          "plainText": "Desktop：暂存文件与 prepared 日志\nWeb：准备 IndexedDB 原子事务",
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Desktop：暂存文件与 prepared 日志",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "20px",
+                          "color": "#1e293b"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Web：准备 IndexedDB 原子事务",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "20px",
+                          "color": "#1e293b"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "appearance": {
+        "fill": "#f0fdfa",
+        "strokeColor": "#94a3b8",
+        "strokeWidth": 1.5
+      }
+    },
+    "demo:save/verify": {
+      "id": "demo:save/verify",
+      "kind": "workflow-decision",
+      "cellType": "node",
+      "geometry": {
+        "x": 830,
+        "y": 660,
+        "width": 300,
+        "height": 132,
+        "derived": false,
+        "outline": "diamond"
+      },
+      "ports": [
+        {
+          "id": "top",
+          "side": "top",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "right",
+          "side": "right",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "bottom",
+          "side": "bottom",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "left",
+          "side": "left",
+          "direction": "both",
+          "offset": 0.5
+        }
+      ],
+      "content": {
+        "label": "预期版本仍匹配？",
+        "text": {
+          "schemaVersion": 1,
+          "id": "demo:save/verify/text",
+          "kind": "inline",
+          "plainText": "预期版本仍匹配？",
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "预期版本仍匹配？",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "20px",
+                          "color": "#1e293b"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "appearance": {
+        "fill": "#fffbeb",
+        "strokeColor": "#d97706",
+        "strokeWidth": 1.5
+      }
+    },
+    "demo:save/manifest": {
+      "id": "demo:save/manifest",
+      "kind": "workflow-task",
+      "cellType": "node",
+      "geometry": {
+        "x": 1200,
+        "y": 660,
+        "width": 360,
+        "height": 106,
+        "derived": false,
+        "outline": "roundRectangle"
+      },
+      "ports": [
+        {
+          "id": "top",
+          "side": "top",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "right",
+          "side": "right",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "bottom",
+          "side": "bottom",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "left",
+          "side": "left",
+          "direction": "both",
+          "offset": 0.5
+        }
+      ],
+      "content": {
+        "label": "Desktop：applying → applied\nWeb：一次原子提交全部文件",
+        "text": {
+          "schemaVersion": 1,
+          "id": "demo:save/manifest/text",
+          "kind": "inline",
+          "plainText": "Desktop：applying → applied\nWeb：一次原子提交全部文件",
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Desktop：applying → applied",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "20px",
+                          "color": "#1e293b"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Web：一次原子提交全部文件",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "20px",
+                          "color": "#1e293b"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "appearance": {
+        "fill": "#f0fdfa",
+        "strokeColor": "#94a3b8",
+        "strokeWidth": 1.5
+      }
+    },
+    "demo:save/saved": {
+      "id": "demo:save/saved",
+      "kind": "workflow-task",
+      "cellType": "node",
+      "geometry": {
+        "x": 1200,
+        "y": 840,
+        "width": 360,
+        "height": 106,
+        "derived": false,
+        "outline": "roundRectangle"
+      },
+      "ports": [
+        {
+          "id": "top",
+          "side": "top",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "right",
+          "side": "right",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "bottom",
+          "side": "bottom",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "left",
+          "side": "left",
+          "direction": "both",
+          "offset": 0.5
+        }
+      ],
+      "content": {
+        "label": "按文件更新 filePersistence 与时间\n较旧回执不覆盖较新修改",
+        "text": {
+          "schemaVersion": 1,
+          "id": "demo:save/saved/text",
+          "kind": "inline",
+          "plainText": "按文件更新 filePersistence 与时间\n较旧回执不覆盖较新修改",
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "按文件更新 filePersistence 与时间",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "20px",
+                          "color": "#1e293b"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "较旧回执不覆盖较新修改",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "20px",
+                          "color": "#1e293b"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "appearance": {
+        "fill": "#f0fdfa",
+        "strokeColor": "#94a3b8",
+        "strokeWidth": 1.5
+      }
+    },
+    "demo:save/newer": {
+      "id": "demo:save/newer",
+      "kind": "workflow-decision",
+      "cellType": "node",
+      "geometry": {
+        "x": 830,
+        "y": 840,
+        "width": 300,
+        "height": 132,
+        "derived": false,
+        "outline": "diamond"
+      },
+      "ports": [
+        {
+          "id": "top",
+          "side": "top",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "right",
+          "side": "right",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "bottom",
+          "side": "bottom",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "left",
+          "side": "left",
+          "direction": "both",
+          "offset": 0.5
+        }
+      ],
+      "content": {
+        "label": "还有待保存内容？",
+        "text": {
+          "schemaVersion": 1,
+          "id": "demo:save/newer/text",
+          "kind": "inline",
+          "plainText": "还有待保存内容？",
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "还有待保存内容？",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "20px",
+                          "color": "#1e293b"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "appearance": {
+        "fill": "#fffbeb",
+        "strokeColor": "#d97706",
+        "strokeWidth": 1.5
+      }
+    },
+    "demo:save/done": {
+      "id": "demo:save/done",
+      "kind": "workflow-task",
+      "cellType": "node",
+      "geometry": {
+        "x": 400,
+        "y": 840,
+        "width": 360,
+        "height": 106,
+        "derived": false,
+        "outline": "roundRectangle"
+      },
+      "ports": [
+        {
+          "id": "top",
+          "side": "top",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "right",
+          "side": "right",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "bottom",
+          "side": "bottom",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "left",
+          "side": "left",
+          "direction": "both",
+          "offset": 0.5
+        }
+      ],
+      "content": {
+        "label": "保存完成\nflush 返回 true",
+        "text": {
+          "schemaVersion": 1,
+          "id": "demo:save/done/text",
+          "kind": "inline",
+          "plainText": "保存完成\nflush 返回 true",
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "保存完成",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "20px",
+                          "color": "#1e293b"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "flush 返回 true",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "20px",
+                          "color": "#1e293b"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "appearance": {
+        "fill": "#f0fdfa",
+        "strokeColor": "#94a3b8",
+        "strokeWidth": 1.5
+      }
+    },
+    "demo:save/fail": {
+      "id": "demo:save/fail",
+      "kind": "workflow-task",
+      "cellType": "node",
+      "geometry": {
+        "x": 0,
+        "y": 660,
+        "width": 360,
+        "height": 106,
+        "derived": false,
+        "outline": "roundRectangle"
+      },
+      "ports": [
+        {
+          "id": "top",
+          "side": "top",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "right",
+          "side": "right",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "bottom",
+          "side": "bottom",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "left",
+          "side": "left",
+          "direction": "both",
+          "offset": 0.5
+        }
+      ],
+      "content": {
+        "label": "提交拒绝或 I/O 失败\n保留脏内容，flush 返回 false",
+        "text": {
+          "schemaVersion": 1,
+          "id": "demo:save/fail/text",
+          "kind": "inline",
+          "plainText": "提交拒绝或 I/O 失败\n保留脏内容，flush 返回 false",
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "提交拒绝或 I/O 失败",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "20px",
+                          "color": "#1e293b"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "保留脏内容，flush 返回 false",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "20px",
+                          "color": "#1e293b"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "appearance": {
+        "fill": "#fff1f2",
+        "strokeColor": "#94a3b8",
+        "strokeWidth": 1.5
+      }
+    },
+    "demo:save/retry": {
+      "id": "demo:save/retry",
+      "kind": "workflow-task",
+      "cellType": "node",
+      "geometry": {
+        "x": 0,
+        "y": 480,
+        "width": 360,
+        "height": 106,
+        "derived": false,
+        "outline": "roundRectangle"
+      },
+      "ports": [
+        {
+          "id": "top",
+          "side": "top",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "right",
+          "side": "right",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "bottom",
+          "side": "bottom",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "left",
+          "side": "left",
+          "direction": "both",
+          "offset": 0.5
+        }
+      ],
+      "content": {
+        "label": "用户重试 flush",
+        "text": {
+          "schemaVersion": 1,
+          "id": "demo:save/retry/text",
+          "kind": "inline",
+          "plainText": "用户重试 flush",
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "用户重试 flush",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "20px",
+                          "color": "#1e293b"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "appearance": {
+        "fill": "#f0fdfa",
+        "strokeColor": "#94a3b8",
+        "strokeWidth": 1.5
+      }
+    },
+    "demo:save/gc": {
+      "id": "demo:save/gc",
+      "kind": "workflow-task",
+      "cellType": "node",
+      "geometry": {
+        "x": 1200,
+        "y": 1020,
+        "width": 360,
+        "height": 106,
+        "derived": false,
+        "outline": "roundRectangle"
+      },
+      "ports": [
+        {
+          "id": "top",
+          "side": "top",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "right",
+          "side": "right",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "bottom",
+          "side": "bottom",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "left",
+          "side": "left",
+          "direction": "both",
+          "offset": 0.5
+        }
+      ],
+      "content": {
+        "label": "外部变更与本地脏内容冲突\nload-disk / keep-local / save-copy",
+        "text": {
+          "schemaVersion": 1,
+          "id": "demo:save/gc/text",
+          "kind": "inline",
+          "plainText": "外部变更与本地脏内容冲突\nload-disk / keep-local / save-copy",
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "外部变更与本地脏内容冲突",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "20px",
+                          "color": "#1e293b"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "load-disk / keep-local / save-copy",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "20px",
+                          "color": "#1e293b"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "appearance": {
+        "fill": "#f0fdfa",
+        "strokeColor": "#94a3b8",
+        "strokeWidth": 1.5
+      }
+    },
+    "demo:save/edge/0": {
+      "id": "demo:save/edge/0",
+      "kind": "workflow-edge",
+      "cellType": "edge",
+      "source": {
+        "cellId": "demo:save/start",
+        "portId": "right"
+      },
+      "target": {
+        "cellId": "demo:save/queue",
+        "portId": "left"
+      },
+      "route": {
+        "mode": "orthogonal"
+      },
+      "appearance": {
+        "strokeColor": "#64748b",
+        "strokeWidth": 1.5
+      }
+    },
+    "demo:save/edge/1": {
+      "id": "demo:save/edge/1",
+      "kind": "workflow-edge",
+      "cellType": "edge",
+      "source": {
+        "cellId": "demo:save/queue",
+        "portId": "right"
+      },
+      "target": {
+        "cellId": "demo:save/channel",
+        "portId": "left"
+      },
+      "route": {
+        "mode": "orthogonal"
+      },
+      "appearance": {
+        "strokeColor": "#64748b",
+        "strokeWidth": 1.5
+      }
+    },
+    "demo:save/edge/2": {
+      "id": "demo:save/edge/2",
+      "kind": "workflow-edge",
+      "cellType": "edge",
+      "source": {
+        "cellId": "demo:save/channel",
+        "portId": "right"
+      },
+      "target": {
+        "cellId": "demo:save/same",
+        "portId": "left"
+      },
+      "route": {
+        "mode": "orthogonal"
+      },
+      "appearance": {
+        "strokeColor": "#64748b",
+        "strokeWidth": 1.5
+      }
+    },
+    "demo:save/edge/3": {
+      "id": "demo:save/edge/3",
+      "kind": "workflow-edge",
+      "cellType": "edge",
+      "source": {
+        "cellId": "demo:save/same",
+        "portId": "bottom"
+      },
+      "target": {
+        "cellId": "demo:save/reuse",
+        "portId": "top"
+      },
+      "route": {
+        "mode": "orthogonal"
+      },
+      "labels": [
+        {
+          "text": "是",
+          "position": 0.5
+        }
+      ],
+      "appearance": {
+        "strokeColor": "#64748b",
+        "strokeWidth": 1.5
+      }
+    },
+    "demo:save/edge/4": {
+      "id": "demo:save/edge/4",
+      "kind": "workflow-edge",
+      "cellType": "edge",
+      "source": {
+        "cellId": "demo:save/same",
+        "portId": "bottom"
+      },
+      "target": {
+        "cellId": "demo:save/write",
+        "portId": "right"
+      },
+      "route": {
+        "mode": "orthogonal"
+      },
+      "labels": [
+        {
+          "text": "否",
+          "position": 0.5
+        }
+      ],
+      "appearance": {
+        "strokeColor": "#be123c",
+        "strokeWidth": 1.5
+      }
+    },
+    "demo:save/edge/5": {
+      "id": "demo:save/edge/5",
+      "kind": "workflow-edge",
+      "cellType": "edge",
+      "source": {
+        "cellId": "demo:save/write",
+        "portId": "bottom"
+      },
+      "target": {
+        "cellId": "demo:save/verify",
+        "portId": "top"
+      },
+      "route": {
+        "mode": "orthogonal"
+      },
+      "appearance": {
+        "strokeColor": "#64748b",
+        "strokeWidth": 1.5
+      }
+    },
+    "demo:save/edge/6": {
+      "id": "demo:save/edge/6",
+      "kind": "workflow-edge",
+      "cellType": "edge",
+      "source": {
+        "cellId": "demo:save/reuse",
+        "portId": "bottom"
+      },
+      "target": {
+        "cellId": "demo:save/manifest",
+        "portId": "top"
+      },
+      "route": {
+        "mode": "orthogonal"
+      },
+      "appearance": {
+        "strokeColor": "#64748b",
+        "strokeWidth": 1.5
+      }
+    },
+    "demo:save/edge/7": {
+      "id": "demo:save/edge/7",
+      "kind": "workflow-edge",
+      "cellType": "edge",
+      "source": {
+        "cellId": "demo:save/verify",
+        "portId": "right"
+      },
+      "target": {
+        "cellId": "demo:save/manifest",
+        "portId": "left"
+      },
+      "route": {
+        "mode": "orthogonal"
+      },
+      "labels": [
+        {
+          "text": "是",
+          "position": 0.5
+        }
+      ],
+      "appearance": {
+        "strokeColor": "#64748b",
+        "strokeWidth": 1.5
+      }
+    },
+    "demo:save/edge/8": {
+      "id": "demo:save/edge/8",
+      "kind": "workflow-edge",
+      "cellType": "edge",
+      "source": {
+        "cellId": "demo:save/verify",
+        "portId": "left"
+      },
+      "target": {
+        "cellId": "demo:save/fail",
+        "portId": "right"
+      },
+      "route": {
+        "mode": "orthogonal"
+      },
+      "labels": [
+        {
+          "text": "否",
+          "position": 0.5
+        }
+      ],
+      "appearance": {
+        "strokeColor": "#be123c",
+        "strokeWidth": 1.5
+      }
+    },
+    "demo:save/edge/9": {
+      "id": "demo:save/edge/9",
+      "kind": "workflow-edge",
+      "cellType": "edge",
+      "source": {
+        "cellId": "demo:save/channel",
+        "portId": "bottom"
+      },
+      "target": {
+        "cellId": "demo:save/fail",
+        "portId": "top"
+      },
+      "route": {
+        "mode": "orthogonal"
+      },
+      "labels": [
+        {
+          "text": "写入失败",
+          "position": 0.5
+        }
+      ],
+      "appearance": {
+        "strokeColor": "#64748b",
+        "strokeWidth": 1.5
+      }
+    },
+    "demo:save/edge/10": {
+      "id": "demo:save/edge/10",
+      "kind": "workflow-edge",
+      "cellType": "edge",
+      "source": {
+        "cellId": "demo:save/manifest",
+        "portId": "left"
+      },
+      "target": {
+        "cellId": "demo:save/fail",
+        "portId": "bottom"
+      },
+      "route": {
+        "mode": "orthogonal"
+      },
+      "labels": [
+        {
+          "text": "I/O 失败",
+          "position": 0.5
+        }
+      ],
+      "appearance": {
+        "strokeColor": "#64748b",
+        "strokeWidth": 1.5
+      }
+    },
+    "demo:save/edge/11": {
+      "id": "demo:save/edge/11",
+      "kind": "workflow-edge",
+      "cellType": "edge",
+      "source": {
+        "cellId": "demo:save/fail",
+        "portId": "top"
+      },
+      "target": {
+        "cellId": "demo:save/retry",
+        "portId": "bottom"
+      },
+      "route": {
+        "mode": "orthogonal"
+      },
+      "appearance": {
+        "strokeColor": "#64748b",
+        "strokeWidth": 1.5
+      }
+    },
+    "demo:save/edge/12": {
+      "id": "demo:save/edge/12",
+      "kind": "workflow-edge",
+      "cellType": "edge",
+      "source": {
+        "cellId": "demo:save/retry",
+        "portId": "top"
+      },
+      "target": {
+        "cellId": "demo:save/channel",
+        "portId": "top"
+      },
+      "route": {
+        "mode": "orthogonal"
+      },
+      "labels": [
+        {
+          "text": "重试",
+          "position": 0.5
+        }
+      ],
+      "appearance": {
+        "strokeColor": "#64748b",
+        "strokeWidth": 1.5
+      }
+    },
+    "demo:save/edge/13": {
+      "id": "demo:save/edge/13",
+      "kind": "workflow-edge",
+      "cellType": "edge",
+      "source": {
+        "cellId": "demo:save/manifest",
+        "portId": "bottom"
+      },
+      "target": {
+        "cellId": "demo:save/saved",
+        "portId": "top"
+      },
+      "route": {
+        "mode": "orthogonal"
+      },
+      "appearance": {
+        "strokeColor": "#64748b",
+        "strokeWidth": 1.5
+      }
+    },
+    "demo:save/edge/14": {
+      "id": "demo:save/edge/14",
+      "kind": "workflow-edge",
+      "cellType": "edge",
+      "source": {
+        "cellId": "demo:save/saved",
+        "portId": "left"
+      },
+      "target": {
+        "cellId": "demo:save/newer",
+        "portId": "right"
+      },
+      "route": {
+        "mode": "orthogonal"
+      },
+      "appearance": {
+        "strokeColor": "#64748b",
+        "strokeWidth": 1.5
+      }
+    },
+    "demo:save/edge/15": {
+      "id": "demo:save/edge/15",
+      "kind": "workflow-edge",
+      "cellType": "edge",
+      "source": {
+        "cellId": "demo:save/newer",
+        "portId": "top"
+      },
+      "target": {
+        "cellId": "demo:save/channel",
+        "portId": "bottom"
+      },
+      "route": {
+        "mode": "orthogonal"
+      },
+      "labels": [
+        {
+          "text": "是",
+          "position": 0.5
+        }
+      ],
+      "appearance": {
+        "strokeColor": "#64748b",
+        "strokeWidth": 1.5
+      }
+    },
+    "demo:save/edge/16": {
+      "id": "demo:save/edge/16",
+      "kind": "workflow-edge",
+      "cellType": "edge",
+      "source": {
+        "cellId": "demo:save/newer",
+        "portId": "left"
+      },
+      "target": {
+        "cellId": "demo:save/done",
+        "portId": "right"
+      },
+      "route": {
+        "mode": "orthogonal"
+      },
+      "labels": [
+        {
+          "text": "否",
+          "position": 0.5
+        }
+      ],
+      "appearance": {
+        "strokeColor": "#be123c",
+        "strokeWidth": 1.5
+      }
+    },
+    "demo:save/edge/17": {
+      "id": "demo:save/edge/17",
+      "kind": "workflow-edge",
+      "cellType": "edge",
+      "source": {
+        "cellId": "demo:save/saved",
+        "portId": "bottom"
+      },
+      "target": {
+        "cellId": "demo:save/gc",
+        "portId": "top"
+      },
+      "route": {
+        "mode": "orthogonal"
+      },
+      "labels": [
+        {
+          "text": "后续冲突",
+          "position": 0.5
+        }
+      ],
+      "appearance": {
+        "strokeColor": "#64748b",
+        "strokeWidth": 1.5
+      }
+    },
+    "project:detail/06/01/unknown": {
+      "id": "project:detail/06/01/unknown",
+      "kind": "workflow-task",
+      "cellType": "node",
+      "geometry": {
+        "x": 0,
+        "y": 1040,
+        "width": 400,
+        "height": 120,
+        "derived": false,
+        "outline": "roundRectangle"
+      },
+      "ports": [
+        {
+          "id": "top",
+          "side": "top",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "right",
+          "side": "right",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "bottom",
+          "side": "bottom",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "left",
+          "side": "left",
+          "direction": "both",
+          "offset": 0.5
+        }
+      ],
+      "appearance": {
+        "fill": "#f0fdfa",
+        "strokeColor": "#94a3b8",
+        "strokeWidth": 1.5
+      },
+      "content": {
+        "label": "抛错或 io-error：结果未知\n保留原请求，同一 transactionId 重试",
+        "text": {
+          "schemaVersion": 1,
+          "id": "project:detail/06/01/unknown/text",
+          "kind": "inline",
+          "plainText": "抛错或 io-error：结果未知\n保留原请求，同一 transactionId 重试",
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "抛错或 io-error：结果未知",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "20px",
+                          "color": "#1e293b"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "保留原请求，同一 transactionId 重试",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "20px",
+                          "color": "#1e293b"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      }
+    },
+    "project:detail/06/01/bridge/0": {
+      "id": "project:detail/06/01/bridge/0",
+      "kind": "workflow-edge",
+      "cellType": "edge",
+      "source": {
+        "cellId": "demo:save/fail",
+        "portId": "bottom"
+      },
+      "target": {
+        "cellId": "project:detail/06/01/unknown",
+        "portId": "top"
+      },
+      "route": {
+        "mode": "orthogonal"
+      },
+      "appearance": {
+        "strokeColor": "#64748b",
+        "strokeWidth": 1.5
+      },
+      "labels": [
+        {
+          "text": "未知结果",
+          "position": 0.5
+        }
+      ]
+    },
+    "project:detail/06/01/bridge/1": {
+      "id": "project:detail/06/01/bridge/1",
+      "kind": "workflow-edge",
+      "cellType": "edge",
+      "source": {
+        "cellId": "project:detail/06/01/unknown",
+        "portId": "bottom"
+      },
+      "target": {
+        "cellId": "demo:save/retry",
+        "portId": "top"
+      },
+      "route": {
+        "mode": "orthogonal"
+      },
+      "appearance": {
+        "strokeColor": "#64748b",
+        "strokeWidth": 1.5
+      },
+      "labels": [
+        {
+          "text": "同请求重放",
+          "position": 0.5
+        }
+      ]
+    },
+    "project:detail/06/01/document": {
+      "id": "project:detail/06/01/document",
+      "cellType": "node",
+      "kind": "document-reference",
+      "geometry": {
+        "x": 0,
+        "y": 1340,
+        "width": 1000,
+        "height": 620
+      },
+      "data": {
+        "targetDocumentId": "project-doc:guides/SETUP"
+      },
+      "content": {
+        "text": {
+          "schemaVersion": 1,
+          "id": "project:detail/06/01/document/links",
+          "kind": "block",
+          "align": "left",
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "读图：expectedVersion 防止覆盖外部变更；transactionId 确保未知结果可安全重放。"
+                  }
+                ]
+              },
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "返回专题总览",
+                    "marks": [
+                      {
+                        "type": "link",
+                        "attrs": {
+                          "href": "verd://file/demo%3Asave-close"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "相关细节：关闭与工作区切换屏障",
+                    "marks": [
+                      {
+                        "type": "link",
+                        "attrs": {
+                          "href": "verd://file/project%3Adetail%2F06%2F02"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "系统架构 · 持久化和迁移",
+                    "marks": [
+                      {
+                        "type": "link",
+                        "attrs": {
+                          "href": "verd://file/project-doc%3Aarchitecture%2FARCHITECTURE#%E6%8C%81%E4%B9%85%E5%8C%96%E5%92%8C%E8%BF%81%E7%A7%BB"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "布局、路由与保存边界",
+                    "marks": [
+                      {
+                        "type": "link",
+                        "attrs": {
+                          "href": "verd://file/project-doc%3Apackages%2Fboard%2Farrangement#%E4%BF%9D%E5%AD%98%E8%BE%B9%E7%95%8C%E4%B8%8E%E5%85%B8%E5%9E%8B%E5%9C%BA%E6%99%AF"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "源码入口：packages/product/app/src/session/workspace-session.ts；packages/product/app/src/host/workspace-host.ts；packages/product/app/src/host/desktop-workspace-host.ts。"
+                  }
+                ]
+              }
+            ]
+          },
+          "plainText": "读图：expectedVersion 防止覆盖外部变更；transactionId 确保未知结果可安全重放。\n返回专题总览\n相关细节：关闭与工作区切换屏障\n系统架构 · 持久化和迁移\n布局、路由与保存边界\n源码入口：packages/product/app/src/session/workspace-session.ts；packages/product/app/src/host/workspace-host.ts；packages/product/app/src/host/desktop-workspace-host.ts。"
+        }
+      }
+    }
+  },
+  "organization": {
+    "kind": "standalone"
+  }
+}

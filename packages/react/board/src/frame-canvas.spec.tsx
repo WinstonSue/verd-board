@@ -1774,7 +1774,7 @@ describe('reference instance editing', () => {
           '[data-reference-instance="r1"] [data-cell-id="topic"]',
         ),
     );
-    const viewport = frameContentViewport(shell);
+    const viewport = frameContentViewport({ ...shell, x: 0, y: 0 });
     const world = container.querySelector(
       '[data-reference-instance="r1"] [data-frame-world]',
     );

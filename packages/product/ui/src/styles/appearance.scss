@@ -37,9 +37,9 @@ html[data-verd-appearance] {
   @include tokens.document;
 }
 
-// A canvas is authored content, including its document cards and compact
-// editors. Do not inherit the surrounding application's appearance into it.
-svg[data-surface][aria-label='Frame canvas'] {
+// Legacy embedded canvases retain their original colors. Adaptive canvases
+// receive scoped presentation tokens from their renderer.
+svg[data-surface][aria-label='Frame canvas']:not([data-board-appearance]) {
   @include tokens.light;
   @include action-tokens;
   // An invalid custom-property value restores each text component's original
@@ -68,8 +68,8 @@ svg[data-surface][aria-label='Frame canvas'] {
 }
 
 .frame-note-content {
-  background: #fff;
-  color-scheme: light;
+  background: var(--board-surface, #fff);
+  color-scheme: inherit;
 }
 
 .verd-board-tutorial .tutorial-content {

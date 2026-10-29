@@ -97,7 +97,16 @@ test('UML sequence native import preserves nested events, activation, self calls
         Object.values(f.cells).some((c: any) => c.kind === 'uml-sequence-root'),
     ) as any;
   const message = nodes(page, 'uml-message').first();
-  await message.click();
+  // Import selects the new graph; clear its transform handles before picking a line.
+  await umlCanvas(page).press('Escape');
+  const point = await message.locator('[data-edge-hit]').evaluate((element) => {
+    const path = element as SVGPathElement;
+    const point = path
+      .getPointAtLength(path.getTotalLength() * 0.25)
+      .matrixTransform(path.getScreenCTM()!);
+    return { x: point.x, y: point.y };
+  });
+  await page.mouse.click(point.x, point.y);
   const label = page.getByLabel('关系 / 消息名称');
   await label.fill('changed()');
   await label.press('Tab');

@@ -8,8 +8,8 @@
     "pnpm": ">=11.18.0"
   },
   "scripts": {
-    "start": "turbo run dev --filter=desktop",
-    "dev": "turbo run dev --filter=desktop",
+    "start": "pnpm dev:desktop",
+    "dev": "pnpm dev:desktop",
     "dev:web": "turbo run dev --filter=web",
     "build": "turbo run build --filter=!desktop",
     "lint": "turbo run lint",
@@ -32,7 +32,12 @@
     "skills:status": "ai-config-manager status",
     "check:plugins": "node scripts/check-plugin-boundaries.mjs",
     "test:plugin-consumers": "node scripts/test-plugin-consumers.mjs",
-    "prepare:schema-integration": "node scripts/prepare-schema-integration.mjs"
+    "prepare:schema-integration": "node scripts/prepare-schema-integration.mjs",
+    "package:desktop": "node scripts/package-desktop.mjs",
+    "icons:desktop": "node scripts/generate-desktop-icons.mjs",
+    "dev:desktop": "turbo run dev --filter=desktop",
+    "test:e2e:desktop:prod": "playwright test --config tests/desktop-e2e/playwright.prod.config.ts",
+    "test:e2e:desktop:packaged": "playwright test --config tests/desktop-e2e/playwright.packaged.config.ts"
   },
   "devDependencies": {
     "@eslint/js": "^9.22.0",

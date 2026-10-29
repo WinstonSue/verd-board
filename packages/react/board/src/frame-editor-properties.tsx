@@ -4,6 +4,7 @@ import { FrameGeometryControls } from './frame-settings';
 import { FrameSettingsControl } from './frame-settings';
 import { createInlineText } from '@sue/board-common';
 import {
+  updateCellAppearance,
   isEdgeCell,
   isFrameCell,
   isNodeCell,
@@ -24,6 +25,7 @@ export function FrameEditorProperties(context: FramePluginContext) {
   const zh = language === 'zh';
   const current = () =>
     controller ? controller.runtime.store.cells[cell.id] : cell;
+  const visual = controller?.resolveAppearance?.(cell.id);
   const replace = (next: Cell) => {
     void context.dispatch([{ type: 'replace_cell', cell: next }]);
   };
@@ -118,8 +120,11 @@ export function FrameEditorProperties(context: FramePluginContext) {
       {(isNodeCell(cell) || isEdgeCell(cell)) && (
         <FrameAppearanceSettings
           values={{
-            fill: isNodeCell(cell) ? (cell.appearance?.fill ?? '') : undefined,
-            strokeColor: cell.appearance?.strokeColor ?? '',
+            fill: isNodeCell(cell)
+              ? (visual?.fill ?? cell.appearance?.fill ?? '')
+              : undefined,
+            strokeColor:
+              visual?.strokeColor ?? cell.appearance?.strokeColor ?? '',
             strokeWidth: cell.appearance?.strokeWidth ?? 1.5,
             opacity: cell.appearance?.opacity ?? 1,
             strokeStyle: undefined,
@@ -130,6 +135,24 @@ export function FrameEditorProperties(context: FramePluginContext) {
           profile="editor"
           includeFill={isNodeCell(cell)}
           disabled={disabled}
+          onSetColor={(key, value) =>
+            void context.dispatch(
+              updateCellAppearance(
+                controller?.runtime.store ?? context.store,
+                [cell.id],
+                { [key]: value === '' ? undefined : value },
+              ),
+            )
+          }
+          onResetColor={(key) =>
+            void context.dispatch(
+              updateCellAppearance(
+                controller?.runtime.store ?? context.store,
+                [cell.id],
+                { [key]: undefined, colorSources: { [key]: 'theme' } },
+              ),
+            )
+          }
           onCommit={({ changes }) => {
             const latest = current();
             if (!isNodeCell(latest) && !isEdgeCell(latest)) return;
@@ -144,10 +167,13 @@ export function FrameEditorProperties(context: FramePluginContext) {
                     : change.value,
               ]),
             );
-            replace({
-              ...latest,
-              appearance: { ...latest.appearance, ...patch },
-            } as Cell);
+            void context.dispatch(
+              updateCellAppearance(
+                controller?.runtime.store ?? context.store,
+                [cell.id],
+                patch,
+              ),
+            );
           }}
         />
       )}

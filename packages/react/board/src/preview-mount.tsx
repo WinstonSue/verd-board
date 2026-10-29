@@ -111,7 +111,7 @@ export function usePreviewMount({
 }: {
   active?: boolean;
   force?: boolean;
-  viewport?: RefObject<HTMLElement | null>;
+  viewport?: RefObject<Element | null>;
   /** Editing occurrences keep their runtime after first admission. */
   retain?: boolean;
 } = {}): boolean {

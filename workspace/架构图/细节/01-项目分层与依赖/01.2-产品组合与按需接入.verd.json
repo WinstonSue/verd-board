@@ -1,0 +1,969 @@
+{
+  "format": "verd-frame",
+  "version": 2,
+  "frame": {
+    "id": "project:detail/01/02",
+    "kind": "frame",
+    "cellType": "frame",
+    "geometry": {
+      "x": 0,
+      "y": 0,
+      "width": 960,
+      "height": 640,
+      "derived": false
+    },
+    "children": [
+      "project:detail/01/02/layer/0",
+      "project:detail/01/02/layer/1",
+      "project:detail/01/02/layer/2",
+      "project:detail/01/02/apps",
+      "project:detail/01/02/product",
+      "project:detail/01/02/registry",
+      "project:detail/01/02/ui",
+      "project:detail/01/02/minimal",
+      "project:detail/01/02/converters",
+      "project:detail/01/02/document",
+      "project:detail/01/02/edge/0",
+      "project:detail/01/02/edge/1",
+      "project:detail/01/02/edge/2",
+      "project:detail/01/02/edge/3",
+      "project:detail/01/02/edge/4",
+      "project:detail/01/02/edge/5"
+    ],
+    "groups": [],
+    "data": {},
+    "content": {
+      "label": "01.2 产品组合与按需接入"
+    },
+    "appearance": {
+      "fill": "#ffffff",
+      "strokeColor": "#cbd5e1",
+      "strokeWidth": 2
+    },
+    "view": {
+      "theme": {
+        "themeColorMode": "default",
+        "boardBackground": "#ffffff"
+      }
+    },
+    "name": "01.2 产品组合与按需接入"
+  },
+  "cells": {
+    "project:detail/01/02/apps": {
+      "id": "project:detail/01/02/apps",
+      "kind": "architecture-module",
+      "cellType": "node",
+      "geometry": {
+        "x": 0,
+        "y": 70,
+        "width": 450,
+        "height": 150,
+        "derived": false,
+        "outline": "roundRectangle"
+      },
+      "ports": [
+        {
+          "id": "top",
+          "side": "top",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "right",
+          "side": "right",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "bottom",
+          "side": "bottom",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "left",
+          "side": "left",
+          "direction": "both",
+          "offset": 0.5
+        }
+      ],
+      "appearance": {
+        "fill": "#f0fdfa",
+        "strokeColor": "#94a3b8",
+        "strokeWidth": 1.5
+      },
+      "data": {
+        "shape": "box",
+        "placed": true
+      },
+      "content": {
+        "label": "Desktop / Web\n应用入口选择 WorkspaceHost",
+        "text": {
+          "schemaVersion": 1,
+          "id": "project:detail/01/02/apps/text",
+          "kind": "inline",
+          "plainText": "Desktop / Web\n应用入口选择 WorkspaceHost",
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Desktop / Web",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "20px",
+                          "color": "#1e293b"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "应用入口选择 WorkspaceHost",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "20px",
+                          "color": "#1e293b"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      }
+    },
+    "project:detail/01/02/product": {
+      "id": "project:detail/01/02/product",
+      "kind": "architecture-module",
+      "cellType": "node",
+      "geometry": {
+        "x": 500,
+        "y": 70,
+        "width": 450,
+        "height": 150,
+        "derived": false,
+        "outline": "roundRectangle"
+      },
+      "ports": [
+        {
+          "id": "top",
+          "side": "top",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "right",
+          "side": "right",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "bottom",
+          "side": "bottom",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "left",
+          "side": "left",
+          "direction": "both",
+          "offset": 0.5
+        }
+      ],
+      "appearance": {
+        "fill": "#f0fdfa",
+        "strokeColor": "#94a3b8",
+        "strokeWidth": 1.5
+      },
+      "data": {
+        "shape": "box",
+        "placed": true
+      },
+      "content": {
+        "label": "WorkspaceApp / VerdFrame\n产品默认组装完整领域能力",
+        "text": {
+          "schemaVersion": 1,
+          "id": "project:detail/01/02/product/text",
+          "kind": "inline",
+          "plainText": "WorkspaceApp / VerdFrame\n产品默认组装完整领域能力",
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "WorkspaceApp / VerdFrame",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "20px",
+                          "color": "#1e293b"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "产品默认组装完整领域能力",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "20px",
+                          "color": "#1e293b"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      }
+    },
+    "project:detail/01/02/registry": {
+      "id": "project:detail/01/02/registry",
+      "kind": "architecture-module",
+      "cellType": "node",
+      "geometry": {
+        "x": 0,
+        "y": 350,
+        "width": 450,
+        "height": 150,
+        "derived": false,
+        "outline": "roundRectangle"
+      },
+      "ports": [
+        {
+          "id": "top",
+          "side": "top",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "right",
+          "side": "right",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "bottom",
+          "side": "bottom",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "left",
+          "side": "left",
+          "direction": "both",
+          "offset": 0.5
+        }
+      ],
+      "appearance": {
+        "fill": "#f0fdfa",
+        "strokeColor": "#94a3b8",
+        "strokeWidth": 1.5
+      },
+      "data": {
+        "shape": "box",
+        "placed": true
+      },
+      "content": {
+        "label": "createCellRegistry + CellPlugin\n按需安装引擎校验、命令与几何",
+        "text": {
+          "schemaVersion": 1,
+          "id": "project:detail/01/02/registry/text",
+          "kind": "inline",
+          "plainText": "createCellRegistry + CellPlugin\n按需安装引擎校验、命令与几何",
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "createCellRegistry + CellPlugin",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "20px",
+                          "color": "#1e293b"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "按需安装引擎校验、命令与几何",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "20px",
+                          "color": "#1e293b"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      }
+    },
+    "project:detail/01/02/ui": {
+      "id": "project:detail/01/02/ui",
+      "kind": "architecture-module",
+      "cellType": "node",
+      "geometry": {
+        "x": 500,
+        "y": 350,
+        "width": 450,
+        "height": 150,
+        "derived": false,
+        "outline": "roundRectangle"
+      },
+      "ports": [
+        {
+          "id": "top",
+          "side": "top",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "right",
+          "side": "right",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "bottom",
+          "side": "bottom",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "left",
+          "side": "left",
+          "direction": "both",
+          "offset": 0.5
+        }
+      ],
+      "appearance": {
+        "fill": "#f0fdfa",
+        "strokeColor": "#94a3b8",
+        "strokeWidth": 1.5
+      },
+      "data": {
+        "shape": "box",
+        "placed": true
+      },
+      "content": {
+        "label": "FrameUIPlugin + pluginSet\n按需组装工具、渲染与交互",
+        "text": {
+          "schemaVersion": 1,
+          "id": "project:detail/01/02/ui/text",
+          "kind": "inline",
+          "plainText": "FrameUIPlugin + pluginSet\n按需组装工具、渲染与交互",
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "FrameUIPlugin + pluginSet",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "20px",
+                          "color": "#1e293b"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "按需组装工具、渲染与交互",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "20px",
+                          "color": "#1e293b"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      }
+    },
+    "project:detail/01/02/minimal": {
+      "id": "project:detail/01/02/minimal",
+      "kind": "architecture-module",
+      "cellType": "node",
+      "geometry": {
+        "x": 0,
+        "y": 630,
+        "width": 450,
+        "height": 150,
+        "derived": false,
+        "outline": "roundRectangle"
+      },
+      "ports": [
+        {
+          "id": "top",
+          "side": "top",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "right",
+          "side": "right",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "bottom",
+          "side": "bottom",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "left",
+          "side": "left",
+          "direction": "both",
+          "offset": 0.5
+        }
+      ],
+      "appearance": {
+        "fill": "#f0fdfa",
+        "strokeColor": "#94a3b8",
+        "strokeWidth": 1.5
+      },
+      "data": {
+        "shape": "box",
+        "placed": true
+      },
+      "content": {
+        "label": "最小 Mind 消费者\ncore + mind + react + react-mind",
+        "text": {
+          "schemaVersion": 1,
+          "id": "project:detail/01/02/minimal/text",
+          "kind": "inline",
+          "plainText": "最小 Mind 消费者\ncore + mind + react + react-mind",
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "最小 Mind 消费者",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "20px",
+                          "color": "#1e293b"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "core + mind + react + react-mind",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "20px",
+                          "color": "#1e293b"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      }
+    },
+    "project:detail/01/02/converters": {
+      "id": "project:detail/01/02/converters",
+      "kind": "architecture-module",
+      "cellType": "node",
+      "geometry": {
+        "x": 500,
+        "y": 630,
+        "width": 450,
+        "height": 150,
+        "derived": false,
+        "outline": "roundRectangle"
+      },
+      "ports": [
+        {
+          "id": "top",
+          "side": "top",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "right",
+          "side": "right",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "bottom",
+          "side": "bottom",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "left",
+          "side": "left",
+          "direction": "both",
+          "offset": 0.5
+        }
+      ],
+      "appearance": {
+        "fill": "#f0fdfa",
+        "strokeColor": "#94a3b8",
+        "strokeWidth": 1.5
+      },
+      "data": {
+        "shape": "box",
+        "placed": true
+      },
+      "content": {
+        "label": "转换器按需引入\nMarkdown / Mermaid 不进入 core",
+        "text": {
+          "schemaVersion": 1,
+          "id": "project:detail/01/02/converters/text",
+          "kind": "inline",
+          "plainText": "转换器按需引入\nMarkdown / Mermaid 不进入 core",
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "转换器按需引入",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "20px",
+                          "color": "#1e293b"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Markdown / Mermaid 不进入 core",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "20px",
+                          "color": "#1e293b"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      }
+    },
+    "project:detail/01/02/document": {
+      "id": "project:detail/01/02/document",
+      "cellType": "node",
+      "kind": "document-reference",
+      "geometry": {
+        "x": 0,
+        "y": 960,
+        "width": 1100,
+        "height": 620
+      },
+      "data": {
+        "targetDocumentId": "project-doc:packages/README"
+      },
+      "content": {
+        "text": {
+          "schemaVersion": 1,
+          "id": "project:detail/01/02/document/links",
+          "kind": "block",
+          "align": "left",
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "读图：区分产品默认组合与第三方最小接入；实际运行时协作见专题②。"
+                  }
+                ]
+              },
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "返回专题总览",
+                    "marks": [
+                      {
+                        "type": "link",
+                        "attrs": {
+                          "href": "verd://file/board%2F20%3Aarchitecture-layered"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "相关细节：完整包分层与依赖",
+                    "marks": [
+                      {
+                        "type": "link",
+                        "attrs": {
+                          "href": "verd://file/project%3Adetail%2F01%2F01"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "系统架构 · 包职责与公共接入",
+                    "marks": [
+                      {
+                        "type": "link",
+                        "attrs": {
+                          "href": "verd://file/project-doc%3Aarchitecture%2FARCHITECTURE#%E5%8C%85%E8%81%8C%E8%B4%A3%E4%B8%8E%E5%85%AC%E5%85%B1%E6%8E%A5%E5%85%A5"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "源码入口：packages/product/app/src/frames/plugins.ts；packages/react/board/src/frame-plugins.ts；packages/react/board/src/frame-editor.tsx。"
+                  }
+                ]
+              }
+            ]
+          },
+          "plainText": "读图：区分产品默认组合与第三方最小接入；实际运行时协作见专题②。\n返回专题总览\n相关细节：完整包分层与依赖\n系统架构 · 包职责与公共接入\n源码入口：packages/product/app/src/frames/plugins.ts；packages/react/board/src/frame-plugins.ts；packages/react/board/src/frame-editor.tsx。"
+        }
+      }
+    },
+    "project:detail/01/02/layer/0": {
+      "id": "project:detail/01/02/layer/0",
+      "kind": "architecture-layer",
+      "cellType": "node",
+      "geometry": {
+        "x": 0,
+        "y": 0,
+        "width": 1000,
+        "height": 230,
+        "derived": true
+      },
+      "data": {
+        "order": "00000000",
+        "fontSize": 24,
+        "memberIds": [
+          "project:detail/01/02/apps",
+          "project:detail/01/02/product"
+        ]
+      },
+      "content": {
+        "label": "应用入口"
+      },
+      "appearance": {
+        "fill": "#f8fafc",
+        "strokeColor": "#e2e8f0",
+        "strokeWidth": 1
+      }
+    },
+    "project:detail/01/02/layer/1": {
+      "id": "project:detail/01/02/layer/1",
+      "kind": "architecture-layer",
+      "cellType": "node",
+      "geometry": {
+        "x": 0,
+        "y": 280,
+        "width": 1000,
+        "height": 230,
+        "derived": true
+      },
+      "data": {
+        "order": "00000001",
+        "fontSize": 24,
+        "memberIds": [
+          "project:detail/01/02/registry",
+          "project:detail/01/02/ui"
+        ]
+      },
+      "content": {
+        "label": "引擎与 UI 插件契约"
+      },
+      "appearance": {
+        "fill": "#f8fafc",
+        "strokeColor": "#e2e8f0",
+        "strokeWidth": 1
+      }
+    },
+    "project:detail/01/02/layer/2": {
+      "id": "project:detail/01/02/layer/2",
+      "kind": "architecture-layer",
+      "cellType": "node",
+      "geometry": {
+        "x": 0,
+        "y": 560,
+        "width": 1000,
+        "height": 230,
+        "derived": true
+      },
+      "data": {
+        "order": "00000002",
+        "fontSize": 24,
+        "memberIds": [
+          "project:detail/01/02/minimal",
+          "project:detail/01/02/converters"
+        ]
+      },
+      "content": {
+        "label": "消费者与可选能力"
+      },
+      "appearance": {
+        "fill": "#f8fafc",
+        "strokeColor": "#e2e8f0",
+        "strokeWidth": 1
+      }
+    },
+    "project:detail/01/02/edge/0": {
+      "id": "project:detail/01/02/edge/0",
+      "kind": "architecture-edge",
+      "cellType": "edge",
+      "source": {
+        "cellId": "project:detail/01/02/apps"
+      },
+      "target": {
+        "cellId": "project:detail/01/02/product"
+      },
+      "route": {
+        "mode": "orthogonal"
+      },
+      "labels": [
+        {
+          "text": "装配产品",
+          "position": 0.5
+        }
+      ],
+      "appearance": {
+        "strokeColor": "#64748b",
+        "strokeWidth": 1.5
+      }
+    },
+    "project:detail/01/02/edge/1": {
+      "id": "project:detail/01/02/edge/1",
+      "kind": "architecture-edge",
+      "cellType": "edge",
+      "source": {
+        "cellId": "project:detail/01/02/product"
+      },
+      "target": {
+        "cellId": "project:detail/01/02/registry"
+      },
+      "route": {
+        "mode": "orthogonal"
+      },
+      "labels": [
+        {
+          "text": "默认引擎组合",
+          "position": 0.5
+        }
+      ],
+      "appearance": {
+        "strokeColor": "#64748b",
+        "strokeWidth": 1.5
+      }
+    },
+    "project:detail/01/02/edge/2": {
+      "id": "project:detail/01/02/edge/2",
+      "kind": "architecture-edge",
+      "cellType": "edge",
+      "source": {
+        "cellId": "project:detail/01/02/product"
+      },
+      "target": {
+        "cellId": "project:detail/01/02/ui"
+      },
+      "route": {
+        "mode": "orthogonal"
+      },
+      "labels": [
+        {
+          "text": "默认 UI 组合",
+          "position": 0.5
+        }
+      ],
+      "appearance": {
+        "strokeColor": "#64748b",
+        "strokeWidth": 1.5
+      }
+    },
+    "project:detail/01/02/edge/3": {
+      "id": "project:detail/01/02/edge/3",
+      "kind": "architecture-edge",
+      "cellType": "edge",
+      "source": {
+        "cellId": "project:detail/01/02/minimal"
+      },
+      "target": {
+        "cellId": "project:detail/01/02/registry"
+      },
+      "route": {
+        "mode": "orthogonal"
+      },
+      "labels": [
+        {
+          "text": "按需引擎",
+          "position": 0.5
+        }
+      ],
+      "appearance": {
+        "strokeColor": "#64748b",
+        "strokeWidth": 1.5
+      }
+    },
+    "project:detail/01/02/edge/4": {
+      "id": "project:detail/01/02/edge/4",
+      "kind": "architecture-edge",
+      "cellType": "edge",
+      "source": {
+        "cellId": "project:detail/01/02/minimal"
+      },
+      "target": {
+        "cellId": "project:detail/01/02/ui"
+      },
+      "route": {
+        "mode": "orthogonal"
+      },
+      "labels": [
+        {
+          "text": "按需 UI",
+          "position": 0.5
+        }
+      ],
+      "appearance": {
+        "strokeColor": "#64748b",
+        "strokeWidth": 1.5
+      }
+    },
+    "project:detail/01/02/edge/5": {
+      "id": "project:detail/01/02/edge/5",
+      "kind": "architecture-edge",
+      "cellType": "edge",
+      "source": {
+        "cellId": "project:detail/01/02/product"
+      },
+      "target": {
+        "cellId": "project:detail/01/02/converters"
+      },
+      "route": {
+        "mode": "orthogonal"
+      },
+      "labels": [
+        {
+          "text": "可选导入导出",
+          "position": 0.5
+        }
+      ],
+      "appearance": {
+        "strokeColor": "#64748b",
+        "strokeWidth": 1.5
+      }
+    }
+  },
+  "organization": {
+    "kind": "standalone"
+  }
+}

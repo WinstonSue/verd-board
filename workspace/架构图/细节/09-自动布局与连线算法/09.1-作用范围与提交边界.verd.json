@@ -1,0 +1,1109 @@
+{
+  "format": "verd-frame",
+  "version": 2,
+  "frame": {
+    "id": "project:detail/09/01",
+    "kind": "frame",
+    "cellType": "frame",
+    "geometry": {
+      "x": 0,
+      "y": 0,
+      "width": 960,
+      "height": 640,
+      "derived": false
+    },
+    "children": [
+      "demo:algorithms/layer/0",
+      "demo:algorithms/layer/3",
+      "demo:algorithms/scope",
+      "demo:algorithms/plan",
+      "demo:algorithms/switches",
+      "demo:algorithms/persist",
+      "demo:algorithms/runtime",
+      "demo:algorithms/session",
+      "demo:algorithms/edge/0",
+      "demo:algorithms/edge/8",
+      "project:detail/09/01/document"
+    ],
+    "groups": [],
+    "data": {},
+    "content": {
+      "label": "09.1 作用范围与提交边界"
+    },
+    "appearance": {
+      "fill": "#ffffff",
+      "strokeColor": "#cbd5e1",
+      "strokeWidth": 2
+    },
+    "view": {
+      "theme": {
+        "themeColorMode": "default",
+        "boardBackground": "#ffffff"
+      }
+    },
+    "name": "09.1 作用范围与提交边界"
+  },
+  "cells": {
+    "demo:algorithms/scope": {
+      "id": "demo:algorithms/scope",
+      "kind": "architecture-module",
+      "cellType": "node",
+      "geometry": {
+        "x": 0,
+        "y": 70,
+        "width": 420,
+        "height": 150,
+        "derived": false,
+        "outline": {
+          "kind": "roundRectangle",
+          "radius": 8
+        }
+      },
+      "ports": [
+        {
+          "id": "top",
+          "side": "top",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "right",
+          "side": "right",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "bottom",
+          "side": "bottom",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "left",
+          "side": "left",
+          "direction": "both",
+          "offset": 0.5
+        }
+      ],
+      "content": {
+        "label": "选择作用范围\nFrame / Group / 固定选区\n锁定与范围外对象不动",
+        "text": {
+          "schemaVersion": 1,
+          "id": "demo:algorithms/scope/text",
+          "kind": "inline",
+          "plainText": "选择作用范围\nFrame / Group / 固定选区\n锁定与范围外对象不动",
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "选择作用范围",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "22px",
+                          "color": "#1e293b"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Frame / Group / 固定选区",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "22px",
+                          "color": "#1e293b"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "锁定与范围外对象不动",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "22px",
+                          "color": "#1e293b"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "data": {
+        "shape": "box",
+        "placed": true
+      },
+      "appearance": {
+        "fill": "#f0fdfa",
+        "strokeColor": "#94a3b8",
+        "strokeWidth": 1.5
+      }
+    },
+    "demo:algorithms/plan": {
+      "id": "demo:algorithms/plan",
+      "kind": "architecture-module",
+      "cellType": "node",
+      "geometry": {
+        "x": 470,
+        "y": 70,
+        "width": 420,
+        "height": 150,
+        "derived": false,
+        "outline": {
+          "kind": "roundRectangle",
+          "radius": 8
+        }
+      },
+      "ports": [
+        {
+          "id": "top",
+          "side": "top",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "right",
+          "side": "right",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "bottom",
+          "side": "bottom",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "left",
+          "side": "left",
+          "direction": "both",
+          "offset": 0.5
+        }
+      ],
+      "content": {
+        "label": "生成候选计划\n布局块 → 场景规则 → 冲突检查\n拒绝时不提交",
+        "text": {
+          "schemaVersion": 1,
+          "id": "demo:algorithms/plan/text",
+          "kind": "inline",
+          "plainText": "生成候选计划\n布局块 → 场景规则 → 冲突检查\n拒绝时不提交",
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "生成候选计划",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "22px",
+                          "color": "#1e293b"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "布局块 → 场景规则 → 冲突检查",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "22px",
+                          "color": "#1e293b"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "拒绝时不提交",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "22px",
+                          "color": "#1e293b"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "data": {
+        "shape": "box",
+        "placed": true
+      },
+      "appearance": {
+        "fill": "#f0fdfa",
+        "strokeColor": "#94a3b8",
+        "strokeWidth": 1.5
+      }
+    },
+    "demo:algorithms/switches": {
+      "id": "demo:algorithms/switches",
+      "kind": "architecture-module",
+      "cellType": "node",
+      "geometry": {
+        "x": 940,
+        "y": 70,
+        "width": 420,
+        "height": 150,
+        "derived": false,
+        "outline": {
+          "kind": "roundRectangle",
+          "radius": 8
+        }
+      },
+      "ports": [
+        {
+          "id": "top",
+          "side": "top",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "right",
+          "side": "right",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "bottom",
+          "side": "bottom",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "left",
+          "side": "left",
+          "direction": "both",
+          "offset": 0.5
+        }
+      ],
+      "content": {
+        "label": "自动开关：默认关闭\n开启不立即计算 · 范围固定\n触发编辑中先布局后优化",
+        "text": {
+          "schemaVersion": 1,
+          "id": "demo:algorithms/switches/text",
+          "kind": "inline",
+          "plainText": "自动开关：默认关闭\n开启不立即计算 · 范围固定\n触发编辑中先布局后优化",
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "自动开关：默认关闭",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "22px",
+                          "color": "#1e293b"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "开启不立即计算 · 范围固定",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "22px",
+                          "color": "#1e293b"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "触发编辑中先布局后优化",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "22px",
+                          "color": "#1e293b"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "data": {
+        "shape": "box",
+        "placed": true
+      },
+      "appearance": {
+        "fill": "#f0fdfa",
+        "strokeColor": "#94a3b8",
+        "strokeWidth": 1.5
+      }
+    },
+    "demo:algorithms/persist": {
+      "id": "demo:algorithms/persist",
+      "kind": "architecture-module",
+      "cellType": "node",
+      "geometry": {
+        "x": 0,
+        "y": 350,
+        "width": 420,
+        "height": 150,
+        "derived": false,
+        "outline": {
+          "kind": "roundRectangle",
+          "radius": 8
+        }
+      },
+      "ports": [
+        {
+          "id": "top",
+          "side": "top",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "right",
+          "side": "right",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "bottom",
+          "side": "bottom",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "left",
+          "side": "left",
+          "direction": "both",
+          "offset": 0.5
+        }
+      ],
+      "content": {
+        "label": "写文件并可撤销\n显式节点位置、优化折点\n自动结果合入原编辑的一次事务",
+        "text": {
+          "schemaVersion": 1,
+          "id": "demo:algorithms/persist/text",
+          "kind": "inline",
+          "plainText": "写文件并可撤销\n显式节点位置、优化折点\n自动结果合入原编辑的一次事务",
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "写文件并可撤销",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "22px",
+                          "color": "#1e293b"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "显式节点位置、优化折点",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "22px",
+                          "color": "#1e293b"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "自动结果合入原编辑的一次事务",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "22px",
+                          "color": "#1e293b"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "data": {
+        "shape": "box",
+        "placed": true
+      },
+      "appearance": {
+        "fill": "#fff7ed",
+        "strokeColor": "#94a3b8",
+        "strokeWidth": 1.5
+      }
+    },
+    "demo:algorithms/runtime": {
+      "id": "demo:algorithms/runtime",
+      "kind": "architecture-module",
+      "cellType": "node",
+      "geometry": {
+        "x": 470,
+        "y": 350,
+        "width": 420,
+        "height": 150,
+        "derived": false,
+        "outline": {
+          "kind": "roundRectangle",
+          "radius": 8
+        }
+      },
+      "ports": [
+        {
+          "id": "top",
+          "side": "top",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "right",
+          "side": "right",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "bottom",
+          "side": "bottom",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "left",
+          "side": "left",
+          "direction": "both",
+          "offset": 0.5
+        }
+      ],
+      "content": {
+        "label": "仅运行时派生\n普通路线、Mind / UML 几何\n标签、交叉桥、预览与缓存",
+        "text": {
+          "schemaVersion": 1,
+          "id": "demo:algorithms/runtime/text",
+          "kind": "inline",
+          "plainText": "仅运行时派生\n普通路线、Mind / UML 几何\n标签、交叉桥、预览与缓存",
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "仅运行时派生",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "22px",
+                          "color": "#1e293b"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "普通路线、Mind / UML 几何",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "22px",
+                          "color": "#1e293b"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "标签、交叉桥、预览与缓存",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "22px",
+                          "color": "#1e293b"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "data": {
+        "shape": "box",
+        "placed": true
+      },
+      "appearance": {
+        "fill": "#fff7ed",
+        "strokeColor": "#94a3b8",
+        "strokeWidth": 1.5
+      }
+    },
+    "demo:algorithms/session": {
+      "id": "demo:algorithms/session",
+      "kind": "architecture-module",
+      "cellType": "node",
+      "geometry": {
+        "x": 940,
+        "y": 350,
+        "width": 420,
+        "height": 150,
+        "derived": false,
+        "outline": {
+          "kind": "roundRectangle",
+          "radius": 8
+        }
+      },
+      "ports": [
+        {
+          "id": "top",
+          "side": "top",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "right",
+          "side": "right",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "bottom",
+          "side": "bottom",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "left",
+          "side": "left",
+          "direction": "both",
+          "offset": 0.5
+        }
+      ],
+      "content": {
+        "label": "仅会话配置\n两个自动开关与固定范围\n切换标签保留；最后关闭或重启清除",
+        "text": {
+          "schemaVersion": 1,
+          "id": "demo:algorithms/session/text",
+          "kind": "inline",
+          "plainText": "仅会话配置\n两个自动开关与固定范围\n切换标签保留；最后关闭或重启清除",
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "仅会话配置",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "22px",
+                          "color": "#1e293b"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "两个自动开关与固定范围",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "22px",
+                          "color": "#1e293b"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "切换标签保留；最后关闭或重启清除",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "22px",
+                          "color": "#1e293b"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "data": {
+        "shape": "box",
+        "placed": true
+      },
+      "appearance": {
+        "fill": "#fff7ed",
+        "strokeColor": "#94a3b8",
+        "strokeWidth": 1.5
+      }
+    },
+    "demo:algorithms/edge/0": {
+      "id": "demo:algorithms/edge/0",
+      "kind": "architecture-edge",
+      "cellType": "edge",
+      "source": {
+        "cellId": "demo:algorithms/scope"
+      },
+      "target": {
+        "cellId": "demo:algorithms/plan"
+      },
+      "route": {
+        "mode": "orthogonal"
+      },
+      "labels": [
+        {
+          "text": "范围",
+          "position": 0.5
+        }
+      ],
+      "appearance": {
+        "strokeColor": "#64748b",
+        "strokeWidth": 1.5
+      }
+    },
+    "demo:algorithms/edge/8": {
+      "id": "demo:algorithms/edge/8",
+      "kind": "architecture-edge",
+      "cellType": "edge",
+      "source": {
+        "cellId": "demo:algorithms/switches"
+      },
+      "target": {
+        "cellId": "demo:algorithms/session"
+      },
+      "route": {
+        "mode": "orthogonal"
+      },
+      "labels": [
+        {
+          "text": "内存",
+          "position": 0.5
+        }
+      ],
+      "appearance": {
+        "strokeColor": "#64748b",
+        "strokeWidth": 1.5
+      }
+    },
+    "demo:algorithms/layer/0": {
+      "id": "demo:algorithms/layer/0",
+      "kind": "architecture-layer",
+      "cellType": "node",
+      "geometry": {
+        "x": 0,
+        "y": 0,
+        "width": 1640,
+        "height": 230,
+        "derived": true
+      },
+      "content": {
+        "label": "范围与候选 · 从用户操作到可提交计划",
+        "text": {
+          "schemaVersion": 1,
+          "id": "demo:algorithms/layer/0/text",
+          "kind": "inline",
+          "plainText": "范围与候选 · 从用户操作到可提交计划",
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "范围与候选 · 从用户操作到可提交计划",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "24px",
+                          "color": "#1e293b"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "data": {
+        "order": "00000000",
+        "fontSize": 24,
+        "memberIds": [
+          "demo:algorithms/scope",
+          "demo:algorithms/plan",
+          "demo:algorithms/switches"
+        ]
+      },
+      "appearance": {
+        "fill": "#f8fafc",
+        "strokeColor": "#e2e8f0",
+        "strokeWidth": 1
+      }
+    },
+    "demo:algorithms/layer/3": {
+      "id": "demo:algorithms/layer/3",
+      "kind": "architecture-layer",
+      "cellType": "node",
+      "geometry": {
+        "x": 0,
+        "y": 280,
+        "width": 1640,
+        "height": 230,
+        "derived": true
+      },
+      "content": {
+        "label": "三种结果 · 持久化与撤销边界",
+        "text": {
+          "schemaVersion": 1,
+          "id": "demo:algorithms/layer/3/text",
+          "kind": "inline",
+          "plainText": "三种结果 · 持久化与撤销边界",
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "三种结果 · 持久化与撤销边界",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "24px",
+                          "color": "#1e293b"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "data": {
+        "order": "00000001",
+        "fontSize": 24,
+        "memberIds": [
+          "demo:algorithms/persist",
+          "demo:algorithms/runtime",
+          "demo:algorithms/session"
+        ]
+      },
+      "appearance": {
+        "fill": "#f8fafc",
+        "strokeColor": "#e2e8f0",
+        "strokeWidth": 1
+      }
+    },
+    "project:detail/09/01/document": {
+      "id": "project:detail/09/01/document",
+      "cellType": "node",
+      "kind": "document-reference",
+      "geometry": {
+        "x": 0,
+        "y": 680,
+        "width": 1000,
+        "height": 620
+      },
+      "data": {
+        "targetDocumentId": "project-doc:packages/board/arrangement"
+      },
+      "content": {
+        "text": {
+          "schemaVersion": 1,
+          "id": "project:detail/09/01/document/links",
+          "kind": "block",
+          "align": "left",
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "读图：范围固定、锁定对象不动；两个自动开关默认关闭，自动结果合入原事务。"
+                  }
+                ]
+              },
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "保存边界与典型场景",
+                    "marks": [
+                      {
+                        "type": "link",
+                        "attrs": {
+                          "href": "verd://file/project-doc%3Apackages%2Fboard%2Farrangement#%E4%BF%9D%E5%AD%98%E8%BE%B9%E7%95%8C%E4%B8%8E%E5%85%B8%E5%9E%8B%E5%9C%BA%E6%99%AF"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "相关细节：连线路由与优化",
+                    "marks": [
+                      {
+                        "type": "link",
+                        "attrs": {
+                          "href": "verd://file/project%3Adetail%2F09%2F03"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "相关细节：各场景节点布局",
+                    "marks": [
+                      {
+                        "type": "link",
+                        "attrs": {
+                          "href": "verd://file/project%3Adetail%2F09%2F02"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "返回专题总览",
+                    "marks": [
+                      {
+                        "type": "link",
+                        "attrs": {
+                          "href": "verd://file/demo%3Alayout-routing"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "自动布局算法",
+                    "marks": [
+                      {
+                        "type": "link",
+                        "attrs": {
+                          "href": "verd://file/project-doc%3Apackages%2Fboard%2Farrangement#%E8%87%AA%E5%8A%A8%E5%B8%83%E5%B1%80%E7%AE%97%E6%B3%95"
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "type": "text",
+                    "text": " · "
+                  },
+                  {
+                    "type": "text",
+                    "text": "连线路由算法",
+                    "marks": [
+                      {
+                        "type": "link",
+                        "attrs": {
+                          "href": "verd://file/project-doc%3Apackages%2Fboard%2Farrangement#%E8%BF%9E%E7%BA%BF%E8%B7%AF%E7%94%B1%E7%AE%97%E6%B3%95"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "自动开关",
+                    "marks": [
+                      {
+                        "type": "link",
+                        "attrs": {
+                          "href": "verd://file/project-doc%3Apackages%2Fboard%2Farrangement#%E4%B8%80%E6%AC%A1%E6%93%8D%E4%BD%9C%E4%B8%8E%E8%87%AA%E5%8A%A8%E8%AE%A1%E7%AE%97"
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "type": "text",
+                    "text": " · "
+                  },
+                  {
+                    "type": "text",
+                    "text": "三种结果与典型场景",
+                    "marks": [
+                      {
+                        "type": "link",
+                        "attrs": {
+                          "href": "verd://file/project-doc%3Apackages%2Fboard%2Farrangement#%E4%BF%9D%E5%AD%98%E8%BE%B9%E7%95%8C%E4%B8%8E%E5%85%B8%E5%9E%8B%E5%9C%BA%E6%99%AF"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "源码入口：packages/engine/core/src/cell/layout-plan.ts；packages/react/board/src/frame-editor-properties.tsx；packages/product/app/src/canvas/canvas-session.ts。"
+                  }
+                ]
+              }
+            ]
+          },
+          "plainText": "读图：范围固定、锁定对象不动；两个自动开关默认关闭，自动结果合入原事务。\n保存边界与典型场景\n相关细节：连线路由与优化\n相关细节：各场景节点布局\n返回专题总览\n自动布局算法 · 连线路由算法\n自动开关 · 三种结果与典型场景\n源码入口：packages/engine/core/src/cell/layout-plan.ts；packages/react/board/src/frame-editor-properties.tsx；packages/product/app/src/canvas/canvas-session.ts。"
+        }
+      }
+    }
+  },
+  "organization": {
+    "kind": "standalone"
+  }
+}

@@ -29,8 +29,9 @@ export function createPreviewRevisions() {
     path: readonly string[],
     targetId: string,
     referenceSeen?: readonly string[],
+    cards = false,
   ): object => {
-    const key = JSON.stringify([targetId, path, referenceSeen ?? null]);
+    const key = JSON.stringify([targetId, path, referenceSeen ?? null, cards]);
     const dependencies = new Map<string, unknown>();
     const recordShell = (
       kind: 'document' | 'canvas',
@@ -89,6 +90,10 @@ export function createPreviewRevisions() {
       documentPath: ReadonlySet<string>,
     ) => {
       const file = snapshot.files.get(id)?.file;
+      if (cards) {
+        recordShell('canvas', id, file);
+        return;
+      }
       if (!file || documentPath.has(id)) {
         recordShell('canvas', id, file);
         return;

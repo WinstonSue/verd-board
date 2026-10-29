@@ -170,7 +170,7 @@ const paths = (element: Element) =>
     .filter(
       (path) =>
         !path.closest(
-          '[data-selection-handles], [data-vector-controls], [data-edge-hit], [data-vector-hit], [data-port-id]',
+          '[data-selection-handles], [data-vector-controls], [data-edge-hit], [data-vector-hit], [data-port-id], [data-node-highlight], [data-edge-highlight], [data-frame-export-exclude="interaction-stroke"]',
         ),
     )
     .map((path) => ({
@@ -296,9 +296,10 @@ describe('drawing previews and final cells share rendering', () => {
     const id = draft.getAttribute('data-draft-cell-id')!,
       width = pen === 'markerHighlight' ? 16 : pen === 'artisticBrush' ? 6 : 3;
     expect(draft.getAttribute('stroke-width')).toBe(String(width));
-    expect(draft.getAttribute('opacity')).toBe(
-      String(pen === 'markerHighlight' ? 0.35 : 1),
-    );
+    expect(
+      draft.querySelector('[opacity]')?.getAttribute('opacity') ??
+        draft.getAttribute('opacity'),
+    ).toBe(String(pen === 'markerHighlight' ? 0.35 : 1));
     const contour = paths(draft);
     await act(async () => test.fire('pointerup', [500, 270]));
     expect(paths(test.svg.querySelector(`[data-cell-id="${id}"]`)!)).toEqual(

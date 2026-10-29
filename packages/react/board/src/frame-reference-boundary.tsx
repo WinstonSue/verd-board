@@ -7,6 +7,7 @@ export class FrameReferenceBoundary extends Component<
     revision: unknown;
     language: string;
     onOpen(): void;
+    bounds?: { x: number; y: number; width: number; height: number };
   },
   { error: Error | null; revision: unknown }
 > {
@@ -31,7 +32,7 @@ export class FrameReferenceBoundary extends Component<
   override render() {
     if (!this.state.error) return this.props.children;
     const en = this.props.language === 'en';
-    return (
+    const content = (
       <div
         role="alert"
         data-reference-error
@@ -55,6 +56,11 @@ export class FrameReferenceBoundary extends Component<
           {en ? 'Open source' : '打开原图'}
         </button>
       </div>
+    );
+    return this.props.bounds ? (
+      <foreignObject {...this.props.bounds}>{content}</foreignObject>
+    ) : (
+      content
     );
   }
 }

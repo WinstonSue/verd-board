@@ -1,0 +1,1105 @@
+{
+  "format": "verd-frame",
+  "version": 2,
+  "frame": {
+    "id": "project:detail/03/03",
+    "kind": "frame",
+    "cellType": "frame",
+    "geometry": {
+      "x": 0,
+      "y": 0,
+      "width": 960,
+      "height": 640,
+      "derived": false
+    },
+    "children": [
+      "project:detail/03/03/root",
+      "demo:model/node/5-0",
+      "demo:model/node/4-0",
+      "demo:model/node/4-2",
+      "demo:model/node/4",
+      "demo:model/node/4-1",
+      "demo:model/node/4-3",
+      "demo:model/node/5-3",
+      "demo:model/node/5-2",
+      "demo:model/node/5",
+      "demo:model/node/5-1",
+      "demo:model/branch/4",
+      "demo:model/branch/4-0",
+      "demo:model/branch/4-1",
+      "demo:model/branch/4-2",
+      "demo:model/branch/4-3",
+      "demo:model/branch/5",
+      "demo:model/branch/5-0",
+      "demo:model/branch/5-1",
+      "demo:model/branch/5-2",
+      "demo:model/branch/5-3",
+      "project:detail/03/03/document"
+    ],
+    "groups": [],
+    "data": {},
+    "content": {
+      "label": "03.3 文件与运行时边界"
+    },
+    "appearance": {
+      "fill": "#ffffff",
+      "strokeColor": "#cbd5e1",
+      "strokeWidth": 2
+    },
+    "view": {
+      "theme": {
+        "themeColorMode": "default",
+        "boardBackground": "#ffffff"
+      }
+    },
+    "presentation": {
+      "interval": 10,
+      "pages": [
+        {
+          "id": "overview",
+          "title": "总览",
+          "notes": "",
+          "hidden": false,
+          "anchor": {
+            "kind": "overview"
+          }
+        },
+        {
+          "id": "mind:demo:model/node/0",
+          "title": "公开快照",
+          "notes": "",
+          "hidden": false,
+          "anchor": {
+            "kind": "mind-branch",
+            "branchId": "demo:model/node/0"
+          }
+        },
+        {
+          "id": "mind:demo:model/node/1",
+          "title": "Frame 与所有权",
+          "notes": "",
+          "hidden": false,
+          "anchor": {
+            "kind": "mind-branch",
+            "branchId": "demo:model/node/1"
+          }
+        },
+        {
+          "id": "mind:demo:model/node/2",
+          "title": "Node / Edge / Group",
+          "notes": "",
+          "hidden": false,
+          "anchor": {
+            "kind": "mind-branch",
+            "branchId": "demo:model/node/2"
+          }
+        },
+        {
+          "id": "mind:demo:model/node/3",
+          "title": "领域锚点",
+          "notes": "",
+          "hidden": false,
+          "anchor": {
+            "kind": "mind-branch",
+            "branchId": "demo:model/node/3"
+          }
+        },
+        {
+          "id": "mind:demo:model/node/4",
+          "title": "事务与历史",
+          "notes": "",
+          "hidden": false,
+          "anchor": {
+            "kind": "mind-branch",
+            "branchId": "demo:model/node/4"
+          }
+        },
+        {
+          "id": "mind:demo:model/node/5",
+          "title": "运行时与磁盘",
+          "notes": "",
+          "hidden": false,
+          "anchor": {
+            "kind": "mind-branch",
+            "branchId": "demo:model/node/5"
+          }
+        }
+      ]
+    },
+    "name": "03.3 文件与运行时边界"
+  },
+  "cells": {
+    "project:detail/03/03/root": {
+      "id": "project:detail/03/03/root",
+      "kind": "mind-root",
+      "cellType": "node",
+      "geometry": {
+        "x": 0,
+        "y": 0,
+        "width": 300,
+        "height": 64,
+        "derived": false,
+        "outline": "roundRectangle"
+      },
+      "content": {
+        "label": "文件与运行时边界",
+        "text": {
+          "schemaVersion": 1,
+          "id": "project:detail/03/03/root/text",
+          "kind": "inline",
+          "plainText": "文件与运行时边界",
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "文件与运行时边界",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "24px"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "appearance": {
+        "fill": "#0f766e",
+        "strokeColor": "#0f766e"
+      },
+      "data": {
+        "layout": "standard",
+        "rightNodeCount": 20
+      }
+    },
+    "demo:model/node/5-0": {
+      "id": "demo:model/node/5-0",
+      "kind": "mind-child",
+      "cellType": "node",
+      "geometry": {
+        "x": 0,
+        "y": 0,
+        "width": 240,
+        "height": 48,
+        "derived": true,
+        "outline": "roundRectangle"
+      },
+      "content": {
+        "label": "历史 / 索引 / 选择 / 缓存 / DOM 不落盘",
+        "text": {
+          "schemaVersion": 1,
+          "id": "demo:model/node/5-0/text",
+          "kind": "inline",
+          "plainText": "历史 / 索引 / 选择 / 缓存 / DOM 不落盘",
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "历史 / 索引 / 选择 / 缓存 / DOM 不落盘",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "18px",
+                          "color": "#334155"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "appearance": {
+        "fill": "#ffffff",
+        "strokeColor": "#2563eb",
+        "strokeWidth": 1
+      },
+      "data": {
+        "collapsed": false,
+        "branchAppearance": {
+          "strokeColor": "#2563eb",
+          "strokeWidth": 2
+        }
+      }
+    },
+    "demo:model/node/4-0": {
+      "id": "demo:model/node/4-0",
+      "kind": "mind-child",
+      "cellType": "node",
+      "geometry": {
+        "x": 0,
+        "y": 0,
+        "width": 240,
+        "height": 48,
+        "derived": true,
+        "outline": "roundRectangle"
+      },
+      "content": {
+        "label": "候选操作 → 关系归一化 → 最终校验",
+        "text": {
+          "schemaVersion": 1,
+          "id": "demo:model/node/4-0/text",
+          "kind": "inline",
+          "plainText": "候选操作 → 关系归一化 → 最终校验",
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "候选操作 → 关系归一化 → 最终校验",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "18px",
+                          "color": "#334155"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "appearance": {
+        "fill": "#ffffff",
+        "strokeColor": "#0f766e",
+        "strokeWidth": 1
+      },
+      "data": {
+        "collapsed": false,
+        "branchAppearance": {
+          "strokeColor": "#0f766e",
+          "strokeWidth": 2
+        }
+      }
+    },
+    "demo:model/node/4-2": {
+      "id": "demo:model/node/4-2",
+      "kind": "mind-child",
+      "cellType": "node",
+      "geometry": {
+        "x": 0,
+        "y": 0,
+        "width": 240,
+        "height": 48,
+        "derived": true,
+        "outline": "roundRectangle"
+      },
+      "content": {
+        "label": "历史记录实际前后差异；级联删除可撤销",
+        "text": {
+          "schemaVersion": 1,
+          "id": "demo:model/node/4-2/text",
+          "kind": "inline",
+          "plainText": "历史记录实际前后差异；级联删除可撤销",
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "历史记录实际前后差异；级联删除可撤销",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "18px",
+                          "color": "#334155"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "appearance": {
+        "fill": "#ffffff",
+        "strokeColor": "#0f766e",
+        "strokeWidth": 1
+      },
+      "data": {
+        "collapsed": false,
+        "branchAppearance": {
+          "strokeColor": "#0f766e",
+          "strokeWidth": 2
+        }
+      }
+    },
+    "demo:model/node/4": {
+      "id": "demo:model/node/4",
+      "kind": "mind-child",
+      "cellType": "node",
+      "geometry": {
+        "x": 0,
+        "y": 0,
+        "width": 240,
+        "height": 48,
+        "derived": true,
+        "outline": "roundRectangle"
+      },
+      "content": {
+        "label": "事务与历史",
+        "text": {
+          "schemaVersion": 1,
+          "id": "demo:model/node/4/text",
+          "kind": "inline",
+          "plainText": "事务与历史",
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "事务与历史",
+                    "marks": [
+                      {
+                        "type": "bold"
+                      },
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "20px",
+                          "color": "#0f766e"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "appearance": {
+        "fill": "#f0fdfa",
+        "strokeColor": "#0f766e",
+        "strokeWidth": 2
+      },
+      "data": {
+        "collapsed": false,
+        "branchAppearance": {
+          "strokeColor": "#0f766e",
+          "strokeWidth": 2
+        }
+      }
+    },
+    "demo:model/node/4-1": {
+      "id": "demo:model/node/4-1",
+      "kind": "mind-child",
+      "cellType": "node",
+      "geometry": {
+        "x": 0,
+        "y": 0,
+        "width": 240,
+        "height": 48,
+        "derived": true,
+        "outline": "roundRectangle"
+      },
+      "content": {
+        "label": "成功才整体提交；失败保留原快照",
+        "text": {
+          "schemaVersion": 1,
+          "id": "demo:model/node/4-1/text",
+          "kind": "inline",
+          "plainText": "成功才整体提交；失败保留原快照",
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "成功才整体提交；失败保留原快照",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "18px",
+                          "color": "#334155"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "appearance": {
+        "fill": "#ffffff",
+        "strokeColor": "#0f766e",
+        "strokeWidth": 1
+      },
+      "data": {
+        "collapsed": false,
+        "branchAppearance": {
+          "strokeColor": "#0f766e",
+          "strokeWidth": 2
+        }
+      }
+    },
+    "demo:model/node/4-3": {
+      "id": "demo:model/node/4-3",
+      "kind": "mind-child",
+      "cellType": "node",
+      "geometry": {
+        "x": 0,
+        "y": 0,
+        "width": 240,
+        "height": 48,
+        "derived": true,
+        "outline": "roundRectangle"
+      },
+      "content": {
+        "label": "统一图文依赖闭包：循环去重、独立复制和身份映射",
+        "text": {
+          "schemaVersion": 1,
+          "id": "demo:model/node/4-3/text",
+          "kind": "inline",
+          "plainText": "统一图文依赖闭包：循环去重、独立复制和身份映射",
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "统一图文依赖闭包：循环去重、独立复制和身份映射",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "18px",
+                          "color": "#334155"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "appearance": {
+        "fill": "#ffffff",
+        "strokeColor": "#0f766e",
+        "strokeWidth": 1
+      },
+      "data": {
+        "collapsed": false,
+        "branchAppearance": {
+          "strokeColor": "#0f766e",
+          "strokeWidth": 2
+        }
+      }
+    },
+    "demo:model/node/5-3": {
+      "id": "demo:model/node/5-3",
+      "kind": "mind-child",
+      "cellType": "node",
+      "geometry": {
+        "x": 0,
+        "y": 0,
+        "width": 240,
+        "height": 48,
+        "derived": true,
+        "outline": "roundRectangle"
+      },
+      "content": {
+        "label": "DocumentFileV1 · .verd-doc.json：独立 block 正文",
+        "text": {
+          "schemaVersion": 1,
+          "id": "demo:model/node/5-3/text",
+          "kind": "inline",
+          "plainText": "DocumentFileV1 · .verd-doc.json：独立 block 正文",
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "DocumentFileV1 · .verd-doc.json：独立 block 正文",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "18px",
+                          "color": "#334155"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "appearance": {
+        "fill": "#ffffff",
+        "strokeColor": "#2563eb",
+        "strokeWidth": 1
+      },
+      "data": {
+        "collapsed": false,
+        "branchAppearance": {
+          "strokeColor": "#2563eb",
+          "strokeWidth": 2
+        }
+      }
+    },
+    "demo:model/node/5-2": {
+      "id": "demo:model/node/5-2",
+      "kind": "mind-child",
+      "cellType": "node",
+      "geometry": {
+        "x": 0,
+        "y": 0,
+        "width": 240,
+        "height": 48,
+        "derived": true,
+        "outline": "roundRectangle"
+      },
+      "content": {
+        "label": "FrameFileV2 · .verd.json：自身根与非 Frame Cell",
+        "text": {
+          "schemaVersion": 1,
+          "id": "demo:model/node/5-2/text",
+          "kind": "inline",
+          "plainText": "FrameFileV2 · .verd.json：自身根与非 Frame Cell",
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "FrameFileV2 · .verd.json：自身根与非 Frame Cell",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "18px",
+                          "color": "#334155"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "appearance": {
+        "fill": "#ffffff",
+        "strokeColor": "#2563eb",
+        "strokeWidth": 1
+      },
+      "data": {
+        "collapsed": false,
+        "branchAppearance": {
+          "strokeColor": "#2563eb",
+          "strokeWidth": 2
+        }
+      }
+    },
+    "demo:model/node/5": {
+      "id": "demo:model/node/5",
+      "kind": "mind-child",
+      "cellType": "node",
+      "geometry": {
+        "x": 0,
+        "y": 0,
+        "width": 240,
+        "height": 48,
+        "derived": true,
+        "outline": "roundRectangle"
+      },
+      "content": {
+        "label": "运行时与磁盘",
+        "text": {
+          "schemaVersion": 1,
+          "id": "demo:model/node/5/text",
+          "kind": "inline",
+          "plainText": "运行时与磁盘",
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "运行时与磁盘",
+                    "marks": [
+                      {
+                        "type": "bold"
+                      },
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "20px",
+                          "color": "#2563eb"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "appearance": {
+        "fill": "#f0fdfa",
+        "strokeColor": "#2563eb",
+        "strokeWidth": 2
+      },
+      "data": {
+        "collapsed": false,
+        "branchAppearance": {
+          "strokeColor": "#2563eb",
+          "strokeWidth": 2
+        }
+      }
+    },
+    "demo:model/node/5-1": {
+      "id": "demo:model/node/5-1",
+      "kind": "mind-child",
+      "cellType": "node",
+      "geometry": {
+        "x": 0,
+        "y": 0,
+        "width": 240,
+        "height": 48,
+        "derived": true,
+        "outline": "roundRectangle"
+      },
+      "content": {
+        "label": "相机与返回来源只在内存；标签与目录展开持久化",
+        "text": {
+          "schemaVersion": 1,
+          "id": "demo:model/node/5-1/text",
+          "kind": "inline",
+          "plainText": "相机与返回来源只在内存；标签与目录展开持久化",
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "相机与返回来源只在内存；标签与目录展开持久化",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "18px",
+                          "color": "#334155"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "appearance": {
+        "fill": "#ffffff",
+        "strokeColor": "#2563eb",
+        "strokeWidth": 1
+      },
+      "data": {
+        "collapsed": false,
+        "branchAppearance": {
+          "strokeColor": "#2563eb",
+          "strokeWidth": 2
+        }
+      }
+    },
+    "demo:model/branch/4": {
+      "id": "demo:model/branch/4",
+      "kind": "mind-branch",
+      "cellType": "edge",
+      "source": {
+        "cellId": "project:detail/03/03/root"
+      },
+      "target": {
+        "cellId": "demo:model/node/4"
+      },
+      "route": {
+        "mode": "auto"
+      },
+      "data": {
+        "order": "00000004"
+      },
+      "appearance": {
+        "strokeColor": "#0f766e",
+        "strokeWidth": 2
+      }
+    },
+    "demo:model/branch/4-0": {
+      "id": "demo:model/branch/4-0",
+      "kind": "mind-branch",
+      "cellType": "edge",
+      "source": {
+        "cellId": "demo:model/node/4"
+      },
+      "target": {
+        "cellId": "demo:model/node/4-0"
+      },
+      "route": {
+        "mode": "auto"
+      },
+      "data": {
+        "order": "00000000"
+      },
+      "appearance": {
+        "strokeColor": "#0f766e",
+        "strokeWidth": 2
+      }
+    },
+    "demo:model/branch/4-1": {
+      "id": "demo:model/branch/4-1",
+      "kind": "mind-branch",
+      "cellType": "edge",
+      "source": {
+        "cellId": "demo:model/node/4"
+      },
+      "target": {
+        "cellId": "demo:model/node/4-1"
+      },
+      "route": {
+        "mode": "auto"
+      },
+      "data": {
+        "order": "00000001"
+      },
+      "appearance": {
+        "strokeColor": "#0f766e",
+        "strokeWidth": 2
+      }
+    },
+    "demo:model/branch/4-2": {
+      "id": "demo:model/branch/4-2",
+      "kind": "mind-branch",
+      "cellType": "edge",
+      "source": {
+        "cellId": "demo:model/node/4"
+      },
+      "target": {
+        "cellId": "demo:model/node/4-2"
+      },
+      "route": {
+        "mode": "auto"
+      },
+      "data": {
+        "order": "00000002"
+      },
+      "appearance": {
+        "strokeColor": "#0f766e",
+        "strokeWidth": 2
+      }
+    },
+    "demo:model/branch/4-3": {
+      "id": "demo:model/branch/4-3",
+      "kind": "mind-branch",
+      "cellType": "edge",
+      "source": {
+        "cellId": "demo:model/node/4"
+      },
+      "target": {
+        "cellId": "demo:model/node/4-3"
+      },
+      "route": {
+        "mode": "auto"
+      },
+      "data": {
+        "order": "00000003"
+      },
+      "appearance": {
+        "strokeColor": "#0f766e",
+        "strokeWidth": 2
+      }
+    },
+    "demo:model/branch/5": {
+      "id": "demo:model/branch/5",
+      "kind": "mind-branch",
+      "cellType": "edge",
+      "source": {
+        "cellId": "project:detail/03/03/root"
+      },
+      "target": {
+        "cellId": "demo:model/node/5"
+      },
+      "route": {
+        "mode": "auto"
+      },
+      "data": {
+        "order": "00000005"
+      },
+      "appearance": {
+        "strokeColor": "#2563eb",
+        "strokeWidth": 2
+      }
+    },
+    "demo:model/branch/5-0": {
+      "id": "demo:model/branch/5-0",
+      "kind": "mind-branch",
+      "cellType": "edge",
+      "source": {
+        "cellId": "demo:model/node/5"
+      },
+      "target": {
+        "cellId": "demo:model/node/5-0"
+      },
+      "route": {
+        "mode": "auto"
+      },
+      "data": {
+        "order": "00000000"
+      },
+      "appearance": {
+        "strokeColor": "#2563eb",
+        "strokeWidth": 2
+      }
+    },
+    "demo:model/branch/5-1": {
+      "id": "demo:model/branch/5-1",
+      "kind": "mind-branch",
+      "cellType": "edge",
+      "source": {
+        "cellId": "demo:model/node/5"
+      },
+      "target": {
+        "cellId": "demo:model/node/5-1"
+      },
+      "route": {
+        "mode": "auto"
+      },
+      "data": {
+        "order": "00000001"
+      },
+      "appearance": {
+        "strokeColor": "#2563eb",
+        "strokeWidth": 2
+      }
+    },
+    "demo:model/branch/5-2": {
+      "id": "demo:model/branch/5-2",
+      "kind": "mind-branch",
+      "cellType": "edge",
+      "source": {
+        "cellId": "demo:model/node/5"
+      },
+      "target": {
+        "cellId": "demo:model/node/5-2"
+      },
+      "route": {
+        "mode": "auto"
+      },
+      "data": {
+        "order": "00000002"
+      },
+      "appearance": {
+        "strokeColor": "#2563eb",
+        "strokeWidth": 2
+      }
+    },
+    "demo:model/branch/5-3": {
+      "id": "demo:model/branch/5-3",
+      "kind": "mind-branch",
+      "cellType": "edge",
+      "source": {
+        "cellId": "demo:model/node/5"
+      },
+      "target": {
+        "cellId": "demo:model/node/5-3"
+      },
+      "route": {
+        "mode": "auto"
+      },
+      "data": {
+        "order": "00000003"
+      },
+      "appearance": {
+        "strokeColor": "#2563eb",
+        "strokeWidth": 2
+      }
+    },
+    "project:detail/03/03/document": {
+      "id": "project:detail/03/03/document",
+      "cellType": "node",
+      "kind": "document-reference",
+      "geometry": {
+        "x": 0,
+        "y": 1080,
+        "width": 1000,
+        "height": 620
+      },
+      "data": {
+        "targetDocumentId": "project-doc:packages/board/canvas-modes"
+      },
+      "content": {
+        "text": {
+          "schemaVersion": 1,
+          "id": "project:detail/03/03/document/links",
+          "kind": "block",
+          "align": "left",
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "读图：解释持久化边界和复制闭包；事务步骤进入⑤，保存步骤进入⑥。"
+                  }
+                ]
+              },
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "返回专题总览",
+                    "marks": [
+                      {
+                        "type": "link",
+                        "attrs": {
+                          "href": "verd://file/board%2F5%3AYbbcn"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "相关细节：领域场景与图文引用",
+                    "marks": [
+                      {
+                        "type": "link",
+                        "attrs": {
+                          "href": "verd://file/project%3Adetail%2F03%2F02"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "相关细节：CellStore 与 Frame 所有权",
+                    "marks": [
+                      {
+                        "type": "link",
+                        "attrs": {
+                          "href": "verd://file/project%3Adetail%2F03%2F01"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "AI画布数据规范 · 2. 数据模型速览",
+                    "marks": [
+                      {
+                        "type": "link",
+                        "attrs": {
+                          "href": "verd://file/project-doc%3Aguides%2Fai-canvas-data-spec#2-%E6%95%B0%E6%8D%AE%E6%A8%A1%E5%9E%8B%E9%80%9F%E8%A7%88"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "AI画布数据规范 · 4. 通用字段表",
+                    "marks": [
+                      {
+                        "type": "link",
+                        "attrs": {
+                          "href": "verd://file/project-doc%3Aguides%2Fai-canvas-data-spec#4-%E9%80%9A%E7%94%A8%E5%AD%97%E6%AE%B5%E8%A1%A8"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "源码入口：packages/product/app/src/frames/frame-files.ts；packages/product/app/src/documents/document-files.ts；packages/engine/core/src/cell/runtime.ts。"
+                  }
+                ]
+              }
+            ]
+          },
+          "plainText": "读图：解释持久化边界和复制闭包；事务步骤进入⑤，保存步骤进入⑥。\n返回专题总览\n相关细节：领域场景与图文引用\n相关细节：CellStore 与 Frame 所有权\nAI画布数据规范 · 2. 数据模型速览\nAI画布数据规范 · 4. 通用字段表\n源码入口：packages/product/app/src/frames/frame-files.ts；packages/product/app/src/documents/document-files.ts；packages/engine/core/src/cell/runtime.ts。"
+        }
+      }
+    }
+  },
+  "organization": {
+    "kind": "standalone"
+  }
+}

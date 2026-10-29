@@ -1,3 +1,5 @@
+import { resolveBoardTheme, type ResolvedBoardTheme } from '@sue/board-core';
+import { FrameThemeContext } from '@sue/board-react';
 import { frameSelectionActionId } from '@sue/board-react';
 import {
   useActionSource,
@@ -118,6 +120,7 @@ import {
   useMemo,
   useRef,
   useState,
+  type ComponentProps,
   type ChangeEvent,
   type CSSProperties,
 } from 'react';
@@ -263,6 +266,17 @@ const shapes = [
   'requiredInterface',
 ];
 
+function ThemedActionScope({
+  theme,
+  ...props
+}: ComponentProps<typeof ActionScope> & { theme: ResolvedBoardTheme }) {
+  return (
+    <FrameThemeContext.Provider value={theme}>
+      <ActionScope {...props} />
+    </FrameThemeContext.Provider>
+  );
+}
+
 export function FrameProductShell({
   pluginSet,
   mindMaxWidth,
@@ -296,7 +310,7 @@ export function FrameProductShell({
   onReady,
   linkHost,
 }: VerdFrameProps & { pluginSet: FramePluginSet; mindMaxWidth: number }) {
-  useAppearancePreference();
+  const { appearance } = useAppearancePreference();
   const controller = useRef<FrameCanvasController>(null);
   const actionScope = useRef<ActionScopeValue | null>(null);
   const activeController = () =>
@@ -539,6 +553,14 @@ export function FrameProductShell({
   const { registry, extensions } = pluginSet;
   const store = value.store,
     frame = store.cells[frameId];
+  const theme = useMemo(
+    () =>
+      resolveBoardTheme(
+        isFrameCell(frame) ? frame.view?.theme : undefined,
+        appearance,
+      ),
+    [frame, appearance],
+  );
   const canPresent = useMemo(
     () => hasVisibleContent(store, frameId),
     [store, frameId],
@@ -969,12 +991,14 @@ export function FrameProductShell({
                 theme: {
                   ...frame.view?.theme,
                   themeColorMode: mode,
-                  boardBackground:
-                    mode === ThemeColorMode.dark
-                      ? '#141414'
-                      : mode === ThemeColorMode.starry
-                        ? '#0d2537'
-                        : '#f8fafc',
+                  backgroundMode: 'theme',
+                  boardBackground: resolveBoardTheme(
+                    { themeColorMode: mode },
+                    mode === ThemeColorMode.dark ||
+                      mode === ThemeColorMode.starry
+                      ? 'dark'
+                      : 'light',
+                  ).background,
                 },
               },
             },
@@ -1693,7 +1717,8 @@ export function FrameProductShell({
     },
   }));
   return (
-    <ActionScope
+    <ThemedActionScope
+      theme={theme}
       registry={combineFrameActionSources(
         [
           activeController()?.actionSource,
@@ -1757,6 +1782,8 @@ export function FrameProductShell({
         <div className="frame-canvas-area">
           <div className="frame-canvas-fill">
             <FrameCanvas
+              appearance={appearance}
+              referenceInteraction={scene ? 'direct' : 'activate'}
               documentReferences={documentReferences}
               ref={controller}
               linkHost={linkHost}
@@ -2402,6 +2429,9 @@ export function FrameProductShell({
             >
               <fieldset disabled={!inspectorEditable}>
                 <FrameSelectionAppearance
+                  controller={activeController()}
+                  appearance={appearance}
+                  frameId={frameId}
                   store={store}
                   ids={uiSelection.ids}
                   dispatch={dispatch}
@@ -2936,11 +2966,7 @@ export function FrameProductShell({
                       editor: 'input',
                       props: { type: 'color' },
                     }}
-                    value={
-                      isFrameCell(frame)
-                        ? (frame.view?.theme?.boardBackground ?? '#f8fafc')
-                        : '#f8fafc'
-                    }
+                    value={isFrameCell(frame) ? theme.background : '#f8fafc'}
                     onCommit={(value) => {
                       if (isFrameCell(frame))
                         dispatch(
@@ -2955,6 +2981,7 @@ export function FrameProductShell({
                                     themeColorMode: ThemeColorMode.default,
                                     ...frame.view?.theme,
                                     boardBackground: value,
+                                    backgroundMode: 'custom',
                                   },
                                 },
                               },
@@ -2965,6 +2992,22 @@ export function FrameProductShell({
                     }}
                   />
                 </label>
+                {isFrameCell(frame) && (
+                  <button
+                    type="button"
+                    aria-label="Reset canvas background"
+                    onClick={() =>
+                      setTheme(
+                        frame.view?.theme?.themeColorMode ??
+                          ThemeColorMode.default,
+                      )
+                    }
+                  >
+                    {language === 'zh'
+                      ? '恢复主题背景'
+                      : 'Use theme background'}
+                  </button>
+                )}
                 {isFrameCell(frame) && (
                   <>
                     <label>
@@ -3263,9 +3306,12 @@ export function FrameProductShell({
         {imageExport && (
           <FrameImageExportDialog
             hasSelection={selection.ids.length > 0}
-            themeBackground={
-              (isFrameCell(frame) && frame.view?.theme?.boardBackground) ||
-              '#f8fafc'
+            appearance={appearance}
+            themeBackground={(mode) =>
+              resolveBoardTheme(
+                isFrameCell(frame) ? frame.view?.theme : undefined,
+                mode,
+              ).background
             }
             onClose={() => setImageExport(false)}
             onExport={async (options) => {
@@ -3387,6 +3433,6 @@ export function FrameProductShell({
           />
         )}
       </div>
-    </ActionScope>
+    </ThemedActionScope>
   );
 }

@@ -132,10 +132,10 @@ describe('drawing body caches during zoom', () => {
       await act(async () => root.render(<svg>{normal}</svg>));
       const original = paths();
       await act(async () => root.render(<svg>{selected}</svg>));
-      expect(paths().some((path) => path.stroke === '#6366f1')).toBe(true);
+      expect(paths()).toEqual(original);
       await act(async () => root.render(<svg>{updated}</svg>));
       expect(paths()).toEqual(
-        drawCellShapePaths(changed, geometry, '#6366f1').map((path) => ({
+        drawCellShapePaths(changed, geometry, '#64748b').map((path) => ({
           d: path.d,
           fill: path.fill ?? null,
           stroke: path.stroke,

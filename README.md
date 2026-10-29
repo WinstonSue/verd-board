@@ -2,9 +2,11 @@
 
 画布与文档共存的本地工作区，支持白板、思维导图、流程图、架构图、UML 类图、UML 时序图与独立文字稿。
 
+通用画布中的 Frame 默认显示实时矢量预览，双击原位编辑，通过标题栏打开详情。预览保持实时矢量内容和原生清晰度；性能采样与运行时升级的验收记录见原生「体验回归验收」。
+
 ## 📖 文档
 
-项目文档和架构图直接保存在仓库根 [`workspace/`](workspace/)；桌面端开发默认打开该目录。文档正文使用 `.verd-doc.json`，画布使用 `.verd.json`，两者均可在产品中直接编辑。
+项目文档和架构图直接保存在仓库根 [`workspace/`](workspace/)；桌面端开发默认使用该目录的独立副本，维护文档需主动打开原目录。文档正文使用 `.verd-doc.json`，画布使用 `.verd.json`，两者均可在产品中直接编辑。
 
 - **[文档导航](workspace/文档/文档导航.verd-doc.json)** / **[English](workspace/文档/Documentation.verd-doc.json)**
 - **[产品概览](workspace/文档/产品/产品概览.verd-doc.json)** / **[系统架构](workspace/文档/架构/系统架构.verd-doc.json)**
@@ -69,14 +71,20 @@ The 2.0 release replaces `VerdBoardApp(adapter)` with `WorkspaceApp(host)`, adds
 # 安装依赖（会同步 Cursor skills）
 pnpm install
 
-# 启动开发环境（桌面端）
-pnpm start
+# 启动源码开发（独立的 VerdBoard Dev；dev / start 为别名）
+pnpm dev:desktop
+
+# 日常 Desktop E2E：自动启动隔离 dev，无需构建
+pnpm test:e2e:desktop
 
 # 构建公开包和 Web（不含 Desktop）
 pnpm build
 
 # 构建 Desktop
 pnpm build:desktop
+
+# 正式安装包（macOS 默认 DMG；--with-zip 额外生成 ZIP）
+pnpm package:desktop
 
 # 校验项目工作区
 pnpm workspace:check
@@ -126,13 +134,17 @@ The shared canvas and converters use the Cell/Frame API. See [Frame converters](
 
 The native canvas supports groups, batch typography, transfers between Frames, clear confirmation, grids, aspect presets and inherited mind topic typography. Product entrypoints load `@sue/verd-board-ui/style.css`.
 
-Desktop 产品验收：先 `pnpm build:desktop`，再 `pnpm test:e2e:desktop`，在临时数据目录中验证保存、迁移及重启恢复。
+Desktop 日常验证使用 `pnpm test:e2e:desktop`；生产专项先 `pnpm build:desktop`，再 `pnpm test:e2e:desktop:prod`。开发数据位于 `appData/VerdBoard Dev`，默认工作区首次复制后保留；测试使用临时目录。日常流程不打包、安装或操作正式应用。
 
-Desktop acceptance: run `pnpm build:desktop` then `pnpm test:e2e:desktop` to verify saves, migration and restart recovery with temporary data.
+Daily Desktop tests run real dev with `pnpm test:e2e:desktop`. Production acceptance uses `pnpm build:desktop` then `pnpm test:e2e:desktop:prod`, with temporary data.
 
 画布支持六向对齐、等距分布、拖动参考线，以及独立的节点布局和连线整理；普通白板支持按连接关系布局，Group 支持局部布局、逐层编辑与独立锁定。规则与 API 见 [排列与组合](workspace/文档/包/排列与组合.verd-doc.json)。
 
 The canvas supports alignment, equal-gap distribution, drag snapping, separate node layout and edge rerouting, and connection-based whiteboard layouts. Layouts can target Group contents or the current focused container; nested groups stay rigid, nested Frame contents remain intact, and conflicting layouts leave the document unchanged.
+
+内置工作区的第九张专题图介绍自动布局与连线算法：范围解析、循环关系分层、减少交叉、正交避障、优化与重置，以及自动计算的触发和保存边界。完整用法与算法流程见原生[排列与组合](workspace/文档/包/排列与组合.verd-doc.json)。两个自动开关默认关闭；普通自动路径仅在运行时派生，显式优化保存可编辑折点，自动计算结果合入原编辑的一次事务。
+
+The ninth built-in topic diagram explains layout scope, cycle-aware layering, crossing reduction, orthogonal obstacle routing, optimization/reset, and automatic calculation. See [layout and routing](workspace/文档/包/排列与组合.verd-doc.json). Both automatic switches default to off. Ordinary routes remain derived in memory; explicit optimization stores editable waypoints, and automatic results join the triggering edit in one transaction.
 
 产品属性使用画布外 300px Sidebar；节点名称与富文本正文独立，Port 按交互上下文显示，连线菜单支持双向箭头。语义与 API 见 [Sidebar 与节点交互](workspace/文档/包/React接入.verd-doc.json)。
 
@@ -144,7 +156,7 @@ Mind topics fit their content with a default maximum outer width of 240 and unli
 
 工作区文件夹可整体移入回收站并还原；回收站支持确认后永久删除单项或清空。侧栏底部和画布「更多」菜单打开「我的」管理个人偏好；顶部工作区名称菜单打开工作区设置，分为基本设置和当前工作区回收站，Desktop 目录切换也位于此菜单。文件树完整显示真实目录，所属画布下另列图表快捷入口，两处共用源文件。
 
-应用支持浅色、深色和跟随系统，默认跟随系统；在「我的 → 设置 → 通用」即时切换并记住本机选择。界面与独立文档适配深色，画布、嵌入文档及图像导出保持原有外观。
+应用支持浅色、深色和跟随系统，默认跟随系统；在「我的 → 设置 → 通用」即时切换并记住本机选择。经典、缤纷、柔和、复古、清新、海洋六个画布主题均提供深浅变体，嵌入文档同步适配；自定义颜色保留，图像导出可选择当前外观、浅色或深色。
 
 Workspace folders move to trash and restore as complete subtrees. Confirm before permanently deleting an item or emptying trash. My opens from the sidebar or canvas More menu for device preferences. Workspace settings have separate General and Trash sections. Workspace settings and Desktop folder actions are grouped under the workspace name at the top of the sidebar. The file tree shows actual paths and marked owner-canvas shortcuts, both opening the same source.
 
@@ -193,3 +205,7 @@ export function Editor() {
 **破坏性 API 迁移：** 画布和独立文档的用户操作改为 `getActionState` / `executeAction` / `actions`，领域插件通过 `actions` 与工具 `actionId` 贡献命令；`revealTarget`、`FrameLinkHost` 与 common 的 `WorkspaceTarget` codec 替代分散的定位/链接入口。详细说明在原生 [React 接入](workspace/文档/包/React接入.verd-doc.json)和[迁移指南](workspace/文档/包/2.0接入与迁移.verd-doc.json)末节。本轮仅准备 major Changesets，不升级版本、不发布。
 
 The next-major source shares Actions across editor controls, keyboard shortcuts, palettes and help, with a renderer-independent React actions package. Stable Cell links follow moves, navigation awaits host commit receipts, and temporary Mind reveals stay out of files, history and exports. Controllers and plugins migrate to Actions and typed reveal/link contracts; no version bump or publication is performed here.
+
+### 两层系统介绍
+
+使用桌面端打开仓库的 `workspace/`，从项目导览进入九张专题总览，再打开二十一张机制细节图，查看主要流程、失败分支、保存边界和源码入口。细节按专题收在 `workspace/架构图/细节/`，复用现有原生文档；逐层返回恢复阅读位置。完整包依赖图位于“01.1 完整包分层与依赖”，继续通过 `pnpm workspace:refresh` 更新。

@@ -403,3 +403,82 @@ describe('CanvasSession', () => {
     expect(bad.message).toContain('Not a frame reference');
   });
 });
+
+it('explicit inline editing permits an ordinary whiteboard and writes only its source while legacy previews remain read-only', async () => {
+  const { session, canvas } = await setup();
+  await seedFiles(session, [
+    fileFor('inline-source'),
+    fileFor('inline-owner', { r: refCell('r', 'inline-source') }, ['r']),
+  ]);
+  const root = canvas.openFile('inline-owner').occurrence!;
+  const passive = canvas.openRef('inline-owner', 'r', root.id).occurrence!;
+  expect(passive.contentReadonly).toBe(true);
+  const editing = canvas.openRef('inline-owner', 'r', root.id, undefined, {
+    edit: true,
+  }).occurrence!;
+  expect(editing.contentReadonly).toBe(false);
+  const result = await canvas.dispatch(editing.id, {
+    id: 'inline-create',
+    operations: [
+      {
+        type: 'insert_cell',
+        parentId: 'inline-source',
+        cell: {
+          id: 'inline-shape',
+          cellType: 'node',
+          kind: 'geometry',
+          geometry: { x: 10, y: 10, width: 100, height: 50 },
+        },
+      },
+    ],
+  });
+  expect(result.ok).toBe(true);
+  expect(
+    session.getState().files.get('inline-source')!.file.cells['inline-shape'],
+  ).toBeDefined();
+  expect(
+    session.getState().files.get('inline-owner')!.file.cells['inline-shape'],
+  ).toBeUndefined();
+  await canvas.undo();
+  expect(
+    session.getState().files.get('inline-source')!.file.cells['inline-shape'],
+  ).toBeUndefined();
+  await canvas.redo();
+  expect(
+    session.getState().files.get('inline-source')!.file.cells['inline-shape'],
+  ).toBeDefined();
+  canvas.dispose();
+  session.dispose();
+});
+
+it('explicit inline editing still respects inherited read-only contexts and locked reference shells', async () => {
+  const { session, canvas } = await setup();
+  await seedFiles(session, [
+    fileFor('leaf'),
+    fileFor('parent', { inner: refCell('inner', 'leaf') }, ['inner']),
+    fileFor(
+      'owner',
+      {
+        outer: refCell('outer', 'parent'),
+        locked: Object.assign({}, refCell('locked', 'leaf'), {
+          locked: true,
+        }) as never,
+      },
+      ['outer', 'locked'],
+    ),
+  ]);
+  const root = canvas.openFile('owner').occurrence!;
+  const parent = canvas.openRef('owner', 'outer', root.id).occurrence!;
+  const inner = canvas.openRef('parent', 'inner', parent.id, undefined, {
+    edit: true,
+  }).occurrence!;
+  expect(inner.contentReadonly).toBe(true);
+  const locked = canvas.openRef('owner', 'locked', root.id, undefined, {
+    edit: true,
+  }).occurrence!;
+  expect(
+    (await canvas.dispatch(locked.id, { id: 'blocked', operations: [] })).ok,
+  ).toBe(false);
+  canvas.dispose();
+  session.dispose();
+});

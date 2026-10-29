@@ -1,0 +1,640 @@
+{
+  "format": "verd-frame",
+  "version": 2,
+  "frame": {
+    "id": "project:detail/09/02",
+    "kind": "frame",
+    "cellType": "frame",
+    "geometry": {
+      "x": 0,
+      "y": 0,
+      "width": 960,
+      "height": 640,
+      "derived": false
+    },
+    "children": [
+      "demo:algorithms/layer/1",
+      "demo:algorithms/relationships",
+      "demo:algorithms/domains",
+      "demo:algorithms/derived",
+      "project:detail/09/02/document"
+    ],
+    "groups": [],
+    "data": {},
+    "content": {
+      "label": "09.2 各场景节点布局"
+    },
+    "appearance": {
+      "fill": "#ffffff",
+      "strokeColor": "#cbd5e1",
+      "strokeWidth": 2
+    },
+    "view": {
+      "theme": {
+        "themeColorMode": "default",
+        "boardBackground": "#ffffff"
+      }
+    },
+    "name": "09.2 各场景节点布局"
+  },
+  "cells": {
+    "demo:algorithms/relationships": {
+      "id": "demo:algorithms/relationships",
+      "kind": "architecture-module",
+      "cellType": "node",
+      "geometry": {
+        "x": 0,
+        "y": 70,
+        "width": 420,
+        "height": 150,
+        "derived": false,
+        "outline": {
+          "kind": "roundRectangle",
+          "radius": 8
+        }
+      },
+      "ports": [
+        {
+          "id": "top",
+          "side": "top",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "right",
+          "side": "right",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "bottom",
+          "side": "bottom",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "left",
+          "side": "left",
+          "direction": "both",
+          "offset": 0.5
+        }
+      ],
+      "content": {
+        "label": "白板按连接关系\nSCC 收拢环 → 凝聚 DAG 分层\n减少交叉 → 间距对齐 → 分量打包",
+        "text": {
+          "schemaVersion": 1,
+          "id": "demo:algorithms/relationships/text",
+          "kind": "inline",
+          "plainText": "白板按连接关系\nSCC 收拢环 → 凝聚 DAG 分层\n减少交叉 → 间距对齐 → 分量打包",
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "白板按连接关系",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "22px",
+                          "color": "#1e293b"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "SCC 收拢环 → 凝聚 DAG 分层",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "22px",
+                          "color": "#1e293b"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "减少交叉 → 间距对齐 → 分量打包",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "22px",
+                          "color": "#1e293b"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "data": {
+        "shape": "box",
+        "placed": true
+      },
+      "appearance": {
+        "fill": "#eff6ff",
+        "strokeColor": "#94a3b8",
+        "strokeWidth": 1.5
+      }
+    },
+    "demo:algorithms/domains": {
+      "id": "demo:algorithms/domains",
+      "kind": "architecture-module",
+      "cellType": "node",
+      "geometry": {
+        "x": 470,
+        "y": 70,
+        "width": 420,
+        "height": 150,
+        "derived": false,
+        "outline": {
+          "kind": "roundRectangle",
+          "radius": 8
+        }
+      },
+      "ports": [
+        {
+          "id": "top",
+          "side": "top",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "right",
+          "side": "right",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "bottom",
+          "side": "bottom",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "left",
+          "side": "left",
+          "direction": "both",
+          "offset": 0.5
+        }
+      ],
+      "content": {
+        "label": "Workflow / Architecture\n拓扑分层 / 层归属顺序\n循环拓扑、跨层 Group 有限制",
+        "text": {
+          "schemaVersion": 1,
+          "id": "demo:algorithms/domains/text",
+          "kind": "inline",
+          "plainText": "Workflow / Architecture\n拓扑分层 / 层归属顺序\n循环拓扑、跨层 Group 有限制",
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Workflow / Architecture",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "22px",
+                          "color": "#1e293b"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "拓扑分层 / 层归属顺序",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "22px",
+                          "color": "#1e293b"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "循环拓扑、跨层 Group 有限制",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "22px",
+                          "color": "#1e293b"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "data": {
+        "shape": "box",
+        "placed": true
+      },
+      "appearance": {
+        "fill": "#eff6ff",
+        "strokeColor": "#94a3b8",
+        "strokeWidth": 1.5
+      }
+    },
+    "demo:algorithms/derived": {
+      "id": "demo:algorithms/derived",
+      "kind": "architecture-module",
+      "cellType": "node",
+      "geometry": {
+        "x": 940,
+        "y": 70,
+        "width": 420,
+        "height": 150,
+        "derived": false,
+        "outline": {
+          "kind": "roundRectangle",
+          "radius": 8
+        }
+      },
+      "ports": [
+        {
+          "id": "top",
+          "side": "top",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "right",
+          "side": "right",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "bottom",
+          "side": "bottom",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "left",
+          "side": "left",
+          "direction": "both",
+          "offset": 0.5
+        }
+      ],
+      "content": {
+        "label": "Mind / UML 时序\n主题树 / 参与者和事件顺序\n派生几何；类图自由放置",
+        "text": {
+          "schemaVersion": 1,
+          "id": "demo:algorithms/derived/text",
+          "kind": "inline",
+          "plainText": "Mind / UML 时序\n主题树 / 参与者和事件顺序\n派生几何；类图自由放置",
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Mind / UML 时序",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "22px",
+                          "color": "#1e293b"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "主题树 / 参与者和事件顺序",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "22px",
+                          "color": "#1e293b"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "派生几何；类图自由放置",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "22px",
+                          "color": "#1e293b"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "data": {
+        "shape": "box",
+        "placed": true
+      },
+      "appearance": {
+        "fill": "#eff6ff",
+        "strokeColor": "#94a3b8",
+        "strokeWidth": 1.5
+      }
+    },
+    "demo:algorithms/layer/1": {
+      "id": "demo:algorithms/layer/1",
+      "kind": "architecture-layer",
+      "cellType": "node",
+      "geometry": {
+        "x": 0,
+        "y": 0,
+        "width": 1640,
+        "height": 230,
+        "derived": true
+      },
+      "content": {
+        "label": "节点布局 · 按场景处理结构",
+        "text": {
+          "schemaVersion": 1,
+          "id": "demo:algorithms/layer/1/text",
+          "kind": "inline",
+          "plainText": "节点布局 · 按场景处理结构",
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "节点布局 · 按场景处理结构",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "24px",
+                          "color": "#1e293b"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "data": {
+        "order": "00000000",
+        "fontSize": 24,
+        "memberIds": [
+          "demo:algorithms/relationships",
+          "demo:algorithms/domains",
+          "demo:algorithms/derived"
+        ]
+      },
+      "appearance": {
+        "fill": "#f8fafc",
+        "strokeColor": "#e2e8f0",
+        "strokeWidth": 1
+      }
+    },
+    "project:detail/09/02/document": {
+      "id": "project:detail/09/02/document",
+      "cellType": "node",
+      "kind": "document-reference",
+      "geometry": {
+        "x": 0,
+        "y": 400,
+        "width": 1000,
+        "height": 620
+      },
+      "data": {
+        "targetDocumentId": "project-doc:packages/board/arrangement"
+      },
+      "content": {
+        "text": {
+          "schemaVersion": 1,
+          "id": "project:detail/09/02/document/links",
+          "kind": "block",
+          "align": "left",
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "读图：白板循环支持不代表所有领域允许循环；Mind 与 UML 时序采用派生几何。"
+                  }
+                ]
+              },
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "自动布局算法",
+                    "marks": [
+                      {
+                        "type": "link",
+                        "attrs": {
+                          "href": "verd://file/project-doc%3Apackages%2Fboard%2Farrangement#%E8%87%AA%E5%8A%A8%E5%B8%83%E5%B1%80%E7%AE%97%E6%B3%95"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "相关细节：连线路由与优化",
+                    "marks": [
+                      {
+                        "type": "link",
+                        "attrs": {
+                          "href": "verd://file/project%3Adetail%2F09%2F03"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "相关细节：作用范围与提交边界",
+                    "marks": [
+                      {
+                        "type": "link",
+                        "attrs": {
+                          "href": "verd://file/project%3Adetail%2F09%2F01"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "返回专题总览",
+                    "marks": [
+                      {
+                        "type": "link",
+                        "attrs": {
+                          "href": "verd://file/demo%3Alayout-routing"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "自动布局算法",
+                    "marks": [
+                      {
+                        "type": "link",
+                        "attrs": {
+                          "href": "verd://file/project-doc%3Apackages%2Fboard%2Farrangement#%E8%87%AA%E5%8A%A8%E5%B8%83%E5%B1%80%E7%AE%97%E6%B3%95"
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "type": "text",
+                    "text": " · "
+                  },
+                  {
+                    "type": "text",
+                    "text": "连线路由算法",
+                    "marks": [
+                      {
+                        "type": "link",
+                        "attrs": {
+                          "href": "verd://file/project-doc%3Apackages%2Fboard%2Farrangement#%E8%BF%9E%E7%BA%BF%E8%B7%AF%E7%94%B1%E7%AE%97%E6%B3%95"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "自动开关",
+                    "marks": [
+                      {
+                        "type": "link",
+                        "attrs": {
+                          "href": "verd://file/project-doc%3Apackages%2Fboard%2Farrangement#%E4%B8%80%E6%AC%A1%E6%93%8D%E4%BD%9C%E4%B8%8E%E8%87%AA%E5%8A%A8%E8%AE%A1%E7%AE%97"
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "type": "text",
+                    "text": " · "
+                  },
+                  {
+                    "type": "text",
+                    "text": "三种结果与典型场景",
+                    "marks": [
+                      {
+                        "type": "link",
+                        "attrs": {
+                          "href": "verd://file/project-doc%3Apackages%2Fboard%2Farrangement#%E4%BF%9D%E5%AD%98%E8%BE%B9%E7%95%8C%E4%B8%8E%E5%85%B8%E5%9E%8B%E5%9C%BA%E6%99%AF"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "源码入口：packages/engine/core/src/cell/relationship-layout.ts；packages/engine/workflow/src；packages/engine/architecture/src；packages/engine/mind/src。"
+                  }
+                ]
+              }
+            ]
+          },
+          "plainText": "读图：白板循环支持不代表所有领域允许循环；Mind 与 UML 时序采用派生几何。\n自动布局算法\n相关细节：连线路由与优化\n相关细节：作用范围与提交边界\n返回专题总览\n自动布局算法 · 连线路由算法\n自动开关 · 三种结果与典型场景\n源码入口：packages/engine/core/src/cell/relationship-layout.ts；packages/engine/workflow/src；packages/engine/architecture/src；packages/engine/mind/src。"
+        }
+      }
+    }
+  },
+  "organization": {
+    "kind": "standalone"
+  }
+}

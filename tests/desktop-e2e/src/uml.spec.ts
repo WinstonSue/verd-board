@@ -1,11 +1,11 @@
+import { electron, writeDesktopLauncher } from './desktop-launcher';
 import {
-  _electron as electron,
   test,
   expect,
   type ElectronApplication,
   type Page,
 } from '@playwright/test';
-import { mkdtemp, mkdir, writeFile, readFile, rm } from 'node:fs/promises';
+import { mkdtemp, mkdir, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import {
@@ -20,19 +20,9 @@ test('Desktop UML domains persist editable class members and structured sequence
     userData = path.join(directory, 'user-data');
   await mkdir(userData);
   const launcher = path.join(directory, 'launch.cjs');
-  await writeFile(
-    launcher,
-    'const {app}=require("electron");\napp.setPath("userData",' +
-      JSON.stringify(userData) +
-      ');\nrequire(' +
-      JSON.stringify(
-        path.resolve(__dirname, '../../../apps/desktop/dist-electron/main.js'),
-      ) +
-      ');\n',
-  );
+  await writeDesktopLauncher(launcher, userData);
   const env = { ...process.env };
-  delete env.ELECTRON_RUN_AS_NODE;
-  delete env.VITE_DEV_SERVER_URL;
+
   env.VERDBOARD_WORKSPACE_PATH = path.join(userData, 'workspaces', 'default');
   let desktop = await electron.launch({ args: [launcher], env });
   const close = async (app: ElectronApplication, page: Page) => {

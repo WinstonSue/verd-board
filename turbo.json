@@ -8,7 +8,12 @@
     },
     "dev": {
       "cache": false,
-      "persistent": true
+      "persistent": true,
+      "passThroughEnv": [
+        "VERDBOARD_USER_DATA_PATH",
+        "VERDBOARD_WORKSPACE_PATH",
+        "VERDBOARD_BUILTIN_WORKSPACE_PATH"
+      ]
     },
     "lint": {
       "dependsOn": ["^build"]

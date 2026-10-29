@@ -9,4 +9,5 @@ export type {
   RectangleClient,
 } from './interfaces/rectangle-client';
 export * from './interfaces/theme';
+export * from './interfaces/theme-presentation';
 export * from './interfaces/viewport';

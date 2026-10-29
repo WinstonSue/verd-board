@@ -6,7 +6,7 @@ import {
   type SettingsRequest,
   type CommitResult,
 } from '@sue/schema-settings-react';
-import { useContext, useId } from 'react';
+import { useContext, useId, useEffect, useRef, useState } from 'react';
 import { FramePropertyContext } from './frame-property-panel';
 import { NumberEditor, type NumberProps } from './frame-property-number';
 
@@ -20,7 +20,13 @@ export interface AppearanceSettingsValues {
 }
 interface AppearanceControls extends ControlProps {
   appearanceNumber: Omit<NumberProps, 'value' | 'onCommit'>;
-  appearanceColor: { fallback: string; ariaLabel: string; mixedLabel: string };
+  appearanceColor: {
+    fallback: string;
+    ariaLabel: string;
+    mixedLabel: string;
+    text?: boolean;
+    onSelect?(value: string): void;
+  };
 }
 function AppearanceColor({
   value,
@@ -28,21 +34,74 @@ function AppearanceColor({
   disabled,
   state,
   onCommit,
+  identity,
 }: SettingEditorProps<unknown, AppearanceControls['appearanceColor']>) {
   const descriptionId = useId();
+  const [draft, setDraft] = useState(String(value ?? ''));
+  const edited = useRef(false);
+  const lastInput = useRef<string | undefined>(undefined);
+  useEffect(() => {
+    lastInput.current = undefined;
+  }, [identity]);
+  useEffect(() => {
+    setDraft(String(value ?? ''));
+    edited.current = false;
+  }, [value, identity]);
+  const select = (next: string) => {
+    if (!disabled) (props.onSelect ?? onCommit)(next);
+  };
+  const commitDraft = () => {
+    if (edited.current) {
+      edited.current = false;
+      select(draft);
+    }
+  };
   return (
     <>
       <input
-        type="color"
+        type={props.text ? 'text' : 'color'}
         aria-label={props.ariaLabel}
         disabled={disabled}
         data-mixed={state.mixed || undefined}
         title={state.mixed ? props.mixedLabel : undefined}
         aria-describedby={state.mixed ? descriptionId : undefined}
         value={
-          /^#[0-9a-f]{6}$/i.test(String(value)) ? String(value) : props.fallback
+          props.text
+            ? draft
+            : /^#[0-9a-f]{6}$/i.test(String(value))
+              ? String(value)
+              : props.fallback
         }
-        onChange={(event) => onCommit(event.target.value)}
+        onChange={(event) => {
+          if (props.text) {
+            setDraft(event.target.value);
+            edited.current = true;
+          } else if (
+            event.nativeEvent.type === 'change' &&
+            lastInput.current !== event.target.value
+          )
+            select(event.target.value);
+        }}
+        onInput={
+          props.text
+            ? undefined
+            : (event) => {
+                lastInput.current = event.currentTarget.value;
+                select(event.currentTarget.value);
+              }
+        }
+        onBlur={props.text ? commitDraft : undefined}
+        onKeyDown={
+          props.text
+            ? (event) => {
+                if (event.key === 'Enter') commitDraft();
+                if (event.key === 'Escape') {
+                  edited.current = false;
+                  setDraft(String(value ?? ''));
+                }
+              }
+            : undefined
+        }
       />
       {state.mixed && (
         <span id={descriptionId} hidden>
@@ -69,6 +128,8 @@ export function FrameAppearanceSettings({
   strokeFallback = '#64748b',
   onCommit,
   onClear,
+  onResetColor,
+  onSetColor,
 }: {
   values: AppearanceSettingsValues;
   identity: string;
@@ -82,6 +143,8 @@ export function FrameAppearanceSettings({
     request: SettingsRequest<AppearanceSettingsValues>,
   ): CommitResult | Promise<CommitResult>;
   onClear?(key: 'fill' | 'strokeColor'): void;
+  onResetColor?(key: 'fill' | 'strokeColor'): void;
+  onSetColor?(key: 'fill' | 'strokeColor', value: string): void;
 }) {
   const context = useContext(FramePropertyContext);
   const product = profile === 'product';
@@ -101,27 +164,24 @@ export function FrameAppearanceSettings({
   const color = (key: 'fill' | 'strokeColor') => ({
     key,
     label: label(key),
-    ...(product
-      ? {
-          editor: 'appearanceColor' as const,
-          props: {
-            fallback: key === 'fill' ? '#ffffff' : strokeFallback,
-            ariaLabel:
-              single && zh
-                ? key === 'fill'
-                  ? '填充'
-                  : '描边'
-                : key === 'fill'
-                  ? 'Fill color'
-                  : 'Stroke color',
-            mixedLabel,
-          },
-        }
-      : {
-          editor: 'text' as const,
-          commit: 'blur' as const,
-          props: { attributes: { 'aria-label': key } },
-        }),
+    editor: 'appearanceColor' as const,
+    props: {
+      fallback: key === 'fill' ? '#ffffff' : strokeFallback,
+      ariaLabel: !product
+        ? key
+        : single && zh
+          ? key === 'fill'
+            ? '填充'
+            : '描边'
+          : key === 'fill'
+            ? 'Fill color'
+            : 'Stroke color',
+      mixedLabel,
+      text: !product,
+      onSelect: onSetColor
+        ? (value: string) => onSetColor(key, value)
+        : undefined,
+    },
   });
   const definition = defineSettings<
     AppearanceSettingsValues,
@@ -207,6 +267,18 @@ export function FrameAppearanceSettings({
         <label>
           {title}
           {editor}
+          {onResetColor && (key === 'fill' || key === 'strokeColor') && (
+            <button
+              type="button"
+              aria-label={
+                key === 'fill' ? 'Reset fill to theme' : 'Reset stroke to theme'
+              }
+              disabled={disabled || context.disabled}
+              onClick={() => onResetColor(key)}
+            >
+              {zh ? '主题颜色' : 'Theme color'}
+            </button>
+          )}
           {onClear && (key === 'fill' || key === 'strokeColor') && (
             <button
               aria-label={

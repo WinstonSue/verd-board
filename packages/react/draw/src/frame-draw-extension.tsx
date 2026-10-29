@@ -1,4 +1,7 @@
 import {
+  resolveCellAppearance,
+  resolveBoardTheme,
+  type ResolvedBoardTheme,
   isNodeCell,
   polylinePath,
   type NodeCell,
@@ -18,7 +21,10 @@ const freehandElements = new WeakMap<
 >();
 const roughElements = new WeakMap<
   NodeCell,
-  WeakMap<NodeGeometry, { normal?: ReactElement; selected?: ReactElement }>
+  WeakMap<
+    NodeGeometry,
+    Map<string, { normal?: ReactElement; selected?: ReactElement }>
+  >
 >();
 const freehandElement = (cell: NodeCell, geometry: NodeGeometry) => {
   let geometries = freehandElements.get(cell);
@@ -37,20 +43,28 @@ const roughElement = (
   cell: NodeCell,
   geometry: NodeGeometry,
   selected: boolean,
+  theme?: ResolvedBoardTheme,
 ) => {
   let geometries = roughElements.get(cell);
   if (!geometries) {
     geometries = new WeakMap();
     roughElements.set(cell, geometries);
   }
-  let elements = geometries.get(geometry);
-  if (!elements) {
-    elements = {};
-    geometries.set(geometry, elements);
-  }
+  let variants = geometries.get(geometry);
+  if (!variants) geometries.set(geometry, (variants = new Map()));
+  const visual = resolveCellAppearance(cell, theme ?? resolveBoardTheme());
+  const colors = JSON.stringify([visual.fill, visual.strokeColor]);
+  let elements = variants.get(colors);
+  if (!elements) variants.set(colors, (elements = {}));
   const key = selected ? 'selected' : 'normal';
   return (elements[key] ??= (
-    <RoughShape cell={cell} geometry={geometry} selected={selected} />
+    <RoughShape
+      cell={cell}
+      geometry={geometry}
+      selected={selected}
+      fill={visual.fill}
+      stroke={visual.strokeColor}
+    />
   ));
 };
 const path: FrameRenderExtension = {
@@ -76,14 +90,15 @@ export const frameDrawExtensions: FrameRenderExtension[] = [
   },
   {
     kind: 'geometry',
-    renderShapeCacheKey: ({ cell, geometry, selected }) => [
+    renderShapeCacheKey: ({ cell, geometry, selected, theme }) => [
+      theme,
       cell,
       geometry,
       selected,
     ],
-    renderShape: ({ cell, geometry, selected }) =>
+    renderShape: ({ cell, geometry, selected, theme }) =>
       isNodeCell(cell) && geometry
-        ? roughElement(cell, geometry, selected)
+        ? roughElement(cell, geometry, selected, theme)
         : null,
   },
   { ...path, kind: 'freehand' },
@@ -122,23 +137,29 @@ const FreehandPath = memo(function FreehandPath({
 const RoughShape = memo(function RoughShape({
   cell,
   geometry,
+  fill,
+  stroke,
 }: {
   cell: NodeCell;
   geometry: NodeGeometry;
   selected: boolean;
+  fill?: string;
+  stroke?: string;
 }) {
   return (
     <g data-shape-renderer="rough">
-      {drawCellShapePaths(cell, geometry, cell.appearance?.strokeColor).map(
-        (path, index) => (
-          <path
-            key={index}
-            {...path}
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
-        ),
-      )}
+      {drawCellShapePaths(
+        { ...cell, appearance: { ...cell.appearance, fill } },
+        geometry,
+        stroke,
+      ).map((path, index) => (
+        <path
+          key={index}
+          {...path}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      ))}
     </g>
   );
 });

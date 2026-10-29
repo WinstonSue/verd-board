@@ -302,8 +302,25 @@ export const updateCellAppearance = (
   patch: Partial<NodeAppearance>,
 ): CellOperation[] =>
   appearanceCells(store, ids).map((cell) => {
-    const appearance = { ...cell.appearance, ...patch };
-    if (!isNodeCell(cell)) delete (appearance as Partial<NodeAppearance>).fill;
+    const colorSources = {
+      ...cell.appearance?.colorSources,
+      ...patch.colorSources,
+    };
+    for (const key of ['fill', 'strokeColor'] as const)
+      if (
+        Object.hasOwn(patch, key) &&
+        !Object.hasOwn(patch.colorSources ?? {}, key)
+      )
+        colorSources[key] = patch[key] === undefined ? 'theme' : 'custom';
+    const appearance = {
+      ...cell.appearance,
+      ...patch,
+      ...(Object.keys(colorSources).length ? { colorSources } : {}),
+    };
+    if (!isNodeCell(cell)) {
+      delete (appearance as Partial<NodeAppearance>).fill;
+      delete colorSources.fill;
+    }
     return { type: 'replace_cell', cell: { ...cell, appearance } as Cell };
   });
 

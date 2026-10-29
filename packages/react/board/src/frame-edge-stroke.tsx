@@ -246,3 +246,43 @@ export function FrameInteractiveEdge({
     />
   );
 }
+
+/** Same visible path body, without camera subscriptions, ports, highlights or hit regions. */
+export function FrameStaticEdge({
+  points,
+  curve,
+  jumps,
+  rounded,
+  markerKinds,
+  ...props
+}: Parameters<typeof FrameInteractiveEdge>[0]) {
+  const geometry = useMemo(
+    () =>
+      edgeDisplayGeometry(
+        points,
+        curve,
+        0,
+        0,
+        rounded || jumps?.length
+          ? { jumps, cornerRadius: rounded ? 6 : 0 }
+          : undefined,
+      ),
+    [points, curve, jumps, rounded],
+  );
+  const [sourceMarker, targetMarker] = markerKinds;
+  const markers = useMemo(
+    () => [
+      arrowMarkerGeometry(geometry.markerPoints, sourceMarker, true),
+      arrowMarkerGeometry(geometry.markerPoints, targetMarker),
+    ],
+    [geometry, sourceMarker, targetMarker],
+  );
+  return (
+    <FrameEdgeStroke
+      {...props}
+      preview
+      path={geometry.path}
+      markers={markers}
+    />
+  );
+}

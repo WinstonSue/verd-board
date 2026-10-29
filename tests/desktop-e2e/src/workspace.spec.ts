@@ -1,3 +1,4 @@
+import { electron, writeDesktopLauncher } from './desktop-launcher';
 import {
   createFolder,
   directoryRow,
@@ -10,7 +11,6 @@ import {
   setAppLanguage,
 } from '../../web-e2e/src/app-actions';
 import {
-  _electron as electron,
   test,
   expect,
   type ElectronApplication,
@@ -44,10 +44,9 @@ const canvasFiles = () => readCanvasFiles(userData);
 const committedCells = () => readCommittedCells(userData);
 const fileWithFrame = (frameId: string) => readFileWithFrame(userData, frameId);
 const workspaceDigest = () => readWorkspaceDigest(userData);
-const launch = async () => {
+const launch = async (fileName?: string) => {
   const env = { ...process.env };
-  delete env.ELECTRON_RUN_AS_NODE;
-  delete env.VITE_DEV_SERVER_URL;
+
   // Legacy fixtures exercise the default migration path; ordinary lifecycle
   // tests request an isolated empty folder instead of the built-in content.
   const hasLegacy = await readFile(storageFile, 'utf8').then(
@@ -58,6 +57,11 @@ const launch = async () => {
   else delete env.VERDBOARD_WORKSPACE_PATH;
   desktop = await electron.launch({ args: [launcher], env });
   const page = await desktop.firstWindow();
+  if (fileName)
+    await page
+      .locator('.file-tree-name')
+      .filter({ hasText: new RegExp(`^${fileName}$`) })
+      .click();
   await expect(canvas(page)).toBeVisible();
   await setAppLanguage(page, 'zh');
   const skip = page.getByRole('button', { name: '跳过', exact: true });
@@ -131,73 +135,90 @@ test('Desktop trashes complete folders, restores on disk and permanently deletes
   await closeWindow(page);
 });
 
-test('Desktop preserves embedded Mind placement without replacing the enclosing Frame geometry', async () => {
+test('Desktop moves a read-only Mind preview shell without changing its source geometry', async () => {
   const snapshot = JSON.parse(
     await readFile(
       path.join(root, 'tests/fixtures/diagrams/embedded-mind.json'),
       'utf8',
     ),
   );
-  const records: Record<string, any> = {};
-  const frames: Record<string, string> = {};
-  for (const cell of Object.values(snapshot.store.cells) as any[]) {
-    if (cell.cellType !== 'frame') continue;
-    const key = `frames/${cell.id}/fixture`;
-    frames[cell.id] = key;
-    records[key] = {
-      format: 'verd-frame',
-      version: 1,
-      frame: cell,
-      cells: Object.fromEntries(
-        [...cell.children, ...cell.groups]
-          .filter((id) => snapshot.store.cells[id].cellType !== 'frame')
-          .map((id) => [id, snapshot.store.cells[id]]),
-      ),
-    };
-  }
-  records.main_board_content = {
-    format: 'verd-workspace',
+  const source = {
+    format: 'verd-frame',
     version: 2,
-    rootId: snapshot.store.rootId,
-    frames,
-    detachedFrameIds: [],
+    frame: snapshot.store.cells.mind,
+    cells: Object.fromEntries(
+      Object.entries<any>(snapshot.store.cells).filter(
+        ([, cell]) => cell.cellType !== 'frame',
+      ),
+    ),
   };
-  await writeFile(storageFile, JSON.stringify(records));
-  let page = await launch();
-  const shape = () =>
-    canvas(page).locator('[data-cell-id="first"] path').first();
-  const bounds = (await shape().boundingBox())!;
+  const reference = {
+    id: 'embedded-mind',
+    kind: 'frame-reference',
+    cellType: 'node',
+    geometry: snapshot.store.cells.mind.geometry,
+    data: { targetFrameId: 'mind' },
+  };
+  const owner = {
+    format: 'verd-frame',
+    version: 2,
+    frame: {
+      ...snapshot.store.cells.board,
+      name: 'Mind preview owner',
+      children: [reference.id],
+    },
+    cells: { [reference.id]: reference },
+  };
+  await mkdir(workspaceDir(), { recursive: true });
+  await writeFile(
+    path.join(workspaceDir(), 'Board.verd.json'),
+    JSON.stringify(owner),
+  );
+  const sourcePath = path.join(workspaceDir(), 'Mind.verd.json');
+  const sourceBytes = JSON.stringify(source);
+  await writeFile(sourcePath, sourceBytes);
+  let page = await launch(owner.frame.name);
+  await page
+    .getByTestId('canvas-status-fit')
+    .locator('visible=true')
+    .press('Enter');
+  const shell = () => canvas(page).locator('[data-cell-id="embedded-mind"]');
+  const shape = () => shell().locator('[data-cell-id="first"] path').first();
+  await expect(shell().locator('[data-frame-content-id]')).not.toHaveCount(0);
+  await expect(canvas(page).locator('svg[data-surface="nested"]')).toHaveCount(
+    0,
+  );
+  const header = (await shell()
+    .locator('[data-frame-header]')
+    .first()
+    .boundingBox())!;
+  const expectedPath = await shape().getAttribute('d');
   await page.mouse.move(
-    bounds.x + bounds.width / 2,
-    bounds.y + bounds.height / 2,
+    header.x + header.width / 2,
+    header.y + header.height - 1,
   );
   await page.mouse.down();
   await page.mouse.move(
-    bounds.x + bounds.width / 2 + 35,
-    bounds.y + bounds.height / 2 + 20,
+    header.x + header.width / 2 + 35,
+    header.y + header.height + 19,
     { steps: 6 },
   );
   await page.mouse.up();
-  const expectedPath = await shape().getAttribute('d');
+  await expect
+    .poll(
+      async () =>
+        (await fileWithFrame('board'))?.cells[reference.id].geometry.x,
+    )
+    .not.toBe(reference.geometry.x);
   await closeWindow(page);
-  // The legacy manifest migrates: 'mind' becomes its own file and the board
-  // keeps a frame-reference shell. Per-occurrence placement lives on the
-  // shell's mindOffsets, the target file's cells are untouched.
   const board = await fileWithFrame('board');
-  const mind = await fileWithFrame('mind');
-  expect(board).toBeTruthy();
-  expect(mind).toBeTruthy();
-  const ref = Object.values(board.cells).find(
-    (cell: any) => cell.kind === 'frame-reference',
-  ) as any;
-  expect(ref.data.targetFrameId).toBe('mind');
-  expect(ref.data.mindOffsets.first[0]).toBeGreaterThan(0);
-  expect(ref.geometry).toEqual(snapshot.store.cells.mind.geometry);
-  expect(mind.frame).toEqual(snapshot.store.cells.mind);
-  expect(mind.cells.first).toEqual(snapshot.store.cells.first);
-  expect(mind.cells.second).toEqual(snapshot.store.cells.second);
+  const moved = board.cells[reference.id];
+  expect(moved.geometry.width).toBe(reference.geometry.width);
+  expect(moved.geometry.height).toBe(reference.geometry.height);
+  expect(moved.data.targetFrameId).toBe('mind');
+  expect(await readFile(sourcePath, 'utf8')).toBe(sourceBytes);
   const digest = await workspaceDigest();
-  page = await launch();
+  page = await launch(owner.frame.name);
   await expect(shape()).toHaveAttribute('d', expectedPath!);
   await closeWindow(page);
   expect(await workspaceDigest()).toBe(digest);
@@ -231,10 +252,7 @@ test.beforeEach(async () => {
   await mkdir(userData);
   storageFile = path.join(userData, 'verdboard-data.json');
   launcher = path.join(directory, 'launch.cjs');
-  await writeFile(
-    launcher,
-    `const {app} = require('electron');\napp.setPath('userData', ${JSON.stringify(userData)});\nrequire(${JSON.stringify(path.join(root, 'apps/desktop/dist-electron/main.js'))});\n`,
-  );
+  await writeDesktopLauncher(launcher, userData);
 });
 test.afterEach(async () => {
   await desktop?.close();
@@ -242,7 +260,7 @@ test.afterEach(async () => {
   await rm(directory, { recursive: true, force: true });
 });
 
-test('production Desktop saves pending drawing and a focused mind note before close, then restores both on restart', async () => {
+test('Desktop saves pending drawing and a focused mind note before close, then restores both on restart', async () => {
   let page = await launch();
   await page.getByRole('button', { name: '形状', exact: true }).click();
   await page.getByTestId('shape-rectangle').click();
@@ -296,12 +314,11 @@ test('production Desktop saves pending drawing and a focused mind note before cl
   ).toContainText('Final desktop keystroke');
 });
 
-test('production Desktop reports corrupt storage without replacing it with an empty workspace', async () => {
+test('@prod Desktop reports corrupt storage without replacing it with an empty workspace', async () => {
   const corrupt = '{ broken storage';
   await writeFile(storageFile, corrupt);
   const env = { ...process.env };
-  delete env.ELECTRON_RUN_AS_NODE;
-  delete env.VITE_DEV_SERVER_URL;
+
   // Legacy fixtures exercise the default migration path; ordinary lifecycle
   // tests request an isolated empty folder instead of the built-in content.
   const hasLegacy = await readFile(storageFile, 'utf8').then(
@@ -386,7 +403,7 @@ test('Desktop surfaces an external file conflict and keep-local resolves it', as
   await expect(cells(restarted, 'geometry')).toHaveCount(2);
 });
 
-test('Desktop migrates a legacy file, preserves its backup and restarts without migrating again', async () => {
+test('@prod Desktop migrates a legacy file, preserves its backup and restarts without migrating again', async () => {
   const legacy = JSON.parse(
     await readFile(
       path.join(root, 'tests/fixtures/legacy/drawnix-v1.json'),
@@ -563,7 +580,12 @@ test('Desktop previews real shapes and curves, cancels drafts and persists only 
       .locator(`[data-cell-id="${id}"] path`)
       .evaluateAll((paths) =>
         paths
-          .filter((path) => !path.closest('[data-selection-handles]'))
+          .filter(
+            (path) =>
+              !path.closest(
+                '[data-selection-handles], [data-interaction-stroke]',
+              ),
+          )
           .map((path) => path.getAttribute('d')),
       ),
   ).toEqual(contour);

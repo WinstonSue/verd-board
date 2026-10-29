@@ -20,6 +20,7 @@ import type {
   NamespaceNode,
 } from 'mermaid/dist/diagrams/class/classTypes.js';
 import { StrokeStyle } from '@sue/board-common';
+import { parseAuthoredStyle } from '../authored-style';
 
 // Taken from mermaidParser.relationType
 const RELATION_TYPE = {
@@ -113,6 +114,7 @@ const parseClasses = (
     container.x += transformX;
     container.y += transformY;
     container.metadata = { classId };
+    container.authoredStyle = parseAuthoredStyle(classNode.styles);
     nodes.push(container);
 
     const lineNodes = Array.from(
@@ -140,6 +142,7 @@ const parseClasses = (
       line.endX += transformX;
       line.endY += transformY;
       line.metadata = { classId };
+      line.authoredStyle = container.authoredStyle;
       lines.push(line);
     });
 
@@ -175,6 +178,7 @@ const parseClasses = (
       );
 
       text.push(textElement);
+      textElement.authoredStyle = container.authoredStyle;
     });
   });
   return { nodes, lines, text };

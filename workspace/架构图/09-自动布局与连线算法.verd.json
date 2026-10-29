@@ -1,0 +1,620 @@
+{
+  "format": "verd-frame",
+  "version": 2,
+  "frame": {
+    "id": "demo:layout-routing",
+    "kind": "frame",
+    "cellType": "frame",
+    "geometry": {
+      "x": 2020,
+      "y": 2342,
+      "width": 940,
+      "height": 520,
+      "derived": false
+    },
+    "children": [
+      "project:overview/09/title",
+      "project:overview/09/summary/1",
+      "project:overview/09/summary/2",
+      "project:overview/09/summary/3",
+      "project:overview/09/detail/1",
+      "project:overview/09/detail/2",
+      "project:overview/09/detail/3",
+      "project:topic/09/document",
+      "project:overview/09/relation/0",
+      "project:overview/09/relation/1"
+    ],
+    "groups": [],
+    "data": {},
+    "content": {
+      "label": "⑨ 自动布局与连线算法"
+    },
+    "appearance": {
+      "fill": "#ffffff",
+      "strokeColor": "#cbd5e1",
+      "strokeWidth": 2
+    },
+    "view": {
+      "theme": {
+        "themeColorMode": "default",
+        "boardBackground": "#ffffff"
+      }
+    },
+    "name": "⑨ 自动布局与连线算法"
+  },
+  "cells": {
+    "project:overview/09/title": {
+      "id": "project:overview/09/title",
+      "kind": "geometry",
+      "cellType": "node",
+      "geometry": {
+        "x": 0,
+        "y": 0,
+        "width": 1900,
+        "height": 80,
+        "derived": false,
+        "outline": "text"
+      },
+      "ports": [
+        {
+          "id": "top",
+          "side": "top",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "right",
+          "side": "right",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "bottom",
+          "side": "bottom",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "left",
+          "side": "left",
+          "direction": "both",
+          "offset": 0.5
+        }
+      ],
+      "appearance": {
+        "fill": "none",
+        "strokeColor": "none",
+        "strokeWidth": 1.5
+      },
+      "content": {
+        "label": "⑨ 自动布局与连线算法",
+        "text": {
+          "schemaVersion": 1,
+          "id": "project:overview/09/title/text",
+          "kind": "inline",
+          "plainText": "⑨ 自动布局与连线算法",
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "⑨ 自动布局与连线算法",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "36px",
+                          "color": "#1e293b"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      }
+    },
+    "project:overview/09/summary/1": {
+      "id": "project:overview/09/summary/1",
+      "kind": "geometry",
+      "cellType": "node",
+      "geometry": {
+        "x": 0,
+        "y": 120,
+        "width": 600,
+        "height": 180,
+        "derived": false,
+        "outline": "roundRectangle"
+      },
+      "ports": [
+        {
+          "id": "top",
+          "side": "top",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "right",
+          "side": "right",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "bottom",
+          "side": "bottom",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "left",
+          "side": "left",
+          "direction": "both",
+          "offset": 0.5
+        }
+      ],
+      "appearance": {
+        "fill": "#f0fdfa",
+        "strokeColor": "#94a3b8",
+        "strokeWidth": 1.5
+      },
+      "content": {
+        "label": "作用范围与提交边界\n范围固定、锁定对象不动；两个自动开关默认关闭，自动结果合入原事务。",
+        "text": {
+          "schemaVersion": 1,
+          "id": "project:overview/09/summary/1/text",
+          "kind": "inline",
+          "plainText": "作用范围与提交边界\n范围固定、锁定对象不动；两个自动开关默认关闭，自动结果合入原事务。",
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "作用范围与提交边界",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "20px",
+                          "color": "#1e293b"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "范围固定、锁定对象不动；两个自动开关默认关闭，自动结果合入原事务。",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "20px",
+                          "color": "#1e293b"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      }
+    },
+    "project:overview/09/summary/2": {
+      "id": "project:overview/09/summary/2",
+      "kind": "geometry",
+      "cellType": "node",
+      "geometry": {
+        "x": 660,
+        "y": 120,
+        "width": 600,
+        "height": 180,
+        "derived": false,
+        "outline": "roundRectangle"
+      },
+      "ports": [
+        {
+          "id": "top",
+          "side": "top",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "right",
+          "side": "right",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "bottom",
+          "side": "bottom",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "left",
+          "side": "left",
+          "direction": "both",
+          "offset": 0.5
+        }
+      ],
+      "appearance": {
+        "fill": "#f0fdfa",
+        "strokeColor": "#94a3b8",
+        "strokeWidth": 1.5
+      },
+      "content": {
+        "label": "各场景节点布局\n白板循环支持不代表所有领域允许循环；Mind 与 UML 时序采用派生几何。",
+        "text": {
+          "schemaVersion": 1,
+          "id": "project:overview/09/summary/2/text",
+          "kind": "inline",
+          "plainText": "各场景节点布局\n白板循环支持不代表所有领域允许循环；Mind 与 UML 时序采用派生几何。",
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "各场景节点布局",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "20px",
+                          "color": "#1e293b"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "白板循环支持不代表所有领域允许循环；Mind 与 UML 时序采用派生几何。",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "20px",
+                          "color": "#1e293b"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      }
+    },
+    "project:overview/09/summary/3": {
+      "id": "project:overview/09/summary/3",
+      "kind": "geometry",
+      "cellType": "node",
+      "geometry": {
+        "x": 1320,
+        "y": 120,
+        "width": 600,
+        "height": 180,
+        "derived": false,
+        "outline": "roundRectangle"
+      },
+      "ports": [
+        {
+          "id": "top",
+          "side": "top",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "right",
+          "side": "right",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "bottom",
+          "side": "bottom",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "left",
+          "side": "left",
+          "direction": "both",
+          "offset": 0.5
+        }
+      ],
+      "appearance": {
+        "fill": "#f0fdfa",
+        "strokeColor": "#94a3b8",
+        "strokeWidth": 1.5
+      },
+      "content": {
+        "label": "连线路由与优化\n普通路径运行时计算；显式优化保存折点，重置折点恢复自动。",
+        "text": {
+          "schemaVersion": 1,
+          "id": "project:overview/09/summary/3/text",
+          "kind": "inline",
+          "plainText": "连线路由与优化\n普通路径运行时计算；显式优化保存折点，重置折点恢复自动。",
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "连线路由与优化",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "20px",
+                          "color": "#1e293b"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "普通路径运行时计算；显式优化保存折点，重置折点恢复自动。",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "20px",
+                          "color": "#1e293b"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      }
+    },
+    "project:overview/09/detail/1": {
+      "id": "project:overview/09/detail/1",
+      "kind": "frame-reference",
+      "cellType": "node",
+      "geometry": {
+        "x": 0,
+        "y": 400,
+        "width": 600,
+        "height": 400
+      },
+      "appearance": {
+        "fill": "#ffffff",
+        "strokeColor": "#cbd5e1",
+        "strokeWidth": 2
+      },
+      "content": {
+        "label": "09.1 作用范围与提交边界"
+      },
+      "data": {
+        "targetFrameId": "project:detail/09/01"
+      }
+    },
+    "project:overview/09/detail/2": {
+      "id": "project:overview/09/detail/2",
+      "kind": "frame-reference",
+      "cellType": "node",
+      "geometry": {
+        "x": 660,
+        "y": 400,
+        "width": 600,
+        "height": 400
+      },
+      "appearance": {
+        "fill": "#ffffff",
+        "strokeColor": "#cbd5e1",
+        "strokeWidth": 2
+      },
+      "content": {
+        "label": "09.2 各场景节点布局"
+      },
+      "data": {
+        "targetFrameId": "project:detail/09/02"
+      }
+    },
+    "project:overview/09/detail/3": {
+      "id": "project:overview/09/detail/3",
+      "kind": "frame-reference",
+      "cellType": "node",
+      "geometry": {
+        "x": 1320,
+        "y": 400,
+        "width": 600,
+        "height": 400
+      },
+      "appearance": {
+        "fill": "#ffffff",
+        "strokeColor": "#cbd5e1",
+        "strokeWidth": 2
+      },
+      "content": {
+        "label": "09.3 连线路由与优化"
+      },
+      "data": {
+        "targetFrameId": "project:detail/09/03"
+      }
+    },
+    "project:topic/09/document": {
+      "id": "project:topic/09/document",
+      "cellType": "node",
+      "kind": "document-reference",
+      "geometry": {
+        "x": 0,
+        "y": 980,
+        "width": 1000,
+        "height": 600
+      },
+      "data": {
+        "targetDocumentId": "project-doc:packages/board/arrangement"
+      },
+      "content": {
+        "text": {
+          "schemaVersion": 1,
+          "id": "project:topic/09/document/links",
+          "kind": "block",
+          "align": "left",
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "自动布局算法",
+                    "marks": [
+                      {
+                        "type": "link",
+                        "attrs": {
+                          "href": "verd://file/project-doc%3Apackages%2Fboard%2Farrangement#%E8%87%AA%E5%8A%A8%E5%B8%83%E5%B1%80%E7%AE%97%E6%B3%95"
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "type": "text",
+                    "text": " · "
+                  },
+                  {
+                    "type": "text",
+                    "text": "连线路由算法",
+                    "marks": [
+                      {
+                        "type": "link",
+                        "attrs": {
+                          "href": "verd://file/project-doc%3Apackages%2Fboard%2Farrangement#%E8%BF%9E%E7%BA%BF%E8%B7%AF%E7%94%B1%E7%AE%97%E6%B3%95"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "自动开关",
+                    "marks": [
+                      {
+                        "type": "link",
+                        "attrs": {
+                          "href": "verd://file/project-doc%3Apackages%2Fboard%2Farrangement#%E4%B8%80%E6%AC%A1%E6%93%8D%E4%BD%9C%E4%B8%8E%E8%87%AA%E5%8A%A8%E8%AE%A1%E7%AE%97"
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "type": "text",
+                    "text": " · "
+                  },
+                  {
+                    "type": "text",
+                    "text": "三种结果与典型场景",
+                    "marks": [
+                      {
+                        "type": "link",
+                        "attrs": {
+                          "href": "verd://file/project-doc%3Apackages%2Fboard%2Farrangement#%E4%BF%9D%E5%AD%98%E8%BE%B9%E7%95%8C%E4%B8%8E%E5%85%B8%E5%9E%8B%E5%9C%BA%E6%99%AF"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          },
+          "plainText": "自动布局算法 · 连线路由算法\n自动开关 · 三种结果与典型场景"
+        }
+      }
+    },
+    "project:overview/09/relation/0": {
+      "id": "project:overview/09/relation/0",
+      "kind": "arrow",
+      "cellType": "edge",
+      "source": {
+        "cellId": "project:overview/09/summary/1",
+        "portId": "right"
+      },
+      "target": {
+        "cellId": "project:overview/09/summary/2",
+        "portId": "left"
+      },
+      "route": {
+        "mode": "orthogonal"
+      },
+      "labels": [
+        {
+          "text": "候选计划",
+          "position": 0.5
+        }
+      ],
+      "appearance": {
+        "strokeColor": "#64748b",
+        "strokeWidth": 1.5
+      }
+    },
+    "project:overview/09/relation/1": {
+      "id": "project:overview/09/relation/1",
+      "kind": "arrow",
+      "cellType": "edge",
+      "source": {
+        "cellId": "project:overview/09/summary/2",
+        "portId": "right"
+      },
+      "target": {
+        "cellId": "project:overview/09/summary/3",
+        "portId": "left"
+      },
+      "route": {
+        "mode": "orthogonal"
+      },
+      "labels": [
+        {
+          "text": "位置与端点约束",
+          "position": 0.5
+        }
+      ],
+      "appearance": {
+        "strokeColor": "#64748b",
+        "strokeWidth": 1.5
+      }
+    }
+  },
+  "organization": {
+    "kind": "standalone"
+  }
+}

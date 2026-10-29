@@ -1,5 +1,5 @@
+import { electron, writeDesktopLauncher } from './desktop-launcher';
 import {
-  _electron as electron,
   expect,
   test,
   type ElectronApplication,
@@ -9,8 +9,6 @@ import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { workspaceDigest } from './workspace-disk';
-
-const root = path.resolve(__dirname, '../../..');
 
 async function close(desktop: ElectronApplication, page: Page) {
   const closed = page.waitForEvent('close');
@@ -48,16 +46,72 @@ test('Desktop follows system, remembers manual appearance after restart, and lea
       },
     },
   };
+  const nodes = [false, true].map((custom, i) => ({
+    id: custom ? 'custom-shape' : 'legacy-shape',
+    kind: 'geometry',
+    cellType: 'node',
+    geometry: {
+      x: 30 + i * 220,
+      y: 30,
+      width: 180,
+      height: 80,
+      outline: 'rectangle',
+    },
+    appearance: {
+      fill: custom ? '#fff' : '#ff00ff',
+      strokeColor: custom ? '#64748b' : '#00ff00',
+      ...(custom
+        ? { colorSources: { fill: 'custom', strokeColor: 'custom' } }
+        : {}),
+    },
+    content: { label: custom ? 'Fixed white' : 'Adaptive shape' },
+  }));
+  const board = {
+    format: 'verd-frame',
+    version: 2,
+    frame: {
+      id: 'desktop-appearance-board',
+      name: 'Desktop theme board',
+      kind: 'frame',
+      cellType: 'frame',
+      geometry: { x: 0, y: 0, width: 500, height: 300 },
+      view: {
+        theme: { themeColorMode: 'default', boardBackground: '#f8fafc' },
+      },
+      children: nodes.map((node) => node.id),
+      groups: [],
+    },
+    cells: Object.fromEntries(nodes.map((node) => [node.id, node])),
+  };
+  const boardPath = path.join(workspace, 'Board.verd.json');
+  const boardBytes = JSON.stringify(board);
+  await writeFile(boardPath, boardBytes);
   const docPath = path.join(workspace, 'Appearance.verd-doc.json');
   await writeFile(docPath, JSON.stringify(doc));
+  for (const fixture of ['uml-sequence', 'workflow-process']) {
+    const file = JSON.parse(
+      await readFile(
+        path.resolve(
+          __dirname,
+          `../../fixtures/ai-canvas/${fixture}.verd.json`,
+        ),
+        'utf8',
+      ),
+    );
+    file.frame.name = `Theme ${fixture}`;
+    file.frame.view = {
+      ...file.frame.view,
+      theme: { themeColorMode: 'default', backgroundMode: 'theme' },
+    };
+    await writeFile(
+      path.join(workspace, `${fixture}.verd.json`),
+      JSON.stringify(file),
+    );
+  }
   const launcher = path.join(directory, 'launch.cjs');
-  await writeFile(
-    launcher,
-    `const {app} = require('electron');\napp.setPath('userData', ${JSON.stringify(userData)});\nrequire(${JSON.stringify(path.join(root, 'apps/desktop/dist-electron/main.js'))});\n`,
-  );
+  await writeDesktopLauncher(launcher, userData);
   const env = { ...process.env, VERDBOARD_WORKSPACE_PATH: workspace };
-  delete env.ELECTRON_RUN_AS_NODE;
-  delete env.VITE_DEV_SERVER_URL;
+
   let desktop = await electron.launch({ args: [launcher], env });
   try {
     let page = await desktop.firstWindow();
@@ -67,7 +121,7 @@ test('Desktop follows system, remembers manual appearance after restart, and lea
       'data-verd-appearance',
       'dark',
     );
-    // A document-only workspace starts without a canvas toolbar.
+    // Sidebar settings work independently of the active editor.
     await page.locator('.workspace-sidebar-footer button').click();
     await expect(page.getByTestId('settings-appearance')).toHaveValue('system');
     expect(
@@ -109,17 +163,58 @@ test('Desktop follows system, remembers manual appearance after restart, and lea
     );
     await page.locator('.workspace-sidebar-footer button').click();
     await expect(page.getByTestId('settings-appearance')).toHaveValue('dark');
+    await page.getByTestId('my-back').click();
+    await page
+      .locator('.file-tree-name')
+      .filter({ hasText: /^Desktop theme board$/ })
+      .click();
+    const canvas = page.locator(
+      '.workspace-pane.is-active svg[data-surface="root"]',
+    );
+    await expect(canvas).toHaveAttribute('data-board-appearance', 'dark');
+    await expect(
+      canvas.locator('[data-cell-id="legacy-shape"]'),
+    ).toHaveAttribute('fill', '#1e293b');
+    await expect(
+      canvas.locator('[data-cell-id="legacy-shape"]'),
+    ).toHaveAttribute('stroke', '#94a3b8');
+    await expect(
+      canvas.locator('[data-cell-id="custom-shape"]'),
+    ).toHaveAttribute('fill', '#fff');
+    for (const fixture of ['uml-sequence', 'workflow-process']) {
+      await page
+        .locator('.file-tree-name')
+        .filter({ hasText: new RegExp(`^Theme ${fixture}$`) })
+        .click();
+      const parts = page.locator(
+        '.workspace-pane.is-active [data-uml-lifeline] > rect, .workspace-pane.is-active [data-cell-kind="workflow-task"]',
+      );
+      expect(await parts.count()).toBeGreaterThan(0);
+      for (const part of await parts.all()) {
+        await expect(part).toHaveAttribute('fill', '#1e293b');
+        await expect(part).toHaveAttribute('stroke', '#94a3b8');
+      }
+    }
+    await page
+      .locator('.file-tree-name')
+      .filter({ hasText: /^Desktop theme board$/ })
+      .click();
+    await page.locator('.workspace-sidebar-footer button').click();
     await page.getByTestId('settings-appearance').selectOption('system');
     await expect(page.locator('html')).toHaveAttribute(
       'data-verd-appearance',
       'light',
     );
+    await expect(
+      canvas.locator('[data-cell-id="legacy-shape"]'),
+    ).toHaveAttribute('fill', '#ffffff');
     await page.emulateMedia({ colorScheme: 'dark' });
     await expect(page.locator('html')).toHaveAttribute(
       'data-verd-appearance',
       'dark',
     );
     expect(await readFile(docPath, 'utf8')).toBe(content);
+    expect(await readFile(boardPath, 'utf8')).toBe(boardBytes);
     expect(await workspaceDigest(userData)).toBe(canvases);
   } finally {
     await desktop

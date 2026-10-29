@@ -28,6 +28,7 @@ import {
   MAX_MIND_MAX_WIDTH,
   MIN_MIND_MAX_WIDTH,
   mindChildIds,
+  mindBranchColor,
   mindFrameColorScheme,
   mindNoteColor,
   mindTheme,
@@ -39,6 +40,9 @@ import {
   validMindMaxWidth,
 } from '@sue/board-mind';
 import {
+  useFrameAppearance,
+  useFrameTheme,
+  frameThemeStyle,
   BoardTextFormatControls,
   FramePropertyNumber,
   useFrameI18n as useI18n,
@@ -56,12 +60,12 @@ const englishLabels: Record<string, string> = {
   右上缩进: 'Indented up right',
   左下缩进: 'Indented down left',
   左上缩进: 'Indented up left',
-  默认: 'Default',
+  经典: 'Classic',
   缤纷: 'Colorful',
   柔和: 'Soft',
   复古: 'Retro',
-  暗色: 'Dark',
-  星空: 'Starry',
+  清新: 'Fresh',
+  海洋: 'Ocean',
 };
 const localize = (value: string, language: string) =>
   language === 'zh' ? value : (englishLabels[value] ?? value);
@@ -81,12 +85,12 @@ const MORE_LAYOUTS: [MindLayoutType, string][] = [
 const LAYOUT_LABELS = new Map([...COMMON_LAYOUTS, ...MORE_LAYOUTS]);
 
 const SCHEME_LABELS: Record<MindColorScheme, string> = {
-  default: '默认',
+  default: '经典',
   colorful: '缤纷',
   soft: '柔和',
   retro: '复古',
-  dark: '暗色',
-  starry: '星空',
+  dark: '清新',
+  starry: '海洋',
 };
 
 /** File-level mind scheme picker: name plus a palette swatch preview. */
@@ -102,7 +106,8 @@ export function MindSchemeField({
   const { language } = useI18n();
   const explicit = frame?.view?.mind?.colorScheme;
   const value = explicit && explicit in SCHEME_LABELS ? explicit : 'inherit';
-  const resolved = mindTheme(mindFrameColorScheme(frame));
+  const appearance = useFrameAppearance();
+  const resolved = mindTheme(mindFrameColorScheme(frame), appearance);
   return (
     <label>
       {language === 'zh' ? 'Mind 配色' : 'Mind color scheme'}
@@ -143,7 +148,10 @@ export function MindSchemeField({
         }}
       />
       <span aria-hidden style={{ letterSpacing: 2 }}>
-        {(value === 'inherit' ? resolved : mindTheme(value)).branches
+        {(value === 'inherit'
+          ? resolved
+          : mindTheme(value, appearance)
+        ).branches
           .slice(0, 5)
           .map((color) => (
             <i
@@ -242,7 +250,9 @@ export function FrameMindProperties({
     if (latest)
       replace({ ...latest, data: { ...(latest.data as object), ...patch } });
   };
-  const noteColor = mindNoteColor(store, cell.id, frame?.id);
+  const appearance = useFrameAppearance();
+  const theme = useFrameTheme();
+  const noteColor = mindNoteColor(store, cell.id, frame?.id, appearance);
   const changeNote = (patch: BoardTextFormatPatch) => {
     const latest = getCell();
     const current = (latest?.data as MindNodeData | undefined)?.note;
@@ -357,26 +367,50 @@ export function FrameMindProperties({
           </label>
           <label>
             {language === 'zh' ? '分支颜色' : 'Branch color'}
-            <FrameSettingsControl
-              field={{
-                key: 'Mind branch color',
-                editor: 'input',
-                props: { 'aria-label': 'Mind branch color', type: 'color' },
-              }}
+            <input
+              aria-label="Mind branch color"
+              type="color"
+              disabled={disabled}
               value={
-                data?.branchAppearance?.strokeColor ??
-                cell.appearance?.strokeColor ??
+                mindBranchColor(store, cell.id, frame?.id, appearance) ??
                 '#64748b'
               }
-              onCommit={(value) =>
+              onChange={(event) =>
                 update({
                   branchAppearance: {
                     ...data?.branchAppearance,
-                    strokeColor: value,
+                    colorSources: {
+                      ...data?.branchAppearance?.colorSources,
+                      strokeColor: 'custom',
+                    },
+                    strokeColor: event.target.value,
                   },
                 })
               }
             />
+            <button
+              type="button"
+              aria-label="Reset Mind branch to theme"
+              disabled={disabled}
+              onClick={() => {
+                const latest = getCell();
+                if (!latest) return;
+                const branch = (latest.data as MindNodeData | undefined)
+                  ?.branchAppearance;
+                update({
+                  branchAppearance: {
+                    ...branch,
+                    strokeColor: undefined,
+                    colorSources: {
+                      ...branch?.colorSources,
+                      strokeColor: 'theme',
+                    },
+                  },
+                });
+              }}
+            >
+              {language === 'zh' ? '主题颜色' : 'Theme color'}
+            </button>
           </label>
           <label>
             {language === 'zh' ? '分支宽度' : 'Branch width'}
@@ -755,6 +789,7 @@ export function FrameMindProperties({
           aria-label="Mind note"
           className="frame-note-content"
           style={{
+            ...frameThemeStyle(theme),
             minHeight: 100,
             padding: 8,
             border: '1px solid var(--vm-border-strong, #cbd5e1)',

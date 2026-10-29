@@ -1,4 +1,5 @@
 import {
+  resolveCellAppearance,
   isNodeCell,
   roundFramePoint,
   roundNodeGeometry,
@@ -171,8 +172,15 @@ export function FrameVectorLine(context: FrameRenderContext) {
       data-vector-line={cell.id}
       onDoubleClick={(event) => event.stopPropagation()}
     >
-      <VisibleVectorPath path={path} fill={cell.appearance?.fill ?? 'none'} />
-      {!context.preview && (
+      <VisibleVectorPath
+        path={path}
+        fill={
+          context.theme?.adaptive
+            ? (resolveCellAppearance(cell, context.theme).fill ?? 'none')
+            : (cell.appearance?.fill ?? 'none')
+        }
+      />
+      {!(context.preview || context.viewProjection?.purpose === 'preview') && (
         <path
           d={path}
           fill="none"

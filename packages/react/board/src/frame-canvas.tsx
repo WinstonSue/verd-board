@@ -1,4 +1,26 @@
 import {
+  resolveBoardTheme,
+  readableThemeText,
+  type BoardAppearance,
+  type ResolvedBoardTheme,
+} from '@sue/board-core';
+import {
+  resolveFrameCellAppearance,
+  type FrameThemeAppearanceContext,
+} from './frame-appearance';
+import {
+  FrameThemeContext,
+  FrameThemeGroup,
+  frameThemeStyle,
+  useFrameAppearance,
+} from './frame-theme';
+import {
+  createFrameLayouts,
+  sameGeometry,
+  type FrameLayoutEntry,
+  type FrameLayoutMemory,
+} from './frame-scene-layout';
+import {
   captureAutoCalculationScope,
   prepareAutoCalculation,
   pruneAutoCalculationConfig,
@@ -6,6 +28,7 @@ import {
   type FrameAutoCalculationConfig,
 } from './frame-auto-calculation';
 import { FrameReferenceBoundary } from './frame-reference-boundary';
+import { FrameContentVisibility } from './frame-content-visibility';
 import { useFrameI18n } from './frame-i18n';
 import {
   Alignment,
@@ -154,11 +177,18 @@ import {
 import { snapArrangementDelta, type AlignmentGuide } from './frame-alignment';
 import {
   createFrameCameraStore,
-  FrameNodeAppearance,
-  FrameScaleContent,
   type FrameNodeAppearanceValue,
 } from './frame-camera-store';
-import { FrameInteractiveEdge } from './frame-edge-stroke';
+import {
+  FrameScenePreview,
+  FrameNodeAppearance,
+  FrameScaleContent,
+  FrameInteractiveEdge,
+  FrameStaticSceneContext,
+  FrameReferenceCard,
+  FrameDetailsButton,
+  previewProjection,
+} from './frame-scene';
 import { FrameNodeInteraction } from './frame-relation-highlight';
 import { frameSnapshotToImage, type FrameImageOptions } from './frame-export';
 import {
@@ -208,6 +238,9 @@ import { PreviewMountProvider, usePreviewMount } from './preview-mount';
 export type { FrameCanvasInteractionSettings } from './frame-interaction-settings';
 
 export interface FrameRenderContext {
+  appearance?: BoardAppearance;
+  theme?: ResolvedBoardTheme;
+  selectionIds?: readonly string[];
   store: CellStore;
   viewProjection: FrameViewProjection;
   clearRevealOverrides?(ids?: readonly string[]): void;
@@ -247,6 +280,12 @@ export interface FrameMovePreview {
   ghost?: { parentId: string; cellIds: readonly string[] };
 }
 export interface FrameRenderExtension {
+  /** Theme defaults for this kind; explicit per-field custom colors still win. */
+  themeAppearance?: (
+    context: FrameThemeAppearanceContext,
+  ) =>
+    | Pick<import('@sue/board-core').NodeAppearance, 'fill' | 'strokeColor'>
+    | undefined;
   plugin?: FrameUIPlugin;
   kind?: string;
   layout?: (
@@ -321,11 +360,19 @@ export interface FrameInstanceBinding {
   /** Regular-canvas preview: offer 「打开编辑」 when the preview is empty. */
   preview: boolean;
 }
+export interface FrameReferenceSource {
+  getSnapshot(frameId: string): FrameSnapshot | null;
+  subscribe(listener: () => void): () => void;
+}
 export interface FrameInstanceHost {
+  source?: FrameReferenceSource;
   /** Lookup only. Must not allocate or activate. */
   get(query: FrameInstanceQuery): FrameInstanceBinding | null;
   /** Mount lifecycle. Must not run during render. */
-  acquire(query: FrameInstanceQuery): void | (() => void);
+  acquire(
+    query: FrameInstanceQuery,
+    options?: { edit?: boolean },
+  ): void | (() => void);
   release(query: FrameInstanceQuery): void;
   commit(
     occurrenceId: string,
@@ -381,6 +428,9 @@ interface FrameViewServices {
   getContentBounds(): RectangleClient;
 }
 export interface FrameCanvasController {
+  resolveAppearance(
+    cellId: string,
+  ): import('@sue/board-core').NodeAppearance | undefined;
   readonly actionSource: ActionSource;
   getActionContext(): FrameActionContext;
   getActiveController(): FrameCanvasController;
@@ -440,6 +490,8 @@ export type FrameCanvasTool =
       ): CellOperation[];
     };
 export interface FrameDocumentReferenceProps {
+  referenceInteraction?: 'direct' | 'details';
+  onOpenDetails?(open: () => void): void;
   kind: 'document-frame' | 'document-reference';
   annotation?: import('@sue/board-common').BoardTextDocument;
   ownerFrameId: string;
@@ -476,6 +528,9 @@ export interface FrameDocumentReferences {
   render(props: FrameDocumentReferenceProps): ReactNode;
 }
 interface FrameCanvasCommon {
+  /** Omit to retain legacy colors; supplied appearances never change the snapshot. */
+  appearance?: BoardAppearance;
+  referenceInteraction?: 'direct' | 'activate' | 'details';
   pluginSet?: FramePluginSet;
   documentReferences?: FrameDocumentReferences;
   exporting?: boolean;
@@ -566,25 +621,31 @@ export type FrameCanvasProps<T = FrameSnapshot> = FrameCanvasCommon &
   );
 const RuntimeContext = createContext<CellRuntime | null>(null);
 function FrameCanvasProviders({
+  theme,
   runtime,
   wheelOwner,
   children,
 }: {
+  theme: ResolvedBoardTheme;
   runtime: CellRuntime;
   wheelOwner: ReturnType<typeof createFrameWheelOwner>;
   children: ReactNode;
 }) {
   return (
-    <RuntimeContext.Provider value={runtime}>
-      <FrameWheelContext.Provider value={wheelOwner}>
-        <PreviewMountProvider>{children}</PreviewMountProvider>
-      </FrameWheelContext.Provider>
-    </RuntimeContext.Provider>
+    <FrameThemeContext.Provider value={theme}>
+      <RuntimeContext.Provider value={runtime}>
+        <FrameWheelContext.Provider value={wheelOwner}>
+          <PreviewMountProvider>{children}</PreviewMountProvider>
+        </FrameWheelContext.Provider>
+      </RuntimeContext.Provider>
+    </FrameThemeContext.Provider>
   );
 }
 export const useFrameRuntime = (): CellRuntime => {
   const runtime = useContext(RuntimeContext);
-  if (!runtime) throw new Error('FrameCanvas context is missing');
+  const staticScene = useContext(FrameStaticSceneContext);
+  if (!runtime || staticScene)
+    throw new Error('FrameCanvas context is missing');
   return runtime;
 };
 export const useFrameSelection = () => {
@@ -618,6 +679,7 @@ const OutlineParts = memo(function OutlineParts({
 });
 const transactionId = () => globalThis.crypto.randomUUID();
 const zeroOrigin: Point = [0, 0];
+const noReferenceSubscription = () => () => {};
 const drawingContext = (zoom: number): FrameCanvasDrawingContext => {
   const ids = new Map<string, string>();
   return {
@@ -653,241 +715,11 @@ const defaultCamera = (): import('@sue/board-core').Viewport => ({
   zoom: 1,
   origination: [0, 0],
 });
-type FrameLayoutEntry = {
-  geometry: Map<string, NodeGeometry>;
-  baseGeometry: Map<string, NodeGeometry>;
-  fitBounds: RectangleClient;
-  contentOffsets: Map<string, Point>;
-  store: CellStore;
-  routing: EdgeRoutingContext;
-  outlines: Map<
-    string,
-    {
-      geometry: NodeGeometry;
-      registry: ReturnType<typeof createDefaultShapeGeometryRegistry>;
-      spec: ReturnType<typeof nodeShapeSpec>;
-      pathGeometry: ReturnType<typeof nodeShapeGeometry>;
-      textBounds: NodeGeometry;
-      parts: ReturnType<
-        NonNullable<NonNullable<ReturnType<typeof nodeShapeGeometry>>['parts']>
-      >;
-    }
-  >;
-  routes: Map<
-    string,
-    {
-      cell: EdgeCell;
-      sourceGeometry?: NodeGeometry;
-      targetGeometry?: NodeGeometry;
-      routing: EdgeRoutingContext;
-      points: Point[];
-      labelPoints: Point[];
-      path: string;
-      markers?: ReturnType<typeof arrowMarkerGeometry>[];
-    }
-  >;
-  getGeometry(id: string): NodeGeometry | undefined;
-  baseRouting: EdgeRoutingContext;
-};
-type FrameLayoutMemory = Pick<
-  FrameLayoutEntry,
-  | 'baseGeometry'
-  | 'geometry'
-  | 'baseRouting'
-  | 'routing'
-  | 'outlines'
-  | 'routes'
-> & {
-  baseNodes: Map<string, { original: NodeCell; derived: NodeCell }>;
-  nodes: Map<string, { original: NodeCell; derived: NodeCell }>;
-};
-const sameGeometry = (a: NodeGeometry, b: NodeGeometry) =>
-  a.x === b.x &&
-  a.y === b.y &&
-  a.width === b.width &&
-  a.height === b.height &&
-  a.rotation === b.rotation &&
-  a.derived === b.derived &&
-  (a.outline === b.outline ||
-    JSON.stringify(a.outline) === JSON.stringify(b.outline));
-function canonicalGeometry(
-  store: CellStore,
-  next: Map<string, NodeGeometry>,
-  previous?: ReadonlyMap<string, NodeGeometry>,
-) {
-  for (const [id, value] of next) {
-    const original = store.cells[id];
-    const old = previous?.get(id);
-    if (isNodeCell(original) && sameGeometry(original.geometry, value))
-      next.set(id, original.geometry);
-    else if (old && sameGeometry(old, value)) next.set(id, old);
-  }
-}
-function applyLayoutGeometry(
-  store: CellStore,
-  geometry: ReadonlyMap<string, NodeGeometry>,
-  previous?: FrameLayoutMemory['nodes'],
-) {
-  let laidOut = store;
-  const nodes: FrameLayoutMemory['nodes'] = new Map();
-  for (const [id, value] of geometry) {
-    const original = store.cells[id];
-    if (!isNodeCell(original) || original.geometry === value) continue;
-    const old = previous?.get(id);
-    const derived =
-      old?.original === original && old.derived.geometry === value
-        ? old.derived
-        : { ...original, geometry: value };
-    nodes.set(id, { original, derived });
-    if (laidOut === store) laidOut = { ...store, cells: { ...store.cells } };
-    laidOut.cells[id] = derived;
-  }
-  return { laidOut, nodes };
-}
-/** Each scene owns its caches; a draft reuses existing root layout geometry. */
-function createFrameLayouts(
-  store: CellStore,
-  extensions: readonly FrameRenderExtension[] = [],
-  seed?: { frameId: string; geometry: ReadonlyMap<string, NodeGeometry> },
-  mountedRootId = store.rootId,
-  memory = new Map<string, FrameLayoutMemory>(),
-  registry: CellRegistry = createCellRegistry(),
-  viewProjection: FrameViewProjection = canonicalFrameProjection,
-  previewBase?: (id: string) => FrameLayoutEntry,
-) {
-  for (const id of memory.keys())
-    if (!isFrameCell(store.cells[id])) memory.delete(id);
-  const cache = new Map<string, FrameLayoutEntry>();
-  return (id: string) => {
-    const existing = cache.get(id);
-    if (existing) return existing;
-    const previous = memory.get(id);
-    let geometry = new Map<string, NodeGeometry>();
-    if (seed?.frameId === id)
-      seed.geometry.forEach((value, key) =>
-        geometry.set(key, roundNodeGeometry(value)),
-      );
-    else
-      extensions.forEach((extension) =>
-        extension
-          .layout?.(store, id, viewProjection)
-          .forEach((value, key) => geometry.set(key, roundNodeGeometry(value))),
-      );
-    canonicalGeometry(store, geometry, previous?.baseGeometry);
-    const base = applyLayoutGeometry(store, geometry, previous?.baseNodes);
-    const applyEdges = (source: CellStore) => {
-      let result = source;
-      extensions.forEach((extension) =>
-        extension.layoutEdges?.(source, id, geometry).forEach((edge, key) => {
-          if (
-            !isEdgeCell(source.cells[key]) ||
-            edge.id !== key ||
-            edge.kind !== source.cells[key].kind
-          )
-            return;
-          if (result === source)
-            result = { ...source, cells: { ...source.cells } };
-          result.cells[key] = edge;
-        }),
-      );
-      return result;
-    };
-    let laidOut = applyEdges(base.laidOut);
-    const baseGeometry = geometry;
-    const previewRouting = previewBase?.(id).routing;
-    const baseRouting = createEdgeRoutingContext(
-      laidOut,
-      id,
-      undefined,
-      previewRouting ?? previous?.baseRouting,
-      registry,
-      { preview: !!previewRouting },
-    );
-    const contentBounds = frameContentBounds(laidOut, id, baseRouting);
-    const fitBounds = extensions.some((extension) =>
-      extension.plugin?.fitLayoutBounds?.(store, id),
-    )
-      ? unionCellBounds([
-          contentBounds,
-          ...[...baseGeometry].flatMap(([id, bounds]) =>
-            !store.cells[id]?.hidden ? [geometryBounds(bounds)] : [],
-          ),
-        ])!
-      : contentBounds;
-    const frame = store.cells[id];
-    const projection =
-      id !== mountedRootId && isFrameCell(frame)
-        ? projectEmbeddedContent(
-            extensions,
-            store,
-            frame,
-            baseGeometry,
-            fitBounds,
-          )
-        : { geometry, offsets: new Map<string, Point>() };
-    geometry = projection.geometry;
-    if (geometry !== baseGeometry)
-      canonicalGeometry(store, geometry, previous?.geometry);
-    const projected =
-      geometry === baseGeometry
-        ? base
-        : applyLayoutGeometry(store, geometry, previous?.nodes);
-    laidOut = applyEdges(projected.laidOut);
-    const outlines = previous?.outlines ?? new Map();
-    const routes = previous?.routes ?? new Map();
-    for (const map of [outlines, routes])
-      for (const key of map.keys())
-        if (
-          !isFrameCell(frame) ||
-          !frame.children.includes(key) ||
-          !store.cells[key]
-        )
-          map.delete(key);
-    const entry: NonNullable<ReturnType<typeof cache.get>> = {
-      geometry,
-      baseGeometry,
-      baseRouting,
-      fitBounds,
-      contentOffsets: projection.offsets,
-      store: laidOut,
-      routing:
-        geometry === baseGeometry
-          ? baseRouting
-          : createEdgeRoutingContext(
-              laidOut,
-              id,
-              undefined,
-              previewRouting ?? previous?.routing,
-              registry,
-              { preview: !!previewRouting },
-            ),
-      outlines,
-      routes,
-      getGeometry: (cellId: string) => {
-        const node = store.cells[cellId];
-        return isNodeCell(node)
-          ? (geometry.get(cellId) ?? node.geometry)
-          : undefined;
-      },
-    };
-    memory.set(id, {
-      baseGeometry,
-      geometry,
-      baseRouting,
-      routing: entry.routing,
-      outlines,
-      routes,
-      baseNodes: base.nodes,
-      nodes: projected.nodes,
-    });
-    cache.set(id, entry);
-    return entry;
-  };
-}
 export const FrameCanvas = forwardRef(function FrameCanvas<T>(
   suppliedProps: FrameCanvasProps<T>,
   ref: React.ForwardedRef<FrameCanvasController>,
 ) {
+  const inheritedAppearance = useFrameAppearance();
   const combinedExtensions = useMemo(() => {
     const set = suppliedProps.pluginSet;
     if (!set) return suppliedProps.extensions;
@@ -898,6 +730,7 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
   }, [suppliedProps.extensions, suppliedProps.pluginSet]);
   const props = {
     ...suppliedProps,
+    appearance: suppliedProps.appearance ?? inheritedAppearance,
     registry: suppliedProps.pluginSet?.registry ?? suppliedProps.registry,
     extensions: combinedExtensions,
   };
@@ -1026,6 +859,46 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
   const [connectionPreview, setConnectionPreview] =
     useState<ConnectionDraft | null>(null);
   const [documentEditing, setDocumentEditing] = useState<string | null>(null);
+  const [activeReferenceId, setActiveReferenceId] = useState<string | null>(
+    null,
+  );
+  const activeReferenceRef = useRef<string | null>(null);
+  const activeReferenceTarget = useRef<string | null>(null);
+  const activeSourceSnapshot = useSyncExternalStore(
+    props.instanceHost?.source?.subscribe ?? noReferenceSubscription,
+    () => {
+      const ref = runtime.store.cells[activeReferenceId ?? ''];
+      return isFrameReferenceCell(ref)
+        ? (props.instanceHost?.source?.getSnapshot(ref.data.targetFrameId) ??
+            null)
+        : null;
+    },
+    () => null,
+  );
+  const inlineSequence = useRef(0);
+  const inlineExitInFlight = useRef<Promise<boolean> | null>(null);
+  const inlineDocumentViews = useRef(
+    new Map<string, FrameDocumentEditingView>(),
+  );
+  const inlineRestoreAbort = useRef<AbortController | null>(null);
+  useEffect(
+    () => () => {
+      inlineSequence.current++;
+      inlineRestoreAbort.current?.abort();
+    },
+    [],
+  );
+  const inlineViews = useRef(
+    new Map<
+      string,
+      {
+        targetId: string;
+        selection: CellSelection;
+        camera: ReturnType<FrameCanvasController['getCamera']>;
+      }
+    >(),
+  );
+
   const [editing, setEditingState] = useState<string | null>(null);
   const editingCellRef = useRef<string | null>(null);
   const textCommitRef = useRef<Promise<FrameIntentResult> | null>(null);
@@ -1098,6 +971,9 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
   const viewportRectRef = useRef<
     Pick<DOMRect, 'left' | 'top' | 'width' | 'height'> | undefined
   >(undefined);
+  const viewportRectDirty = useRef(true);
+  const viewportAnimation = useRef(false);
+  const lastViewportWheel = useRef(-Infinity);
   const captureViewportRect = useCallback((rect?: DOMRect) => {
     const measured = rect ?? svgRef.current?.getBoundingClientRect();
     if (measured)
@@ -1107,6 +983,7 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
         width: measured.width,
         height: measured.height,
       };
+    viewportRectDirty.current = false;
     return measured;
   }, []);
   const selectionProjectionRef = useRef<{
@@ -1131,6 +1008,27 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
   const viewStatePublishQueued = useRef(false);
   const propsRef = useRef(props);
   propsRef.current = props;
+  const viewportIsAnimated = useCallback(() => {
+    for (
+      let node = svgRef.current?.parentElement;
+      node;
+      node = node.parentElement
+    )
+      if (
+        node
+          .getAnimations?.()
+          .some((animation) => animation.playState === 'running')
+      )
+        return true;
+    return false;
+  }, []);
+  const readViewportRect = () =>
+    propsRef.current.surface === 'nested' ||
+    viewportRectDirty.current ||
+    viewportAnimation.current ||
+    !viewportRectRef.current
+      ? captureViewportRect()
+      : viewportRectRef.current;
   const presenting = props.inputMode === 'present';
   const editable =
     !presenting &&
@@ -2010,6 +1908,11 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
   const flushEditing = async (): Promise<FrameIntentResult> => {
     if (composingRef.current)
       return { status: 'rejected', message: 'composing' };
+    const child = activeControllerRef.current?.getActiveController();
+    if (child && child !== publicController.current) {
+      const result = await child.flushEditing();
+      if (result.status === 'rejected') return result;
+    }
     if (documentEditing) {
       const request =
         propsRef.current.documentReferences?.flushEditing?.(documentEditing);
@@ -2153,7 +2056,7 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
         edgeDragRef.current ||
         vectorDraftRef.current
           ? 'gesture'
-          : editing || labelEditing || documentEditing
+          : editing || labelEditing || documentEditing || activeReferenceId
             ? 'editing'
             : 'idle',
       store: runtime.store,
@@ -2277,10 +2180,13 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
         { store: runtime.store },
         {
           ...options,
+          appearance: options?.appearance ?? propsRef.current.appearance,
           frameId,
           registry: runtime.registry,
           extensions: propsRef.current.extensions,
           documentReferences: propsRef.current.documentReferences,
+          referenceInteraction: propsRef.current.referenceInteraction,
+          instanceHost: propsRef.current.instanceHost,
           className: propsRef.current.className,
           renderStyle: svgRef.current
             ? {
@@ -2481,6 +2387,25 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
     const viewServices = createViewServices();
     const controller: FrameCanvasController = {
       runtime,
+      resolveAppearance: (cellId) => {
+        const store = runtime.store;
+        const cell = store.cells[cellId];
+        if (!cell) return undefined;
+        const ownerId = runtime.index.parentOf.get(cellId) ?? frameId;
+        const owner = store.cells[ownerId];
+        return resolveFrameCellAppearance(
+          {
+            cell,
+            store,
+            frameId: ownerId,
+            theme: resolveBoardTheme(
+              isFrameCell(owner) ? owner.view?.theme : undefined,
+              propsRef.current.appearance,
+            ),
+          },
+          propsRef.current.extensions,
+        );
+      },
       dispatch: viewServices.dispatch,
       exportImage: viewServices.exportImage,
       clientToWorld: viewServices.clientToWorld,
@@ -2585,6 +2510,22 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
   const view = (
     runtime.store.cells[frameId] as import('@sue/board-core').FrameCell
   )?.view;
+  const resolvedTheme = useMemo(
+    () => resolveBoardTheme(view?.theme, props.appearance),
+    [view?.theme, props.appearance],
+  );
+  const themeForFrame = useMemo(() => {
+    const themes = new WeakMap<object, ResolvedBoardTheme>();
+    return (frame: import('@sue/board-core').FrameCell) => {
+      let theme = themes.get(frame);
+      if (!theme)
+        themes.set(
+          frame,
+          (theme = resolveBoardTheme(frame.view?.theme, props.appearance)),
+        );
+      return theme;
+    };
+  }, [props.appearance]);
   type Camera = import('@sue/board-core').Viewport;
   const cameraRef = useRef<Camera>(defaultCamera());
   const paintedCameraRef = useRef<Camera>(defaultCamera());
@@ -3132,7 +3073,13 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
     const currentZoom = camera.zoom ?? 1;
     const currentOrigin = camera.origination ?? zeroOrigin;
     if (event.ctrlKey || event.metaKey) {
-      const rect = captureViewportRect();
+      const time = performance.now();
+      if (time - lastViewportWheel.current > 250) {
+        viewportRectDirty.current = true;
+        viewportAnimation.current = viewportIsAnimated();
+      }
+      lastViewportWheel.current = time;
+      const rect = readViewportRect();
       if (!rect) return;
       const nextZoom = Math.max(
         propsRef.current.inputMode === 'present' ? 0.01 : 0.1,
@@ -3174,17 +3121,93 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
     if (props.surface === 'nested' || props.suspended || props.exporting)
       return undefined;
     const svg = svgRef.current;
-    if (svg) return wheelOwner.register(svg);
+    if (svg) {
+      const refresh = () => {
+        viewportAnimation.current = viewportIsAnimated();
+        captureViewportRect();
+      };
+      svg.addEventListener('pointerenter', refresh);
+      svg.addEventListener('focusin', refresh);
+      const release = wheelOwner.register(svg);
+      return () => {
+        release();
+        svg.removeEventListener('pointerenter', refresh);
+        svg.removeEventListener('focusin', refresh);
+      };
+    }
     return undefined;
-  }, [wheelOwner, props.surface, props.suspended, props.exporting]);
+  }, [
+    wheelOwner,
+    captureViewportRect,
+    viewportIsAnimated,
+    props.surface,
+    props.suspended,
+    props.exporting,
+  ]);
   useEffect(() => {
-    const refreshViewport = () => {
+    const affectsViewport = (target: EventTarget | null) =>
+      target === window ||
+      target === document ||
+      (target instanceof Element &&
+        !!svgRef.current &&
+        target.contains(svgRef.current));
+    const refreshViewport = (event: Event) => {
+      if (event.type === 'scroll' && !affectsViewport(event.target)) return;
       captureViewportRect();
       publishViewStateRef.current();
     };
+    const invalidate = () => {
+      viewportRectDirty.current = true;
+    };
+    const animationChanged = (event: Event) => {
+      if (!affectsViewport(event.target)) return;
+      invalidate();
+      viewportAnimation.current = true;
+      lastViewportWheel.current = -Infinity;
+    };
+    // Ancestor changes move a viewport without necessarily resizing its SVG.
+    const observer =
+      typeof MutationObserver === 'undefined'
+        ? undefined
+        : new MutationObserver(invalidate);
+    for (
+      let node = svgRef.current?.parentElement;
+      node;
+      node = node.parentElement
+    )
+      observer?.observe(node, {
+        attributes: true,
+        attributeFilter: [
+          'style',
+          'class',
+          'hidden',
+          'transform',
+          'x',
+          'y',
+          'width',
+          'height',
+          'viewBox',
+        ],
+        childList: true,
+      });
+    const motionEvents = [
+      'animationstart',
+      'animationend',
+      'animationcancel',
+      'transitionrun',
+      'transitionend',
+      'transitioncancel',
+    ];
+    motionEvents.forEach((name) =>
+      document.addEventListener(name, animationChanged, true),
+    );
     window.addEventListener('scroll', refreshViewport, true);
     window.addEventListener('resize', refreshViewport);
     return () => {
+      observer?.disconnect();
+      motionEvents.forEach((name) =>
+        document.removeEventListener(name, animationChanged, true),
+      );
       window.removeEventListener('scroll', refreshViewport, true);
       window.removeEventListener('resize', refreshViewport);
     };
@@ -3216,7 +3239,7 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
     clientX: number;
     clientY: number;
   }): Point => {
-    const rect = captureViewportRect()!;
+    const rect = readViewportRect()!;
     const camera = cameraRef.current;
     const scale = camera.zoom ?? 1,
       offset = camera.origination ?? zeroOrigin;
@@ -3528,9 +3551,251 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
       return result;
     });
   };
+  useEffect(() => {
+    inlineSequence.current++;
+    inlineRestoreAbort.current?.abort();
+    activeReferenceRef.current = null;
+    activeReferenceTarget.current = null;
+    setActiveReferenceId(null);
+    inlineViews.current.clear();
+    inlineDocumentViews.current.clear();
+  }, [props.instanceHost, frameId]);
+  const finishInlineEditing = (restoreFocus = true): Promise<boolean> => {
+    if (inlineExitInFlight.current) return inlineExitInFlight.current;
+    inlineRestoreAbort.current?.abort();
+    const task = (async () => {
+      const currentId = activeReferenceRef.current;
+      if (currentId) {
+        const previousController = activeControllerRef.current;
+        const child = previousController?.getActiveController();
+        const result = child
+          ? await child.flushEditing()
+          : { status: 'accepted' as const };
+        if (!alive.current) return false;
+        if (result.status === 'rejected') {
+          setFailure(result.message ?? 'Edit rejected');
+          return false;
+        }
+        if (activeReferenceRef.current !== currentId) return true;
+        if (child)
+          inlineViews.current.set(currentId, {
+            targetId: child.runtime.store.rootId,
+            selection: child.runtime.selection,
+            camera: child.getCamera(),
+          });
+        activeControllerRef.current = null;
+        if (child)
+          for (const [key, controller] of activatedOccurrences.current)
+            if (controller === child || controller === previousController)
+              activatedOccurrences.current.delete(key);
+        activeReferenceRef.current = null;
+        setActiveReferenceId(null);
+        propsRef.current.onActiveInstance?.(null);
+        if (restoreFocus) {
+          runtime.select({ focus: [frameId], ids: [currentId] });
+          propsRef.current.onSelectionChange?.(runtime.selection);
+          svgRef.current?.focus({ preventScroll: true });
+        }
+      }
+      if (documentEditing) {
+        const view =
+          propsRef.current.documentReferences?.captureEditingView?.(
+            documentEditing,
+          );
+        if (view) inlineDocumentViews.current.set(documentEditing, view);
+        const result = await finishDocumentEditing(documentEditing);
+        if (!alive.current) return false;
+        if (result.status !== 'completed' && result.status !== 'noop') {
+          setFailure(
+            'message' in result
+              ? (result.message ?? 'Edit rejected')
+              : 'Edit rejected',
+          );
+          return false;
+        }
+      }
+      return true;
+    })().catch((error) => {
+      setFailure(error instanceof Error ? error.message : String(error));
+      return false;
+    });
+    inlineExitInFlight.current = task;
+    void task.then(() => {
+      if (inlineExitInFlight.current === task)
+        inlineExitInFlight.current = null;
+    });
+    return task;
+  };
+  const activateInlineReference = async (
+    cellId: string,
+    documentInstance?: string,
+  ) => {
+    const token = ++inlineSequence.current;
+    const cell = runtime.store.cells[cellId];
+    if (
+      propsRef.current.readonly ||
+      propsRef.current.suspended ||
+      !cell ||
+      !selectionAllows(
+        runtime.store,
+        [cellId],
+        runtime.registry,
+        'edit',
+        frameId,
+      )
+    )
+      return;
+    if (isFrameReferenceCell(cell) && !propsRef.current.instanceHost) {
+      propsRef.current.onOpenFrame?.(cell.data.targetFrameId, {
+        sourceFileId: frameId,
+        refId: cellId,
+        occurrenceId: `${frameId}/${cellId}`,
+      });
+      return;
+    }
+    if (
+      isFrameReferenceCell(cell) &&
+      propsRef.current.instanceHost?.source &&
+      !propsRef.current.instanceHost.source.getSnapshot(cell.data.targetFrameId)
+    )
+      return;
+    if (activeReferenceRef.current === cellId && !inlineExitInFlight.current)
+      return;
+    if (
+      !(await finishInlineEditing(false)) ||
+      token !== inlineSequence.current ||
+      !alive.current ||
+      propsRef.current.suspended ||
+      propsRef.current.readonly ||
+      !selectionAllows(
+        runtime.store,
+        [cellId],
+        runtime.registry,
+        'edit',
+        frameId,
+      )
+    )
+      return;
+    const current = runtime.store.cells[cellId];
+    if (
+      !current ||
+      (isFrameReferenceCell(cell) &&
+        (!isFrameReferenceCell(current) ||
+          current.data.targetFrameId !== cell.data.targetFrameId ||
+          (propsRef.current.instanceHost?.source &&
+            !propsRef.current.instanceHost.source.getSnapshot(
+              cell.data.targetFrameId,
+            ))))
+    )
+      return;
+    runtime.select({ focus: [frameId], ids: [cellId] });
+    propsRef.current.onSelectionChange?.(runtime.selection);
+    if (documentInstance) {
+      documentCommitRef.current = null;
+      setDocumentEditing(documentInstance);
+      const saved = inlineDocumentViews.current.get(documentInstance);
+      if (saved) {
+        const abort = new AbortController();
+        inlineRestoreAbort.current = abort;
+        void propsRef.current.documentReferences?.restoreEditingView?.(
+          saved,
+          (instance) => {
+            if (token === inlineSequence.current) setDocumentEditing(instance);
+          },
+          abort.signal,
+        );
+      }
+    } else {
+      activeReferenceRef.current = cellId;
+      activeReferenceTarget.current = isFrameReferenceCell(cell)
+        ? cell.data.targetFrameId
+        : null;
+      setActiveReferenceId(cellId);
+    }
+  };
+  const openReferenceDetails = async (open: () => void) => {
+    ++inlineSequence.current;
+    if (await finishInlineEditing(false)) open();
+  };
+  useEffect(() => {
+    if (
+      props.referenceInteraction !== 'activate' ||
+      (!activeReferenceId && !documentEditing)
+    )
+      return;
+    const outside = (event: globalThis.PointerEvent) => {
+      const target = event.target as Element;
+      const within =
+        target
+          .closest?.('[data-inline-reference-id]')
+          ?.getAttribute('data-inline-reference-id') ===
+        activeReferenceRef.current;
+      const documentWithin =
+        !!documentEditing &&
+        target
+          .closest?.('[data-document-frame-instance]')
+          ?.getAttribute('data-document-frame-instance') === documentEditing;
+      if (
+        within ||
+        documentWithin ||
+        !target.closest?.('svg[data-surface="root"]')
+      )
+        return;
+      event.preventDefault();
+      event.stopPropagation();
+      const targetId = target
+        .closest?.('[data-cell-id]')
+        ?.getAttribute('data-cell-id');
+      ++inlineSequence.current;
+      void finishInlineEditing().then((ok) => {
+        if (
+          ok &&
+          targetId &&
+          runtime.index.parentOf.get(targetId) === frameId
+        ) {
+          runtime.select({ focus: [frameId], ids: [targetId] });
+          propsRef.current.onSelectionChange?.(runtime.selection);
+        }
+      });
+    };
+    document.addEventListener('pointerdown', outside, true);
+    return () => document.removeEventListener('pointerdown', outside, true);
+  }, [activeReferenceId, documentEditing, props.referenceInteraction]);
+  useEffect(() => {
+    if (!activeReferenceId) return;
+    const shell = runtime.store.cells[activeReferenceId];
+    const missing =
+      !shell ||
+      (isFrameReferenceCell(shell) &&
+        activeReferenceTarget.current !== shell.data.targetFrameId) ||
+      (isFrameReferenceCell(shell) &&
+        props.instanceHost?.source &&
+        !props.instanceHost.source.getSnapshot(shell.data.targetFrameId));
+    if (missing) {
+      inlineSequence.current++;
+      activeReferenceRef.current = null;
+      setActiveReferenceId(null);
+      activeControllerRef.current = null;
+      activatedOccurrences.current.clear();
+      propsRef.current.onActiveInstance?.(null);
+      return;
+    }
+    if (props.suspended || props.readonly || shell.locked)
+      void finishInlineEditing(false);
+  }, [
+    activeReferenceId,
+    activeSourceSnapshot,
+    props.suspended,
+    props.readonly,
+    revision,
+  ]);
   const activeToolKey = props.tool?.key ?? props.tool?.mode ?? 'select';
   useEffect(() => {
-    if (documentEditing) void finishDocumentEditing(documentEditing);
+    if (documentEditing) {
+      if (propsRef.current.referenceInteraction === 'activate')
+        void finishInlineEditing(false);
+      else void finishDocumentEditing(documentEditing);
+    }
   }, [activeToolKey, props.readonly, props.suspended]);
   const documentEditRequest = props.documentReferences?.editRequest;
   useEffect(() => {
@@ -3540,7 +3805,7 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
     }
   }, [documentEditRequest?.nonce, documentEditRequest?.instanceId]);
   useEffect(() => {
-    if (!documentEditing) return;
+    if (!documentEditing || props.referenceInteraction === 'activate') return;
     const leave = (event: PointerEvent) => {
       const target = event.target as Element;
       if (
@@ -4049,6 +4314,7 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
       render: () => ReactNode,
       purpose = 'body',
     ) => {
+      inputs = [props.appearance, ...inputs];
       const key = `${id}:${purpose}`;
       const old = nativeContentCache.get(key);
       if (
@@ -4061,7 +4327,7 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
       nativeContentCache.set(key, { cellId: id, inputs, content });
       return content;
     },
-    [nativeContentCache],
+    [nativeContentCache, props.appearance],
   );
   useEffect(() => {
     for (const [key, entry] of nativeContentCache)
@@ -4075,9 +4341,11 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
       embedded = false,
       parentScale = 1,
       scene?: {
+        appearance?: BoardAppearance;
         store: CellStore;
         layouts: ReturnType<typeof createFrameLayouts>;
         preview: boolean;
+        static?: boolean;
         children?: readonly string[];
         overrides?: ReadonlyMap<string, NodeGeometry>;
       },
@@ -4097,18 +4365,25 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
       },
     ): ReactNode {
       const drawingPreview = scene?.preview ?? false;
-      const renderEditable = !drawingPreview && editable;
-      const nodePreview = drawingPreview ? null : preview;
+      const staticScene = scene?.static ?? false;
+      const renderEditable = !staticScene && !drawingPreview && editable;
+      const nodePreview = drawingPreview || staticScene ? null : preview;
       const store = scene?.store ?? runtime.store,
         frame = store.cells[id];
       if (!isFrameCell(frame)) return null;
+      const appearance = scene?.appearance ?? props.appearance;
+      const theme =
+        appearance === props.appearance
+          ? themeForFrame(frame)
+          : resolveBoardTheme(frame.view?.theme, appearance);
       const base = (scene?.layouts ?? frameLayouts)(id);
       const displayedFrame = shellGeometry
         ? { ...frame, geometry: shellGeometry }
         : dragRef.current?.id === id && nodePreview
           ? { ...frame, geometry: nodePreview }
           : frame;
-      const contentPan = dragRef.current?.mode === 'content-pan';
+      const contentPan =
+        !staticScene && dragRef.current?.mode === 'content-pan';
       const projection =
         embedded && (shellGeometry || (contentPan && nodePreview))
           ? projectEmbeddedContent(
@@ -4202,7 +4477,7 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
             { preview: lightweightRouting },
           )
         : base.routing;
-      if (!drawingPreview)
+      if (!drawingPreview && !staticScene)
         displayedLayoutsRef.current.set(id, {
           store: laidOut,
           routing,
@@ -4250,23 +4525,36 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
         cell: Cell,
         bounds?: NodeGeometry,
       ): FrameRenderContext => ({
+        appearance,
+        theme,
         store,
-        viewProjection,
-        clearRevealOverrides,
+        viewProjection: staticScene ? previewProjection : viewProjection,
+        clearRevealOverrides: staticScene ? undefined : clearRevealOverrides,
         cell: store.cells[cell.id] ?? cell,
         geometry: bounds,
+        selectionIds: staticScene ? [] : runtime.selection.ids,
         selected:
+          !staticScene &&
           !drawingPreview &&
           !presenting &&
           runtime.selection.ids.includes(cell.id),
         pending,
         readonly:
-          !renderEditable || !!cell.locked || lockedByAncestor(store, cell.id),
+          staticScene ||
+          !renderEditable ||
+          !!cell.locked ||
+          lockedByAncestor(store, cell.id),
         preview: drawingPreview,
         frameId: id,
-        scale: cameraStore.getZoom() * parentScale * placement.scale,
+        scale:
+          (staticScene ? 1 : cameraStore.getZoom()) *
+          parentScale *
+          placement.scale,
         hovered:
-          !drawingPreview && !presenting && cameraStore.isHovered(cell.id),
+          !staticScene &&
+          !drawingPreview &&
+          !presenting &&
+          cameraStore.isHovered(cell.id),
         getGeometry: geometryChanged
           ? (cellId: string) => {
               const node = store.cells[cellId];
@@ -4276,42 +4564,45 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
             }
           : base.getGeometry,
         select: () => {
-          if (!drawingPreview) sceneActions.select(cell.id, focus);
+          if (!drawingPreview && !staticScene)
+            sceneActions.select(cell.id, focus);
         },
         edit: (id: string) => {
-          if (!drawingPreview) sceneActions.editText(id);
+          if (!drawingPreview && !staticScene) sceneActions.editText(id);
         },
         history: (action: 'undo' | 'redo') => {
-          if (!drawingPreview)
+          if (!drawingPreview && !staticScene)
             void actionRuntime.executeAction(`canvas.history.${action}`);
         },
-        commitEditing: drawingPreview
-          ? rejectPreviewIntent
-          : (transaction) => {
-              const request = sceneActions.dispatch(transaction);
-              textCommitRef.current = request;
-              return request;
-            },
-        dispatch: drawingPreview
-          ? rejectPreviewIntent
-          : async (transaction) => {
-              const result = await actionRuntime.executeAction(
-                'canvas.apply-operations',
-                {
-                  operations: transaction.operations,
-                  restoreView: transaction.restoreView,
-                },
-              );
-              return result.status === 'completed' || result.status === 'noop'
-                ? { status: 'accepted' }
-                : {
-                    status: 'rejected',
-                    message:
-                      'code' in result
-                        ? (result.message ?? result.code)
-                        : result.status,
-                  };
-            },
+        commitEditing:
+          drawingPreview || staticScene
+            ? rejectPreviewIntent
+            : (transaction) => {
+                const request = sceneActions.dispatch(transaction);
+                textCommitRef.current = request;
+                return request;
+              },
+        dispatch:
+          drawingPreview || staticScene
+            ? rejectPreviewIntent
+            : async (transaction) => {
+                const result = await actionRuntime.executeAction(
+                  'canvas.apply-operations',
+                  {
+                    operations: transaction.operations,
+                    restoreView: transaction.restoreView,
+                  },
+                );
+                return result.status === 'completed' || result.status === 'noop'
+                  ? { status: 'accepted' }
+                  : {
+                      status: 'rejected',
+                      message:
+                        'code' in result
+                          ? (result.message ?? result.code)
+                          : result.status,
+                    };
+              },
       });
       const contextAtZoom = (
         context: FrameRenderContext,
@@ -4319,7 +4610,10 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
       ): FrameRenderContext => ({
         ...context,
         scale: scale * parentScale * placement.scale,
-        hovered: !drawingPreview && cameraStore.isHovered(context.cell.id),
+        hovered:
+          !staticScene &&
+          !drawingPreview &&
+          cameraStore.isHovered(context.cell.id),
       });
       const renderCellBody = (
         cellId: string,
@@ -4331,6 +4625,7 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
             : laidOut.cells[cellId];
         if (!cell || cell.hidden) return null;
         const selected =
+            !staticScene &&
             !drawingPreview &&
             !presenting &&
             runtime.selection.ids.includes(cellId),
@@ -4343,8 +4638,14 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
             extension.render,
         );
         const context = contextForCell(cell, bounds);
+        if (
+          layer === 'controls' &&
+          (staticScene || props.referenceInteraction === 'details')
+        )
+          return null;
+
         if (layer === 'controls') {
-          if (drawingPreview) return null;
+          if (drawingPreview || staticScene) return null;
           const extensions = props.extensions?.filter(
             (extension) =>
               (!extension.kind || extension.kind === cell.kind) &&
@@ -4510,6 +4811,106 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
             };
           }
         };
+        if (
+          (staticScene || props.referenceInteraction === 'details') &&
+          bounds &&
+          (isDocumentCell(cell) ||
+            isFrameReferenceCell(cell) ||
+            isFrameCell(cell))
+        ) {
+          const document = isDocumentCell(cell);
+          const targetId = document
+            ? cell.data.targetDocumentId
+            : isFrameReferenceCell(cell)
+              ? cell.data.targetFrameId
+              : cell.id;
+          return (
+            <g key={cellId}>
+              <FrameReferenceCard
+                id={cellId}
+                targetId={targetId}
+                geometry={bounds}
+                document={document}
+                title={
+                  isBoardTextDocument(cell.content?.text) &&
+                  cell.content.text.plainText
+                    ? cell.content.text.plainText
+                    : (cell.name ?? cell.content?.label)
+                }
+                appearance={cell.appearance}
+                active={!staticScene && (selected || editing === cellId)}
+                titleHidden={!staticScene && editing === cellId}
+                onPointerDown={staticScene ? undefined : beginFrameMove}
+                onTitleDoubleClick={
+                  staticScene
+                    ? undefined
+                    : (event) => {
+                        event.stopPropagation();
+                        sceneActions.editText(cellId);
+                      }
+                }
+                source={propsRef.current.instanceHost?.source}
+                getTitle={
+                  document
+                    ? () => propsRef.current.documentReferences?.title(targetId)
+                    : undefined
+                }
+                onOpen={
+                  document
+                    ? undefined
+                    : () =>
+                        propsRef.current.onOpenFrame?.(targetId, {
+                          sourceFileId: id,
+                          refId: cellId,
+                          occurrenceId: `${id}/${cellId}`,
+                        })
+                }
+                actions={
+                  document
+                    ? propsRef.current.documentReferences?.renderHeaderActions?.(
+                        {
+                          kind: cell.kind as
+                            'document-frame' | 'document-reference',
+                          ownerFrameId: id,
+                          cellId,
+                          readonly: true,
+                          editing: false,
+                          onExitEdit: () => {},
+                          targetDocumentId: targetId,
+                          instanceId: `${id}/${cellId}`,
+                          suspended: false,
+                          exporting: !!propsRef.current.exporting,
+                          referenceInteraction: 'details',
+                          onOpenDetails: (open) => {
+                            void openReferenceDetails(open);
+                          },
+                        },
+                      )
+                    : undefined
+                }
+              />
+              {selected && renderEditable && !cell.locked && (
+                <FrameScaleContent
+                  camera={cameraStore}
+                  cellId={cellId}
+                  render={(zoom) => (
+                    <FrameSelectionHandles
+                      id={cellId}
+                      geometry={bounds}
+                      scale={zoom * parentScale * placement.scale}
+                      resize={allowed.resize}
+                      rotate={false}
+                      inset
+                      outline={false}
+                      onStart={beginGeometryEdit}
+                    />
+                  )}
+                />
+              )}
+            </g>
+          );
+        }
+
         if (isDocumentCell(cell)) {
           const shell = bounds ?? cell.geometry;
           const contentBounds = frameContentViewport(shell);
@@ -4524,6 +4925,15 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
           const documentIsEditing =
             !documentReadonly && documentEditing === instanceId;
           const exitDocumentEdit = () => {
+            if (propsRef.current.referenceInteraction === 'activate') {
+              void finishInlineEditing().then((ok) => {
+                if (ok) {
+                  sceneActions.select(cellId, focus, false);
+                  svgRef.current?.focus({ preventScroll: true });
+                }
+              });
+              return;
+            }
             void finishDocumentEditing(instanceId).then((result) => {
               if (result.status === 'completed' || result.status === 'noop') {
                 sceneActions.select(cellId, focus, false);
@@ -4538,6 +4948,14 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
             ) ??
             '文档引用';
           const referenceProps: FrameDocumentReferenceProps = {
+            onOpenDetails: (open) => {
+              void openReferenceDetails(open);
+            },
+            referenceInteraction:
+              props.referenceInteraction === 'activate' ||
+              props.referenceInteraction === 'details'
+                ? 'details'
+                : 'direct',
             kind: cell.kind,
             ownerFrameId: id,
             cellId,
@@ -4574,6 +4992,7 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
               cell.kind,
               cell.data.targetDocumentId,
               referenceProps.annotation,
+              referenceProps.referenceInteraction,
               documentReadonly,
               documentIsEditing,
               instanceId,
@@ -4652,8 +5071,12 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
                       event.preventDefault();
                       event.stopPropagation();
                       sceneActions.select(cellId, focus, false);
-                      documentCommitRef.current = null;
-                      setDocumentEditing(instanceId);
+                      if (propsRef.current.referenceInteraction === 'activate')
+                        void activateInlineReference(cellId, instanceId);
+                      else {
+                        documentCommitRef.current = null;
+                        setDocumentEditing(instanceId);
+                      }
                     }}
                     onClickCapture={(event) => {
                       if (
@@ -4668,7 +5091,12 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
                       event.stopPropagation();
                     }}
                   >
-                    {documentBody}
+                    <FrameContentVisibility
+                      exporting={propsRef.current.exporting}
+                      editing={documentIsEditing}
+                    >
+                      {documentBody}
+                    </FrameContentVisibility>
                   </div>
                 </foreignObject>
               </FrameShell>
@@ -4797,12 +5225,31 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
           const referenceSeen = [...seen, targetId];
           const host = propsRef.current.instanceHost;
           const referenceRevision =
-            propsRef.current.documentReferences?.getRevision?.(
-              targetId,
-              referenceSeen,
+            props.referenceInteraction === 'activate'
+              ? (host?.source?.getSnapshot(targetId) ?? target)
+              : propsRef.current.documentReferences?.getRevision?.(
+                  targetId,
+                  referenceSeen,
+                );
+          const activated =
+            props.referenceInteraction === 'activate' &&
+            activeReferenceId === cellId &&
+            !props.exporting;
+          const openDetails = () => {
+            void openReferenceDetails(() =>
+              propsRef.current.onOpenFrame?.(targetId, {
+                sourceFileId: id,
+                refId: cellId,
+                occurrenceId: `${id}/${cellId}`,
+              }),
             );
+          };
+
           const instanceSurface =
-            host && !drawingPreview && !seen.has(targetId)
+            host &&
+            !drawingPreview &&
+            !seen.has(targetId) &&
+            (props.referenceInteraction !== 'activate' || activated)
               ? nativeContent(
                   cellId,
                   [
@@ -4814,6 +5261,11 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
                           propsRef.current.documentReferences?.revision,
                         ]),
                     host,
+                    props.referenceInteraction,
+                    activated,
+                    activated ? props.tool : undefined,
+                    activated ? props.actionHost : undefined,
+                    props.history,
                     propsRef.current.exporting,
                     id,
                     targetId,
@@ -4821,12 +5273,8 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
                     JSON.stringify(appearance),
                     JSON.stringify(referenceSeen),
                     JSON.stringify(focus),
-                    contentBounds.x,
-                    contentBounds.y,
                     contentBounds.width,
                     contentBounds.height,
-                    shellBounds.x,
-                    shellBounds.y,
                     shellBounds.width,
                     shellBounds.height,
                     referenceContentOffsets(props.extensions, cell),
@@ -4838,6 +5286,11 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
                   ],
                   () => (
                     <FrameReferenceSurface
+                      edit={activated}
+                      tool={activated ? props.tool : undefined}
+                      actionHost={activated ? props.actionHost : undefined}
+                      history={activated ? props.history : undefined}
+                      interactionSettings={props.interactionSettings}
                       documentReferences={propsRef.current.documentReferences}
                       exporting={propsRef.current.exporting}
                       linkHost={propsRef.current.linkHost}
@@ -4851,24 +5304,24 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
                         cellId,
                       ]}
                       seen={referenceSeen}
-                      bounds={contentBounds}
-                      shellGeometry={shellBounds}
+                      bounds={frameContentViewport({
+                        ...shellBounds,
+                        x: 0,
+                        y: 0,
+                      })}
+                      shellGeometry={{ ...shellBounds, x: 0, y: 0 }}
                       offsets={referenceContentOffsets(props.extensions, cell)}
                       suspended={propsRef.current.suspended}
                       readonly={propsRef.current.readonly}
                       inputMode={propsRef.current.inputMode}
                       registry={runtime.registry}
                       extensions={propsRef.current.extensions}
-                      onOpen={() =>
-                        propsRef.current.onOpenFrame?.(targetId, {
-                          sourceFileId: id,
-                          refId: cellId,
-                          occurrenceId: `${id}/${cellId}`,
-                        })
-                      }
-                      onOpenFrame={(...args) =>
-                        propsRef.current.onOpenFrame?.(...args)
-                      }
+                      onOpen={openDetails}
+                      onOpenFrame={(...args) => {
+                        void openReferenceDetails(() =>
+                          propsRef.current.onOpenFrame?.(...args),
+                        );
+                      }}
                       onActivate={(occurrenceId, childController) => {
                         if (childController) {
                           activeControllerRef.current = childController;
@@ -4876,10 +5329,34 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
                             occurrenceId,
                             childController,
                           );
+                          if (activated) {
+                            const saved = inlineViews.current.get(cellId);
+                            if (saved) {
+                              if (
+                                saved.targetId ===
+                                childController.runtime.store.rootId
+                              ) {
+                                childController.runtime.select({
+                                  focus: [saved.targetId],
+                                  ids: saved.selection.ids.filter(
+                                    (id) =>
+                                      !!childController.runtime.store.cells[
+                                        id
+                                      ] &&
+                                      !childController.runtime.store.cells[id]
+                                        .hidden,
+                                  ),
+                                });
+                                childController.restoreCamera(saved.camera);
+                              }
+                              inlineViews.current.delete(cellId);
+                            }
+                          }
                         }
                         propsRef.current.onActiveInstance?.(occurrenceId);
                       }}
                       onBackgroundTap={() => {
+                        if (activated) return;
                         activeControllerRef.current = null;
                         propsRef.current.onActiveInstance?.(
                           propsRef.current.surface === 'nested'
@@ -4893,6 +5370,10 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
                         propsRef.current.onInstanceSelection?.(selection)
                       }
                       onExit={() => {
+                        if (activated) {
+                          void finishInlineEditing();
+                          return;
+                        }
                         activeControllerRef.current = null;
                         propsRef.current.onActiveInstance?.(null);
                         sceneActions.selectContextCell(cellId, focus);
@@ -4908,6 +5389,7 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
               key={cellId}
               data-cell-id={drawingPreview ? undefined : cellId}
               data-draft-cell-id={drawingPreview ? cellId : undefined}
+              data-inline-reference-id={activated ? cellId : undefined}
               data-cell-kind={drawingPreview ? undefined : 'frame-reference'}
               data-draft-cell-kind={drawingPreview ? 'frame' : undefined}
             >
@@ -4931,6 +5413,18 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
                     runtime.mountedRootId,
                   )
                 }
+                actions={
+                  props.referenceInteraction === 'activate' ? (
+                    <FrameDetailsButton
+                      onOpen={openDetails}
+                      disabled={
+                        host?.source
+                          ? !host.source.getSnapshot(targetId)
+                          : !isFrameCell(target)
+                      }
+                    />
+                  ) : undefined
+                }
                 title={
                   <FrameRichText
                     text={
@@ -4945,6 +5439,10 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
                 onPointerDown={beginFrameMove}
                 onDoubleClick={(event) => {
                   event.stopPropagation();
+                  if (props.referenceInteraction === 'activate') {
+                    void activateInlineReference(cellId);
+                    return;
+                  }
                   if (!sceneActions.enterSelectedGroup(cellId))
                     propsRef.current.onOpenFrame?.(targetId, {
                       sourceFileId: id,
@@ -4961,34 +5459,92 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
                     sceneActions.editText(cellId);
                 }}
               >
-                {propsRef.current.instanceHost &&
-                !drawingPreview &&
-                !seen.has(targetId) &&
-                contentBounds.width > 0 &&
-                contentBounds.height > 0
-                  ? instanceSurface
-                  : resolved &&
-                    contentBounds.width > 0 &&
-                    contentBounds.height > 0 &&
-                    renderFrame(
-                      targetId,
-                      [...focus, cellId],
-                      true,
-                      parentScale * placement.scale,
-                      scene ? { ...scene, children: undefined } : undefined,
-                      shellBounds,
-                      {
-                        refId: cellId,
-                        offsets: new Map(
-                          Object.entries(
-                            referenceContentOffsets(props.extensions, cell) ??
-                              {},
-                          ),
+                {props.referenceInteraction === 'activate' && !activated ? (
+                  <g
+                    transform={`translate(${shellBounds.x} ${shellBounds.y})`}
+                    onPointerDown={beginFrameMove}
+                    onDoubleClick={(event) => {
+                      event.preventDefault();
+                      event.stopPropagation();
+                      if (!propsRef.current.readonly)
+                        void activateInlineReference(cellId);
+                    }}
+                  >
+                    <FrameReferenceBoundary
+                      revision={referenceRevision}
+                      language={propsRef.current.actionHost?.language ?? 'zh'}
+                      onOpen={openDetails}
+                      bounds={frameContentViewport({
+                        ...shellBounds,
+                        x: 0,
+                        y: 0,
+                      })}
+                    >
+                      <FrameScenePreview
+                        source={host?.source}
+                        fallback={store}
+                        targetFrameId={targetId}
+                        geometry={{ ...shellBounds, x: 0, y: 0 }}
+                        registry={runtime.registry}
+                        extensions={props.extensions}
+                        exporting={props.exporting}
+                        offsets={
+                          new Map(
+                            Object.entries(
+                              referenceContentOffsets(props.extensions, cell) ??
+                                {},
+                            ),
+                          )
+                        }
+                        render={(staticInput, geometry, offsets) =>
+                          renderFrame(
+                            targetId,
+                            [targetId],
+                            true,
+                            1,
+                            staticInput,
+                            geometry,
+                            {
+                              refId: cellId,
+                              offsets,
+                              scope: `${id}/${cellId}`,
+                            },
+                          )
+                        }
+                      />
+                    </FrameReferenceBoundary>
+                  </g>
+                ) : propsRef.current.instanceHost &&
+                  !drawingPreview &&
+                  !seen.has(targetId) &&
+                  contentBounds.width > 0 &&
+                  contentBounds.height > 0 ? (
+                  <g transform={`translate(${shellBounds.x} ${shellBounds.y})`}>
+                    {instanceSurface}
+                  </g>
+                ) : (
+                  resolved &&
+                  contentBounds.width > 0 &&
+                  contentBounds.height > 0 &&
+                  renderFrame(
+                    targetId,
+                    [...focus, cellId],
+                    true,
+                    parentScale * placement.scale,
+                    scene ? { ...scene, children: undefined } : undefined,
+                    shellBounds,
+                    {
+                      refId: cellId,
+                      offsets: new Map(
+                        Object.entries(
+                          referenceContentOffsets(props.extensions, cell) ?? {},
                         ),
-                        seen: new Set([...seen, targetId]),
-                        scope: `${occurrence?.scope ?? propsRef.current.instanceId ?? id}/${cellId}`,
-                      },
-                    )}
+                      ),
+                      seen: new Set([...seen, targetId]),
+                      scope: `${occurrence?.scope ?? propsRef.current.instanceId ?? id}/${cellId}`,
+                    },
+                  )
+                )}
                 {!(
                   propsRef.current.instanceHost &&
                   !drawingPreview &&
@@ -5196,7 +5752,11 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
             height:
               Math.max(...shadowPoints.map((point) => point[1])) - minY + 12,
           };
-          const stroke = cell.appearance?.strokeColor ?? '#64748b';
+          const stroke =
+            resolveFrameCellAppearance(
+              { cell, store, frameId: id, theme },
+              props.extensions,
+            ).strokeColor ?? '#64748b';
           return (
             <g
               key={cellId}
@@ -5354,6 +5914,7 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
                               const { point, bounds: labelBounds } =
                                 edgeLabelLayout(cell, at, labelPoints, routing);
                               if (
+                                !staticScene &&
                                 !drawingPreview &&
                                 labelEditing?.id === cellId &&
                                 labelEditing.index === at
@@ -5632,6 +6193,10 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
             extension.renderShape,
         );
         const shapeCacheKey = shapeExtension?.renderShapeCacheKey?.(context);
+        const visual = resolveFrameCellAppearance(
+          { cell, store, frameId: id, theme },
+          props.extensions,
+        );
         const label = cell.content?.label ?? '';
         const presentationExtensions = props.extensions?.filter(
           (extension) =>
@@ -5664,7 +6229,17 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
               (cell.data as { fontSize?: number })?.fontSize ??
               frameCellUI(props.extensions, cell.kind).defaultFontSize ??
               16,
-            color: color ?? '#0f172a',
+            color:
+              color ??
+              (theme.adaptive
+                ? readableThemeText(
+                    (fill ?? visual.fill) === 'none' ||
+                      (fill ?? visual.fill) === 'transparent'
+                      ? theme.background
+                      : (fill ?? visual.fill ?? theme.background),
+                    theme.text,
+                  )
+                : '#0f172a'),
           };
           const createFallback = () => (
             <>
@@ -5708,7 +6283,7 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
                   </g>
                 );
               })()}
-              {(drawingPreview || editing !== cellId) && (
+              {(staticScene || drawingPreview || editing !== cellId) && (
                 <foreignObject
                   x={textBounds.x + 8}
                   y={textBounds.y + 4}
@@ -5737,6 +6312,7 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
                   cellId,
                   [
                     context.cell,
+                    theme,
                     bounds,
                     shapeExtension,
                     ...(shapeCacheKey ?? []),
@@ -5791,9 +6367,9 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
               data-draft-cell-id={drawingPreview ? cellId : undefined}
               data-cell-kind={drawingPreview ? undefined : cell.kind}
               data-draft-cell-kind={drawingPreview ? cell.kind : undefined}
-              fill={fill ?? cell.appearance?.fill ?? '#fff'}
+              fill={fill ?? visual.fill ?? '#fff'}
               data-node-shape={bounds.outline}
-              stroke={cell.appearance?.strokeColor ?? stroke ?? '#64748b'}
+              stroke={stroke ?? visual.strokeColor ?? '#64748b'}
               strokeWidth={cell.appearance?.strokeWidth ?? 1.5}
               strokeDasharray={
                 cell.appearance?.strokeStyle === 'dashed'
@@ -6100,7 +6676,7 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
                     }
                   />
                 )}
-              {!drawingPreview && editing === cellId && (
+              {!staticScene && !drawingPreview && editing === cellId && (
                 <foreignObject
                   x={textBounds.x + 8}
                   y={textBounds.y + 4}
@@ -6189,6 +6765,7 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
             cellId,
             [
               context.cell,
+              theme,
               bounds,
               shapeExtension,
               ...(shapeCacheKey ?? []),
@@ -6229,7 +6806,12 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
             : laidOut.cells[cellId];
         if (!node || !cell) return node;
         const connected = relationEdges.get(cellId);
-        if (layer === 'body' && !drawingPreview && isNodeCell(cell))
+        if (
+          layer === 'body' &&
+          !staticScene &&
+          !drawingPreview &&
+          isNodeCell(cell)
+        )
           node = (
             <FrameNodeInteraction
               key={cellId}
@@ -6264,6 +6846,7 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
           );
         if (
           layer === 'body' &&
+          !staticScene &&
           !drawingPreview &&
           isEdgeCell(cell) &&
           props.extensions?.some(
@@ -6337,12 +6920,32 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
         );
       };
       return (
-        <g
+        <FrameThemeGroup
+          theme={theme}
+          data-board-appearance={theme.adaptive ? theme.appearance : undefined}
           data-frame-content-id={drawingPreview ? undefined : id}
           data-draft-frame-content-id={drawingPreview ? id : undefined}
           transform={`translate(${placement.offset[0]} ${placement.offset[1]}) scale(${placement.scale})`}
         >
-          {!drawingPreview &&
+          {theme.adaptive &&
+            embedded &&
+            (() => {
+              const plate = frameContentViewport(displayedFrame.geometry);
+              return (
+                <rect
+                  data-frame-theme-background
+                  x={(plate.x - placement.offset[0]) / placement.scale}
+                  y={(plate.y - placement.offset[1]) / placement.scale}
+                  width={plate.width / placement.scale}
+                  height={plate.height / placement.scale}
+                  fill={theme.background}
+                  stroke="none"
+                  pointerEvents="none"
+                />
+              );
+            })()}
+          {!staticScene &&
+            !drawingPreview &&
             !presenting &&
             frame.groups.map((groupId) => {
               const group = store.cells[groupId];
@@ -6373,6 +6976,7 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
           {(scene?.children ?? frame.children).map((cellId) => {
             const body = renderCell(cellId);
             if (
+              staticScene ||
               drawingPreview ||
               id !== frameId ||
               !gestureRef.current?.erased.has(cellId)
@@ -6454,7 +7058,8 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
                 ))}
               </g>
             )}
-          {!drawingPreview &&
+          {!staticScene &&
+            !drawingPreview &&
             frame.children.map((cellId) => renderCell(cellId, 'controls'))}
           {!drawingPreview &&
             moveGhostScene &&
@@ -6526,7 +7131,7 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
                 </g>
               </FrameRichTextPreviewContext.Provider>
             )}
-        </g>
+        </FrameThemeGroup>
       );
     },
     // Selection and erased candidates change behind refs; their revisions repaint the scene.
@@ -6536,6 +7141,8 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
       revision,
       frameId,
       frameLayouts,
+      themeForFrame,
+      props.appearance,
       props.extensions,
       presenting,
       editable,
@@ -6549,6 +7156,10 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
       editing,
       labelEditing,
       documentEditing,
+      activeReferenceId,
+      props.referenceInteraction,
+      props.suspended,
+      props.exporting,
       activeToolKey,
       shapeGeometry,
       connectionScene,
@@ -6590,7 +7201,17 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
     props.referenceSeen,
   ]);
   useLayoutEffect(() => {
-    captureViewportRect();
+    // Preview commits move authored content, not the viewport. Measuring after
+    // each drag write would synchronously lay out the entire SVG again. Hand
+    // and pinch input already refreshed its viewport before moving the camera.
+    if (
+      (!dragRef.current &&
+        gestureRef.current?.mode !== 'hand' &&
+        !pinchRef.current) ||
+      viewportRectDirty.current ||
+      props.surface === 'nested'
+    )
+      captureViewportRect();
     refreshSelectionWorldBoundsRef.current = refreshSelectionWorldBounds;
   });
   useLayoutEffect(() => {
@@ -6601,7 +7222,11 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
     layoutWaiters.current.forEach((resolve) => resolve());
   }, [sceneContent, refreshSelectionWorldBounds, viewProjection]);
   return (
-    <FrameCanvasProviders runtime={runtime} wheelOwner={wheelOwner}>
+    <FrameCanvasProviders
+      theme={resolvedTheme}
+      runtime={runtime}
+      wheelOwner={wheelOwner}
+    >
       <FrameRichTextLinkContext.Provider value={props.linkHost}>
         <ActionScope
           registry={actionRuntime}
@@ -6624,6 +7249,8 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
               aria-label="Frame canvas"
               data-reveal-cell-id={revealHighlight ?? undefined}
               data-instance-id={propsRef.current.instanceId ?? frameId}
+              data-board-appearance={props.appearance}
+              data-theme-id={resolvedTheme.id}
               data-surface={props.surface ?? 'root'}
               tabIndex={props.suspended || props.surface === 'nested' ? -1 : 0}
               onClickCapture={(event) => {
@@ -6639,6 +7266,14 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
                 }
               }}
               onPointerDownCapture={(event) => {
+                viewportAnimation.current = viewportIsAnimated();
+                captureViewportRect();
+                if (
+                  (event.target as Element).closest?.(
+                    'button, [data-document-header-actions]',
+                  )
+                )
+                  return;
                 if (
                   (event.ctrlKey || event.metaKey) &&
                   (event.target as Element).closest('a[href]')
@@ -6721,6 +7356,15 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
                   setDragging(true);
                   return;
                 }
+                if (
+                  propsRef.current.referenceInteraction === 'activate' &&
+                  activeReferenceRef.current !== null &&
+                  propsRef.current.surface !== 'nested' &&
+                  (event.target as Element).closest?.(
+                    'svg[data-surface="nested"]',
+                  )
+                )
+                  return;
                 if (propsRef.current.inputMode === 'present') {
                   presentTapRef.current = null;
                   event.preventDefault();
@@ -6905,14 +7549,15 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
                   });
               }}
               style={{
+                ...frameThemeStyle(resolvedTheme),
                 width: '100%',
                 height: '100%',
                 outline: 'none',
                 overflow: 'hidden',
                 touchAction: 'none',
-                backgroundColor: view?.theme?.boardBackground ?? '#f8fafc',
+                backgroundColor: resolvedTheme.background,
                 backgroundImage: view?.theme?.gridEnabled
-                  ? 'radial-gradient(circle, #94a3b8 1px, transparent 1px)'
+                  ? `radial-gradient(circle, ${resolvedTheme.grid} 1px, transparent 1px)`
                   : undefined,
                 backgroundSize: view?.theme?.gridEnabled
                   ? `${Math.max(4, view.theme.gridSize ?? 20) * zoom}px ${Math.max(4, view.theme.gridSize ?? 20) * zoom}px`
@@ -6991,7 +7636,7 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
                       points[0][0] - points[1][0],
                       points[0][1] - points[1][1],
                     ) || 1;
-                  const rect = captureViewportRect()!;
+                  const rect = readViewportRect()!;
                   const center: Point = [
                     (points[0][0] + points[1][0]) / 2 - rect.left,
                     (points[0][1] + points[1][1]) / 2 - rect.top,
@@ -7098,9 +7743,8 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
                 }
                 const gesture = gestureRef.current;
                 if (gesture) {
-                  const point = pointFromEvent(event);
                   if (gesture.mode === 'hand') {
-                    const rect = captureViewportRect()!;
+                    const rect = readViewportRect()!;
                     const originalClient: Point = [
                       (gesture.points[0][0] - gesture.origin[0]) * gesture.zoom,
                       (gesture.points[0][1] - gesture.origin[1]) * gesture.zoom,
@@ -7119,6 +7763,7 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
                       ],
                     });
                   } else {
+                    const point = pointFromEvent(event);
                     if (
                       ['select', 'box', 'line', 'erase'].includes(gesture.mode)
                     )
@@ -7951,7 +8596,10 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
                   };
                   nameSession.current =
                     selected.name === undefined
-                      ? { id: selected.id, initial: nodeContentName(selected) }
+                      ? {
+                          id: selected.id,
+                          initial: nodeContentName(selected),
+                        }
                       : null;
                   keyboardEditRef.current = request;
                   void dispatch({
@@ -8365,6 +9013,11 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
 ) => React.ReactElement;
 
 function FrameReferenceSurface({
+  edit = false,
+  tool,
+  actionHost,
+  history,
+  interactionSettings,
   linkHost,
   documentReferences,
   exporting,
@@ -8390,6 +9043,11 @@ function FrameReferenceSurface({
   onSelection,
   onExit,
 }: {
+  edit?: boolean;
+  tool?: FrameCanvasTool;
+  actionHost?: FrameActionHost;
+  history?: FrameHistoryAdapter;
+  interactionSettings?: FrameCanvasInteractionSettings;
   linkHost?: FrameLinkHost;
   documentReferences?: FrameDocumentReferences;
   exporting?: boolean;
@@ -8435,18 +9093,28 @@ function FrameReferenceSurface({
   );
   const bodyRef = useRef<HTMLDivElement>(null);
   const admitted = usePreviewMount({
-    force: exporting,
+    force: exporting || edit,
     viewport: bodyRef,
     retain: true,
   });
   const [mounted, setMounted] = useState(false);
   useLayoutEffect(() => {
     if (!admitted) return undefined;
-    const release = host.acquire(query);
+    const release = host.acquire(query, edit ? { edit: true } : undefined);
     setMounted(true);
     return typeof release === 'function' ? release : () => host.release(query);
-  }, [host, query, admitted]);
+  }, [host, query, admitted, edit]);
   const binding = admitted && mounted ? host.get(query) : null;
+  useLayoutEffect(() => {
+    if (edit && binding && nestedController.current) {
+      onActivate(binding.occurrenceId, nestedController.current);
+      onSelection(binding.runtime.selection);
+      nestedController.current.runtime.select(binding.runtime.selection);
+      bodyRef.current
+        ?.querySelector<SVGSVGElement>('svg')
+        ?.focus({ preventScroll: true });
+    }
+  }, [edit, binding?.runtime, binding?.occurrenceId, mounted]);
   const backgroundTap = useRef<{
     pointerId: number;
     x: number;
@@ -8476,6 +9144,130 @@ function FrameReferenceSurface({
     binding &&
     binding.preview &&
     Object.keys(binding.runtime.store.cells).length <= 1;
+  const callbacks = useRef({
+    onOpen,
+    onOpenFrame,
+    onActivate,
+    onSelection,
+    onExit,
+  });
+  callbacks.current = { onOpen, onOpenFrame, onActivate, onSelection, onExit };
+  const nestedRuntime = binding?.runtime;
+  const occurrenceId = binding?.occurrenceId;
+  const contentReadonly = binding?.readonly;
+  const {
+    x: shellX,
+    y: shellY,
+    width: shellWidth,
+    height: shellHeight,
+  } = shellGeometry;
+  // Parent shell translation must not rebuild this occurrence's scene. Callback
+  // forwarding stays live without changing the nested canvas's render inputs.
+  const nestedContent = useMemo(
+    () =>
+      nestedRuntime && occurrenceId ? (
+        <FrameReferenceBoundary
+          revision={nestedRuntime.store}
+          language={language}
+          onOpen={() => callbacks.current.onOpen()}
+        >
+          <FrameCanvas
+            ref={nestedController}
+            referenceInteraction={edit ? 'details' : undefined}
+            tool={tool}
+            actionHost={actionHost}
+            history={history}
+            interactionSettings={interactionSettings}
+            linkHost={linkHost}
+            documentReferences={documentReferences}
+            exporting={exporting}
+            runtime={nestedRuntime}
+            value={{ store: nestedRuntime.store }}
+            adapter={{ toFrameSnapshot: (value) => value }}
+            onIntent={(transaction) => host.commit(occurrenceId, transaction)}
+            surface="nested"
+            instanceId={occurrenceId}
+            frameId={targetFrameId}
+            readonly={readonly || contentReadonly || suspended}
+            inputMode={inputMode}
+            suspended={suspended}
+            registry={registry}
+            extensions={extensions}
+            autoFit={false}
+            viewportOrigin={[bounds.x, bounds.y]}
+            referenceSeen={JSON.parse(seenKey) as string[]}
+            referenceAppearance={query.appearance}
+            instanceHost={host}
+            onActiveInstance={(occurrenceId) => {
+              if (occurrenceId)
+                callbacks.current.onActivate(
+                  occurrenceId,
+                  nestedController.current,
+                );
+            }}
+            onInstanceSelection={(selection) =>
+              callbacks.current.onSelection(selection)
+            }
+            onExitInstance={() => callbacks.current.onExit()}
+            onOpenFrame={(...args) => callbacks.current.onOpenFrame?.(...args)}
+            embedShell={{
+              refId,
+              geometry: {
+                x: shellX,
+                y: shellY,
+                width: shellWidth,
+                height: shellHeight,
+              },
+              offsets: offsetMap,
+              onContentOffset: (rootId, offset) =>
+                host.updateContentOffset?.(occurrenceId, rootId, offset),
+            }}
+            onSelectionChange={(selection) =>
+              callbacks.current.onSelection(selection)
+            }
+            style={{ width: '100%', height: '100%', minHeight: 0 }}
+          />
+        </FrameReferenceBoundary>
+      ) : mounted ? (
+        <div data-frame-missing>引用缺失</div>
+      ) : null,
+    [
+      nestedRuntime,
+      nestedRuntime?.store,
+      occurrenceId,
+      contentReadonly,
+      mounted,
+      documentReferences,
+      documentReferences?.revision,
+      exporting,
+      language,
+      linkHost,
+      host,
+      targetFrameId,
+      readonly,
+      edit,
+      tool,
+      actionHost,
+      history,
+      interactionSettings,
+      suspended,
+      inputMode,
+      registry,
+      extensions,
+      bounds.x,
+      bounds.y,
+      bounds.width,
+      bounds.height,
+      shellX,
+      shellY,
+      shellWidth,
+      shellHeight,
+      seenKey,
+      query.appearance,
+      refId,
+      offsetMap,
+    ],
+  );
   return (
     <foreignObject
       x={bounds.x}
@@ -8567,62 +9359,10 @@ function FrameReferenceSurface({
         }}
         style={{ width: '100%', height: '100%', position: 'relative' }}
       >
-        {binding ? (
-          <FrameReferenceBoundary
-            revision={binding.runtime.store}
-            language={language}
-            onOpen={onOpen}
-          >
-            <FrameCanvas
-              ref={nestedController}
-              linkHost={linkHost}
-              documentReferences={documentReferences}
-              exporting={exporting}
-              runtime={binding.runtime}
-              value={{ store: binding.runtime.store }}
-              adapter={{ toFrameSnapshot: (value) => value }}
-              onIntent={(transaction) =>
-                host.commit(binding.occurrenceId, transaction)
-              }
-              surface="nested"
-              instanceId={binding.occurrenceId}
-              frameId={targetFrameId}
-              readonly={readonly || binding.readonly || suspended}
-              inputMode={inputMode}
-              suspended={suspended}
-              registry={registry}
-              extensions={extensions}
-              autoFit={false}
-              viewportOrigin={[bounds.x, bounds.y]}
-              referenceSeen={JSON.parse(seenKey) as string[]}
-              referenceAppearance={query.appearance}
-              instanceHost={host}
-              onActiveInstance={(occurrenceId) => {
-                if (occurrenceId)
-                  onActivate(occurrenceId, nestedController.current);
-              }}
-              onInstanceSelection={onSelection}
-              onExitInstance={onExit}
-              onOpenFrame={onOpenFrame}
-              embedShell={{
-                refId,
-                geometry: shellGeometry,
-                offsets: offsetMap,
-                onContentOffset: (rootId, offset) =>
-                  host.updateContentOffset?.(
-                    binding.occurrenceId,
-                    rootId,
-                    offset,
-                  ),
-              }}
-              onSelectionChange={onSelection}
-              style={{ width: '100%', height: '100%', minHeight: 0 }}
-            />
-          </FrameReferenceBoundary>
-        ) : mounted ? (
-          <div data-frame-missing>引用缺失</div>
-        ) : null}
-        {empty && inputMode !== 'present' ? (
+        <FrameContentVisibility exporting={exporting} editing={edit}>
+          {nestedContent}
+        </FrameContentVisibility>
+        {!edit && empty && inputMode !== 'present' ? (
           <button
             type="button"
             data-preview-open
@@ -8640,7 +9380,7 @@ function FrameReferenceSurface({
             打开编辑
           </button>
         ) : null}
-        {binding?.preview ? (
+        {!edit && binding?.preview ? (
           <button
             type="button"
             data-open-source

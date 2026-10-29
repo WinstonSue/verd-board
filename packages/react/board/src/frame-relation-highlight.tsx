@@ -85,7 +85,8 @@ export function FrameNodeInteraction({
             edgeIds.some((id) => camera.isHovered(id))
           ? 1
           : 0;
-    return `${level}:${camera.getZoom()}`;
+    // Inactive contours have no scale-dependent output.
+    return level ? `${level}:${camera.getZoom()}` : '0:1';
   };
   const snapshot = useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
   const [level, zoom] = snapshot.split(':').map(Number);
@@ -247,7 +248,7 @@ export function FrameNodeInteraction({
         : { markup, width, target },
     );
     return () => cleanups.forEach((cleanup) => cleanup());
-  }, [level, zoom, bounds, children, baseWidth, cellId, kind, paintRevision]);
+  }, [level, bounds, children, baseWidth, cellId, kind, paintRevision]);
   useLayoutEffect(() => {
     if (!level || !body.current) return;
     // A nested renderer can update its own path without rebuilding the scene.

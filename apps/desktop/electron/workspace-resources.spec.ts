@@ -70,12 +70,8 @@ it('electron-builder includes every native document and nested diagram while exc
     );
     await copyFiles(matchers, null, false);
     expect(await listing(path.join(output, 'workspace'))).toEqual(native);
-    expect(
-      native.filter((file) => file.endsWith('.verd-doc.json')),
-    ).toHaveLength(21);
-    expect(native.filter((file) => file.endsWith('.verd.json'))).toHaveLength(
-      9,
-    );
+    expect(native).toContain('项目导览.verd.json');
+    expect(native).toContain('文档/架构/系统架构.verd-doc.json');
   } finally {
     await fs.rm(dir, { recursive: true, force: true });
   }

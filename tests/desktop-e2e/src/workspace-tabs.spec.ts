@@ -1,5 +1,5 @@
+import { electron, writeDesktopLauncher } from './desktop-launcher';
 import {
-  _electron as electron,
   test,
   expect,
   type ElectronApplication,
@@ -15,7 +15,6 @@ import {
   deleteGroup,
 } from '../../web-e2e/src/tab-actions';
 
-const root = path.resolve(__dirname, '../../..');
 test('Desktop restores tab groups and shared documents and saves focused edits when a group closes', async () => {
   test.setTimeout(120_000);
   const directory = await mkdtemp(path.join(tmpdir(), 'verd-tab-groups-'));
@@ -77,17 +76,9 @@ test('Desktop restores tab groups and shared documents and saves focused edits w
       }),
     );
     const launcher = path.join(directory, 'launch.cjs');
-    await writeFile(
-      launcher,
-      [
-        "const {app} = require('electron');",
-        `app.setPath('userData', ${JSON.stringify(userData)});`,
-        `require(${JSON.stringify(path.join(root, 'apps/desktop/dist-electron/main.js'))});`,
-      ].join('\n'),
-    );
+    await writeDesktopLauncher(launcher, userData);
     const env = { ...process.env, VERDBOARD_WORKSPACE_PATH: workspace };
-    delete env.ELECTRON_RUN_AS_NODE;
-    delete env.VITE_DEV_SERVER_URL;
+
     const launch = async () => {
       desktop = await electron.launch({ args: [launcher], env });
       const page = await desktop.firstWindow();
@@ -110,7 +101,7 @@ test('Desktop restores tab groups and shared documents and saves focused edits w
       .click();
     await setAppLanguage(page, 'zh');
     await active(page)
-      .getByRole('button', { name: '打开引用详情', exact: true })
+      .getByRole('button', { name: '打开详情', exact: true })
       .click();
     await expect(active(page).locator('.document-page__title')).toHaveValue(
       'Shared desktop source',

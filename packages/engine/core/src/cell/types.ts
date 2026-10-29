@@ -1,7 +1,7 @@
 import type { NodeOutline } from '../geometry/shape';
 import type { Point } from '../interfaces/point';
 import type { RectangleClient } from '../interfaces/rectangle-client';
-import type { BoardTheme } from '../interfaces/theme';
+import type { BoardTheme, ColorSource } from '../interfaces/theme';
 
 export type CellId = string;
 
@@ -20,6 +20,7 @@ export interface PortSpec {
 }
 
 export interface NodeAppearance {
+  colorSources?: { fill?: ColorSource; strokeColor?: ColorSource };
   fill?: string;
   strokeColor?: string;
   strokeWidth?: number;
@@ -156,6 +157,7 @@ export type EdgeTerminal =
   { cellId: CellId; portId?: string; anchor?: Point } | { point: Point };
 
 export interface EdgeAppearance {
+  colorSources?: { strokeColor?: ColorSource };
   strokeColor?: string;
   strokeWidth?: number;
   strokeStyle?: 'solid' | 'dashed' | 'dotted';

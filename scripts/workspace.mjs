@@ -17,7 +17,7 @@ export const REPO_ROOT = path.resolve(
   '..',
 );
 export const PROJECT_WORKSPACE = path.join(REPO_ROOT, 'workspace');
-export const PACKAGE_FRAME_ID = 'board/20:architecture-layered';
+export const PACKAGE_FRAME_ID = 'project:detail/01/01';
 const PREFIX = 'demo:packages/';
 const clone = (value) => JSON.parse(JSON.stringify(value));
 
@@ -166,7 +166,7 @@ export async function readPackageModel() {
       if (!manifest.name) throw new Error('Missing package name: ' + directory);
       const group =
         parent === 'packages/engine' &&
-        ['draw', 'mind', 'workflow', 'architecture'].includes(entry.name)
+        ['draw', 'mind', 'workflow', 'architecture', 'uml'].includes(entry.name)
           ? groups[4]
           : groups.find((g) => g.directory === parent);
       group.nodes.push({
@@ -415,6 +415,11 @@ export async function validateWorkspace(entries, runtime) {
     if (file.format === 'verd-document' && file.text.id !== id)
       report(entry.path, 'Document identity differs from body identity');
     if (file.format === 'verd-document') {
+      if (
+        file.text.plainText !==
+        runtime.common.deriveBoardTextPlainText(file.text.content)
+      )
+        report(entry.path, 'Document plainText cache differs from content');
       try {
         runtime.documentSchema.nodeFromJSON(file.text.content).check();
       } catch (error) {

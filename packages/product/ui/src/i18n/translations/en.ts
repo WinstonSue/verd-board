@@ -159,12 +159,12 @@ const enTranslations: Translations = {
   'zoom.100': 'Zoom to 100%',
 
   // Themes
-  'theme.default': 'Default',
+  'theme.default': 'Classic',
   'theme.colorful': 'Colorful',
   'theme.soft': 'Soft',
   'theme.retro': 'Retro',
-  'theme.dark': 'Dark',
-  'theme.starry': 'Starry',
+  'theme.dark': 'Fresh',
+  'theme.starry': 'Ocean',
 
   // Colors
   'color.none': 'Topic Color',
@@ -393,8 +393,8 @@ const enTranslations: Translations = {
   'rightPanel.bg.gray': 'Gray',
   'rightPanel.bg.soft': 'Soft (theme default)',
   'rightPanel.bg.retro': 'Retro (theme default)',
-  'rightPanel.bg.dark': 'Dark (theme default)',
-  'rightPanel.bg.starry': 'Starry (theme default)',
+  'rightPanel.bg.dark': 'Fresh (theme default)',
+  'rightPanel.bg.starry': 'Ocean (theme default)',
   'rightPanel.bg.deepGray': 'Deep gray',
 
   'mind.layout.standard': 'Standard',
@@ -424,7 +424,7 @@ const enTranslations: Translations = {
   'tutorial.appToolbar':
     'Undo and redo; open, import, export, and settings in More',
   'tutorial.creationToolbar': 'Select V, hand H, drawing, and domain tools',
-  'tutorial.themeDescription': 'Switch between light and dark themes',
+  'tutorial.themeDescription': 'Themes adapt to light and dark appearance',
 
   'workspace.board': 'Board',
   'workspace.mind': 'Mind Map',

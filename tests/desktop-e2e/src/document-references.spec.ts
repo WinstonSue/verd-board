@@ -1,9 +1,5 @@
-import {
-  _electron as electron,
-  test,
-  expect,
-  type ElectronApplication,
-} from '@playwright/test';
+import { electron, writeDesktopLauncher } from './desktop-launcher';
+import { test, expect, type ElectronApplication } from '@playwright/test';
 import { mkdir, mkdtemp, readFile, writeFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -97,21 +93,13 @@ test('Desktop previews documents in every canvas, adopts external edits and pres
     const docBytes = JSON.stringify(doc, null, 2);
     await writeFile(docPath, docBytes);
     const launcher = path.join(directory, 'launch.cjs');
-    await writeFile(
-      launcher,
-      [
-        "const {app} = require('electron');",
-        `app.setPath('userData', ${JSON.stringify(userData)});`,
-        `require(${JSON.stringify(path.join(root, 'apps/desktop/dist-electron/main.js'))});`,
-      ].join('\n'),
-    );
+    await writeDesktopLauncher(launcher, userData);
     const env = { ...process.env, VERDBOARD_WORKSPACE_PATH: workspace };
-    delete env.ELECTRON_RUN_AS_NODE;
-    delete env.VITE_DEV_SERVER_URL;
+
     desktop = await electron.launch({ args: [launcher], env });
     const page = await desktop.firstWindow();
     await desktop.evaluate(({ BrowserWindow }) =>
-      BrowserWindow.getAllWindows()[0].setSize(1600, 1100),
+      BrowserWindow.getAllWindows()[0].setContentSize(1600, 1000),
     );
     await expect(page.locator('.workspace-shell')).toBeVisible();
     const active = page.locator('.workspace-pane.is-active');
@@ -121,6 +109,7 @@ test('Desktop previews documents in every canvas, adopts external edits and pres
         .filter({ hasText: new RegExp(`^${frame.frame.name}$`) })
         .click();
       if (index === 0) await setAppLanguage(page, 'zh');
+      await active.getByTestId('canvas-status-fit').press('Enter');
       const reader = active.locator('[data-document-preview-scroll]').first();
       await expect(
         reader.locator('.board-document-content').first(),
@@ -146,7 +135,7 @@ test('Desktop previews documents in every canvas, adopts external edits and pres
       active.locator('[data-document-preview-scroll]').first(),
     ).toContainText('External source update');
     await active
-      .getByRole('button', { name: '打开引用详情', exact: true })
+      .getByRole('button', { name: '打开详情', exact: true })
       .first()
       .click();
     await expect(active.locator('.document-page__title')).toHaveValue(
@@ -159,6 +148,7 @@ test('Desktop previews documents in every canvas, adopts external edits and pres
       .locator('.file-tree-name')
       .filter({ hasText: /^Desktop whiteboard-basic$/ })
       .click();
+    await active.getByTestId('canvas-status-fit').press('Enter');
     const editable = active
       .locator('[data-cell-kind="document-frame"]')
       .first();
@@ -168,7 +158,7 @@ test('Desktop previews documents in every canvas, adopts external edits and pres
     );
     await expect(editor).toBeVisible();
     await editor.locator('p').first().click();
-    await page.keyboard.type(' Saved through Frame');
+    await page.keyboard.insertText(' Saved through Frame');
     await expect(
       active.locator('[data-cell-kind="document-reference"]').first(),
     ).toContainText('Saved through Frame');
@@ -186,6 +176,47 @@ test('Desktop previews documents in every canvas, adopts external edits and pres
     desktop = undefined;
     for (const [file, bytes] of originals)
       expect(await readFile(file, 'utf8')).toBe(bytes);
+  } catch (error) {
+    if (desktop) {
+      const page = await desktop.firstWindow();
+      await page.screenshot({ path: info.outputPath('document-failure.png') });
+      await info.attach('document-viewports', {
+        contentType: 'application/json',
+        body: JSON.stringify(
+          await page.evaluate(() => ({
+            title: document.querySelector(
+              '.workspace-pane.is-active .workspace-file-navigation-title',
+            )?.textContent,
+            world: document
+              .querySelector('.workspace-pane.is-active [data-frame-world]')
+              ?.getAttribute('transform'),
+            readers: [
+              ...document.querySelectorAll(
+                '.workspace-pane.is-active [data-document-preview-scroll]',
+              ),
+            ].map((el) => ({
+              rect: el.getBoundingClientRect().toJSON(),
+              html: el.outerHTML.slice(0, 500),
+              ancestors: [
+                ...(function* (node: Element | null) {
+                  while (node) {
+                    yield node;
+                    node = node.parentElement;
+                  }
+                })(el),
+              ].map((n) => ({
+                tag: n.tagName,
+                cls: n.getAttribute('class'),
+                style: n.getAttribute('style'),
+              })),
+            })),
+          })),
+          null,
+          2,
+        ),
+      });
+    }
+    throw error;
   } finally {
     await desktop?.close();
     await rm(directory, { recursive: true, force: true });

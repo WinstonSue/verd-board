@@ -1,9 +1,5 @@
-import {
-  _electron as electron,
-  test,
-  expect,
-  type ElectronApplication,
-} from '@playwright/test';
+import { electron, writeDesktopLauncher } from './desktop-launcher';
+import { test, expect, type ElectronApplication } from '@playwright/test';
 import {
   cp,
   mkdtemp,
@@ -44,7 +40,7 @@ const nativeFiles = async (
 test('built-in native workspace opens its diagrams and documents, follows links and preserves edits across an upgrade', async ({
   browserName,
 }, info) => {
-  test.setTimeout(120_000);
+  test.setTimeout(240_000);
   const directory = await mkdtemp(path.join(tmpdir(), 'verd-builtin-e2e-'));
   const userData = path.join(directory, 'user-data');
   const source = path.join(directory, 'builtin-source');
@@ -62,17 +58,9 @@ test('built-in native workspace opens its diagrams and documents, follows links 
     });
     const original = await nativeFiles(source);
     const launcher = path.join(directory, 'launch.cjs');
-    await writeFile(
-      launcher,
-      [
-        "const {app} = require('electron');",
-        `app.setPath('userData', ${JSON.stringify(userData)});`,
-        `require(${JSON.stringify(path.join(root, 'apps/desktop/dist-electron/main.js'))});`,
-      ].join('\n'),
-    );
+    await writeDesktopLauncher(launcher, userData);
     const env = { ...process.env };
-    delete env.ELECTRON_RUN_AS_NODE;
-    delete env.VITE_DEV_SERVER_URL;
+
     delete env.VERDBOARD_WORKSPACE_PATH;
     env.VERDBOARD_BUILTIN_WORKSPACE_PATH = source;
     const launch = async () => {
@@ -106,12 +94,14 @@ test('built-in native workspace opens its diagrams and documents, follows links 
         .first();
     await expect(canvas()).toBeVisible();
     await expect(
-      canvas().locator('[data-cell-kind="frame-reference"]'),
-    ).toHaveCount(8);
+      canvas().locator(
+        '[data-cell-kind="frame-reference"]:not([data-reference-card])',
+      ),
+    ).toHaveCount(9);
     await expect(
       canvas().locator('[data-cell-kind="document-frame"]'),
     ).toHaveCount(3);
-    expect(Object.keys(await canvasFiles(userData))).toHaveLength(9);
+    expect(Object.keys(await canvasFiles(userData))).toHaveLength(31);
     expect(Object.keys(await nativeFiles(workspace))).toHaveLength(
       Object.keys(original).length,
     );
@@ -121,6 +111,101 @@ test('built-in native workspace opens its diagrams and documents, follows links 
     await page.screenshot({
       path: info.outputPath(`builtin-${browserName}-overview.png`),
     });
+
+    const topics = Object.keys(original)
+      .filter((file) => /^架构图\/\d{2}-[^/]+\.verd\.json$/.test(file))
+      .sort();
+    expect(topics).toHaveLength(9);
+    const openReference = async (cellId: string) => {
+      const header = canvas()
+        .locator(
+          `[data-cell-id="${cellId}"] > [data-frame-header] > [data-frame-title-id] > rect`,
+        )
+        .first();
+      await header.click();
+      const bounds = (await header.boundingBox())!;
+      await active().getByTestId('frame-open').click();
+      await expect(active()).toHaveAttribute('data-pane-entrance', 'complete');
+      return bounds;
+    };
+    const returnToReference = async (
+      cellId: string,
+      bounds: { x: number; y: number; width: number; height: number },
+    ) => {
+      await active().getByTestId('navigation-return').click();
+      const header = canvas()
+        .locator(
+          `[data-cell-id="${cellId}"] > [data-frame-header] > [data-frame-title-id] > rect`,
+        )
+        .first();
+      await expect(header).toBeVisible();
+      const restored = (await header.boundingBox())!;
+      for (const key of ['x', 'y', 'width', 'height'] as const)
+        expect(Math.abs(restored[key] - bounds[key])).toBeLessThan(3);
+    };
+    for (const [index, file] of topics.entries()) {
+      const topic = JSON.parse(original[file]);
+      const home = JSON.parse(original['项目导览.verd.json']);
+      const homeRef = Object.values<any>(home.cells).find(
+        (c) => c.data?.targetFrameId === topic.frame.id,
+      )!;
+      const homeBounds = await openReference(homeRef.id);
+      await expect(
+        canvas().locator(
+          `[data-cell-id="project:topic/${String(index + 1).padStart(2, '0')}/document"]`,
+        ),
+      ).toBeVisible();
+      await page.screenshot({
+        path: info.outputPath(`builtin-topic-${index + 1}.png`),
+      });
+      const details = Object.values<any>(topic.cells).filter(
+        (c) => c.kind === 'frame-reference',
+      );
+      expect(details.length).toBeGreaterThanOrEqual(2);
+      expect(details.length).toBeLessThanOrEqual(3);
+      for (const [detailIndex, ref] of details.entries()) {
+        const topicBounds = await openReference(ref.id);
+        const cardId = `${ref.data.targetFrameId}/document`;
+        const card = canvas().locator(`[data-cell-id="${cardId}"]`).first();
+        await expect(card).toBeVisible();
+        await expect(
+          card
+            .locator('[data-document-preview-scroll]')
+            .getByRole('heading', { level: 1 })
+            .first(),
+        ).toBeVisible();
+        await page.screenshot({
+          path: info.outputPath(
+            `builtin-detail-${index + 1}-${detailIndex + 1}.png`,
+          ),
+        });
+        if (ref.data.targetFrameId === 'project:detail/09/03') {
+          await card
+            .getByRole('link', { name: '连线路由算法', exact: true })
+            .first()
+            .click({ modifiers: ['ControlOrMeta'] });
+          await expect(active().locator('.document-page__title')).toHaveValue(
+            '排列与组合',
+          );
+          await expect(
+            active().getByRole('heading', {
+              name: '连线路由算法',
+              exact: true,
+            }),
+          ).toBeInViewport();
+          await page.screenshot({
+            path: info.outputPath('builtin-routing-chapter.png'),
+          });
+          await active().getByTestId('navigation-return').click();
+          await expect(
+            canvas().locator('[data-cell-id="demo:algorithms/route"]'),
+          ).toBeVisible();
+        }
+        await returnToReference(ref.id, topicBounds);
+      }
+      await returnToReference(homeRef.id, homeBounds);
+    }
+    expect(await nativeFiles(workspace)).toEqual(original);
 
     await page
       .locator('.file-tree-name')

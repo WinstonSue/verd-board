@@ -13,6 +13,8 @@ export default defineConfig([
   globalIgnores([
     '**/dist/**',
     '**/dist-electron/**',
+    '**/dist-electron-dev/**',
+    '**/dist-electron-e2e/**',
     '**/coverage/**',
     '**/node_modules/**',
     '**/release/**',

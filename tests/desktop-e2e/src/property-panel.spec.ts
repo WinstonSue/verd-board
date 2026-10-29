@@ -1,11 +1,11 @@
+import { electron, writeDesktopLauncher } from './desktop-launcher';
 import {
-  _electron as electron,
   test,
   expect,
   type ElectronApplication,
   type Page,
 } from '@playwright/test';
-import { mkdtemp, mkdir, rm, writeFile } from 'node:fs/promises';
+import { mkdtemp, mkdir, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { committedCells } from './workspace-disk';
@@ -13,7 +13,6 @@ import { setAppLanguage } from '../../web-e2e/src/app-actions';
 
 test.use({ actionTimeout: 6000 });
 
-const root = path.resolve(__dirname, '../../..');
 const pane = (page: Page) => page.locator('.workspace-pane.is-active');
 const canvas = (page: Page) =>
   pane(page).locator('svg[aria-label="Frame canvas"]');
@@ -39,17 +38,9 @@ test('Desktop numeric inspector commits one history step, cancels locked drafts 
   const userData = path.join(directory, 'user-data');
   await mkdir(userData);
   const launcher = path.join(directory, 'launch.cjs');
-  await writeFile(
-    launcher,
-    'const {app} = require("electron");\napp.setPath("userData", ' +
-      JSON.stringify(userData) +
-      ');\nrequire(' +
-      JSON.stringify(path.join(root, 'apps/desktop/dist-electron/main.js')) +
-      ');\n',
-  );
+  await writeDesktopLauncher(launcher, userData);
   const env = { ...process.env };
-  delete env.ELECTRON_RUN_AS_NODE;
-  delete env.VITE_DEV_SERVER_URL;
+
   env.VERDBOARD_WORKSPACE_PATH = path.join(userData, 'workspaces', 'default');
   let desktop = await electron.launch({ args: [launcher], env });
   try {

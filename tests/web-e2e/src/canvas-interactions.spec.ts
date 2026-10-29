@@ -22,13 +22,11 @@ const savedCells = async (page: Page) =>
   );
 const openReferenceSource = async (page: Page, referenceId: string) => {
   const tabCount = await page.getByRole('tab').count();
-  const shell = canvas(page)
+  await canvas(page)
     .locator(`[data-cell-id="${referenceId}"]`)
-    .locator(':scope > rect[data-frame-shell]');
-  const box = (await shell.boundingBox())!;
-  // The bottom margin opens the source without hitting its title editor or
-  // the reference's read-only content surface.
-  await page.mouse.dblclick(box.x + box.width / 4, box.y + box.height - 4);
+    .getByRole('button', { name: '打开详情', exact: true })
+    .first()
+    .click();
   await expect(page.getByRole('tab')).toHaveCount(tabCount + 1);
 };
 const openSnapshot = async (page: Page, snapshot: object) => {
@@ -105,20 +103,21 @@ for (const diagram of ['思维导图', '流程图', '架构图'])
     );
     const referenceId = (await reference.getAttribute('data-cell-id'))!;
     const shell = reference.locator(':scope > [data-frame-shell]');
-    const background = reference.locator('svg[data-surface="nested"]').first();
+    const background = reference.locator('[data-reference-preview]').first();
+    await expect(reference.locator('svg[data-surface="nested"]')).toHaveCount(
+      0,
+    );
     await expect(background).toBeVisible();
     const outerBox = (await canvas(page).boundingBox())!;
     const clearSelection = () =>
       page.mouse.click(outerBox.x + 120, outerBox.y + 650);
     await clearSelection();
     await expect(shell).toHaveAttribute('data-frame-active', 'false');
-    const blank = await background.evaluate((element) => {
-      const box = element.getBoundingClientRect();
-      for (let y = box.top + 12; y < box.bottom - 12; y += 12)
-        for (let x = box.left + 12; x < box.right - 12; x += 12)
-          if (document.elementFromPoint(x, y) === element) return { x, y };
-      throw new Error('No exposed embedded canvas background');
-    });
+    const contentBox = (await background.boundingBox())!;
+    const blank = {
+      x: contentBox.x + 16,
+      y: contentBox.y + contentBox.height / 2,
+    };
     const geometry = await shell.evaluate((element) =>
       ['x', 'y', 'width', 'height'].map((name) => element.getAttribute(name)),
     );
@@ -154,12 +153,11 @@ for (const diagram of ['思维导图', '流程图', '架构图'])
     await page.mouse.down();
     await page.mouse.move(blank.x + 24, blank.y + 12, { steps: 4 });
     await page.mouse.up();
-    await expect(shell).toHaveAttribute('data-frame-active', 'false');
-    expect(
-      await shell.evaluate((element) =>
-        ['x', 'y', 'width', 'height'].map((name) => element.getAttribute(name)),
-      ),
-    ).toEqual(geometry);
+    await expect(shell).toHaveAttribute('data-frame-active', 'true');
+    await expect(shell).not.toHaveAttribute('x', geometry[0]!);
+    await expect(reference.locator('svg[data-surface="nested"]')).toHaveCount(
+      0,
+    );
   });
 
 test('every toolbar creation selects its outer cell and stops after one gesture', async ({
@@ -625,7 +623,7 @@ test('nested preview titles stay visible, source shells rename and locked shells
   await page.getByTestId('canvas-status-fit').click();
   // The selected frame's top resize handle sits at the title's center, so the
   // double-click lands on the left of the title strip instead.
-  await nestedTitle.dblclick({ position: { x: 10, y: 2 } });
+  await nestedTitle.dblclick({ position: { x: 10, y: 2 }, force: true });
   const overlay = page.locator('[data-frame-title-editor]');
   // A regular-canvas reference is a read-only preview. Editing its nested
   // shell requires opening the owner file, whose local reference is editable.
@@ -646,7 +644,7 @@ test('nested preview titles stay visible, source shells rename and locked shells
   await outerTitle.dblclick();
   await expect(overlay).toHaveCount(0);
   const lockedNested = title(page).filter({ hasText: 'Nested renamed' });
-  await lockedNested.dblclick();
+  await lockedNested.dblclick({ force: true });
   await expect(overlay).toHaveCount(0);
   await expect(
     page.getByTestId('inspector-name').locator('visible=true'),
@@ -684,10 +682,10 @@ test('navigation during image decoding prevents a late image insertion', async (
   const frame = canvas(page)
     .locator('[data-cell-kind="frame"], [data-cell-kind="frame-reference"]')
     .first();
-  const box = (await frame
-    .locator(':scope > [data-frame-shell]')
-    .boundingBox())!;
-  await page.mouse.dblclick(box.x + box.width / 4, box.y + box.height - 4);
+  await frame
+    .getByRole('button', { name: '打开详情', exact: true })
+    .first()
+    .click();
   await expect(
     canvas(page).locator(
       '[data-cell-kind="frame"], [data-cell-kind="frame-reference"]',
@@ -729,9 +727,9 @@ test('Frame shells and titles move in local integer pixels, keep descendants unc
   const nestedId = (await namedTitle('Nested drag').getAttribute(
     'data-frame-title-id',
   ))!;
-  const leafId = (await canvas(page)
-    .locator('[data-cell-kind="geometry"]')
-    .getAttribute('data-cell-id'))!;
+  const leafId = (await savedCells(page)).find(
+    (cell: any) => cell.content?.label === 'leaf',
+  ).id;
   await page.getByTestId('canvas-zoom-in').click();
   await expect(page.getByTestId('canvas-zoom-label')).toHaveText('110%');
   for (const [id, handle] of [

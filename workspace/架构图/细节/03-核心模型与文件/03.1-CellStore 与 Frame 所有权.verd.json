@@ -1,0 +1,1508 @@
+{
+  "format": "verd-frame",
+  "version": 2,
+  "frame": {
+    "id": "project:detail/03/01",
+    "kind": "frame",
+    "cellType": "frame",
+    "geometry": {
+      "x": 0,
+      "y": 0,
+      "width": 960,
+      "height": 640,
+      "derived": false
+    },
+    "children": [
+      "demo:model/root",
+      "demo:model/node/2",
+      "demo:model/node/0-1",
+      "demo:model/node/1-0",
+      "demo:model/node/0-2",
+      "demo:model/node/1-1",
+      "demo:model/node/1-2",
+      "demo:model/node/0-0",
+      "demo:model/node/2-2",
+      "demo:model/node/1-3",
+      "demo:model/node/0",
+      "demo:model/node/2-0",
+      "demo:model/node/1-4",
+      "demo:model/node/2-1",
+      "demo:model/node/1",
+      "demo:model/node/2-3",
+      "demo:model/branch/0",
+      "demo:model/branch/0-0",
+      "demo:model/branch/0-1",
+      "demo:model/branch/0-2",
+      "demo:model/branch/1",
+      "demo:model/branch/1-0",
+      "demo:model/branch/1-1",
+      "demo:model/branch/1-2",
+      "demo:model/branch/1-3",
+      "demo:model/branch/1-4",
+      "demo:model/branch/2",
+      "demo:model/branch/2-0",
+      "demo:model/branch/2-1",
+      "demo:model/branch/2-2",
+      "demo:model/branch/2-3",
+      "project:detail/03/01/document"
+    ],
+    "groups": [],
+    "data": {},
+    "content": {
+      "label": "03.1 CellStore 与 Frame 所有权"
+    },
+    "appearance": {
+      "fill": "#ffffff",
+      "strokeColor": "#cbd5e1",
+      "strokeWidth": 2
+    },
+    "view": {
+      "theme": {
+        "themeColorMode": "default",
+        "boardBackground": "#ffffff"
+      }
+    },
+    "presentation": {
+      "interval": 10,
+      "pages": [
+        {
+          "id": "overview",
+          "title": "总览",
+          "notes": "",
+          "hidden": false,
+          "anchor": {
+            "kind": "overview"
+          }
+        },
+        {
+          "id": "mind:demo:model/node/0",
+          "title": "公开快照",
+          "notes": "",
+          "hidden": false,
+          "anchor": {
+            "kind": "mind-branch",
+            "branchId": "demo:model/node/0"
+          }
+        },
+        {
+          "id": "mind:demo:model/node/1",
+          "title": "Frame 与所有权",
+          "notes": "",
+          "hidden": false,
+          "anchor": {
+            "kind": "mind-branch",
+            "branchId": "demo:model/node/1"
+          }
+        },
+        {
+          "id": "mind:demo:model/node/2",
+          "title": "Node / Edge / Group",
+          "notes": "",
+          "hidden": false,
+          "anchor": {
+            "kind": "mind-branch",
+            "branchId": "demo:model/node/2"
+          }
+        },
+        {
+          "id": "mind:demo:model/node/3",
+          "title": "领域锚点",
+          "notes": "",
+          "hidden": false,
+          "anchor": {
+            "kind": "mind-branch",
+            "branchId": "demo:model/node/3"
+          }
+        },
+        {
+          "id": "mind:demo:model/node/4",
+          "title": "事务与历史",
+          "notes": "",
+          "hidden": false,
+          "anchor": {
+            "kind": "mind-branch",
+            "branchId": "demo:model/node/4"
+          }
+        },
+        {
+          "id": "mind:demo:model/node/5",
+          "title": "运行时与磁盘",
+          "notes": "",
+          "hidden": false,
+          "anchor": {
+            "kind": "mind-branch",
+            "branchId": "demo:model/node/5"
+          }
+        }
+      ]
+    },
+    "name": "03.1 CellStore 与 Frame 所有权"
+  },
+  "cells": {
+    "demo:model/root": {
+      "id": "demo:model/root",
+      "kind": "mind-root",
+      "cellType": "node",
+      "geometry": {
+        "x": 0,
+        "y": 0,
+        "width": 300,
+        "height": 64,
+        "derived": false,
+        "outline": "roundRectangle"
+      },
+      "content": {
+        "label": "CellStore 与 Frame 所有权",
+        "text": {
+          "schemaVersion": 1,
+          "id": "demo:model/root/text",
+          "kind": "inline",
+          "plainText": "CellStore 与 Frame 所有权",
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "CellStore 与 Frame 所有权",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "24px"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "appearance": {
+        "fill": "#0f766e",
+        "strokeColor": "#0f766e"
+      },
+      "data": {
+        "layout": "standard",
+        "rightNodeCount": 20
+      }
+    },
+    "demo:model/node/2": {
+      "id": "demo:model/node/2",
+      "kind": "mind-child",
+      "cellType": "node",
+      "geometry": {
+        "x": 0,
+        "y": 0,
+        "width": 240,
+        "height": 48,
+        "derived": true,
+        "outline": "roundRectangle"
+      },
+      "content": {
+        "label": "Node / Edge / Group",
+        "text": {
+          "schemaVersion": 1,
+          "id": "demo:model/node/2/text",
+          "kind": "inline",
+          "plainText": "Node / Edge / Group",
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Node / Edge / Group",
+                    "marks": [
+                      {
+                        "type": "bold"
+                      },
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "20px",
+                          "color": "#7c3aed"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "appearance": {
+        "fill": "#f0fdfa",
+        "strokeColor": "#7c3aed",
+        "strokeWidth": 2
+      },
+      "data": {
+        "collapsed": false,
+        "branchAppearance": {
+          "strokeColor": "#7c3aed",
+          "strokeWidth": 2
+        }
+      }
+    },
+    "demo:model/node/0-1": {
+      "id": "demo:model/node/0-1",
+      "kind": "mind-child",
+      "cellType": "node",
+      "geometry": {
+        "x": 0,
+        "y": 0,
+        "width": 240,
+        "height": 48,
+        "derived": true,
+        "outline": "roundRectangle"
+      },
+      "content": {
+        "label": "CellStore = rootId + cells 扁平表",
+        "text": {
+          "schemaVersion": 1,
+          "id": "demo:model/node/0-1/text",
+          "kind": "inline",
+          "plainText": "CellStore = rootId + cells 扁平表",
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "CellStore = rootId + cells 扁平表",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "18px",
+                          "color": "#334155"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "appearance": {
+        "fill": "#ffffff",
+        "strokeColor": "#0f766e",
+        "strokeWidth": 1
+      },
+      "data": {
+        "collapsed": false,
+        "branchAppearance": {
+          "strokeColor": "#0f766e",
+          "strokeWidth": 2
+        }
+      }
+    },
+    "demo:model/node/1-0": {
+      "id": "demo:model/node/1-0",
+      "kind": "mind-child",
+      "cellType": "node",
+      "geometry": {
+        "x": 0,
+        "y": 0,
+        "width": 240,
+        "height": 48,
+        "derived": true,
+        "outline": "roundRectangle"
+      },
+      "content": {
+        "label": "children：直接所有权 + 绘制顺序",
+        "text": {
+          "schemaVersion": 1,
+          "id": "demo:model/node/1-0/text",
+          "kind": "inline",
+          "plainText": "children：直接所有权 + 绘制顺序",
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "children：直接所有权 + 绘制顺序",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "18px",
+                          "color": "#334155"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "appearance": {
+        "fill": "#ffffff",
+        "strokeColor": "#2563eb",
+        "strokeWidth": 1
+      },
+      "data": {
+        "collapsed": false,
+        "branchAppearance": {
+          "strokeColor": "#2563eb",
+          "strokeWidth": 2
+        }
+      }
+    },
+    "demo:model/node/0-2": {
+      "id": "demo:model/node/0-2",
+      "kind": "mind-child",
+      "cellType": "node",
+      "geometry": {
+        "x": 0,
+        "y": 0,
+        "width": 240,
+        "height": 48,
+        "derived": true,
+        "outline": "roundRectangle"
+      },
+      "content": {
+        "label": "Node（含 Frame）/ Edge / Group",
+        "text": {
+          "schemaVersion": 1,
+          "id": "demo:model/node/0-2/text",
+          "kind": "inline",
+          "plainText": "Node（含 Frame）/ Edge / Group",
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Node（含 Frame）/ Edge / Group",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "18px",
+                          "color": "#334155"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "appearance": {
+        "fill": "#ffffff",
+        "strokeColor": "#0f766e",
+        "strokeWidth": 1
+      },
+      "data": {
+        "collapsed": false,
+        "branchAppearance": {
+          "strokeColor": "#0f766e",
+          "strokeWidth": 2
+        }
+      }
+    },
+    "demo:model/node/1-1": {
+      "id": "demo:model/node/1-1",
+      "kind": "mind-child",
+      "cellType": "node",
+      "geometry": {
+        "x": 0,
+        "y": 0,
+        "width": 240,
+        "height": 48,
+        "derived": true,
+        "outline": "roundRectangle"
+      },
+      "content": {
+        "label": "groups：本 Frame 的分组列表",
+        "text": {
+          "schemaVersion": 1,
+          "id": "demo:model/node/1-1/text",
+          "kind": "inline",
+          "plainText": "groups：本 Frame 的分组列表",
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "groups：本 Frame 的分组列表",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "18px",
+                          "color": "#334155"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "appearance": {
+        "fill": "#ffffff",
+        "strokeColor": "#2563eb",
+        "strokeWidth": 1
+      },
+      "data": {
+        "collapsed": false,
+        "branchAppearance": {
+          "strokeColor": "#2563eb",
+          "strokeWidth": 2
+        }
+      }
+    },
+    "demo:model/node/1-2": {
+      "id": "demo:model/node/1-2",
+      "kind": "mind-child",
+      "cellType": "node",
+      "geometry": {
+        "x": 0,
+        "y": 0,
+        "width": 240,
+        "height": 48,
+        "derived": true,
+        "outline": "roundRectangle"
+      },
+      "content": {
+        "label": "frame-reference 引用画布；document-reference 引用文档",
+        "text": {
+          "schemaVersion": 1,
+          "id": "demo:model/node/1-2/text",
+          "kind": "inline",
+          "plainText": "frame-reference 引用画布；document-reference 引用文档",
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "frame-reference 引用画布；document-reference 引用文档",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "18px",
+                          "color": "#334155"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "appearance": {
+        "fill": "#ffffff",
+        "strokeColor": "#2563eb",
+        "strokeWidth": 1
+      },
+      "data": {
+        "collapsed": false,
+        "branchAppearance": {
+          "strokeColor": "#2563eb",
+          "strokeWidth": 2
+        }
+      }
+    },
+    "demo:model/node/0-0": {
+      "id": "demo:model/node/0-0",
+      "kind": "mind-child",
+      "cellType": "node",
+      "geometry": {
+        "x": 0,
+        "y": 0,
+        "width": 240,
+        "height": 48,
+        "derived": true,
+        "outline": "roundRectangle"
+      },
+      "content": {
+        "label": "FrameSnapshot = { store }",
+        "text": {
+          "schemaVersion": 1,
+          "id": "demo:model/node/0-0/text",
+          "kind": "inline",
+          "plainText": "FrameSnapshot = { store }",
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "FrameSnapshot = { store }",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "18px",
+                          "color": "#334155"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "appearance": {
+        "fill": "#ffffff",
+        "strokeColor": "#0f766e",
+        "strokeWidth": 1
+      },
+      "data": {
+        "collapsed": false,
+        "branchAppearance": {
+          "strokeColor": "#0f766e",
+          "strokeWidth": 2
+        }
+      }
+    },
+    "demo:model/node/2-2": {
+      "id": "demo:model/node/2-2",
+      "kind": "mind-child",
+      "cellType": "node",
+      "geometry": {
+        "x": 0,
+        "y": 0,
+        "width": 240,
+        "height": 48,
+        "derived": true,
+        "outline": "roundRectangle"
+      },
+      "content": {
+        "label": "Group：members 引用，可嵌套与独立锁定",
+        "text": {
+          "schemaVersion": 1,
+          "id": "demo:model/node/2-2/text",
+          "kind": "inline",
+          "plainText": "Group：members 引用，可嵌套与独立锁定",
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Group：members 引用，可嵌套与独立锁定",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "18px",
+                          "color": "#334155"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "appearance": {
+        "fill": "#ffffff",
+        "strokeColor": "#7c3aed",
+        "strokeWidth": 1
+      },
+      "data": {
+        "collapsed": false,
+        "branchAppearance": {
+          "strokeColor": "#7c3aed",
+          "strokeWidth": 2
+        }
+      }
+    },
+    "demo:model/node/1-3": {
+      "id": "demo:model/node/1-3",
+      "kind": "mind-child",
+      "cellType": "node",
+      "geometry": {
+        "x": 0,
+        "y": 0,
+        "width": 240,
+        "height": 48,
+        "derived": true,
+        "outline": "roundRectangle"
+      },
+      "content": {
+        "label": "归属 organization 独立于引用图",
+        "text": {
+          "schemaVersion": 1,
+          "id": "demo:model/node/1-3/text",
+          "kind": "inline",
+          "plainText": "归属 organization 独立于引用图",
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "归属 organization 独立于引用图",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "18px",
+                          "color": "#334155"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "appearance": {
+        "fill": "#ffffff",
+        "strokeColor": "#2563eb",
+        "strokeWidth": 1
+      },
+      "data": {
+        "collapsed": false,
+        "branchAppearance": {
+          "strokeColor": "#2563eb",
+          "strokeWidth": 2
+        }
+      }
+    },
+    "demo:model/node/0": {
+      "id": "demo:model/node/0",
+      "kind": "mind-child",
+      "cellType": "node",
+      "geometry": {
+        "x": 0,
+        "y": 0,
+        "width": 240,
+        "height": 48,
+        "derived": true,
+        "outline": "roundRectangle"
+      },
+      "content": {
+        "label": "公开快照",
+        "text": {
+          "schemaVersion": 1,
+          "id": "demo:model/node/0/text",
+          "kind": "inline",
+          "plainText": "公开快照",
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "公开快照",
+                    "marks": [
+                      {
+                        "type": "bold"
+                      },
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "20px",
+                          "color": "#0f766e"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "appearance": {
+        "fill": "#f0fdfa",
+        "strokeColor": "#0f766e",
+        "strokeWidth": 2
+      },
+      "data": {
+        "collapsed": false,
+        "branchAppearance": {
+          "strokeColor": "#0f766e",
+          "strokeWidth": 2
+        }
+      }
+    },
+    "demo:model/node/2-0": {
+      "id": "demo:model/node/2-0",
+      "kind": "mind-child",
+      "cellType": "node",
+      "geometry": {
+        "x": 0,
+        "y": 0,
+        "width": 240,
+        "height": 48,
+        "derived": true,
+        "outline": "roundRectangle"
+      },
+      "content": {
+        "label": "Node：geometry / appearance / ports / content",
+        "text": {
+          "schemaVersion": 1,
+          "id": "demo:model/node/2-0/text",
+          "kind": "inline",
+          "plainText": "Node：geometry / appearance / ports / content",
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Node：geometry / appearance / ports / content",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "18px",
+                          "color": "#334155"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "appearance": {
+        "fill": "#ffffff",
+        "strokeColor": "#7c3aed",
+        "strokeWidth": 1
+      },
+      "data": {
+        "collapsed": false,
+        "branchAppearance": {
+          "strokeColor": "#7c3aed",
+          "strokeWidth": 2
+        }
+      }
+    },
+    "demo:model/node/1-4": {
+      "id": "demo:model/node/1-4",
+      "kind": "mind-child",
+      "cellType": "node",
+      "geometry": {
+        "x": 0,
+        "y": 0,
+        "width": 240,
+        "height": 48,
+        "derived": true,
+        "outline": "roundRectangle"
+      },
+      "content": {
+        "label": "view.theme 持久化；camera 不持久化",
+        "text": {
+          "schemaVersion": 1,
+          "id": "demo:model/node/1-4/text",
+          "kind": "inline",
+          "plainText": "view.theme 持久化；camera 不持久化",
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "view.theme 持久化；camera 不持久化",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "18px",
+                          "color": "#334155"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "appearance": {
+        "fill": "#ffffff",
+        "strokeColor": "#2563eb",
+        "strokeWidth": 1
+      },
+      "data": {
+        "collapsed": false,
+        "branchAppearance": {
+          "strokeColor": "#2563eb",
+          "strokeWidth": 2
+        }
+      }
+    },
+    "demo:model/node/2-1": {
+      "id": "demo:model/node/2-1",
+      "kind": "mind-child",
+      "cellType": "node",
+      "geometry": {
+        "x": 0,
+        "y": 0,
+        "width": 240,
+        "height": 48,
+        "derived": true,
+        "outline": "roundRectangle"
+      },
+      "content": {
+        "label": "Edge：source / target / route / labels",
+        "text": {
+          "schemaVersion": 1,
+          "id": "demo:model/node/2-1/text",
+          "kind": "inline",
+          "plainText": "Edge：source / target / route / labels",
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Edge：source / target / route / labels",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "18px",
+                          "color": "#334155"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "appearance": {
+        "fill": "#ffffff",
+        "strokeColor": "#7c3aed",
+        "strokeWidth": 1
+      },
+      "data": {
+        "collapsed": false,
+        "branchAppearance": {
+          "strokeColor": "#7c3aed",
+          "strokeWidth": 2
+        }
+      }
+    },
+    "demo:model/node/1": {
+      "id": "demo:model/node/1",
+      "kind": "mind-child",
+      "cellType": "node",
+      "geometry": {
+        "x": 0,
+        "y": 0,
+        "width": 240,
+        "height": 48,
+        "derived": true,
+        "outline": "roundRectangle"
+      },
+      "content": {
+        "label": "Frame 与所有权",
+        "text": {
+          "schemaVersion": 1,
+          "id": "demo:model/node/1/text",
+          "kind": "inline",
+          "plainText": "Frame 与所有权",
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Frame 与所有权",
+                    "marks": [
+                      {
+                        "type": "bold"
+                      },
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "20px",
+                          "color": "#2563eb"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "appearance": {
+        "fill": "#f0fdfa",
+        "strokeColor": "#2563eb",
+        "strokeWidth": 2
+      },
+      "data": {
+        "collapsed": false,
+        "branchAppearance": {
+          "strokeColor": "#2563eb",
+          "strokeWidth": 2
+        }
+      }
+    },
+    "demo:model/node/2-3": {
+      "id": "demo:model/node/2-3",
+      "kind": "mind-child",
+      "cellType": "node",
+      "geometry": {
+        "x": 0,
+        "y": 0,
+        "width": 240,
+        "height": 48,
+        "derived": true,
+        "outline": "roundRectangle"
+      },
+      "content": {
+        "label": "对齐、分布、自动排列；Mind 保持树布局",
+        "text": {
+          "schemaVersion": 1,
+          "id": "demo:model/node/2-3/text",
+          "kind": "inline",
+          "plainText": "对齐、分布、自动排列；Mind 保持树布局",
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "对齐、分布、自动排列；Mind 保持树布局",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "18px",
+                          "color": "#334155"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "appearance": {
+        "fill": "#ffffff",
+        "strokeColor": "#7c3aed",
+        "strokeWidth": 1
+      },
+      "data": {
+        "collapsed": false,
+        "branchAppearance": {
+          "strokeColor": "#7c3aed",
+          "strokeWidth": 2
+        }
+      }
+    },
+    "demo:model/branch/0": {
+      "id": "demo:model/branch/0",
+      "kind": "mind-branch",
+      "cellType": "edge",
+      "source": {
+        "cellId": "demo:model/root"
+      },
+      "target": {
+        "cellId": "demo:model/node/0"
+      },
+      "route": {
+        "mode": "auto"
+      },
+      "data": {
+        "order": "00000000"
+      },
+      "appearance": {
+        "strokeColor": "#0f766e",
+        "strokeWidth": 2
+      }
+    },
+    "demo:model/branch/0-0": {
+      "id": "demo:model/branch/0-0",
+      "kind": "mind-branch",
+      "cellType": "edge",
+      "source": {
+        "cellId": "demo:model/node/0"
+      },
+      "target": {
+        "cellId": "demo:model/node/0-0"
+      },
+      "route": {
+        "mode": "auto"
+      },
+      "data": {
+        "order": "00000000"
+      },
+      "appearance": {
+        "strokeColor": "#0f766e",
+        "strokeWidth": 2
+      }
+    },
+    "demo:model/branch/0-1": {
+      "id": "demo:model/branch/0-1",
+      "kind": "mind-branch",
+      "cellType": "edge",
+      "source": {
+        "cellId": "demo:model/node/0"
+      },
+      "target": {
+        "cellId": "demo:model/node/0-1"
+      },
+      "route": {
+        "mode": "auto"
+      },
+      "data": {
+        "order": "00000001"
+      },
+      "appearance": {
+        "strokeColor": "#0f766e",
+        "strokeWidth": 2
+      }
+    },
+    "demo:model/branch/0-2": {
+      "id": "demo:model/branch/0-2",
+      "kind": "mind-branch",
+      "cellType": "edge",
+      "source": {
+        "cellId": "demo:model/node/0"
+      },
+      "target": {
+        "cellId": "demo:model/node/0-2"
+      },
+      "route": {
+        "mode": "auto"
+      },
+      "data": {
+        "order": "00000002"
+      },
+      "appearance": {
+        "strokeColor": "#0f766e",
+        "strokeWidth": 2
+      }
+    },
+    "demo:model/branch/1": {
+      "id": "demo:model/branch/1",
+      "kind": "mind-branch",
+      "cellType": "edge",
+      "source": {
+        "cellId": "demo:model/root"
+      },
+      "target": {
+        "cellId": "demo:model/node/1"
+      },
+      "route": {
+        "mode": "auto"
+      },
+      "data": {
+        "order": "00000001"
+      },
+      "appearance": {
+        "strokeColor": "#2563eb",
+        "strokeWidth": 2
+      }
+    },
+    "demo:model/branch/1-0": {
+      "id": "demo:model/branch/1-0",
+      "kind": "mind-branch",
+      "cellType": "edge",
+      "source": {
+        "cellId": "demo:model/node/1"
+      },
+      "target": {
+        "cellId": "demo:model/node/1-0"
+      },
+      "route": {
+        "mode": "auto"
+      },
+      "data": {
+        "order": "00000000"
+      },
+      "appearance": {
+        "strokeColor": "#2563eb",
+        "strokeWidth": 2
+      }
+    },
+    "demo:model/branch/1-1": {
+      "id": "demo:model/branch/1-1",
+      "kind": "mind-branch",
+      "cellType": "edge",
+      "source": {
+        "cellId": "demo:model/node/1"
+      },
+      "target": {
+        "cellId": "demo:model/node/1-1"
+      },
+      "route": {
+        "mode": "auto"
+      },
+      "data": {
+        "order": "00000001"
+      },
+      "appearance": {
+        "strokeColor": "#2563eb",
+        "strokeWidth": 2
+      }
+    },
+    "demo:model/branch/1-2": {
+      "id": "demo:model/branch/1-2",
+      "kind": "mind-branch",
+      "cellType": "edge",
+      "source": {
+        "cellId": "demo:model/node/1"
+      },
+      "target": {
+        "cellId": "demo:model/node/1-2"
+      },
+      "route": {
+        "mode": "auto"
+      },
+      "data": {
+        "order": "00000002"
+      },
+      "appearance": {
+        "strokeColor": "#2563eb",
+        "strokeWidth": 2
+      }
+    },
+    "demo:model/branch/1-3": {
+      "id": "demo:model/branch/1-3",
+      "kind": "mind-branch",
+      "cellType": "edge",
+      "source": {
+        "cellId": "demo:model/node/1"
+      },
+      "target": {
+        "cellId": "demo:model/node/1-3"
+      },
+      "route": {
+        "mode": "auto"
+      },
+      "data": {
+        "order": "00000003"
+      },
+      "appearance": {
+        "strokeColor": "#2563eb",
+        "strokeWidth": 2
+      }
+    },
+    "demo:model/branch/1-4": {
+      "id": "demo:model/branch/1-4",
+      "kind": "mind-branch",
+      "cellType": "edge",
+      "source": {
+        "cellId": "demo:model/node/1"
+      },
+      "target": {
+        "cellId": "demo:model/node/1-4"
+      },
+      "route": {
+        "mode": "auto"
+      },
+      "data": {
+        "order": "00000004"
+      },
+      "appearance": {
+        "strokeColor": "#2563eb",
+        "strokeWidth": 2
+      }
+    },
+    "demo:model/branch/2": {
+      "id": "demo:model/branch/2",
+      "kind": "mind-branch",
+      "cellType": "edge",
+      "source": {
+        "cellId": "demo:model/root"
+      },
+      "target": {
+        "cellId": "demo:model/node/2"
+      },
+      "route": {
+        "mode": "auto"
+      },
+      "data": {
+        "order": "00000002"
+      },
+      "appearance": {
+        "strokeColor": "#7c3aed",
+        "strokeWidth": 2
+      }
+    },
+    "demo:model/branch/2-0": {
+      "id": "demo:model/branch/2-0",
+      "kind": "mind-branch",
+      "cellType": "edge",
+      "source": {
+        "cellId": "demo:model/node/2"
+      },
+      "target": {
+        "cellId": "demo:model/node/2-0"
+      },
+      "route": {
+        "mode": "auto"
+      },
+      "data": {
+        "order": "00000000"
+      },
+      "appearance": {
+        "strokeColor": "#7c3aed",
+        "strokeWidth": 2
+      }
+    },
+    "demo:model/branch/2-1": {
+      "id": "demo:model/branch/2-1",
+      "kind": "mind-branch",
+      "cellType": "edge",
+      "source": {
+        "cellId": "demo:model/node/2"
+      },
+      "target": {
+        "cellId": "demo:model/node/2-1"
+      },
+      "route": {
+        "mode": "auto"
+      },
+      "data": {
+        "order": "00000001"
+      },
+      "appearance": {
+        "strokeColor": "#7c3aed",
+        "strokeWidth": 2
+      }
+    },
+    "demo:model/branch/2-2": {
+      "id": "demo:model/branch/2-2",
+      "kind": "mind-branch",
+      "cellType": "edge",
+      "source": {
+        "cellId": "demo:model/node/2"
+      },
+      "target": {
+        "cellId": "demo:model/node/2-2"
+      },
+      "route": {
+        "mode": "auto"
+      },
+      "data": {
+        "order": "00000002"
+      },
+      "appearance": {
+        "strokeColor": "#7c3aed",
+        "strokeWidth": 2
+      }
+    },
+    "demo:model/branch/2-3": {
+      "id": "demo:model/branch/2-3",
+      "kind": "mind-branch",
+      "cellType": "edge",
+      "source": {
+        "cellId": "demo:model/node/2"
+      },
+      "target": {
+        "cellId": "demo:model/node/2-3"
+      },
+      "route": {
+        "mode": "auto"
+      },
+      "data": {
+        "order": "00000003"
+      },
+      "appearance": {
+        "strokeColor": "#7c3aed",
+        "strokeWidth": 2
+      }
+    },
+    "project:detail/03/01/document": {
+      "id": "project:detail/03/01/document",
+      "cellType": "node",
+      "kind": "document-reference",
+      "geometry": {
+        "x": 0,
+        "y": 1080,
+        "width": 1000,
+        "height": 620
+      },
+      "data": {
+        "targetDocumentId": "project-doc:packages/board/canvas-modes"
+      },
+      "content": {
+        "text": {
+          "schemaVersion": 1,
+          "id": "project:detail/03/01/document/links",
+          "kind": "block",
+          "align": "left",
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "读图：扁平 CellStore 保存内容；children 与 groups 表达不同关系。"
+                  }
+                ]
+              },
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "返回专题总览",
+                    "marks": [
+                      {
+                        "type": "link",
+                        "attrs": {
+                          "href": "verd://file/board%2F5%3AYbbcn"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "相关细节：文件与运行时边界",
+                    "marks": [
+                      {
+                        "type": "link",
+                        "attrs": {
+                          "href": "verd://file/project%3Adetail%2F03%2F03"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "相关细节：领域场景与图文引用",
+                    "marks": [
+                      {
+                        "type": "link",
+                        "attrs": {
+                          "href": "verd://file/project%3Adetail%2F03%2F02"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "AI画布数据规范 · 2. 数据模型速览",
+                    "marks": [
+                      {
+                        "type": "link",
+                        "attrs": {
+                          "href": "verd://file/project-doc%3Aguides%2Fai-canvas-data-spec#2-%E6%95%B0%E6%8D%AE%E6%A8%A1%E5%9E%8B%E9%80%9F%E8%A7%88"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "AI画布数据规范 · 4. 通用字段表",
+                    "marks": [
+                      {
+                        "type": "link",
+                        "attrs": {
+                          "href": "verd://file/project-doc%3Aguides%2Fai-canvas-data-spec#4-%E9%80%9A%E7%94%A8%E5%AD%97%E6%AE%B5%E8%A1%A8"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "源码入口：packages/engine/core/src/cell/types.ts；packages/product/app/src/frames/frame-files.ts。"
+                  }
+                ]
+              }
+            ]
+          },
+          "plainText": "读图：扁平 CellStore 保存内容；children 与 groups 表达不同关系。\n返回专题总览\n相关细节：文件与运行时边界\n相关细节：领域场景与图文引用\nAI画布数据规范 · 2. 数据模型速览\nAI画布数据规范 · 4. 通用字段表\n源码入口：packages/engine/core/src/cell/types.ts；packages/product/app/src/frames/frame-files.ts。"
+        }
+      }
+    }
+  },
+  "organization": {
+    "kind": "standalone"
+  }
+}

@@ -22,10 +22,15 @@ it('refuses a missing domain with diagnostics and zero writes, then opens the sa
   const session = await openWorkspaceSession(host, handle, { registry });
   const canvas = createCanvasSession({ session, registry });
   const result = canvas.openFile('uml-file');
-  expect(result).toMatchObject({
-    ok: false,
-    code: 'UNREGISTERED_CELL_KINDS',
-    kinds: ['uml-sequence-root'],
+  expect(result.ok).toBe(false);
+  // Workspace validation now isolates unavailable plugins before an editor opens.
+  expect(session.getState().failedFiles.get('uml.verd.json')).toMatchObject({
+    fileId: 'uml-file',
+    diagnostics: expect.arrayContaining([
+      expect.objectContaining({
+        message: expect.stringContaining('uml-sequence-root'),
+      }),
+    ]),
   });
   expect(canvas.active()).toBeUndefined();
   await session.flush();

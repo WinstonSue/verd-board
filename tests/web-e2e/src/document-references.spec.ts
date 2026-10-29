@@ -200,7 +200,7 @@ for (const scene of [
     await expect(reader.locator('table')).toContainText('Table value');
     await expect(reader.locator('pre')).toContainText('nativePreview');
     await expect(reader.locator('.workspace-canvas-reference')).toContainText(
-      '已在当前预览路径',
+      scene === 'whiteboard-basic' ? frame.frame.name : '已在当前预览路径',
     );
     await expect(active(page).locator('svg[role="application"]')).toHaveCount(
       1,
@@ -233,7 +233,7 @@ for (const scene of [
       expect(frozenOffset).toBe(`translate(0px, -${offset}px)`);
       expect(svg).not.toContain('data-document-header-actions');
     }
-    await cardNode.getByRole('button', { name: '打开引用详情' }).click();
+    await cardNode.getByRole('button', { name: '打开详情' }).first().click();
     await expect(active(page).locator('.document-page__title')).toHaveValue(
       doc.title,
     );
@@ -283,7 +283,7 @@ test('inserts both directions through the UI, updates source previews and preser
     .locator('[data-cell-kind="document-reference"]')
     .first();
   await expect(card).toContainText('Original shared source');
-  await card.getByRole('button', { name: '打开引用详情' }).click();
+  await card.getByRole('button', { name: '打开详情' }).first().click();
   const editor = active(page).locator('.board-document-content').first();
   await editor.click();
   await page.keyboard.press('ControlOrMeta+End');
@@ -298,7 +298,10 @@ test('inserts both directions through the UI, updates source previews and preser
   await expect(editor.locator('[data-frame-reference]')).toHaveCount(1);
   await openFrame(page, frame.frame.name);
   await expect(card).toContainText('Updated source');
-  await expect(card).toContainText('已在当前预览路径');
+  await expect(card.locator('.workspace-canvas-reference')).toContainText(
+    frame.frame.name,
+  );
+  await expect(card.locator('svg[data-surface]')).toHaveCount(0);
   const bundle = await downloadNative(page);
   expect(bundle.format).toBe('verd-canvas-bundle');
   expect(

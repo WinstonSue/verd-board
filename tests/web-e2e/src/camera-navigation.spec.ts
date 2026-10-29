@@ -351,7 +351,7 @@ test('camera navigation never saves, left tooltips sit beside icons, and selecti
   if (await skip.isVisible().catch(() => false)) await skip.click();
   const undo = page.getByRole('button', { name: '撤销', exact: true });
   await expect(undo).toBeDisabled();
-  await undo.hover();
+  await undo.locator('..').hover();
   await expect(page.getByRole('tooltip')).toContainText('撤销');
   await page.keyboard.press('Escape');
   const hand = page.getByRole('button', { name: '手型', exact: true });
@@ -510,10 +510,10 @@ test('nested details return one level at a time and focus the opened shell', asy
   // the shell's bottom margin, the only part left uncovered by content —
   // off-center, since the selected frame's resize handle sits at mid-bottom.
   const openByShell = async (frame: Locator) => {
-    const box = (await frame
-      .locator(':scope > [data-frame-shell]')
-      .boundingBox())!;
-    await page.mouse.dblclick(box.x + box.width / 4, box.y + box.height - 4);
+    await frame
+      .getByRole('button', { name: '打开详情', exact: true })
+      .first()
+      .click();
   };
   await openByShell(outer);
   await expect(

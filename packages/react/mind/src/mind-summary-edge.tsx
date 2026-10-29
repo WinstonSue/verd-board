@@ -1,10 +1,16 @@
-import { isEdgeCell, type EdgeCell, type Point } from '@sue/board-core';
+import {
+  isEdgeCell,
+  resolveCellAppearance,
+  resolveBoardTheme,
+  type EdgeCell,
+  type Point,
+} from '@sue/board-core';
 import {
   mindSummaryGeometry,
   setMindSummaryRange,
   type MindSummaryData,
 } from '@sue/board-mind';
-import { useFrameSelection, type FrameRenderContext } from '@sue/board-react';
+import { type FrameRenderContext } from '@sue/board-react';
 import { memo, useMemo, useRef, useState, type PointerEvent } from 'react';
 
 const VisibleBracket = memo(function VisibleBracket({
@@ -34,7 +40,7 @@ const VisibleBracket = memo(function VisibleBracket({
 
 export function MindSummaryEdge(context: FrameRenderContext) {
   const { store, cell, scale, getGeometry, dispatch } = context;
-  const selection = useFrameSelection();
+  const selectionIds = context.selectionIds ?? [];
   const group = useRef<SVGGElement>(null);
   const drag = useRef<
     | {
@@ -63,9 +69,11 @@ export function MindSummaryEdge(context: FrameRenderContext) {
   const edge = cell as EdgeCell<MindSummaryData>;
   if (!bracket) return null;
   const selected =
-    context.selected || selection.ids.includes(cell.target.cellId);
+    context.selected || selectionIds.includes(cell.target.cellId);
   const writable = !context.readonly && !context.pending && !cell.locked;
-  const stroke = cell.appearance?.strokeColor ?? '#64748b';
+  const stroke =
+    resolveCellAppearance(cell, context.theme ?? resolveBoardTheme())
+      .strokeColor ?? '#64748b';
   const begin = (event: PointerEvent<SVGElement>, end: 'start' | 'end') => {
     if (!writable || event.button !== 0) return;
     const matrix = group.current?.getScreenCTM()?.inverse();

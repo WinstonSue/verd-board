@@ -183,6 +183,7 @@ export function FrameActionsPopover({
           controller={controller}
         />
         <FrameSelectionAppearance
+          controller={controller}
           store={store}
           ids={selection.ids}
           single={false}

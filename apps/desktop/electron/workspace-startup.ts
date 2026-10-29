@@ -153,7 +153,8 @@ export function createDesktopWorkspaceManager(options: {
   defaultRoot(): string;
   builtinSource(): string;
   legacyStorage(): string;
-  development: boolean;
+  /** Former shared development/production data; recover as history, never select. */
+  legacyUserDataRoot?: string;
   explicitRoot?: string;
   pickDirectory(): Promise<string | null>;
   now?(): number;
@@ -161,6 +162,7 @@ export function createDesktopWorkspaceManager(options: {
   const candidates = new Map<string, { root: string; isDefault: boolean }>();
   const opening = new Map<string, Promise<WorkspaceHandle | null>>();
   let preparing: Promise<void> | undefined;
+  let recovering: Promise<void> | undefined;
   const readHistory = (value: Record<string, unknown>) => {
     const entries = new Map<string, StoredWorkspaceHistory>();
     const builtin = path.resolve(options.defaultRoot());
@@ -196,8 +198,60 @@ export function createDesktopWorkspaceManager(options: {
       (a, b) => b.lastOpenedAt - a.lastOpenedAt,
     );
   };
+  const recoverLegacyHistory = async () => {
+    if (!options.legacyUserDataRoot) return;
+    recovering ??= (async () => {
+      const marker = 'desktopLegacyHistoryImported';
+      if ((await options.host.readGlobalConfig()).value[marker]) return;
+      const oldRoot = options.legacyUserDataRoot!;
+      let oldConfig: Record<string, unknown> = {};
+      try {
+        const stored = JSON.parse(
+          await fs.readFile(
+            path.join(oldRoot, 'verdboard-global-config.json'),
+            'utf8',
+          ),
+        );
+        if (stored?.value && typeof stored.value === 'object')
+          oldConfig = stored.value;
+      } catch (error) {
+        if ((error as NodeJS.ErrnoException).code !== 'ENOENT')
+          console.warn(
+            'Could not read old workspace history; original file preserved',
+            error,
+          );
+      }
+      const recovered = readHistory(oldConfig);
+      const oldDefault = path.join(oldRoot, 'workspaces', 'default');
+      if (await hasWorkspaceState(oldDefault))
+        recovered.push({
+          id: historyIdFor(oldDefault),
+          path: oldDefault,
+          name: '旧工作区 (desktop)',
+          lastOpenedAt: 0,
+        });
+      for (let attempt = 0; attempt < 3; attempt++) {
+        const config = await options.host.readGlobalConfig();
+        if (config.value[marker]) return;
+        const history = readHistory({
+          [historyKey]: [...readHistory(config.value), ...recovered],
+        });
+        const result = await options.host.writeGlobalConfig(
+          { ...config.value, [historyKey]: history, [marker]: true },
+          config.version,
+        );
+        if (result.applied) return;
+      }
+      throw new Error('Could not recover old workspace history');
+    })().catch((error) => {
+      recovering = undefined;
+      throw error;
+    });
+    await recovering;
+  };
   return {
     async listHistory(): Promise<WorkspaceHistoryEntry[]> {
+      await recoverLegacyHistory();
       const entries = readHistory(
         (await options.host.readGlobalConfig()).value,
       );
@@ -231,7 +285,9 @@ export function createDesktopWorkspaceManager(options: {
     async open(
       request?: OpenWorkspaceRequest,
     ): Promise<WorkspaceHandle | null> {
+      await recoverLegacyHistory();
       let root: string;
+      let name = request?.name;
       let isDefault = false;
       let create = request?.create !== false;
       if (request?.historyId !== undefined) {
@@ -241,6 +297,7 @@ export function createDesktopWorkspaceManager(options: {
         const entry = entries.find((item) => item.id === request.historyId);
         if (!entry) throw new Error('Unknown workspace history entry');
         root = entry.path;
+        name = entry.name;
         create = false;
       } else if (request?.pick) {
         const picked = await options.pickDirectory();
@@ -280,7 +337,7 @@ export function createDesktopWorkspaceManager(options: {
         path.resolve(root) === path.resolve(options.defaultRoot())
       )
         isDefault = true;
-      if (isDefault && !options.development) {
+      if (isDefault) {
         preparing ??= seedBuiltinWorkspace(
           options.builtinSource(),
           root,
@@ -295,7 +352,7 @@ export function createDesktopWorkspaceManager(options: {
         pending = options.host.openWorkspace({
           path: root,
           create,
-          name: request?.name,
+          name,
         });
         opening.set(root, pending);
       }

@@ -11,6 +11,10 @@ apps/*/dist
 test-results
 playwright-report
 
+# Desktop installers and archived build outputs
+/apps/desktop/release/
+/apps/desktop/release-history/
+
 # dependencies
 node_modules
 .pnpm-store/
@@ -59,3 +63,7 @@ Thumbs.db
 .cursor/*
 !.cursor/rules/
 !.cursor/rules/*.mdc
+
+# Isolated Electron development and automation output
+/apps/desktop/dist-electron-dev/
+/apps/desktop/dist-electron-e2e/

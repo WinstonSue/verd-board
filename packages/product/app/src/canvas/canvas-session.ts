@@ -278,7 +278,7 @@ export const createCanvasSession = (options: {
     refId: CellId,
     parentId?: OccurrenceId,
     appearance?: readonly CellId[],
-    options?: { activate?: boolean },
+    options?: { activate?: boolean; edit?: boolean },
   ): OccurrenceOpenResult => {
     const shouldActivate = options?.activate !== false;
     const parent =
@@ -296,6 +296,14 @@ export const createCanvasSession = (options: {
     const id = refOccurrenceId(ownerFileId, refId, appearancePath);
     const existing = occurrences.get(id);
     if (existing) {
+      if (
+        options?.edit &&
+        existing.contentReadonly &&
+        !parentOccurrence?.contentReadonly
+      ) {
+        existing.contentReadonly = false;
+        emit();
+      }
       if (shouldActivate) activate(id);
       return { ok: true, occurrence: existing };
     }
@@ -321,7 +329,8 @@ export const createCanvasSession = (options: {
       parentId: parent,
       appearancePath,
       contentReadonly:
-        isRegularCanvas(entry.file) || !!parentOccurrence?.contentReadonly,
+        (!options?.edit && isRegularCanvas(entry.file)) ||
+        !!parentOccurrence?.contentReadonly,
       runtime,
       file: entry.file,
     });

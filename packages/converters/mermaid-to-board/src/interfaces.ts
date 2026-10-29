@@ -14,7 +14,16 @@ export enum CONTAINER_STYLE_PROPERTY {
   STROKE_WIDTH = 'stroke-width',
   STROKE_DASHARRAY = 'stroke-dasharray',
 }
+/** Explicit Mermaid declarations, excluding renderer/theme defaults. */
+export interface AuthoredStyle {
+  fill?: string;
+  stroke?: string;
+  color?: string;
+  'stroke-width'?: string;
+  'stroke-dasharray'?: string;
+}
 export interface Vertex {
+  authoredStyle?: AuthoredStyle;
   id: string;
   type: VERTEX_TYPE;
   labelType: string;
@@ -29,6 +38,7 @@ export interface Vertex {
 }
 
 export interface SubGraph {
+  authoredStyle?: AuthoredStyle;
   id: string;
   nodeIds: string[];
   text: string;

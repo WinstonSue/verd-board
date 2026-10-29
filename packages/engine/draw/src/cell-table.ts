@@ -424,14 +424,28 @@ export function splitTableEntry(
 export function updateTableEntries(
   cell: NodeCell<TableCellData>,
   ids: string[],
-  patch: Partial<Pick<TableEntry, 'fill' | 'textDirection'>>,
+  patch: Partial<Pick<TableEntry, 'fill' | 'fillSource' | 'textDirection'>>,
 ): NodeCell<TableCellData> {
   return {
     ...cell,
     data: {
       ...cell.data!,
       cells: cell.data!.cells.map((entry) =>
-        ids.includes(entry.id) ? { ...entry, ...patch } : entry,
+        ids.includes(entry.id)
+          ? {
+              ...entry,
+              ...patch,
+              ...(Object.hasOwn(patch, 'fill') &&
+              !Object.hasOwn(patch, 'fillSource')
+                ? {
+                    fillSource:
+                      patch.fill === undefined
+                        ? ('theme' as const)
+                        : ('custom' as const),
+                  }
+                : {}),
+            }
+          : entry,
       ),
     },
   };
@@ -504,7 +518,12 @@ export function createSwimlaneCell(
     kind: 'swimlane',
     cellType: 'node',
     geometry,
-    appearance: { fill: '#fff', strokeColor: '#64748b', strokeWidth: 1 },
+    appearance: {
+      fill: '#fff',
+      strokeColor: '#64748b',
+      strokeWidth: 1,
+      colorSources: { fill: 'theme', strokeColor: 'theme' },
+    },
     data: {
       rows: Array.from({ length: count }, (_, i) => ({ id: `${id}-r${i}` })),
       columns: Array.from({ length: header ? 3 : 2 }, (_, i) => ({

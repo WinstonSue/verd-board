@@ -210,7 +210,7 @@ test('document Frames edit one source, restore the originating occurrence and le
   await second.press('ControlOrMeta+Shift+z');
   await expect(shell(page, 'reader')).toContainText('second edit');
   await shell(page, 'editor-b')
-    .getByRole('button', { name: '打开引用详情', exact: true })
+    .getByRole('button', { name: '打开详情', exact: true })
     .click();
   await expect(active(page).locator('.document-page__title')).toHaveValue(
     'Shared source',
@@ -247,7 +247,7 @@ test('document header actions support keyboard navigation on locked and read-onl
   for (const id of ['reader', 'locked']) {
     const action = shell(page, id)
       .locator('[data-document-header-actions]')
-      .getByRole('button', { name: '打开引用详情', exact: true });
+      .getByRole('button', { name: '打开详情', exact: true });
     await action.focus();
     await action.press('Enter');
     await expect(active(page).locator('.document-page__title')).toHaveValue(
@@ -264,7 +264,7 @@ test('document header actions support keyboard navigation on locked and read-onl
   await setAppLanguage(page, 'en');
   await expect(
     shell(page, 'reader').getByRole('button', {
-      name: 'Open reference details',
+      name: 'Open details',
       exact: true,
     }),
   ).toBeVisible();

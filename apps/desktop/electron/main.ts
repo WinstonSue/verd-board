@@ -1,5 +1,6 @@
 import { app, BrowserWindow, dialog, ipcMain, session, shell } from 'electron';
 import * as path from 'path';
+import { configureApplicationIdentity } from './application-identity';
 import {
   contentSecurityPolicy,
   shouldAttachContentSecurityPolicy,
@@ -19,6 +20,12 @@ import {
 import { createFsWorkspaceHost } from './workspace-host-fs';
 import { createDesktopWorkspaceManager } from './workspace-startup';
 
+const { legacyUserDataRoot } = configureApplicationIdentity(app);
+const applicationIcon = path.join(
+  __dirname,
+  app.isPackaged ? '../build/icon.png' : '../build/icon-dev.png',
+);
+
 let mainWindow: BrowserWindow | null = null;
 let fullscreenReady = (): Promise<void> => Promise.resolve();
 let quitting = false;
@@ -32,11 +39,8 @@ const enqueueStorageWrite = createSerialQueue();
  * File-per-workspace host shared by every window; the renderer only ever
  * holds opaque handle keys and workspace-relative paths.
  */
-const development = !!process.env['VITE_DEV_SERVER_URL'];
 const defaultWorkspaceRoot = () =>
-  development
-    ? path.resolve(__dirname, '../../../workspace')
-    : path.join(app.getPath('userData'), 'workspaces', 'default');
+  path.join(app.getPath('userData'), 'workspaces', 'default');
 const pickWorkspaceDirectory = async () => {
   const options: Electron.OpenDialogOptions = {
     properties: ['openDirectory', 'createDirectory'],
@@ -63,7 +67,7 @@ const workspaceManager = createDesktopWorkspaceManager({
         ? path.join(process.resourcesPath, 'workspace')
         : path.resolve(__dirname, '../../../workspace'),
   legacyStorage: () => storagePath,
-  development,
+  legacyUserDataRoot,
   explicitRoot: process.env['VERDBOARD_WORKSPACE_PATH'],
   pickDirectory: pickWorkspaceDirectory,
 });
@@ -160,6 +164,8 @@ function installContentSecurityPolicy(devServerUrl?: string) {
 
 function createWindow() {
   mainWindow = new BrowserWindow({
+    title: app.isPackaged ? '青编' : '[DEV] 青编',
+    icon: applicationIcon,
     width: 1200,
     minWidth: 800,
     height: 800,
@@ -173,6 +179,13 @@ function createWindow() {
       disableHtmlFullscreenWindowResize: process.platform === 'darwin',
     },
   });
+
+  if (!app.isPackaged) {
+    mainWindow.on('page-title-updated', (event, title) => {
+      event.preventDefault();
+      mainWindow?.setTitle(`[DEV] ${title.replace(/^\[DEV\]\s*/, '')}`);
+    });
+  }
 
   const transition = createFullscreenTransition();
   let nativeFullscreen = mainWindow.isFullScreen();
@@ -285,15 +298,11 @@ function createWindow() {
 }
 
 app.whenReady().then(async () => {
-  if (process.env['VITE_DEV_SERVER_URL']) {
-    storagePath = await resolveStoragePath(
-      path.join(__dirname, '..', STORAGE_FILE),
-    );
-  } else {
-    storagePath = await resolveStoragePath(
-      path.join(app.getPath('userData'), STORAGE_FILE),
-    );
-  }
+  // BrowserWindow.icon does not change the macOS Dock icon.
+  app.dock?.setIcon(applicationIcon);
+  storagePath = await resolveStoragePath(
+    path.join(app.getPath('userData'), STORAGE_FILE),
+  );
 
   console.log('Storage path:', storagePath);
 

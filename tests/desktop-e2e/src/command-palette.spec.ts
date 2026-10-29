@@ -1,4 +1,5 @@
-import { _electron as electron, expect, test } from '@playwright/test';
+import { electron, writeDesktopLauncher } from './desktop-launcher';
+import { expect, test } from '@playwright/test';
 import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -18,13 +19,9 @@ test('Desktop reload routes body keys to workspace and focused keys to the canva
     ),
   );
   const launcher = path.join(directory, 'launch.cjs');
-  await writeFile(
-    launcher,
-    `const {app} = require('electron');\napp.setPath('userData', ${JSON.stringify(userData)});\nrequire(${JSON.stringify(path.join(root, 'apps/desktop/dist-electron/main.js'))});\n`,
-  );
+  await writeDesktopLauncher(launcher, userData);
   const env = { ...process.env, VERDBOARD_WORKSPACE_PATH: workspace };
-  delete env.ELECTRON_RUN_AS_NODE;
-  delete env.VITE_DEV_SERVER_URL;
+
   const desktop = await electron.launch({ args: [launcher], env });
   try {
     const page = await desktop.firstWindow();

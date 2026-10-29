@@ -43,26 +43,29 @@
     "files": [
       "dist{,/**/*}",
       "dist-electron{,/{main,preload}.js}",
-      "!node_modules{,/**/*}"
+      "!node_modules{,/**/*}",
+      "build/icon.png"
     ],
     "mac": {
       "target": [
-        "dmg",
-        "zip"
+        "dmg"
       ],
-      "category": "public.app-category.graphics-design"
+      "category": "public.app-category.graphics-design",
+      "icon": "build/icon.icns"
     },
     "win": {
       "target": [
         "nsis",
         "zip"
-      ]
+      ],
+      "icon": "build/icon.ico"
     },
     "linux": {
       "target": [
         "AppImage",
         "deb"
-      ]
+      ],
+      "icon": "build/icon.png"
     },
     "extraResources": [
       {
@@ -75,6 +78,10 @@
           "!**/*.tmp"
         ]
       }
-    ]
-  }
+    ],
+    "dmg": {
+      "icon": "build/icon.icns"
+    }
+  },
+  "productName": "VerdBoard"
 }

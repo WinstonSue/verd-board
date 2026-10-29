@@ -1,10 +1,6 @@
-import {
-  _electron as electron,
-  expect,
-  test,
-  type ElectronApplication,
-} from '@playwright/test';
-import { cp, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { electron, writeDesktopLauncher } from './desktop-launcher';
+import { expect, test, type ElectronApplication } from '@playwright/test';
+import { cp, mkdtemp, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 
@@ -37,13 +33,9 @@ test('native project navigation includes both the canvas and document embeds wit
       readFile(documentPath, 'utf8'),
     ]);
     const launcher = path.join(directory, 'launch.cjs');
-    await writeFile(
-      launcher,
-      `const {app}=require('electron');\napp.setPath('userData',${JSON.stringify(path.join(directory, 'user-data'))});\nrequire(${JSON.stringify(path.join(root, 'apps/desktop/dist-electron/main.js'))});`,
-    );
+    await writeDesktopLauncher(launcher, path.join(directory, 'user-data'));
     const env = { ...process.env, VERDBOARD_WORKSPACE_PATH: workspace };
-    delete env.ELECTRON_RUN_AS_NODE;
-    delete env.VITE_DEV_SERVER_URL;
+
     desktop = await electron.launch({ args: [launcher], env });
     const page = await desktop.firstWindow();
     await desktop.evaluate(({ BrowserWindow }) =>

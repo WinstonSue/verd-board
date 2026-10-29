@@ -1,6 +1,7 @@
 import { StrokeStyle } from '@sue/board-common';
 import { entityCodesToText } from './utils.js';
 import { DEFAULT_FONT_SIZE } from './constants.js';
+import type { AuthoredStyle } from './interfaces';
 
 export type VerticalAlign = string;
 
@@ -27,6 +28,7 @@ export type Arrow = Omit<Line, 'type' | 'strokeStyle'> & {
 };
 
 export type Line = {
+  authoredStyle?: AuthoredStyle;
   type: 'line';
   startX: number;
   startY: number;
@@ -41,6 +43,7 @@ export type Line = {
 };
 
 export type Text = {
+  authoredStyle?: AuthoredStyle;
   type: 'text';
   text: string;
   x: number;
@@ -54,6 +57,7 @@ export type Text = {
 };
 
 export type Container = {
+  authoredStyle?: AuthoredStyle;
   type: 'rectangle' | 'ellipse';
   x: number;
   y: number;

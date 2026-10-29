@@ -25,6 +25,7 @@ import { parseWorkspaceLink, type ActionResult } from '@sue/board-common';
 import { createPreviewRevisions } from './preview-revisions';
 
 export interface PreviewOptions {
+  referenceCards?: boolean;
   snapshot: WorkspaceSessionSnapshot;
   open(fileId: string, anchor?: string | null): void;
   openLink(href: string, sourceId: string): void;
@@ -106,8 +107,8 @@ const documentScrollStyle: React.CSSProperties = {
   padding: 12,
   boxSizing: 'border-box',
   userSelect: 'text',
-  background: '#fff',
-  color: '#0f172a',
+  background: 'var(--board-surface, #fff)',
+  color: 'var(--board-text, #0f172a)',
   font: '14px/1.65 system-ui, sans-serif',
 };
 const embeddedEditorFocus = { autoFocus: false };
@@ -185,6 +186,7 @@ export function createWorkspaceDocumentPreviewCache() {
     const optionInputs = () => {
       const latest = entry.options;
       return [
+        latest.referenceCards,
         latest.active,
         latest.locale,
         latest.exporting,
@@ -293,6 +295,7 @@ export function createWorkspaceDocumentPreviewCache() {
           latest.path,
           targetId,
           referenceSeen,
+          latest.referenceCards,
         );
         const inputs = optionInputs();
         const held = versions.get(source);
@@ -349,17 +352,20 @@ function VisiblePreview({
   force,
   children,
   viewport,
+  retain = false,
 }: {
   active: boolean;
   force?: boolean;
   children: React.ReactNode;
   viewport?: React.RefObject<HTMLElement | null>;
+  retain?: boolean;
 }) {
   const root = useRef<HTMLDivElement>(null);
   const admitted = usePreviewMount({
     active,
     force,
     viewport: viewport ?? root,
+    retain,
   });
   return (
     <div ref={root} style={{ height: '100%', minHeight: 0 }}>
@@ -375,8 +381,7 @@ export function workspaceDocumentPreviews(
     editRequest: options.editRequest,
     title: (id) => options.snapshot.documents.get(id)?.file.title,
     renderHeaderActions: (props) => {
-      const openLabel =
-        options.locale === 'en' ? 'Open reference details' : '打开引用详情';
+      const openLabel = options.locale === 'en' ? 'Open details' : '打开详情';
       const exitLabel = options.locale === 'en' ? 'Finish editing' : '结束编辑';
       return (
         <>
@@ -397,7 +402,13 @@ export function workspaceDocumentPreviews(
             title={openLabel}
             aria-label={openLabel}
             disabled={!options.snapshot.documents.has(props.targetDocumentId)}
-            onClick={() => options.open(props.targetDocumentId)}
+            onClick={() =>
+              props.onOpenDetails
+                ? props.onOpenDetails(() =>
+                    options.open(props.targetDocumentId),
+                  )
+                : options.open(props.targetDocumentId)
+            }
           >
             <ExternalLink size={16} aria-hidden />
           </button>
@@ -419,7 +430,10 @@ export function workspaceDocumentPreviews(
         options.edit &&
         !options.path.includes(props.targetDocumentId) ? (
           <DocumentFrameEditor
-            options={options}
+            options={{
+              ...options,
+              referenceCards: props.referenceInteraction === 'details',
+            }}
             targetId={props.targetDocumentId}
             instanceId={props.instanceId}
             cellId={props.cellId}
@@ -432,6 +446,7 @@ export function workspaceDocumentPreviews(
             options={{
               ...options,
               active: options.active,
+              referenceCards: props.referenceInteraction === 'details',
               exporting: options.exporting || props.exporting,
               instance: JSON.stringify([options.instance, props.instanceId]),
             }}
@@ -530,10 +545,24 @@ function WorkspaceCanvasReferenceContent({
           disabled={!file}
           onClick={() => options.open(targetFrameId)}
         >
-          打开原图
+          {options.referenceCards
+            ? options.locale === 'en'
+              ? 'Open details'
+              : '打开详情'
+            : '打开原图'}
         </button>
       </div>
-      {file && !repeated ? (
+      {options.referenceCards ? (
+        <p
+          style={{
+            padding: '0 12px 12px',
+            margin: 0,
+            color: 'var(--board-text-secondary, #64748b)',
+          }}
+        >
+          {options.locale === 'en' ? 'Frame reference' : '图表引用'}
+        </p>
+      ) : file && !repeated ? (
         <div style={{ height: 360 }}>
           <VisiblePreview active={options.active} force={options.exporting}>
             <CanvasPreview
@@ -698,6 +727,7 @@ function DocumentReferencePreview({
             active={options.active}
             force={options.exporting}
             viewport={body}
+            retain
           >
             <DocumentPreview
               value={file.text}
@@ -893,7 +923,7 @@ function DocumentFrameEditor({
             zIndex: 1,
             margin: 0,
             padding: 6,
-            background: '#fff',
+            background: 'var(--board-surface, #fff)',
             border: '1px solid #cbd5e1',
             borderRadius: 6,
             boxShadow: '0 2px 8px #0002',

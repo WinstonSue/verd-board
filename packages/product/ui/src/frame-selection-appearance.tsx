@@ -1,5 +1,11 @@
-import { FrameAppearanceSettings } from '@sue/board-react';
 import {
+  FrameAppearanceSettings,
+  type FrameCanvasController,
+} from '@sue/board-react';
+import {
+  resolveBoardTheme,
+  resolveCellAppearance,
+  type BoardAppearance,
   appearanceCells,
   isDocumentCell,
   isFrameCell,
@@ -19,6 +25,9 @@ export function FrameSelectionAppearance({
   single,
   getStore,
   disabled = false,
+  appearance,
+  frameId,
+  controller,
 }: {
   store: CellStore;
   ids: readonly string[];
@@ -26,8 +35,16 @@ export function FrameSelectionAppearance({
   single: boolean;
   getStore?(): CellStore | undefined;
   disabled?: boolean;
+  appearance?: BoardAppearance;
+  frameId?: string;
+  controller?: FrameCanvasController | null;
 }) {
   const { language } = useI18n();
+  const frame = store.cells[frameId ?? store.rootId];
+  const theme = resolveBoardTheme(
+    isFrameCell(frame) ? frame.view?.theme : undefined,
+    appearance,
+  );
   const cells = appearanceCells(store, ids);
   if (!cells.length) return null;
   const frameLike = (cell: (typeof cells)[number]) =>
@@ -38,7 +55,8 @@ export function FrameSelectionAppearance({
     fallback: NodeAppearance[K],
   ) => {
     const resolved = (cell: (typeof cells)[number]) =>
-      (cell.appearance as NodeAppearance | undefined)?.[key] ??
+      (controller?.resolveAppearance?.(cell.id) ??
+        resolveCellAppearance(cell, theme))[key] ??
       ((frameLike(cell) && key === 'strokeWidth'
         ? 1
         : frameLike(cell) && key === 'strokeColor'
@@ -76,6 +94,10 @@ export function FrameSelectionAppearance({
         change(patch);
       }}
       onClear={(key) => change({ [key]: 'none' })}
+      onSetColor={(key, value) => change({ [key]: value })}
+      onResetColor={(key) =>
+        change({ [key]: undefined, colorSources: { [key]: 'theme' } })
+      }
     />
   );
 }

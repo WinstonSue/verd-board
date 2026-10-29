@@ -1,10 +1,6 @@
-import {
-  _electron as electron,
-  expect,
-  test,
-  type ElectronApplication,
-} from '@playwright/test';
-import { cp, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { electron, writeDesktopLauncher } from './desktop-launcher';
+import { expect, test, type ElectronApplication } from '@playwright/test';
+import { cp, mkdtemp, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { setAppLanguage } from '../../web-e2e/src/app-actions';
@@ -25,16 +21,15 @@ test('package connectors keep canonical routes, show bridges and highlight relat
           .split(path.sep)
           .includes('.verdboard'),
     });
-    const filename = path.join(workspace, '架构图/01-项目分层与依赖.verd.json');
+    const filename = path.join(
+      workspace,
+      '架构图/细节/01-项目分层与依赖/01.1-完整包分层与依赖.verd.json',
+    );
     const original = await readFile(filename, 'utf8');
     const launcher = path.join(directory, 'launch.cjs');
-    await writeFile(
-      launcher,
-      `const {app}=require('electron');\napp.setPath('userData',${JSON.stringify(userData)});\nrequire(${JSON.stringify(path.join(root, 'apps/desktop/dist-electron/main.js'))});`,
-    );
+    await writeDesktopLauncher(launcher, userData);
     const env = { ...process.env, VERDBOARD_WORKSPACE_PATH: workspace };
-    delete env.ELECTRON_RUN_AS_NODE;
-    delete env.VITE_DEV_SERVER_URL;
+
     const launch = async () => {
       desktop = await electron.launch({ args: [launcher], env });
       const page = await desktop.firstWindow();
@@ -50,10 +45,24 @@ test('package connectors keep canonical routes, show bridges and highlight relat
       if (!(await file.isVisible()))
         await page.getByRole('button', { name: '架构图', exact: true }).click();
       await file.click();
+      await page
+        .locator(
+          '.workspace-pane.is-active [data-cell-id="project:overview/01/detail/1"] > [data-frame-header] > [data-frame-title-id] > rect',
+        )
+        .first()
+        .click();
+      await page
+        .locator('.workspace-pane.is-active')
+        .getByTestId('frame-open')
+        .click();
       const canvas = page.locator(
-        '.workspace-pane.is-active svg[aria-label="Frame canvas"][data-surface="root"]',
+        '.workspace-pane.is-active svg[aria-label="Frame canvas"][data-surface="root"][data-instance-id="project:detail/01/01"]',
       );
-      await expect(canvas.locator('[data-edge-hit]')).toHaveCount(41);
+      await expect(
+        canvas.locator(
+          '[data-edge-hit]:not([data-document-preview-scroll] [data-edge-hit])',
+        ),
+      ).toHaveCount(41);
       await setAppLanguage(page, 'zh');
       await page
         .getByTestId('canvas-status-fit')
@@ -63,24 +72,43 @@ test('package connectors keep canonical routes, show bridges and highlight relat
     };
     const { page, canvas } = await launch();
     const paths = await canvas
-      .locator('[data-edge-hit]')
+      .locator(
+        '[data-edge-hit]:not([data-document-preview-scroll] [data-edge-hit])',
+      )
       .evaluateAll((elements) =>
         elements.map((element) => element.getAttribute('d')),
       );
     expect(
       await canvas
-        .locator('[data-edge-display]')
+        .locator(
+          '[data-edge-display]:not([data-document-preview-scroll] [data-edge-display])',
+        )
         .evaluateAll((elements) =>
           elements.some((element) => element.getAttribute('d')?.includes(' A')),
         ),
     ).toBe(true);
     await page.screenshot({ path: info.outputPath('desktop-package-fit.png') });
-    const connector = canvas.locator('[data-cell-id="demo:packages/edge/23"]');
-    expect(
-      (await connector.locator('[data-edge-hit]').getAttribute('d'))!.match(
-        /L/g,
-      ),
-    ).toHaveLength(3);
+    const connector = canvas
+      .locator('[data-cell-id="demo:packages/edge/23"]')
+      .first();
+    const route = (await connector
+      .locator(
+        '[data-edge-hit]:not([data-document-preview-scroll] [data-edge-hit])',
+      )
+      .getAttribute('d'))!;
+    // Routing may add detours around obstacles. Assert orthogonality rather
+    // than a segment count tied to an older layout of the package diagram.
+    expect(route).toMatch(/^[ML0-9eE.,\s+-]+$/);
+    const coordinates = (
+      route.match(/-?\d+(?:\.\d+)?(?:e[+-]?\d+)?/gi) ?? []
+    ).map(Number);
+    expect(coordinates.length).toBeGreaterThanOrEqual(4);
+    expect(coordinates.length % 2).toBe(0);
+    for (let index = 2; index < coordinates.length; index += 2)
+      expect(
+        coordinates[index] === coordinates[index - 2] ||
+          coordinates[index + 1] === coordinates[index - 1],
+      ).toBe(true);
     await connector.dispatchEvent('pointerover');
     await expect(
       canvas.locator('[data-relation-highlight="node"]'),
@@ -106,9 +134,9 @@ test('package connectors keep canonical routes, show bridges and highlight relat
       path: info.outputPath('desktop-package-relationship.png'),
     });
     await connector.dispatchEvent('pointerout');
-    const focusNode = canvas.locator(
-      '[data-cell-id="demo:packages/module/@sue/board-mind"]',
-    );
+    const focusNode = canvas
+      .locator('[data-cell-id="demo:packages/module/@sue/board-mind"]')
+      .first();
     const box = (await focusNode.boundingBox())!;
     await canvas.dispatchEvent('wheel', {
       deltaY: -150,
@@ -226,7 +254,9 @@ test('package connectors keep canonical routes, show bridges and highlight relat
     const reopened = await launch();
     expect(
       await reopened.canvas
-        .locator('[data-edge-hit]')
+        .locator(
+          '[data-edge-hit]:not([data-document-preview-scroll] [data-edge-hit])',
+        )
         .evaluateAll((elements) =>
           elements.map((element) => element.getAttribute('d')),
         ),

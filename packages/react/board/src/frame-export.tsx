@@ -1,3 +1,4 @@
+import type { BoardAppearance } from '@sue/board-core';
 import {
   copyCellFragment,
   isFrameCell,
@@ -10,11 +11,14 @@ import { createRoot } from 'react-dom/client';
 import {
   FrameCanvas,
   type FrameDocumentReferences,
+  type FrameInstanceHost,
   type FrameRenderExtension,
 } from './frame-canvas';
 import type { FramePluginSet } from './frame-plugins';
 
 export interface FrameImageOptions {
+  /** Concrete presentation, frozen for this entire export. */
+  appearance?: BoardAppearance;
   format?: 'svg' | 'png' | 'jpeg';
   /** Omit to export the whole mounted frame; selection expands through its relations. */
   ids?: readonly string[];
@@ -24,6 +28,8 @@ export interface FrameImageOptions {
   quality?: number;
 }
 export interface FrameImageRenderOptions extends FrameImageOptions {
+  referenceInteraction?: 'direct' | 'activate' | 'details';
+  instanceHost?: FrameInstanceHost;
   pluginSet?: FramePluginSet;
   documentReferences?: FrameDocumentReferences;
   frameId?: string;
@@ -88,9 +94,14 @@ export function cloneFrameImageSvg(
     const style = getComputedStyle(node);
     const properties =
       node.namespaceURI === SVG_NS ? svgStyles : Array.from(style);
-    properties.forEach((property) =>
-      target.style.setProperty(property, style.getPropertyValue(property)),
-    );
+    properties.forEach((property) => {
+      // Computed declarations are concrete. Ambient application custom properties
+      // must not leak into a standalone image or an explicit appearance override.
+      if (!property.startsWith('--'))
+        target.style.setProperty(property, style.getPropertyValue(property));
+    });
+    for (const property of Array.from(target.style))
+      if (property.startsWith('--')) target.style.removeProperty(property);
     for (const attribute of Array.from(target.attributes))
       if (
         attribute.name.startsWith('on') ||
@@ -127,6 +138,13 @@ export function cloneFrameImageSvg(
       node.removeAttribute(attribute);
     });
   clone.querySelectorAll(excluded).forEach((node) => node.remove());
+  // Offscreen paint suppression belongs only to the live viewport.
+  clone
+    .querySelectorAll<HTMLElement>('[data-frame-paint-paused]')
+    .forEach((node) => {
+      node.style.removeProperty('opacity');
+      node.removeAttribute('data-frame-paint-paused');
+    });
   if (included) {
     const contains = (node: Element) =>
       included.has(node.getAttribute('data-cell-id') ?? '') ||
@@ -135,6 +153,12 @@ export function cloneFrameImageSvg(
       );
     for (const cell of Array.from(clone.querySelectorAll('[data-cell-id]'))) {
       if (included.has(cell.getAttribute('data-cell-id')!)) continue;
+      // A selected reference owns its rendered occurrence, even when the source
+      // cells live in a different file and are absent from the clipboard closure.
+      let ancestor = cell.parentElement?.closest('[data-cell-id]');
+      while (ancestor && !included.has(ancestor.getAttribute('data-cell-id')!))
+        ancestor = ancestor.parentElement?.closest('[data-cell-id]');
+      if (ancestor) continue;
       if (!contains(cell)) cell.remove();
       else
         for (const child of Array.from(cell.children))
@@ -308,7 +332,14 @@ export async function frameSnapshotToImage(
     flushSync(() =>
       root.render(
         <FrameCanvas
+          appearance={options.appearance}
           documentReferences={options.documentReferences}
+          referenceInteraction={options.referenceInteraction}
+          instanceHost={
+            options.referenceInteraction === 'activate'
+              ? options.instanceHost
+              : undefined
+          }
           exporting
           value={{ store }}
           autoFit={false}

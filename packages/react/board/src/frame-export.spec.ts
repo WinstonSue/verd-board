@@ -114,3 +114,43 @@ describe('native frame image clone', () => {
     source.parentElement!.remove();
   });
 });
+
+it('keeps the source cells of a selected reference while excluding other occurrences', () => {
+  const source = svg(
+    '<g data-cell-id="selected-ref"><g data-reference-preview="target"><g data-cell-id="source-cell"><text>Referenced content</text></g></g></g><g data-cell-id="other-ref"><g data-cell-id="source-cell"><text>Other occurrence</text></g></g>',
+  );
+  try {
+    const clone = cloneFrameImageSvg(source, new Set(['selected-ref']));
+    expect(clone.querySelectorAll('[data-cell-id="source-cell"]')).toHaveLength(
+      1,
+    );
+    expect(clone.textContent).toBe('Referenced content');
+    expect(
+      source.querySelectorAll('[data-cell-id="source-cell"]'),
+    ).toHaveLength(2);
+  } finally {
+    source.parentElement!.remove();
+  }
+});
+
+it('freezes concrete styles without retaining ambient application custom properties', () => {
+  const source = svg(
+    '<foreignObject><div style="--vm-background:#000;color:#ffffff">Text</div></foreignObject>',
+  );
+  source.style.setProperty('--board-text', '#ffffff');
+  try {
+    const clone = cloneFrameImageSvg(source);
+    expect(clone.style.getPropertyValue('--board-text')).toBe('');
+    expect(
+      (clone.querySelector('div') as HTMLElement).style.getPropertyValue(
+        '--vm-background',
+      ),
+    ).toBe('');
+    expect((clone.querySelector('div') as HTMLElement).style.color).toBe(
+      'rgb(255, 255, 255)',
+    );
+    expect(source.style.getPropertyValue('--board-text')).toBe('#ffffff');
+  } finally {
+    source.parentElement!.remove();
+  }
+});

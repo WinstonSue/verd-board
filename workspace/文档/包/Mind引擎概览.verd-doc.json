@@ -57,7 +57,7 @@
           "content": [
             {
               "type": "text",
-              "text": "React 通过 @sue/board-react-mind 的 createMindFrameExtensions 注册行为、布局和渲染，嵌入与详情共用唯一 FrameCanvas。产品属性位于 @sue/verd-board-ui；原领域 Canvas、旧插件运行时和 MindElement API 已删除，旧格式只在应用私有 migration 边界转换。"
+              "text": "@sue/board-react-mind 通过 createMindUIPlugin 组合引擎、布局、渲染、工具和属性面板；嵌入与详情共用唯一 FrameCanvas 与源内容。原领域 Canvas 与 MindElement API 已删除；旧格式仅在应用私有迁移边界转换。"
             }
           ]
         },
@@ -70,6 +70,15 @@
             {
               "type": "text",
               "text": "依赖与接入"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "仅引擎调用使用 createMindPlugin() 与 createCellRegistry({plugins})。完整编辑器使用 createMindUIPlugin() → FrameEditor，并导入 board-react/style.css 与 board-react-mind/style.css；低层 createMindFrameExtensions(registry) 要求预先安装 Mind 引擎插件，不隐式注册。"
             }
           ]
         },
@@ -146,10 +155,43 @@
               ]
             }
           ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "React 接入",
+              "marks": [
+                {
+                  "type": "link",
+                  "attrs": {
+                    "href": "verd://file/project-doc%3Apackages%2Freact%2FREADME#%E6%A0%87%E5%87%86%E6%A8%A1%E5%BC%8F"
+                  }
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "text": " · "
+            },
+            {
+              "type": "text",
+              "text": "自动布局与连线",
+              "marks": [
+                {
+                  "type": "link",
+                  "attrs": {
+                    "href": "verd://file/project-doc%3Apackages%2Fboard%2Farrangement#%E8%87%AA%E5%8A%A8%E5%B8%83%E5%B1%80%E7%AE%97%E6%B3%95"
+                  }
+                }
+              ]
+            }
+          ]
         }
       ]
     },
-    "plainText": "Mind 引擎概览\n@sue/board-mind 是原生脑图领域引擎。它提供 mind-root、mind-child、mind-summary、mind-branch 和 mind-summary-edge 的工厂、Util、校验、树命令和布局，不包含产品工具栏与属性面板。\n能力\n支持九种布局、Tab/Enter 创建主题、删除、改父级与同级重排、折叠、复制粘贴、图片与表情、独立富文本笔记、可调整范围的概要、文件级配色和最大宽度。中心主题与最后根节点保护、关系闭包、分支顺序和概要范围由事务统一维护。\nReact 通过 @sue/board-react-mind 的 createMindFrameExtensions 注册行为、布局和渲染，嵌入与详情共用唯一 FrameCanvas。产品属性位于 @sue/verd-board-ui；原领域 Canvas、旧插件运行时和 MindElement API 已删除，旧格式只在应用私有 migration 边界转换。\n依赖与接入\n直接依赖以 packages/engine/mind/package.json 为准，主要使用 @sue/board-core、@sue/board-common 和 @sue/board-layouts。不要恢复旧组件或私有文档 reducer。\nMind 特性 | 节点宽度规范 | React 接入 | English",
+    "plainText": "Mind 引擎概览\n@sue/board-mind 是原生脑图领域引擎。它提供 mind-root、mind-child、mind-summary、mind-branch 和 mind-summary-edge 的工厂、Util、校验、树命令和布局，不包含产品工具栏与属性面板。\n能力\n支持九种布局、Tab/Enter 创建主题、删除、改父级与同级重排、折叠、复制粘贴、图片与表情、独立富文本笔记、可调整范围的概要、文件级配色和最大宽度。中心主题与最后根节点保护、关系闭包、分支顺序和概要范围由事务统一维护。\n@sue/board-react-mind 通过 createMindUIPlugin 组合引擎、布局、渲染、工具和属性面板；嵌入与详情共用唯一 FrameCanvas 与源内容。原领域 Canvas 与 MindElement API 已删除；旧格式仅在应用私有迁移边界转换。\n依赖与接入\n仅引擎调用使用 createMindPlugin() 与 createCellRegistry({plugins})。完整编辑器使用 createMindUIPlugin() → FrameEditor，并导入 board-react/style.css 与 board-react-mind/style.css；低层 createMindFrameExtensions(registry) 要求预先安装 Mind 引擎插件，不隐式注册。\n直接依赖以 packages/engine/mind/package.json 为准，主要使用 @sue/board-core、@sue/board-common 和 @sue/board-layouts。不要恢复旧组件或私有文档 reducer。\nMind 特性 | 节点宽度规范 | React 接入 | English\nReact 接入 · 自动布局与连线",
     "align": "left"
   }
 }

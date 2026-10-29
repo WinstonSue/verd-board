@@ -35,6 +35,11 @@ import type {
   ClassRelation,
 } from 'mermaid/dist/diagrams/class/classTypes.js';
 import { entityCodesToText } from './utils.js';
+import {
+  authoredAppearance,
+  authoredText,
+  parseAuthoredStyle,
+} from './authored-style';
 type Db = {
   getClasses(): Record<string, ClassNode>;
   getRelations(): ClassRelation[];
@@ -132,6 +137,12 @@ export function mermaidDiagramToUml(
             : 'class';
       const cell = createUmlClassCell(idFor(key), kind);
       cell.content = { label: text(value.label || key) };
+      const authored = parseAuthoredStyle(value.styles);
+      if (Object.keys(authored).length) {
+        cell.appearance = authoredAppearance(authored);
+        if (authored.color)
+          cell.content.text = authoredText(cell.content.label!, authored);
+      }
       cell.data!.attributes = value.members.map((m) => text(member(m)));
       cell.data!.methods = value.methods.map((m) => text(member(m)));
       cell.geometry = {

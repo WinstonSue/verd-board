@@ -5,7 +5,12 @@ import {
   createInlineText,
   type BoardTextDocument,
 } from '@sue/board-common';
-import { type NodeCell, type Point, type PortSpec } from '@sue/board-core';
+import {
+  type NodeCell,
+  type Point,
+  type PortSpec,
+  type ColorSource,
+} from '@sue/board-core';
 import { createSwimlaneCell } from './cell-table';
 export interface FreehandCellData {
   points: Point[];
@@ -20,6 +25,7 @@ export interface TableEntry {
   text?: BoardTextDocument;
   textDirection?: 'horizontal' | 'vertical';
   fill?: string;
+  fillSource?: ColorSource;
   role?: 'title' | 'lane' | 'body';
 }
 export interface TableCellData {
@@ -64,6 +70,7 @@ export const createGeometryCell = (
   },
   ports: drawCellPorts(),
   appearance: {
+    colorSources: { fill: 'theme', strokeColor: 'theme' },
     fill: shape === 'text' ? 'none' : '#fff',
     strokeColor: shape === 'text' ? 'none' : '#64748b',
     strokeWidth: 2,
@@ -92,6 +99,7 @@ export const createFreehandCell = (
       height: Math.max(1, Math.max(...points.map((point) => point[1])) - y),
     },
     appearance: {
+      colorSources: { strokeColor: 'theme' },
       strokeColor: '#334155',
       strokeWidth:
         shape === 'markerHighlight' ? 16 : shape === 'artisticBrush' ? 6 : 3,
@@ -137,7 +145,12 @@ export const createTableCell = (
     kind: swimlane ? 'swimlane' : 'table',
     cellType: 'node',
     geometry: gestureBounds(points, [420, 240]),
-    appearance: { fill: '#fff', strokeColor: '#64748b', strokeWidth: 1 },
+    appearance: {
+      fill: '#fff',
+      strokeColor: '#64748b',
+      strokeWidth: 1,
+      colorSources: { fill: 'theme', strokeColor: 'theme' },
+    },
     data,
   };
 };
@@ -154,6 +167,7 @@ export const createVectorLineCell = (
       cellType: 'node',
       geometry: { x: 0, y: 0, width: 1, height: 1 },
       appearance: {
+        colorSources: { strokeColor: 'theme' },
         strokeColor: '#334155',
         strokeWidth: 2,
         fill: 'none',

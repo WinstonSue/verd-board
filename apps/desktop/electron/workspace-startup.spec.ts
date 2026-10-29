@@ -69,7 +69,6 @@ const setup = async () => {
       defaultRoot: () => target,
       builtinSource: () => source,
       legacyStorage: () => legacy,
-      development: false,
       pickDirectory: async () => null,
       ...extra,
     });
@@ -209,6 +208,58 @@ describe('desktop built-in workspace startup', () => {
 });
 
 describe('desktop workspace history', () => {
+  it('recovers old folders once without selecting them or changing old data', async () => {
+    const { dir, target, host, manager } = await setup();
+    const oldRoot = path.join(dir, 'desktop');
+    const oldDefault = path.join(oldRoot, 'workspaces', 'default');
+    const custom = path.join(dir, 'custom');
+    await fs.mkdir(path.join(oldDefault, '.verdboard'), { recursive: true });
+    await fs.writeFile(
+      path.join(oldDefault, '.verdboard', 'config.json'),
+      JSON.stringify({ version: 1, value: { workspaceInitialized: true } }),
+    );
+    await fs.writeFile(
+      path.join(oldDefault, 'old.verd.json'),
+      'old user content',
+    );
+    const original = JSON.stringify({
+      version: 1,
+      value: {
+        desktopWorkspace: { kind: 'directory', path: custom },
+      },
+    });
+    await fs.writeFile(
+      path.join(oldRoot, 'verdboard-global-config.json'),
+      original,
+    );
+    const startup = manager({ legacyUserDataRoot: oldRoot });
+    const builtin = (await startup.open())!;
+    expect(builtin.isDefault).toBe(true);
+    expect(await exists(path.join(target, 'board.verd.json'))).toBe(true);
+    expect((await startup.listHistory()).map((entry) => entry.name)).toEqual([
+      'custom',
+      '旧工作区 (desktop)',
+    ]);
+    const old = (await startup.listHistory()).find(
+      (entry) => entry.name === '旧工作区 (desktop)',
+    )!;
+    const restored = await startup.open({ historyId: old.id });
+    expect(restored?.isDefault).toBe(false);
+    expect(
+      await fs.readFile(path.join(oldDefault, 'old.verd.json'), 'utf8'),
+    ).toBe('old user content');
+    expect(
+      await fs.readFile(
+        path.join(oldRoot, 'verdboard-global-config.json'),
+        'utf8',
+      ),
+    ).toBe(original);
+    const config = await host.readGlobalConfig();
+    expect(config.value['desktopWorkspace']).toBeUndefined();
+    await manager({ legacyUserDataRoot: oldRoot }).listHistory();
+    expect((await host.readGlobalConfig()).version).toBe(config.version);
+  });
+
   it('records only activated directories, keeps all entries and deduplicates normalized paths', async () => {
     const { dir, host, manager } = await setup();
     const startup = manager({ now: () => 100 });

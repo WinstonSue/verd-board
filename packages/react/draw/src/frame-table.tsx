@@ -1,5 +1,9 @@
 import { createBlockText } from '@sue/board-common';
 import {
+  resolveBoardTheme,
+  resolveCellAppearance,
+  resolveThemeColor,
+  readableThemeText,
   isNodeCell,
   roundNodeDimensions,
   type NodeCell,
@@ -25,6 +29,7 @@ import {
   type TableTrack,
 } from '@sue/board-draw';
 import {
+  useFrameI18n,
   FrameRichText,
   FrameTextEditor,
   type FrameRenderContext,
@@ -40,6 +45,7 @@ import {
 const allocate = () => crypto.randomUUID();
 type FrameTableProps = Pick<
   FrameRenderContext,
+  | 'theme'
   | 'cell'
   | 'geometry'
   | 'selected'
@@ -54,6 +60,7 @@ type FrameTableProps = Pick<
 export function FrameTable(context: FrameRenderContext) {
   return (
     <FrameTableBody
+      theme={context.theme}
       cell={context.cell}
       geometry={context.geometry}
       selected={context.selected}
@@ -61,7 +68,7 @@ export function FrameTable(context: FrameRenderContext) {
       pending={context.pending}
       dispatch={context.dispatch}
       commitEditing={context.commitEditing}
-      preview={context.preview}
+      preview={context.preview || context.viewProjection?.purpose === 'preview'}
       select={context.select}
       history={context.history}
     />
@@ -69,6 +76,9 @@ export function FrameTable(context: FrameRenderContext) {
 }
 const FrameTableBody = memo(function FrameTableBody(context: FrameTableProps) {
   const { cell, geometry, selected, readonly, pending, dispatch } = context;
+  const { language } = useFrameI18n();
+  const theme = context.theme ?? resolveBoardTheme();
+  const visual = resolveCellAppearance(cell, theme);
   const [anchor, setAnchor] = useState<string>();
   const [focus, setFocus] = useState<string>();
   const [editing, setEditing] = useState<string>();
@@ -356,6 +366,16 @@ const FrameTableBody = memo(function FrameTableBody(context: FrameTableProps) {
           edit = editing === entry.id && writable;
         const textWidth = Math.max(1, (vertical ? height : width) - 8),
           textHeight = Math.max(1, (vertical ? width : height) - 8);
+        const fill = resolveThemeColor(
+          entry.fill,
+          entry.fillSource,
+          theme.adaptive && entry.role && entry.role !== 'body'
+            ? theme.header
+            : (visual.fill ?? '#fff'),
+          theme,
+        );
+        const textBackground =
+          fill === 'none' || fill === 'transparent' ? theme.background : fill;
         return (
           <g
             key={entry.id}
@@ -390,7 +410,7 @@ const FrameTableBody = memo(function FrameTableBody(context: FrameTableProps) {
               y={y}
               width={width}
               height={height}
-              fill={entry.fill ?? cell.appearance?.fill ?? '#fff'}
+              fill={fill}
             />
             {entry.text && (
               <g
@@ -414,12 +434,19 @@ const FrameTableBody = memo(function FrameTableBody(context: FrameTableProps) {
                   <div
                     style={{
                       height: '100%',
-                      color: '#0f172a',
+                      color: theme.adaptive
+                        ? readableThemeText(textBackground, theme.text)
+                        : '#0f172a',
                       overflow: edit ? 'visible' : 'hidden',
                     }}
                   >
                     {edit ? (
                       <FrameTextEditor
+                        style={{
+                          color: theme.adaptive
+                            ? readableThemeText(textBackground, theme.text)
+                            : '#0f172a',
+                        }}
                         text={entry.text}
                         mode="block"
                         readonly={false}
@@ -451,7 +478,14 @@ const FrameTableBody = memo(function FrameTableBody(context: FrameTableProps) {
                         }}
                       />
                     ) : (
-                      <FrameRichText text={entry.text} />
+                      <FrameRichText
+                        text={entry.text}
+                        style={{
+                          color: theme.adaptive
+                            ? readableThemeText(textBackground, theme.text)
+                            : '#0f172a',
+                        }}
+                      />
                     )}
                   </div>
                 </foreignObject>
@@ -587,10 +621,10 @@ const FrameTableBody = memo(function FrameTableBody(context: FrameTableProps) {
                 width: 'max-content',
                 gap: 4,
                 padding: 4,
-                background: '#fff',
-                border: '1px solid #cbd5e1',
+                background: theme.surface,
+                border: `1px solid ${theme.adaptive ? theme.stroke : '#cbd5e1'}`,
                 borderRadius: 6,
-                color: '#0f172a',
+                color: theme.adaptive ? theme.text : '#0f172a',
               }}
               onPointerDown={(event) => event.stopPropagation()}
               onKeyDown={(event) => event.stopPropagation()}
@@ -598,7 +632,12 @@ const FrameTableBody = memo(function FrameTableBody(context: FrameTableProps) {
               <input
                 type="color"
                 aria-label="Cell fill"
-                value={active.fill?.startsWith('#') ? active.fill : '#ffffff'}
+                value={resolveThemeColor(
+                  active.fill,
+                  active.fillSource,
+                  visual.fill ?? theme.surface,
+                  theme,
+                )}
                 onChange={(event) =>
                   commit(
                     updateTableEntries(table, ids, {
@@ -607,6 +646,19 @@ const FrameTableBody = memo(function FrameTableBody(context: FrameTableProps) {
                   )
                 }
               />
+              <button
+                aria-label="Reset cell fill"
+                onClick={() =>
+                  commit(
+                    updateTableEntries(table, ids, {
+                      fill: undefined,
+                      fillSource: 'theme',
+                    }),
+                  )
+                }
+              >
+                {language === 'zh' ? '主题颜色' : 'Theme color'}
+              </button>
               <button
                 onClick={() =>
                   commit(

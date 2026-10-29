@@ -1,9 +1,5 @@
-import {
-  _electron as electron,
-  expect,
-  test,
-  type ElectronApplication,
-} from '@playwright/test';
+import { electron, writeDesktopLauncher } from './desktop-launcher';
+import { expect, test, type ElectronApplication } from '@playwright/test';
 import {
   copyFile,
   mkdir,
@@ -29,18 +25,22 @@ test('one-shot optimized paths persist across desktop restart without enabling c
   try {
     await mkdir(workspace);
     await copyFile(
-      path.join(root, 'workspace/架构图/01-项目分层与依赖.verd.json'),
+      path.join(
+        root,
+        'workspace/架构图/细节/01-项目分层与依赖/01.1-完整包分层与依赖.verd.json',
+      ),
       filename,
     );
     const before = JSON.parse(await readFile(filename, 'utf8'));
+    // Project diagrams already contain saved paths. Start without them so the
+    // persistence wait below cannot succeed before the first optimization saves.
+    for (const cell of Object.values(before.cells) as any[])
+      if (cell.cellType === 'edge') delete cell.route.points;
+    await writeFile(filename, JSON.stringify(before));
     const launcher = path.join(directory, 'launch.cjs');
-    await writeFile(
-      launcher,
-      `const {app}=require('electron');\napp.setPath('userData',${JSON.stringify(path.join(directory, 'user-data'))});\nrequire(${JSON.stringify(path.join(root, 'apps/desktop/dist-electron/main.js'))});`,
-    );
+    await writeDesktopLauncher(launcher, path.join(directory, 'user-data'));
     const env = { ...process.env, VERDBOARD_WORKSPACE_PATH: workspace };
-    delete env.ELECTRON_RUN_AS_NODE;
-    delete env.VITE_DEV_SERVER_URL;
+
     const launch = async () => {
       desktop = await electron.launch({ args: [launcher], env });
       const page = await desktop.firstWindow();

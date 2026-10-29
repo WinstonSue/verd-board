@@ -22,6 +22,7 @@ import {
   tableSelectionRange,
   transposeSwimlane,
   updateTableText,
+  updateTableEntries,
   validateTableData,
 } from '../cell-table';
 const allocate = () => {
@@ -259,4 +260,31 @@ describe('native swimlane changes', () => {
       },
     });
   });
+});
+
+it('preserves custom fill sources across merge, split and JSON round trips, and resets to theme', () => {
+  const original = table(),
+    first = original.data!.cells[0];
+  let cell = updateTableEntries(original, [first.id], { fill: '#fff' });
+  expect(cell.data!.cells[0].fillSource).toBe('custom');
+  cell = mergeTableRange(
+    cell,
+    tableSelectionRange(cell.data!, first.id, original.data!.cells[1].id),
+  );
+  cell = JSON.parse(JSON.stringify(cell));
+  cell = splitTableEntry(cell, first.id, allocate());
+  const copies = cell.data!.cells.filter(
+    (entry) =>
+      entry.rowId === original.data!.rows[0].id && entry.fill === '#fff',
+  );
+  expect(copies).toHaveLength(2);
+  expect(copies.every((entry) => entry.fillSource === 'custom')).toBe(true);
+  const reset = updateTableEntries(cell, [first.id], {
+    fill: undefined,
+    fillSource: 'theme',
+  });
+  expect(
+    reset.data!.cells.find((entry) => entry.id === first.id),
+  ).toMatchObject({ fillSource: 'theme', fill: undefined });
+  expect(original.data!.cells[0].fill).toBeUndefined();
 });

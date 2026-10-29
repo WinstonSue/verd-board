@@ -294,6 +294,11 @@ export const renderMindCellShape = (
     dispatch={context.dispatch}
     commitEditing={context.commitEditing}
     history={context.history}
-    noteColor={mindNoteColor(context.store, context.cell.id, context.frameId)}
+    noteColor={mindNoteColor(
+      context.store,
+      context.cell.id,
+      context.frameId,
+      context.appearance,
+    )}
   />
 );

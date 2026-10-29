@@ -9,10 +9,12 @@ import {
   Position,
   SubGraph,
   Vertex,
+  type AuthoredStyle,
 } from '../interfaces.js';
 
 import type { Diagram } from 'mermaid/dist/Diagram.js';
 import { DiagramStyleClassDef } from 'mermaid/dist/diagram-api/types.js';
+import { parseAuthoredStyle } from '../authored-style';
 
 export interface Flowchart {
   type: 'flowchart';
@@ -22,6 +24,7 @@ export interface Flowchart {
 }
 
 export interface Edge {
+  authoredStyle?: AuthoredStyle;
   id?: string;
   start: string;
   end: string;
@@ -36,7 +39,31 @@ export interface Edge {
   reflectionPoints: Position[];
 }
 
-const parseSubGraph = (data: any, containerEl: Element): SubGraph => {
+const explicitStyle = (
+  data: any,
+  classes: { [key: string]: DiagramStyleClassDef },
+): AuthoredStyle => {
+  const assigned: string[] =
+    Array.isArray(data.classes) && data.classes.length
+      ? data.classes
+      : ['default'];
+  const names = assigned.flatMap((name) =>
+    name.split(/[,\s]+/).filter(Boolean),
+  );
+  const declarations = names.flatMap((name) => [
+    ...(classes[name]?.styles ?? []),
+    ...(classes[name]?.textStyles ?? []),
+  ]);
+  declarations.push(...(data.styles ?? []));
+  return parseAuthoredStyle(declarations);
+};
+
+const parseSubGraph = (
+  data: any,
+  containerEl: Element,
+  classes: { [key: string]: DiagramStyleClassDef },
+  vertex?: any,
+): SubGraph => {
   // Extract only node id for better reference
   // e.g. full element id = "flowchart-c1-205" will map to "c1"
   const nodeIds = data.nodes.map((n: string) => {
@@ -62,16 +89,13 @@ const parseSubGraph = (data: any, containerEl: Element): SubGraph => {
     height: boundingBox.height,
   };
 
-  // Remove irrelevant properties
-  data.classes = undefined;
-  data.dir = undefined;
-
   return {
     ...data,
     nodeIds,
     ...position,
     ...dimension,
     text: entityCodesToText(data.title),
+    authoredStyle: explicitStyle(vertex ?? data, classes),
   };
 };
 
@@ -134,19 +158,11 @@ const parseVertex = (
     labelStyle[key] = value;
   });
 
-  if (data.classes) {
-    const classDef = classes[data.classes];
-    if (classDef) {
-      classDef.styles?.forEach((style) => {
-        const [key, value] = style.split(':');
-        containerStyle[key.trim() as CONTAINER_STYLE_PROPERTY] = value.trim();
-      });
-      classDef.textStyles?.forEach((style) => {
-        const [key, value] = style.split(':');
-        labelStyle[key.trim() as LABEL_STYLE_PROPERTY] = value.trim();
-      });
-    }
-  }
+  const authoredStyle = explicitStyle(data, classes);
+  for (const key of Object.values(CONTAINER_STYLE_PROPERTY))
+    if (authoredStyle[key] !== undefined)
+      containerStyle[key] = authoredStyle[key];
+  if (authoredStyle.color !== undefined) labelStyle.color = authoredStyle.color;
   return {
     id: data.id,
     labelType: data.labelType,
@@ -157,6 +173,7 @@ const parseVertex = (
     ...dimension,
     containerStyle,
     labelStyle,
+    authoredStyle,
   };
 };
 
@@ -164,6 +181,7 @@ const parseEdge = (
   data: any,
   edgeIndex: number,
   containerEl: Element,
+  defaultStyle?: string[],
 ): Edge => {
   // Find edge element
   const edge = containerEl.querySelector<SVGPathElement>(
@@ -185,6 +203,10 @@ const parseEdge = (
     ...data,
     ...edgePositionData,
     text: entityCodesToText(data.text),
+    authoredStyle: explicitStyle(
+      { styles: [...(defaultStyle ?? []), ...(data.style ?? [])] },
+      {},
+    ),
   };
 };
 
@@ -250,14 +272,19 @@ export const parseMermaidFlowChartDiagram = (
   const mermaidParser = diagram.parser.yy;
   const vertices = mermaidParser.getVertices();
   const classes = mermaidParser.getClasses();
+  const subGraphs = mermaidParser
+    .getSubGraphs()
+    .map((data: any) =>
+      parseSubGraph(data, containerEl, classes, vertices[data.id]),
+    );
   Object.keys(vertices).forEach((id) => {
     vertices[id] = parseVertex(vertices[id], containerEl, classes);
   });
 
   // Track the count of edges based on the edge id
   const edgeCountMap = new Map<string, number>();
-  const edges = mermaidParser
-    .getEdges()
+  const rawEdges = mermaidParser.getEdges();
+  const edges = rawEdges
     .filter((edge: any) => {
       // Sometimes mermaid parser returns edges which are not present in the DOM hence this is a safety check to only consider edges present in the DOM, issue - https://github.com/mermaid-js/mermaid/issues/5516
       return containerEl.querySelector(`[id*="L-${edge.start}-${edge.end}"]`);
@@ -268,12 +295,8 @@ export const parseMermaidFlowChartDiagram = (
       const count = edgeCountMap.get(edgeId) || 0;
       edgeCountMap.set(edgeId, count + 1);
 
-      return parseEdge(data, count, containerEl);
+      return parseEdge(data, count, containerEl, rawEdges.defaultStyle);
     });
-
-  const subGraphs = mermaidParser
-    .getSubGraphs()
-    .map((data: any) => parseSubGraph(data, containerEl));
 
   return {
     type: 'flowchart',

@@ -1,7 +1,13 @@
+import {
+  resolveCellAppearance,
+  resolveBoardTheme,
+  readableThemeText,
+} from '@sue/board-core';
 import { isNodeCell, type CellRegistry, type NodeCell } from '@sue/board-core';
 import type {
   FrameRenderContext,
   FrameRenderExtension,
+  FrameThemeAppearanceContext,
 } from '@sue/board-react';
 import {
   layoutUmlCells,
@@ -15,11 +21,41 @@ import {
   type UmlParticipantData,
 } from '@sue/board-uml';
 import { useEffect, useRef } from 'react';
+
+const umlThemeAppearance = ({ cell, theme }: FrameThemeAppearanceContext) => ({
+  fill:
+    cell.kind === 'uml-note'
+      ? theme.note
+      : cell.kind === 'uml-fragment' ||
+          (cell.kind === 'uml-participant' &&
+            (cell as NodeCell<UmlParticipantData>).data?.actorType === 'actor')
+        ? 'none'
+        : theme.surface,
+});
+
 function UmlShape(context: FrameRenderContext) {
   const { cell, geometry: b, store, frameId } = context;
   if (!isNodeCell(cell) || !b) return null;
-  const stroke = cell.appearance?.strokeColor ?? '#475569',
-    fill = cell.appearance?.fill ?? '#ffffff';
+  const theme = context.theme ?? resolveBoardTheme();
+  const visual = resolveCellAppearance(
+    cell,
+    theme,
+    theme.adaptive
+      ? umlThemeAppearance({ cell, store, frameId, theme })
+      : undefined,
+  );
+  const stroke = theme.adaptive
+      ? visual.strokeColor
+      : (cell.appearance?.strokeColor ?? '#475569'),
+    fill = theme.adaptive ? visual.fill : (cell.appearance?.fill ?? '#ffffff');
+  const textColor = theme.adaptive
+    ? readableThemeText(
+        fill === 'none' || fill === 'transparent'
+          ? theme.background
+          : (fill ?? theme.background),
+        theme.text,
+      )
+    : stroke;
   if (cell.kind === 'uml-class') {
     const data = cell.data as UmlClassData,
       metrics = umlClassMetrics({
@@ -46,7 +82,7 @@ function UmlShape(context: FrameRenderContext) {
             fontSize={12}
             textAnchor="middle"
             stroke="none"
-            fill={stroke}
+            fill={textColor}
           >{`«${data.classifier}»`}</text>
         )}
         {[...metrics.attributes, ...metrics.methods].map((row, i) => (
@@ -62,7 +98,7 @@ function UmlShape(context: FrameRenderContext) {
               style={{
                 fontSize: 14,
                 lineHeight: '24px',
-                color: stroke,
+                color: textColor,
                 whiteSpace: 'pre-wrap',
                 overflowWrap: 'anywhere',
               }}
@@ -90,7 +126,7 @@ function UmlShape(context: FrameRenderContext) {
         />
         {actor ? (
           <g fill="none" stroke={stroke}>
-            <circle cx={cx} cy={b.y + 10} r={8} />
+            <circle cx={cx} cy={b.y + 10} r={8} fill={fill} />
             <path
               d={`M ${cx} ${b.y + 18} v 18 m -20 -10 h 40 m -20 10 l -15 14 m 15 -14 l 15 14`}
             />
@@ -115,7 +151,7 @@ function UmlShape(context: FrameRenderContext) {
               y={a.y}
               width={a.width}
               height={a.height}
-              fill={fill}
+              fill={resolveCellAppearance(cell, theme).fill}
               stroke={stroke}
               onPointerDown={(e) => {
                 e.stopPropagation();
@@ -134,7 +170,7 @@ function UmlShape(context: FrameRenderContext) {
     return (
       <g
         data-uml-fragment
-        fill="none"
+        fill={fill}
         stroke={stroke}
         pointerEvents="visiblePainted"
       >
@@ -143,7 +179,7 @@ function UmlShape(context: FrameRenderContext) {
         <text
           x={b.x + 8}
           y={b.y + 20}
-          fill={stroke}
+          fill={textColor}
           stroke="none"
           fontSize={14}
         >
@@ -166,7 +202,7 @@ function UmlShape(context: FrameRenderContext) {
                 <text
                   x={b.x + 14}
                   y={row.y + 20}
-                  fill={stroke}
+                  fill={textColor}
                   stroke="none"
                   fontSize={14}
                 >{`[${operand.guard}]`}</text>
@@ -179,11 +215,12 @@ function UmlShape(context: FrameRenderContext) {
   }
   return (
     <rect
+      data-uml-note
       x={b.x}
       y={b.y}
       width={b.width}
       height={b.height}
-      fill={cell.appearance?.fill ?? '#fef9c3'}
+      fill={theme.adaptive ? fill : (cell.appearance?.fill ?? theme.note)}
       stroke={stroke}
     />
   );
@@ -292,6 +329,7 @@ export function createUmlFrameExtensions(
     ...['uml-class', 'uml-participant', 'uml-note', 'uml-fragment'].map(
       (kind) => ({
         kind,
+        themeAppearance: umlThemeAppearance,
         renderShape: (context: FrameRenderContext) => <UmlShape {...context} />,
         textBounds: ({ cell, geometry }: FrameRenderContext) => {
           const b = geometry ?? (cell as NodeCell).geometry;

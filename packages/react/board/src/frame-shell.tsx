@@ -1,3 +1,5 @@
+import { resolveThemeColor } from '@sue/board-core';
+import { useFrameTheme } from './frame-theme';
 import {
   frameContentViewport,
   frameTitleBounds,
@@ -29,7 +31,7 @@ export function FrameShell({
   children,
 }: {
   geometry: NodeGeometry;
-  camera: FrameCameraStore;
+  camera?: FrameCameraStore;
   scale: number;
   appearance?: NodeAppearance;
   active: boolean;
@@ -57,7 +59,19 @@ export function FrameShell({
     ...titleBounds,
     width: Math.max(0, titleBounds.width - (actions ? actionWidth + 8 : 0)),
   };
-  const stroke = appearance?.strokeColor ?? '#cbd5e1';
+  const theme = useFrameTheme();
+  const stroke = resolveThemeColor(
+    appearance?.strokeColor,
+    appearance?.colorSources?.strokeColor,
+    theme.adaptive ? theme.stroke : '#cbd5e1',
+    theme,
+  );
+  const fill = resolveThemeColor(
+    appearance?.fill,
+    appearance?.colorSources?.fill,
+    theme.surface,
+    theme,
+  );
   return (
     <>
       <FrameCellShadow shadow={appearance?.shadow} bounds={geometry}>
@@ -68,7 +82,7 @@ export function FrameShell({
             data-frame-shell
             data-frame-active={active ? 'true' : 'false'}
             filter={filter}
-            fill={appearance?.fill ?? '#fff'}
+            fill={fill}
             opacity={appearance?.opacity}
             stroke="none"
             onPointerDown={onPointerDown}
@@ -90,7 +104,7 @@ export function FrameShell({
           y={geometry.y}
           width={geometry.width}
           height={Math.max(0, content.y - geometry.y)}
-          fill="#f1f5f9"
+          fill={theme.adaptive ? theme.header : '#f1f5f9'}
           opacity={appearance?.opacity}
           onPointerDown={onPointerDown}
           onDoubleClick={onDoubleClick}

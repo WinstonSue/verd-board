@@ -177,6 +177,10 @@ const mount = async () => {
       });
       Object.defineProperty(event, 'pointerId', { value: pointerId });
       target.dispatchEvent(event);
+      if (type === 'pointermove')
+        await new Promise<void>((resolve) =>
+          requestAnimationFrame(() => resolve()),
+        );
     });
   const drag = async (id: string, dx: number, dy: number) => {
     await fire(cell(id), 'pointerdown', 300, 300);

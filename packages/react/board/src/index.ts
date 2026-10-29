@@ -1,4 +1,6 @@
 export * from './frame-canvas';
+export * from './frame-theme';
+export * from './frame-appearance';
 export { FrameRichText } from './frame-rich-text';
 export { PreviewMountProvider, usePreviewMount } from './preview-mount';
 

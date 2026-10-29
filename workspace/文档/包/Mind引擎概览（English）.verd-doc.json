@@ -27,7 +27,7 @@
           "content": [
             {
               "type": "text",
-              "text": "@sue/board-mind provides native mind-root, mind-child, mind-summary, mind-branch and mind-summary-edge Cells, validation, tree transactions and layouts. Product toolbars and property panels belong to @sue/verd-board-ui."
+              "text": "@sue/board-mind provides native Mind Cells, validation, tree transactions and layouts. Domain toolbars and property panels live in @sue/board-react-mind; @sue/verd-board-ui composes them into the product."
             }
           ]
         },
@@ -57,7 +57,7 @@
           "content": [
             {
               "type": "text",
-              "text": "@sue/board-react-mind registers behavior, layouts and render extensions through createMindFrameExtensions. Embedded and detail views share FrameCanvas and the same workspace content. The old domain Canvas, plugin runtime and MindElement APIs are removed; legacy conversion stays in the application-private migration boundary."
+              "text": "@sue/board-react-mind composes engine behavior, layouts, rendering, toolbars and property panels through createMindUIPlugin. Embedded and detail views share one FrameCanvas and the same source content. The former domain Canvas and MindElement APIs remain removed; legacy conversion stays in the application-private migration boundary."
             }
           ]
         },
@@ -70,6 +70,15 @@
             {
               "type": "text",
               "text": "Dependencies and Usage"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "Use createMindPlugin() with createCellRegistry({plugins}) for engine-only calls. A complete editor composes createMindUIPlugin() with FrameEditor and imports board-react/style.css plus board-react-mind/style.css. The lower-level createMindFrameExtensions(registry) requires an already installed Mind engine plugin; it does not install utilities implicitly."
             }
           ]
         },
@@ -146,10 +155,43 @@
               ]
             }
           ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "React integration",
+              "marks": [
+                {
+                  "type": "link",
+                  "attrs": {
+                    "href": "verd://file/project-doc%3Apackages%2Freact%2FREADME#%E6%A0%87%E5%87%86%E6%A8%A1%E5%BC%8F"
+                  }
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "text": " · "
+            },
+            {
+              "type": "text",
+              "text": "Layout algorithms",
+              "marks": [
+                {
+                  "type": "link",
+                  "attrs": {
+                    "href": "verd://file/project-doc%3Apackages%2Fboard%2Farrangement#%E8%87%AA%E5%8A%A8%E5%B8%83%E5%B1%80%E7%AE%97%E6%B3%95"
+                  }
+                }
+              ]
+            }
+          ]
         }
       ]
     },
-    "plainText": "Mind Engine Overview\n@sue/board-mind provides native mind-root, mind-child, mind-summary, mind-branch and mind-summary-edge Cells, validation, tree transactions and layouts. Product toolbars and property panels belong to @sue/verd-board-ui.\nFeatures\nNine layouts, Tab/Enter topic creation, deletion, reparenting and sibling ordering, collapse, clipboard identity remapping, images and emoji, independent rich-text notes, adjustable summary ranges, file-level color schemes and automatic content sizing. Transactions preserve root protection, branch ordering, relationship closure and summary endpoints.\n@sue/board-react-mind registers behavior, layouts and render extensions through createMindFrameExtensions. Embedded and detail views share FrameCanvas and the same workspace content. The old domain Canvas, plugin runtime and MindElement APIs are removed; legacy conversion stays in the application-private migration boundary.\nDependencies and Usage\nRead packages/engine/mind/package.json for direct dependencies. The core model uses @sue/board-core, @sue/board-common and @sue/board-layouts. Do not rebuild the former component or document reducer layer.\nMind features | Sizing rules | React APIs | 中文",
+    "plainText": "Mind Engine Overview\n@sue/board-mind provides native Mind Cells, validation, tree transactions and layouts. Domain toolbars and property panels live in @sue/board-react-mind; @sue/verd-board-ui composes them into the product.\nFeatures\nNine layouts, Tab/Enter topic creation, deletion, reparenting and sibling ordering, collapse, clipboard identity remapping, images and emoji, independent rich-text notes, adjustable summary ranges, file-level color schemes and automatic content sizing. Transactions preserve root protection, branch ordering, relationship closure and summary endpoints.\n@sue/board-react-mind composes engine behavior, layouts, rendering, toolbars and property panels through createMindUIPlugin. Embedded and detail views share one FrameCanvas and the same source content. The former domain Canvas and MindElement APIs remain removed; legacy conversion stays in the application-private migration boundary.\nDependencies and Usage\nUse createMindPlugin() with createCellRegistry({plugins}) for engine-only calls. A complete editor composes createMindUIPlugin() with FrameEditor and imports board-react/style.css plus board-react-mind/style.css. The lower-level createMindFrameExtensions(registry) requires an already installed Mind engine plugin; it does not install utilities implicitly.\nRead packages/engine/mind/package.json for direct dependencies. The core model uses @sue/board-core, @sue/board-common and @sue/board-layouts. Do not rebuild the former component or document reducer layer.\nMind features | Sizing rules | React APIs | 中文\nReact integration · Layout algorithms",
     "align": "left"
   }
 }

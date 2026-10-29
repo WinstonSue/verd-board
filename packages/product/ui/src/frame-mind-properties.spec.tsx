@@ -91,6 +91,56 @@ const click = (element: Element | null) =>
   act(() => element.dispatchEvent(new MouseEvent('click', { bubbles: true })));
 
 describe('FrameMindProperties', () => {
+  it('resets a manual branch color without losing line settings, and supports undo/redo', () => {
+    const r = runtime();
+    const child = r.store.cells.n1 as NodeCell<MindNodeData>;
+    r.transact({
+      id: 'manual-color',
+      operations: [
+        {
+          type: 'replace_cell',
+          cell: {
+            ...child,
+            data: {
+              ...child.data,
+              branchAppearance: {
+                strokeColor: '#ffffff',
+                strokeWidth: 4,
+                strokeStyle: 'dashed',
+                colorSources: { strokeColor: 'custom' },
+              },
+            },
+          },
+        },
+      ],
+    });
+    const { container, root } = render(r, 'n1');
+    try {
+      click(
+        container.querySelector('[aria-label="Reset Mind branch to theme"]'),
+      );
+      const appearance = () =>
+        (r.store.cells.n1 as NodeCell<MindNodeData>).data!.branchAppearance;
+      expect(appearance()).toMatchObject({
+        strokeWidth: 4,
+        strokeStyle: 'dashed',
+        colorSources: { strokeColor: 'theme' },
+      });
+      expect(appearance()!.strokeColor).toBeUndefined();
+      r.undo();
+      expect(appearance()).toMatchObject({
+        strokeColor: '#ffffff',
+        colorSources: { strokeColor: 'custom' },
+      });
+      r.redo();
+      expect(
+        JSON.parse(JSON.stringify(appearance())).colorSources.strokeColor,
+      ).toBe('theme');
+    } finally {
+      act(() => root.unmount());
+      container.remove();
+    }
+  });
   it('formats the whole note through one transaction per change', () => {
     const r = runtime();
     const child = r.store.cells.n1 as NodeCell<MindNodeData>;

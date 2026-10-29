@@ -1,3 +1,6 @@
+import { persistedWorkspace } from './workspace-nav';
+import { readFileSync } from 'node:fs';
+import path from 'node:path';
 import { expect, test, type Locator, type Page } from '@playwright/test';
 import {
   openAppMenu,
@@ -74,6 +77,26 @@ const cards = ['document-frame', 'document-reference'].map((kind, i) => ({
   geometry: { x: 20 + i * 540, y: 20, width: 500, height: 420 },
   data: { targetDocumentId: documentFile.id },
 }));
+const shapes = [false, true].map((custom, i) => ({
+  id: custom ? 'custom-shape' : 'legacy-shape',
+  kind: 'geometry',
+  cellType: 'node',
+  geometry: {
+    x: 60 + i * 300,
+    y: 480,
+    width: 220,
+    height: 70,
+    outline: 'rectangle',
+  },
+  appearance: {
+    fill: '#fff',
+    strokeColor: '#64748b',
+    ...(custom
+      ? { colorSources: { fill: 'custom', strokeColor: 'custom' } }
+      : {}),
+  },
+  content: { label: custom ? 'Custom white' : 'Theme colors' },
+}));
 const boardFile = {
   format: 'verd-frame',
   version: 2,
@@ -90,10 +113,12 @@ const boardFile = {
         gridEnabled: true,
       },
     },
-    children: cards.map((card) => card.id),
+    children: [...cards, ...shapes].map((card) => card.id),
     groups: [],
   },
-  cells: Object.fromEntries(cards.map((card) => [card.id, card])),
+  cells: Object.fromEntries(
+    [...cards, ...shapes].map((card) => [card.id, card]),
+  ),
 };
 async function seed(page: Page) {
   await page.emulateMedia({ colorScheme: 'light' });
@@ -139,10 +164,17 @@ const colors = (locator: Locator) =>
       scheme: style.colorScheme,
     };
   });
-async function exportedSvg(page: Page) {
+async function exportedSvg(
+  page: Page,
+  mode?: 'current' | 'light' | 'dark',
+  background?: string,
+) {
   await selectAppAction(page, '图像导出');
   const dialog = page.getByRole('dialog', { name: '图像导出', exact: true });
   await dialog.getByLabel('Image format').selectOption('svg');
+  if (mode) await dialog.getByLabel('Image appearance').selectOption(mode);
+  if (background)
+    await dialog.getByLabel('Image background').selectOption(background);
   const downloading = page.waitForEvent('download');
   await dialog.getByTestId('image-export-button').click();
   const stream = await (await downloading).createReadStream();
@@ -264,7 +296,7 @@ test('dark interface covers settings, portaled menus, help, and readonly at wide
   );
 });
 
-test('canvas, embedded documents, camera, exported images and content writes are unchanged by appearance', async ({
+test('canvas and embedded documents adapt without changing authored colors, camera or content writes', async ({
   page,
 }, testInfo) => {
   await page.addInitScript(() => {
@@ -315,8 +347,8 @@ test('canvas, embedded documents, camera, exported images and content writes are
   await appearance(page, 'dark');
   await card.getByText('Appearance body', { exact: true }).dblclick();
   await expect(embedded).toBeVisible();
-  expect(await colors(embedded)).toEqual(original);
-  expect(await colors(reader)).toEqual(reading);
+  expect((await colors(embedded)).color).not.toEqual(original.color);
+  expect((await colors(reader)).background).not.toEqual(reading.background);
   await expect(world).toHaveAttribute('transform', camera!);
   expect((await colors(canvas(page))).background).toBe('rgb(249, 248, 237)');
   await card.locator('.ProseMirror').press('Escape');
@@ -331,8 +363,16 @@ test('canvas, embedded documents, camera, exported images and content writes are
   });
   expect(
     darkExport === exported,
-    'SVG image exports must keep the same colors and content',
-  ).toBe(true);
+    'Current appearance exports must adapt their theme colors',
+  ).toBe(false);
+  expect(await exportedSvg(page, 'light')).toBe(exported);
+  expect(await exportedSvg(page, 'dark')).toBe(darkExport);
+  await expect(
+    active(page).locator('[data-cell-id="custom-shape"]'),
+  ).toHaveAttribute('fill', '#fff');
+  await expect(
+    active(page).locator('[data-cell-id="legacy-shape"]'),
+  ).toHaveAttribute('fill', '#1e293b');
   expect(await writes()).toBe(count);
   await page.screenshot({
     path: testInfo.outputPath('dark-interface-original-canvas.png'),
@@ -363,4 +403,326 @@ test('canvas, embedded documents, camera, exported images and content writes are
   ).toBe('rgb(249, 248, 237)');
   expect(await writes()).toBe(count);
   await page.screenshot({ path: testInfo.outputPath('dark-document.png') });
+});
+
+test('all six neutral themes have light and dark variants, including export overrides', async ({
+  page,
+}, testInfo) => {
+  await seed(page);
+  await active(page)
+    .getByLabel('Reset canvas background', { exact: true })
+    .click();
+  const names = ['经典', '缤纷', '柔和', '复古', '清新', '海洋'];
+  const ids = ['default', 'colorful', 'soft', 'retro', 'dark', 'starry'];
+  const selector = active(page).getByLabel('Theme', { exact: true });
+  await expect(selector.locator('option')).toHaveText(names);
+  for (const id of ids) {
+    await selector.selectOption(id);
+    await appearance(page, 'light');
+    const light = (await colors(canvas(page))).background;
+    await page.screenshot({ path: testInfo.outputPath(`${id}-light.png`) });
+    await appearance(page, 'dark');
+    expect((await colors(canvas(page))).background).not.toBe(light);
+    await page.screenshot({ path: testInfo.outputPath(`${id}-dark.png`) });
+  }
+  const lightSvg = await exportedSvg(page, 'light', 'theme');
+  const darkSvg = await exportedSvg(page, 'dark', 'theme');
+  expect(lightSvg).toContain('data-board-appearance="light"');
+  expect(darkSvg).toContain('data-board-appearance="dark"');
+  expect(lightSvg).toContain('#eff7fb');
+  expect(darkSvg).toContain('#0d2537');
+  await expect(canvas(page)).toHaveAttribute('data-board-appearance', 'dark');
+});
+
+for (const fixture of [
+  'mind-map',
+  'workflow-process',
+  'architecture',
+  'uml-class',
+  'uml-sequence',
+  'whiteboard-advanced',
+]) {
+  test(`${fixture} adapts its diagram content and preserves its geometry`, async ({
+    page,
+  }, testInfo) => {
+    await page.emulateMedia({ colorScheme: 'light' });
+    await page.goto('/');
+    await setAppLanguage(page, 'zh');
+    const file = JSON.parse(
+      readFileSync(
+        path.resolve(
+          __dirname,
+          `../../fixtures/ai-canvas/${fixture}.verd.json`,
+        ),
+        'utf8',
+      ),
+    );
+    file.frame.name = `Appearance ${fixture}`;
+    file.frame.view = {
+      ...file.frame.view,
+      theme: { themeColorMode: 'retro', backgroundMode: 'theme' },
+    };
+    await page
+      .locator('input[accept=".json,.verd.json,.verd-doc.json,.md,.markdown"]')
+      .setInputFiles({
+        name: `${fixture}.verd.json`,
+        mimeType: 'application/json',
+        buffer: Buffer.from(JSON.stringify(file)),
+      });
+    await page
+      .locator('.file-tree-name')
+      .filter({ hasText: new RegExp(`^Appearance ${fixture}$`) })
+      .click();
+    const target = canvas(page);
+    await expect
+      .poll(() => target.locator('[data-cell-id]:visible').count())
+      .toBeGreaterThan(0);
+    const world = target.locator('> [data-frame-world]');
+    const camera = await world.getAttribute('transform');
+    const count = await target.locator('[data-cell-id]').count();
+    const text = await target.textContent();
+    const light = await target
+      .locator('[data-cell-kind]')
+      .evaluateAll((nodes) =>
+        nodes.map((node) => {
+          const outline =
+            node.querySelector('[data-frame-node-outline]') ?? node;
+          return [
+            getComputedStyle(outline).fill,
+            getComputedStyle(outline).stroke,
+          ];
+        }),
+      );
+    await appearance(page, 'dark');
+    await expect(target).toHaveAttribute('data-board-appearance', 'dark');
+    await expect(target.locator('[data-cell-id]')).toHaveCount(count);
+    await expect(target).toHaveText(text ?? '');
+    await expect(world).toHaveAttribute('transform', camera!);
+    const dark = await target.locator('[data-cell-kind]').evaluateAll((nodes) =>
+      nodes.map((node) => {
+        const outline = node.querySelector('[data-frame-node-outline]') ?? node;
+        return [
+          getComputedStyle(outline).fill,
+          getComputedStyle(outline).stroke,
+        ];
+      }),
+    );
+    expect(dark).not.toEqual(light);
+    // Assert concrete painted parts: a single changed wrapper must not hide a
+    // class box, lifeline, fragment or domain node that still uses old colors.
+    const expectedSurface = 'rgb(55, 49, 40)';
+    const expectedStroke = 'rgb(186, 166, 129)';
+    const surfaces = target.locator(
+      '[data-uml-class] > rect, [data-uml-lifeline] > rect, [data-cell-kind="workflow-task"], [data-cell-kind="workflow-decision"], [data-cell-kind="architecture-module"]',
+    );
+    for (const part of await surfaces.all()) {
+      await expect(part).toHaveCSS('fill', expectedSurface);
+      await expect(part).toHaveCSS('stroke', expectedStroke);
+    }
+    for (const part of await target
+      .locator('[data-uml-lifeline] > line, [data-uml-fragment]')
+      .all())
+      await expect(part).toHaveCSS('stroke', expectedStroke);
+    await page.screenshot({ path: testInfo.outputPath(`${fixture}-dark.png`) });
+  });
+}
+
+test('raster exports honor explicit light and dark appearances for PNG and JPEG', async ({
+  page,
+}) => {
+  await seed(page);
+  await active(page)
+    .getByLabel('Theme', { exact: true })
+    .selectOption('starry');
+  for (const format of ['png', 'jpeg'])
+    for (const mode of ['light', 'dark']) {
+      await selectAppAction(page, '图像导出');
+      const dialog = page.getByRole('dialog', {
+        name: '图像导出',
+        exact: true,
+      });
+      await dialog.getByLabel('Image format').selectOption(format);
+      await dialog.getByLabel('Image scale').selectOption('1');
+      await dialog.getByLabel('Image appearance').selectOption(mode);
+      await dialog.getByLabel('Image background').selectOption('theme');
+      const downloaded = page.waitForEvent('download');
+      await dialog.getByTestId('image-export-button').click();
+      const stream = await (await downloaded).createReadStream(),
+        chunks: Buffer[] = [];
+      for await (const chunk of stream!) chunks.push(Buffer.from(chunk));
+      const data = Buffer.concat(chunks).toString('base64');
+      const pixel = await page.evaluate(
+        async ({ data, format }) => {
+          const image = new Image();
+          image.src = `data:image/${format};base64,${data}`;
+          await image.decode();
+          const canvas = document.createElement('canvas');
+          canvas.width = image.width;
+          canvas.height = image.height;
+          const ctx = canvas.getContext('2d')!;
+          ctx.drawImage(image, 0, 0);
+          return Array.from(ctx.getImageData(0, 0, 1, 1).data);
+        },
+        { data, format },
+      );
+      const expected = mode === 'light' ? [239, 247, 251] : [13, 37, 55];
+      for (let i = 0; i < 3; i++)
+        expect(Math.abs(pixel[i] - expected[i])).toBeLessThanOrEqual(
+          format === 'jpeg' ? 3 : 0,
+        );
+      expect(pixel[3]).toBe(255);
+    }
+});
+
+test('manual default-colored overrides persist and can be reset independently to theme colors', async ({
+  page,
+}) => {
+  await seed(page);
+  await appearance(page, 'dark');
+  const shape = active(page).locator('[data-cell-id="legacy-shape"]');
+  await shape.click();
+  await active(page).getByLabel('填充', { exact: true }).fill('#ffffff');
+  await expect(shape).toHaveAttribute('fill', '#ffffff');
+  await expect
+    .poll(async () => {
+      const workspace = await persistedWorkspace(page);
+      const file = Object.values(workspace?.records ?? {}).find(
+        (record) => record.frame.id === 'appearance-board',
+      );
+      return file?.cells['legacy-shape']?.appearance?.colorSources?.fill;
+    })
+    .toBe('custom');
+  await page.reload();
+  await expect(shape).toHaveAttribute('fill', '#ffffff');
+  await appearance(page, 'light');
+  await appearance(page, 'dark');
+  await expect(shape).toHaveAttribute('fill', '#ffffff');
+  await shape.click();
+  await active(page).getByLabel('Reset fill to theme', { exact: true }).click();
+  await expect(shape).toHaveAttribute('fill', '#1e293b');
+  await expect(
+    active(page).locator('[data-cell-id="custom-shape"]'),
+  ).toHaveAttribute('fill', '#fff');
+});
+
+test('repeated references retain the source theme through static preview, inline editing and export', async ({
+  page,
+}) => {
+  await page.emulateMedia({ colorScheme: 'light' });
+  await page.goto('/');
+  await setAppLanguage(page, 'zh');
+  const targetId = 'appearance-theme-target',
+    parentId = 'appearance-theme-parent';
+  const refs = [0, 1].map((i) => ({
+    id: `theme-ref-${i}`,
+    kind: 'frame-reference',
+    cellType: 'node',
+    geometry: { x: 30 + i * 440, y: 30, width: 400, height: 300 },
+    data: { targetFrameId: targetId },
+  }));
+  const frame = (
+    id: string,
+    name: string,
+    themeColorMode: string,
+    children: string[],
+  ) => ({
+    id,
+    kind: 'frame',
+    cellType: 'frame',
+    name,
+    geometry: { x: 0, y: 0, width: 950, height: 500 },
+    children,
+    groups: [],
+    view: { theme: { themeColorMode, backgroundMode: 'theme' } },
+  });
+  const files = [
+    {
+      format: 'verd-frame',
+      version: 2,
+      frame: frame(
+        parentId,
+        'Theme parent',
+        'default',
+        refs.map((ref) => ref.id),
+      ),
+      cells: Object.fromEntries(refs.map((ref) => [ref.id, ref])),
+    },
+    {
+      format: 'verd-frame',
+      version: 2,
+      frame: frame(targetId, 'Theme target', 'retro', ['source-shape']),
+      cells: {
+        'source-shape': {
+          id: 'source-shape',
+          kind: 'geometry',
+          cellType: 'node',
+          geometry: {
+            x: 20,
+            y: 20,
+            width: 200,
+            height: 100,
+            outline: 'rectangle',
+          },
+          appearance: { fill: '#fff', strokeColor: '#64748b' },
+          content: { label: 'Source theme' },
+        },
+      },
+    },
+  ];
+  await page
+    .locator('input[accept=".json,.verd.json,.verd-doc.json,.md,.markdown"]')
+    .setInputFiles({
+      name: 'themes.verd.json',
+      mimeType: 'application/json',
+      buffer: Buffer.from(
+        JSON.stringify({
+          format: 'verd-canvas-bundle',
+          version: 1,
+          rootFileId: parentId,
+          files,
+        }),
+      ),
+    });
+  await page
+    .locator('.file-tree-name')
+    .filter({ hasText: /^Theme parent$/ })
+    .click();
+  const first = canvas(page).locator('[data-cell-id="theme-ref-0"]');
+  const second = canvas(page).locator('[data-cell-id="theme-ref-1"]');
+  for (const ref of [first, second])
+    await expect(ref.locator('[data-cell-id="source-shape"]')).toHaveAttribute(
+      'fill',
+      '#fffdf4',
+    );
+  await page.emulateMedia({ colorScheme: 'dark' });
+  for (const ref of [first, second])
+    await expect(ref.locator('[data-cell-id="source-shape"]')).toHaveAttribute(
+      'fill',
+      '#373128',
+    );
+  await first
+    .locator(':scope > [data-frame-contents] > [data-frame-content-plate]')
+    .dblclick({ position: { x: 25, y: 90 } });
+  const nested = first.locator('svg[data-surface="nested"]');
+  await expect(nested).toBeVisible();
+  await expect(nested.locator('[data-cell-id="source-shape"]')).toHaveAttribute(
+    'fill',
+    '#373128',
+  );
+  const world = nested.locator('> [data-frame-world]');
+  const camera = await world.getAttribute('transform');
+  await page.emulateMedia({ colorScheme: 'light' });
+  await expect(nested).toBeVisible();
+  await expect(nested.locator('[data-cell-id="source-shape"]')).toHaveAttribute(
+    'fill',
+    '#fffdf4',
+  );
+  await expect(second.locator('[data-cell-id="source-shape"]')).toHaveAttribute(
+    'fill',
+    '#fffdf4',
+  );
+  await expect(world).toHaveAttribute('transform', camera!);
+  const exported = await exportedSvg(page, 'dark');
+  expect(exported).toContain('#373128');
+  expect(exported).toContain('#28251f');
 });

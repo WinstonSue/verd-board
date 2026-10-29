@@ -35,3 +35,7 @@ assertRegisteredCellKinds 在导入归一化前检查；UnregisteredCellKindsErr
 `createCellRegistry({ plugins, links })` accepts protocol-independent `rewriteHref(href, context)` and `mapStandard(cell, rewriteHref)` callbacks. Supply common's `remapWorkspaceLink` and `mapStandardCellLinks` in a host that supports workspace links; core itself keeps zero runtime dependencies. `registry.remapLinks` runs standard slots once, then each `CellPlugin.mapLinks` for its domain-owned fields.
 
 `CellPastePlan.idMap` is required for custom planners. Ordinary clipboard, duplicate and UML plans pass through the same finalization after copied Cell ownership is known; plugins must not pre-map links. Existing owner text and targets outside the copied set remain unchanged. `CellUtil.keyboard` is removed: register user shortcuts in the UI plugin's Actions and retain pure engine planners for content rules.
+
+## Adaptive themes
+
+`BoardThemeDefinitions` defines light/dark variants for the six existing theme IDs. `resolveBoardTheme` and `resolveCellAppearance` derive presentation without modifying content. `backgroundMode` and per-field `appearance.colorSources` distinguish `theme` from `custom`; unmarked component and table-entry colors follow the theme, and only explicit custom sources retain literal colors. Background sources keep their historical compatibility rules. Display names are Classic, Colorful, Soft, Retro, Fresh and Ocean.

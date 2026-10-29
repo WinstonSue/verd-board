@@ -1,5 +1,6 @@
-import { _electron as electron, test, expect } from '@playwright/test';
-import { mkdtemp, mkdir, rm, writeFile } from 'node:fs/promises';
+import { electron, writeDesktopLauncher } from './desktop-launcher';
+import { test, expect } from '@playwright/test';
+import { mkdtemp, mkdir, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { selectDrawingTool } from '../../web-e2e/src/drawing-tools';
@@ -13,21 +14,13 @@ test('desktop lectures in the same fullscreen window and one Esc restores the ed
   const userData = path.join(directory, 'user-data');
   await mkdir(userData);
   const launcher = path.join(directory, 'launch.cjs');
-  await writeFile(
-    launcher,
-    'const {app} = require("electron");\napp.setPath("userData", ' +
-      JSON.stringify(userData) +
-      ');\nrequire(' +
-      JSON.stringify(path.join(root, 'apps/desktop/dist-electron/main.js')) +
-      ');\n',
-  );
+  await writeDesktopLauncher(launcher, userData);
   const env = Object.fromEntries(
     Object.entries(process.env).filter(
       (entry): entry is [string, string] => entry[1] !== undefined,
     ),
   );
-  delete env.ELECTRON_RUN_AS_NODE;
-  delete env.VITE_DEV_SERVER_URL;
+
   env.VERDBOARD_WORKSPACE_PATH = path.join(userData, 'workspaces', 'default');
   const desktop = await electron.launch({ args: [launcher], env });
   try {

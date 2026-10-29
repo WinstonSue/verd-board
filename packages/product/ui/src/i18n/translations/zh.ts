@@ -156,12 +156,12 @@ const zhTranslations: Translations = {
   'zoom.100': '缩放至 100%',
 
   // Themes
-  'theme.default': '默认',
+  'theme.default': '经典',
   'theme.colorful': '缤纷',
   'theme.soft': '柔和',
   'theme.retro': '复古',
-  'theme.dark': '暗夜',
-  'theme.starry': '星空',
+  'theme.dark': '清新',
+  'theme.starry': '海洋',
 
   // Colors
   'color.none': '主题颜色',
@@ -385,8 +385,8 @@ const zhTranslations: Translations = {
   'rightPanel.bg.gray': '灰色',
   'rightPanel.bg.soft': '柔和（主题默认）',
   'rightPanel.bg.retro': '复古（主题默认）',
-  'rightPanel.bg.dark': '暗夜（主题默认）',
-  'rightPanel.bg.starry': '星空（主题默认）',
+  'rightPanel.bg.dark': '清新（主题默认）',
+  'rightPanel.bg.starry': '海洋（主题默认）',
   'rightPanel.bg.deepGray': '深灰',
 
   'mind.layout.standard': '标准',
@@ -414,7 +414,7 @@ const zhTranslations: Translations = {
   'tutorial.skip': '跳过',
   'tutorial.appToolbar': '撤销、重做；更多菜单中打开、导入、导出和设置',
   'tutorial.creationToolbar': '选择 V、手型 H、绘图和领域工具',
-  'tutorial.themeDescription': '在明亮和黑暗主题之间切换',
+  'tutorial.themeDescription': '主题自动适配浅色和深色模式',
 
   'workspace.board': '白板',
   'workspace.mind': '思维导图',

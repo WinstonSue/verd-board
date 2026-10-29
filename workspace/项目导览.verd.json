@@ -49,7 +49,11 @@
       "project:home/documents-title",
       "project:home/document/navigation",
       "project:home/document/architecture",
-      "project:home/document/development"
+      "project:home/document/development",
+      "project:home/capability/uml",
+      "demo:home/title/8",
+      "demo:home/summary/8",
+      "frame-ref:demo:layout-routing"
     ],
     "groups": [],
     "view": {
@@ -233,12 +237,12 @@
         "derived": false
       },
       "content": {
-        "label": "用原生画布表达关系，用原生文档落地文字。左侧「文档」目录包含项目的完整说明。",
+        "label": "用原生画布表达关系，用原生文档落地文字。当前源码 · 2026-10-28；历史发布与待发布迁移分别标明。",
         "text": {
           "schemaVersion": 1,
           "id": "demo:home/intro/text",
           "kind": "inline",
-          "plainText": "用原生画布表达关系，用原生文档落地文字。左侧「文档」目录包含项目的完整说明。",
+          "plainText": "用原生画布表达关系，用原生文档落地文字。当前源码 · 2026-10-28；历史发布与待发布迁移分别标明。",
           "content": {
             "type": "doc",
             "content": [
@@ -247,13 +251,13 @@
                 "content": [
                   {
                     "type": "text",
-                    "text": "用原生画布表达关系，用原生文档落地文字。左侧「文档」目录包含项目的完整说明。",
+                    "text": "用原生画布表达关系，用原生文档落地文字。当前源码 · 2026-10-28；历史发布与待发布迁移分别标明。",
                     "marks": [
                       {
                         "type": "textStyle",
                         "attrs": {
-                          "fontSize": "32px",
-                          "color": "#334155"
+                          "fontSize": "30px",
+                          "color": "#1e293b"
                         }
                       }
                     ]
@@ -302,19 +306,19 @@
       "cellType": "node",
       "geometry": {
         "x": 0,
-        "y": 402,
+        "y": 564,
         "width": 2960,
-        "height": 108,
+        "height": 100,
         "outline": "text",
         "derived": false
       },
       "content": {
-        "label": "阅读方法：从左侧「文档」打开说明；选中图框点「打开」进入专题，返回定位原外壳。\n依赖箭头指向被依赖包；省略冗余传递边。图文直接编辑并纳入 Git，运行会话独立保存。",
+        "label": "阅读路径：项目导览 → 九张专题总览 → 二十一张机制细节图。\n选中图卡点「打开」进入源文件；逐层返回恢复阅读位置，文档 Frame 双击编辑。",
         "text": {
           "schemaVersion": 1,
           "id": "demo:home/guide/text",
           "kind": "inline",
-          "plainText": "阅读方法：从左侧「文档」打开说明；选中图框点「打开」进入专题，返回定位原外壳。\n依赖箭头指向被依赖包；省略冗余传递边。图文直接编辑并纳入 Git，运行会话独立保存。",
+          "plainText": "阅读路径：项目导览 → 九张专题总览 → 二十一张机制细节图。\n选中图卡点「打开」进入源文件；逐层返回恢复阅读位置，文档 Frame 双击编辑。",
           "content": {
             "type": "doc",
             "content": [
@@ -323,13 +327,13 @@
                 "content": [
                   {
                     "type": "text",
-                    "text": "阅读方法：从左侧「文档」打开说明；选中图框点「打开」进入专题，返回定位原外壳。",
+                    "text": "阅读路径：项目导览 → 九张专题总览 → 二十一张机制细节图。",
                     "marks": [
                       {
                         "type": "textStyle",
                         "attrs": {
                           "fontSize": "26px",
-                          "color": "#475569"
+                          "color": "#1e293b"
                         }
                       }
                     ]
@@ -341,13 +345,13 @@
                 "content": [
                   {
                     "type": "text",
-                    "text": "依赖箭头指向被依赖包；省略冗余传递边。图文直接编辑并纳入 Git，运行会话独立保存。",
+                    "text": "选中图卡点「打开」进入源文件；逐层返回恢复阅读位置，文档 Frame 双击编辑。",
                     "marks": [
                       {
                         "type": "textStyle",
                         "attrs": {
                           "fontSize": "26px",
-                          "color": "#475569"
+                          "color": "#1e293b"
                         }
                       }
                     ]
@@ -397,8 +401,8 @@
       "geometry": {
         "x": 0,
         "y": 270,
-        "width": 570,
-        "height": 108,
+        "width": 940,
+        "height": 116,
         "outline": "roundRectangle",
         "derived": false
       },
@@ -495,10 +499,10 @@
       "kind": "geometry",
       "cellType": "node",
       "geometry": {
-        "x": 610,
+        "x": 1010,
         "y": 270,
-        "width": 570,
-        "height": 108,
+        "width": 940,
+        "height": 116,
         "outline": "roundRectangle",
         "derived": false
       },
@@ -595,10 +599,10 @@
       "kind": "geometry",
       "cellType": "node",
       "geometry": {
-        "x": 1220,
+        "x": 2020,
         "y": 270,
-        "width": 570,
-        "height": 108,
+        "width": 940,
+        "height": 116,
         "outline": "roundRectangle",
         "derived": false
       },
@@ -695,10 +699,10 @@
       "kind": "geometry",
       "cellType": "node",
       "geometry": {
-        "x": 1830,
-        "y": 270,
-        "width": 570,
-        "height": 108,
+        "x": 0,
+        "y": 412,
+        "width": 940,
+        "height": 116,
         "outline": "roundRectangle",
         "derived": false
       },
@@ -796,9 +800,9 @@
       "cellType": "node",
       "geometry": {
         "x": 0,
-        "y": 516,
-        "width": 680,
-        "height": 58,
+        "y": 700,
+        "width": 940,
+        "height": 60,
         "outline": "text",
         "derived": false
       },
@@ -875,19 +879,19 @@
       "cellType": "node",
       "geometry": {
         "x": 0,
-        "y": 578,
-        "width": 680,
-        "height": 42,
+        "y": 766,
+        "width": 940,
+        "height": 60,
         "outline": "text",
         "derived": false
       },
       "content": {
-        "label": "两个应用 · 十八个公开包 · 职责与直接依赖",
+        "label": "两个应用 · 二十二个公开包 · 显式插件与依赖",
         "text": {
           "schemaVersion": 1,
           "id": "demo:home/summary/0/text",
           "kind": "inline",
-          "plainText": "两个应用 · 十八个公开包 · 职责与直接依赖",
+          "plainText": "两个应用 · 二十二个公开包 · 显式插件与依赖",
           "content": {
             "type": "doc",
             "content": [
@@ -896,13 +900,13 @@
                 "content": [
                   {
                     "type": "text",
-                    "text": "两个应用 · 十八个公开包 · 职责与直接依赖",
+                    "text": "两个应用 · 二十二个公开包 · 显式插件与依赖",
                     "marks": [
                       {
                         "type": "textStyle",
                         "attrs": {
-                          "fontSize": "21px",
-                          "color": "#64748b"
+                          "fontSize": "23px",
+                          "color": "#1e293b"
                         }
                       }
                     ]
@@ -950,10 +954,10 @@
       "kind": "geometry",
       "cellType": "node",
       "geometry": {
-        "x": 760,
-        "y": 516,
-        "width": 680,
-        "height": 58,
+        "x": 1010,
+        "y": 700,
+        "width": 940,
+        "height": 60,
         "outline": "text",
         "derived": false
       },
@@ -1029,20 +1033,20 @@
       "kind": "geometry",
       "cellType": "node",
       "geometry": {
-        "x": 760,
-        "y": 578,
-        "width": 680,
-        "height": 42,
+        "x": 1010,
+        "y": 766,
+        "width": 940,
+        "height": 60,
         "outline": "text",
         "derived": false
       },
       "content": {
-        "label": "画布 / 文档编辑 · 统一会话 · 文件宿主",
+        "label": "引擎 / UI 插件 · 共享 Actions · 文件会话",
         "text": {
           "schemaVersion": 1,
           "id": "demo:home/summary/1/text",
           "kind": "inline",
-          "plainText": "画布 / 文档编辑 · 统一会话 · 文件宿主",
+          "plainText": "引擎 / UI 插件 · 共享 Actions · 文件会话",
           "content": {
             "type": "doc",
             "content": [
@@ -1051,13 +1055,13 @@
                 "content": [
                   {
                     "type": "text",
-                    "text": "画布 / 文档编辑 · 统一会话 · 文件宿主",
+                    "text": "引擎 / UI 插件 · 共享 Actions · 文件会话",
                     "marks": [
                       {
                         "type": "textStyle",
                         "attrs": {
-                          "fontSize": "21px",
-                          "color": "#64748b"
+                          "fontSize": "23px",
+                          "color": "#1e293b"
                         }
                       }
                     ]
@@ -1105,10 +1109,10 @@
       "kind": "geometry",
       "cellType": "node",
       "geometry": {
-        "x": 1520,
-        "y": 516,
-        "width": 680,
-        "height": 58,
+        "x": 2020,
+        "y": 700,
+        "width": 940,
+        "height": 60,
         "outline": "text",
         "derived": false
       },
@@ -1184,10 +1188,10 @@
       "kind": "geometry",
       "cellType": "node",
       "geometry": {
-        "x": 1520,
-        "y": 578,
-        "width": 680,
-        "height": 42,
+        "x": 2020,
+        "y": 766,
+        "width": 940,
+        "height": 60,
         "outline": "text",
         "derived": false
       },
@@ -1260,10 +1264,10 @@
       "kind": "geometry",
       "cellType": "node",
       "geometry": {
-        "x": 2280,
-        "y": 516,
-        "width": 680,
-        "height": 58,
+        "x": 0,
+        "y": 1450,
+        "width": 940,
+        "height": 60,
         "outline": "text",
         "derived": false
       },
@@ -1339,10 +1343,10 @@
       "kind": "geometry",
       "cellType": "node",
       "geometry": {
-        "x": 2280,
-        "y": 578,
-        "width": 680,
-        "height": 42,
+        "x": 0,
+        "y": 1516,
+        "width": 940,
+        "height": 60,
         "outline": "text",
         "derived": false
       },
@@ -1415,10 +1419,10 @@
       "kind": "geometry",
       "cellType": "node",
       "geometry": {
-        "x": 0,
-        "y": 1266,
-        "width": 680,
-        "height": 58,
+        "x": 1010,
+        "y": 1450,
+        "width": 940,
+        "height": 60,
         "outline": "text",
         "derived": false
       },
@@ -1494,20 +1498,20 @@
       "kind": "geometry",
       "cellType": "node",
       "geometry": {
-        "x": 0,
-        "y": 1328,
-        "width": 680,
-        "height": 42,
+        "x": 1010,
+        "y": 1516,
+        "width": 940,
+        "height": 60,
         "outline": "text",
         "derived": false
       },
       "content": {
-        "label": "候选执行、校验、原子提交和宿主接受/拒绝",
+        "label": "动作提交屏障、候选校验、原子历史与宿主回执",
         "text": {
           "schemaVersion": 1,
           "id": "demo:home/summary/4/text",
           "kind": "inline",
-          "plainText": "候选执行、校验、原子提交和宿主接受/拒绝",
+          "plainText": "动作提交屏障、候选校验、原子历史与宿主回执",
           "content": {
             "type": "doc",
             "content": [
@@ -1516,13 +1520,13 @@
                 "content": [
                   {
                     "type": "text",
-                    "text": "候选执行、校验、原子提交和宿主接受/拒绝",
+                    "text": "动作提交屏障、候选校验、原子历史与宿主回执",
                     "marks": [
                       {
                         "type": "textStyle",
                         "attrs": {
-                          "fontSize": "21px",
-                          "color": "#64748b"
+                          "fontSize": "23px",
+                          "color": "#1e293b"
                         }
                       }
                     ]
@@ -1570,10 +1574,10 @@
       "kind": "geometry",
       "cellType": "node",
       "geometry": {
-        "x": 760,
-        "y": 1266,
-        "width": 680,
-        "height": 58,
+        "x": 2020,
+        "y": 1450,
+        "width": 940,
+        "height": 60,
         "outline": "text",
         "derived": false
       },
@@ -1649,20 +1653,20 @@
       "kind": "geometry",
       "cellType": "node",
       "geometry": {
-        "x": 760,
-        "y": 1328,
-        "width": 680,
-        "height": 42,
+        "x": 2020,
+        "y": 1516,
+        "width": 940,
+        "height": 60,
         "outline": "text",
         "derived": false
       },
       "content": {
-        "label": "文件条件提交、冲突恢复与关闭保存",
+        "label": "按文件保存状态、引用源聚合与安全关闭",
         "text": {
           "schemaVersion": 1,
           "id": "demo:home/summary/5/text",
           "kind": "inline",
-          "plainText": "文件条件提交、冲突恢复与关闭保存",
+          "plainText": "按文件保存状态、引用源聚合与安全关闭",
           "content": {
             "type": "doc",
             "content": [
@@ -1671,13 +1675,13 @@
                 "content": [
                   {
                     "type": "text",
-                    "text": "文件条件提交、冲突恢复与关闭保存",
+                    "text": "按文件保存状态、引用源聚合与安全关闭",
                     "marks": [
                       {
                         "type": "textStyle",
                         "attrs": {
-                          "fontSize": "21px",
-                          "color": "#64748b"
+                          "fontSize": "23px",
+                          "color": "#1e293b"
                         }
                       }
                     ]
@@ -1725,10 +1729,10 @@
       "kind": "geometry",
       "cellType": "node",
       "geometry": {
-        "x": 1520,
-        "y": 1266,
-        "width": 680,
-        "height": 58,
+        "x": 0,
+        "y": 2200,
+        "width": 940,
+        "height": 60,
         "outline": "text",
         "derived": false
       },
@@ -1804,10 +1808,10 @@
       "kind": "geometry",
       "cellType": "node",
       "geometry": {
-        "x": 1520,
-        "y": 1328,
-        "width": 680,
-        "height": 42,
+        "x": 0,
+        "y": 2266,
+        "width": 940,
+        "height": 60,
         "outline": "text",
         "derived": false
       },
@@ -1880,10 +1884,10 @@
       "kind": "geometry",
       "cellType": "node",
       "geometry": {
-        "x": 2280,
-        "y": 1266,
-        "width": 680,
-        "height": 58,
+        "x": 1010,
+        "y": 2200,
+        "width": 940,
+        "height": 60,
         "outline": "text",
         "derived": false
       },
@@ -1959,10 +1963,10 @@
       "kind": "geometry",
       "cellType": "node",
       "geometry": {
-        "x": 2280,
-        "y": 1328,
-        "width": 680,
-        "height": 42,
+        "x": 1010,
+        "y": 2266,
+        "width": 940,
+        "height": 60,
         "outline": "text",
         "derived": false
       },
@@ -2036,9 +2040,9 @@
       "cellType": "node",
       "geometry": {
         "x": 0,
-        "y": 630,
-        "width": 680,
-        "height": 470
+        "y": 842,
+        "width": 940,
+        "height": 520
       },
       "appearance": {
         "fill": "#ffffff",
@@ -2086,10 +2090,10 @@
       "kind": "frame-reference",
       "cellType": "node",
       "geometry": {
-        "x": 760,
-        "y": 630,
-        "width": 680,
-        "height": 470
+        "x": 1010,
+        "y": 842,
+        "width": 940,
+        "height": 520
       },
       "appearance": {
         "fill": "#ffffff",
@@ -2137,10 +2141,10 @@
       "kind": "frame-reference",
       "cellType": "node",
       "geometry": {
-        "x": 1520,
-        "y": 630,
-        "width": 680,
-        "height": 470
+        "x": 2020,
+        "y": 842,
+        "width": 940,
+        "height": 520
       },
       "appearance": {
         "fill": "#ffffff",
@@ -2188,10 +2192,10 @@
       "kind": "frame-reference",
       "cellType": "node",
       "geometry": {
-        "x": 2280,
-        "y": 630,
-        "width": 680,
-        "height": 470
+        "x": 0,
+        "y": 1592,
+        "width": 940,
+        "height": 520
       },
       "appearance": {
         "fill": "#ffffff",
@@ -2239,10 +2243,10 @@
       "kind": "frame-reference",
       "cellType": "node",
       "geometry": {
-        "x": 0,
-        "y": 1380,
-        "width": 680,
-        "height": 470
+        "x": 1010,
+        "y": 1592,
+        "width": 940,
+        "height": 520
       },
       "appearance": {
         "fill": "#ffffff",
@@ -2290,10 +2294,10 @@
       "kind": "frame-reference",
       "cellType": "node",
       "geometry": {
-        "x": 760,
-        "y": 1380,
-        "width": 680,
-        "height": 470
+        "x": 2020,
+        "y": 1592,
+        "width": 940,
+        "height": 520
       },
       "appearance": {
         "fill": "#ffffff",
@@ -2341,10 +2345,10 @@
       "kind": "frame-reference",
       "cellType": "node",
       "geometry": {
-        "x": 1520,
-        "y": 1380,
-        "width": 680,
-        "height": 470
+        "x": 0,
+        "y": 2342,
+        "width": 940,
+        "height": 520
       },
       "appearance": {
         "fill": "#ffffff",
@@ -2392,10 +2396,10 @@
       "kind": "frame-reference",
       "cellType": "node",
       "geometry": {
-        "x": 2280,
-        "y": 1380,
-        "width": 680,
-        "height": 470
+        "x": 1010,
+        "y": 2342,
+        "width": 940,
+        "height": 520
       },
       "appearance": {
         "fill": "#ffffff",
@@ -2443,10 +2447,10 @@
       "kind": "geometry",
       "cellType": "node",
       "geometry": {
-        "x": 2440,
-        "y": 270,
-        "width": 570,
-        "height": 108,
+        "x": 2020,
+        "y": 412,
+        "width": 940,
+        "height": 116,
         "outline": "roundRectangle",
         "derived": false
       },
@@ -2544,7 +2548,7 @@
       "cellType": "node",
       "geometry": {
         "x": 0,
-        "y": 2010,
+        "y": 2980,
         "width": 2960,
         "height": 70,
         "outline": "text",
@@ -2620,9 +2624,9 @@
       "cellType": "node",
       "geometry": {
         "x": 0,
-        "y": 2110,
+        "y": 3080,
         "width": 940,
-        "height": 640
+        "height": 680
       },
       "data": {
         "targetDocumentId": "project-doc:README"
@@ -2634,9 +2638,9 @@
       "cellType": "node",
       "geometry": {
         "x": 1010,
-        "y": 2110,
+        "y": 3080,
         "width": 940,
-        "height": 640
+        "height": 680
       },
       "data": {
         "targetDocumentId": "project-doc:architecture/ARCHITECTURE"
@@ -2648,12 +2652,280 @@
       "cellType": "node",
       "geometry": {
         "x": 2020,
-        "y": 2110,
+        "y": 3080,
         "width": 940,
-        "height": 640
+        "height": 680
       },
       "data": {
         "targetDocumentId": "project-doc:development/README"
+      }
+    },
+    "project:home/capability/uml": {
+      "id": "project:home/capability/uml",
+      "kind": "geometry",
+      "cellType": "node",
+      "geometry": {
+        "x": 1010,
+        "y": 412,
+        "width": 940,
+        "height": 116,
+        "outline": "roundRectangle",
+        "derived": false
+      },
+      "content": {
+        "label": "UML 类图与时序图\n结构关系、消息、激活与嵌套片段",
+        "text": {
+          "schemaVersion": 1,
+          "id": "project:home/capability/uml/text",
+          "kind": "inline",
+          "plainText": "UML 类图与时序图\n结构关系、消息、激活与嵌套片段",
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "UML 类图与时序图",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "27px",
+                          "color": "#1e293b"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "结构关系、消息、激活与嵌套片段",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "27px",
+                          "color": "#1e293b"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "appearance": {
+        "fill": "#fdf2f8",
+        "strokeColor": "#cbd5e1",
+        "strokeWidth": 1
+      },
+      "ports": [
+        {
+          "id": "top",
+          "side": "top",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "right",
+          "side": "right",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "bottom",
+          "side": "bottom",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "left",
+          "side": "left",
+          "direction": "both",
+          "offset": 0.5
+        }
+      ]
+    },
+    "demo:home/title/8": {
+      "id": "demo:home/title/8",
+      "kind": "geometry",
+      "cellType": "node",
+      "geometry": {
+        "x": 2020,
+        "y": 2200,
+        "width": 940,
+        "height": 60,
+        "outline": "text",
+        "derived": false
+      },
+      "content": {
+        "label": "⑨ 自动布局与连线算法",
+        "text": {
+          "schemaVersion": 1,
+          "id": "demo:home/title/8/text",
+          "kind": "inline",
+          "plainText": "⑨ 自动布局与连线算法",
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "⑨ 自动布局与连线算法",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "34px",
+                          "color": "#1e293b"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "appearance": {
+        "fill": "none",
+        "strokeColor": "none",
+        "strokeWidth": 1
+      },
+      "ports": [
+        {
+          "id": "top",
+          "side": "top",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "right",
+          "side": "right",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "bottom",
+          "side": "bottom",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "left",
+          "side": "left",
+          "direction": "both",
+          "offset": 0.5
+        }
+      ]
+    },
+    "demo:home/summary/8": {
+      "id": "demo:home/summary/8",
+      "kind": "geometry",
+      "cellType": "node",
+      "geometry": {
+        "x": 2020,
+        "y": 2266,
+        "width": 940,
+        "height": 60,
+        "outline": "text",
+        "derived": false
+      },
+      "content": {
+        "label": "范围、分层、避障、优化与自动计算的保存边界",
+        "text": {
+          "schemaVersion": 1,
+          "id": "demo:home/summary/8/text",
+          "kind": "inline",
+          "plainText": "范围、分层、避障、优化与自动计算的保存边界",
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "范围、分层、避障、优化与自动计算的保存边界",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "23px",
+                          "color": "#1e293b"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "appearance": {
+        "fill": "none",
+        "strokeColor": "none",
+        "strokeWidth": 1
+      },
+      "ports": [
+        {
+          "id": "top",
+          "side": "top",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "right",
+          "side": "right",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "bottom",
+          "side": "bottom",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "left",
+          "side": "left",
+          "direction": "both",
+          "offset": 0.5
+        }
+      ]
+    },
+    "frame-ref:demo:layout-routing": {
+      "id": "frame-ref:demo:layout-routing",
+      "kind": "frame-reference",
+      "cellType": "node",
+      "geometry": {
+        "x": 2020,
+        "y": 2342,
+        "width": 940,
+        "height": 520
+      },
+      "appearance": {
+        "fill": "#ffffff",
+        "strokeColor": "#cbd5e1",
+        "strokeWidth": 2
+      },
+      "content": {
+        "label": "⑨ 自动布局与连线算法"
+      },
+      "data": {
+        "targetFrameId": "demo:layout-routing"
       }
     }
   }

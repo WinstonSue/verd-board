@@ -353,3 +353,30 @@ describe('preview revisions', () => {
     expect(revisions(movedState, ['A'], 'A', ['A'])).not.toBe(surface);
   });
 });
+
+it('card previews track direct titles and existence without depending on nested bodies', () => {
+  const revisions = createPreviewRevisions();
+  const D = doc('D', ['C']),
+    C = canvas('C', [['document', 'E']]),
+    E = doc('E');
+  const token = revisions(snapshot(D, C, E), [], 'D', undefined, true);
+  expect(
+    revisions(
+      snapshot(D, moved(C), { ...E, title: 'Nested rename' }),
+      [],
+      'D',
+      undefined,
+      true,
+    ),
+  ).toBe(token);
+  expect(
+    revisions(
+      snapshot(D, { ...C, frame: { ...C.frame, name: 'Renamed' } }, E),
+      [],
+      'D',
+      undefined,
+      true,
+    ),
+  ).not.toBe(token);
+  expect(revisions(snapshot(D, E), [], 'D', undefined, true)).not.toBe(token);
+});

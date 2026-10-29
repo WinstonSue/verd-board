@@ -24,7 +24,10 @@ test('project content validates, package facts are current, refresh is idempoten
   assert.ok(
     entries.some((e) => e.file.id === 'project-doc:packages/release-2'),
   );
-  assert.equal(entries.filter((e) => e.file.format === 'verd-frame').length, 9);
+  assert.equal(
+    entries.filter((e) => e.file.format === 'verd-frame').length,
+    31,
+  );
   const home = entries.find((e) => e.file.frame?.id === 'board-root').file;
   assert.equal(
     entries
@@ -32,11 +35,7 @@ test('project content validates, package facts are current, refresh is idempoten
         (e) =>
           e.file.format === 'verd-frame' && e.file.frame.id !== 'board-root',
       )
-      .every(
-        (e) =>
-          e.file.organization?.kind === 'subgraph' &&
-          e.file.organization.ownerFrameId === 'board-root',
-      ),
+      .every((e) => e.file.organization?.kind === 'standalone'),
     true,
   );
   assert.deepEqual(
@@ -76,7 +75,23 @@ test('project content validates, package facts are current, refresh is idempoten
     };
     visit(entry.file.text.content);
   }
-  assert.equal(embeddedTargets.size, 8);
+  assert.equal(embeddedTargets.size, 9);
+  const algorithms = entries.find(
+    (e) => e.file.frame?.id === 'demo:layout-routing',
+  );
+  assert.ok(algorithms);
+  assert.ok(
+    Object.values(home.cells).some(
+      (cell) =>
+        cell.kind === 'frame-reference' &&
+        cell.data.targetFrameId === algorithms.file.frame.id,
+    ),
+  );
+  assert.ok(
+    model.layers
+      .find((layer) => layer.label === '领域引擎')
+      .nodes.some((node) => node.id === '@sue/board-uml'),
+  );
   const file = entries.find((e) => e.file.frame?.id === PACKAGE_FRAME_ID).file;
   assert.equal(packageDrift(file, model), false);
   assert.deepEqual(refreshPackageFile(file, model), file);
@@ -114,6 +129,7 @@ test('project content validates, package facts are current, refresh is idempoten
       );
       assert.ok(errors.some((e) => e.includes('Document identity differs')));
       assert.ok(errors.some((e) => e.includes('Missing linked file missing')));
+      assert.ok(errors.some((e) => e.includes('plainText cache differs')));
       const targetFile = entries.find(
         (e) => e.file.format === 'verd-frame',
       ).file;
@@ -134,6 +150,8 @@ test('project content validates, package facts are current, refresh is idempoten
           },
         ],
       });
+      withCellLink.file.text.plainText =
+        runtime.common.deriveBoardTextPlainText(withCellLink.file.text.content);
       assert.deepEqual(
         await validateWorkspace(
           entries.map((e) => (e === document ? withCellLink : e)),
@@ -178,6 +196,78 @@ test('project content validates, package facts are current, refresh is idempoten
       );
     }
   });
+});
+
+test('nine overviews reach exactly twenty-one standalone details without changing the overview during package refresh', async () => {
+  const entries = await readWorkspace();
+  const byId = new Map(
+    entries
+      .filter((e) => e.file.format === 'verd-frame')
+      .map((e) => [e.file.frame.id, e]),
+  );
+  const home = byId.get('board-root').file;
+  const topics = Object.values(home.cells).filter(
+    (c) => c.kind === 'frame-reference',
+  );
+  assert.equal(topics.length, 9);
+  const expectedCounts = [2, 2, 3, 2, 3, 2, 2, 2, 3];
+  const reached = new Set();
+  for (const [index, ref] of topics.entries()) {
+    const overview = byId.get(ref.data.targetFrameId);
+    assert.ok(overview);
+    const refs = Object.values(overview.file.cells).filter(
+      (c) => c.kind === 'frame-reference',
+    );
+    assert.equal(refs.length, expectedCounts[index], overview.path);
+    for (const detailRef of refs) {
+      const detail = byId.get(detailRef.data.targetFrameId);
+      assert.ok(detail, overview.path);
+      assert.match(detail.path, /^架构图\/细节\/[^/]+\/[^/]+\.verd\.json$/);
+      assert.equal(detail.file.organization.kind, 'standalone');
+      assert.equal(reached.has(detail.file.frame.id), false, detail.path);
+      reached.add(detail.file.frame.id);
+      for (const layer of Object.values(detail.file.cells).filter(
+        (c) => c.kind === 'architecture-layer',
+      )) {
+        const paintOrder = detail.file.frame.children;
+        for (const id of layer.data.memberIds)
+          assert.ok(
+            paintOrder.indexOf(layer.id) < paintOrder.indexOf(id),
+            `${detail.path}: layer must paint behind ${id}`,
+          );
+      }
+      assert.equal(
+        Object.values(detail.file.cells).some(
+          (c) => c.kind === 'frame-reference',
+        ),
+        false,
+      );
+      const card = Object.values(detail.file.cells).find(
+        (c) => c.kind === 'document-reference',
+      );
+      assert.match(card.content.text.plainText, /源码入口：/);
+      assert.match(card.content.text.plainText, /返回专题总览/);
+    }
+  }
+  assert.equal(reached.size, 21);
+  assert.deepEqual(
+    [...reached].sort(),
+    [...byId.keys()].filter((id) => id.startsWith('project:detail/')).sort(),
+  );
+  const overview = byId.get('board/20:architecture-layered').file;
+  const before = structuredClone(overview);
+  assert.equal(
+    Object.keys(overview.cells).some((id) => id.startsWith('demo:packages/')),
+    false,
+  );
+  const packageFile = byId.get(PACKAGE_FRAME_ID).file;
+  const refreshed = refreshPackageFile(packageFile, await readPackageModel());
+  assert.deepEqual(refreshed, packageFile);
+  assert.deepEqual(
+    refreshPackageFile(refreshed, await readPackageModel()),
+    refreshed,
+  );
+  assert.deepEqual(overview, before);
 });
 
 test('dependency refresh preserves annotations and rejects deleting their targets', async () => {

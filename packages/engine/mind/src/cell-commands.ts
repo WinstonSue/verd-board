@@ -87,6 +87,7 @@ export const addMindChild = (
   const seedData = inherit?.data as MindChildData | undefined,
     nodeData = node.data as MindChildData | undefined;
   const inheritedAppearance = inherit?.appearance && {
+    colorSources: inherit.appearance.colorSources,
     fill: inherit.appearance.fill,
     strokeColor: inherit.appearance.strokeColor,
     strokeWidth: inherit.appearance.strokeWidth,

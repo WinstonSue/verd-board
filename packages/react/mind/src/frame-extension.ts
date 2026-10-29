@@ -9,6 +9,7 @@ import {
 import {
   layoutMindCells,
   mindPresentation,
+  mindBranchColor,
   resolveMindChildMove,
   type MindMetricsOptions,
 } from '@sue/board-mind';
@@ -17,6 +18,7 @@ import type {
   FramePresentation,
   FrameRenderContext,
   FrameRenderExtension,
+  FrameThemeAppearanceContext,
   FrameViewProjection,
 } from '@sue/board-react';
 import { canonicalFrameProjection, measureBoardText } from '@sue/board-react';
@@ -53,6 +55,7 @@ export const createMindFrameExtensions = (
             geometry?: NodeGeometry;
             textBounds?: RectangleClient;
             presentation?: FramePresentation;
+            appearance?: FrameRenderContext['appearance'];
           }
         >
       >
@@ -202,6 +205,16 @@ export const createMindFrameExtensions = (
           : undefined,
       renderShape: (context: FrameRenderContext) =>
         renderMindCellShape(context, metricsOptions),
+      themeAppearance: ({
+        store,
+        cell,
+        frameId,
+        theme,
+      }: FrameThemeAppearanceContext) => {
+        if (cell.cellType !== 'node' || !theme.adaptive) return undefined;
+        const value = mindPresentation(store, cell, frameId, theme.appearance);
+        return { fill: value.fill, strokeColor: value.stroke };
+      },
       textBounds: (context: FrameRenderContext) => {
         if (!context.geometry)
           return mindCellTextBounds(context, metricsOptions);
@@ -220,7 +233,16 @@ export const createMindFrameExtensions = (
         const { store, cell, frameId } = context;
         if (cell.cellType !== 'node') return undefined;
         const cached = nodeCache(context);
-        return (cached.presentation ??= mindPresentation(store, cell, frameId));
+        if (!cached.presentation || cached.appearance !== context.appearance) {
+          cached.appearance = context.appearance;
+          cached.presentation = mindPresentation(
+            store,
+            cell,
+            frameId,
+            context.appearance,
+          );
+        }
+        return cached.presentation;
       },
       renderControls: kind === 'mind-summary' ? undefined : renderMindControls,
     })),
@@ -228,6 +250,20 @@ export const createMindFrameExtensions = (
       kind: 'mind-summary-edge',
       render: (context) => createElement(MindSummaryEdge, context),
     },
-    { kind: 'mind-branch', render: renderMindBranch },
+    {
+      kind: 'mind-branch',
+      render: renderMindBranch,
+      themeAppearance: ({ store, cell, frameId, theme }) =>
+        isEdgeCell(cell) && 'cellId' in cell.target
+          ? {
+              strokeColor: mindBranchColor(
+                store,
+                cell.target.cellId,
+                frameId,
+                theme.adaptive ? theme.appearance : undefined,
+              ),
+            }
+          : undefined,
+    },
   ];
 };

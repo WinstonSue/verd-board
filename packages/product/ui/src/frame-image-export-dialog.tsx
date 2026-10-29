@@ -1,14 +1,17 @@
+import type { BoardAppearance } from '@sue/board-core';
 import { useEffect, useRef, useState } from 'react';
 import type { FrameImageOptions } from '@sue/board-react';
 import { useI18n } from './i18n';
 export function FrameImageExportDialog({
   hasSelection,
   themeBackground,
+  appearance = 'light',
   onExport,
   onClose,
 }: {
   hasSelection: boolean;
-  themeBackground: string;
+  themeBackground: string | ((appearance: BoardAppearance) => string);
+  appearance?: BoardAppearance;
   onExport(options: FrameImageOptions): Promise<void>;
   onClose(): void;
 }) {
@@ -21,22 +24,31 @@ export function FrameImageExportDialog({
     [padding, setPadding] = useState(20);
   const [background, setBackground] = useState('transparent'),
     [custom, setCustom] = useState('#ffffff');
+  const [colorMode, setColorMode] = useState<'current' | BoardAppearance>(
+    'current',
+  );
   const [pending, setPending] = useState(false),
     [error, setError] = useState<string>();
   useEffect(() => {
     dialog.current?.showModal();
   }, []);
   const submit = async () => {
+    const exportAppearance = colorMode === 'current' ? appearance : colorMode;
+    const exportBackground =
+      typeof themeBackground === 'function'
+        ? themeBackground(exportAppearance)
+        : themeBackground;
     setPending(true);
     setError(undefined);
     try {
       await onExport({
+        appearance: exportAppearance,
         format,
         ratio,
         padding,
         background:
           background === 'theme'
-            ? themeBackground
+            ? exportBackground
             : background === 'custom'
               ? custom
               : background,
@@ -75,6 +87,22 @@ export function FrameImageExportDialog({
             <option value="svg">SVG</option>
             <option value="png">PNG</option>
             <option value="jpeg">JPG</option>
+          </select>
+        </label>
+        <label>
+          {zh ? '配色' : 'Appearance'}
+          <select
+            aria-label="Image appearance"
+            value={colorMode}
+            onChange={(event) =>
+              setColorMode(event.target.value as typeof colorMode)
+            }
+          >
+            <option value="current">
+              {zh ? '当前外观' : 'Current appearance'}
+            </option>
+            <option value="light">{zh ? '浅色' : 'Light'}</option>
+            <option value="dark">{zh ? '深色' : 'Dark'}</option>
           </select>
         </label>
         <label>

@@ -33,6 +33,12 @@ import {
   createWorkflowTaskCell,
 } from '@sue/board-workflow';
 import type { Flowchart } from './parser/flowchart.js';
+import type { AuthoredStyle } from './interfaces';
+import {
+  authoredAppearance,
+  authoredEdgeAppearance,
+  authoredText,
+} from './authored-style';
 
 export const MERMAID_LOSSY_FIELDS = [
   'style',
@@ -46,6 +52,7 @@ const DEFAULT_LAYER_LABEL = 'Default';
 type NodeShape = 'box' | 'decision' | 'store' | 'stadium';
 
 interface ParsedNode {
+  authoredStyle?: AuthoredStyle;
   id: string;
   label: string;
   shape: NodeShape;
@@ -53,11 +60,13 @@ interface ParsedNode {
 }
 
 interface ParsedLayer {
+  authoredStyle?: AuthoredStyle;
   id: string;
   label: string;
 }
 
 interface ParsedEdge {
+  authoredStyle?: AuthoredStyle;
   source: string;
   target: string;
   label?: string;
@@ -268,6 +277,24 @@ const nativeSnapshot = (
     return id;
   };
   const add = (cell: Cell, key?: string) => {
+    const item = key
+      ? [...model.nodes, ...model.layers].find((item) => item.id === key)
+      : undefined;
+    if (
+      isNodeCell(cell) &&
+      item?.authoredStyle &&
+      Object.keys(item.authoredStyle).length
+    ) {
+      cell.appearance = {
+        ...cell.appearance,
+        ...authoredAppearance(item.authoredStyle),
+      };
+      if (item.authoredStyle.color)
+        cell.content = {
+          ...cell.content,
+          text: authoredText(cell.content?.label ?? '', item.authoredStyle),
+        };
+    }
     cells[cell.id] = cell;
     frame.children.push(cell.id);
     if (key) ids.set(key, cell.id);
@@ -388,6 +415,27 @@ const nativeSnapshot = (
       },
       route: { mode: 'orthogonal' },
       labels: edge.label !== undefined ? [{ text: edge.label }] : [],
+      ...(edge.authoredStyle && Object.keys(edge.authoredStyle).length
+        ? {
+            appearance: authoredEdgeAppearance(edge.authoredStyle),
+            labels:
+              edge.label !== undefined
+                ? [
+                    {
+                      text: edge.label,
+                      ...(edge.authoredStyle.color
+                        ? {
+                            richText: authoredText(
+                              edge.label,
+                              edge.authoredStyle,
+                            ),
+                          }
+                        : {}),
+                    },
+                  ]
+                : [],
+          }
+        : {}),
     });
   }
   const registry = createCellRegistry({
@@ -431,10 +479,12 @@ export const flowchartToDomainFrame = (
     layers: graph.subGraphs.map((layer) => ({
       id: layer.id,
       label: layer.text,
+      authoredStyle: layer.authoredStyle,
     })),
     nodes: nodes.map((node) => ({
       id: node.id,
       label: node.text,
+      authoredStyle: node.authoredStyle,
       shape:
         node.type === 'diamond'
           ? 'decision'
@@ -448,6 +498,7 @@ export const flowchartToDomainFrame = (
     edges: graph.edges.map((edge) => ({
       source: edge.start,
       target: edge.end,
+      authoredStyle: edge.authoredStyle,
       ...(edge.text ? { label: edge.text } : {}),
     })),
     positions: {

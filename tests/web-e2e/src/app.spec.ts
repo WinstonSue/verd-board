@@ -253,8 +253,12 @@ test('opens a board mind in exclusive edit and writes children back', async ({
 });
 
 test('switches theme scheme and restores it after reload', async ({ page }) => {
+  await page.emulateMedia({ colorScheme: 'light' });
   await page.getByLabel('Theme', { exact: true }).selectOption('dark');
-  await expect(canvas(page)).toHaveCSS('background-color', 'rgb(20, 20, 20)');
+  await expect(canvas(page)).toHaveCSS(
+    'background-color',
+    'rgb(239, 249, 245)',
+  );
   await expect
     .poll(async () => {
       const data = await stored(page);
@@ -264,7 +268,10 @@ test('switches theme scheme and restores it after reload', async ({ page }) => {
     .toBe('dark');
   await page.reload();
   await expect(page.getByLabel('Theme', { exact: true })).toHaveValue('dark');
-  await expect(canvas(page)).toHaveCSS('background-color', 'rgb(20, 20, 20)');
+  await expect(canvas(page)).toHaveCSS(
+    'background-color',
+    'rgb(239, 249, 245)',
+  );
 });
 
 test('draws and erases freehand without page errors', async ({ page }) => {

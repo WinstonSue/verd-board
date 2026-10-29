@@ -43,3 +43,7 @@ export function Editor() {
 `DocumentPage.navigation` is `{requestId,target:WorkspaceTarget,signal?}` with `onNavigationResult`; old anchor-only requests are removed. `FrameLinkHost` delegates workspace link generation/activation, and `revealTarget` replaces legacy reveal props. Document changes may return actual host commit receipts so navigation waits for accepted edits. The product composes `@sue/board-react-actions`; standalone document surfaces do not acquire a board-renderer dependency.
 
 `FrameDocumentEditingView` is re-exported for optional embedded-document adapters. `FrameDocumentReferences.captureEditingView` / `restoreEditingView` and the corresponding canvas controller methods carry opaque JSON view state; the workspace product waits for editor-ready, restores scroll and restores a caret only for matching content revisions. File tree, workspace menu, tabs/groups, library, trash, settings and banners consume the same semantic ActionSource; the canonical surface inventory is `packages/product/app/src/session/workspace-surface-actions.ts`.
+
+## 主题外观
+
+经典、缤纷、柔和、复古、清新、海洋均随应用外观选择深浅变体，画布只需选择一次主题。所有图元的未标记颜色（包括旧固定色）均跟随主题，只有明确标记的手动颜色保持固定；可逐字段恢复主题，Mind 分支也可恢复继承。画布背景保留独立来源规则；图像导出可选当前外观、浅色和深色。主题内部 ID 保持兼容，切换应用外观不修改文件或撤销历史。

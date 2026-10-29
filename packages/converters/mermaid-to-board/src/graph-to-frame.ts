@@ -18,7 +18,12 @@ import { createDrawPlugin, drawCellPorts, DrawKind } from '@sue/board-draw';
 import { createUmlPlugin } from '@sue/board-uml';
 import { createWorkflowPlugin } from '@sue/board-workflow';
 import type { Node } from './elementSkeleton.js';
-import type { GraphImage } from './interfaces.js';
+import type { GraphImage, AuthoredStyle } from './interfaces.js';
+import {
+  authoredAppearance,
+  authoredEdgeAppearance,
+  authoredText,
+} from './authored-style';
 import { removeMarkdown } from './markdown-to-text.js';
 import type { Class } from './parser/class.js';
 import type { Flowchart } from './parser/flowchart.js';
@@ -151,6 +156,7 @@ export const graphToFrameSnapshot = (
       strokeWidth?: number | null;
       strokeStyle?: string | null;
       groupId?: string;
+      authoredStyle?: AuthoredStyle;
     },
   ) => {
     if (points.length < 2) throw new Error('Mermaid edge is missing geometry');
@@ -163,12 +169,26 @@ export const graphToFrameSnapshot = (
         target: terminal(points.at(-1)!, options.targetId),
         route: { mode: 'fixed', points },
         labels: options.text
-          ? [{ text: label(options.text), position: 0.5 }]
+          ? [
+              {
+                text: label(options.text),
+                position: 0.5,
+                ...(options.authoredStyle?.color
+                  ? {
+                      richText: authoredText(
+                        label(options.text),
+                        options.authoredStyle,
+                      ),
+                    }
+                  : {}),
+              },
+            ]
           : [],
         appearance: {
           strokeColor: options.strokeColor || '#334155',
           strokeWidth: options.strokeWidth || 1,
           strokeStyle: style(options.strokeStyle),
+          ...authoredEdgeAppearance(options.authoredStyle),
         },
         data: {
           sourceMarker: options.sourceMarker ?? 'none',
@@ -198,11 +218,12 @@ export const graphToFrameSnapshot = (
             strokeColor: element.strokeColor,
             strokeWidth: element.strokeWidth ?? 1,
             strokeStyle: style(element.strokeStyle),
+            ...authoredAppearance(element.authoredStyle),
           },
           element.groupId,
         );
-      case 'text':
-        return node(
+      case 'text': {
+        const text = node(
           element.id,
           element.x,
           element.y,
@@ -213,6 +234,12 @@ export const graphToFrameSnapshot = (
           {},
           element.groupId,
         );
+        text.content!.text = authoredText(
+          text.content!.label!,
+          element.authoredStyle,
+        );
+        return text;
+      }
       case 'line':
         return arrow(
           [
@@ -224,6 +251,7 @@ export const graphToFrameSnapshot = (
             strokeColor: element.strokeColor,
             strokeWidth: element.strokeWidth,
             strokeStyle: element.strokeStyle,
+            authoredStyle: element.authoredStyle,
             groupId: element.groupId,
           },
         );
@@ -247,6 +275,7 @@ export const graphToFrameSnapshot = (
           strokeColor: element.strokeColor,
           strokeWidth: element.strokeWidth,
           strokeStyle: element.strokeStyle,
+          authoredStyle: element.authoredStyle,
           groupId: element.groupId,
         });
       }
@@ -310,10 +339,14 @@ export const graphToFrameSnapshot = (
         sub.height,
         'rectangle',
         '',
-        { fill: '#ffffde', strokeColor: '#aaaa33' },
+        {
+          fill: '#ffffde',
+          strokeColor: '#aaaa33',
+          ...authoredAppearance(sub.authoredStyle),
+        },
         groupId,
       );
-      node(
+      const title = node(
         `${sub.id}:title`,
         sub.x,
         sub.y,
@@ -324,6 +357,11 @@ export const graphToFrameSnapshot = (
         {},
         groupId,
       );
+      if (sub.authoredStyle?.color)
+        title.content!.text = authoredText(
+          title.content!.label!,
+          sub.authoredStyle,
+        );
     }
     for (const vertex of Object.values(graph.vertices)) {
       if (!vertex) continue;
@@ -343,6 +381,7 @@ export const graphToFrameSnapshot = (
         strokeColor: s.stroke ?? '#9370DB',
         strokeWidth: parseFloat(s['stroke-width'] ?? '1'),
         strokeStyle: s['stroke-dasharray'] ? 'dashed' : 'solid',
+        ...authoredAppearance(vertex.authoredStyle),
       };
       const n = node(
         vertex.id,
@@ -359,11 +398,12 @@ export const graphToFrameSnapshot = (
       );
       n.data = {
         fontSize: config.fontSize ?? 20,
-        color: vertex.labelStyle.color,
         link: vertex.link,
       };
-      if (vertex.type === 'doublecircle')
-        node(
+      if (vertex.type !== 'doublecircle')
+        n.content!.text = authoredText(n.content!.label!, vertex.authoredStyle);
+      if (vertex.type === 'doublecircle') {
+        const inner = node(
           `${vertex.id}:inner`,
           vertex.x + 5,
           vertex.y + 5,
@@ -374,6 +414,11 @@ export const graphToFrameSnapshot = (
           appearance,
           outerGroup(vertex.id),
         );
+        inner.content!.text = authoredText(
+          inner.content!.label!,
+          vertex.authoredStyle,
+        );
+      }
     }
     for (const edge of graph.edges) {
       const points: Point[] =
@@ -393,6 +438,7 @@ export const graphToFrameSnapshot = (
         sourceMarker: double ? 'arrow' : 'none',
         targetMarker: open ? 'none' : 'arrow',
         strokeStyle: edge.stroke,
+        authoredStyle: edge.authoredStyle,
         groupId:
           outerGroup(edge.start) === outerGroup(edge.end)
             ? outerGroup(edge.start)
@@ -454,6 +500,26 @@ export const graphToFrameSnapshot = (
     const id = unique('group', key);
     cells[id] = { id, kind: CellKind.group, cellType: 'group', members: ids };
     frame.groups.push(id);
+  }
+  for (const cell of Object.values(cells)) {
+    if ('appearance' in cell && cell.appearance) {
+      cell.appearance = {
+        ...cell.appearance,
+        colorSources: {
+          ...cell.appearance.colorSources,
+          ...('fill' in cell.appearance && cell.appearance.fill !== undefined
+            ? { fill: cell.appearance.colorSources?.fill ?? ('theme' as const) }
+            : {}),
+          ...(cell.appearance.strokeColor !== undefined
+            ? {
+                strokeColor:
+                  cell.appearance.colorSources?.strokeColor ??
+                  ('theme' as const),
+              }
+            : {}),
+        },
+      };
+    }
   }
   const snapshot = { store: { rootId: frame.id, cells } };
   const errors = validateCellStore(

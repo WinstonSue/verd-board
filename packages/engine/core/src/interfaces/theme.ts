@@ -1,9 +1,14 @@
 export interface BoardTheme {
   themeColorMode: ThemeColorMode;
   boardBackground?: string;
+  /** Missing sources are interpreted using the historical defaults, without rewriting files. */
+  backgroundMode?: ColorSource;
   gridEnabled?: boolean;
   gridSize?: number;
 }
+
+export type BoardAppearance = 'light' | 'dark';
+export type ColorSource = 'theme' | 'custom';
 
 export interface ThemeColor {
   mode: ThemeColorMode | string;

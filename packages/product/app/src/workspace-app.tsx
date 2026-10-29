@@ -1242,8 +1242,30 @@ function WorkspaceAppShell({
     if (id) openFile(id);
   }, [snapshot, failedPath, openFile]);
 
+  const referenceSnapshots = useMemo(
+    () => new WeakMap<object, import('@sue/board-core').FrameSnapshot>(),
+    [session],
+  );
   const instanceHost = useMemo<FrameInstanceHost>(
     () => ({
+      source: {
+        getSnapshot(frameId) {
+          const file = session?.getState().files.get(frameId)?.file;
+          if (!file) return null;
+          let snapshot = referenceSnapshots.get(file);
+          if (!snapshot) {
+            snapshot = {
+              store: {
+                rootId: file.frame.id,
+                cells: { [file.frame.id]: file.frame, ...file.cells },
+              },
+            };
+            referenceSnapshots.set(file, snapshot);
+          }
+          return snapshot;
+        },
+        subscribe: (listener) => session?.subscribe(listener) ?? (() => {}),
+      },
       get(query) {
         const canvas = canvasRef.current;
         const occurrence = canvas?.get(
@@ -1258,7 +1280,7 @@ function WorkspaceAppShell({
           preview: !!file && isRegularCanvas(file),
         };
       },
-      acquire(query) {
+      acquire(query, options) {
         const canvas = canvasRef.current;
         if (!canvas) return () => {};
         canvas.openFile(query.ownerFileId);
@@ -1267,7 +1289,7 @@ function WorkspaceAppShell({
           query.refId,
           query.parentOccurrenceId ?? rootOccurrenceId(query.ownerFileId),
           query.appearance,
-          { activate: false },
+          { activate: !!options?.edit, edit: options?.edit },
         );
         return opened.occurrence
           ? canvas.retainOccurrence(opened.occurrence.id)
@@ -1312,7 +1334,7 @@ function WorkspaceAppShell({
         });
       },
     }),
-    [session],
+    [session, referenceSnapshots],
   );
 
   const placeReference = useCallback(
@@ -1527,6 +1549,17 @@ function WorkspaceAppShell({
           selection: restored.selection as DocumentSelection | undefined,
         });
       }
+      const currentRoot = frameControllers.current.get(
+        state.session.activeTabId ?? '',
+      );
+      const inline = currentRoot?.getActiveController();
+      if (
+        inline &&
+        inline !== currentRoot &&
+        inline.runtime.mountedRootId === restored.fileId &&
+        state.files.has(restored.fileId)
+      )
+        return;
       // History touching a background file activates it (§5.6); the
       // trashed-tab effect closes tabs whose files an undo deleted.
       if (
@@ -3482,9 +3515,10 @@ function WorkspaceAppShell({
                                 );
                             }}
                             value={canvasValue(snapshot)}
-                            documentReferences={documentPreviews(
-                              previewOptions(tab.fileId),
-                            )}
+                            documentReferences={documentPreviews({
+                              ...previewOptions(tab.fileId),
+                              referenceCards: isRegularCanvas(entry.file),
+                            })}
                             onReferenceDocument={() => {
                               setDocumentPickerEditable(false);
                               setDocumentPickerFileId(tab.fileId);

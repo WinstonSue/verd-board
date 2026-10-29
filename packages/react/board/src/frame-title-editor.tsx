@@ -1,3 +1,4 @@
+import { useFrameTheme, frameThemeStyle } from './frame-theme';
 import { useLayoutEffect, useRef, type ComponentProps } from 'react';
 import { createPortal } from 'react-dom';
 import { createInlineText } from '@sue/board-common';
@@ -8,7 +9,9 @@ import { useFrameWheelPortal } from './frame-wheel';
 export const frameTitleStyle = (selected: boolean) => ({
   fontSize: 14,
   textAlign: 'left' as const,
-  color: selected ? '#6366f1' : '#94a3b8',
+  color: selected
+    ? 'var(--board-primary, #6366f1)'
+    : 'var(--board-text, #94a3b8)',
 });
 
 export const frameTitleCss = `
@@ -29,6 +32,7 @@ export function FrameTitleEditor({
   cellId: string;
   svg: SVGSVGElement | null;
 }) {
+  const theme = useFrameTheme();
   const ref = useRef<HTMLDivElement>(null);
   useFrameWheelPortal(ref);
   useLayoutEffect(() => {
@@ -68,6 +72,7 @@ export function FrameTitleEditor({
       data-frame-title-text
       data-frame-export-exclude
       style={{
+        ...frameThemeStyle(theme),
         position: 'fixed',
         left: 0,
         top: 0,

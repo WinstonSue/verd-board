@@ -1,19 +1,7 @@
+import { electron, writeDesktopLauncher } from './desktop-launcher';
 import { openWorkspaceMenu } from '../../web-e2e/src/app-actions';
-import {
-  _electron as electron,
-  test,
-  expect,
-  type ElectronApplication,
-} from '@playwright/test';
-import {
-  cp,
-  mkdir,
-  mkdtemp,
-  readdir,
-  readFile,
-  rm,
-  writeFile,
-} from 'node:fs/promises';
+import { test, expect, type ElectronApplication } from '@playwright/test';
+import { cp, mkdir, mkdtemp, readdir, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 
@@ -47,17 +35,9 @@ test('Desktop remembers a selected folder, recovers a missing folder and returns
       );
     const originalCanvases = await canvasBytes();
     const launcher = path.join(directory, 'launch.cjs');
-    await writeFile(
-      launcher,
-      [
-        "const {app} = require('electron');",
-        `app.setPath('userData', ${JSON.stringify(userData)});`,
-        `require(${JSON.stringify(path.join(root, 'apps/desktop/dist-electron/main.js'))});`,
-      ].join('\n'),
-    );
+    await writeDesktopLauncher(launcher, userData);
     const env = { ...process.env };
-    delete env.ELECTRON_RUN_AS_NODE;
-    delete env.VITE_DEV_SERVER_URL;
+
     env.VERDBOARD_WORKSPACE_PATH = initial;
     env.VERDBOARD_BUILTIN_WORKSPACE_PATH = source;
     const launch = async () => {
@@ -106,7 +86,7 @@ test('Desktop remembers a selected folder, recovers a missing folder and returns
     );
     await expect(
       page.locator(
-        '.workspace-pane.is-active [data-cell-kind="frame-reference"]',
+        '.workspace-pane.is-active [data-cell-kind="frame-reference"]:not([data-reference-card])',
       ),
     ).toHaveCount(0);
     await page
@@ -171,32 +151,29 @@ test('Desktop remembers a selected folder, recovers a missing folder and returns
     await expect(page.getByTestId('workspace-menu-trigger')).toBeFocused();
     await expect(
       page.locator(
-        '.workspace-pane.is-active [data-cell-kind="frame-reference"]',
+        '.workspace-pane.is-active [data-cell-kind="frame-reference"]:not([data-reference-card])',
       ),
-    ).toHaveCount(8);
+    ).toHaveCount(diagramPaths.length);
     await page.getByRole('button', { name: '架构图', exact: true }).click();
     const realDiagrams = page.locator(
       '[data-entry-kind="file"] .file-tree-name[title^="架构图/"]',
     );
-    await expect(realDiagrams).toHaveCount(8);
+    await expect(realDiagrams).toHaveCount(diagramPaths.length);
     await page.screenshot({
-      path: test.info().outputPath('actual-directory-and-shortcuts.png'),
+      path: test.info().outputPath('actual-directory.png'),
     });
-    await expect(page.locator('[data-entry-kind="shortcut"]')).toHaveCount(8);
+    // Built-in topics are standalone files; reading references do not create ownership shortcuts.
+    await expect(page.locator('[data-entry-kind="shortcut"]')).toHaveCount(0);
     const first = realDiagrams.first();
     const firstId = (await first.locator('..').getAttribute('data-file-id'))!;
     await first.click();
     const activeCanvas = page.locator(
-      '.workspace-pane.is-active svg[aria-label="Frame canvas"][data-surface="root"]',
+      `.workspace-pane.is-active svg[aria-label="Frame canvas"][data-instance-id="${firstId}"][tabindex="0"]`,
     );
     await activeCanvas.evaluate((node) =>
       node.setAttribute('data-directory-instance', 'same-source'),
     );
-    await page
-      .locator(
-        `[data-entry-kind="shortcut"][data-file-id="${firstId}"] .file-tree-name`,
-      )
-      .click();
+    await first.click();
     await expect(page.getByRole('tab')).toHaveCount(2);
     await expect(page.locator('.workspace-pane')).toHaveCount(2);
     await expect(activeCanvas).toHaveAttribute(
@@ -240,9 +217,9 @@ test('Desktop remembers a selected folder, recovers a missing folder and returns
     await page.getByTestId('workspace-open-builtin').click();
     await expect(
       page.locator(
-        '.workspace-pane.is-active [data-cell-kind="frame-reference"]',
+        '.workspace-pane.is-active [data-cell-kind="frame-reference"]:not([data-reference-card])',
       ),
-    ).toHaveCount(8);
+    ).toHaveCount(diagramPaths.length);
     await openWorkspaceMenu(page);
     await expect(page.getByTestId('workspace-open-builtin')).toBeDisabled();
     await page.keyboard.press('Home');

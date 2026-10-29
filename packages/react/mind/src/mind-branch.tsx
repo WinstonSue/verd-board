@@ -5,6 +5,8 @@ import {
   polylinePath,
   portAnchor,
   terminalCurvePath,
+  resolveThemeColor,
+  resolveBoardTheme,
   type NodeGeometry,
 } from '@sue/board-core';
 import {
@@ -18,7 +20,13 @@ import { memo, useMemo } from 'react';
 const branchDrawing = (
   context: Pick<
     FrameRenderContext,
-    'store' | 'cell' | 'getGeometry' | 'frameId' | 'selected'
+    | 'store'
+    | 'cell'
+    | 'getGeometry'
+    | 'frameId'
+    | 'selected'
+    | 'appearance'
+    | 'theme'
   >,
 ) => {
   const { store, cell, getGeometry, frameId } = context;
@@ -72,7 +80,13 @@ const branchDrawing = (
             target,
           ),
         );
-  const stroke = mindBranchColor(store, targetNode.id, frameId) ?? '#64748b';
+  const stroke = resolveThemeColor(
+    cell.appearance?.strokeColor,
+    cell.appearance?.colorSources?.strokeColor,
+    mindBranchColor(store, targetNode.id, frameId, context.appearance) ??
+      '#64748b',
+    context.theme ?? resolveBoardTheme(),
+  );
   const width =
     (
       targetNode.data as
@@ -118,10 +132,28 @@ const VisibleBranch = memo(function VisibleBranch({
   );
 });
 function MindBranch(context: FrameRenderContext) {
-  const { store, cell, getGeometry, frameId, selected, scale } = context;
+  const {
+    store,
+    cell,
+    getGeometry,
+    frameId,
+    selected,
+    scale,
+    appearance,
+    theme,
+  } = context;
   const drawing = useMemo(
-    () => branchDrawing({ store, cell, getGeometry, frameId, selected }),
-    [store, cell, getGeometry, frameId, selected],
+    () =>
+      branchDrawing({
+        store,
+        cell,
+        getGeometry,
+        frameId,
+        selected,
+        appearance,
+        theme,
+      }),
+    [store, cell, getGeometry, frameId, selected, appearance, theme],
   );
   if (!drawing) return null;
   return (

@@ -352,6 +352,7 @@ describe('selection commands', () => {
       shadow: 'lg',
       opacity: 0.5,
       strokeColor: '#0000ff',
+      colorSources: { strokeColor: 'custom' },
     });
     expect(runtime.store.cells.b).toEqual(store.cells.b);
     expect(runtime.store.cells.inner).toEqual(store.cells.inner);
