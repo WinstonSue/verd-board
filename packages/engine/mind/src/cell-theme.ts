@@ -1,4 +1,8 @@
-import { isBoardTextDocument, type BoardTextNode } from '@sue/board-common';
+import {
+  boardTextColor,
+  isBoardTextDocument,
+  type BoardTextNode,
+} from '@sue/board-common';
 import {
   resolveBoardTheme,
   resolveThemeColor,
@@ -173,13 +177,17 @@ const explicitColor = (node: BoardTextNode): string | undefined => {
  * same explicit color; partially colored fragments must not promote one
  * fragment's color over the rest of the title.
  */
-const uniformExplicitColor = (node: BoardTextNode): string | undefined => {
+const uniformExplicitColor = (
+  node: BoardTextNode,
+  followTheme = false,
+): string | undefined => {
   const colors = (current: BoardTextNode): (string | undefined)[] =>
     current.type === 'text'
       ? [
-          current.marks?.find((mark) => mark.type === 'textStyle')?.attrs?.[
-            'color'
-          ] as string | undefined,
+          boardTextColor(
+            current.marks?.find((mark) => mark.type === 'textStyle')?.attrs,
+            followTheme,
+          ),
         ]
       : (current.content ?? []).flatMap(colors);
   const leaves = colors(node);
@@ -270,7 +278,7 @@ export const mindPresentation = (
   const color =
     (appearance ? undefined : data?.color) ??
     (isBoardTextDocument(text)
-      ? uniformExplicitColor(text.content)
+      ? uniformExplicitColor(text.content, !!appearance)
       : undefined) ??
     (appearance
       ? readableThemeText(

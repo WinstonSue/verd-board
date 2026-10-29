@@ -360,6 +360,7 @@ function WorkspaceAppShell({
             case 'workspace.open-folder':
             case 'workspace.open-history':
             case 'workspace.open-builtin':
+            case 'workspace.open-patterns':
             case 'workspace.library':
             case 'workspace.settings':
             case 'workspace.my':
@@ -899,6 +900,16 @@ function WorkspaceAppShell({
           });
         }
         initializedWorkspaces.add(handle.key);
+      } else if (
+        request?.patterns &&
+        raw.session === null &&
+        state.documents.has('pattern-library:index')
+      ) {
+        opened.setSessionState({
+          tabs: [{ fileId: 'pattern-library:index' }],
+          activeTabId: 'pattern-library:index',
+          expandedDirs: [],
+        });
       } else if (
         handle.isDefault &&
         raw.session === null &&
@@ -1894,6 +1905,10 @@ function WorkspaceAppShell({
     openWorkspaceRequest({
       historyId: String(workspaceActionArgument(args, 'historyId')),
     }).finally(() => setMenuFocusRequest((current) => current + 1));
+  workspaceDialogs.current['open-patterns'] = () =>
+    openWorkspaceRequest({ patterns: true }).finally(() =>
+      setMenuFocusRequest((current) => current + 1),
+    );
   workspaceDialogs.current['open-builtin'] = () =>
     openWorkspaceRequest({ default: true }).finally(() =>
       setMenuFocusRequest((current) => current + 1),
@@ -2617,6 +2632,7 @@ function WorkspaceAppShell({
       openWorkspaceRequest({
         historyId: String(workspaceActionArgument(args, 'historyId')),
       }).finally(() => setMenuFocusRequest((current) => current + 1)),
+    'open-patterns': () => openWorkspaceRequest({ patterns: true }),
     'open-builtin': () =>
       openWorkspaceRequest({ default: true }).finally(() =>
         setMenuFocusRequest((current) => current + 1),
@@ -2935,6 +2951,13 @@ function WorkspaceAppShell({
                       void openWorkspaceRequest({ pick: true }).finally(() =>
                         setMenuFocusRequest((current) => current + 1),
                       );
+                    }
+                  : undefined
+              }
+              onOpenPatterns={
+                allowWorkspaceSwitching && !readonly
+                  ? () => {
+                      void openWorkspaceRequest({ patterns: true });
                     }
                   : undefined
               }

@@ -67,3 +67,7 @@ Thumbs.db
 # Isolated Electron development and automation output
 /apps/desktop/dist-electron-dev/
 /apps/desktop/dist-electron-e2e/
+
+# Installed pattern library copies keep device state out of source assets.
+/packages/product/agent-patterns/workspace/.verdboard/
+/packages/product/agent-patterns/workspace/**/*.tmp

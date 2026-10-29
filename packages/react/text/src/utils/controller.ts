@@ -6,8 +6,30 @@ import {
   BoardTextLink,
   BoardTextMarks,
   BoardTextSelection,
+  boardTextColor,
 } from '@sue/board-common';
 import { measureContainerSize } from './measure';
+
+/** Reads presentation only; the editor's stored literal and source remain untouched. */
+export function activeEditorTextColor(editor: Editor): string | undefined {
+  if (editor.isDestroyed) return undefined;
+  const style = getComputedStyle(editor.view.dom);
+  const adaptive =
+    style
+      .getPropertyValue('--board-unmarked-text-color')
+      .trim()
+      .toLowerCase() === 'currentcolor';
+  const explicit = boardTextColor(editor.getAttributes('textStyle'), adaptive);
+  if (explicit || !adaptive) return explicit;
+  const channels = style.color.match(/^rgba?\((\d+)[, ]+\s*(\d+)[, ]+\s*(\d+)/);
+  return channels
+    ? '#' +
+        channels
+          .slice(1, 4)
+          .map((part) => Number(part).toString(16).padStart(2, '0'))
+          .join('')
+    : undefined;
+}
 
 const MARK_COMMANDS: Record<
   keyof BoardTextMarks,
@@ -79,7 +101,7 @@ export function createBoardTextController(
         underline: editor.isActive('underline') || undefined,
         strike: editor.isActive('strike') || undefined,
         code: editor.isActive('code') || undefined,
-        color: editor.getAttributes('textStyle')['color'],
+        color: activeEditorTextColor(editor),
         fontSize: editor.getAttributes('textStyle')['fontSize'],
       };
     },

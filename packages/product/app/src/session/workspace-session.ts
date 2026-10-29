@@ -111,6 +111,15 @@ export interface DocumentEditOrigin {
 /** Every content and file mutation funnels through these commands. */
 export type WorkspaceCommand =
   | {
+      /** One final candidate, validated once and saved as one transaction. */
+      type: 'batch';
+      files: { file: WorkspaceFile; path: string }[];
+      removeIds?: CellId[];
+      /** Explicit repairs preserve the rejected disk bytes in workspace trash. */
+      repairPaths?: string[];
+      label?: string;
+    }
+  | {
       type: 'create-document-frame';
       ownerFrameId: CellId;
       document: DocumentFileV1;
@@ -934,7 +943,10 @@ export const createWorkspaceSession = (options: {
    * was never persisted (no disk version) produces no host op for
    * move/trash — those paths are retargeted/dropped locally instead.
    */
-  const planDiff = (candidate: Map<CellId, FileSnapshot>): Plan => {
+  const planDiff = (
+    candidate: Map<CellId, FileSnapshot>,
+    repairPaths: ReadonlySet<string> = new Set(),
+  ): Plan => {
     const plan: Plan = {
       candidate,
       affected: new Set(),
@@ -946,6 +958,12 @@ export const createWorkspaceSession = (options: {
       const prev = files.get(id);
       if (!prev) {
         plan.affected.add(id);
+        const failed = failedFiles.get(cand.path);
+        if (failed && repairPaths.has(cand.path) && failed.version)
+          plan.trashes.push({
+            frameId: id,
+            op: { path: cand.path, expectedVersion: failed.version },
+          });
         plan.writes.push({
           frameId: id,
           op: {
@@ -1006,10 +1024,12 @@ export const createWorkspaceSession = (options: {
    */
   const validateCandidate = (
     plan: Pick<Plan, 'candidate'>,
+    repairPaths: ReadonlySet<string> = new Set(),
   ): FrameFileDiagnostic[] => {
     for (const [id, candidate] of plan.candidate) {
       if (
         failedFiles.has(candidate.path) &&
+        !repairPaths.has(candidate.path) &&
         files.get(id)?.path !== candidate.path
       )
         return [
@@ -1021,7 +1041,13 @@ export const createWorkspaceSession = (options: {
         ];
       if (
         files.get(id)?.path !== candidate.path &&
-        [...failedFiles.values()].some((failure) => failure.fileId === id)
+        [...failedFiles.values()].some(
+          (failure) =>
+            failure.fileId === id &&
+            !(
+              failure.path === candidate.path && repairPaths.has(candidate.path)
+            ),
+        )
       )
         return [
           {
@@ -1126,6 +1152,7 @@ export const createWorkspaceSession = (options: {
       });
     });
     plan.trashes.forEach(({ op, frameId }) => {
+      failedFiles.delete(op.path);
       trashOpIdentities.set(op, new Set([frameId]));
       pending.trash.push(op);
     });
@@ -1227,6 +1254,27 @@ export const createWorkspaceSession = (options: {
     files.forEach((entry, id) =>
       candidate.set(id, { file: clone(entry.file), path: entry.path }),
     );
+    if (command.type === 'batch') {
+      for (const id of command.removeIds ?? []) candidate.delete(id);
+      const seen = new Set<string>();
+      for (const entry of command.files) {
+        if (!isWorkspaceFile(entry.file))
+          return invalid('Invalid workspace file');
+        const id = workspaceFileId(entry.file);
+        if (seen.has(id)) return invalid('Repeated batch file identity', id);
+        seen.add(id);
+        const previous = files.get(id);
+        if (previous && previous.file.format !== entry.file.format)
+          return invalid('File kind cannot change', id);
+        candidate.set(id, { file: clone(entry.file), path: entry.path });
+      }
+      const occupied = new Set<string>();
+      for (const entry of candidate.values()) {
+        if (occupied.has(entry.path)) return invalid('Repeated batch path');
+        occupied.add(entry.path);
+      }
+      return { candidate };
+    }
     if (command.type === 'create-document-frame') {
       const owner = files.get(command.ownerFrameId);
       const document = command.document;
@@ -1655,9 +1703,12 @@ export const createWorkspaceSession = (options: {
     }
     const planned = candidateFor(command);
     if ('diagnostics' in planned) return planned;
-    const plan = planDiff(planned.candidate);
+    const repairPaths = new Set(
+      command.type === 'batch' ? (command.repairPaths ?? []) : [],
+    );
+    const plan = planDiff(planned.candidate, repairPaths);
     if (!plan.affected.size) return { ok: true, diagnostics: [] };
-    const structural = validateCandidate(plan);
+    const structural = validateCandidate(plan, repairPaths);
     if (structural.length) return { ok: false, diagnostics: structural };
     const meta =
       command.type === 'file' && command.history

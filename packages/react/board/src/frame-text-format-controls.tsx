@@ -7,6 +7,8 @@ import {
   type BoardTextFormatPatch,
 } from '@sue/board-common';
 import { useMemo } from 'react';
+import { useFrameTheme } from './frame-theme';
+import { FrameColorInput } from './frame-color-input';
 
 const FONT_SIZES = [10, 12, 13, 14, 16, 18, 20, 24, 28, 32];
 
@@ -30,7 +32,11 @@ export function BoardTextFormatControls({
   /** Whether "跟随主题" clears the color override. */
   showThemeFollow?: boolean;
 }) {
-  const state = boardTextFormatState(document, defaults);
+  const theme = useFrameTheme();
+  const state = boardTextFormatState(document, {
+    ...defaults,
+    followThemeColors: theme.adaptive,
+  });
   const sizeValue = String(state.fontSize ?? defaults.fontSize ?? '');
   const sizes = useMemo(() => {
     const explicit = parseFloat(sizeValue);
@@ -104,22 +110,15 @@ export function BoardTextFormatControls({
       </label>
       <label>
         文字颜色
-        <FrameSettingsControl
-          field={{
-            key: 'Text color',
-            editor: 'input',
-            props: {
-              'aria-label': 'Text color',
-              type: 'color',
-              disabled: readonly || state.empty,
-            },
-          }}
+        <FrameColorInput
+          aria-label="Text color"
+          disabled={readonly || state.empty}
           value={
             /^#[0-9a-f]{6}$/i.test(String(state.color))
               ? String(state.color)
               : (defaults.color ?? '#475569')
           }
-          onCommit={(value) => onChange({ color: value })}
+          onValue={(value) => onChange({ color: value })}
         />
         {showThemeFollow && (
           <button

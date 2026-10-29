@@ -50,6 +50,7 @@ export async function withWorkspaceRuntime(task) {
       headings,
       documentExtensions,
       references,
+      validation,
     ] = await Promise.all([
       load('packages/engine/core/src/public-api.ts'),
       load('packages/engine/draw/src/public-api.ts'),
@@ -64,6 +65,7 @@ export async function withWorkspaceRuntime(task) {
       load('packages/react/text/src/utils/heading-slug.ts'),
       load('packages/react/text/src/constants/editor-config.ts'),
       load('packages/product/app/src/documents/workspace-references.ts'),
+      load('packages/product/app/src/workspace-validation.ts'),
     ]);
     const textRequire = createRequire(
       path.join(REPO_ROOT, 'packages/react/text/package.json'),
@@ -95,6 +97,7 @@ export async function withWorkspaceRuntime(task) {
       headings,
       documentSchema,
       references,
+      validation,
     });
   } finally {
     await server.close();
@@ -383,142 +386,44 @@ export function packageDrift(file, model) {
 }
 
 export async function validateWorkspace(entries, runtime) {
-  const { frames, documents, registry } = runtime;
-  const errors = [],
-    identities = new Map(),
-    filesById = new Map(),
-    sourceChecks = [];
-  const report = (p, message) => errors.push(p + ': ' + message);
-  for (const entry of entries) {
-    const file = entry.file;
-    if (!frames.isFrameFileV2(file) && !documents.isDocumentFileV1(file)) {
-      report(entry.path, 'Invalid native workspace file');
-      continue;
-    }
-    const id = documents.workspaceFileId(file);
-    filesById.set(id, file);
-    for (const identity of [
-      id,
-      ...(file.format === 'verd-frame' ? Object.keys(file.cells) : []),
-    ]) {
-      if (identities.has(identity))
-        report(
-          entry.path,
-          'Duplicate identity ' +
-            identity +
-            ' (also ' +
-            identities.get(identity) +
-            ')',
-        );
-      identities.set(identity, entry.path);
-    }
-    if (file.format === 'verd-document' && file.text.id !== id)
-      report(entry.path, 'Document identity differs from body identity');
-    if (file.format === 'verd-document') {
-      if (
-        file.text.plainText !==
-        runtime.common.deriveBoardTextPlainText(file.text.content)
-      )
-        report(entry.path, 'Document plainText cache differs from content');
-      try {
-        runtime.documentSchema.nodeFromJSON(file.text.content).check();
-      } catch (error) {
-        report(entry.path, 'Document editor schema: ' + error.message);
-      }
-    }
-  }
-  const canvasFiles = entries
-    .filter((e) => frames.isFrameFileV2(e.file))
-    .map((e) => e.file);
-  for (const diagnostic of runtime.references.validateWorkspaceReferences(
-    [...filesById.values()],
-    true,
-  ))
-    report(diagnostic.frameId ?? 'references', diagnostic.message);
-  for (const diagnostic of frames.validateFrameFiles(canvasFiles, registry))
-    report(diagnostic.frameId ?? 'frames', diagnostic.message);
-  for (const diagnostic of frames.buildOrganizationIndex(canvasFiles)
-    .diagnostics)
-    report(diagnostic.frameId ?? 'organization', diagnostic.message);
-  const anchors = new Map();
-  function walk(node, visit) {
-    visit(node);
-    for (const child of node.content ?? []) walk(child, visit);
-  }
-  for (const [id, file] of filesById)
-    if (file.format === 'verd-document') {
-      const slug = runtime.headings.createDocumentHeadingSlugger();
-      const found = new Set();
-      walk(file.text.content, (node) => {
-        if (node.type === 'heading')
-          found.add(slug(runtime.common.deriveBoardTextPlainText(node)));
-      });
-      anchors.set(id, found);
-    }
-  const cellOwners = new Map();
-  for (const file of canvasFiles)
-    for (const id of [file.frame.id, ...Object.keys(file.cells)])
-      cellOwners.set(id, cellOwners.has(id) ? null : file.frame.id);
-  const validateLink = (sourcePath, href, sourceFileId) => {
-    const parsed = runtime.links.parseWorkspaceLink(href, sourceFileId);
-    if (parsed) {
-      if (parsed.kind === 'cell') {
-        // Global Cell identity follows moves between files. The URL file id
-        // is only a creation-time hint and a missing-target fallback.
-        const owner = cellOwners.get(parsed.cellId);
-        if (!owner)
-          report(
-            sourcePath,
-            (owner === null
-              ? 'Ambiguous linked cell '
-              : 'Missing linked cell ') + parsed.cellId,
-          );
-      } else if (!filesById.has(parsed.fileId))
-        report(sourcePath, 'Missing linked file ' + parsed.fileId);
-      else if (
-        parsed.kind === 'heading' &&
-        !anchors.get(parsed.fileId)?.has(parsed.slug)
-      )
-        report(
-          sourcePath,
-          'Missing linked heading ' + parsed.slug + ' in ' + parsed.fileId,
-        );
-      return href;
-    }
+  const errors = runtime.validation
+    .validateNativeWorkspace(entries)
+    .map(
+      (issue) =>
+        (issue.path ?? issue.fileId ?? 'workspace') + ': ' + issue.message,
+    );
+  // This repository also verifies links into its own tracked source tree.
+  const checks = [];
+  const checkHref = (href) => {
     const external = runtime.links.parseExternalLink(href);
-    if (!external) {
-      report(sourcePath, 'Unsupported or invalid link ' + href);
-      return href;
-    }
+    if (!external) return href;
     const url = new URL(external),
       prefix = '/WinstonSue/verd-board/blob/master/';
     if (url.hostname === 'github.com' && url.pathname.startsWith(prefix)) {
       const local = decodeURIComponent(url.pathname.slice(prefix.length));
       if (local.startsWith('doc/'))
-        report(sourcePath, 'Old root documentation link ' + href);
+        errors.push('Old root documentation link ' + href);
       else
-        sourceChecks.push(
+        checks.push(
           access(path.resolve(REPO_ROOT, local)).catch(() =>
-            report(sourcePath, 'Missing repository source ' + local),
+            errors.push('Missing repository source ' + local),
           ),
         );
     }
     return href;
   };
-  for (const entry of entries) {
-    const file = entry.file;
-    const sourceId = documents.workspaceFileId(file);
-    const visitHref = (href) => validateLink(entry.path, href, sourceId);
+  for (const { file } of entries) {
     if (file.format === 'verd-document')
-      runtime.common.mapBoardTextLinks(file.text, visitHref);
+      runtime.common.mapBoardTextLinks(file.text, checkHref);
     else if (file.format === 'verd-frame')
       for (const cell of [file.frame, ...Object.values(file.cells)]) {
-        runtime.common.mapStandardCellLinks(cell, visitHref);
-        for (const plugin of registry.plugins)
-          plugin.mapLinks?.(cell, visitHref);
+        runtime.common.mapStandardCellLinks(cell, checkHref);
+        runtime.registry.plugins.forEach((plugin) =>
+          plugin.mapLinks?.(cell, checkHref),
+        );
       }
   }
-  await Promise.all(sourceChecks);
+  await Promise.all(checks);
   return errors;
 }
 

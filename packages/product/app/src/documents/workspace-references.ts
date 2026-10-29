@@ -1,5 +1,6 @@
 import {
   mapBoardTextLinks,
+  deriveBoardTextPlainText,
   remapWorkspaceLink,
   type BoardTextDocument,
   type BoardTextNode,
@@ -270,6 +271,7 @@ export function remapWorkspaceFiles(
           targetOwnerOf,
         }),
       ) as BoardTextDocument;
+      text.plainText = deriveBoardTextPlainText(text.content);
       return {
         ...file,
         id,

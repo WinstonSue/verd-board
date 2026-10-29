@@ -1,0 +1,210 @@
+{
+  "format": "verd-document",
+  "version": 1,
+  "id": "pattern-library:index",
+  "title": "Agent 范式库",
+  "text": {
+    "schemaVersion": 1,
+    "id": "pattern-library:index",
+    "kind": "block",
+    "content": {
+      "type": "doc",
+      "content": [
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 1
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "Agent 范式库"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "规则与模板的维护源位于同仓独立 package；当前工作区是安装后的可编辑副本。"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "修改副本不会改变已安装 CLI 的规则和模板，也不会回写源仓库。新版可复制到另一目录查看。"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "先按目标选择范式，再查询已安装 CLI 的 describe/rules，使用 plan、validate、preview、apply 编写。"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "富文本文档 · 围绕读者问题组织章节；图文引用保持独立源文件。",
+              "marks": [
+                {
+                  "type": "link",
+                  "attrs": {
+                    "href": "verd://file/pattern-guide%3Arich-document"
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "白板说明板 · 按信息区域编排图形、标注、表格与箭头；分组表达编辑整体。",
+              "marks": [
+                {
+                  "type": "link",
+                  "attrs": {
+                    "href": "verd://file/pattern-guide%3Awhiteboard"
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "Mind 知识树 · 用父子关系表达分类；跨分支关系使用链接或说明，避免重复正文。",
+              "marks": [
+                {
+                  "type": "link",
+                  "attrs": {
+                    "href": "verd://file/pattern-guide%3Amind-map"
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "DAG 流程 · 适合无回环依赖；明确分支、汇合与执行条件，可使用 DAG 自动布局。",
+              "marks": [
+                {
+                  "type": "link",
+                  "attrs": {
+                    "href": "verd://file/pattern-guide%3Aworkflow-dag"
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "回环与人工交接 · 允许重试回环；明确失败出口、停止条件和人工交接，保持 process 模式。",
+              "marks": [
+                {
+                  "type": "link",
+                  "attrs": {
+                    "href": "verd://file/pattern-guide%3Aworkflow-process"
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "分层架构 · 层表达职责边界，模块恰属一个层；连线标明接口或数据含义。",
+              "marks": [
+                {
+                  "type": "link",
+                  "attrs": {
+                    "href": "verd://file/pattern-guide%3Aarchitecture"
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "UML 类图 · 使用类、接口与关系表达静态契约；区分继承、组合及关联。",
+              "marks": [
+                {
+                  "type": "link",
+                  "attrs": {
+                    "href": "verd://file/pattern-guide%3Auml-class"
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "UML 时序图 · 按参与者和事件顺序编排；alt/opt/loop 表达分支和循环。",
+              "marks": [
+                {
+                  "type": "link",
+                  "attrs": {
+                    "href": "verd://file/pattern-guide%3Auml-sequence"
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "导航与多系统方案 · 总图只表达边界和交接，各系统内部图展开步骤；共享能力独立维护。",
+              "marks": [
+                {
+                  "type": "link",
+                  "attrs": {
+                    "href": "verd://file/pattern-guide%3Amulti-system"
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "plainText": "Agent 范式库\n规则与模板的维护源位于同仓独立 package；当前工作区是安装后的可编辑副本。\n修改副本不会改变已安装 CLI 的规则和模板，也不会回写源仓库。新版可复制到另一目录查看。\n先按目标选择范式，再查询已安装 CLI 的 describe/rules，使用 plan、validate、preview、apply 编写。\n富文本文档 · 围绕读者问题组织章节；图文引用保持独立源文件。\n白板说明板 · 按信息区域编排图形、标注、表格与箭头；分组表达编辑整体。\nMind 知识树 · 用父子关系表达分类；跨分支关系使用链接或说明，避免重复正文。\nDAG 流程 · 适合无回环依赖；明确分支、汇合与执行条件，可使用 DAG 自动布局。\n回环与人工交接 · 允许重试回环；明确失败出口、停止条件和人工交接，保持 process 模式。\n分层架构 · 层表达职责边界，模块恰属一个层；连线标明接口或数据含义。\nUML 类图 · 使用类、接口与关系表达静态契约；区分继承、组合及关联。\nUML 时序图 · 按参与者和事件顺序编排；alt/opt/loop 表达分支和循环。\n导航与多系统方案 · 总图只表达边界和交接，各系统内部图展开步骤；共享能力独立维护。",
+    "align": "left"
+  }
+}

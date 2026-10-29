@@ -202,6 +202,7 @@ export function FrameActionsPopover({
           }
         />
         <FrameSelectionText
+          controller={controller}
           store={store}
           ids={selection.ids}
           dispatch={dispatch}

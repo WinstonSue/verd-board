@@ -2450,6 +2450,7 @@ export function FrameProductShell({
             >
               <fieldset disabled={!inspectorEditable}>
                 <FrameSelectionText
+                  controller={activeController()}
                   store={store}
                   ids={uiSelection.ids}
                   dispatch={dispatch}

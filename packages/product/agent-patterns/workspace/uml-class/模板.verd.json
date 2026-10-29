@@ -1,0 +1,158 @@
+{
+  "format": "verd-frame",
+  "version": 2,
+  "frame": {
+    "id": "pattern:uml-class/uml-example-class",
+    "kind": "frame",
+    "cellType": "frame",
+    "geometry": {
+      "x": 0,
+      "y": 0,
+      "width": 960,
+      "height": 640
+    },
+    "children": [
+      "pattern:uml-class/uml-example-class-root",
+      "pattern:uml-class/uml-example-order",
+      "pattern:uml-class/uml-example-repo",
+      "pattern:uml-class/uml-example-implements"
+    ],
+    "groups": [],
+    "name": "UML 类图"
+  },
+  "cells": {
+    "pattern:uml-class/uml-example-class-root": {
+      "id": "pattern:uml-class/uml-example-class-root",
+      "kind": "uml-class-root",
+      "cellType": "node",
+      "geometry": {
+        "x": 0,
+        "y": 0,
+        "width": 0,
+        "height": 0
+      },
+      "content": {
+        "label": ""
+      },
+      "data": {},
+      "hidden": true
+    },
+    "pattern:uml-class/uml-example-order": {
+      "id": "pattern:uml-class/uml-example-order",
+      "kind": "uml-class",
+      "cellType": "node",
+      "geometry": {
+        "x": 60,
+        "y": 80,
+        "width": 200,
+        "height": 100,
+        "outline": "rectangle"
+      },
+      "content": {
+        "label": "Order"
+      },
+      "data": {
+        "classifier": "class",
+        "attributes": [
+          "+id: string"
+        ],
+        "methods": [
+          "+save() void"
+        ]
+      },
+      "ports": [
+        {
+          "id": "top",
+          "side": "top",
+          "direction": "both"
+        },
+        {
+          "id": "right",
+          "side": "right",
+          "direction": "both"
+        },
+        {
+          "id": "bottom",
+          "side": "bottom",
+          "direction": "both"
+        },
+        {
+          "id": "left",
+          "side": "left",
+          "direction": "both"
+        }
+      ],
+      "name": "Order"
+    },
+    "pattern:uml-class/uml-example-repo": {
+      "id": "pattern:uml-class/uml-example-repo",
+      "kind": "uml-class",
+      "cellType": "node",
+      "geometry": {
+        "x": 420,
+        "y": 80,
+        "width": 200,
+        "height": 100,
+        "outline": "rectangle"
+      },
+      "content": {
+        "label": "Repository"
+      },
+      "data": {
+        "classifier": "interface",
+        "attributes": [
+          "+id: string"
+        ],
+        "methods": [
+          "+save() void"
+        ]
+      },
+      "ports": [
+        {
+          "id": "top",
+          "side": "top",
+          "direction": "both"
+        },
+        {
+          "id": "right",
+          "side": "right",
+          "direction": "both"
+        },
+        {
+          "id": "bottom",
+          "side": "bottom",
+          "direction": "both"
+        },
+        {
+          "id": "left",
+          "side": "left",
+          "direction": "both"
+        }
+      ],
+      "name": "Repository"
+    },
+    "pattern:uml-class/uml-example-implements": {
+      "id": "pattern:uml-class/uml-example-implements",
+      "kind": "uml-relation",
+      "cellType": "edge",
+      "source": {
+        "cellId": "pattern:uml-class/uml-example-order"
+      },
+      "target": {
+        "cellId": "pattern:uml-class/uml-example-repo"
+      },
+      "route": {
+        "mode": "orthogonal"
+      },
+      "labels": [],
+      "data": {
+        "relation": "realization",
+        "sourceMarker": "none",
+        "targetMarker": "hollow-triangle"
+      }
+    }
+  },
+  "organization": {
+    "kind": "standalone"
+  }
+}

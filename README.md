@@ -13,6 +13,7 @@
 - **[开发指南](workspace/文档/开发/开发指南.verd-doc.json)** / **[桌面安装与使用](workspace/文档/指南/桌面安装与使用.verd-doc.json)**
 - **[包索引](workspace/文档/包/包索引.verd-doc.json)** / **[React 接入](workspace/文档/包/React接入.verd-doc.json)**
 - **[AI 画布数据规范](workspace/文档/指南/AI画布数据规范.verd-doc.json)** / 配套输入 [`tests/fixtures/ai-canvas/`](tests/fixtures/ai-canvas/)
+- **Agent 工具与范式库**：`@sue/verd-board-agent` 提供 `verd` CLI 与 Skill（本仓可用 `pnpm agent describe --json`）；独立内容包 `@sue/verd-board-agent-patterns` 维护原生模板与规则。Desktop 工作区菜单可打开安装后的可编辑副本，首次复制、后续保留修改。
 - **[文档维护指南](workspace/文档/开发/文档维护指南.verd-doc.json)**
 
 Open the root `workspace/` folder in Desktop to read and edit native documentation and architecture diagrams. Native files are the maintained source; Markdown remains an optional import/export format.
@@ -156,7 +157,7 @@ Mind topics fit their content with a default maximum outer width of 240 and unli
 
 工作区文件夹可整体移入回收站并还原；回收站支持确认后永久删除单项或清空。侧栏底部和画布「更多」菜单打开「我的」管理个人偏好；顶部工作区名称菜单打开工作区设置，分为基本设置和当前工作区回收站，Desktop 目录切换也位于此菜单。文件树完整显示真实目录，所属画布下另列图表快捷入口，两处共用源文件。
 
-应用支持浅色、深色和跟随系统，默认跟随系统；在「我的 → 设置 → 通用」即时切换并记住本机选择。经典、缤纷、柔和、复古、清新、海洋六个画布主题均提供深浅变体，嵌入文档同步适配；自定义颜色保留，图像导出可选择当前外观、浅色或深色。
+应用支持浅色、深色和跟随系统，默认跟随系统；在「我的 → 设置 → 通用」即时切换并记住本机选择。经典、缤纷、柔和、复古、清新、海洋六个画布主题均提供深浅变体，画布、独立和嵌入文档的未标记富文本颜色同步适配；仅明确标为 custom 的文字色保留，支持逐项恢复主题。图像导出可选择当前外观、浅色或深色。
 
 Workspace folders move to trash and restore as complete subtrees. Confirm before permanently deleting an item or emptying trash. My opens from the sidebar or canvas More menu for device preferences. Workspace settings have separate General and Trash sections. Workspace settings and Desktop folder actions are grouped under the workspace name at the top of the sidebar. The file tree shows actual paths and marked owner-canvas shortcuts, both opening the same source.
 

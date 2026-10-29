@@ -1,0 +1,54 @@
+{
+  "format": "verd-document",
+  "version": 1,
+  "id": "pattern:multi/navigation",
+  "title": "文档导航",
+  "text": {
+    "schemaVersion": 1,
+    "id": "pattern:multi/navigation",
+    "kind": "block",
+    "content": {
+      "type": "doc",
+      "content": [
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 1
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "文档导航"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "阅读顺序：协作总图 → 系统内部图 → 规则正文。"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "工单、开发与发布分别维护自己的状态；人工处理保留出口。"
+            }
+          ]
+        },
+        {
+          "type": "frameReference",
+          "attrs": {
+            "targetFrameId": "pattern:multi-system/pattern:multi/overview"
+          }
+        }
+      ]
+    },
+    "plainText": "文档导航\n阅读顺序：协作总图 → 系统内部图 → 规则正文。\n工单、开发与发布分别维护自己的状态；人工处理保留出口。\n打开画布 verd://file/pattern%3Amulti-system%2Fpattern%3Amulti%2Foverview",
+    "align": "left"
+  }
+}

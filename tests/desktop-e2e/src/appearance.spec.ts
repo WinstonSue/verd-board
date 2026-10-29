@@ -40,7 +40,13 @@ test('Desktop follows system, remembers manual appearance after restart, and lea
         content: [
           {
             type: 'paragraph',
-            content: [{ type: 'text', text: 'Original body' }],
+            content: [
+              {
+                type: 'text',
+                text: 'Original body',
+                marks: [{ type: 'textStyle', attrs: { color: '#24354b' } }],
+              },
+            ],
           },
         ],
       },
@@ -64,7 +70,30 @@ test('Desktop follows system, remembers manual appearance after restart, and lea
         ? { colorSources: { fill: 'custom', strokeColor: 'custom' } }
         : {}),
     },
-    content: { label: custom ? 'Fixed white' : 'Adaptive shape' },
+    content: {
+      label: custom ? 'Fixed white' : 'Adaptive shape',
+      text: {
+        schemaVersion: 1,
+        id: `desktop-theme-text-${i}`,
+        kind: 'inline',
+        plainText: custom ? 'Fixed white' : 'Adaptive shape',
+        content: {
+          type: 'doc',
+          content: [
+            {
+              type: 'paragraph',
+              content: [
+                {
+                  type: 'text',
+                  text: custom ? 'Fixed white' : 'Adaptive shape',
+                  marks: [{ type: 'textStyle', attrs: { color: '#24354b' } }],
+                },
+              ],
+            },
+          ],
+        },
+      },
+    },
   }));
   const board = {
     format: 'verd-frame',
@@ -147,11 +176,19 @@ test('Desktop follows system, remembers manual appearance after restart, and lea
     await expect(
       page.locator('.workspace-pane.is-active .document-page'),
     ).toBeVisible();
+    await expect(page.getByText('Original body', { exact: true })).toHaveCSS(
+      'color',
+      'rgb(23, 32, 51)',
+    );
     const content = await readFile(docPath, 'utf8');
     const canvases = await workspaceDigest(userData);
     await page.locator('.workspace-sidebar-footer button').click();
     await page.getByTestId('settings-appearance').selectOption('dark');
     await page.getByTestId('my-back').click();
+    await expect(page.getByText('Original body', { exact: true })).toHaveCSS(
+      'color',
+      'rgb(226, 232, 240)',
+    );
     await close(desktop, page);
     desktop = await electron.launch({ args: [launcher], env });
     page = await desktop.firstWindow();
@@ -181,6 +218,14 @@ test('Desktop follows system, remembers manual appearance after restart, and lea
     await expect(
       canvas.locator('[data-cell-id="custom-shape"]'),
     ).toHaveAttribute('fill', '#fff');
+    await expect(canvas.getByText('Adaptive shape', { exact: true })).toHaveCSS(
+      'color',
+      'rgb(226, 232, 240)',
+    );
+    await expect(canvas.getByText('Fixed white', { exact: true })).toHaveCSS(
+      'color',
+      'rgb(15, 23, 42)',
+    );
     for (const fixture of ['uml-sequence', 'workflow-process']) {
       await page
         .locator('.file-tree-name')
@@ -189,7 +234,7 @@ test('Desktop follows system, remembers manual appearance after restart, and lea
       const parts = page.locator(
         '.workspace-pane.is-active [data-uml-lifeline] > rect, .workspace-pane.is-active [data-cell-kind="workflow-task"]',
       );
-      expect(await parts.count()).toBeGreaterThan(0);
+      await expect.poll(() => parts.count()).toBeGreaterThan(0);
       for (const part of await parts.all()) {
         await expect(part).toHaveAttribute('fill', '#1e293b');
         await expect(part).toHaveAttribute('stroke', '#94a3b8');

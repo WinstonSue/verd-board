@@ -1,0 +1,73 @@
+{
+  "format": "verd-document",
+  "version": 1,
+  "id": "theme-text-document",
+  "title": "Theme text document",
+  "text": {
+    "schemaVersion": 1,
+    "id": "theme-text-document",
+    "kind": "block",
+    "content": {
+      "type": "doc",
+      "content": [
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "Legacy document body",
+              "marks": [
+                {
+                  "type": "textStyle",
+                  "attrs": {
+                    "fontSize": "20px",
+                    "color": "#24354b"
+                  }
+                },
+                {
+                  "type": "bold"
+                }
+              ]
+            },
+            {
+              "type": "hardBreak"
+            },
+            {
+              "type": "text",
+              "text": "Unmarked text follows application appearance",
+              "marks": [
+                {
+                  "type": "textStyle",
+                  "attrs": {
+                    "fontSize": "17px",
+                    "color": "#24354b"
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "Custom document red",
+              "marks": [
+                {
+                  "type": "textStyle",
+                  "attrs": {
+                    "color": "#b91c1c",
+                    "colorSource": "custom"
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "plainText": "Legacy document body\nUnmarked text follows application appearance\nCustom document red",
+    "align": "center"
+  }
+}

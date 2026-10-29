@@ -100,3 +100,9 @@ Read, selection, focus, heading and search helpers remain. `restoreSelection` re
 The editor uses `@sue/board-react-actions` for scope shortcuts, palette and help without importing the board renderer. Capture an action before opening a custom link/image dialog; stale document selections are cancelled. Input/restore echoes and readonly navigation do not emit extra content transactions. These breaking APIs are source-only until the next-major release; this change does not bump versions or publish.
 
 `DocumentEditorController.locateFrameReference(targetFrameId, occurrence)` selects and scrolls to a zero-based direct canvas embed in the current document, including read-only views, and returns whether it was found. Occurrences are runtime addresses; hosts must revalidate the source body before using a previously listed position.
+
+## 富文本颜色来源
+
+`textStyle.attrs.colorSource` 可选 `theme` / `custom`，默认不写入。产品画布、独立及内嵌文档将未标记和 `theme` 文字色接入 `--board-unmarked-text-color: currentColor`，继承局部背景对应的可读文字色；未启用主题作用域时回退到原始字面颜色。`custom` 始终使用原色。
+
+共享 schema 在 HTML 中保留 `data-board-original-color` 和可选的 `data-board-color-source`，JSON/HTML 往返保留字面颜色。`setColor` 与 `formatBoardText` 的手动选色写入 `custom`，即使选择当前主题色也形成覆盖；`unsetColor` 或 `{ color: null }` 恢复主题并保留其他格式。打开、预览和切换外观只改变呈现，不修改原始文档。

@@ -17,7 +17,10 @@ import type {
   DocumentSearchOptions,
   DocumentToolbarState,
 } from '../../types/document';
-import { documentFromEditor } from '../../utils/controller';
+import {
+  activeEditorTextColor,
+  documentFromEditor,
+} from '../../utils/controller';
 import { findInDocument } from './document-search';
 import { createDocumentHeadingSlugger } from '../../utils/heading-slug';
 
@@ -416,7 +419,7 @@ export function createDocumentController(
           code: editor.isActive('code') || undefined,
           superscript: editor.isActive('superscript') || undefined,
           subscript: editor.isActive('subscript') || undefined,
-          color: editor.getAttributes('textStyle')['color'],
+          color: activeEditorTextColor(editor),
           fontSize: editor.getAttributes('textStyle')['fontSize'],
           highlight: editor.getAttributes('highlight')['color'],
         },

@@ -2,6 +2,7 @@ import React, {
   useCallback,
   useEffect,
   useMemo,
+  useId,
   useRef,
   useState,
 } from 'react';
@@ -68,6 +69,8 @@ import {
 } from '@sue/board-react-text';
 import type { BoardTextDocument, WorkspaceTarget } from '@sue/board-common';
 import './document-page.scss';
+import { FrameColorInput, useFrameTheme } from '@sue/board-react';
+import { useAppearancePreference } from './appearance-preferences';
 import { shortcutLabels } from './shortcut-labels';
 
 export type {
@@ -339,6 +342,7 @@ export function DocumentPage({
   renderFrameReference,
 }: DocumentPageProps) {
   const t = labels[locale];
+  const textColorId = useId();
   const shortcutsButton = useRef<HTMLButtonElement>(null);
   const commandButton = useRef<HTMLButtonElement>(null);
   const [controller, setController] = useState<DocumentEditorController | null>(
@@ -382,11 +386,14 @@ export function DocumentPage({
     setCharCount(ctl.getCharacterCount());
   }, []);
 
+  const { appearance } = useAppearancePreference();
+  const frameTheme = useFrameTheme();
+
   useEffect(() => {
     if (!controller) return;
     refreshToolbar();
     return controller.subscribe(refreshToolbar);
-  }, [controller, refreshToolbar]);
+  }, [controller, refreshToolbar, appearance, frameTheme]);
 
   const ready = useCallback(
     (ctl: DocumentEditorController | null) => {
@@ -956,17 +963,27 @@ export function DocumentPage({
               <label
                 className="doc-toolbar__btn doc-toolbar__color"
                 title={t.textColor}
+                htmlFor={textColorId}
                 style={{ color: toolbar?.marks.color ?? undefined }}
               >
                 <Paintbrush size={16} />
-                <input
-                  type="color"
+                <FrameColorInput
+                  id={textColorId}
+                  aria-label={t.textColor}
+                  disabled={readonly}
                   value={toolbar?.marks.color ?? '#111827'}
-                  onChange={(event) =>
-                    invoke('set-text-color', event.target.value)
-                  }
+                  onValue={(value) => invoke('set-text-color', value)}
                 />
               </label>
+              <button
+                type="button"
+                className="doc-toolbar__btn"
+                aria-label="Reset document text color to theme"
+                disabled={readonly}
+                onClick={() => invoke('set-text-color', null)}
+              >
+                {locale === 'en' ? 'Theme color' : '主题颜色'}
+              </button>
               <label
                 className="doc-toolbar__btn doc-toolbar__color"
                 title={t.highlight}

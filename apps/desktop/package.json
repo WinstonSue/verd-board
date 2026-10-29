@@ -19,7 +19,8 @@
     "@sue/board-react-workflow": "workspace:*",
     "@sue/board-workflow": "workspace:*",
     "react": "19.2.0",
-    "react-dom": "19.2.0"
+    "react-dom": "19.2.0",
+    "@sue/verd-board-agent": "workspace:*"
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^4.2.0",
@@ -71,6 +72,16 @@
       {
         "from": "../../workspace",
         "to": "workspace",
+        "filter": [
+          "**/*",
+          "!.verdboard{,/**}",
+          "!**/.DS_Store",
+          "!**/*.tmp"
+        ]
+      },
+      {
+        "from": "../../packages/product/agent-patterns/workspace",
+        "to": "agent-patterns",
         "filter": [
           "**/*",
           "!.verdboard{,/**}",

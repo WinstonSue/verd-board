@@ -1,0 +1,18 @@
+[
+  {
+    "id": "identity.duplicate",
+    "description": "文件和图元身份在同一工作区保持唯一；复制时统一重映射。"
+  },
+  {
+    "id": "text.cache",
+    "description": "plainText 是正文派生缓存，由工具更新。"
+  },
+  {
+    "id": "frame.invalid",
+    "description": "领域成员、锚点、端口和边遵守已注册插件的真实校验规则。"
+  },
+  {
+    "id": "reference.invalid",
+    "description": "引用目标类型必须正确。引用环允许存在；缺失占位与编写完整性分开检查。"
+  }
+]

@@ -57,6 +57,9 @@ linkStyle 1 stroke:#123456,color:#884422
     });
     expect(resolveCellAppearance(get('Styled'), theme).fill).toBe('#ffffff');
     expect(JSON.stringify(get('Styled').content?.text)).toContain('#ff0000');
+    expect(JSON.stringify(get('Styled').content?.text)).toContain(
+      '\"colorSource\":\"custom\"',
+    );
     expect(get('Classes').appearance?.colorSources).toEqual({
       fill: 'custom',
       strokeColor: 'custom',
@@ -70,6 +73,9 @@ linkStyle 1 stroke:#123456,color:#884422
     expect(edges[1].appearance?.colorSources?.strokeColor).toBe('custom');
     expect(resolveCellAppearance(edges[1], theme).strokeColor).toBe('#123456');
     expect(JSON.stringify(edges[1].labels)).toContain('#884422');
+    expect(JSON.stringify(edges[1].labels)).toContain(
+      '\"colorSource\":\"custom\"',
+    );
   });
 
   it.each(['whiteboard', 'workflow', 'architecture'] as const)(

@@ -8,6 +8,7 @@ import {
 } from 'react';
 import { createPortal } from 'react-dom';
 import { useFrameWheelPortal } from './frame-wheel';
+import { FrameColorInput } from './frame-color-input';
 import {
   Alignment,
   textWithDefaultAlignment,
@@ -294,19 +295,31 @@ export function FrameTextEditor({
                 <option key={size}>{size}</option>
               ))}
             </select>
-            <input
+            <FrameColorInput
               aria-label="Text color"
               disabled={!controller}
-              type="color"
-              defaultValue={
-                typeof style?.color === 'string' ? style.color : '#0f172a'
+              value={
+                controller?.getActiveMarks().color ??
+                (typeof style?.color === 'string' ? style.color : '#0f172a')
               }
               style={{ width: 28, height: 24, padding: 0 }}
-              onChange={(event) => {
+              onValue={(value) => {
                 restoreSelection();
-                controller?.applyMark('color', event.target.value);
+                controller?.applyMark('color', value);
               }}
             />
+            <button
+              type="button"
+              aria-label="Reset text color to theme"
+              disabled={!controller}
+              onClick={() => {
+                restoreSelection();
+                controller?.applyMark('color');
+                refresh((value) => value + 1);
+              }}
+            >
+              主题颜色
+            </button>
             <select
               aria-label="Text alignment"
               disabled={!controller}

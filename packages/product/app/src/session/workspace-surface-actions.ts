@@ -21,6 +21,7 @@ export const WORKSPACE_UI_ACTION_IDS = [
   'return',
   'open-folder',
   'open-builtin',
+  'open-patterns',
   'open-history',
   'file.open',
   'file.reveal',
@@ -104,6 +105,7 @@ export const WORKSPACE_ACTION_SURFACES = {
     'settings',
     'open-folder',
     'open-builtin',
+    'open-patterns',
     'open-history',
     'my',
     'return',
@@ -322,6 +324,12 @@ export function createWorkspaceSurfaceActions(options: {
       ),
   });
   add('open-folder', '打开工作区文件夹', 'Open workspace folder', {
+    allowNoSession: true,
+    getState: (c) => ({
+      visible: options.getState().allowWorkspaceSwitching && !c.readonly,
+    }),
+  });
+  add('open-patterns', 'Agent 范式库', 'Agent pattern library', {
     allowNoSession: true,
     getState: (c) => ({
       visible: options.getState().allowWorkspaceSwitching && !c.readonly,

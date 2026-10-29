@@ -1,8 +1,14 @@
-import { FrameSettingsControl } from '@sue/board-react';
+import {
+  FrameSettingsControl,
+  FrameColorInput,
+  useFrameTheme,
+  type FrameCanvasController,
+} from '@sue/board-react';
 import {
   Alignment,
   createInlineText,
   formatBoardText,
+  boardTextColor,
   isBoardTextDocument,
   textWithDefaultAlignment,
   type BoardTextDocument,
@@ -12,6 +18,7 @@ import {
   appearanceCells,
   isFrameCell,
   isNodeCell,
+  readableThemeText,
   type CellOperation,
   type CellStore,
 } from '@sue/board-core';
@@ -25,7 +32,7 @@ export interface SelectionTextStyle {
   italic?: boolean;
   underline?: boolean;
   strike?: boolean;
-  color?: string;
+  color?: string | null;
   fontSize?: string;
   align?: Alignment;
   href?: string | null;
@@ -134,16 +141,24 @@ export function FrameSelectionText({
   dispatch,
   getStore,
   disabled = false,
+  controller,
 }: {
   store: CellStore;
   ids: readonly string[];
   dispatch(operations: CellOperation[]): void;
   getStore?(): CellStore | undefined;
   disabled?: boolean;
+  controller?: FrameCanvasController | null;
 }) {
   const { language } = useI18n();
+  const theme = useFrameTheme();
   const [link, setLink] = useState('');
   const texts = documents(store, ids);
+  const owners = textCells(store, ids).flatMap<
+    ReturnType<typeof textCells>[number]
+  >((cell) =>
+    isNodeCell(cell) ? [cell] : (cell.labels ?? []).map(() => cell),
+  );
   if (!texts.length) return null;
   const alignments = effectiveAlignments(texts);
   const leaves = (node: BoardTextNode): BoardTextNode[] =>
@@ -154,11 +169,29 @@ export function FrameSelectionText({
     nodes.every((node) => node.marks?.some((entry) => entry.type === mark));
   const common = (key: 'fontSize' | 'color') => {
     if (!nodes.length) return key === 'fontSize' ? '16px' : '#0f172a';
-    const values = nodes.map(
-      (node) =>
-        node.marks?.find((mark) => mark.type === 'textStyle')?.attrs?.[key] ??
-        (key === 'fontSize' ? '16px' : '#0f172a'),
-    );
+    const values = texts.flatMap((text, at) => {
+      const owner = owners[at];
+      const fill = controller?.resolveAppearance?.(owner.id)?.fill;
+      const defaultColor = theme.adaptive
+        ? readableThemeText(
+            !isNodeCell(owner) ||
+              !fill ||
+              fill === 'none' ||
+              fill === 'transparent'
+              ? theme.background
+              : fill,
+            theme.text,
+          )
+        : '#0f172a';
+      return leaves(text.content).map((node) => {
+        const attrs = node.marks?.find(
+          (mark) => mark.type === 'textStyle',
+        )?.attrs;
+        return key === 'color'
+          ? (boardTextColor(attrs, theme.adaptive) ?? defaultColor)
+          : (attrs?.['fontSize'] ?? '16px');
+      });
+    });
     return values.every((value) => value === values[0])
       ? String(values[0] ?? '')
       : '';
@@ -221,35 +254,32 @@ export function FrameSelectionText({
       </label>
       <label>
         {language === 'zh' ? '文字颜色' : 'Text color'}
-        <FrameSettingsControl
-          field={{
-            key: 'Selection text color',
-            editor: 'input',
-            props: {
-              'aria-label': 'Selection text color',
-              type: 'color',
-              'data-mixed': common('color') === '' || undefined,
-              title:
-                common('color') === ''
-                  ? language === 'zh'
-                    ? '混合值'
-                    : 'Mixed values'
-                  : undefined,
-              'aria-description':
-                common('color') === ''
-                  ? language === 'zh'
-                    ? '混合值'
-                    : 'Mixed values'
-                  : undefined,
-            },
-          }}
+        <FrameColorInput
+          aria-label="Selection text color"
+          disabled={disabled}
+          data-mixed={common('color') === '' || undefined}
+          title={
+            common('color') === ''
+              ? language === 'zh'
+                ? '混合值'
+                : 'Mixed values'
+              : undefined
+          }
           value={
             /^#[0-9a-f]{6}$/i.test(common('color'))
               ? common('color')
               : '#0f172a'
           }
-          onCommit={(value) => change({ color: value })}
+          onValue={(value) => change({ color: value })}
         />
+        <button
+          type="button"
+          aria-label="Reset selection text color to theme"
+          disabled={disabled}
+          onClick={() => change({ color: null })}
+        >
+          {language === 'zh' ? '主题颜色' : 'Theme color'}
+        </button>
       </label>
       <label>
         {language === 'zh' ? '文字对齐' : 'Text alignment'}

@@ -1,3 +1,4 @@
+import { readable } from './text-color-checks';
 import { persistedWorkspace } from './workspace-nav';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
@@ -42,7 +43,12 @@ const documentFile = {
             {
               type: 'text',
               text: 'Authored red',
-              marks: [{ type: 'textStyle', attrs: { color: '#b91c1c' } }],
+              marks: [
+                {
+                  type: 'textStyle',
+                  attrs: { color: '#b91c1c', colorSource: 'custom' },
+                },
+              ],
             },
           ],
         },
@@ -457,6 +463,41 @@ for (const fixture of [
         'utf8',
       ),
     );
+    // Model the unmarked fixed-color marks used by legacy native workspaces.
+    const markLegacy = (node: any) => {
+      if (node?.type === 'text') {
+        node.marks ??= [];
+        const style = node.marks.find((mark: any) => mark.type === 'textStyle');
+        if (style) style.attrs = { ...style.attrs, color: '#24354b' };
+        else
+          node.marks.push({ type: 'textStyle', attrs: { color: '#24354b' } });
+      }
+      node?.content?.forEach(markLegacy);
+    };
+    for (const cell of Object.values<any>(file.cells)) {
+      if (!cell.content?.text && cell.content?.label)
+        cell.content.text = {
+          schemaVersion: 1,
+          id: `${cell.id}-legacy-text`,
+          kind: 'inline',
+          plainText: cell.content.label,
+          content: { type: 'doc', content: [paragraph(cell.content.label)] },
+        };
+      if (cell.content?.text) markLegacy(cell.content.text.content);
+      cell.labels?.forEach((label: any, at: number) => {
+        label.richText ??= {
+          schemaVersion: 1,
+          id: `${cell.id}-label-${at}`,
+          kind: 'inline',
+          plainText: label.text,
+          content: { type: 'doc', content: [paragraph(label.text)] },
+        };
+        markLegacy(label.richText.content);
+      });
+      Object.values<any>(cell.data?.cells ?? {}).forEach((entry) => {
+        if (entry.text) markLegacy(entry.text.content);
+      });
+    }
     file.frame.name = `Appearance ${fixture}`;
     file.frame.view = {
       ...file.frame.view,
@@ -477,6 +518,7 @@ for (const fixture of [
     await expect
       .poll(() => target.locator('[data-cell-id]:visible').count())
       .toBeGreaterThan(0);
+    await readable(target);
     const world = target.locator('> [data-frame-world]');
     const camera = await world.getAttribute('transform');
     const count = await target.locator('[data-cell-id]').count();
@@ -508,6 +550,7 @@ for (const fixture of [
       }),
     );
     expect(dark).not.toEqual(light);
+    await readable(target);
     // Assert concrete painted parts: a single changed wrapper must not hide a
     // class box, lifeline, fragment or domain node that still uses old colors.
     const expectedSurface = 'rgb(55, 49, 40)';

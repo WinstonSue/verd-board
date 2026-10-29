@@ -1,0 +1,95 @@
+{
+  "format": "verd-document",
+  "version": 1,
+  "id": "pattern-guide:workflow-process",
+  "title": "回环与人工交接 · 编写规则",
+  "text": {
+    "schemaVersion": 1,
+    "id": "pattern-guide:workflow-process",
+    "kind": "block",
+    "content": {
+      "type": "doc",
+      "content": [
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 1
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "回环与人工交接 · 编写规则"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "允许重试回环；明确失败出口、停止条件和人工交接，保持 process 模式。"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "实例化参数：title 为根文件标题；工具自动生成独立身份。模板实例化会重新映射整个引用闭包。"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "编辑示例：先 inspect 获得身份与正文块，再使用 document.splice、node.upsert 或对应关系操作，plan 后 validate 与 preview。"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "结构规则：以 verd rules 和 describe 返回的已安装版本为准。视觉布局需要复核预览。"
+            }
+          ]
+        },
+        {
+          "type": "codeBlock",
+          "attrs": {
+            "language": "json"
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "{\n  \"type\": \"pattern.instantiate\",\n  \"patternId\": \"workflow-process\",\n  \"parameters\": {\n    \"title\": \"回环与人工交接\"\n  },\n  \"dir\": \"workflow-process\"\n}"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "打开原生模板",
+              "marks": [
+                {
+                  "type": "link",
+                  "attrs": {
+                    "href": "verd://file/pattern%3Aworkflow-process%2Fcanvas-flow-process"
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "plainText": "回环与人工交接 · 编写规则\n允许重试回环；明确失败出口、停止条件和人工交接，保持 process 模式。\n实例化参数：title 为根文件标题；工具自动生成独立身份。模板实例化会重新映射整个引用闭包。\n编辑示例：先 inspect 获得身份与正文块，再使用 document.splice、node.upsert 或对应关系操作，plan 后 validate 与 preview。\n结构规则：以 verd rules 和 describe 返回的已安装版本为准。视觉布局需要复核预览。\n{\n  \"type\": \"pattern.instantiate\",\n  \"patternId\": \"workflow-process\",\n  \"parameters\": {\n    \"title\": \"回环与人工交接\"\n  },\n  \"dir\": \"workflow-process\"\n}\n打开原生模板",
+    "align": "left"
+  }
+}

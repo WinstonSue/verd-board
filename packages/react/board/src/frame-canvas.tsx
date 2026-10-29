@@ -5936,7 +5936,14 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
                                           ? label.richText
                                           : plainTextDocument(label, label.text)
                                       }
-                                      style={{ color: stroke }}
+                                      style={{
+                                        color: theme.adaptive
+                                          ? readableThemeText(
+                                              theme.background,
+                                              theme.text,
+                                            )
+                                          : stroke,
+                                      }}
                                       readonly={!renderEditable}
                                       onClose={() => setLabelEditing(null)}
                                       onExitKey={() => svgRef.current?.focus()}
@@ -6019,7 +6026,14 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
                                           ? label.richText
                                           : plainTextDocument(label, label.text)
                                       }
-                                      style={{ color: stroke }}
+                                      style={{
+                                        color: theme.adaptive
+                                          ? readableThemeText(
+                                              theme.background,
+                                              theme.text,
+                                            )
+                                          : stroke,
+                                      }}
                                     />
                                   </foreignObject>
                                 </g>

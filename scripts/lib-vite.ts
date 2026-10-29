@@ -10,6 +10,7 @@ export interface LibViteOptions {
   dirname: string;
   name: string;
   entry: string;
+  extraEntries?: Record<string, string>;
   react?: boolean;
   cacheDir: string;
   externals?: (string | RegExp)[];
@@ -62,6 +63,7 @@ export function createLibViteConfig(options: LibViteOptions): UserConfig {
 
   const libEntry: Record<string, string> = {
     index: options.entry,
+    ...options.extraEntries,
   };
   if (options.styleEntry) {
     libEntry.style = options.styleEntry;
@@ -89,7 +91,7 @@ export function createLibViteConfig(options: LibViteOptions): UserConfig {
           if (entryName === 'style') {
             return format === 'es' ? 'style.js' : 'style.cjs';
           }
-          return format === 'es' ? 'index.js' : 'index.cjs';
+          return `${entryName}.${format === 'es' ? 'js' : 'cjs'}`;
         },
       },
       rollupOptions: {

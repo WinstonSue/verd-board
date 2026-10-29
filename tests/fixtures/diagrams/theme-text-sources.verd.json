@@ -1,0 +1,647 @@
+{
+  "format": "verd-frame",
+  "version": 2,
+  "frame": {
+    "id": "theme-text-board",
+    "kind": "frame",
+    "cellType": "frame",
+    "name": "Theme text sources",
+    "geometry": {
+      "x": 0,
+      "y": 0,
+      "width": 1100,
+      "height": 800
+    },
+    "children": [
+      "text-start",
+      "text-task",
+      "text-decision",
+      "text-fixed-fill",
+      "text-custom",
+      "text-edge",
+      "text-reference"
+    ],
+    "groups": [],
+    "view": {
+      "theme": {
+        "themeColorMode": "default",
+        "backgroundMode": "theme"
+      }
+    }
+  },
+  "cells": {
+    "text-start": {
+      "id": "text-start",
+      "kind": "workflow-start",
+      "cellType": "node",
+      "name": "前端研发协作总图",
+      "geometry": {
+        "x": 40,
+        "y": 30,
+        "width": 900,
+        "height": 90,
+        "outline": "roundRectangle"
+      },
+      "ports": [
+        {
+          "id": "top",
+          "side": "top",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "right",
+          "side": "right",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "bottom",
+          "side": "bottom",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "left",
+          "side": "left",
+          "direction": "both",
+          "offset": 0.5
+        }
+      ],
+      "appearance": {
+        "fill": "#ffffff",
+        "strokeColor": "#ffffff",
+        "strokeWidth": 1.5
+      },
+      "content": {
+        "label": "Theme text regression",
+        "text": {
+          "schemaVersion": 1,
+          "id": "text-start-doc",
+          "kind": "inline",
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Theme text regression",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "28px",
+                          "color": "#24354b"
+                        }
+                      },
+                      {
+                        "type": "bold"
+                      }
+                    ]
+                  },
+                  {
+                    "type": "hardBreak"
+                  },
+                  {
+                    "type": "text",
+                    "text": "Legacy default text follows the active theme",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "17px",
+                          "color": "#24354b"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          },
+          "plainText": "Theme text regression\nLegacy default text follows the active theme",
+          "align": "left"
+        }
+      },
+      "data": {
+        "graphMode": "dag",
+        "origin": [40, 30],
+        "memberIds": [
+          "text-start",
+          "text-task",
+          "text-decision",
+          "text-fixed-fill",
+          "text-custom"
+        ]
+      }
+    },
+    "text-task": {
+      "id": "text-task",
+      "kind": "workflow-task",
+      "cellType": "node",
+      "name": "外部工单 / 人工建单",
+      "geometry": {
+        "x": 40,
+        "y": 160,
+        "width": 280,
+        "height": 110,
+        "outline": "roundRectangle"
+      },
+      "ports": [
+        {
+          "id": "top",
+          "side": "top",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "right",
+          "side": "right",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "bottom",
+          "side": "bottom",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "left",
+          "side": "left",
+          "direction": "both",
+          "offset": 0.5
+        }
+      ],
+      "appearance": {
+        "fill": "#f8fafc",
+        "strokeColor": "#cbd5e1",
+        "strokeWidth": 1.5
+      },
+      "content": {
+        "label": "Legacy task",
+        "text": {
+          "schemaVersion": 1,
+          "id": "text-task-doc",
+          "kind": "inline",
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Legacy task",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "20px",
+                          "color": "#24354b"
+                        }
+                      },
+                      {
+                        "type": "bold"
+                      }
+                    ]
+                  },
+                  {
+                    "type": "hardBreak"
+                  },
+                  {
+                    "type": "text",
+                    "text": "Body keeps its original marks",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "17px",
+                          "color": "#24354b"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          },
+          "plainText": "Legacy task\nBody keeps its original marks",
+          "align": "center"
+        }
+      }
+    },
+    "text-decision": {
+      "id": "text-decision",
+      "kind": "workflow-decision",
+      "cellType": "node",
+      "name": "外部工单 / 人工建单",
+      "geometry": {
+        "x": 380,
+        "y": 160,
+        "width": 280,
+        "height": 110,
+        "outline": "diamond"
+      },
+      "ports": [
+        {
+          "id": "top",
+          "side": "top",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "right",
+          "side": "right",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "bottom",
+          "side": "bottom",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "left",
+          "side": "left",
+          "direction": "both",
+          "offset": 0.5
+        }
+      ],
+      "appearance": {
+        "fill": "#f8fafc",
+        "strokeColor": "#cbd5e1",
+        "strokeWidth": 1.5
+      },
+      "content": {
+        "label": "Legacy decision",
+        "text": {
+          "schemaVersion": 1,
+          "id": "text-decision-doc",
+          "kind": "inline",
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Legacy decision",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "20px",
+                          "color": "#24354b"
+                        }
+                      },
+                      {
+                        "type": "bold"
+                      }
+                    ]
+                  },
+                  {
+                    "type": "hardBreak"
+                  },
+                  {
+                    "type": "text",
+                    "text": "Body keeps its original marks",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "17px",
+                          "color": "#24354b"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          },
+          "plainText": "Legacy decision\nBody keeps its original marks",
+          "align": "center"
+        }
+      }
+    },
+    "text-fixed-fill": {
+      "id": "text-fixed-fill",
+      "kind": "workflow-task",
+      "cellType": "node",
+      "name": "外部工单 / 人工建单",
+      "geometry": {
+        "x": 40,
+        "y": 350,
+        "width": 280,
+        "height": 110,
+        "outline": "roundRectangle"
+      },
+      "ports": [
+        {
+          "id": "top",
+          "side": "top",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "right",
+          "side": "right",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "bottom",
+          "side": "bottom",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "left",
+          "side": "left",
+          "direction": "both",
+          "offset": 0.5
+        }
+      ],
+      "appearance": {
+        "fill": "#ffffff",
+        "colorSources": {
+          "fill": "custom"
+        }
+      },
+      "content": {
+        "label": "Fixed white background",
+        "text": {
+          "schemaVersion": 1,
+          "id": "text-fixed-fill-doc",
+          "kind": "inline",
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Fixed white background",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "20px",
+                          "color": "#24354b"
+                        }
+                      },
+                      {
+                        "type": "bold"
+                      }
+                    ]
+                  },
+                  {
+                    "type": "hardBreak"
+                  },
+                  {
+                    "type": "text",
+                    "text": "Body keeps its original marks",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "17px",
+                          "color": "#24354b"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          },
+          "plainText": "Fixed white background\nBody keeps its original marks",
+          "align": "center"
+        }
+      }
+    },
+    "text-custom": {
+      "id": "text-custom",
+      "kind": "workflow-task",
+      "cellType": "node",
+      "name": "外部工单 / 人工建单",
+      "geometry": {
+        "x": 380,
+        "y": 350,
+        "width": 280,
+        "height": 110,
+        "outline": "roundRectangle"
+      },
+      "ports": [
+        {
+          "id": "top",
+          "side": "top",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "right",
+          "side": "right",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "bottom",
+          "side": "bottom",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "left",
+          "side": "left",
+          "direction": "both",
+          "offset": 0.5
+        }
+      ],
+      "appearance": {
+        "fill": "#f8fafc",
+        "strokeColor": "#cbd5e1",
+        "strokeWidth": 1.5
+      },
+      "content": {
+        "label": "Custom red",
+        "text": {
+          "schemaVersion": 1,
+          "id": "text-custom-doc",
+          "kind": "inline",
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Custom red",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "20px",
+                          "color": "#b91c1c",
+                          "colorSource": "custom"
+                        }
+                      },
+                      {
+                        "type": "bold"
+                      }
+                    ]
+                  },
+                  {
+                    "type": "hardBreak"
+                  },
+                  {
+                    "type": "text",
+                    "text": "Body keeps its original marks",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "17px",
+                          "color": "#b91c1c",
+                          "colorSource": "custom"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          },
+          "plainText": "Custom red\nBody keeps its original marks",
+          "align": "center"
+        }
+      }
+    },
+    "text-edge": {
+      "id": "text-edge",
+      "kind": "workflow-edge",
+      "cellType": "edge",
+      "source": {
+        "cellId": "text-task",
+        "portId": "right"
+      },
+      "target": {
+        "cellId": "text-decision",
+        "portId": "left"
+      },
+      "route": {
+        "mode": "orthogonal"
+      },
+      "appearance": {
+        "strokeColor": "#4c86c6",
+        "strokeWidth": 1.8,
+        "strokeStyle": "solid"
+      },
+      "labels": [
+        {
+          "text": "Legacy edge label",
+          "position": 0.5,
+          "richText": {
+            "schemaVersion": 1,
+            "id": "text-edge-doc",
+            "kind": "inline",
+            "content": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "Legacy edge label",
+                      "marks": [
+                        {
+                          "type": "textStyle",
+                          "attrs": {
+                            "fontSize": "14px",
+                            "color": "#4c86c6"
+                          }
+                        },
+                        {
+                          "type": "bold"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            "plainText": "Legacy edge label",
+            "align": "center"
+          },
+          "plainText": "标准任务 + 输入版本",
+          "align": "center"
+        }
+      ]
+    },
+    "text-reference": {
+      "id": "text-reference",
+      "kind": "document-reference",
+      "cellType": "node",
+      "name": "打开工单接入内部流程图 →",
+      "geometry": {
+        "x": 700,
+        "y": 160,
+        "width": 330,
+        "height": 260
+      },
+      "data": {
+        "targetDocumentId": "theme-text-document"
+      },
+      "content": {
+        "label": "Open source document",
+        "text": {
+          "schemaVersion": 1,
+          "id": "text-reference-doc",
+          "kind": "inline",
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Open source document",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "18px",
+                          "color": "#2563eb"
+                        }
+                      },
+                      {
+                        "type": "bold"
+                      },
+                      {
+                        "type": "link",
+                        "attrs": {
+                          "href": "verd://file/theme-text-document"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          },
+          "plainText": "Open source document",
+          "align": "left"
+        }
+      }
+    }
+  }
+}

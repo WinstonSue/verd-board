@@ -173,7 +173,10 @@ test('project content validates, package facts are current, refresh is idempoten
             entries.map((e) => (e === document ? missingCell : e)),
             runtime,
           )
-        ).some((e) => e.includes('Missing linked cell missing-cell')),
+        ).some(
+          (e) =>
+            e.includes('Missing linked cell') && e.includes('missing-cell'),
+        ),
       );
       const invalidMarks = structuredClone(document);
       invalidMarks.file.text.content.content.push({
@@ -192,7 +195,11 @@ test('project content validates, package facts are current, refresh is idempoten
             entries.map((e) => (e === document ? invalidMarks : e)),
             runtime,
           )
-        ).some((e) => e.includes('Document editor schema')),
+        ).some(
+          (e) =>
+            e.includes('Document editor schema') ||
+            e.includes('Invalid collection of marks'),
+        ),
       );
     }
   });

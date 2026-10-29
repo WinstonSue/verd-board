@@ -151,7 +151,7 @@
     }
 
     a.board-link {
-      color: var(--board-primary, #3b82f6);
+      color: var(--board-unmarked-text-color, var(--board-primary, #3b82f6));
       text-decoration: underline;
       cursor: text;
     }

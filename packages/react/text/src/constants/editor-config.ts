@@ -10,7 +10,7 @@ import { TableHeader } from '@tiptap/extension-table-header';
 import { Underline } from '@tiptap/extension-underline';
 import { Placeholder } from '@tiptap/extension-placeholder';
 import { TextStyle, FontSize, FontFamily } from '@tiptap/extension-text-style';
-import { Color } from '@tiptap/extension-color';
+import { ThemeColor } from './theme-color';
 import { TextAlign } from '@tiptap/extension-text-align';
 import { Highlight, Superscript, Subscript, Image } from './content-extensions';
 import { DocumentFrameReference } from '../components/document/document-frame-reference';
@@ -18,7 +18,7 @@ import { DocumentFrameReference } from '../components/document/document-frame-re
 const sharedMarks = [
   Underline,
   TextStyle,
-  Color,
+  ThemeColor,
   FontSize,
   FontFamily,
   Highlight,

@@ -230,6 +230,8 @@ export interface WorkspaceConfigWrite {
 }
 
 export interface CommitRequest {
+  /** Optional native path/content manifest precondition, supported by the Node host. */
+  expectedWorkspaceVersion?: string;
   /** Stable id; retries with the same id return the original receipt. */
   transactionId: string;
   writes?: FileWriteOp[];
@@ -266,6 +268,8 @@ export interface CommitReceipt {
 }
 
 export interface OpenWorkspaceRequest {
+  /** Open the installed agent pattern library's editable user copy (Desktop). */
+  patterns?: boolean;
   /** Reopen a recorded workspace without creating a missing directory. */
   historyId?: string;
   /** Open an existing or create a missing workspace at this location. */

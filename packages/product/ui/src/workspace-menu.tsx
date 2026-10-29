@@ -21,6 +21,7 @@ export interface WorkspaceMenuProps {
   onSettings(): void;
   onOpenFolder?(): void;
   onOpenBuiltin?(): void;
+  onOpenPatterns?(): void;
   history?: readonly { id: string; name: string; description?: string }[];
   currentHistoryId?: string;
   onOpenHistory?(id: string): void;
@@ -37,6 +38,7 @@ export function WorkspaceMenu({
   onSettings,
   onOpenFolder,
   onOpenBuiltin,
+  onOpenPatterns,
   history = [],
   currentHistoryId,
   onOpenHistory,
@@ -92,6 +94,15 @@ export function WorkspaceMenu({
       disabled: actionSource ? undefined : isDefault,
       groupStart: !onOpenFolder,
       onSelect: () => onOpenBuiltin?.(),
+    });
+  if (onOpenPatterns)
+    items.push({
+      id: 'open-patterns',
+      action: bindWorkspaceAction(actionSource, 'workspace.open-patterns'),
+      label: zh ? 'Agent 范式库' : 'Agent pattern library',
+      icon: FolderOpen,
+      testId: 'workspace-open-patterns',
+      onSelect: onOpenPatterns,
     });
   for (const [index, entry] of history.entries()) {
     const current = entry.id === currentHistoryId;

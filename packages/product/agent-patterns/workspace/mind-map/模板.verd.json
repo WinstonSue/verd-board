@@ -1,0 +1,389 @@
+{
+  "format": "verd-frame",
+  "version": 2,
+  "frame": {
+    "id": "pattern:mind-map/canvas-mind",
+    "kind": "frame",
+    "cellType": "frame",
+    "name": "Mind 知识树",
+    "geometry": {
+      "x": 0,
+      "y": 0,
+      "width": 960,
+      "height": 640
+    },
+    "children": [
+      "pattern:mind-map/mind-root",
+      "pattern:mind-map/topic-features",
+      "pattern:mind-map/topic-design",
+      "pattern:mind-map/topic-release",
+      "pattern:mind-map/leaf-canvas",
+      "pattern:mind-map/leaf-mind",
+      "pattern:mind-map/leaf-theme",
+      "pattern:mind-map/leaf-beta",
+      "pattern:mind-map/leaf-ga",
+      "pattern:mind-map/sum-core",
+      "pattern:mind-map/br-0",
+      "pattern:mind-map/br-1",
+      "pattern:mind-map/br-2",
+      "pattern:mind-map/br-3",
+      "pattern:mind-map/br-4",
+      "pattern:mind-map/br-5",
+      "pattern:mind-map/br-6",
+      "pattern:mind-map/br-7",
+      "pattern:mind-map/sum-edge"
+    ],
+    "groups": []
+  },
+  "cells": {
+    "pattern:mind-map/mind-root": {
+      "id": "pattern:mind-map/mind-root",
+      "kind": "mind-root",
+      "cellType": "node",
+      "geometry": {
+        "x": 140,
+        "y": 260,
+        "width": 160,
+        "height": 56,
+        "outline": "roundRectangle"
+      },
+      "content": {
+        "label": "产品路线图"
+      },
+      "data": {
+        "layout": "right",
+        "rightNodeCount": 2,
+        "maxNodeWidth": 200
+      }
+    },
+    "pattern:mind-map/topic-features": {
+      "id": "pattern:mind-map/topic-features",
+      "kind": "mind-child",
+      "cellType": "node",
+      "geometry": {
+        "x": 0,
+        "y": 0,
+        "width": 120,
+        "height": 40,
+        "derived": true,
+        "outline": "roundRectangle"
+      },
+      "content": {
+        "label": "功能规划"
+      },
+      "data": {
+        "collapsed": false
+      }
+    },
+    "pattern:mind-map/topic-design": {
+      "id": "pattern:mind-map/topic-design",
+      "kind": "mind-child",
+      "cellType": "node",
+      "geometry": {
+        "x": 0,
+        "y": 0,
+        "width": 120,
+        "height": 40,
+        "derived": true,
+        "outline": "roundRectangle"
+      },
+      "content": {
+        "label": "视觉设计"
+      },
+      "data": {
+        "collapsed": false
+      }
+    },
+    "pattern:mind-map/topic-release": {
+      "id": "pattern:mind-map/topic-release",
+      "kind": "mind-child",
+      "cellType": "node",
+      "geometry": {
+        "x": 0,
+        "y": 0,
+        "width": 120,
+        "height": 40,
+        "derived": true,
+        "outline": "roundRectangle"
+      },
+      "content": {
+        "label": "发布计划"
+      },
+      "data": {
+        "collapsed": true
+      }
+    },
+    "pattern:mind-map/leaf-canvas": {
+      "id": "pattern:mind-map/leaf-canvas",
+      "kind": "mind-child",
+      "cellType": "node",
+      "geometry": {
+        "x": 0,
+        "y": 0,
+        "width": 120,
+        "height": 40,
+        "derived": true,
+        "outline": "roundRectangle"
+      },
+      "content": {
+        "label": "画布导入"
+      },
+      "data": {
+        "collapsed": false
+      }
+    },
+    "pattern:mind-map/leaf-mind": {
+      "id": "pattern:mind-map/leaf-mind",
+      "kind": "mind-child",
+      "cellType": "node",
+      "geometry": {
+        "x": 0,
+        "y": 0,
+        "width": 160,
+        "height": 40,
+        "derived": true,
+        "outline": "roundRectangle"
+      },
+      "content": {
+        "label": "脑图概要"
+      },
+      "data": {
+        "collapsed": false,
+        "manualWidth": 160
+      }
+    },
+    "pattern:mind-map/leaf-theme": {
+      "id": "pattern:mind-map/leaf-theme",
+      "kind": "mind-child",
+      "cellType": "node",
+      "geometry": {
+        "x": 0,
+        "y": 0,
+        "width": 120,
+        "height": 40,
+        "derived": true,
+        "outline": "roundRectangle"
+      },
+      "content": {
+        "label": "主题系统"
+      },
+      "data": {
+        "collapsed": false
+      }
+    },
+    "pattern:mind-map/leaf-beta": {
+      "id": "pattern:mind-map/leaf-beta",
+      "kind": "mind-child",
+      "cellType": "node",
+      "geometry": {
+        "x": 0,
+        "y": 0,
+        "width": 120,
+        "height": 40,
+        "derived": true,
+        "outline": "roundRectangle"
+      },
+      "content": {
+        "label": "十月内测"
+      },
+      "data": {
+        "collapsed": false
+      }
+    },
+    "pattern:mind-map/leaf-ga": {
+      "id": "pattern:mind-map/leaf-ga",
+      "kind": "mind-child",
+      "cellType": "node",
+      "geometry": {
+        "x": 0,
+        "y": 0,
+        "width": 120,
+        "height": 40,
+        "derived": true,
+        "outline": "roundRectangle"
+      },
+      "content": {
+        "label": "十一月公测"
+      },
+      "data": {
+        "collapsed": false
+      }
+    },
+    "pattern:mind-map/sum-core": {
+      "id": "pattern:mind-map/sum-core",
+      "kind": "mind-summary",
+      "cellType": "node",
+      "geometry": {
+        "x": 0,
+        "y": 0,
+        "width": 120,
+        "height": 40,
+        "derived": true,
+        "outline": "roundRectangle"
+      },
+      "content": {
+        "label": "核心交付"
+      },
+      "data": {
+        "collapsed": false
+      }
+    },
+    "pattern:mind-map/br-0": {
+      "id": "pattern:mind-map/br-0",
+      "kind": "mind-branch",
+      "cellType": "edge",
+      "source": {
+        "cellId": "pattern:mind-map/mind-root"
+      },
+      "target": {
+        "cellId": "pattern:mind-map/topic-features"
+      },
+      "route": {
+        "mode": "auto"
+      },
+      "data": {
+        "order": "00000000"
+      }
+    },
+    "pattern:mind-map/br-1": {
+      "id": "pattern:mind-map/br-1",
+      "kind": "mind-branch",
+      "cellType": "edge",
+      "source": {
+        "cellId": "pattern:mind-map/mind-root"
+      },
+      "target": {
+        "cellId": "pattern:mind-map/topic-design"
+      },
+      "route": {
+        "mode": "auto"
+      },
+      "data": {
+        "order": "00000001"
+      }
+    },
+    "pattern:mind-map/br-2": {
+      "id": "pattern:mind-map/br-2",
+      "kind": "mind-branch",
+      "cellType": "edge",
+      "source": {
+        "cellId": "pattern:mind-map/mind-root"
+      },
+      "target": {
+        "cellId": "pattern:mind-map/topic-release"
+      },
+      "route": {
+        "mode": "auto"
+      },
+      "data": {
+        "order": "00000002"
+      }
+    },
+    "pattern:mind-map/br-3": {
+      "id": "pattern:mind-map/br-3",
+      "kind": "mind-branch",
+      "cellType": "edge",
+      "source": {
+        "cellId": "pattern:mind-map/topic-features"
+      },
+      "target": {
+        "cellId": "pattern:mind-map/leaf-canvas"
+      },
+      "route": {
+        "mode": "auto"
+      },
+      "data": {
+        "order": "00000000"
+      }
+    },
+    "pattern:mind-map/br-4": {
+      "id": "pattern:mind-map/br-4",
+      "kind": "mind-branch",
+      "cellType": "edge",
+      "source": {
+        "cellId": "pattern:mind-map/topic-features"
+      },
+      "target": {
+        "cellId": "pattern:mind-map/leaf-mind"
+      },
+      "route": {
+        "mode": "auto"
+      },
+      "data": {
+        "order": "00000001"
+      }
+    },
+    "pattern:mind-map/br-5": {
+      "id": "pattern:mind-map/br-5",
+      "kind": "mind-branch",
+      "cellType": "edge",
+      "source": {
+        "cellId": "pattern:mind-map/topic-design"
+      },
+      "target": {
+        "cellId": "pattern:mind-map/leaf-theme"
+      },
+      "route": {
+        "mode": "auto"
+      },
+      "data": {
+        "order": "00000000"
+      }
+    },
+    "pattern:mind-map/br-6": {
+      "id": "pattern:mind-map/br-6",
+      "kind": "mind-branch",
+      "cellType": "edge",
+      "source": {
+        "cellId": "pattern:mind-map/topic-release"
+      },
+      "target": {
+        "cellId": "pattern:mind-map/leaf-beta"
+      },
+      "route": {
+        "mode": "auto"
+      },
+      "data": {
+        "order": "00000000"
+      }
+    },
+    "pattern:mind-map/br-7": {
+      "id": "pattern:mind-map/br-7",
+      "kind": "mind-branch",
+      "cellType": "edge",
+      "source": {
+        "cellId": "pattern:mind-map/topic-release"
+      },
+      "target": {
+        "cellId": "pattern:mind-map/leaf-ga"
+      },
+      "route": {
+        "mode": "auto"
+      },
+      "data": {
+        "order": "00000001"
+      }
+    },
+    "pattern:mind-map/sum-edge": {
+      "id": "pattern:mind-map/sum-edge",
+      "kind": "mind-summary-edge",
+      "cellType": "edge",
+      "source": {
+        "cellId": "pattern:mind-map/topic-features"
+      },
+      "target": {
+        "cellId": "pattern:mind-map/sum-core"
+      },
+      "route": {
+        "mode": "auto"
+      },
+      "data": {
+        "startSiblingId": "pattern:mind-map/topic-features",
+        "endSiblingId": "pattern:mind-map/topic-design"
+      }
+    }
+  },
+  "organization": {
+    "kind": "standalone"
+  }
+}

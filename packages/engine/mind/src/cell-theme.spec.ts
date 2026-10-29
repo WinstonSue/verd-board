@@ -1,7 +1,8 @@
 import { expect, it } from 'vitest';
-import { createInlineText } from '@sue/board-common';
+import { createInlineText, formatBoardText } from '@sue/board-common';
 import {
   colorContrast,
+  resolveBoardTheme,
   applyCellOperations,
   ThemeColorMode,
   type FrameCell,
@@ -66,7 +67,12 @@ it('adapts inherited and explicit schemes without changing explicit text, fill o
               {
                 type: 'text',
                 text: 'Custom',
-                marks: [{ type: 'textStyle', attrs: { color: '#b91c1c' } }],
+                marks: [
+                  {
+                    type: 'textStyle',
+                    attrs: { color: '#b91c1c', colorSource: 'custom' },
+                  },
+                ],
               },
             ],
           },
@@ -170,4 +176,44 @@ it('takes over unmarked branch, fill and legacy text colors, while preserving ma
   };
   expect(mindBranchColor(store, 'first', 'frame', 'dark')).not.toBe('#00ff00');
   expect(mindBranchColor(store, 'first', 'frame')).toBe('#123456');
+});
+
+it('resolves legacy and theme rich text for every appearance, while retaining custom text and literal third-party rendering', () => {
+  const store = createMindFrameSnapshot('frame', 'root').store;
+  const root = store.cells.root as NodeCell;
+  const frame = store.cells.frame as FrameCell;
+  const text = createInlineText('Legacy title');
+  text.content.content![0].content![0].marks = [
+    { type: 'textStyle', attrs: { color: '#24354b', fontSize: '18px' } },
+  ];
+  root.content = { text };
+  for (const themeColorMode of Object.values(ThemeColorMode)) {
+    frame.view = { theme: { themeColorMode } };
+    for (const appearance of ['light', 'dark'] as const) {
+      for (const source of [undefined, 'theme'] as const) {
+        text.content.content![0].content![0].marks![0].attrs!['colorSource'] =
+          source;
+        const before = JSON.stringify(store);
+        const result = mindPresentation(store, root, 'frame', appearance);
+        const background =
+          result.fill && result.fill !== 'none'
+            ? result.fill
+            : resolveBoardTheme(frame.view.theme, appearance).background;
+        expect(colorContrast(background, result.color)).toBeGreaterThanOrEqual(
+          4.5,
+        );
+        expect(JSON.stringify(store)).toBe(before);
+      }
+      root.content.text = formatBoardText(text, { color: '#24354b' });
+      expect(mindPresentation(store, root, 'frame', appearance).color).toBe(
+        '#24354b',
+      );
+      root.content.text = formatBoardText(root.content.text, { color: null });
+      expect(mindPresentation(store, root, 'frame', appearance).color).not.toBe(
+        '#24354b',
+      );
+      root.content.text = text;
+    }
+  }
+  expect(mindPresentation(store, root, 'frame').color).toBe('#24354b');
 });

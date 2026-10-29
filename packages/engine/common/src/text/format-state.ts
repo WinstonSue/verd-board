@@ -11,6 +11,8 @@ import {
  * value that differs across leaves.
  */
 export interface BoardTextFormatDefaults {
+  /** Adaptive hosts ignore unmarked legacy colors; other consumers keep literal colors. */
+  followThemeColors?: boolean;
   fontSize?: string;
   color?: string;
   align?: Alignment;
@@ -58,6 +60,15 @@ export const boardTextLeaves = (
 const textStyleAttr = (node: BoardTextNode, key: string) =>
   node.marks?.find((mark) => mark.type === 'textStyle')?.attrs?.[key];
 
+export const boardTextColor = (
+  attrs: Record<string, unknown> | undefined,
+  followTheme = false,
+): string | undefined =>
+  typeof attrs?.['color'] === 'string' &&
+  (!followTheme || attrs['colorSource'] === 'custom')
+    ? attrs['color']
+    : undefined;
+
 /**
  * Effective alignment per block container; a paragraph without `textAlign`
  * inherits the document default, which itself inherits `defaults.align`.
@@ -104,7 +115,12 @@ export const boardTextFormatState = (
         ? values[0]
         : 'mixed';
   const colors = common(
-    leaves.map((leaf) => textStyleAttr(leaf, 'color') as string | undefined),
+    leaves.map((leaf) =>
+      boardTextColor(
+        leaf.marks?.find((mark) => mark.type === 'textStyle')?.attrs,
+        defaults.followThemeColors,
+      ),
+    ),
   );
   const sizes = common(
     leaves.map(
@@ -164,10 +180,15 @@ export const formatBoardText = (
     if (patch.color !== undefined || patch.fontSize !== undefined) {
       const previous = marks.find((mark) => mark.type === 'textStyle');
       const attrs = { ...previous?.attrs };
-      if (patch.color !== undefined)
-        patch.color === null
-          ? delete attrs['color']
-          : (attrs['color'] = patch.color);
+      if (patch.color !== undefined) {
+        if (patch.color === null) {
+          delete attrs['color'];
+          delete attrs['colorSource'];
+        } else {
+          attrs['color'] = patch.color;
+          attrs['colorSource'] = 'custom';
+        }
+      }
       if (patch.fontSize !== undefined)
         patch.fontSize === null
           ? delete attrs['fontSize']

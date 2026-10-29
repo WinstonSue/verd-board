@@ -52,6 +52,12 @@
       "import": "./dist/index.js",
       "require": "./dist/index.cjs",
       "default": "./dist/index.js"
+    },
+    "./schema": {
+      "development": "./src/schema.ts",
+      "types": "./src/schema.ts",
+      "import": "./dist/schema.js",
+      "require": "./dist/schema.cjs"
     }
   },
   "type": "module",
@@ -71,6 +77,11 @@
         "import": "./dist/index.js",
         "require": "./dist/index.cjs",
         "default": "./dist/index.js"
+      },
+      "./schema": {
+        "types": "./dist/schema.d.ts",
+        "import": "./dist/schema.js",
+        "require": "./dist/schema.cjs"
       }
     },
     "registry": "https://packages.aliyun.com/69f800449b7ce0afb00bda0e/npm/npm-registry/",

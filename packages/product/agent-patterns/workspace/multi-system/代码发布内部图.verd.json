@@ -1,0 +1,408 @@
+{
+  "format": "verd-frame",
+  "version": 2,
+  "frame": {
+    "id": "pattern:multi-system/pattern:multi/release",
+    "kind": "frame",
+    "cellType": "frame",
+    "name": "代码发布内部图",
+    "geometry": {
+      "x": 0,
+      "y": 0,
+      "width": 1960,
+      "height": 650
+    },
+    "children": [
+      "pattern:multi-system/pattern:multi/release/pay-start",
+      "pattern:multi-system/pattern:multi/release/task-fill",
+      "pattern:multi-system/pattern:multi/release/task-pay",
+      "pattern:multi-system/pattern:multi/release/decision-result",
+      "pattern:multi-system/pattern:multi/release/task-done",
+      "pattern:multi-system/pattern:multi/release/task-retry",
+      "pattern:multi-system/pattern:multi/release/flow-1",
+      "pattern:multi-system/pattern:multi/release/flow-2",
+      "pattern:multi-system/pattern:multi/release/flow-3",
+      "pattern:multi-system/pattern:multi/release/flow-4",
+      "pattern:multi-system/pattern:multi/release/flow-5",
+      "pattern:multi-system/pattern:multi/release/flow-6"
+    ],
+    "groups": []
+  },
+  "cells": {
+    "pattern:multi-system/pattern:multi/release/pay-start": {
+      "id": "pattern:multi-system/pattern:multi/release/pay-start",
+      "kind": "workflow-start",
+      "cellType": "node",
+      "geometry": {
+        "x": 60,
+        "y": 110,
+        "width": 300,
+        "height": 100,
+        "outline": "terminal"
+      },
+      "ports": [
+        {
+          "id": "top",
+          "side": "top",
+          "direction": "output",
+          "offset": 0.5
+        },
+        {
+          "id": "right",
+          "side": "right",
+          "direction": "output",
+          "offset": 0.5
+        },
+        {
+          "id": "bottom",
+          "side": "bottom",
+          "direction": "output",
+          "offset": 0.5
+        },
+        {
+          "id": "left",
+          "side": "left",
+          "direction": "output",
+          "offset": 0.5
+        }
+      ],
+      "content": {
+        "label": "接收人工 / Agent PR/MR"
+      },
+      "data": {
+        "graphMode": "process",
+        "origin": [
+          60,
+          110
+        ],
+        "memberIds": [
+          "pattern:multi-system/pattern:multi/release/pay-start",
+          "pattern:multi-system/pattern:multi/release/task-fill",
+          "pattern:multi-system/pattern:multi/release/task-pay",
+          "pattern:multi-system/pattern:multi/release/decision-result",
+          "pattern:multi-system/pattern:multi/release/task-done",
+          "pattern:multi-system/pattern:multi/release/task-retry"
+        ]
+      }
+    },
+    "pattern:multi-system/pattern:multi/release/task-fill": {
+      "id": "pattern:multi-system/pattern:multi/release/task-fill",
+      "kind": "workflow-task",
+      "cellType": "node",
+      "geometry": {
+        "x": 430,
+        "y": 110,
+        "width": 300,
+        "height": 100,
+        "outline": "roundRectangle"
+      },
+      "ports": [
+        {
+          "id": "top",
+          "side": "top",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "right",
+          "side": "right",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "bottom",
+          "side": "bottom",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "left",
+          "side": "left",
+          "direction": "both",
+          "offset": 0.5
+        }
+      ],
+      "content": {
+        "label": "服务端独立检查与评审"
+      }
+    },
+    "pattern:multi-system/pattern:multi/release/task-pay": {
+      "id": "pattern:multi-system/pattern:multi/release/task-pay",
+      "kind": "workflow-task",
+      "cellType": "node",
+      "geometry": {
+        "x": 800,
+        "y": 110,
+        "width": 300,
+        "height": 100,
+        "outline": "roundRectangle"
+      },
+      "ports": [
+        {
+          "id": "top",
+          "side": "top",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "right",
+          "side": "right",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "bottom",
+          "side": "bottom",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "left",
+          "side": "left",
+          "direction": "both",
+          "offset": 0.5
+        }
+      ],
+      "content": {
+        "label": "验证候选并按 digest 部署"
+      }
+    },
+    "pattern:multi-system/pattern:multi/release/decision-result": {
+      "id": "pattern:multi-system/pattern:multi/release/decision-result",
+      "kind": "workflow-decision",
+      "cellType": "node",
+      "geometry": {
+        "x": 1170,
+        "y": 85,
+        "width": 300,
+        "height": 150,
+        "outline": "diamond"
+      },
+      "ports": [
+        {
+          "id": "top",
+          "side": "top",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "right",
+          "side": "right",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "bottom",
+          "side": "bottom",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "left",
+          "side": "left",
+          "direction": "both",
+          "offset": 0.5
+        }
+      ],
+      "content": {
+        "label": "线上验证通过？"
+      }
+    },
+    "pattern:multi-system/pattern:multi/release/task-done": {
+      "id": "pattern:multi-system/pattern:multi/release/task-done",
+      "kind": "workflow-task",
+      "cellType": "node",
+      "geometry": {
+        "x": 1540,
+        "y": 330,
+        "width": 320,
+        "height": 100,
+        "outline": "roundRectangle"
+      },
+      "ports": [
+        {
+          "id": "top",
+          "side": "top",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "right",
+          "side": "right",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "bottom",
+          "side": "bottom",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "left",
+          "side": "left",
+          "direction": "both",
+          "offset": 0.5
+        }
+      ],
+      "content": {
+        "label": "回传发布证据供业务验收"
+      }
+    },
+    "pattern:multi-system/pattern:multi/release/task-retry": {
+      "id": "pattern:multi-system/pattern:multi/release/task-retry",
+      "kind": "workflow-task",
+      "cellType": "node",
+      "geometry": {
+        "x": 800,
+        "y": 330,
+        "width": 300,
+        "height": 100,
+        "outline": "roundRectangle"
+      },
+      "ports": [
+        {
+          "id": "top",
+          "side": "top",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "right",
+          "side": "right",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "bottom",
+          "side": "bottom",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "left",
+          "side": "left",
+          "direction": "both",
+          "offset": 0.5
+        }
+      ],
+      "content": {
+        "label": "停止发布 / 恢复并转人工"
+      }
+    },
+    "pattern:multi-system/pattern:multi/release/flow-1": {
+      "id": "pattern:multi-system/pattern:multi/release/flow-1",
+      "kind": "workflow-edge",
+      "cellType": "edge",
+      "source": {
+        "cellId": "pattern:multi-system/pattern:multi/release/pay-start",
+        "portId": "right"
+      },
+      "target": {
+        "cellId": "pattern:multi-system/pattern:multi/release/task-fill",
+        "portId": "left"
+      },
+      "route": {
+        "mode": "orthogonal"
+      }
+    },
+    "pattern:multi-system/pattern:multi/release/flow-2": {
+      "id": "pattern:multi-system/pattern:multi/release/flow-2",
+      "kind": "workflow-edge",
+      "cellType": "edge",
+      "source": {
+        "cellId": "pattern:multi-system/pattern:multi/release/task-fill",
+        "portId": "right"
+      },
+      "target": {
+        "cellId": "pattern:multi-system/pattern:multi/release/task-pay",
+        "portId": "left"
+      },
+      "route": {
+        "mode": "orthogonal"
+      }
+    },
+    "pattern:multi-system/pattern:multi/release/flow-3": {
+      "id": "pattern:multi-system/pattern:multi/release/flow-3",
+      "kind": "workflow-edge",
+      "cellType": "edge",
+      "source": {
+        "cellId": "pattern:multi-system/pattern:multi/release/task-pay",
+        "portId": "right"
+      },
+      "target": {
+        "cellId": "pattern:multi-system/pattern:multi/release/decision-result",
+        "portId": "left"
+      },
+      "route": {
+        "mode": "orthogonal"
+      }
+    },
+    "pattern:multi-system/pattern:multi/release/flow-4": {
+      "id": "pattern:multi-system/pattern:multi/release/flow-4",
+      "kind": "workflow-edge",
+      "cellType": "edge",
+      "source": {
+        "cellId": "pattern:multi-system/pattern:multi/release/decision-result",
+        "portId": "bottom"
+      },
+      "target": {
+        "cellId": "pattern:multi-system/pattern:multi/release/task-retry",
+        "portId": "right"
+      },
+      "route": {
+        "mode": "orthogonal"
+      },
+      "labels": [
+        {
+          "text": "失败"
+        }
+      ]
+    },
+    "pattern:multi-system/pattern:multi/release/flow-5": {
+      "id": "pattern:multi-system/pattern:multi/release/flow-5",
+      "kind": "workflow-edge",
+      "cellType": "edge",
+      "source": {
+        "cellId": "pattern:multi-system/pattern:multi/release/task-retry",
+        "portId": "left"
+      },
+      "target": {
+        "cellId": "pattern:multi-system/pattern:multi/release/task-fill",
+        "portId": "bottom"
+      },
+      "route": {
+        "mode": "orthogonal"
+      },
+      "labels": [
+        {
+          "text": "重试"
+        }
+      ]
+    },
+    "pattern:multi-system/pattern:multi/release/flow-6": {
+      "id": "pattern:multi-system/pattern:multi/release/flow-6",
+      "kind": "workflow-edge",
+      "cellType": "edge",
+      "source": {
+        "cellId": "pattern:multi-system/pattern:multi/release/decision-result",
+        "portId": "right"
+      },
+      "target": {
+        "cellId": "pattern:multi-system/pattern:multi/release/task-done",
+        "portId": "top"
+      },
+      "route": {
+        "mode": "orthogonal"
+      },
+      "labels": [
+        {
+          "text": "成功"
+        }
+      ]
+    }
+  },
+  "organization": {
+    "kind": "standalone"
+  }
+}

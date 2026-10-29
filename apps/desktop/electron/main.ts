@@ -17,7 +17,10 @@ import {
   removeStorageValue,
   setStorageValue,
 } from './storage-file';
-import { createFsWorkspaceHost } from './workspace-host-fs';
+import {
+  createFsWorkspaceHost,
+  initializePatternWorkspace,
+} from './workspace-host-fs';
 import { createDesktopWorkspaceManager } from './workspace-startup';
 
 const { legacyUserDataRoot } = configureApplicationIdentity(app);
@@ -84,7 +87,22 @@ function registerWorkspaceHostIpc() {
       workspaceHost.writeGlobalConfig(value, expectedVersion),
   );
   ipcMain.handle('workspace-host:open', (_, request) =>
-    workspaceManager.open(request),
+    request?.patterns
+      ? initializePatternWorkspace(
+          path.join(app.getPath('userData'), 'workspaces', 'agent-patterns'),
+          {
+            preserveExisting: true,
+            source: app.isPackaged
+              ? path.join(process.resourcesPath, 'agent-patterns')
+              : path.resolve(
+                  __dirname,
+                  '../../../packages/product/agent-patterns/workspace',
+                ),
+          },
+        ).then((result) =>
+          workspaceManager.open({ path: result.path, name: 'Agent 范式库' }),
+        )
+      : workspaceManager.open(request),
   );
   ipcMain.handle('workspace-host:activate', (_, handle) =>
     workspaceManager.activate(handle),

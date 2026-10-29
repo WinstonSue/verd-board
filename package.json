@@ -37,7 +37,9 @@
     "icons:desktop": "node scripts/generate-desktop-icons.mjs",
     "dev:desktop": "turbo run dev --filter=desktop",
     "test:e2e:desktop:prod": "playwright test --config tests/desktop-e2e/playwright.prod.config.ts",
-    "test:e2e:desktop:packaged": "playwright test --config tests/desktop-e2e/playwright.packaged.config.ts"
+    "test:e2e:desktop:packaged": "playwright test --config tests/desktop-e2e/playwright.packaged.config.ts",
+    "test:agent-consumer": "node scripts/test-agent-consumer.mjs",
+    "agent": "node packages/product/agent/dist/cli.js"
   },
   "devDependencies": {
     "@eslint/js": "^9.22.0",

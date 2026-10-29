@@ -1,0 +1,246 @@
+{
+  "format": "verd-frame",
+  "version": 2,
+  "frame": {
+    "id": "pattern:whiteboard/canvas-basic",
+    "kind": "frame",
+    "cellType": "frame",
+    "name": "白板说明板",
+    "geometry": {
+      "x": 0,
+      "y": 0,
+      "width": 960,
+      "height": 640
+    },
+    "children": [
+      "pattern:whiteboard/shape-request",
+      "pattern:whiteboard/shape-process",
+      "pattern:whiteboard/shape-decision",
+      "pattern:whiteboard/text-note",
+      "pattern:whiteboard/arrow-1",
+      "pattern:whiteboard/arrow-2"
+    ],
+    "groups": [
+      "pattern:whiteboard/group-review"
+    ],
+    "view": {
+      "theme": {
+        "themeColorMode": "default"
+      }
+    }
+  },
+  "cells": {
+    "pattern:whiteboard/shape-request": {
+      "id": "pattern:whiteboard/shape-request",
+      "kind": "geometry",
+      "cellType": "node",
+      "geometry": {
+        "x": 80,
+        "y": 120,
+        "width": 160,
+        "height": 64,
+        "outline": "roundRectangle"
+      },
+      "ports": [
+        {
+          "id": "top",
+          "side": "top",
+          "direction": "both"
+        },
+        {
+          "id": "right",
+          "side": "right",
+          "direction": "both"
+        },
+        {
+          "id": "bottom",
+          "side": "bottom",
+          "direction": "both"
+        },
+        {
+          "id": "left",
+          "side": "left",
+          "direction": "both"
+        }
+      ],
+      "appearance": {
+        "fill": "#ffffff",
+        "strokeColor": "#64748b",
+        "strokeWidth": 2
+      },
+      "content": {
+        "label": "提交请求"
+      }
+    },
+    "pattern:whiteboard/shape-process": {
+      "id": "pattern:whiteboard/shape-process",
+      "kind": "geometry",
+      "cellType": "node",
+      "geometry": {
+        "x": 360,
+        "y": 120,
+        "width": 160,
+        "height": 64,
+        "outline": "process"
+      },
+      "ports": [
+        {
+          "id": "top",
+          "side": "top",
+          "direction": "both"
+        },
+        {
+          "id": "right",
+          "side": "right",
+          "direction": "both"
+        },
+        {
+          "id": "bottom",
+          "side": "bottom",
+          "direction": "both"
+        },
+        {
+          "id": "left",
+          "side": "left",
+          "direction": "both"
+        }
+      ],
+      "appearance": {
+        "fill": "#eff6ff",
+        "strokeColor": "#2563eb",
+        "strokeWidth": 2
+      },
+      "content": {
+        "label": "系统处理"
+      }
+    },
+    "pattern:whiteboard/shape-decision": {
+      "id": "pattern:whiteboard/shape-decision",
+      "kind": "geometry",
+      "cellType": "node",
+      "geometry": {
+        "x": 640,
+        "y": 104,
+        "width": 140,
+        "height": 96,
+        "outline": "diamond"
+      },
+      "ports": [
+        {
+          "id": "top",
+          "side": "top",
+          "direction": "both"
+        },
+        {
+          "id": "right",
+          "side": "right",
+          "direction": "both"
+        },
+        {
+          "id": "bottom",
+          "side": "bottom",
+          "direction": "both"
+        },
+        {
+          "id": "left",
+          "side": "left",
+          "direction": "both"
+        }
+      ],
+      "appearance": {
+        "fill": "#fefce8",
+        "strokeColor": "#a16207",
+        "strokeWidth": 2
+      },
+      "content": {
+        "label": "需要复核?"
+      }
+    },
+    "pattern:whiteboard/text-note": {
+      "id": "pattern:whiteboard/text-note",
+      "kind": "geometry",
+      "cellType": "node",
+      "geometry": {
+        "x": 640,
+        "y": 240,
+        "width": 200,
+        "height": 40,
+        "outline": "text"
+      },
+      "appearance": {
+        "fill": "none",
+        "strokeColor": "none",
+        "strokeWidth": 2
+      },
+      "content": {
+        "label": "人工复核入口"
+      }
+    },
+    "pattern:whiteboard/arrow-1": {
+      "id": "pattern:whiteboard/arrow-1",
+      "kind": "arrow",
+      "cellType": "edge",
+      "source": {
+        "cellId": "pattern:whiteboard/shape-request",
+        "portId": "right"
+      },
+      "target": {
+        "cellId": "pattern:whiteboard/shape-process",
+        "portId": "left"
+      },
+      "route": {
+        "mode": "auto"
+      },
+      "labels": [
+        {
+          "text": "创建工单"
+        }
+      ],
+      "data": {
+        "sourceMarker": "none",
+        "targetMarker": "arrow"
+      }
+    },
+    "pattern:whiteboard/arrow-2": {
+      "id": "pattern:whiteboard/arrow-2",
+      "kind": "arrow",
+      "cellType": "edge",
+      "source": {
+        "cellId": "pattern:whiteboard/shape-process",
+        "portId": "right"
+      },
+      "target": {
+        "cellId": "pattern:whiteboard/shape-decision",
+        "portId": "left"
+      },
+      "route": {
+        "mode": "orthogonal"
+      },
+      "labels": [
+        {
+          "text": "校验"
+        }
+      ],
+      "appearance": {
+        "strokeColor": "#334155",
+        "strokeWidth": 2
+      },
+      "data": {
+        "sourceMarker": "none",
+        "targetMarker": "arrow"
+      }
+    },
+    "pattern:whiteboard/group-review": {
+      "id": "pattern:whiteboard/group-review",
+      "kind": "group",
+      "cellType": "group",
+      "members": [
+        "pattern:whiteboard/shape-decision",
+        "pattern:whiteboard/text-note"
+      ]
+    }
+  },
+  "organization": {
+    "kind": "standalone"
+  }
+}

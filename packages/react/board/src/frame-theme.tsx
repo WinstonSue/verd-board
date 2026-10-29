@@ -16,11 +16,13 @@ export const useFrameAppearance = () => {
 
 /** The scope travels with each SVG frame and its foreignObject document editors. */
 export function frameThemeStyle(theme: ResolvedBoardTheme): CSSProperties {
-  if (!theme.adaptive) return {};
+  if (!theme.adaptive)
+    return { '--board-unmarked-text-color': 'initial' } as CSSProperties;
   return {
     colorScheme: theme.appearance,
     accentColor: theme.accent,
     color: theme.text,
+    '--board-unmarked-text-color': 'currentColor',
     '--board-bg': theme.surface,
     '--board-surface': theme.surface,
     '--board-text': theme.text,

@@ -8,6 +8,11 @@
       "skills": [
         "verd-board-dev"
       ]
+    },
+    {
+      "name": "agent",
+      "link": "packages/product/agent",
+      "skills": []
     }
   ]
 }

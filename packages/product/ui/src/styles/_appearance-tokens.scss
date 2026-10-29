@@ -79,6 +79,7 @@
 // Keep the text package independent of product UI. These aliases are inherited
 // only by document pages, and are reset again at each canvas boundary.
 @mixin document {
+  --board-unmarked-text-color: currentColor;
   --board-bg: var(--vm-background);
   --board-surface: var(--vm-background);
   --board-text: var(--vm-foreground);

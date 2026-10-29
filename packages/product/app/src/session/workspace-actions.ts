@@ -53,6 +53,7 @@ export interface WorkspaceDialogAction {
   ): void | ActionResult | Promise<void | ActionResult>;
 }
 const commandTypes = [
+  'batch',
   'create-document-frame',
   'store',
   'file',
