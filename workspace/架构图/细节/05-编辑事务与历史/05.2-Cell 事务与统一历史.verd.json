@@ -969,16 +969,15 @@
     "project:detail/05/02/document": {
       "id": "project:detail/05/02/document",
       "cellType": "node",
-      "kind": "document-reference",
+      "kind": "geometry",
       "geometry": {
         "x": 0,
         "y": 740,
         "width": 1000,
-        "height": 620
+        "height": 288,
+        "outline": "text"
       },
-      "data": {
-        "targetDocumentId": "project-doc:packages/react/README"
-      },
+      "data": {},
       "content": {
         "text": {
           "schemaVersion": 1,
@@ -988,6 +987,23 @@
           "content": {
             "type": "doc",
             "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "相关文档：React接入",
+                    "marks": [
+                      {
+                        "type": "link",
+                        "attrs": {
+                          "href": "verd://file/project-doc%3Apackages%2Freact%2FREADME"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
               {
                 "type": "paragraph",
                 "content": [
@@ -1093,8 +1109,12 @@
               }
             ]
           },
-          "plainText": "读图：校验通过才整体提交；布局、位置与图文历史的保存边界分开说明。\n返回专题总览\n相关细节：宿主意图与外部历史\n相关细节：Actions 与编辑提交屏障\n系统架构 · 模型和事务\n布局、路由与保存边界\n源码入口：packages/engine/core/src/cell/commands.ts；packages/engine/core/src/cell/runtime.ts；packages/product/app/src/session/workspace-session.ts。"
+          "plainText": "相关文档：React接入\n读图：校验通过才整体提交；布局、位置与图文历史的保存边界分开说明。\n返回专题总览\n相关细节：宿主意图与外部历史\n相关细节：Actions 与编辑提交屏障\n系统架构 · 模型和事务\n布局、路由与保存边界\n源码入口：packages/engine/core/src/cell/commands.ts；packages/engine/core/src/cell/runtime.ts；packages/product/app/src/session/workspace-session.ts。"
         }
+      },
+      "appearance": {
+        "fill": "none",
+        "strokeColor": "none"
       }
     }
   },

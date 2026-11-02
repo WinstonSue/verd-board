@@ -39,7 +39,10 @@
     "test:e2e:desktop:prod": "playwright test --config tests/desktop-e2e/playwright.prod.config.ts",
     "test:e2e:desktop:packaged": "playwright test --config tests/desktop-e2e/playwright.packaged.config.ts",
     "test:agent-consumer": "node scripts/test-agent-consumer.mjs",
-    "agent": "node packages/product/agent/dist/cli.js"
+    "agent": "node packages/product/agent/dist/cli.js",
+    "prepare:agent-resources": "node scripts/prepare-agent-resources.mjs",
+    "build:content": "pnpm --filter @sue/verd-board-docs --filter @sue/verd-board-agent-patterns build",
+    "publish:content": "pnpm build:content && pnpm --filter @sue/verd-board-docs --filter @sue/verd-board-agent-patterns publish"
   },
   "devDependencies": {
     "@eslint/js": "^9.22.0",

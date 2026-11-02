@@ -8,6 +8,7 @@ export default createLibViteConfig({
   externals: [
     'remark-parse',
     'remark-gfm',
+    'remark-math',
     'remark-stringify',
     'unified',
     /^mdast-/,

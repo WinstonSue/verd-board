@@ -24,6 +24,8 @@ export interface WorkspaceHistoryEntry {
   /** Host-generated parent-folder hint for otherwise identical names. */
   description?: string;
   lastOpenedAt: number;
+  pinned?: boolean;
+  availability?: 'available' | 'missing' | 'unavailable';
 }
 
 export interface GlobalConfigSnapshot {
@@ -35,6 +37,13 @@ export interface GlobalConfigSnapshot {
 export interface WorkspaceConfigSnapshot {
   version: number;
   value: Record<string, unknown>;
+}
+
+/** Portable project facts; identity and name remain in config.value. */
+export interface WorkspaceProjectInfo {
+  description: string;
+  /** Ordered stable file IDs; the first available entry opens without a saved session. */
+  entryDocumentIds: string[];
 }
 
 export interface WorkspaceTabRef {
@@ -51,6 +60,7 @@ export interface WorkspaceTabGroupState {
 }
 
 export interface WorkspaceSessionState {
+  activeView?: 'home' | 'all' | 'search' | 'library' | 'file';
   /** Current group projection, retained for hosts predating tab groups. */
   tabs: WorkspaceTabRef[];
   activeTabId: CellId | null;
@@ -89,6 +99,11 @@ export const normalizeWorkspaceSessionState = (
   const tabs = readTabs(candidate.tabs);
   if (!tabs) return null;
   const state: WorkspaceSessionState = {
+    activeView: ['home', 'all', 'search', 'library', 'file'].includes(
+      String(candidate.activeView),
+    )
+      ? candidate.activeView
+      : undefined,
     tabs,
     activeTabId:
       typeof candidate.activeTabId === 'string' ? candidate.activeTabId : null,
@@ -168,6 +183,11 @@ export interface WorkspaceTrashMeta {
 }
 
 export interface WorkspaceHostSnapshot {
+  agent?: {
+    ready: boolean;
+    resourceId: string | null;
+    diagnostics: { code: string; message: string; path?: string }[];
+  };
   config: WorkspaceConfigSnapshot;
   session: WorkspaceSessionState | null;
   entries: WorkspaceEntryMeta[];
@@ -232,6 +252,7 @@ export interface WorkspaceConfigWrite {
 export interface CommitRequest {
   /** Optional native path/content manifest precondition, supported by the Node host. */
   expectedWorkspaceVersion?: string;
+  expectedAgentResourceId?: string | null;
   /** Stable id; retries with the same id return the original receipt. */
   transactionId: string;
   writes?: FileWriteOp[];
@@ -299,7 +320,40 @@ export interface ChangeHint {
   paths?: string[];
 }
 
+export interface BuiltinUpdateStatus {
+  kind: 'project' | 'agent-patterns';
+  packageName: string;
+  currentVersion: string | null;
+  bundledVersion: string | null;
+  currentReleaseId: string | null;
+  availableVersion?: string;
+  candidateId?: string;
+  incompatibleVersion?: string;
+  checkedAt: number;
+  status: 'current' | 'available' | 'error';
+  error?: string;
+  remind?: boolean;
+}
+export interface BuiltinWorkspaceUpdateInfo {
+  kind: 'project' | 'agent-patterns';
+  currentReleaseId: string | null;
+  releaseId: string;
+  hasBackups: boolean;
+  update?: BuiltinUpdateStatus;
+}
 export interface WorkspaceHost {
+  checkBuiltinUpdates?(force?: boolean): Promise<BuiltinUpdateStatus[]>;
+  subscribeBuiltinUpdates?(listener: () => void): () => void;
+  prepareBuiltinUpdate?(candidateId: string): Promise<void>;
+  snoozeBuiltinUpdate?(candidateId: string): Promise<void>;
+  readBuiltinUpdate?(
+    handle: WorkspaceHandle,
+  ): Promise<BuiltinWorkspaceUpdateInfo | null>;
+  updateBuiltinWorkspace?(
+    handle: WorkspaceHandle,
+    releaseId: string,
+  ): Promise<WorkspaceHandle>;
+  revealBuiltinBackups?(handle: WorkspaceHandle): Promise<void>;
   readGlobalConfig(): Promise<GlobalConfigSnapshot>;
   /** Compare-and-swap by expected version. */
   writeGlobalConfig(
@@ -314,6 +368,12 @@ export interface WorkspaceHost {
   activateWorkspace?(handle: WorkspaceHandle): Promise<void>;
   /** Most recently opened first; filesystem locations remain host-private. */
   listWorkspaceHistory?(): Promise<WorkspaceHistoryEntry[]>;
+  createWorkspace?(request: { name: string }): Promise<WorkspaceHandle | null>;
+  updateWorkspaceHistory?(request: {
+    id: string;
+    pinned?: boolean;
+    remove?: boolean;
+  }): Promise<void>;
   readSnapshot(handle: WorkspaceHandle): Promise<WorkspaceHostSnapshot>;
   /** Read raw bytes for plain (non-canvas) files on demand. */
   readFile(handle: WorkspaceHandle, path: string): Promise<RawFileRead>;
@@ -334,7 +394,8 @@ export interface WorkspaceHost {
   onShutdown?(flush: () => Promise<void>): () => void;
 }
 
-export const WORKSPACE_META_DIR = '.verdboard';
+export const WORKSPACE_META_DIR = '.verdscrolls';
+export const LEGACY_WORKSPACE_META_DIR = '.verdboard';
 export const CANVAS_FILE_SUFFIX = '.verd.json';
 export const DOCUMENT_FILE_SUFFIX = '.verd-doc.json';
 
@@ -343,11 +404,11 @@ export const isDocumentPath = (path: string) =>
   path.endsWith(DOCUMENT_FILE_SUFFIX);
 
 const SEGMENT = /^[^/\\]+$/;
-const RESERVED = new Set([WORKSPACE_META_DIR]);
+const RESERVED = new Set([WORKSPACE_META_DIR, LEGACY_WORKSPACE_META_DIR]);
 
 /**
  * App-facing paths are workspace-relative POSIX paths. They can never escape
- * the root or reach into the internal `.verdboard` area.
+ * the root or reach into either current or legacy internal metadata area.
  */
 export const normalizeWorkspacePath = (path: string): string => {
   if (typeof path !== 'string' || !path) throw new Error('Empty path');
@@ -360,7 +421,7 @@ export const normalizeWorkspacePath = (path: string): string => {
   const segments = normalized.split('/');
   if (
     segments.some((part) => part === '..') ||
-    RESERVED.has(segments[0]) ||
+    segments.some((segment) => RESERVED.has(segment)) ||
     segments[0].includes(':')
   )
     throw new Error(`Workspace path escapes the root: ${path}`);

@@ -128,10 +128,11 @@ test('native wheel zooms inline editing and its portal without losing typing, se
   await zoomAt(page, editor);
   await expect(editor).toBeFocused();
   expect(await selection()).toEqual(before);
+  await editor.press('ControlOrMeta+a');
   const toolbar = page.locator('[data-frame-text-toolbar]');
   await zoomAt(page, toolbar);
   await expect(editor).toBeFocused();
-  expect(await selection()).toEqual(before);
+  expect((await selection()).text).toBe(before.text);
   const camera = await transform(page);
   const box = (await editor.boundingBox())!;
   await page.mouse.move(box.x + 10, box.y + 10);

@@ -4,9 +4,12 @@ import { mkdtemp, mkdir, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { selectDrawingTool } from '../../web-e2e/src/drawing-tools';
-import { committedCells, workspaceDigest } from './workspace-disk';
-
-const root = path.resolve(__dirname, '../../..');
+import {
+  committedCells,
+  seedEmptyCanvas,
+  workspaceDigest,
+} from './workspace-disk';
+import { openActiveFile } from '../../web-e2e/src/app-actions';
 
 test('desktop lectures in the same fullscreen window and one Esc restores the editor', async () => {
   test.setTimeout(60_000);
@@ -22,9 +25,12 @@ test('desktop lectures in the same fullscreen window and one Esc restores the ed
   );
 
   env.VERDBOARD_WORKSPACE_PATH = path.join(userData, 'workspaces', 'default');
+  await seedEmptyCanvas(env.VERDBOARD_WORKSPACE_PATH);
   const desktop = await electron.launch({ args: [launcher], env });
   try {
     const page = await desktop.firstWindow();
+    await expect(page.locator('.workspace-shell')).toBeVisible();
+    await openActiveFile(page);
     await desktop.evaluate(({ BrowserWindow }) =>
       BrowserWindow.getAllWindows()[0].setSize(1400, 900),
     );

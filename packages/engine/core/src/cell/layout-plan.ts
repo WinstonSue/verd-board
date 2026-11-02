@@ -243,7 +243,13 @@ export function planCellLayout(
         (owner) => store.cells[owner]?.hidden,
       ) &&
       (!specialized ||
-        !block.members.some((id) => isDocumentCell(store.cells[id]))),
+        !block.members.some(
+          (id) =>
+            isDocumentCell(store.cells[id]) ||
+            (store.cells[id]?.kind === 'geometry' &&
+              (store.cells[id] as import('./types').NodeCell).geometry
+                .outline === 'text'),
+        )),
   );
   const movable = blocks.filter((block) => !block.locked);
   if (movable.length < 2) return [];

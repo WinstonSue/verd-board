@@ -500,3 +500,33 @@ describe('React action scopes', () => {
     expect(childRun).not.toHaveBeenCalled();
   });
 });
+
+it('routes declared root navigation shortcuts from body and input while respecting IME and other roots', async () => {
+  const run = vi.fn();
+  const value = registry(
+    action('search', run, {
+      shortcuts: [{ key: 'f', mod: true, shift: true }],
+    }),
+  );
+  const { host } = await mount(
+    <ActionScope registry={value} paletteFallback globalActionIds={['search']}>
+      <input aria-label="query" />
+    </ActionScope>,
+  );
+  await key(document.body, 'f', { ctrlKey: true, shiftKey: true });
+  await key(host.querySelector('input')!, 'f', {
+    ctrlKey: true,
+    shiftKey: true,
+  });
+  expect(run).toHaveBeenCalledTimes(2);
+  await key(host.querySelector('input')!, 'f', {
+    ctrlKey: true,
+    shiftKey: true,
+    isComposing: true,
+  });
+  const outside = document.createElement('input');
+  document.body.append(outside);
+  await key(outside, 'f', { ctrlKey: true, shiftKey: true });
+  outside.remove();
+  expect(run).toHaveBeenCalledTimes(2);
+});

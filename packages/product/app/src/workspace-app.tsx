@@ -1,4 +1,26 @@
 import {
+  WorkspaceManagementMenu,
+  WorkspaceManagementResize,
+} from './management/workspace-management-slots';
+import { useAutomaticVersions } from './documents/automatic-versions';
+import { WorkspaceAssetScope } from './documents/workspace-asset-scope';
+import {
+  storeAttachment,
+  inlineFileAssets,
+} from './documents/workspace-resources';
+import { ContentTools } from './documents/content-tools';
+import { importMarkdownCollection } from './documents/portable-archive';
+import { createKnowledgeIndexer } from './documents/knowledge-index';
+import { KnowledgePanel } from './documents/knowledge-panel';
+import {
+  WorkspaceManagement,
+  WorkspaceManagementSidebar,
+  WorkspaceManagementMain,
+} from './management/workspace-management';
+import { readOrganization } from './management/organization';
+import { searchRevision, type SearchHit } from './management/search';
+import { useInteractionPreferences } from '@sue/verd-board-ui';
+import {
   FrameAutoCalculationProvider,
   createFrameAutoCalculationSession,
 } from '@sue/verd-board-ui';
@@ -78,15 +100,14 @@ import {
   ChartLibrary,
   FileTree,
   I18nProvider,
-  MyPage,
   OrganizePreview,
   PreviewMountProvider,
   useAppearancePreference,
   useI18n,
   VerdFrame,
   WorkspaceEmpty,
-  WorkspaceMenu,
-  WorkspaceSettings,
+  VmDialog,
+  SettingsCenter,
   WorkspaceTabs,
   WorkspaceFileNavigation,
   bindWorkspaceAction,
@@ -96,7 +117,7 @@ import {
   type DocumentSelection,
   type OrganizePreviewRow,
 } from '@sue/verd-board-ui';
-import { LoaderCircle, TriangleAlert, UserRound } from 'lucide-react';
+import { LoaderCircle, TriangleAlert, Settings } from 'lucide-react';
 import {
   startTransition,
   useCallback,
@@ -123,6 +144,7 @@ import {
 } from './documents/workspace-previews';
 import {
   parseWorkspaceExport,
+  remapWorkspaceFiles,
   workspaceDocumentDependents,
   workspaceExportBundle,
 } from './documents/workspace-references';
@@ -237,7 +259,11 @@ function WorkspaceAppShell({
   allowWorkspaceSwitching = false,
 }: WorkspaceAppProps) {
   const { language } = useI18n();
+  const { linkActivation } = useInteractionPreferences();
   const locale = language === 'en' ? 'en' : 'zh';
+  useEffect(() => {
+    document.documentElement.lang = locale === 'zh' ? 'zh-CN' : 'en';
+  }, [locale]);
   const [session, setSession] = useState<WorkspaceSession | null>(null);
   const autoCalculationSession = useMemo(
     () =>
@@ -454,6 +480,26 @@ function WorkspaceAppShell({
         if (!ids.has(fileId)) autoCalculationSession.clearFile(fileId);
     openAutoCalculationFiles.current = { owner: autoCalculationSession, ids };
   }, [autoCalculationNavigation, autoCalculationSession]);
+  const [contentUpdates, setContentUpdates] = useState<
+    import('./host/workspace-host').BuiltinUpdateStatus[]
+  >([]);
+  useEffect(() => {
+    if (!host.checkBuiltinUpdates) return;
+    const check = () => {
+      void host.checkBuiltinUpdates!()
+        .then(setContentUpdates)
+        .catch(() => {});
+    };
+    check();
+    const unsubscribe = host.subscribeBuiltinUpdates?.(check);
+    const interval = setInterval(check, 86400000);
+    window.addEventListener('focus', check);
+    return () => {
+      unsubscribe?.();
+      clearInterval(interval);
+      window.removeEventListener('focus', check);
+    };
+  }, [host]);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<{
     text: string;
@@ -463,6 +509,9 @@ function WorkspaceAppShell({
     (text: string, tone: 'info' | 'error' = 'info') =>
       setNotice({ text, tone }),
     [],
+  );
+  useAutomaticVersions(session, snapshot, readonly, (message) =>
+    notify(message, 'error'),
   );
   const [history, setHistory] = useState<WorkspaceHistoryEntry[]>([]);
   const [currentHistoryId, setCurrentHistoryId] = useState<string>();
@@ -622,15 +671,18 @@ function WorkspaceAppShell({
     return () => cancelAnimationFrame(frame);
   }, [switchingWorkspace, menuFocusRequest]);
   const myFocus = useRef<HTMLElement | null>(null);
-  const openMy = (opener?: HTMLElement) => {
+  const openSettings = (target: string, opener?: HTMLElement) => {
     const active = document.activeElement;
     myFocus.current =
       opener ??
       (active instanceof HTMLElement && active !== document.body
         ? active
         : settingsButtonRef.current);
-    setSettingsView('my');
+    setWorkspaceSettingsSection(target);
+    setSettingsView(target.startsWith('personal.') ? 'my' : 'workspace');
   };
+  const openMy = (opener?: HTMLElement) =>
+    openSettings('personal.general', opener);
   const closeMy = () => {
     setSettingsView(null);
     requestAnimationFrame(() => {
@@ -640,11 +692,16 @@ function WorkspaceAppShell({
       target?.focus();
     });
   };
-  const closeSettings = () => {
-    setSettingsView(null);
-    requestAnimationFrame(() => settingsButtonRef.current?.focus());
+  const libraryOpen = snapshot?.session.activeView === 'library';
+  const setLibraryOpen = (open: boolean) => {
+    if (session)
+      session.setSessionState({
+        ...session.getState().session,
+        activeView: open ? 'library' : 'file',
+      });
   };
-  const [libraryOpen, setLibraryOpen] = useState(false);
+  const [workspaceSettingsSection, setWorkspaceSettingsSection] =
+    useState<string>('workspace.project');
   const [failedPath, setFailedPath] = useState<string | null>(null);
   const [expandedOwners, setExpandedOwners] = useState<string[]>([]);
   const [fileTreeReveal, setFileTreeReveal] = useState<{
@@ -675,6 +732,9 @@ function WorkspaceAppShell({
   const embeddedRestoreRef = useRef(
     new Map<string, { revision: number; selection?: DocumentSelection }>(),
   );
+  const assetResolverRef = useRef<
+    import('@sue/board-react-text').DocumentAssetResolver
+  >((source) => Promise.resolve(source));
   const referenceScrollRef = useRef(
     new Map<string, { top: number; left: number }>(),
   );
@@ -689,6 +749,25 @@ function WorkspaceAppShell({
   );
   const entryOrigins = useRef(new Map<string, NavigationOrigin>());
   const [, setSourceRev] = useState(0);
+  const knowledgeIndexer = useMemo(createKnowledgeIndexer, [session]);
+  const knowledge = useMemo(
+    () =>
+      knowledgeIndexer([
+        ...[...(snapshot?.files.values() ?? [])].map((entry) => entry.file),
+        ...[...(snapshot?.documents.values() ?? [])].map((entry) => entry.file),
+      ]),
+    [knowledgeIndexer, snapshot?.files, snapshot?.documents],
+  );
+  const [contentToolsRequest, setContentToolsRequest] = useState<{
+    fileId: string;
+    nonce: number;
+    tab: string;
+  }>();
+  const [knowledgePreview, setKnowledgePreview] = useState<{
+    fileId: string;
+    href: string;
+    nonce: number;
+  }>();
   const referenceLocations = useMemo(
     () =>
       buildReferenceLocations([
@@ -781,11 +860,14 @@ function WorkspaceAppShell({
       });
   }
 
+  const preparingBuiltin = useRef(false);
   const openWorkspaceRequest = async (
     request?: OpenWorkspaceRequest,
     initial = false,
+    updateReleaseId?: string,
+    existingHandle?: WorkspaceHandle,
   ): Promise<ActionResult> => {
-    if (switchingRef.current && !initial)
+    if ((switchingRef.current || preparingBuiltin.current) && !initial)
       return { status: 'rejected', code: 'workspace-switching' };
     const sequence = ++requestSequence.current;
     const previous = activeWorkspace.current;
@@ -806,7 +888,10 @@ function WorkspaceAppShell({
               : 'Save the current workspace before switching folders.',
           );
       }
-      const handle = await host.openWorkspace(request);
+      const handle =
+        updateReleaseId && previous && host.updateBuiltinWorkspace
+          ? await host.updateBuiltinWorkspace(previous.handle, updateReleaseId)
+          : (existingHandle ?? (await host.openWorkspace(request)));
       candidateHandle = handle;
       if (sequence !== requestSequence.current)
         return { status: 'cancelled', code: 'stale-request' };
@@ -819,7 +904,7 @@ function WorkspaceAppShell({
         return { status: 'noop' };
       }
       // Preserve the difference between missing navigation and deliberately
-      // closed tabs. Only a first built-in open gets a reading starting point.
+      // closed tabs. Only a workspace without saved navigation gets a reading entry.
       const raw = await host.readSnapshot(handle);
       const opened = await openWorkspaceSession(host, handle, {
         registry: registryRef.current ?? undefined,
@@ -846,6 +931,7 @@ function WorkspaceAppShell({
         state.documents.size > 0 ||
         state.diagnostics.length > 0;
       if (
+        !existingHandle &&
         !initialized &&
         !state.session.tabs.length &&
         !readonly &&
@@ -900,30 +986,33 @@ function WorkspaceAppShell({
           });
         }
         initializedWorkspaces.add(handle.key);
-      } else if (
-        request?.patterns &&
-        raw.session === null &&
-        state.documents.has('pattern-library:index')
-      ) {
-        opened.setSessionState({
-          tabs: [{ fileId: 'pattern-library:index' }],
-          activeTabId: 'pattern-library:index',
-          expandedDirs: [],
-        });
-      } else if (
-        handle.isDefault &&
-        raw.session === null &&
-        state.files.has('board-root')
-      ) {
-        opened.setSessionState({
-          tabs: [{ fileId: 'board-root' }],
-          activeTabId: 'board-root',
-          expandedDirs: state.entries
-            .filter(
-              (entry) => entry.kind === 'directory' && entry.path === '文档',
+      } else if (raw.session === null) {
+        const project = state.config.value['project'] as
+          { entryDocumentIds?: unknown } | undefined;
+        const configuredEntries = Array.isArray(project?.entryDocumentIds)
+          ? project.entryDocumentIds.filter(
+              (id): id is string => typeof id === 'string',
             )
-            .map((entry) => entry.path),
-        });
+          : [];
+        const defaultEntry = request?.patterns
+          ? 'pattern-library:index'
+          : handle.isDefault
+            ? 'project-doc:README'
+            : null;
+        const entryId = [...configuredEntries, defaultEntry].find(
+          (id): id is string =>
+            !!id && (state.documents.has(id) || state.files.has(id)),
+        );
+        if (entryId) {
+          const entry =
+            state.documents.get(entryId) ?? state.files.get(entryId)!;
+          opened.setSessionState({
+            tabs: [{ fileId: entryId }],
+            activeTabId: entryId,
+            expandedDirs: workspaceFileDirectories(entry.path),
+            activeView: 'file',
+          });
+        }
       }
       if (sequence !== requestSequence.current)
         return { status: 'cancelled', code: 'stale-request' };
@@ -936,6 +1025,15 @@ function WorkspaceAppShell({
             : 'Save the current workspace before switching folders.',
         );
       await host.activateWorkspace?.(handle);
+      void host
+        .checkBuiltinUpdates?.()
+        .then(setContentUpdates)
+        .catch(() => {});
+      if (raw.session === null)
+        opened.setSessionState({
+          ...opened.getState().session,
+          activeView: opened.getState().session.activeView ?? 'home',
+        });
       previous?.unsubscribe();
       previous?.session.dispose();
       canvasRef.current?.dispose();
@@ -946,7 +1044,6 @@ function WorkspaceAppShell({
       referenceScrollRef.current.clear();
       seenSubgraphs.current = null;
       setFailedPath(null);
-      setLibraryOpen(false);
       setSettingsView(null);
       setPlaceTarget(null);
       setPickerFileId(null);
@@ -963,7 +1060,7 @@ function WorkspaceAppShell({
       setExpandedOwners(
         handle.isDefault &&
           raw.session === null &&
-          state.files.has('board-root')
+          opened.getState().session.activeTabId === 'board-root'
           ? ['board-root']
           : [],
       );
@@ -1100,7 +1197,14 @@ function WorkspaceAppShell({
     (patch: Partial<WorkspaceSessionSnapshot['session']>) => {
       if (!session) return;
       const current = session.getState().session;
-      const next = updateWorkspaceNavigation(current, patch);
+      const next = updateWorkspaceNavigation(current, {
+        ...patch,
+        activeView:
+          patch.activeView ??
+          ('activeTabId' in patch || 'activeGroupId' in patch
+            ? 'file'
+            : current.activeView),
+      });
       const changing =
         next.activeTabId !== current.activeTabId ||
         next.activeGroupId !== current.activeGroupId;
@@ -1207,6 +1311,10 @@ function WorkspaceAppShell({
       setFailedPath(null);
       setLibraryOpen(false);
       setPickerFileId(null);
+      session.setSessionState({
+        ...session.getState().session,
+        activeView: 'file',
+      });
       const state = session.getState();
       const view = state.organization.byFile.get(fileId);
       const ownerId =
@@ -1708,7 +1816,9 @@ function WorkspaceAppShell({
       if (!store) return fallback;
       const index = indexCells(store);
       const ascend = (cellId: CellId) =>
-        index.parentOf.get(cellId) ?? index.membersOf.get(cellId);
+        index.parentOf.get(cellId) ??
+        index.domainOwnerOf.get(cellId) ??
+        index.groupOf.get(cellId);
       let owner = ascend(id);
       while (owner && !isFrameCell(store.cells[owner])) owner = ascend(owner);
       return owner ?? fallback;
@@ -1733,13 +1843,17 @@ function WorkspaceAppShell({
   );
 
   const exportFrame = useCallback(
-    (fileId: CellId, format: 'json' | 'markdown' = 'json') => {
+    async (fileId: CellId, format: 'json' | 'markdown' = 'json') => {
       if (!session) return;
       const state = session.getState();
       const docEntry = state.documents.get(fileId);
       if (docEntry) {
-        const file = session.exportDocument(fileId);
-        if (!file) return;
+        const sourceFile = session.exportDocument(fileId);
+        if (!sourceFile) return;
+        const file = (await inlineFileAssets(
+          session,
+          sourceFile,
+        )) as DocumentFileV1;
         const name = file.title || documentDisplayName(docEntry.path);
         if (format === 'markdown') {
           const { markdown, warnings } = serializeTextDocumentToMarkdown(
@@ -1758,7 +1872,11 @@ function WorkspaceAppShell({
           );
           return;
         }
-        const closure = session.exportWorkspaceFiles(fileId);
+        const closure = await Promise.all(
+          session
+            .exportWorkspaceFiles(fileId)
+            .map((file) => inlineFileAssets(session, file)),
+        );
         download(
           closure.length > 1 ? `${name}.verd.json` : `${name}.verd-doc.json`,
           new Blob(
@@ -1776,7 +1894,11 @@ function WorkspaceAppShell({
         );
         return;
       }
-      const files = session.exportWorkspaceFiles(fileId);
+      const files = await Promise.all(
+        session
+          .exportWorkspaceFiles(fileId)
+          .map((file) => inlineFileAssets(session, file)),
+      );
       if (!files.length) return;
       const entry = state.files.get(fileId);
       const name =
@@ -1796,9 +1918,73 @@ function WorkspaceAppShell({
 
   const importDocument = useCallback(
     async (event: React.ChangeEvent<HTMLInputElement>) => {
-      const file = event.target.files?.[0];
+      const selectedFiles = Array.from(event.target.files ?? []);
+      const file = selectedFiles[0];
       event.target.value = '';
       if (!file || !session) return;
+      if (
+        /\.zip$/i.test(file.name) ||
+        selectedFiles.length > 1 ||
+        file.webkitRelativePath
+      ) {
+        try {
+          const imported = await importMarkdownCollection(selectedFiles);
+          if ('resources' in imported && imported.resources?.length) {
+            const resources = [];
+            for (const item of imported.resources) {
+              if (
+                !session
+                  .getState()
+                  .entries.some((entry) => entry.path === item.path)
+              )
+                resources.push(item);
+            }
+            if (resources.length) {
+              const receipt = await session.commitResources(resources);
+              if (receipt.outcome !== 'applied')
+                throw new Error('附件导入失败');
+            }
+          }
+          const state = session.getState();
+          const remapped = remapWorkspaceFiles(
+            imported.files.map((item) => item.file),
+            (id) => !!state.store.cells[id] || state.documents.has(id),
+            uuid,
+          ).files;
+          imported.files = imported.files.map((item, index) => ({
+            ...item,
+            file: remapped[index],
+          }));
+          const taken = new Set(
+            session.getState().entries.map((item) => item.path),
+          );
+          const files = imported.files.map((item) => {
+            let path = item.path;
+            let i = 1;
+            while (taken.has(path)) {
+              path = item.path.replace(/(\.verd(?:-doc)?\.json)$/, ` ${i++}$1`);
+            }
+            taken.add(path);
+            return { ...item, path };
+          });
+          const result = await applyWorkspaceAction({
+            type: 'batch',
+            files,
+            label: 'import-collection',
+          });
+          if (!result.ok)
+            throw new Error(
+              result.diagnostics.map((item) => item.message).join('; '),
+            );
+          notify(
+            `导入 ${files.length} 篇文档。` +
+              (imported.warnings.length ? imported.warnings.join('; ') : ''),
+          );
+        } catch (cause) {
+          notify(String(cause), 'error');
+        }
+        return;
+      }
       try {
         const definition = await file.text();
         let imported: (FrameFileV2 | DocumentFileV1)[] | null = null;
@@ -2089,6 +2275,12 @@ function WorkspaceAppShell({
     remember = true,
     reference?: FrameOpenSource,
     frameReference?: WorkspaceNavigationRequest['frameReference'],
+    searchMatch?: {
+      revision: string;
+      term: string;
+      text: string;
+      from?: number;
+    },
   ) => {
     if (!session) return;
     // Capture the source before yielding for a cold target; feedback must not
@@ -2227,6 +2419,7 @@ function WorkspaceAppShell({
         origin,
         signal: abort.signal,
         frameReference,
+        searchMatch,
       });
       feedbackScheduled = true;
     } catch (cause) {
@@ -2521,6 +2714,9 @@ function WorkspaceAppShell({
   const previewOptions = (fileId: string): PreviewOptions => ({
     snapshot,
     locale,
+    linkActivation,
+    insertImage: async (file) => (await storeAttachment(session, file)).src,
+    resolveAsset: (source) => assetResolverRef.current(source),
     retry: () => session.syncFromHost(),
     open: openPreview,
     openLink: openPreviewLink,
@@ -2620,6 +2816,20 @@ function WorkspaceAppShell({
     ),
   };
   workspaceDialogs.current = {
+    'quick-open': () => {
+      workspaceContent.current
+        ?.closest('.workspace-shell')
+        ?.dispatchEvent(
+          new CustomEvent('workspace-search', { detail: 'quick' }),
+        );
+    },
+    search: () => {
+      workspaceContent.current
+        ?.closest('.workspace-shell')
+        ?.dispatchEvent(
+          new CustomEvent('workspace-search', { detail: 'full' }),
+        );
+    },
     'command-palette': () =>
       workspaceScope.current?.openPalette({
         returnFocus: () => settingsButtonRef.current,
@@ -2647,6 +2857,25 @@ function WorkspaceAppShell({
       ),
     'file.reveal': (args) =>
       revealFileInTree(String(workspaceActionArgument(args, 'fileId'))),
+    'file.copy-link': async (args) => {
+      const fileId = String(workspaceActionArgument(args, 'fileId'));
+      try {
+        await navigator.clipboard.writeText(
+          createWorkspaceLink({ kind: 'file', fileId }),
+        );
+        notify(locale === 'zh' ? '已复制链接' : 'Link copied');
+        return { status: 'completed' as const };
+      } catch {
+        return {
+          status: 'failed' as const,
+          code: 'clipboard-unavailable',
+          message:
+            locale === 'zh'
+              ? '无法复制链接，请检查剪贴板权限。'
+              : 'Could not copy link. Check clipboard permissions.',
+        };
+      }
+    },
     'file.export': (args) =>
       exportFrame(
         String(workspaceActionArgument(args, 'fileId')),
@@ -2734,6 +2963,12 @@ function WorkspaceAppShell({
         activeGroupId: next.activeGroupId,
       });
     },
+    'conflict.compare': (args) =>
+      setContentToolsRequest({
+        fileId: String(workspaceActionArgument(args, 'fileId')),
+        nonce: Date.now(),
+        tab: 'conflict',
+      }),
     'create-canvas': (args) =>
       createCanvas(
         args && typeof args === 'object' && 'dirPath' in args
@@ -2751,8 +2986,17 @@ function WorkspaceAppShell({
           : '',
       ),
     import: () => importInput.current?.click(),
-    library: () => setLibraryOpen(true),
-    settings: () => setSettingsView('workspace'),
+    library: () => {
+      persistNav({ activeView: 'library' });
+      setLibraryOpen(true);
+    },
+    settings: (args) => {
+      const opener = workspaceActionArgument(args, 'returnFocus');
+      openSettings(
+        'workspace.project',
+        opener instanceof HTMLElement ? opener : undefined,
+      );
+    },
     my: (args) => {
       const opener = workspaceActionArgument(args, 'returnFocus');
       openMy(opener instanceof HTMLElement ? opener : undefined);
@@ -2810,462 +3054,284 @@ function WorkspaceAppShell({
       });
     }
     return (
-      <WorkspaceFileNavigation
-        title={label(fileId)}
-        path={entry.path}
-        active={fileId === activeTabId && !libraryOpen && !settingsView}
-        locale={locale}
-        source={
-          sourceId && entryForTab(sourceId)
-            ? {
-                title: label(sourceId),
-                action: action('file.return', { fileId }),
-              }
-            : undefined
-        }
-        owner={
-          ownerId && files.has(ownerId)
-            ? {
-                title: label(ownerId),
-                action: action('file.open', { fileId: ownerId }),
-              }
-            : undefined
-        }
-        revealAction={action('file.reveal', { fileId })}
-        references={[...grouped.values()].sort(
-          (a, b) =>
-            a.title.localeCompare(b.title, locale) ||
-            a.fileId.localeCompare(b.fileId),
-        )}
-        onError={(message) => notify(message, 'error')}
-      />
+      <div className="workspace-knowledge-navigation">
+        <WorkspaceFileNavigation
+          actions={
+            <>
+              <ContentTools
+                locale={locale}
+                session={session}
+                fileId={fileId}
+                request={
+                  contentToolsRequest?.fileId === fileId
+                    ? contentToolsRequest
+                    : undefined
+                }
+                onKeepBoth={async () => {
+                  const result = await workspaceActions.executeAction(
+                    'workspace.resolve-conflict',
+                    { fileId, action: 'save-copy' },
+                  );
+                  if (result.status !== 'completed' && result.status !== 'noop')
+                    throw new Error(
+                      'message' in result
+                        ? result.message
+                        : 'code' in result
+                          ? result.code
+                          : 'Conflict resolution failed',
+                    );
+                }}
+                readonly={
+                  readonly || switchingWorkspace || snapshot.mutationsPaused
+                }
+              />
+              <KnowledgePanel
+                fileId={fileId}
+                targets={knowledge.targets}
+                relations={knowledge.relations}
+                preview={previewOptions(fileId)}
+                active={fileId === activeTabId && !libraryOpen && !settingsView}
+                request={
+                  knowledgePreview?.fileId === fileId
+                    ? knowledgePreview
+                    : undefined
+                }
+                open={(target) => {
+                  void navigateTarget(target);
+                }}
+                locate={(relation) => {
+                  const location = relation.location;
+                  if (location)
+                    void action('reference.locate', {
+                      fileId: location.sourceFileId,
+                      fromFileId: fileId,
+                      location,
+                    }).execute();
+                  else
+                    void navigateTarget(
+                      relation.source,
+                      true,
+                      undefined,
+                      undefined,
+                      relation.source.kind !== 'cell' && relation.sourceText
+                        ? {
+                            revision: JSON.stringify(
+                              snapshot.documents.get(relation.sourceFileId)
+                                ?.file.text.content,
+                            ),
+                            term: relation.sourceText,
+                            text: relation.sourceText,
+                            from: relation.sourceFrom,
+                          }
+                        : undefined,
+                    );
+                }}
+              />
+            </>
+          }
+          title={label(fileId)}
+          path={entry.path}
+          active={fileId === activeTabId && !libraryOpen && !settingsView}
+          locale={locale}
+          source={
+            sourceId && entryForTab(sourceId)
+              ? {
+                  title: label(sourceId),
+                  action: action('file.return', { fileId }),
+                }
+              : undefined
+          }
+          owner={
+            ownerId && files.has(ownerId)
+              ? {
+                  title: label(ownerId),
+                  action: action('file.open', { fileId: ownerId }),
+                }
+              : undefined
+          }
+          revealAction={action('file.reveal', { fileId })}
+          references={[...grouped.values()].sort(
+            (a, b) =>
+              a.title.localeCompare(b.title, locale) ||
+              a.fileId.localeCompare(b.fileId),
+          )}
+          onError={(message) => notify(message, 'error')}
+        />
+      </div>
     );
   };
   return (
-    <FrameAutoCalculationProvider session={autoCalculationSession}>
-      <ActionScope
-        registry={workspaceActions}
-        language={locale}
-        enabled={!switchingWorkspace}
-        paletteFallback
-        onReady={(value) => {
-          workspaceScope.current = value;
-        }}
-      >
-        <div
-          className="workspace-shell"
-          inert={switchingWorkspace}
-          aria-busy={switchingWorkspace}
+    <WorkspaceAssetScope
+      session={session}
+      onResolver={(resolve) => {
+        assetResolverRef.current = resolve;
+      }}
+    >
+      <FrameAutoCalculationProvider session={autoCalculationSession}>
+        <ActionScope
+          registry={workspaceActions}
+          language={locale}
+          enabled={!switchingWorkspace}
+          paletteFallback
+          globalActionIds={['workspace.quick-open', 'workspace.search']}
+          onReady={(value) => {
+            workspaceScope.current = value;
+          }}
         >
-          {documentPickerFileId && !readonly && (
-            <div
-              role="dialog"
-              aria-label={locale === 'zh' ? '引用文档' : 'Reference document'}
-              className="workspace-document-picker"
-              style={{
-                position: 'fixed',
-                inset: '15% 20%',
-                zIndex: 100,
-                borderRadius: 12,
-                padding: 20,
-                overflow: 'auto',
-              }}
-            >
-              <h2>
-                {documentPickerEditable
-                  ? '文档 Frame'
-                  : locale === 'zh'
-                    ? '引用文档（只读）'
-                    : 'Reference document (read-only)'}
-              </h2>
-              <button
-                type="button"
-                onClick={() => setDocumentPickerFileId(null)}
-              >
-                {locale === 'zh' ? '取消' : 'Cancel'}
-              </button>
-              {documentPickerEditable && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setPlaceTarget({
-                      fileId: documentPickerFileId,
-                      targetId: '',
-                      kind: 'document-frame',
-                      newDocument: true,
-                    });
-                    setDocumentPickerFileId(null);
-                  }}
-                >
-                  新建文档
-                </button>
-              )}
-              {docs.map((doc) => (
-                <button
-                  type="button"
-                  key={doc.fileId}
-                  style={{
-                    display: 'block',
-                    padding: 12,
-                    width: '100%',
-                    textAlign: 'left',
-                  }}
-                  onClick={() => {
-                    setPlaceTarget({
-                      fileId: documentPickerFileId,
-                      targetId: doc.fileId,
-                      kind: documentPickerEditable
-                        ? 'document-frame'
-                        : 'document',
-                    });
-                    setDocumentPickerFileId(null);
-                  }}
-                >
-                  {doc.name} <small>{doc.path}</small>
-                </button>
-              ))}
-              {!docs.length && (
-                <p>
-                  {locale === 'zh'
-                    ? '工作区中没有文档'
-                    : 'No documents in this workspace'}
-                </p>
-              )}
-            </div>
-          )}
-          <aside className="workspace-sidebar">
-            <WorkspaceMenu
-              name={workspaceName}
-              history={allowWorkspaceSwitching && !readonly ? history : []}
-              currentHistoryId={currentHistoryId}
-              onRefreshHistory={() => void refreshHistory()}
-              locale={locale}
-              switching={switchingWorkspace}
-              isDefault={isDefaultWorkspace}
-              triggerRef={settingsButtonRef}
-              actionSource={workspaceActions}
-              onSettings={() => setSettingsView('workspace')}
-              onOpenFolder={
-                allowWorkspaceSwitching && !readonly
-                  ? () => {
-                      void openWorkspaceRequest({ pick: true }).finally(() =>
-                        setMenuFocusRequest((current) => current + 1),
-                      );
-                    }
-                  : undefined
-              }
-              onOpenPatterns={
-                allowWorkspaceSwitching && !readonly
-                  ? () => {
-                      void openWorkspaceRequest({ patterns: true });
-                    }
-                  : undefined
-              }
-              onOpenBuiltin={
-                allowWorkspaceSwitching && !readonly
-                  ? () => {
-                      void openWorkspaceRequest({ default: true }).finally(() =>
-                        setMenuFocusRequest((current) => current + 1),
-                      );
-                    }
-                  : undefined
-              }
-            />
-            <FileTree
-              actionSource={workspaceActions}
-              entries={snapshot.entries}
-              canvases={canvases}
-              documents={docs}
-              failedFiles={[...snapshot.failedFiles.values()]}
-              activeFailedPath={
-                failedPath ??
-                [...snapshot.failedFiles.values()].find(
-                  (failure) => failure.fileId === activeTabId,
-                )?.path
-              }
-              onOpenFailedFile={(path) => {
-                navigationFeedback.cancel();
-                const failure = snapshot.failedFiles.get(path);
-                const sameIdentity = [...snapshot.failedFiles.values()].filter(
-                  (item) => item.fileId === failure?.fileId,
-                );
-                const local = failure?.fileId
-                  ? entryForTab(failure.fileId)
-                  : undefined;
-                if (
-                  failure?.fileId &&
-                  sameIdentity.length === 1 &&
-                  (!local || local.path === path)
-                )
-                  openFile(failure.fileId);
-                else {
-                  setLibraryOpen(false);
-                  setFailedPath(path);
-                }
-              }}
-              activeFileId={libraryOpen ? null : (activeTab?.fileId ?? null)}
-              libraryActive={libraryOpen}
-              expandedDirs={snapshot.session.expandedDirs}
-              locale={locale}
-              onOpenFile={openFile}
-              subgraphs={[...files.values()]
-                .filter((entry) => diagramKindOf(entry.file) !== 'canvas')
-                .map((entry) => {
-                  const view = snapshot.organization.byFile.get(
-                    entry.file.frame.id,
+          <WorkspaceManagement
+            isDefault={isDefaultWorkspace}
+            key={activeWorkspace.current?.handle.key}
+            onOpenFolder={
+              allowWorkspaceSwitching && !readonly
+                ? () => {
+                    void openWorkspaceRequest({ pick: true }).finally(() =>
+                      setMenuFocusRequest((current) => current + 1),
+                    );
+                  }
+                : undefined
+            }
+            onOpenBuiltin={
+              allowWorkspaceSwitching && !readonly
+                ? () => {
+                    void openWorkspaceRequest({ default: true });
+                  }
+                : undefined
+            }
+            onOpenPatterns={
+              allowWorkspaceSwitching && !readonly
+                ? () => {
+                    void openWorkspaceRequest({ patterns: true });
+                  }
+                : undefined
+            }
+            session={session}
+            snapshot={snapshot}
+            host={host}
+            content={workspaceContent}
+            locale={locale}
+            readonly={
+              readonly || switchingWorkspace || snapshot.mutationsPaused
+            }
+            currentHistoryId={currentHistoryId}
+            onOpen={openFile}
+            onSearchHit={async (hit: SearchHit) => {
+              const entry = session.getState().documents.get(hit.id);
+              if (entry && hit.fragment.text !== hit.path) {
+                if (searchRevision(entry.file) !== hit.revision) {
+                  notify(
+                    locale === 'zh'
+                      ? '内容已变化，请重新搜索'
+                      : 'Content changed; search again',
                   );
-                  const placement = view?.placement;
-                  const ownerId =
-                    placement?.kind === 'owned'
-                      ? placement.ownerFrameId
-                      : undefined;
-                  return {
-                    frameId: entry.file.frame.id,
-                    name:
-                      entry.file.frame.name || canvasDisplayName(entry.path),
-                    path: entry.path,
-                    diagram: diagramKindOf(entry.file) as
-                      | 'mind'
-                      | 'workflow'
-                      | 'architecture'
-                      | 'uml-class'
-                      | 'uml-sequence',
-                    placement:
-                      placement?.kind === 'owned'
-                        ? ('owned' as const)
-                        : placement?.kind === 'unorganized'
-                          ? ('unorganized' as const)
-                          : placement?.kind === 'standalone'
-                            ? ('standalone' as const)
-                            : ('legacy' as const),
-                    ownerFrameId: ownerId,
-                    dirty: entry.dirty,
-                    conflicted: entry.conflicted,
-                  };
-                })}
-              expandedOwners={expandedOwners}
-              onToggleOwner={(frameId) =>
-                setExpandedOwners((current) =>
-                  current.includes(frameId)
-                    ? current.filter((id) => id !== frameId)
-                    : [...current, frameId],
-                )
-              }
-              onOpenLibrary={() => {
-                setPickerFileId(null);
-                setLibraryOpen(true);
-              }}
-              revealFile={fileTreeReveal}
-              onRevealFile={revealFileInTree}
-              onToggleDir={(path) => {
-                const dirs = snapshot.session.expandedDirs;
-                persistNav({
-                  expandedDirs: dirs.includes(path)
-                    ? dirs.filter((dir) => dir !== path)
-                    : [...dirs, path],
-                });
-              }}
-              onCreateCanvas={(dirPath) => {
-                void workspaceActions.executeAction('workspace.create-canvas', {
-                  dirPath,
-                });
-              }}
-              onCreateDocument={(dirPath) => {
-                void workspaceActions.executeAction(
-                  'workspace.create-document',
-                  {
-                    dirPath,
-                  },
-                );
-              }}
-              onCreateFolder={(dirPath, name) => {
-                const trimmed = name.trim();
-                if (trimmed)
-                  void workspaceActions.executeAction('workspace.mkdir', {
-                    path: dirPath ? `${dirPath}/${trimmed}` : trimmed,
-                  });
-              }}
-              onTrash={(frameId) =>
-                void applyWorkspaceAction({ type: 'trash-file', frameId })
-              }
-              onTrashDirectory={async (path) => {
-                const result = await applyWorkspaceAction({
-                  type: 'trash-directory',
-                  path,
-                });
-                if (!result.ok)
-                  throw new Error(
-                    result.diagnostics.map((item) => item.message).join('; '),
-                  );
-              }}
-              onMove={(frameId, toPath) =>
-                void applyWorkspaceAction({
-                  type: 'move-file',
-                  frameId,
-                  toPath,
-                })
-              }
-              onDuplicate={(frameId) =>
-                void applyWorkspaceAction({ type: 'duplicate-file', frameId })
-              }
-              onExport={exportFrame}
-              onImport={() => importInput.current?.click()}
-            />
-            <div className="workspace-sidebar-footer">
-              <button
-                type="button"
-                data-testid="workspace-my"
-                data-action-id="workspace.my"
-                disabled={!workspaceActionState('workspace.my').enabled}
-                onClick={(event) =>
-                  void workspaceActions.executeAction('workspace.my', {
-                    returnFocus: event.currentTarget,
-                  })
+                  return;
                 }
-              >
-                <UserRound size={16} aria-hidden />{' '}
-                {workspaceActionName('workspace.my')}
-              </button>
-            </div>
-          </aside>
-          <main className="workspace-main">
-            <WorkspaceTabs
-              actionSource={workspaceActions}
-              tabs={tabs.map((tab) => {
-                const entry = entryForTab(tab.fileId);
-                if (!entry)
-                  return {
-                    id: tab.fileId,
-                    title:
-                      [...snapshot.failedFiles.values()]
-                        .find((failure) => failure.fileId === tab.fileId)
-                        ?.path.split('/')
-                        .pop() ?? tab.fileId,
-                  };
-                const file = entry.file;
-                return {
-                  id: tab.fileId,
-                  title:
-                    file.format === 'verd-document'
-                      ? file.title || documentDisplayName(entry.path)
-                      : file.frame.name || canvasDisplayName(entry.path),
-                };
-              })}
-              activeTabId={libraryOpen || failedPath ? null : activeTabId}
-              locale={locale}
-              onActivate={(frameId) => {
-                setFailedPath(null);
-                setLibraryOpen(false);
-                setPickerFileId(null);
-                persistNav({ activeTabId: frameId });
-              }}
-              groups={groups.map((group) => ({
-                id: group.id,
-                name: group.name || (locale === 'zh' ? '默认分组' : 'Default'),
-              }))}
-              activeGroupId={snapshot.session.activeGroupId ?? groups[0]?.id}
-              onSwitchGroup={(groupId) => {
-                setFailedPath(null);
-                setLibraryOpen(false);
-                setPickerFileId(null);
-                persistNav({ activeGroupId: groupId });
-              }}
-              onCreateGroup={(name) => {
-                const group = { id: uuid(), name, tabs: [], activeTabId: null };
-                setFailedPath(null);
-                setLibraryOpen(false);
-                setPickerFileId(null);
-                persistNav({
-                  groups: [
-                    ...workspaceTabGroups(session.getState().session),
-                    group,
-                  ],
-                  activeGroupId: group.id,
-                });
-              }}
-              onRenameGroup={(groupId, name) =>
-                persistNav({
-                  groups: workspaceTabGroups(session.getState().session).map(
-                    (group) =>
-                      group.id === groupId ? { ...group, name } : group,
-                  ),
-                })
               }
-              onDeleteGroup={(groupId) => {
-                const next = deleteWorkspaceTabGroup(
-                  session.getState().session,
-                  groupId,
-                );
-                setFailedPath(null);
-                setLibraryOpen(false);
-                setPickerFileId(null);
-                persistNav({
-                  groups: next.groups,
-                  activeGroupId: next.activeGroupId,
-                });
-              }}
-              onClose={closeTabs}
-              onCloseMany={closeTabs}
-              onAdd={() =>
-                void workspaceActions.executeAction('workspace.create-canvas', {
-                  dirPath: '',
-                })
-              }
-              onReorder={reorderTab}
-            />
-            <div
-              className="workspace-content"
-              ref={workspaceContent}
-              key={activeWorkspace.current?.handle.key}
-            >
-              <WorkspaceNavigationProgress
-                feedback={navigationFeedback}
-                content={workspaceContent}
+              await navigateTarget(
+                hit.fragment.cellId
+                  ? {
+                      kind: 'cell',
+                      fileId: hit.id,
+                      cellId: hit.fragment.cellId,
+                    }
+                  : { kind: 'file', fileId: hit.id },
+                true,
+                undefined,
+                undefined,
+                entry && hit.fragment.text !== hit.path
+                  ? {
+                      revision: JSON.stringify(entry.file.text.content),
+                      term: hit.term,
+                      text: hit.fragment.text,
+                      from: hit.fragment.from,
+                    }
+                  : undefined,
+              );
+            }}
+            onWorkspace={async (handle) => {
+              const result = await openWorkspaceRequest(
+                undefined,
+                false,
+                undefined,
+                handle,
+              );
+              if (result.status === 'failed' || result.status === 'rejected')
+                throw new Error('Could not open workspace');
+            }}
+            onHistory={async (id) => {
+              await openWorkspaceRequest({ historyId: id, create: false });
+            }}
+            onSettings={() => {
+              openSettings('workspace.project');
+            }}
+            onTrash={() => {
+              openSettings('workspace.trash');
+            }}
+            onLibrary={() => {
+              persistNav({ activeView: 'library' });
+              setLibraryOpen(true);
+            }}
+            onCreate={(kind) => {
+              if (kind === 'document') void createDocument('');
+              else void createCanvas('');
+            }}
+            run={applyWorkspaceAction}
+
+            tree={
+              <FileTree
+                hideLibraryNavigation
+                onOrganize={(path, kind) => {
+                  workspaceContent.current
+                    ?.closest('.workspace-shell')
+                    ?.dispatchEvent(
+                      new CustomEvent('workspace-organize', {
+                        detail: { path, kind },
+                      }),
+                    );
+                }}
+                manualOrder={
+                  readOrganization(snapshot.config.value).sort === 'manual'
+                    ? readOrganization(snapshot.config.value).order
+                    : undefined
+                }
+                actionSource={workspaceActions}
+                entries={snapshot.entries}
+                canvases={canvases}
+                documents={docs}
+                failedFiles={[...snapshot.failedFiles.values()]}
+                activeFailedPath={
+                  failedPath ??
+                  [...snapshot.failedFiles.values()].find(
+                    (failure) => failure.fileId === activeTabId,
+                  )?.path
+                }
+                onOpenFailedFile={(path) => {
+                  navigationFeedback.cancel();
+                  const failure = snapshot.failedFiles.get(path);
+                  const sameIdentity = [
+                    ...snapshot.failedFiles.values(),
+                  ].filter((item) => item.fileId === failure?.fileId);
+                  const local = failure?.fileId
+                    ? entryForTab(failure.fileId)
+                    : undefined;
+                  if (
+                    failure?.fileId &&
+                    sameIdentity.length === 1 &&
+                    (!local || local.path === path)
+                  )
+                    openFile(failure.fileId);
+                  else {
+                    setLibraryOpen(false);
+                    setFailedPath(path);
+                  }
+                }}
+                activeFileId={libraryOpen ? null : (activeTab?.fileId ?? null)}
+                libraryActive={libraryOpen}
+                expandedDirs={snapshot.session.expandedDirs}
                 locale={locale}
-                ready={paneReady}
-              />
-              <WorkspacePaneEntrance
-                feedback={navigationFeedback}
-                content={workspaceContent}
-                activeFileId={activeTabId}
-                visible={!libraryOpen && !failedPath && !settingsView}
-                ready={paneReady}
-              />
-              {failedPath && !libraryOpen ? (
-                <WorkspaceFileError
-                  path={failedPath}
-                  locale={locale}
-                  message={
-                    snapshot.failedFiles
-                      .get(failedPath)
-                      ?.diagnostics.map((issue) => issue.message)
-                      .join('\n') ??
-                    (locale === 'zh' ? '文件已不存在' : 'File no longer exists')
-                  }
-                  onClose={() => setFailedPath(null)}
-                  onRetry={async () => {
-                    await session.syncFromHost();
-                    const state = session.getState();
-                    const id = state.fileIdByPath.get(failedPath);
-                    if (id && !state.failedFiles.has(failedPath)) openFile(id);
-                  }}
-                />
-              ) : null}
-              {libraryOpen ? (
-                <ChartLibrary
-                  actionSource={workspaceActions}
-                  locale={locale}
-                  readonly={
-                    readonly || switchingWorkspace || snapshot.mutationsPaused
-                  }
-                  owners={[...files.values()]
-                    .filter((entry) => isRegularCanvas(entry.file))
-                    .map((entry) => ({
-                      frameId: entry.file.frame.id,
-                      name:
-                        entry.file.frame.name || canvasDisplayName(entry.path),
-                    }))}
-                  rows={[...files.values()].map((entry) => {
+                onOpenFile={openFile}
+                subgraphs={[...files.values()]
+                  .filter((entry) => diagramKindOf(entry.file) !== 'canvas')
+                  .map((entry) => {
                     const view = snapshot.organization.byFile.get(
                       entry.file.frame.id,
                     );
@@ -3274,16 +3340,17 @@ function WorkspaceAppShell({
                       placement?.kind === 'owned'
                         ? placement.ownerFrameId
                         : undefined;
-                    const sources = referenceSourcesOf(
-                      [...files.values()].map((item) => item.file),
-                      entry.file.frame.id,
-                    );
                     return {
                       frameId: entry.file.frame.id,
                       name:
                         entry.file.frame.name || canvasDisplayName(entry.path),
                       path: entry.path,
-                      diagram: diagramKindOf(entry.file),
+                      diagram: diagramKindOf(entry.file) as
+                        | 'mind'
+                        | 'workflow'
+                        | 'architecture'
+                        | 'uml-class'
+                        | 'uml-sequence',
                       placement:
                         placement?.kind === 'owned'
                           ? ('owned' as const)
@@ -3293,676 +3360,1340 @@ function WorkspaceAppShell({
                               ? ('standalone' as const)
                               : ('legacy' as const),
                       ownerFrameId: ownerId,
-                      ownerName: ownerId
-                        ? files.get(ownerId)?.file.frame.name ||
-                          canvasDisplayName(files.get(ownerId)?.path ?? ownerId)
-                        : undefined,
-                      referenceLabel:
-                        locale === 'zh'
-                          ? `${sources.reduce((sum, group) => sum + group.refIds.length, 0)} 处引用 · ${sources.length} 个画布`
-                          : `${sources.reduce((sum, group) => sum + group.refIds.length, 0)} references · ${sources.length} canvases`,
                       dirty: entry.dirty,
                       conflicted: entry.conflicted,
                     };
                   })}
-                  query={libraryQuery}
-                  diagram={libraryDiagram}
-                  owner={libraryOwner}
-                  scrollTop={libraryScroll}
-                  onQueryChange={setLibraryQuery}
-                  onDiagramChange={setLibraryDiagram}
-                  onOwnerChange={setLibraryOwner}
-                  onScroll={setLibraryScroll}
-                  picker={pickerFileId ? pickerMode : null}
-                  onPickerMode={setPickerMode}
-                  onPick={(targetId) => {
-                    if (!pickerFileId) return;
-                    setPlaceTarget({ fileId: pickerFileId, targetId });
-                    setPickerFileId(null);
+                expandedOwners={expandedOwners}
+                onToggleOwner={(frameId) =>
+                  setExpandedOwners((current) =>
+                    current.includes(frameId)
+                      ? current.filter((id) => id !== frameId)
+                      : [...current, frameId],
+                  )
+                }
+                onOpenLibrary={() => {
+                  setPickerFileId(null);
+                  persistNav({ activeView: 'library' });
+                  setLibraryOpen(true);
+                }}
+                revealFile={fileTreeReveal}
+                onRevealFile={revealFileInTree}
+                onToggleDir={(path) => {
+                  const dirs = snapshot.session.expandedDirs;
+                  persistNav({
+                    expandedDirs: dirs.includes(path)
+                      ? dirs.filter((dir) => dir !== path)
+                      : [...dirs, path],
+                  });
+                }}
+                onCreateCanvas={(dirPath) => {
+                  void workspaceActions.executeAction(
+                    'workspace.create-canvas',
+                    {
+                      dirPath,
+                    },
+                  );
+                }}
+                onCreateDocument={(dirPath) => {
+                  void workspaceActions.executeAction(
+                    'workspace.create-document',
+                    {
+                      dirPath,
+                    },
+                  );
+                }}
+                onCreateFolder={(dirPath, name) => {
+                  const trimmed = name.trim();
+                  if (trimmed)
+                    void workspaceActions.executeAction('workspace.mkdir', {
+                      path: dirPath ? `${dirPath}/${trimmed}` : trimmed,
+                    });
+                }}
+                onTrash={(frameId) =>
+                  void applyWorkspaceAction({ type: 'trash-file', frameId })
+                }
+                onTrashDirectory={async (path) => {
+                  const result = await applyWorkspaceAction({
+                    type: 'trash-directory',
+                    path,
+                  });
+                  if (!result.ok)
+                    throw new Error(
+                      result.diagnostics.map((item) => item.message).join('; '),
+                    );
+                }}
+                onMove={(frameId, toPath) =>
+                  void applyWorkspaceAction({
+                    type: 'move-file',
+                    frameId,
+                    toPath,
+                  })
+                }
+                onDuplicate={(frameId) =>
+                  void applyWorkspaceAction({ type: 'duplicate-file', frameId })
+                }
+                onExport={exportFrame}
+                onImport={() => importInput.current?.click()}
+              />
+            }
+          >
+            <div
+              className="workspace-shell"
+              inert={switchingWorkspace}
+              aria-busy={switchingWorkspace}
+            >
+              {documentPickerFileId && !readonly && (
+                <VmDialog
+                  title={
+                    documentPickerEditable
+                      ? locale === 'zh'
+                        ? '文档 Frame'
+                        : 'Document frame'
+                      : locale === 'zh'
+                        ? '引用文档（只读）'
+                        : 'Reference document (read-only)'
+                  }
+                  closeLabel={locale === 'zh' ? '取消' : 'Cancel'}
+                  onClose={() => setDocumentPickerFileId(null)}
+                  className="workspace-document-picker"
+                >
+                  {documentPickerEditable && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setPlaceTarget({
+                          fileId: documentPickerFileId,
+                          targetId: '',
+                          kind: 'document-frame',
+                          newDocument: true,
+                        });
+                        setDocumentPickerFileId(null);
+                      }}
+                    >
+                      {locale === 'zh' ? '新建文档' : 'New document'}
+                    </button>
+                  )}
+                  {docs.map((doc) => (
+                    <button
+                      type="button"
+                      key={doc.fileId}
+                      className="vm-btn vm-btn--ghost workspace-document-picker-row"
+                      onClick={() => {
+                        setPlaceTarget({
+                          fileId: documentPickerFileId,
+                          targetId: doc.fileId,
+                          kind: documentPickerEditable
+                            ? 'document-frame'
+                            : 'document',
+                        });
+                        setDocumentPickerFileId(null);
+                      }}
+                    >
+                      {doc.name} <small>{doc.path}</small>
+                    </button>
+                  ))}
+                  {!docs.length && (
+                    <p>
+                      {locale === 'zh'
+                        ? '工作区中没有文档'
+                        : 'No documents in this workspace'}
+                    </p>
+                  )}
+                </VmDialog>
+              )}
+              <aside className="workspace-sidebar">
+                <WorkspaceManagementMenu
+                  updatesAvailable={contentUpdates.some(
+                    (item) => item.status === 'available',
+                  )}
+                  onSwitch={() =>
+                    workspaceContent.current
+                      ?.closest('.workspace-shell')
+                      ?.dispatchEvent(new Event('workspace-switcher'))
+                  }
+                  name={workspaceName}
+                  history={allowWorkspaceSwitching && !readonly ? history : []}
+                  currentHistoryId={currentHistoryId}
+                  onRefreshHistory={() => void refreshHistory()}
+                  locale={locale}
+                  switching={switchingWorkspace}
+                  isDefault={isDefaultWorkspace}
+                  triggerRef={settingsButtonRef}
+                  actionSource={workspaceActions}
+                  onSettings={() => {
+                    openSettings('workspace.project');
+                  }}
+                  onOpenFolder={
+                    allowWorkspaceSwitching && !readonly
+                      ? () => {
+                          void openWorkspaceRequest({ pick: true }).finally(
+                            () => setMenuFocusRequest((current) => current + 1),
+                          );
+                        }
+                      : undefined
+                  }
+                  onOpenPatterns={
+                    allowWorkspaceSwitching && !readonly
+                      ? () => {
+                          void openWorkspaceRequest({ patterns: true });
+                        }
+                      : undefined
+                  }
+                  onOpenBuiltin={
+                    allowWorkspaceSwitching && !readonly
+                      ? () => {
+                          void openWorkspaceRequest({ default: true }).finally(
+                            () => setMenuFocusRequest((current) => current + 1),
+                          );
+                        }
+                      : undefined
+                  }
+                />
+                <WorkspaceManagementSidebar />
+                <WorkspaceManagementResize />
+
+                <div className="workspace-sidebar-footer">
+                  <button
+                    type="button"
+                    data-testid="workspace-my"
+                    data-action-id="workspace.my"
+                    disabled={!workspaceActionState('workspace.my').enabled}
+                    onClick={(event) =>
+                      void workspaceActions.executeAction('workspace.my', {
+                        returnFocus: event.currentTarget,
+                      })
+                    }
+                  >
+                    <Settings size={16} aria-hidden />{' '}
+                    {workspaceActionName('workspace.my')}
+                  </button>
+                </div>
+              </aside>
+              <main className="workspace-main">
+                <WorkspaceTabs
+                  actionSource={workspaceActions}
+                  tabs={tabs.map((tab) => {
+                    const entry = entryForTab(tab.fileId);
+                    if (!entry)
+                      return {
+                        id: tab.fileId,
+                        title:
+                          [...snapshot.failedFiles.values()]
+                            .find((failure) => failure.fileId === tab.fileId)
+                            ?.path.split('/')
+                            .pop() ?? tab.fileId,
+                      };
+                    const file = entry.file;
+                    return {
+                      id: tab.fileId,
+                      title:
+                        file.format === 'verd-document'
+                          ? file.title || documentDisplayName(entry.path)
+                          : file.frame.name || canvasDisplayName(entry.path),
+                    };
+                  })}
+                  activeTabId={
+                    (snapshot.session.activeView &&
+                      snapshot.session.activeView !== 'file') ||
+                    failedPath
+                      ? null
+                      : activeTabId
+                  }
+                  locale={locale}
+                  onActivate={(frameId) => {
                     setFailedPath(null);
                     setLibraryOpen(false);
+                    setPickerFileId(null);
+                    persistNav({ activeTabId: frameId });
                   }}
-                  onChangeOrganization={async (fileId, organization) => {
-                    const result = workspaceActionCommandResult(
-                      await workspaceActions.executeAction(
-                        'workspace.library.organization',
-                        { fileId, organization },
+                  groups={groups.map((group) => ({
+                    id: group.id,
+                    name:
+                      group.name || (locale === 'zh' ? '默认分组' : 'Default'),
+                  }))}
+                  activeGroupId={
+                    snapshot.session.activeGroupId ?? groups[0]?.id
+                  }
+                  onSwitchGroup={(groupId) => {
+                    setFailedPath(null);
+                    setLibraryOpen(false);
+                    setPickerFileId(null);
+                    persistNav({ activeGroupId: groupId });
+                  }}
+                  onCreateGroup={(name) => {
+                    const group = {
+                      id: uuid(),
+                      name,
+                      tabs: [],
+                      activeTabId: null,
+                    };
+                    setFailedPath(null);
+                    setLibraryOpen(false);
+                    setPickerFileId(null);
+                    persistNav({
+                      groups: [
+                        ...workspaceTabGroups(session.getState().session),
+                        group,
+                      ],
+                      activeGroupId: group.id,
+                    });
+                  }}
+                  onRenameGroup={(groupId, name) =>
+                    persistNav({
+                      groups: workspaceTabGroups(
+                        session.getState().session,
+                      ).map((group) =>
+                        group.id === groupId ? { ...group, name } : group,
                       ),
+                    })
+                  }
+                  onDeleteGroup={(groupId) => {
+                    const next = deleteWorkspaceTabGroup(
+                      session.getState().session,
+                      groupId,
                     );
-                    if (!result.ok)
-                      throw new Error(
-                        result.diagnostics
-                          .map((item) => item.message)
-                          .join('; '),
-                      );
-                  }}
-                  onOpen={openFile}
-                  onBack={() => {
-                    setPickerFileId(null);
                     setFailedPath(null);
                     setLibraryOpen(false);
+                    setPickerFileId(null);
+                    persistNav({
+                      groups: next.groups,
+                      activeGroupId: next.activeGroupId,
+                    });
                   }}
-                  onOrganize={() => {
-                    const frames = [...files.values()].map(
-                      (entry) => entry.file,
-                    );
-                    const recommended = recommendOrganization(frames);
-                    setOrganizeRows(
-                      recommended.map((row) => {
-                        const file = files.get(row.fileId)!;
-                        const sources = referenceSourcesOf(frames, row.fileId);
-                        const ownerId =
-                          row.organization.kind === 'subgraph'
-                            ? row.organization.ownerFrameId
-                            : undefined;
-                        return {
-                          fileId: row.fileId,
+                  onClose={closeTabs}
+                  onCloseMany={closeTabs}
+                  onAdd={() =>
+                    void workspaceActions.executeAction(
+                      'workspace.create-canvas',
+                      {
+                        dirPath: '',
+                      },
+                    )
+                  }
+                  onReorder={reorderTab}
+                />
+                <div
+                  className="workspace-content"
+                  data-management-view={snapshot.session.activeView ?? 'file'}
+                  ref={workspaceContent}
+                  key={activeWorkspace.current?.handle.key}
+                >
+                  <WorkspaceManagementMain />
+                  <WorkspaceNavigationProgress
+                    feedback={navigationFeedback}
+                    content={workspaceContent}
+                    locale={locale}
+                    ready={paneReady}
+                  />
+                  <WorkspacePaneEntrance
+                    feedback={navigationFeedback}
+                    content={workspaceContent}
+                    activeFileId={activeTabId}
+                    visible={!libraryOpen && !failedPath && !settingsView}
+                    ready={paneReady}
+                  />
+                  {failedPath && !libraryOpen ? (
+                    <WorkspaceFileError
+                      path={failedPath}
+                      locale={locale}
+                      message={
+                        snapshot.failedFiles
+                          .get(failedPath)
+                          ?.diagnostics.map((issue) => issue.message)
+                          .join('\n') ??
+                        (locale === 'zh'
+                          ? '文件已不存在'
+                          : 'File no longer exists')
+                      }
+                      onClose={() => setFailedPath(null)}
+                      onRetry={async () => {
+                        await session.syncFromHost();
+                        const state = session.getState();
+                        const id = state.fileIdByPath.get(failedPath);
+                        if (id && !state.failedFiles.has(failedPath))
+                          openFile(id);
+                      }}
+                    />
+                  ) : null}
+                  {libraryOpen ? (
+                    <ChartLibrary
+                      actionSource={workspaceActions}
+                      locale={locale}
+                      readonly={
+                        readonly ||
+                        switchingWorkspace ||
+                        snapshot.mutationsPaused
+                      }
+                      owners={[...files.values()]
+                        .filter((entry) => isRegularCanvas(entry.file))
+                        .map((entry) => ({
+                          frameId: entry.file.frame.id,
                           name:
-                            file.file.frame.name ||
-                            canvasDisplayName(file.path),
-                          path: file.path,
-                          diagram: diagramKindOf(file.file),
-                          sources: sources
-                            .map(
-                              (source) =>
-                                files.get(source.fileId)?.file.frame.name ||
-                                canvasDisplayName(
-                                  files.get(source.fileId)?.path ??
-                                    source.fileId,
-                                ),
-                            )
-                            .join(', '),
-                          recommendedOwnerName: ownerId
+                            entry.file.frame.name ||
+                            canvasDisplayName(entry.path),
+                        }))}
+                      rows={[...files.values()].map((entry) => {
+                        const view = snapshot.organization.byFile.get(
+                          entry.file.frame.id,
+                        );
+                        const placement = view?.placement;
+                        const ownerId =
+                          placement?.kind === 'owned'
+                            ? placement.ownerFrameId
+                            : undefined;
+                        const sources = referenceSourcesOf(
+                          [...files.values()].map((item) => item.file),
+                          entry.file.frame.id,
+                        );
+                        return {
+                          frameId: entry.file.frame.id,
+                          name:
+                            entry.file.frame.name ||
+                            canvasDisplayName(entry.path),
+                          path: entry.path,
+                          diagram: diagramKindOf(entry.file),
+                          placement:
+                            placement?.kind === 'owned'
+                              ? ('owned' as const)
+                              : placement?.kind === 'unorganized'
+                                ? ('unorganized' as const)
+                                : placement?.kind === 'standalone'
+                                  ? ('standalone' as const)
+                                  : ('legacy' as const),
+                          ownerFrameId: ownerId,
+                          ownerName: ownerId
                             ? files.get(ownerId)?.file.frame.name ||
                               canvasDisplayName(
                                 files.get(ownerId)?.path ?? ownerId,
                               )
-                            : locale === 'zh'
-                              ? '独立'
-                              : 'Standalone',
-                          reason: row.reason,
-                          choice: ownerId ? 'owner' : 'standalone',
-                          ownerFrameId: ownerId,
-                          basisSources: sources.map((source) => source.fileId),
+                            : undefined,
+                          referenceLabel:
+                            locale === 'zh'
+                              ? `${sources.reduce((sum, group) => sum + group.refIds.length, 0)} 处引用 · ${sources.length} 个画布`
+                              : `${sources.reduce((sum, group) => sum + group.refIds.length, 0)} references · ${sources.length} canvases`,
+                          dirty: entry.dirty,
+                          conflicted: entry.conflicted,
                         };
-                      }),
-                    );
-                  }}
-                />
-              ) : null}
-              <div
-                className="workspace-panes"
-                hidden={libraryOpen || !!failedPath}
-              >
-                {tabs.length === 0 ? (
-                  <WorkspaceEmpty
-                    locale={locale}
-                    onCreate={() => void createCanvas('')}
-                    onCreateDocument={() => void createDocument('')}
-                  />
-                ) : null}
-                {mountedTabs.map((tab) => {
-                  const entry = entryForTab(tab.fileId);
-                  const failure = [...snapshot.failedFiles.values()].find(
-                    (item) => item.fileId === tab.fileId,
-                  );
-                  if (failure && !entry?.dirty)
-                    return (
-                      <div
-                        key={tab.fileId}
-                        className={`workspace-pane${tab.fileId === activeTabId ? ' is-active' : ''}`}
-                      >
-                        <WorkspaceFileError
-                          path={failure.path}
-                          locale={locale}
-                          message={failure.diagnostics
-                            .map((issue) => issue.message)
-                            .join('\n')}
-                          onRetry={() => session.syncFromHost()}
-                          onClose={() => closeTabs(tab.fileId)}
-                        />
-                      </div>
-                    );
-                  if (!entry) return null;
-                  if (entry.file.format === 'verd-document') {
-                    const restore = documentRestoreRef.current.get(tab.fileId);
-                    return (
-                      <WorkspaceContentBoundary
-                        pane
-                        active={tab.fileId === activeTabId}
-                        key={tab.fileId}
-                        resetKeys={[session, entry.file, snapshot.store]}
-                        path={entry.path}
-                        locale={locale}
-                        onRetry={() => session.syncFromHost()}
-                        onClose={() => closeTabs(tab.fileId)}
-                      >
-                        <div
-                          className={`workspace-pane${tab.fileId === activeTabId ? ' is-active' : ''}`}
-                        >
-                          {fileNavigation(tab.fileId)}
-                          <div className="workspace-pane-body">
-                            <WorkspaceDocumentPage
-                              preview={previewOptions(tab.fileId)}
-                              canUndo={snapshot.canUndo}
-                              canRedo={snapshot.canRedo}
-                              page={{
-                                frameChoices: documentFrameChoices,
-                                value: entry.file.text,
-                                title:
-                                  entry.file.title ||
-                                  documentDisplayName(entry.path),
-                                readonly:
-                                  readonly ||
-                                  switchingWorkspace ||
-                                  snapshot.mutationsPaused,
-                                locale,
-                                saveState: saveStateFor(entry),
-                                history: historyAdapter,
-                                restore: restore
-                                  ? {
-                                      revision: restore.revision,
-                                      selection: restore.selection,
-                                    }
-                                  : undefined,
-                                autoFocusTitle:
-                                  createdDocumentRef.current === tab.fileId,
-                                onChange: onDocumentChange(tab.fileId),
-                                onReady: documentReady(tab.fileId),
-                                navigation:
-                                  tab.fileId === activeTabId &&
-                                  navigationRequest?.target.fileId ===
-                                    tab.fileId
-                                    ? navigationRequest
-                                    : undefined,
-                                onNavigationResult,
-                                onOpenLink: (href) =>
-                                  openPreviewLink(href, tab.fileId),
-                                onTitleCommit: (title) =>
-                                  void applyWorkspaceAction({
-                                    type: 'rename-document',
-                                    fileId: tab.fileId,
-                                    title,
-                                    label: 'rename-document',
-                                  }),
-                                onExport: (format) =>
-                                  void workspaceActions.executeAction(
-                                    'workspace.file.export',
-                                    { fileId: tab.fileId, format },
-                                  ),
-                              }}
-                            />
-                          </div>
-                        </div>
-                      </WorkspaceContentBoundary>
-                    );
-                  }
-                  const scene = frameScene(
-                    canvasValue(snapshot).store,
-                    tab.fileId,
-                    registry,
-                  );
-                  const pane =
-                    scene === 'mind-root'
-                      ? 'mind'
-                      : scene === 'workflow-start'
-                        ? 'workflow'
-                        : scene === 'architecture-layer'
-                          ? 'architecture'
-                          : 'board';
-                  return (
-                    <WorkspaceContentBoundary
-                      pane
-                      active={tab.fileId === activeTabId}
-                      key={tab.fileId}
-                      resetKeys={[session, entry.file, snapshot.store]}
-                      path={entry.path}
-                      locale={locale}
-                      onRetry={() => session.syncFromHost()}
-                      onClose={() => closeTabs(tab.fileId)}
-                    >
-                      <div
-                        data-workspace-pane={
-                          tab.fileId === activeTabId ? pane : undefined
-                        }
-                        className={`workspace-pane${tab.fileId === activeTabId ? ' is-active' : ''}`}
-                      >
-                        {fileNavigation(tab.fileId)}
-                        <div className="workspace-pane-body">
-                          <VerdFrame
-                            onOpenMy={() => {
-                              openMy();
-                              myFocus.current =
-                                document.querySelector<HTMLElement>(
-                                  '.workspace-pane.is-active [data-testid="app-menu-trigger"]',
-                                );
-                            }}
-                            value={canvasValue(snapshot)}
-                            documentReferences={documentPreviews({
-                              ...previewOptions(tab.fileId),
-                              referenceCards: isRegularCanvas(entry.file),
-                            })}
-                            onReferenceDocument={() => {
-                              setDocumentPickerEditable(false);
-                              setDocumentPickerFileId(tab.fileId);
-                            }}
-                            onCreateDocumentFrame={() => {
-                              setDocumentPickerEditable(true);
-                              setDocumentPickerFileId(tab.fileId);
-                            }}
-                            onExportNative={
-                              documentDependents.has(tab.fileId)
-                                ? () => {
-                                    void workspaceActions.executeAction(
-                                      'workspace.file.export',
-                                      { fileId: tab.fileId },
-                                    );
-                                  }
-                                : undefined
-                            }
-                            frameId={tab.fileId}
-                            onChange={onChange(tab.fileId)}
-                            onOpenFrame={(fileId, source) => {
-                              void navigateTarget(
-                                { kind: 'file', fileId },
-                                true,
-                                source,
-                              );
-                            }}
-                            onDuplicateReference={onDuplicateReference(
-                              tab.fileId,
-                            )}
-                            instanceHost={instanceHost}
-                            suspended={
-                              libraryOpen ||
-                              snapshot.mutationsPaused ||
-                              settingsView !== null ||
-                              tab.fileId !== activeTabId
-                            }
-                            placing={placeTarget?.fileId === tab.fileId}
-                            onPlace={(point) =>
-                              placeReference(tab.fileId, point)
-                            }
-                            onCancelPlace={() => setPlaceTarget(null)}
-                            onReferenceExisting={() => {
-                              setPickerFileId(tab.fileId);
-                              setLibraryOpen(true);
-                            }}
-                            onReady={frameReady(tab.fileId)}
-                            linkHost={{
-                              createLink: (target) =>
-                                createWorkspaceLink({
-                                  kind: 'cell',
-                                  fileId: target.frameId,
-                                  cellId: target.cellId,
-                                }),
-                              openLink: (href) =>
-                                openPreviewLink(href, tab.fileId),
-                            }}
-                            navigation={
-                              tab.fileId === activeTabId &&
-                              navigationRequest?.target.fileId === tab.fileId
-                                ? navigationRequest
-                                : undefined
-                            }
-                            onNavigationResult={onNavigationResult}
-                            mindDefaultWidth={
-                              typeof snapshot.config.value[
-                                'mindDefaultWidth'
-                              ] === 'number'
-                                ? (snapshot.config.value[
-                                    'mindDefaultWidth'
-                                  ] as number)
-                                : undefined
-                            }
-                            saveStatus={persistenceForPage(tab.fileId).status}
-                            lastSavedAt={
-                              persistenceForPage(tab.fileId).lastSavedAt
-                            }
-                            onRetrySave={
-                              workspaceActionState('workspace.save-retry')
-                                .enabled
-                                ? () => {
-                                    void workspaceActions.executeAction(
-                                      'workspace.save-retry',
-                                    );
-                                  }
-                                : undefined
-                            }
-                            readonly={
-                              readonly ||
-                              switchingWorkspace ||
-                              snapshot.mutationsPaused
-                            }
-                            history={historyAdapter}
-                            parseLegacy={parseLegacy}
-                          />
-                        </div>
-                      </div>
-                    </WorkspaceContentBoundary>
-                  );
-                })}
-              </div>
-              {organizeRows ? (
-                <OrganizePreview
-                  actionSource={workspaceActions}
-                  locale={locale}
-                  owners={[...files.values()]
-                    .filter((entry) => isRegularCanvas(entry.file))
-                    .map((entry) => ({
-                      frameId: entry.file.frame.id,
-                      name:
-                        entry.file.frame.name || canvasDisplayName(entry.path),
-                    }))}
-                  rows={organizeRows}
-                  onCancel={() => setOrganizeRows(null)}
-                  onChange={(fileId, choice, ownerFrameId) =>
-                    setOrganizeRows(
-                      (current) =>
-                        current?.map((row) =>
-                          row.fileId === fileId
-                            ? { ...row, choice, ownerFrameId }
-                            : row,
-                        ) ?? null,
-                    )
-                  }
-                  onConfirm={() => {
-                    const frames = [...files.values()].map(
-                      (entry) => entry.file,
-                    );
-                    const stale = (organizeRows ?? []).filter((row) => {
-                      const file = files.get(row.fileId)?.file;
-                      const sources = referenceSourcesOf(
-                        frames,
-                        row.fileId,
-                      ).map((source) => source.fileId);
-                      return organizePreviewIsStale(
-                        row.basisSources ?? [],
-                        sources,
-                        !!file?.organization,
-                      );
-                    });
-                    if (stale.length) {
-                      const refreshed = recommendOrganization(frames);
-                      setOrganizeRows(
-                        (current) =>
-                          current?.map((row) => {
-                            if (
-                              !stale.some((item) => item.fileId === row.fileId)
-                            )
-                              return row;
-                            const next = refreshed.find(
-                              (item) => item.fileId === row.fileId,
+                      })}
+                      query={libraryQuery}
+                      diagram={libraryDiagram}
+                      owner={libraryOwner}
+                      scrollTop={libraryScroll}
+                      onQueryChange={setLibraryQuery}
+                      onDiagramChange={setLibraryDiagram}
+                      onOwnerChange={setLibraryOwner}
+                      onScroll={setLibraryScroll}
+                      picker={pickerFileId ? pickerMode : null}
+                      onPickerMode={setPickerMode}
+                      onPick={(targetId) => {
+                        if (!pickerFileId) return;
+                        setPlaceTarget({ fileId: pickerFileId, targetId });
+                        setPickerFileId(null);
+                        setFailedPath(null);
+                        setLibraryOpen(false);
+                      }}
+                      onChangeOrganization={async (fileId, organization) => {
+                        const result = workspaceActionCommandResult(
+                          await workspaceActions.executeAction(
+                            'workspace.library.organization',
+                            { fileId, organization },
+                          ),
+                        );
+                        if (!result.ok)
+                          throw new Error(
+                            result.diagnostics
+                              .map((item) => item.message)
+                              .join('; '),
+                          );
+                      }}
+                      onOpen={openFile}
+                      onBack={() => {
+                        setPickerFileId(null);
+                        setFailedPath(null);
+                        setLibraryOpen(false);
+                      }}
+                      onOrganize={() => {
+                        const frames = [...files.values()].map(
+                          (entry) => entry.file,
+                        );
+                        const recommended = recommendOrganization(frames);
+                        setOrganizeRows(
+                          recommended.map((row) => {
+                            const file = files.get(row.fileId)!;
+                            const sources = referenceSourcesOf(
+                              frames,
+                              row.fileId,
                             );
-                            if (!next) return row;
                             const ownerId =
-                              next.organization.kind === 'subgraph'
-                                ? next.organization.ownerFrameId
+                              row.organization.kind === 'subgraph'
+                                ? row.organization.ownerFrameId
                                 : undefined;
                             return {
-                              ...row,
-                              reason: next.reason,
-                              choice: ownerId ? 'owner' : 'standalone',
-                              ownerFrameId: ownerId,
-                              basisSources: referenceSourcesOf(
-                                frames,
-                                row.fileId,
-                              ).map((source) => source.fileId),
+                              fileId: row.fileId,
+                              name:
+                                file.file.frame.name ||
+                                canvasDisplayName(file.path),
+                              path: file.path,
+                              diagram: diagramKindOf(file.file),
+                              sources: sources
+                                .map(
+                                  (source) =>
+                                    files.get(source.fileId)?.file.frame.name ||
+                                    canvasDisplayName(
+                                      files.get(source.fileId)?.path ??
+                                        source.fileId,
+                                    ),
+                                )
+                                .join(', '),
                               recommendedOwnerName: ownerId
                                 ? files.get(ownerId)?.file.frame.name ||
                                   canvasDisplayName(
                                     files.get(ownerId)?.path ?? ownerId,
                                   )
-                                : row.recommendedOwnerName,
+                                : locale === 'zh'
+                                  ? '独立'
+                                  : 'Standalone',
+                              reason: row.reason,
+                              choice: ownerId ? 'owner' : 'standalone',
+                              ownerFrameId: ownerId,
+                              basisSources: sources.map(
+                                (source) => source.fileId,
+                              ),
                             };
-                          }) ?? null,
+                          }),
+                        );
+                      }}
+                    />
+                  ) : null}
+                  <div
+                    className="workspace-panes"
+                    hidden={libraryOpen || !!failedPath}
+                  >
+                    {tabs.length === 0 ? (
+                      <WorkspaceEmpty
+                        locale={locale}
+                        onCreate={() => void createCanvas('')}
+                        onCreateDocument={() => void createDocument('')}
+                      />
+                    ) : null}
+                    {mountedTabs.map((tab) => {
+                      const entry = entryForTab(tab.fileId);
+                      const failure = [...snapshot.failedFiles.values()].find(
+                        (item) => item.fileId === tab.fileId,
                       );
-                      notify(
-                        locale === 'zh'
-                          ? '部分图表已变化，请确认更新后的建议'
-                          : 'Some charts changed. Review the refreshed rows.',
+                      if (failure && !entry?.dirty)
+                        return (
+                          <div
+                            key={tab.fileId}
+                            className={`workspace-pane${tab.fileId === activeTabId ? ' is-active' : ''}`}
+                          >
+                            <WorkspaceFileError
+                              path={failure.path}
+                              locale={locale}
+                              message={failure.diagnostics
+                                .map((issue) => issue.message)
+                                .join('\n')}
+                              onRetry={() => session.syncFromHost()}
+                              onClose={() => closeTabs(tab.fileId)}
+                            />
+                          </div>
+                        );
+                      if (!entry) return null;
+                      if (entry.file.format === 'verd-document') {
+                        const restore = documentRestoreRef.current.get(
+                          tab.fileId,
+                        );
+                        return (
+                          <WorkspaceContentBoundary
+                            pane
+                            active={tab.fileId === activeTabId}
+                            key={tab.fileId}
+                            resetKeys={[session, entry.file, snapshot.store]}
+                            path={entry.path}
+                            locale={locale}
+                            onRetry={() => session.syncFromHost()}
+                            onClose={() => closeTabs(tab.fileId)}
+                          >
+                            <div
+                              className={`workspace-pane${tab.fileId === activeTabId ? ' is-active' : ''}`}
+                            >
+                              {fileNavigation(tab.fileId)}
+                              <div
+                                className="workspace-pane-body"
+                                onClickCapture={(event) => {
+                                  const anchor =
+                                    event.target instanceof Element
+                                      ? event.target.closest('a[href]')
+                                      : null;
+                                  const href = anchor?.getAttribute('href');
+                                  if (
+                                    event.altKey &&
+                                    href &&
+                                    parseWorkspaceLink(href, tab.fileId)
+                                  ) {
+                                    event.preventDefault();
+                                    event.stopPropagation();
+                                    setKnowledgePreview({
+                                      fileId: tab.fileId,
+                                      href,
+                                      nonce: Date.now(),
+                                    });
+                                  }
+                                }}
+                              >
+                                <WorkspaceDocumentPage
+                                  preview={previewOptions(tab.fileId)}
+                                  canUndo={snapshot.canUndo}
+                                  canRedo={snapshot.canRedo}
+                                  page={{
+                                    linkActivation,
+                                    linkChoices: knowledge.targets,
+                                    onInsertImage: async (file) =>
+                                      (await storeAttachment(session, file))
+                                        .src,
+                                    onPreviewLink: (href) =>
+                                      setKnowledgePreview({
+                                        fileId: tab.fileId,
+                                        href,
+                                        nonce: Date.now(),
+                                      }),
+                                    frameChoices: documentFrameChoices,
+                                    value: entry.file.text,
+                                    title:
+                                      entry.file.title ||
+                                      documentDisplayName(entry.path),
+                                    readonly:
+                                      readonly ||
+                                      switchingWorkspace ||
+                                      snapshot.mutationsPaused,
+                                    locale,
+                                    saveState: saveStateFor(entry),
+                                    history: historyAdapter,
+                                    restore: restore
+                                      ? {
+                                          revision: restore.revision,
+                                          selection: restore.selection,
+                                        }
+                                      : undefined,
+                                    autoFocusTitle:
+                                      createdDocumentRef.current === tab.fileId,
+                                    onChange: onDocumentChange(tab.fileId),
+                                    onReady: documentReady(tab.fileId),
+                                    navigation:
+                                      tab.fileId === activeTabId &&
+                                      navigationRequest?.target.fileId ===
+                                        tab.fileId
+                                        ? navigationRequest
+                                        : undefined,
+                                    onNavigationResult,
+                                    onOpenLink: (href) =>
+                                      openPreviewLink(href, tab.fileId),
+                                    onTitleCommit: (title) =>
+                                      void applyWorkspaceAction({
+                                        type: 'rename-document',
+                                        fileId: tab.fileId,
+                                        title,
+                                        label: 'rename-document',
+                                      }),
+                                    onExport: (format) =>
+                                      void workspaceActions.executeAction(
+                                        'workspace.file.export',
+                                        { fileId: tab.fileId, format },
+                                      ),
+                                  }}
+                                />
+                              </div>
+                            </div>
+                          </WorkspaceContentBoundary>
+                        );
+                      }
+                      const scene = frameScene(
+                        canvasValue(snapshot).store,
+                        tab.fileId,
+                        registry,
                       );
-                      return;
-                    }
-                    void workspaceActions
-                      .executeAction('workspace.organize', {
-                        changes: organizeRows.map((row) => ({
-                          fileId: row.fileId,
-                          organization:
-                            row.choice === 'owner' && row.ownerFrameId
-                              ? {
-                                  kind: 'subgraph' as const,
-                                  ownerFrameId: row.ownerFrameId,
+                      const pane =
+                        scene === 'mind-root'
+                          ? 'mind'
+                          : scene === 'workflow-start'
+                            ? 'workflow'
+                            : scene === 'architecture-layer'
+                              ? 'architecture'
+                              : 'board';
+                      return (
+                        <WorkspaceContentBoundary
+                          pane
+                          active={tab.fileId === activeTabId}
+                          key={tab.fileId}
+                          resetKeys={[session, entry.file, snapshot.store]}
+                          path={entry.path}
+                          locale={locale}
+                          onRetry={() => session.syncFromHost()}
+                          onClose={() => closeTabs(tab.fileId)}
+                        >
+                          <div
+                            data-workspace-pane={
+                              tab.fileId === activeTabId ? pane : undefined
+                            }
+                            className={`workspace-pane${tab.fileId === activeTabId ? ' is-active' : ''}`}
+                          >
+                            {fileNavigation(tab.fileId)}
+                            <div
+                              className="workspace-pane-body"
+                              onClickCapture={(event) => {
+                                const anchor =
+                                  event.target instanceof Element
+                                    ? event.target.closest('a[href]')
+                                    : null;
+                                const href = anchor?.getAttribute('href');
+                                if (
+                                  event.altKey &&
+                                  href &&
+                                  parseWorkspaceLink(href, tab.fileId)
+                                ) {
+                                  event.preventDefault();
+                                  event.stopPropagation();
+                                  setKnowledgePreview({
+                                    fileId: tab.fileId,
+                                    href,
+                                    nonce: Date.now(),
+                                  });
                                 }
-                              : row.choice === 'unorganized'
-                                ? { kind: 'subgraph' as const }
-                                : { kind: 'standalone' as const },
-                          basisOrganization: null,
-                          basisSources: referenceSourcesOf(
+                              }}
+                            >
+                              <VerdFrame
+                                onOpenMy={() => {
+                                  openMy();
+                                  myFocus.current =
+                                    document.querySelector<HTMLElement>(
+                                      '.workspace-pane.is-active [data-testid="app-menu-trigger"]',
+                                    );
+                                }}
+                                value={canvasValue(snapshot)}
+                                documentReferences={documentPreviews({
+                                  ...previewOptions(tab.fileId),
+                                  referenceCards: isRegularCanvas(entry.file),
+                                })}
+                                onReferenceDocument={() => {
+                                  setDocumentPickerEditable(false);
+                                  setDocumentPickerFileId(tab.fileId);
+                                }}
+                                onCreateDocumentFrame={() => {
+                                  setDocumentPickerEditable(true);
+                                  setDocumentPickerFileId(tab.fileId);
+                                }}
+                                onExportNative={
+                                  documentDependents.has(tab.fileId)
+                                    ? () => {
+                                        void workspaceActions.executeAction(
+                                          'workspace.file.export',
+                                          { fileId: tab.fileId },
+                                        );
+                                      }
+                                    : undefined
+                                }
+                                frameId={tab.fileId}
+                                onChange={onChange(tab.fileId)}
+                                onOpenFrame={(fileId, source) => {
+                                  void navigateTarget(
+                                    { kind: 'file', fileId },
+                                    true,
+                                    source,
+                                  );
+                                }}
+                                onDuplicateReference={onDuplicateReference(
+                                  tab.fileId,
+                                )}
+                                instanceHost={instanceHost}
+                                suspended={
+                                  libraryOpen ||
+                                  snapshot.mutationsPaused ||
+                                  settingsView !== null ||
+                                  tab.fileId !== activeTabId
+                                }
+                                placing={placeTarget?.fileId === tab.fileId}
+                                onPlace={(point) =>
+                                  placeReference(tab.fileId, point)
+                                }
+                                onCancelPlace={() => setPlaceTarget(null)}
+                                onReferenceExisting={() => {
+                                  setPickerFileId(tab.fileId);
+                                  persistNav({ activeView: 'library' });
+                                  setLibraryOpen(true);
+                                }}
+                                onReady={frameReady(tab.fileId)}
+                                linkHost={{
+                                  createLink: (target) =>
+                                    createWorkspaceLink({
+                                      kind: 'cell',
+                                      fileId: target.frameId,
+                                      cellId: target.cellId,
+                                    }),
+                                  openLink: (href) =>
+                                    openPreviewLink(href, tab.fileId),
+                                }}
+                                navigation={
+                                  tab.fileId === activeTabId &&
+                                  navigationRequest?.target.fileId ===
+                                    tab.fileId
+                                    ? navigationRequest
+                                    : undefined
+                                }
+                                onNavigationResult={onNavigationResult}
+                                mindDefaultWidth={
+                                  typeof snapshot.config.value[
+                                    'mindDefaultWidth'
+                                  ] === 'number'
+                                    ? (snapshot.config.value[
+                                        'mindDefaultWidth'
+                                      ] as number)
+                                    : undefined
+                                }
+                                saveStatus={
+                                  persistenceForPage(tab.fileId).status
+                                }
+                                lastSavedAt={
+                                  persistenceForPage(tab.fileId).lastSavedAt
+                                }
+                                onRetrySave={
+                                  workspaceActionState('workspace.save-retry')
+                                    .enabled
+                                    ? () => {
+                                        void workspaceActions.executeAction(
+                                          'workspace.save-retry',
+                                        );
+                                      }
+                                    : undefined
+                                }
+                                readonly={
+                                  readonly ||
+                                  switchingWorkspace ||
+                                  snapshot.mutationsPaused
+                                }
+                                history={historyAdapter}
+                                parseLegacy={parseLegacy}
+                              />
+                            </div>
+                          </div>
+                        </WorkspaceContentBoundary>
+                      );
+                    })}
+                  </div>
+                  {organizeRows ? (
+                    <OrganizePreview
+                      actionSource={workspaceActions}
+                      locale={locale}
+                      owners={[...files.values()]
+                        .filter((entry) => isRegularCanvas(entry.file))
+                        .map((entry) => ({
+                          frameId: entry.file.frame.id,
+                          name:
+                            entry.file.frame.name ||
+                            canvasDisplayName(entry.path),
+                        }))}
+                      rows={organizeRows}
+                      onCancel={() => setOrganizeRows(null)}
+                      onChange={(fileId, choice, ownerFrameId) =>
+                        setOrganizeRows(
+                          (current) =>
+                            current?.map((row) =>
+                              row.fileId === fileId
+                                ? { ...row, choice, ownerFrameId }
+                                : row,
+                            ) ?? null,
+                        )
+                      }
+                      onConfirm={() => {
+                        const frames = [...files.values()].map(
+                          (entry) => entry.file,
+                        );
+                        const stale = (organizeRows ?? []).filter((row) => {
+                          const file = files.get(row.fileId)?.file;
+                          const sources = referenceSourcesOf(
                             frames,
                             row.fileId,
-                          ).map((source) => source.fileId),
-                        })),
-                      })
-                      .then(workspaceActionCommandResult)
-                      .then((result) => {
-                        if (!result.ok)
+                          ).map((source) => source.fileId);
+                          return organizePreviewIsStale(
+                            row.basisSources ?? [],
+                            sources,
+                            !!file?.organization,
+                          );
+                        });
+                        if (stale.length) {
+                          const refreshed = recommendOrganization(frames);
+                          setOrganizeRows(
+                            (current) =>
+                              current?.map((row) => {
+                                if (
+                                  !stale.some(
+                                    (item) => item.fileId === row.fileId,
+                                  )
+                                )
+                                  return row;
+                                const next = refreshed.find(
+                                  (item) => item.fileId === row.fileId,
+                                );
+                                if (!next) return row;
+                                const ownerId =
+                                  next.organization.kind === 'subgraph'
+                                    ? next.organization.ownerFrameId
+                                    : undefined;
+                                return {
+                                  ...row,
+                                  reason: next.reason,
+                                  choice: ownerId ? 'owner' : 'standalone',
+                                  ownerFrameId: ownerId,
+                                  basisSources: referenceSourcesOf(
+                                    frames,
+                                    row.fileId,
+                                  ).map((source) => source.fileId),
+                                  recommendedOwnerName: ownerId
+                                    ? files.get(ownerId)?.file.frame.name ||
+                                      canvasDisplayName(
+                                        files.get(ownerId)?.path ?? ownerId,
+                                      )
+                                    : row.recommendedOwnerName,
+                                };
+                              }) ?? null,
+                          );
                           notify(
+                            locale === 'zh'
+                              ? '部分图表已变化，请确认更新后的建议'
+                              : 'Some charts changed. Review the refreshed rows.',
+                          );
+                          return;
+                        }
+                        void workspaceActions
+                          .executeAction('workspace.organize', {
+                            changes: organizeRows.map((row) => ({
+                              fileId: row.fileId,
+                              organization:
+                                row.choice === 'owner' && row.ownerFrameId
+                                  ? {
+                                      kind: 'subgraph' as const,
+                                      ownerFrameId: row.ownerFrameId,
+                                    }
+                                  : row.choice === 'unorganized'
+                                    ? { kind: 'subgraph' as const }
+                                    : { kind: 'standalone' as const },
+                              basisOrganization: null,
+                              basisSources: referenceSourcesOf(
+                                frames,
+                                row.fileId,
+                              ).map((source) => source.fileId),
+                            })),
+                          })
+                          .then(workspaceActionCommandResult)
+                          .then((result) => {
+                            if (!result.ok)
+                              notify(
+                                result.diagnostics
+                                  .map((item) => item.message)
+                                  .join('; '),
+                              );
+                            else setOrganizeRows(null);
+                          });
+                      }}
+                    />
+                  ) : null}
+                  <div className="workspace-banners">
+                    {snapshot.saveStatus === 'error' ||
+                    [...snapshot.filePersistence.values()].some(
+                      (file) => file.status === 'error',
+                    ) ? (
+                      <div
+                        className="workspace-notice-banner is-error"
+                        role="alert"
+                        data-testid="workspace-save-error"
+                      >
+                        <span>
+                          {locale === 'zh'
+                            ? '工作区保存未完成，请重试、处理文件冲突，或修正内容后重新保存。'
+                            : 'Workspace changes could not be saved. Retry, resolve conflicts, or correct the content and save again.'}
+                        </span>
+                        <button
+                          type="button"
+                          data-action-id="workspace.save-retry"
+                          disabled={
+                            !workspaceActionState('workspace.save-retry')
+                              .enabled
+                          }
+                          onClick={() =>
+                            void workspaceActions.executeAction(
+                              'workspace.save-retry',
+                            )
+                          }
+                        >
+                          {workspaceActionName('workspace.save-retry')}
+                        </button>
+                      </div>
+                    ) : null}
+                    {snapshot.trashUnconfirmed && (
+                      <div
+                        className="workspace-notice-banner is-error"
+                        role="alert"
+                      >
+                        <span>
+                          {locale === 'zh'
+                            ? '回收站操作结果尚未确认，请重试后继续编辑。'
+                            : 'The trash operation is unconfirmed. Retry before continuing to edit.'}
+                        </span>
+                        <button
+                          type="button"
+                          data-testid="workspace-trash-retry"
+                          data-action-id="workspace.trash.retry"
+                          disabled={
+                            !workspaceActionState('workspace.trash.retry')
+                              .enabled
+                          }
+                          onClick={async () => {
+                            const result = workspaceActionCommandResult(
+                              await workspaceActions.executeAction(
+                                'workspace.trash.retry',
+                              ),
+                            );
+                            if (!result.ok)
+                              notify(
+                                result.diagnostics
+                                  .map((item) => item.message)
+                                  .join('; '),
+                                'error',
+                              );
+                          }}
+                        >
+                          {workspaceActionName('workspace.trash.retry')}
+                        </button>
+                      </div>
+                    )}
+
+                    {contentUpdates
+                      .filter(
+                        (item) => item.status === 'available' && item.remind,
+                      )
+                      .map((item) => (
+                        <div
+                          className="workspace-notice-banner"
+                          role="status"
+                          key={item.kind}
+                        >
+                          <span>
+                            {item.kind === 'project'
+                              ? '项目文档'
+                              : 'Agent 范式库'}
+                            有可用更新 {item.availableVersion}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              void openWorkspaceRequest(
+                                item.kind === 'project'
+                                  ? { default: true }
+                                  : { patterns: true },
+                              ).then((result) => {
+                                if (
+                                  result.status === 'completed' ||
+                                  result.status === 'noop'
+                                )
+                                  openSettings('workspace.data');
+                              });
+                            }}
+                          >
+                            查看
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              void host.snoozeBuiltinUpdate?.(
+                                item.candidateId!,
+                              );
+                            }}
+                          >
+                            稍后
+                          </button>
+                        </div>
+                      ))}
+                    {notice ? (
+                      <div
+                        className={`workspace-notice-banner${notice.tone === 'error' ? ' is-error' : ''}`}
+                        role={notice.tone === 'error' ? 'alert' : 'status'}
+                      >
+                        <span>{notice.text}</span>
+                        <button type="button" onClick={() => setNotice(null)}>
+                          {locale === 'zh' ? '知道了' : 'Dismiss'}
+                        </button>
+                      </div>
+                    ) : null}
+                    {activeEntry?.conflicted ? (
+                      <div
+                        className="workspace-conflict-banner"
+                        data-file={activeEntry.path}
+                      >
+                        <span>
+                          {locale === 'zh'
+                            ? '该文件与磁盘版本存在冲突，等待解决。'
+                            : 'This file conflicts with the on-disk version.'}
+                        </span>
+                        <button
+                          type="button"
+                          data-action-id="workspace.conflict.keep-local"
+                          disabled={
+                            !workspaceActionState(
+                              'workspace.conflict.keep-local',
+                              {
+                                fileId: activeTab?.fileId,
+                              },
+                            ).enabled
+                          }
+                          onClick={() =>
+                            activeTab &&
+                            void workspaceActions.executeAction(
+                              'workspace.conflict.keep-local',
+                              { fileId: activeTab.fileId },
+                            )
+                          }
+                        >
+                          {workspaceActionName('workspace.conflict.keep-local')}
+                        </button>
+                        <button
+                          type="button"
+                          data-action-id="workspace.conflict.load-disk"
+                          disabled={
+                            !workspaceActionState(
+                              'workspace.conflict.load-disk',
+                              {
+                                fileId: activeTab?.fileId,
+                              },
+                            ).enabled
+                          }
+                          onClick={() =>
+                            activeTab &&
+                            void workspaceActions.executeAction(
+                              'workspace.conflict.load-disk',
+                              { fileId: activeTab.fileId },
+                            )
+                          }
+                        >
+                          {workspaceActionName('workspace.conflict.load-disk')}
+                        </button>
+                      </div>
+                    ) : null}
+                  </div>
+                </div>
+              </main>
+              {settingsView ? (
+                <SettingsCenter
+                  section={workspaceSettingsSection}
+                  onSection={setWorkspaceSettingsSection}
+                  onBack={closeMy}
+                  testId={
+                    settingsView === 'my'
+                      ? 'my-page'
+                      : 'workspace-settings-page'
+                  }
+                  backTestId={
+                    settingsView === 'my'
+                      ? 'my-back'
+                      : 'workspace-settings-back'
+                  }
+                  workspace={{
+                    readonly,
+                    storage:
+                      typeof window !== 'undefined' && 'electronAPI' in window
+                        ? 'desktop'
+                        : 'browser',
+                    persistence: {
+                      status: snapshot.saveStatus,
+                      error:
+                        snapshot.saveStatus === 'error'
+                          ? snapshot.diagnostics
+                              .map((d) => d.message)
+                              .join('; ')
+                          : undefined,
+                      onRetry: () => {
+                        void workspaceActions.executeAction(
+                          'workspace.save-retry',
+                        );
+                      },
+                    },
+                    actionSource: workspaceActions,
+                    fileChoices: [
+                      ...snapshot.documents.values(),
+                      ...snapshot.files.values(),
+                    ].map((e) => ({
+                      id:
+                        e.file.format === 'verd-document'
+                          ? e.file.id
+                          : e.file.frame.id,
+                      title:
+                        e.file.format === 'verd-document'
+                          ? e.file.title
+                          : (e.file.frame.name ?? e.path),
+                      path: e.path,
+                    })),
+                    builtin:
+                      host.readBuiltinUpdate && activeWorkspace.current
+                        ? {
+                            check: async () => {
+                              await host.checkBuiltinUpdates?.(true);
+                            },
+                            read: () =>
+                              host.readBuiltinUpdate!(
+                                activeWorkspace.current!.handle,
+                              ),
+                            update: async (releaseId, kind) => {
+                              preparingBuiltin.current = true;
+                              try {
+                                await host.prepareBuiltinUpdate?.(releaseId);
+                              } finally {
+                                preparingBuiltin.current = false;
+                              }
+                              const result = await openWorkspaceRequest(
+                                { patterns: kind === 'agent-patterns' },
+                                false,
+                                releaseId,
+                              );
+                              if (
+                                result.status === 'failed' ||
+                                result.status === 'rejected'
+                              )
+                                throw new Error(
+                                  'message' in result
+                                    ? String(result.message)
+                                    : 'Workspace update failed',
+                                );
+                            },
+                            backups: async () => {
+                              await host.revealBuiltinBackups?.(
+                                activeWorkspace.current!.handle,
+                              );
+                            },
+                          }
+                        : undefined,
+                    trash: {
+                      actionSource: workspaceActions,
+                      entries: snapshot.trash,
+                      workspaceName,
+                      unconfirmed: snapshot.trashUnconfirmed,
+                      onRestore: async (entryId) => {
+                        const result = await applyWorkspaceAction({
+                          type: 'restore-file',
+                          entryId,
+                        });
+                        if (!result.ok)
+                          throw new Error(
                             result.diagnostics
                               .map((item) => item.message)
                               .join('; '),
                           );
-                        else setOrganizeRows(null);
-                      });
-                  }}
-                />
-              ) : null}
-              <div className="workspace-banners">
-                {snapshot.saveStatus === 'error' ||
-                [...snapshot.filePersistence.values()].some(
-                  (file) => file.status === 'error',
-                ) ? (
-                  <div
-                    className="workspace-notice-banner is-error"
-                    role="alert"
-                    data-testid="workspace-save-error"
-                  >
-                    <span>
-                      {locale === 'zh'
-                        ? '工作区保存未完成，请重试、处理文件冲突，或修正内容后重新保存。'
-                        : 'Workspace changes could not be saved. Retry, resolve conflicts, or correct the content and save again.'}
-                    </span>
-                    <button
-                      type="button"
-                      data-action-id="workspace.save-retry"
-                      disabled={
-                        !workspaceActionState('workspace.save-retry').enabled
-                      }
-                      onClick={() =>
-                        void workspaceActions.executeAction(
-                          'workspace.save-retry',
-                        )
-                      }
-                    >
-                      {workspaceActionName('workspace.save-retry')}
-                    </button>
-                  </div>
-                ) : null}
-                {snapshot.trashUnconfirmed && (
-                  <div
-                    className="workspace-notice-banner is-error"
-                    role="alert"
-                  >
-                    <span>
-                      {locale === 'zh'
-                        ? '回收站操作结果尚未确认，请重试后继续编辑。'
-                        : 'The trash operation is unconfirmed. Retry before continuing to edit.'}
-                    </span>
-                    <button
-                      type="button"
-                      data-testid="workspace-trash-retry"
-                      data-action-id="workspace.trash.retry"
-                      disabled={
-                        !workspaceActionState('workspace.trash.retry').enabled
-                      }
-                      onClick={async () => {
+                      },
+                      onPurge: async (entryIds) => {
+                        const result = await applyWorkspaceAction({
+                          type: 'purge-trash',
+                          entryIds,
+                        });
+                        if (!result.ok)
+                          throw new Error(
+                            result.diagnostics
+                              .map((item) => item.message)
+                              .join('; '),
+                          );
+                      },
+                      onRetry: async () => {
                         const result = workspaceActionCommandResult(
                           await workspaceActions.executeAction(
                             'workspace.trash.retry',
                           ),
                         );
                         if (!result.ok)
-                          notify(
+                          throw new Error(
                             result.diagnostics
                               .map((item) => item.message)
                               .join('; '),
-                            'error',
                           );
-                      }}
-                    >
-                      {workspaceActionName('workspace.trash.retry')}
-                    </button>
-                  </div>
-                )}
-
-                {notice ? (
-                  <div
-                    className={`workspace-notice-banner${notice.tone === 'error' ? ' is-error' : ''}`}
-                    role={notice.tone === 'error' ? 'alert' : 'status'}
-                  >
-                    <span>{notice.text}</span>
-                    <button type="button" onClick={() => setNotice(null)}>
-                      {locale === 'zh' ? '知道了' : 'Dismiss'}
-                    </button>
-                  </div>
-                ) : null}
-                {activeEntry?.conflicted ? (
-                  <div
-                    className="workspace-conflict-banner"
-                    data-file={activeEntry.path}
-                  >
-                    <span>
-                      {locale === 'zh'
-                        ? '该文件与磁盘版本存在冲突，等待解决。'
-                        : 'This file conflicts with the on-disk version.'}
-                    </span>
-                    <button
-                      type="button"
-                      data-action-id="workspace.conflict.keep-local"
-                      disabled={
-                        !workspaceActionState('workspace.conflict.keep-local', {
-                          fileId: activeTab?.fileId,
-                        }).enabled
-                      }
-                      onClick={() =>
-                        activeTab &&
-                        void workspaceActions.executeAction(
-                          'workspace.conflict.keep-local',
-                          { fileId: activeTab.fileId },
-                        )
-                      }
-                    >
-                      {workspaceActionName('workspace.conflict.keep-local')}
-                    </button>
-                    <button
-                      type="button"
-                      data-action-id="workspace.conflict.load-disk"
-                      disabled={
-                        !workspaceActionState('workspace.conflict.load-disk', {
-                          fileId: activeTab?.fileId,
-                        }).enabled
-                      }
-                      onClick={() =>
-                        activeTab &&
-                        void workspaceActions.executeAction(
-                          'workspace.conflict.load-disk',
-                          { fileId: activeTab.fileId },
-                        )
-                      }
-                    >
-                      {workspaceActionName('workspace.conflict.load-disk')}
-                    </button>
-                  </div>
-                ) : null}
-              </div>
+                      },
+                    },
+                    locale: locale,
+                    defaultName: defaultName,
+                    agent: snapshot.agent,
+                    config: {
+                      name:
+                        typeof snapshot.config.value['name'] === 'string'
+                          ? snapshot.config.value['name']
+                          : undefined,
+                      project: (() => {
+                        const project = snapshot.config.value['project'] as
+                          | {
+                              description?: unknown;
+                              entryDocumentIds?: unknown;
+                            }
+                          | undefined;
+                        return {
+                          description:
+                            typeof project?.description === 'string'
+                              ? project.description
+                              : '',
+                          entryDocumentIds: Array.isArray(
+                            project?.entryDocumentIds,
+                          )
+                            ? project.entryDocumentIds.filter(
+                                (id): id is string => typeof id === 'string',
+                              )
+                            : [],
+                        };
+                      })(),
+                      mindDefaultWidth:
+                        typeof snapshot.config.value['mindDefaultWidth'] ===
+                        'number'
+                          ? snapshot.config.value['mindDefaultWidth']
+                          : undefined,
+                    },
+                    onConfig: async (patch) => {
+                      const result = await workspaceActions.executeAction(
+                        'workspace.settings.patch',
+                        patch,
+                      );
+                      return result.status === 'completed'
+                        ? { status: 'accepted' as const }
+                        : {
+                            status: 'rejected' as const,
+                            message:
+                              locale === 'zh'
+                                ? '工作区设置保存失败，请重试保存。'
+                                : 'Could not save workspace settings. Retry saving.',
+                          };
+                    },
+                    onBack: closeMy,
+                  }}
+                />
+              ) : null}
+              <input
+                id="workspace-folder-import"
+                type="file"
+                hidden
+                multiple
+                {...{ webkitdirectory: '' }}
+                onChange={(event) => void importDocument(event)}
+              />
+              <input
+                id="workspace-zip-import"
+                type="file"
+                accept=".zip"
+                hidden
+                onChange={(event) => void importDocument(event)}
+              />
+              <input
+                ref={importInput}
+                type="file"
+                multiple
+                accept=".json,.verd.json,.verd-doc.json,.md,.markdown"
+                hidden
+                onChange={(event) => void importDocument(event)}
+              />
             </div>
-          </main>
-          {settingsView === 'workspace' ? (
-            <WorkspaceSettings
-              actionSource={workspaceActions}
-              trash={{
-                actionSource: workspaceActions,
-                entries: snapshot.trash,
-                workspaceName,
-                unconfirmed: snapshot.trashUnconfirmed,
-                onRestore: async (entryId) => {
-                  const result = await applyWorkspaceAction({
-                    type: 'restore-file',
-                    entryId,
-                  });
-                  if (!result.ok)
-                    throw new Error(
-                      result.diagnostics.map((item) => item.message).join('; '),
-                    );
-                },
-                onPurge: async (entryIds) => {
-                  const result = await applyWorkspaceAction({
-                    type: 'purge-trash',
-                    entryIds,
-                  });
-                  if (!result.ok)
-                    throw new Error(
-                      result.diagnostics.map((item) => item.message).join('; '),
-                    );
-                },
-                onRetry: async () => {
-                  const result = workspaceActionCommandResult(
-                    await workspaceActions.executeAction(
-                      'workspace.trash.retry',
-                    ),
-                  );
-                  if (!result.ok)
-                    throw new Error(
-                      result.diagnostics.map((item) => item.message).join('; '),
-                    );
-                },
-              }}
-              locale={locale}
-              defaultName={defaultName}
-              config={{
-                name:
-                  typeof snapshot.config.value['name'] === 'string'
-                    ? snapshot.config.value['name']
-                    : undefined,
-                mindDefaultWidth:
-                  typeof snapshot.config.value['mindDefaultWidth'] === 'number'
-                    ? snapshot.config.value['mindDefaultWidth']
-                    : undefined,
-              }}
-              onConfig={(patch) =>
-                void workspaceActions.executeAction(
-                  'workspace.settings.patch',
-                  patch,
-                )
-              }
-              onBack={closeSettings}
-            />
-          ) : null}
-          {settingsView === 'my' ? (
-            <MyPage
-              onBack={closeMy}
-              backLabel={locale === 'zh' ? '返回工作区' : 'Back to workspace'}
-            />
-          ) : null}
-          <input
-            ref={importInput}
-            type="file"
-            accept=".json,.verd.json,.verd-doc.json,.md,.markdown"
-            hidden
-            onChange={(event) => void importDocument(event)}
-          />
-        </div>
-      </ActionScope>
-    </FrameAutoCalculationProvider>
+          </WorkspaceManagement>
+        </ActionScope>
+      </FrameAutoCalculationProvider>
+    </WorkspaceAssetScope>
   );
 }

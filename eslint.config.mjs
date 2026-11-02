@@ -12,6 +12,7 @@ import prettier from 'eslint-plugin-prettier/recommended';
 export default defineConfig([
   globalIgnores([
     '**/dist/**',
+    'apps/desktop/build/**',
     '**/dist-electron/**',
     '**/dist-electron-dev/**',
     '**/dist-electron-e2e/**',
@@ -74,7 +75,10 @@ export default defineConfig([
       ...jsxA11y.flatConfigs.recommended.rules,
       'react/prop-types': 'off',
       '@typescript-eslint/no-explicit-any': 'off',
-      '@typescript-eslint/no-unused-vars': 'off',
+      '@typescript-eslint/no-unused-vars': [
+        'error',
+        { args: 'none', caughtErrors: 'none', ignoreRestSiblings: true },
+      ],
       '@typescript-eslint/no-unused-expressions': 'off',
       '@typescript-eslint/no-empty-object-type': 'off',
       '@typescript-eslint/ban-ts-comment': 'off',

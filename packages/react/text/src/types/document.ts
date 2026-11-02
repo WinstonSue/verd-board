@@ -57,6 +57,11 @@ export interface DocumentHistoryAdapter {
 }
 
 export interface DocumentEditorProps {
+  folding?: import('../components/document/folding-store').DocumentFoldingAdapter;
+  foldingKey?: string;
+  onAttachmentFile?: import('../components/document/document-resources').DocumentResourceHost['store'];
+  renderAttachment?: import('../components/document/document-resources').DocumentResourceHost['renderAttachment'];
+  renderWebEmbed?: import('../components/document/document-resources').DocumentResourceHost['renderWebEmbed'];
   renderFrameReference?: import('../components/document/document-frame-reference').DocumentFrameReferenceRenderer;
   value: BoardTextDocument;
   readonly?: boolean;
@@ -120,6 +125,8 @@ export interface DocumentSearchMatch {
   from: number;
   to: number;
   index: number;
+  /** Formula source is searchable, but edited through its LaTeX dialog. */
+  replaceable?: boolean;
 }
 
 export interface DocumentSearchOptions {
@@ -131,6 +138,7 @@ export interface DocumentSearchOptions {
  * types so the workspace layer stays schema-agnostic.
  */
 export interface DocumentEditorController {
+  clearReveal?(): void;
   focus(position?: 'start' | 'end' | 'preserve'): void;
   commit(): BoardTextDocument;
   /** Waits for IME-safe content emission and the host's actual commit receipt. */

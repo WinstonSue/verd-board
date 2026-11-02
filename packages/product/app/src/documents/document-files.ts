@@ -1,4 +1,8 @@
 import {
+  isContentProperties,
+  type ContentProperties,
+} from './content-properties';
+import {
   Alignment,
   isBoardTextDocumentShape,
   type BoardTextDocument,
@@ -6,6 +10,7 @@ import {
 import type { CellId } from '@sue/board-core';
 import { isFrameFileV2, type FrameFileV2 } from '../frames/frame-files';
 import { DOCUMENT_FILE_SUFFIX, baseName } from '../host/workspace-host';
+export type { ContentProperties } from './content-properties';
 
 /**
  * Standalone rich-text document: a peer of the canvas `.verd.json` file.
@@ -14,6 +19,7 @@ import { DOCUMENT_FILE_SUFFIX, baseName } from '../host/workspace-host';
  * `text.id` in step.
  */
 export interface DocumentFileV1 {
+  properties?: ContentProperties;
   format: 'verd-document';
   version: 1;
   id: CellId;
@@ -30,6 +36,8 @@ export const isDocumentFileV1 = (value: unknown): value is DocumentFileV1 => {
   return (
     candidate.format === 'verd-document' &&
     candidate.version === 1 &&
+    (candidate.properties === undefined ||
+      isContentProperties(candidate.properties)) &&
     typeof candidate.id === 'string' &&
     !!candidate.id &&
     typeof candidate.title === 'string' &&
@@ -54,6 +62,11 @@ export const documentFileDiagnostic = (value: unknown): string | null => {
   };
   if (candidate.format !== 'verd-document')
     return `Unsupported format: ${String(candidate.format ?? 'missing')}`;
+  if (
+    candidate.properties !== undefined &&
+    !isContentProperties(candidate.properties)
+  )
+    return 'Document properties must contain string tags and optional string status/source';
   if (candidate.version !== 1)
     return `Unsupported document version: ${String(candidate.version ?? 'missing')}`;
   if (typeof candidate.id !== 'string' || !candidate.id)

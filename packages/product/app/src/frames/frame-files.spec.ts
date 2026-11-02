@@ -126,11 +126,6 @@ const legacyStore = (): CellStore => {
   );
 };
 
-const refIdsOf = (store: CellStore) =>
-  Object.values(store.cells)
-    .filter(isFrameReferenceCell)
-    .map((cell) => cell.id);
-
 const fileOf = (
   rootId: string,
   cells: Record<string, Cell>,
@@ -439,7 +434,7 @@ describe('frame-reference cells', () => {
       edit: true,
       connect: false,
     });
-    const runtime = createCellRuntime({ store }, createTestCellRegistry());
+    createCellRuntime({ store }, createTestCellRegistry());
     expect(testCellRegistry.get('frame-reference')).toBeDefined();
   });
 

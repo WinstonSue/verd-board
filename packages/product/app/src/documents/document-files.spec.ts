@@ -2,7 +2,6 @@ import { describe, expect, it } from 'vitest';
 import type { BoardTextDocument } from '@sue/board-common';
 import {
   createDocumentFile,
-  createDocumentText,
   documentDisplayName,
   documentFileDiagnostic,
   documentPathFor,

@@ -1,4 +1,4 @@
-import React, { act } from 'react';
+import { act } from 'react';
 import { createRoot } from 'react-dom/client';
 import { describe, expect, it, vi } from 'vitest';
 import {
@@ -9,7 +9,9 @@ import {
 import { ActionScope } from '@sue/board-react-actions';
 import type { TextChangeData } from '@sue/board-react-text';
 
-vi.mock('@sue/board-react-text', () => ({
+vi.mock('@sue/board-react-text', async () => ({
+  useRichTextLinks: (await import('../../text/src/rich-text-links'))
+    .useRichTextLinks,
   LineText: ({
     text,
     onChange,
@@ -126,7 +128,7 @@ describe('FrameTextEditor', () => {
       expect(body.style.color).toBe('rgb(71, 85, 105)');
       expect(body.style.paddingTop).toBe('');
       const toolbar = document.querySelector('[aria-label="Text formatting"]')!;
-      expect(toolbar.parentElement).toBe(document.body);
+      expect(toolbar).toBeNull();
       await act(async () => {
         body.dispatchEvent(
           new KeyboardEvent('keydown', {

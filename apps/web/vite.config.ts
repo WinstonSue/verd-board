@@ -1,3 +1,4 @@
+import { pdfAssets } from '../../scripts/pdf-assets';
 /// <reference types='vitest' />
 import { defineConfig } from 'vitest/config';
 import react from '@vitejs/plugin-react';
@@ -14,14 +15,16 @@ export default defineConfig({
   server: {
     port: 7200,
     host: 'localhost',
+    headers: { 'Content-Security-Policy': "frame-ancestors 'none'" },
   },
 
   preview: {
     port: 4300,
     host: 'localhost',
+    headers: { 'Content-Security-Policy': "frame-ancestors 'none'" },
   },
 
-  plugins: [react()],
+  plugins: [react(), pdfAssets()],
 
   build: {
     outDir: './dist',

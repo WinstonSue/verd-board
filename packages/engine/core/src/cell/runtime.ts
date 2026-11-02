@@ -1,10 +1,12 @@
 import {
-  applyCellOperations,
+  resolvePreparedCellOperations,
   commitCellOperations,
   createCellRegistry,
   emptyCellHistory,
   emptySelection,
   indexCells,
+  changedCellIds,
+  updateCellIndex,
   redoCells,
   undoCells,
   type CellOperation,
@@ -96,10 +98,17 @@ export const createCellRuntime = (
   let selection: CellSelection = emptySelection(store.rootId);
   let revision = 0;
   let mountedRootId = store.rootId;
+  const ensureIndex = () => {
+    if (indexedStore !== store) {
+      cachedIndex = updateCellIndex(indexedStore, store, cachedIndex, registry);
+      indexedStore = store;
+    }
+    return cachedIndex;
+  };
   const reconcileSelection = () => {
     if (store.cells[mountedRootId]?.cellType !== 'frame')
       mountedRootId = store.rootId;
-    const index = indexCells(store, registry);
+    const index = ensureIndex();
     const focus = [mountedRootId];
     if (selection.focus[0] === mountedRootId) {
       for (const id of selection.focus.slice(1)) {
@@ -154,11 +163,7 @@ export const createCellRuntime = (
       return { store };
     },
     get index() {
-      if (indexedStore !== store) {
-        indexedStore = store;
-        cachedIndex = indexCells(store, registry);
-      }
-      return cachedIndex;
+      return ensureIndex();
     },
     get selection() {
       return selection;
@@ -185,14 +190,15 @@ export const createCellRuntime = (
         listeners.delete(listener);
       };
     },
-    transact(transaction: CellTransaction): CellChange {
+    transact(transaction: CellTransaction, prepared?: CellStore): CellChange {
       const committed =
         transaction.history === false
           ? {
-              store: applyCellOperations(
+              store: resolvePreparedCellOperations(
                 store,
                 transaction.operations,
                 registry,
+                prepared,
               ),
               history,
             }
@@ -201,8 +207,10 @@ export const createCellRuntime = (
               history,
               transaction.operations,
               registry,
-              { restoreView: transaction.restoreView },
+              { restoreView: transaction.restoreView, prepared },
             );
+      if (!changedCellIds(store, committed.store).length)
+        return { snapshot: { store }, transaction };
       store = committed.store;
       history = committed.history;
       reconcileSelection();
@@ -221,7 +229,7 @@ export const createCellRuntime = (
       notify();
     },
     select(next: CellSelection) {
-      const index = indexCells(store, registry);
+      const index = ensureIndex();
       if (!next.focus.length || next.focus[0] !== mountedRootId)
         throw new Error('Selection must start at mounted root');
       next.focus.forEach((id, at) => {

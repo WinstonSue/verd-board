@@ -14,11 +14,15 @@ const camera = async (page: Page) => {
   return { zoom: values[0], x: -values[1], y: -values[2] };
 };
 const skipTutorial = async (page: Page) => {
+  await expect(page.locator('.workspace-shell')).toBeVisible();
+  if (!(await canvas(page).isVisible()))
+    await page.locator('.file-tree-row[data-entry-kind=file]').first().click();
   await expect(canvas(page)).toBeVisible();
   const skip = page.getByRole('button', { name: /^(跳过|Skip)$/ });
   if (await skip.isVisible()) await skip.click();
 };
 const slider = async (page: Page, name: string, value: string) => {
+  await page.getByTestId('settings-nav-personal.editor').click();
   const input = page.getByTestId(`settings-${name}`);
   // Playwright fill() does not support range controls; use native value setter
   // and the browser input event, which also exercises React's change handler.
@@ -52,7 +56,7 @@ test('More is the only low-frequency entry on wide and narrow screens and suppor
       '图像导出',
       '文本导入',
       '清空',
-      '我的',
+      '设置',
     ])
       await expect(
         toolbar.getByRole('button', { name: label, exact: true }),
@@ -84,7 +88,7 @@ test('More is the only low-frequency entry on wide and narrow screens and suppor
     ).toBeFocused();
     await page.keyboard.press('ArrowUp');
     await expect(
-      menu.getByRole('menuitem', { name: '我的', exact: true }),
+      menu.getByRole('menuitem', { name: '设置', exact: true }),
     ).toBeFocused();
     await page.keyboard.press('Enter');
     await expect(page.getByTestId('my-page')).toBeVisible();
@@ -125,8 +129,8 @@ test('settings preserve the mounted canvas, selection, viewport, tool, and undo 
   );
   const settings = await openSettings(page);
   const bounds = (await settings.boundingBox())!;
-  expect(bounds.width).toBe(page.viewportSize()!.width);
-  expect(bounds.height).toBe(page.viewportSize()!.height);
+  expect(bounds.width).toBeLessThanOrEqual(1040);
+  expect(bounds.height).toBeLessThanOrEqual(760);
   await settings.getByTestId('my-back').focus();
   for (const key of [
     'h',
@@ -139,7 +143,7 @@ test('settings preserve the mounted canvas, selection, viewport, tool, and undo 
   await settings.getByTestId('settings-language').selectOption('en');
   await settings.getByTestId('settings-appearance').selectOption('dark');
   await expect(
-    settings.getByRole('heading', { name: 'My', exact: true }),
+    settings.getByRole('heading', { name: 'Settings', exact: true }),
   ).toBeVisible();
 
   await page.getByTestId('my-back').click();
@@ -160,6 +164,7 @@ test('settings preserve the mounted canvas, selection, viewport, tool, and undo 
   );
   await page.reload();
   await openSettings(page);
+  await page.getByTestId('settings-nav-personal.general').click();
   await expect(page.getByTestId('settings-language')).toHaveValue('en');
 });
 
@@ -242,19 +247,29 @@ test('interaction settings update gestures immediately, persist, and reset indep
   );
   await page.reload();
   await openSettings(page);
+  await page.getByTestId('settings-nav-personal.editor').click();
   await expect(page.getByTestId('settings-zoomSensitivity')).toHaveValue('0.5');
   await expect(page.getByTestId('settings-dragPanSpeed')).toHaveValue('2');
+  await page.getByTestId('settings-nav-personal.general').click();
   await page.getByTestId('settings-language').selectOption('en');
+  await page.getByTestId('settings-nav-personal.editor').click();
   await page.getByRole('button', { name: 'Reset interaction speeds' }).click();
+  await page.getByTestId('settings-nav-personal.editor').click();
   await expect(page.getByTestId('settings-zoomSensitivity')).toHaveValue('1');
   await expect(page.getByTestId('settings-dragPanSpeed')).toHaveValue('1');
+  await page.getByTestId('settings-nav-personal.general').click();
   await expect(page.getByTestId('settings-language')).toHaveValue('en');
   expect(
     await page.evaluate(
       (key) => JSON.parse(localStorage.getItem(key)!),
       preferenceKey,
     ),
-  ).toEqual({ zoomSensitivity: 1, dragPanSpeed: 1, smartGuides: true });
+  ).toEqual({
+    zoomSensitivity: 1,
+    dragPanSpeed: 1,
+    smartGuides: true,
+    linkActivation: 'modifier',
+  });
 });
 
 for (const [tool, workspace, exportLabel] of [
@@ -281,7 +296,7 @@ for (const [tool, workspace, exportLabel] of [
     await expect(
       menu.getByRole('menuitem', { name: exportLabel, exact: true }),
     ).toBeVisible();
-    await menu.getByRole('menuitem', { name: '我的', exact: true }).click();
+    await menu.getByRole('menuitem', { name: '设置', exact: true }).click();
 
     await slider(page, 'zoomSensitivity', '1.5');
 
@@ -298,6 +313,7 @@ for (const [tool, workspace, exportLabel] of [
       .toBeCloseTo(Math.min(8, original.zoom * Math.exp(0.15)));
     await backToPreviousCanvas(page);
     await openSettings(page);
+    await page.getByTestId('settings-nav-personal.editor').click();
     await expect(page.getByTestId('settings-zoomSensitivity')).toHaveValue(
       '1.5',
     );
@@ -323,11 +339,11 @@ test('readonly allows settings and export while disabling destructive menu actio
     await expect(
       menu.getByRole('menuitem', { name: label, exact: true }),
     ).toBeDisabled();
-  for (const label of ['导出', '图像导出', '我的'])
+  for (const label of ['导出', '图像导出', '设置'])
     await expect(
       menu.getByRole('menuitem', { name: label, exact: true }),
     ).toBeEnabled();
-  await menu.getByRole('menuitem', { name: '我的', exact: true }).click();
+  await menu.getByRole('menuitem', { name: '设置', exact: true }).click();
 
   await slider(page, 'dragPanSpeed', '0.5');
 
@@ -351,6 +367,31 @@ test('invalid stored preferences fall back and numeric outliers are clamped', as
   await page.goto('/');
   await skipTutorial(page);
   await openSettings(page);
+  await page.getByTestId('settings-nav-personal.editor').click();
   await expect(page.getByTestId('settings-zoomSensitivity')).toHaveValue('1');
   await expect(page.getByTestId('settings-dragPanSpeed')).toHaveValue('3');
+});
+
+test('unified settings search navigates between personal and project fields in one dialog', async ({
+  page,
+}) => {
+  await page.goto('/');
+  await expect(page.locator('.workspace-shell')).toBeVisible();
+  await page.getByTestId('workspace-my').click();
+  const settings = page.getByTestId('my-page');
+  await expect(settings.getByTestId('settings-language')).toBeVisible();
+  await settings.getByTestId('settings-search').fill('项目简介');
+  await settings.locator('.settings-search-result').click();
+  await expect(page.getByRole('dialog')).toHaveCount(1);
+  await expect(
+    page.getByTestId('workspace-settings-description'),
+  ).toBeFocused();
+  await settings.getByTestId('settings-nav-workspace.project').click();
+  await expect(
+    settings.getByRole('combobox', { name: '宽度来源' }),
+  ).toBeVisible();
+  await settings.getByTestId('settings-nav-personal.general').click();
+  await expect(settings.getByTestId('settings-language')).toBeVisible();
+  await page.getByTestId('my-back').click();
+  await expect(page.getByTestId('workspace-my')).toBeFocused();
 });

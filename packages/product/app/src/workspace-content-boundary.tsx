@@ -1,3 +1,4 @@
+import { Disclosure, SettingsActions } from '@sue/verd-board-ui';
 import { Component, useState, type ReactNode } from 'react';
 
 export function WorkspaceFileError({
@@ -20,29 +21,21 @@ export function WorkspaceFileError({
     <section
       role="alert"
       data-testid="workspace-file-error"
-      style={{
-        padding: 24,
-        overflow: 'auto',
-        maxHeight: '100%',
-        boxSizing: 'border-box',
-      }}
+      className="workspace-error-card"
     >
       <h3>{en ? 'Unable to display this file' : '此文件暂时无法显示'}</h3>
-      {path && <p style={{ overflowWrap: 'anywhere' }}>{path}</p>}
+      {path && <p>{path}</p>}
       <p>{message.split(/[\n;]/, 1)[0]}</p>
       <p>
         {en
           ? 'Other workspace files remain available. Retry after fixing the source file.'
           : '其他文件仍可使用。源文件修复后可以重试。'}
       </p>
-      <details>
-        <summary>{en ? 'Error details' : '错误详情'}</summary>
-        <pre style={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>
-          {message}
-        </pre>
-      </details>
+      <Disclosure label={en ? 'Error details' : '错误详情'}>
+        <pre>{message}</pre>
+      </Disclosure>
       {retryError && <p>{retryError}</p>}
-      <div style={{ display: 'flex', gap: 8, marginTop: 16 }}>
+      <SettingsActions>
         {onRetry && (
           <button
             type="button"
@@ -69,7 +62,7 @@ export function WorkspaceFileError({
             {en ? 'Close' : '关闭'}
           </button>
         )}
-      </div>
+      </SettingsActions>
     </section>
   );
 }

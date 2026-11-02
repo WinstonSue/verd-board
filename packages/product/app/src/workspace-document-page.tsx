@@ -149,6 +149,7 @@ export function WorkspaceDocumentPage({
       failuresRevision,
       preview.active,
       preview.locale,
+      preview.linkActivation,
       preview.exporting,
       preview.history,
       preview.scroll,

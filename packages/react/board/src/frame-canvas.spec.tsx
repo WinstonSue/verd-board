@@ -4,7 +4,6 @@ import {
   createCellStore,
   createFrameCell,
   frameContentViewport,
-  isNodeCell,
   NodeUtil,
   type Cell,
   type CellStore,
@@ -702,24 +701,6 @@ describe('FrameCanvas', () => {
   });
   it('selects a pasted cell for either host arrival order and ignores a rejected or superseded request', async () => {
     const adapter = { toFrameSnapshot: (value: FrameSnapshot) => value };
-    const pasted = (value: FrameSnapshot, id: string): FrameSnapshot => ({
-      store: applyCellOperations(
-        value.store,
-        [
-          {
-            type: 'insert_cell',
-            parentId: 'root',
-            cell: {
-              id,
-              kind: 'geometry',
-              cellType: 'node',
-              geometry: { x: 200, y: 10, width: 40, height: 20 },
-            },
-          },
-        ],
-        testCellRegistry,
-      ),
-    });
     const run = async (
       order: 'accept-first' | 'write-first' | 'reject' | 'reselect' | 'delay',
     ) => {

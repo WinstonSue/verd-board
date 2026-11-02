@@ -319,7 +319,7 @@ describe('agent patterns and real authoring contracts', () => {
     expect(
       validateNativeWorkspace((await readNativeSnapshot(root)).entries),
     ).toEqual([]);
-    const trash = await fs.readdir(path.join(root, '.verdboard/trash'));
+    const trash = await fs.readdir(path.join(root, '.verdscrolls/trash'));
     expect(trash.length).toBeGreaterThan(0);
   });
   it('ships a complete native workspace and explanations for actual rule IDs', async () => {
@@ -327,7 +327,15 @@ describe('agent patterns and real authoring contracts', () => {
       fileURLToPath(patternWorkspaceUrl),
     );
     expect(validateNativeWorkspace(snapshot.entries)).toEqual([]);
-    expect(patterns).toHaveLength(9);
+    expect(patterns).toHaveLength(13);
+    expect(patterns.map((pattern) => pattern.id)).toEqual(
+      expect.arrayContaining([
+        'technical-proposal',
+        'adr',
+        'system-design',
+        'requirements',
+      ]),
+    );
     for (const rule of patternRules)
       expect(Object.keys(WORKSPACE_RULES)).toContain(rule.id);
     for (const pattern of patterns) {

@@ -1,7 +1,4 @@
 import {
-  resolveCellAppearance,
-  resolveBoardTheme,
-  type ResolvedBoardTheme,
   isNodeCell,
   polylinePath,
   type NodeCell,
@@ -9,10 +6,15 @@ import {
   type Point,
 } from '@sue/board-core';
 import { drawCellShapePaths } from '@sue/board-draw';
-import type { FrameRenderExtension } from '@sue/board-react';
+import type {
+  FrameRenderContext,
+  FrameRenderExtension,
+  ResolvedFrameCellAppearance,
+} from '@sue/board-react';
 import { memo, type ReactElement } from 'react';
 import { FrameTable } from './frame-table';
 import { FrameVectorLine } from './frame-vector-line';
+import { drawThemeAppearance, resolveDrawAppearance } from './frame-draw-theme';
 // These leaves only use immutable content inputs. Reusing their elements also
 // lets the camera selector skip JSX allocation and repeated props comparisons.
 const freehandElements = new WeakMap<
@@ -43,7 +45,7 @@ const roughElement = (
   cell: NodeCell,
   geometry: NodeGeometry,
   selected: boolean,
-  theme?: ResolvedBoardTheme,
+  visual: ResolvedFrameCellAppearance,
 ) => {
   let geometries = roughElements.get(cell);
   if (!geometries) {
@@ -52,7 +54,6 @@ const roughElement = (
   }
   let variants = geometries.get(geometry);
   if (!variants) geometries.set(geometry, (variants = new Map()));
-  const visual = resolveCellAppearance(cell, theme ?? resolveBoardTheme());
   const colors = JSON.stringify([visual.fill, visual.strokeColor]);
   let elements = variants.get(colors);
   if (!elements) variants.set(colors, (elements = {}));
@@ -90,24 +91,40 @@ export const frameDrawExtensions: FrameRenderExtension[] = [
   },
   {
     kind: 'geometry',
-    renderShapeCacheKey: ({ cell, geometry, selected, theme }) => [
+    themeAppearance: drawThemeAppearance,
+    renderShapeCacheKey: ({
+      cell,
+      geometry,
+      selected,
       theme,
+      resolvedAppearance,
+    }) => [
+      theme,
+      resolvedAppearance?.fill,
+      resolvedAppearance?.strokeColor,
       cell,
       geometry,
       selected,
     ],
-    renderShape: ({ cell, geometry, selected, theme }) =>
-      isNodeCell(cell) && geometry
-        ? roughElement(cell, geometry, selected, theme)
+    renderShape: (context: FrameRenderContext) =>
+      isNodeCell(context.cell) && context.geometry
+        ? roughElement(
+            context.cell,
+            context.geometry,
+            context.selected,
+            resolveDrawAppearance(context),
+          )
         : null,
   },
-  { ...path, kind: 'freehand' },
+  { ...path, kind: 'freehand', themeAppearance: drawThemeAppearance },
   {
     kind: 'vector-line',
+    themeAppearance: drawThemeAppearance,
     render: (context) => <FrameVectorLine {...context} />,
   },
-  { ...table, kind: 'table' },
-  { ...table, kind: 'swimlane' },
+  { ...table, kind: 'table', themeAppearance: drawThemeAppearance },
+  { ...table, kind: 'swimlane', themeAppearance: drawThemeAppearance },
+  { kind: 'arrow', themeAppearance: drawThemeAppearance },
 ];
 
 const FreehandPath = memo(function FreehandPath({

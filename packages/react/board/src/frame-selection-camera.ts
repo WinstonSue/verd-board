@@ -24,7 +24,7 @@ interface CameraLayout {
   getGeometry(id: string): NodeGeometry | undefined;
 }
 
-/** Resolve only mounted selection targets, in the mounted canvas's world. */
+/** Resolve selection targets from scene geometry, including unmounted cells. */
 export function frameSelectionWorldBounds({
   svg,
   world,
@@ -34,6 +34,7 @@ export function frameSelectionWorldBounds({
   parentOf,
   layouts,
   includeEdges = false,
+  allowUnmounted = false,
 }: {
   svg: SVGSVGElement;
   world: SVGGElement | null;
@@ -43,6 +44,7 @@ export function frameSelectionWorldBounds({
   parentOf: ReadonlyMap<string, string>;
   layouts(id: string): CameraLayout;
   includeEdges?: boolean;
+  allowUnmounted?: boolean;
 }): RectangleClient | null {
   if (!ids.length) return null;
   const elements = new Map(
@@ -62,7 +64,11 @@ export function frameSelectionWorldBounds({
       return;
     }
     const element = elements.get(id);
-    if ((!isNodeCell(cell) && !isEdgeCell(cell)) || !element) return;
+    if (
+      (!isNodeCell(cell) && !isEdgeCell(cell)) ||
+      (!element && !allowUnmounted)
+    )
+      return;
     const owner = parentOf.get(id);
     if (!owner) return;
     const layout = layouts(owner);
@@ -122,7 +128,7 @@ export function frameSelectionWorldBounds({
       [bounds.x + bounds.width, bounds.y + bounds.height],
     ];
     try {
-      const matrix = element.getScreenCTM?.();
+      const matrix = element?.getScreenCTM?.();
       const inverse = world?.getScreenCTM?.()?.inverse();
       if (matrix && inverse) {
         const transform = (point: Point, value: DOMMatrix): Point => [

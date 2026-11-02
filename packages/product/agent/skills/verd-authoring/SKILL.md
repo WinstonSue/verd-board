@@ -5,7 +5,11 @@ description: Create, edit, validate, and preview VerdBoard native documents and 
 
 # VerdBoard authoring
 
-Use the installed `verd` CLI against the requested workspace. `verd describe --json` exposes the installed operation schema, editor nodes/marks and cell kinds; `verd rules --json` explains diagnostics. Avoid inferring constraints from old examples or reverse engineering the desktop binary.
+First read the root `AGENTS.md` managed guide and run `.verdscrolls/shared/bin/verd context --json` from the project root (Windows: `.verdscrolls\shared\bin\verd.cmd context --json`). This project-local launcher carries its own Node runtime; do not assume a global `verd` or Node installation. In the commands below, `verd` means that launcher. Use `context` for the project identity, description, reading entries, current file identities and installed specification version. Empty description/entry fields mean the user has not provided them; do not invent project policy. Open the entry documents before choosing a pattern.
+
+Commands discover the nearest initialized ancestor from a subdirectory and stop at an uninitialized Git root. An explicit `--workspace` takes precedence. `verd doctor` only inspects; `verd init` and `verd doctor --repair` may initialize/migrate metadata and repair the managed guide/shared link. Missing links should be repaired by reopening the folder in Desktop or using `--shared <resource-directory>` from an installed launcher. Preserve all text outside the VerdScrolls managed AGENTS block. Do not edit the shared resource bundle; the pattern library browsing copy is separate.
+
+Use the installed CLI against the requested workspace. `verd describe --json` exposes the installed operation schema, editor nodes/marks and cell kinds; `verd rules --json` explains diagnostics. Avoid inferring constraints from old examples or reverse engineering the desktop binary.
 
 Select a pattern with `verd patterns --json` or inspect its entry with `verd patterns <id> --json`. To browse editable examples, initialize a separate copy with `verd patterns workspace --dest <new-directory>`. Edits to this copy do not change the CLI's installed templates or the source package.
 
@@ -25,4 +29,4 @@ Treat Markdown/Mermaid as creation/exchange inputs; preserve existing native str
 
 Resolve error diagnostics before applying. Basic visual warnings need inspection of the rendered image; a valid schema alone does not establish readable layout. Browser installation is only needed for preview: `verd preview --install-browser`.
 
-A version conflict requires reading the latest workspace and preparing a fresh plan. Do not edit the old plan's version token or integrity. If commit outcome is unconfirmed, retry the exact same plan/transaction to confirm it. A successful apply is a saved local change; it does not publish or commit Git changes.
+A shared resource upgrade invalidates uncommitted plans; generate a new plan. Confirmed receipts remain available by transaction ID after metadata migration. A version conflict requires reading the latest workspace and preparing a fresh plan. Do not edit the old plan's version token or integrity. If commit outcome is unconfirmed, retry the exact same plan/transaction to confirm it. A successful apply is a saved local change; it does not publish or commit Git changes.

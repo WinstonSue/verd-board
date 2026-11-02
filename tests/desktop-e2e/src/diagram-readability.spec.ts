@@ -19,13 +19,16 @@ test('package connectors keep canonical routes, show bridges and highlight relat
         !path
           .relative(path.join(root, 'workspace'), file)
           .split(path.sep)
-          .includes('.verdboard'),
+          .includes('.verdscrolls'),
     });
     const filename = path.join(
       workspace,
       '架构图/细节/01-项目分层与依赖/01.1-完整包分层与依赖.verd.json',
     );
     const original = await readFile(filename, 'utf8');
+    const edgeCount = Object.values<{ cellType: string }>(
+      JSON.parse(original).cells,
+    ).filter((cell) => cell.cellType === 'edge').length;
     const launcher = path.join(directory, 'launch.cjs');
     await writeDesktopLauncher(launcher, userData);
     const env = { ...process.env, VERDBOARD_WORKSPACE_PATH: workspace };
@@ -62,7 +65,7 @@ test('package connectors keep canonical routes, show bridges and highlight relat
         canvas.locator(
           '[data-edge-hit]:not([data-document-preview-scroll] [data-edge-hit])',
         ),
-      ).toHaveCount(41);
+      ).toHaveCount(edgeCount);
       await setAppLanguage(page, 'zh');
       await page
         .getByTestId('canvas-status-fit')

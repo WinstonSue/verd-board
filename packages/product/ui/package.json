@@ -7,7 +7,7 @@
   "scripts": {
     "build": "vite build",
     "dev": "node -e \"process.exit(0)\"",
-    "lint": "eslint src",
+    "lint": "eslint src && node ../../../scripts/check-ui-styles.mjs",
     "test": "vitest run --passWithNoTests"
   },
   "dependencies": {

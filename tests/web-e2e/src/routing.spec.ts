@@ -128,7 +128,7 @@ const savedCells = async (page: Page) => {
   return ws?.records?.[ws.manifest?.rootId]?.cells ?? {};
 };
 
-test('an unrelated obstacle reroutes during drag preview, undo/redo, refresh and export', async ({
+test('an unrelated obstacle keeps a lightweight preview and reroutes on commit, undo/redo, refresh and export', async ({
   page,
 }) => {
   await loadFixture(page, diagramFixture());
@@ -158,8 +158,8 @@ test('an unrelated obstacle reroutes during drag preview, undo/redo, refresh and
   await page.mouse.move(position.x + 180 * position.scale, position.y, {
     steps: 5,
   });
-  // Both terminals remain unchanged; the route must update before pointerup.
-  await expect(path).toHaveAttribute('d', 'M50 50 L50 300');
+  // Unconnected routes reuse settled geometry during the lightweight preview.
+  await expect(path).toHaveAttribute('d', original);
   await page.mouse.up();
   await expect(path).toHaveAttribute('d', 'M50 50 L50 300');
   await page.getByRole('button', { name: '撤销', exact: true }).click();
@@ -188,7 +188,8 @@ test('embedded routing fits the full detour, matches detail and exports the same
   page,
 }) => {
   await loadFixture(page, diagramFixture(true));
-  const path = edgePath(page);
+  // Read-only embedded scenes intentionally have no interaction hit paths.
+  const path = canvas(page).locator('[data-edge-display="edge"]');
   await expect(path).toHaveAttribute('d', /L/);
   const original = (await path.getAttribute('d'))!;
   expect(original).not.toBe('M50 50 L50 300');
@@ -223,6 +224,7 @@ test('embedded routing fits the full detour, matches detail and exports the same
     .locator('[data-cell-id="frame-ref:diagram"] [data-frame-title-id]')
     .click();
   await page.getByTestId('frame-open').locator('visible=true').click();
+  await expect(edgePath(page)).toHaveAttribute('d', /L/);
   await expect(path).toHaveAttribute('d', original);
   await expect(display).toHaveAttribute('d', displayPath!);
   expect(await exportedSvg(page)).toContain(`d="${displayPath}"`);
@@ -513,3 +515,63 @@ for (const { background, opacity, color } of ['#000000', '#6366f1'].flatMap(
     expect(await savedCells(page)).toEqual(saved);
   });
 }
+
+test('a five-thousand-node canvas virtualizes at reading zoom and exports offscreen cells', async ({
+  page,
+}) => {
+  test.setTimeout(120000);
+  const root = createFrameCell('root');
+  const store = createCellStore(root);
+  for (let i = 0; i < 5000; i++) {
+    const id = `load-node-${i}`;
+    root.children.push(id);
+    store.cells[id] = {
+      id,
+      kind: 'geometry',
+      cellType: 'node',
+      geometry: {
+        x: (i % 100) * 160,
+        y: Math.floor(i / 100) * 100,
+        width: 100,
+        height: 50,
+      },
+      content: { label: `Load node ${i}` },
+    };
+  }
+  await loadFixture(page, { store });
+  await expect(
+    canvas(page).locator('[data-cell-id^="load-node-"]').first(),
+  ).toBeAttached();
+  // Zoom around an actual visible node, preserving the native pointer anchor.
+  await canvas(page).evaluate((svg) => {
+    const area = svg.getBoundingClientRect();
+    const node = Array.from(
+      svg.querySelectorAll('[data-cell-id^="load-node-"]'),
+    )
+      .map((element) => element.getBoundingClientRect())
+      .find(
+        (rect) =>
+          rect.left >= area.left &&
+          rect.top >= area.top &&
+          rect.right <= area.right &&
+          rect.bottom <= area.bottom,
+      );
+    if (!node) throw new Error('No visible node for anchored zoom');
+    svg.dispatchEvent(
+      new WheelEvent('wheel', {
+        bubbles: true,
+        cancelable: true,
+        ctrlKey: true,
+        deltaY: -230,
+        clientX: node.x + node.width / 2,
+        clientY: node.y + node.height / 2,
+      }),
+    );
+  });
+  const mounted = canvas(page).locator('[data-cell-id^="load-node-"]');
+  await expect.poll(() => mounted.count()).toBeGreaterThan(0);
+  await expect.poll(() => mounted.count()).toBeLessThan(500);
+  const svg = await exportedSvg(page);
+  expect(svg).toContain('Load node 0');
+  expect(svg).toContain('Load node 4999');
+});

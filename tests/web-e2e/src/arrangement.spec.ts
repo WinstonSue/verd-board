@@ -71,9 +71,18 @@ async function openFixture(page: Page, snapshot = fixture()) {
       mimeType: 'application/json',
       buffer: Buffer.from(JSON.stringify(snapshot)),
     });
+  // Importing retains the workspace Home view; explicitly open the imported file.
+  const active = page.getByRole('tab', { selected: true }).first();
+  await expect(active).toBeVisible();
+  const fileId = await active.getAttribute('data-tab-id');
+  if (!fileId) throw new Error('Missing imported canvas tab identity');
+  await page
+    .locator(`[data-file-id=${JSON.stringify(fileId)}] .file-tree-name`)
+    .click();
   await expect(
     canvas(page).locator('[data-cell-kind]').filter({ hasText: 'A' }).first(),
   ).toBeVisible();
+  await page.getByTestId('canvas-status-fit').locator('visible=true').click();
   await expect(page.getByTestId('save-status')).toHaveAttribute(
     'data-save-state',
     'saved',
@@ -134,12 +143,12 @@ test('localized alignment, distribution and partial/all layouts save exact scope
   await (
     await panel(page)
   )
-    .getByLabel('自动排列样式', { exact: true })
+    .getByLabel('节点布局方式', { exact: true })
     .selectOption('vertical');
   await (
     await panel(page)
   )
-    .getByRole('button', { name: '自动排列', exact: true })
+    .getByRole('button', { name: '布局节点', exact: true })
     .click();
   await expect
     .poll(async () => byLabel(await saved(page), 'B').geometry.y)
@@ -152,12 +161,12 @@ test('localized alignment, distribution and partial/all layouts save exact scope
   await (
     await panel(page)
   )
-    .getByLabel('自动排列样式', { exact: true })
+    .getByLabel('节点布局方式', { exact: true })
     .selectOption('grid');
   await (
     await panel(page)
   )
-    .getByRole('button', { name: '自动排列', exact: true })
+    .getByRole('button', { name: '布局节点', exact: true })
     .click();
   await expect
     .poll(async () => (await saved(page))[nestedReference.id].geometry)
@@ -200,12 +209,12 @@ test('keyboard groups remain rigid in layouts, allow drill-down and independentl
   await (
     await panel(page)
   )
-    .getByLabel('自动排列样式', { exact: true })
+    .getByLabel('节点布局方式', { exact: true })
     .selectOption('vertical');
   await (
     await panel(page)
   )
-    .getByRole('button', { name: '自动排列', exact: true })
+    .getByRole('button', { name: '布局节点', exact: true })
     .click();
   const after = await saved(page);
   expect([
@@ -423,18 +432,18 @@ for (const scene of ['workflow', 'architecture'] as const) {
     const blocked = scene === 'workflow' ? 'flow' : 'layers';
     await expect(
       (await panel(page))
-        .getByLabel('自动排列样式', { exact: true })
+        .getByLabel('节点布局方式', { exact: true })
         .locator(`option[value="${blocked}"]`),
     ).toHaveAttribute('disabled', '');
     await (
       await panel(page)
     )
-      .getByLabel('自动排列样式', { exact: true })
+      .getByLabel('节点布局方式', { exact: true })
       .selectOption('horizontal');
     await (
       await panel(page)
     )
-      .getByRole('button', { name: '自动排列', exact: true })
+      .getByRole('button', { name: '布局节点', exact: true })
       .click();
     const data = await saved(page);
     const owners = Object.values(data).filter((cell) =>

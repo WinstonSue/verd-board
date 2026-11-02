@@ -1,3 +1,4 @@
+import { memoizeCellValidationRead } from './validation-read-context';
 import {
   createEdgeRoutingContext,
   edgePolyline,
@@ -16,6 +17,80 @@ import {
   type CellStore,
   type NodeGeometry,
 } from './types';
+
+/** A calculation-scoped hierarchy. Recreate after changing the store; no global cache. */
+export interface CellHierarchy {
+  readonly groupOf: ReadonlyMap<CellId, CellId>;
+  readonly parentOf: ReadonlyMap<CellId, CellId>;
+  groupAncestors(id: CellId): CellId[];
+  lockedByAncestor(id: CellId): boolean;
+}
+
+export function createCellHierarchy(
+  store: CellStore,
+  index?: Pick<CellHierarchy, 'groupOf' | 'parentOf'>,
+): CellHierarchy {
+  const groups = new Map<CellId, CellId>();
+  const frames = new Map<CellId, CellId>();
+  if (!index)
+    for (const cell of Object.values(store.cells)) {
+      if (isGroupCell(cell))
+        for (const id of cell.members)
+          if (!groups.has(id)) groups.set(id, cell.id);
+      if (isFrameCell(cell))
+        for (const id of [...cell.children, ...cell.groups])
+          if (!frames.has(id)) frames.set(id, cell.id);
+    }
+  const groupOf = index?.groupOf ?? groups;
+  const parentOf = index?.parentOf ?? frames;
+  const locks = new Map<CellId, boolean>();
+  const locked = (
+    id: CellId,
+    seen: Set<CellId>,
+    state: { cyclic: boolean },
+  ): boolean => {
+    if (seen.has(id)) {
+      state.cyclic = true;
+      return false;
+    }
+    const cached = locks.get(id);
+    if (cached !== undefined) return cached;
+    seen.add(id);
+    const result = [groupOf.get(id), parentOf.get(id)].some(
+      (owner) =>
+        !!owner && (!!store.cells[owner]?.locked || locked(owner, seen, state)),
+    );
+    seen.delete(id);
+    // A cycle can make a negative result depend on the current traversal path.
+    if (result || !state.cyclic) locks.set(id, result);
+    return result;
+  };
+  return {
+    groupOf,
+    parentOf,
+    groupAncestors(id) {
+      const ancestors: CellId[] = [],
+        seen = new Set<CellId>();
+      let owner = groupOf.get(id);
+      while (owner && !seen.has(owner)) {
+        seen.add(owner);
+        ancestors.push(owner);
+        owner = groupOf.get(owner);
+      }
+      return ancestors;
+    },
+    lockedByAncestor: (id) => locked(id, new Set(), { cyclic: false }),
+  };
+}
+
+const hierarchyRead = Symbol('validation-hierarchy');
+const validationHierarchy = (store: CellStore) =>
+  memoizeCellValidationRead<CellHierarchy | undefined>(
+    store,
+    hierarchyRead,
+    () => createCellHierarchy(store),
+    () => undefined,
+  );
 
 /** Direct membership only. Nested groups stay registered on the owning frame. */
 export const groupLeafMembers = (
@@ -42,6 +117,8 @@ export const directGroupOf = (
   )?.id;
 
 export const groupAncestors = (store: CellStore, id: CellId): CellId[] => {
+  const hierarchy = validationHierarchy(store);
+  if (hierarchy) return hierarchy.groupAncestors(id);
   const ancestors: CellId[] = [];
   const seen = new Set<string>();
   let owner = directGroupOf(store, id);
@@ -68,6 +145,8 @@ export const groupHasLockedLeaf = (
 };
 
 export const lockedByAncestor = (store: CellStore, id: CellId): boolean => {
+  const hierarchy = validationHierarchy(store);
+  if (hierarchy) return hierarchy.lockedByAncestor(id);
   const seen = new Set<string>();
   const visit = (childId: string): boolean => {
     if (seen.has(childId)) return false;
@@ -234,13 +313,15 @@ export const selectionObjectAtFocus = (
 export const focusedCellIds = (
   store: CellStore,
   focusedId: CellId,
+  hierarchy?: CellHierarchy,
 ): CellId[] => {
   let focused = store.cells[focusedId];
   if (isFrameReferenceCell(focused))
     focused = store.cells[focused.data.targetFrameId];
   if (isGroupCell(focused)) return focused.members;
   if (!isFrameCell(focused)) return [];
+  const groups = (hierarchy ?? createCellHierarchy(store)).groupOf;
   return [...focused.children, ...focused.groups].filter(
-    (id) => !directGroupOf(store, id),
+    (id) => !groups.has(id),
   );
 };

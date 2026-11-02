@@ -4,8 +4,6 @@ import './workspace-switcher.scss';
 
 /** Editor type a frame file opens in. Real workspaces use a separate identity type. */
 export type EditorKind = 'board' | 'mind' | 'workflow' | 'architecture';
-/** @deprecated Use EditorKind; kept as a public compatibility alias. */
-export type WorkspaceId = EditorKind;
 export type WorkflowGraphModeOption = 'dag' | 'process';
 
 export const ExclusiveEditorBar = ({

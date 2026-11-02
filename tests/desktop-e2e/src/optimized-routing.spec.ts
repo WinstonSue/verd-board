@@ -32,6 +32,9 @@ test('one-shot optimized paths persist across desktop restart without enabling c
       filename,
     );
     const before = JSON.parse(await readFile(filename, 'utf8'));
+    const edgeCount = Object.values<{ cellType: string }>(before.cells).filter(
+      (cell) => cell.cellType === 'edge',
+    ).length;
     // Project diagrams already contain saved paths. Start without them so the
     // persistence wait below cannot succeed before the first optimization saves.
     for (const cell of Object.values(before.cells) as any[])
@@ -50,7 +53,7 @@ test('one-shot optimized paths persist across desktop restart without enabling c
       await expect(page.locator('.workspace-shell')).toBeVisible();
       await page.locator('.file-tree-name[title="routing.verd.json"]').click();
       const pane = page.locator('.workspace-pane.is-active');
-      await expect(pane.locator('[data-edge-hit]')).toHaveCount(41);
+      await expect(pane.locator('[data-edge-hit]')).toHaveCount(edgeCount);
       await setAppLanguage(page, 'zh');
       await expandPropertyGroup(pane);
       return { page, pane, button: pane.getByTestId('frame-reroute-edges') };
@@ -73,7 +76,7 @@ test('one-shot optimized paths persist across desktop restart without enabling c
               cell.route?.mode === 'orthogonal' && cell.route.points?.length,
           ).length,
       )
-      .toBe(41);
+      .toBe(edgeCount);
     const saved = JSON.parse(await readFile(filename, 'utf8'));
     for (const cell of Object.values(before.cells) as any[])
       if (cell.cellType === 'node') expect(saved.cells[cell.id]).toEqual(cell);

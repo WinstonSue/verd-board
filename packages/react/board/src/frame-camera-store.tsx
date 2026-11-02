@@ -13,11 +13,18 @@ import type { Viewport } from '@sue/board-core';
 export function createFrameCameraStore(initial: Viewport, frameId: string) {
   let snapshot = initial;
   const listeners = new Set<() => void>();
+  const viewportListeners = new Set<() => void>();
   let hoveredId: string | null = null;
   const cellListeners = new Map<string, Set<() => void>>();
   return {
     frameId,
     getSnapshot: () => snapshot,
+    subscribeViewport(listener: () => void) {
+      viewportListeners.add(listener);
+      return () => {
+        viewportListeners.delete(listener);
+      };
+    },
     getZoom: () => snapshot.zoom ?? 1,
     getHoveredId: () => hoveredId,
     isHovered: (id?: string) => id != null && hoveredId === id,
@@ -59,6 +66,7 @@ export function createFrameCameraStore(initial: Viewport, frameId: string) {
         zoom: next.zoom ?? 1,
         origination: [...(next.origination ?? [0, 0])],
       };
+      viewportListeners.forEach((listener) => listener());
       if (previousZoom !== snapshot.zoom)
         listeners.forEach((listener) => listener());
     },

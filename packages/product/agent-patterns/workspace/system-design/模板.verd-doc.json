@@ -1,0 +1,135 @@
+{
+  "format": "verd-document",
+  "version": 1,
+  "id": "pattern:system-design",
+  "title": "系统设计",
+  "text": {
+    "schemaVersion": 1,
+    "id": "pattern:system-design",
+    "kind": "block",
+    "align": "left",
+    "content": {
+      "type": "doc",
+      "content": [
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 1
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "系统设计"
+            }
+          ]
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 2
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "目标与场景"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "列出核心使用场景、容量和质量目标。"
+            }
+          ]
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 2
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "系统边界"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "标明使用者、外部系统、输入输出和信任边界。"
+            }
+          ]
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 2
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "组件与数据流"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "说明各模块职责与交互，按需引用架构图与时序图。"
+            }
+          ]
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 2
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "数据与接口"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "记录实体、存储、接口、权限和一致性要求。"
+            }
+          ]
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 2
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "异常与演进"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "覆盖超时、重试、可观测性、迁移与回退。"
+            }
+          ]
+        }
+      ]
+    },
+    "plainText": "系统设计\n目标与场景\n列出核心使用场景、容量和质量目标。\n系统边界\n标明使用者、外部系统、输入输出和信任边界。\n组件与数据流\n说明各模块职责与交互，按需引用架构图与时序图。\n数据与接口\n记录实体、存储、接口、权限和一致性要求。\n异常与演进\n覆盖超时、重试、可观测性、迁移与回退。"
+  }
+}

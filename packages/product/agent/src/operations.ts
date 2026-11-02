@@ -30,7 +30,6 @@ import {
   remapWorkspaceFiles,
   workspaceFileClosure,
   workspaceFileId,
-  type FrameFileV2,
 } from '@sue/verd-board-app/headless';
 import type { AuthoringEntry, AuthoringOperation } from './types';
 

@@ -48,5 +48,7 @@ describe('native text controller', () => {
     controller.setAlign(Alignment.center);
     expect(controller.getActiveAlign!()).toBe('center');
     expect(controller.commit().align).toBe('left');
+    editor.commands.selectAll();
+    expect(controller.getActiveAlign!()).toBe('center');
   });
 });

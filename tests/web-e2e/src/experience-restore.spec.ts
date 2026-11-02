@@ -268,7 +268,7 @@ test('restores editing, gestures, summaries, and file open', async ({
     name: 'Text formatting',
     exact: true,
   });
-  await expect(formatting).toBeVisible();
+  await expect(page.locator('.ProseMirror:visible')).toBeFocused();
   await canvas(page).focus();
   await page.keyboard.press('Escape');
   await expect(formatting).toBeHidden();

@@ -28,6 +28,7 @@ describe('device interaction preferences', () => {
       JSON.stringify({ zoomSensitivity: 0, dragPanSpeed: 20 }),
     );
     expect(readInteractionPreferences()).toEqual({
+      linkActivation: 'modifier',
       smartGuides: true,
       zoomSensitivity: 0.25,
       dragPanSpeed: 3,
@@ -37,6 +38,7 @@ describe('device interaction preferences', () => {
       JSON.stringify({ zoomSensitivity: '2', dragPanSpeed: 1.5 }),
     );
     expect(readInteractionPreferences()).toEqual({
+      linkActivation: 'modifier',
       smartGuides: true,
       zoomSensitivity: 1,
       dragPanSpeed: 1.5,
@@ -46,6 +48,7 @@ describe('device interaction preferences', () => {
     localStorage.setItem('language', 'en');
     setInteractionPreferences({ zoomSensitivity: 2, dragPanSpeed: 0.5 });
     expect(readInteractionPreferences()).toEqual({
+      linkActivation: 'modifier',
       smartGuides: true,
       zoomSensitivity: 2,
       dragPanSpeed: 0.5,
@@ -77,8 +80,19 @@ it('keeps smart guides disabled when restoring only the interaction speeds', () 
   });
   setInteractionPreferences({ zoomSensitivity: 1, dragPanSpeed: 1 });
   expect(readInteractionPreferences()).toEqual({
+    linkActivation: 'modifier',
     zoomSensitivity: 1,
     dragPanSpeed: 1,
     smartGuides: false,
   });
+});
+
+it('persists link activation and preserves it while changing other settings', () => {
+  setInteractionPreferences({
+    zoomSensitivity: 1,
+    dragPanSpeed: 1,
+    linkActivation: 'click',
+  });
+  setInteractionPreferences({ zoomSensitivity: 2, dragPanSpeed: 1 });
+  expect(readInteractionPreferences().linkActivation).toBe('click');
 });

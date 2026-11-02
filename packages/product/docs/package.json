@@ -1,0 +1,27 @@
+{
+  "name": "@sue/verd-board-docs",
+  "version": "0.1.0",
+  "type": "module",
+  "private": false,
+  "files": [
+    "dist",
+    "README.md",
+    "CHANGELOG.md"
+  ],
+  "exports": {
+    "./manifest": "./dist/builtin-release.json"
+  },
+  "verdBuiltin": {
+    "kind": "project",
+    "minimumAppVersion": "0.0.1"
+  },
+  "scripts": {
+    "build": "node ../../../scripts/build-builtin-package.mjs project",
+    "prepack": "node ../../../scripts/build-builtin-package.mjs project --check",
+    "test": "node --test ../../../scripts/builtin-package.test.mjs"
+  },
+  "publishConfig": {
+    "registry": "https://packages.aliyun.com/69f800449b7ce0afb00bda0e/npm/npm-registry/",
+    "access": "public"
+  }
+}

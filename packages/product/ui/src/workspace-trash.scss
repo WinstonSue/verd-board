@@ -9,7 +9,7 @@
     align-items: center;
     gap: 8px;
     margin: 0;
-    font-size: 18px;
+    font-size: var(--vm-text-lg);
   }
   .workspace-trash-scope {
     margin: 8px 0 0;
@@ -19,9 +19,9 @@
 .workspace-trash-count {
   padding: 1px 7px;
   border-radius: 6px;
-  background: var(--vm-fill-hover, #f1f5f9);
-  color: var(--vm-foreground-secondary, #64748b);
-  font-size: 12px;
+  background: var(--vm-fill-hover);
+  color: var(--vm-foreground-secondary);
+  font-size: var(--vm-text-xs);
   font-weight: 400;
 }
 .workspace-trash-list {
@@ -35,7 +35,7 @@
   gap: 10px 16px;
   align-items: center;
   padding: 18px 0;
-  border-top: 1px solid var(--vm-border, #e2e8f0);
+  border-top: 1px solid var(--vm-border);
 }
 .workspace-trash-file {
   display: flex;
@@ -44,7 +44,7 @@
   min-width: 0;
   svg {
     flex: none;
-    color: var(--vm-foreground-secondary, #64748b);
+    color: var(--vm-foreground-secondary);
   }
   > div {
     min-width: 0;
@@ -61,13 +61,13 @@
   }
   span {
     margin-top: 4px;
-    font-size: 12px;
-    color: var(--vm-foreground-secondary, #64748b);
+    font-size: var(--vm-text-xs);
+    color: var(--vm-foreground-secondary);
   }
 }
 .workspace-trash-date {
-  color: var(--vm-foreground-secondary, #64748b);
-  font-size: 12px;
+  color: var(--vm-foreground-secondary);
+  font-size: var(--vm-text-xs);
 }
 .workspace-trash-actions {
   display: flex;
@@ -77,19 +77,19 @@
 }
 .frame-settings-page .workspace-trash-purge,
 .frame-settings-page .workspace-trash-clear {
-  color: var(--vm-danger, #dc2626);
+  color: var(--vm-danger);
 }
 .workspace-trash-empty {
   display: grid;
   justify-items: center;
   padding: 56px 8px;
-  color: var(--vm-foreground-tertiary, #94a3b8);
+  color: var(--vm-foreground-tertiary);
   p {
     margin: 16px 0 0;
   }
 }
 .workspace-trash-error {
-  color: var(--vm-danger, #dc2626);
+  color: var(--vm-danger);
   overflow-wrap: anywhere;
 }
 .frame-settings-page .workspace-trash-error p {

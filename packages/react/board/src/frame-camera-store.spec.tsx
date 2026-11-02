@@ -1,4 +1,4 @@
-import React, { act, memo, Profiler } from 'react';
+import { act, memo, Profiler } from 'react';
 import { createRoot } from 'react-dom/client';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {

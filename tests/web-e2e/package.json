@@ -9,6 +9,7 @@
   },
   "devDependencies": {
     "@playwright/test": "^1.36.0",
-    "eslint": "^9.22.0"
+    "eslint": "^9.22.0",
+    "fflate": "0.8.3"
   }
 }

@@ -1,4 +1,4 @@
-import React, { act, createRef } from 'react';
+import { act, createRef } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, expect, it, vi } from 'vitest';
 import { WorkspaceMenu, type WorkspaceMenuProps } from './workspace-menu';
@@ -172,4 +172,21 @@ it('keeps contextual history labels when executing registered semantic actions',
     expect.anything(),
   );
   await act(async () => actions.dispose());
+});
+
+it('opens the same switcher for click and ArrowDown and exposes update status', async () => {
+  const onSwitch = vi.fn();
+  await setup({ onSwitch, updatesAvailable: true, switcherOpen: true });
+  expect(trigger().getAttribute('aria-haspopup')).toBe('dialog');
+  expect(trigger().getAttribute('aria-expanded')).toBe('true');
+  expect(trigger().getAttribute('aria-label')).toContain('内置内容有更新');
+  expect(trigger().querySelector('.vm-dot')).toBeTruthy();
+  await act(async () => trigger().click());
+  await act(async () =>
+    trigger().dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }),
+    ),
+  );
+  expect(onSwitch).toHaveBeenCalledTimes(2);
+  expect(document.querySelector('[role="menu"]')).toBeNull();
 });

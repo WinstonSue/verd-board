@@ -10,7 +10,12 @@ export type ReferenceLocation = {
   name?: string;
 } & (
   | { kind: 'canvas'; refId: string }
-  | { kind: 'document'; occurrence: number; revision: string }
+  | {
+      kind: 'document';
+      occurrence: number;
+      revision: string;
+      targetBlockId?: string;
+    }
 );
 
 type UnnumberedLocation<T = ReferenceLocation> = T extends ReferenceLocation
@@ -85,9 +90,14 @@ export function buildReferenceLocations(
       const visit = (node: BoardTextNode) => {
         if (node.type === 'codeBlock') return;
         if (node.type === 'heading') heading = text(node).trim() || undefined;
-        const target = node.attrs?.['targetFrameId'];
+        const target =
+          node.attrs?.[
+            node.type === 'documentExcerpt'
+              ? 'targetDocumentId'
+              : 'targetFrameId'
+          ];
         if (
-          node.type === 'frameReference' &&
+          (node.type === 'frameReference' || node.type === 'documentExcerpt') &&
           typeof target === 'string' &&
           target
         ) {
@@ -98,6 +108,9 @@ export function buildReferenceLocations(
             occurrence: counts.get(target) ?? 0,
             revision,
             name: heading,
+            ...(node.type === 'documentExcerpt'
+              ? { targetBlockId: String(node.attrs?.['targetBlockId'] ?? '') }
+              : {}),
           });
         }
         node.content?.forEach(visit);

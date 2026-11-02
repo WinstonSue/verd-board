@@ -6,6 +6,7 @@ import {
   trashFolder,
 } from '../../web-e2e/src/workspace-file-actions';
 import {
+  openActiveFile,
   openSettings,
   openTrash,
   setAppLanguage,
@@ -21,6 +22,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { selectDrawingTool } from '../../web-e2e/src/drawing-tools';
 import {
+  seedEmptyCanvas,
   canvasFiles as readCanvasFiles,
   committedCells as readCommittedCells,
   fileWithFrame as readFileWithFrame,
@@ -48,20 +50,25 @@ const launch = async (fileName?: string) => {
   const env = { ...process.env };
 
   // Legacy fixtures exercise the default migration path; ordinary lifecycle
-  // tests request an isolated empty folder instead of the built-in content.
+  // tests seed their own blank canvas instead of the built-in content.
   const hasLegacy = await readFile(storageFile, 'utf8').then(
     (text) => text !== '{}',
     () => false,
   );
-  if (!hasLegacy) env.VERDBOARD_WORKSPACE_PATH = workspaceDir();
-  else delete env.VERDBOARD_WORKSPACE_PATH;
+  if (!hasLegacy) {
+    env.VERDBOARD_WORKSPACE_PATH = workspaceDir();
+    if (!Object.keys(await canvasFiles()).length)
+      await seedEmptyCanvas(workspaceDir());
+  } else delete env.VERDBOARD_WORKSPACE_PATH;
   desktop = await electron.launch({ args: [launcher], env });
   const page = await desktop.firstWindow();
+  await expect(page.locator('.workspace-shell')).toBeVisible();
   if (fileName)
     await page
       .locator('.file-tree-name')
       .filter({ hasText: new RegExp(`^${fileName}$`) })
       .click();
+  else await openActiveFile(page);
   await expect(canvas(page)).toBeVisible();
   await setAppLanguage(page, 'zh');
   const skip = page.getByRole('button', { name: '跳过', exact: true });
@@ -228,6 +235,7 @@ test('Desktop preserves device interaction preferences across a restart without 
   let page = await launch();
   const before = await workspaceDigest();
   await openSettings(page);
+  await page.getByTestId('settings-nav-personal.editor').click();
   await page.getByTestId('settings-zoomSensitivity').press('Home');
   await page.getByTestId('settings-dragPanSpeed').press('End');
   await expect(page.getByTestId('settings-zoomSensitivity')).toHaveValue(
@@ -240,6 +248,7 @@ test('Desktop preserves device interaction preferences across a restart without 
   expect(await workspaceDigest()).toBe(before);
   page = await launch();
   await openSettings(page);
+  await page.getByTestId('settings-nav-personal.editor').click();
   await expect(page.getByTestId('settings-zoomSensitivity')).toHaveValue(
     '0.25',
   );
@@ -298,11 +307,7 @@ test('Desktop saves pending drawing and a focused mind note before close, then r
 
   page = await launch();
   // Restart restores the persisted tabs; activate the board file.
-  await page
-    .locator('.file-tree-name')
-    .filter({ hasNotText: '思维导图' })
-    .first()
-    .click();
+  await page.locator('.file-tree-name[title="画布.verd.json"]').click();
   await expect(cells(page, 'geometry')).toHaveCount(1);
   await cells(page, 'frame-reference')
     .locator(':scope > [data-frame-header] > rect')

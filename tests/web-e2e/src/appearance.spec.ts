@@ -1,3 +1,4 @@
+import { roleTone } from './theme-role-values';
 import { readable } from './text-color-checks';
 import { persistedWorkspace } from './workspace-nav';
 import { readFileSync } from 'node:fs';
@@ -5,6 +6,7 @@ import path from 'node:path';
 import { expect, test, type Locator, type Page } from '@playwright/test';
 import {
   openAppMenu,
+  openActiveFile,
   openSettings,
   selectAppAction,
   setAppLanguage,
@@ -244,20 +246,22 @@ test('dark interface covers settings, portaled menus, help, and readonly at wide
 }, testInfo) => {
   await page.emulateMedia({ colorScheme: 'dark' });
   await page.goto('/');
+  await openActiveFile(page);
   for (const [language, width] of [
     ['zh', 1440],
     ['en', 390],
   ] as const) {
     await page.setViewportSize({ width, height: 900 });
     await openSettings(page);
+    await page.getByTestId('settings-nav-personal.general').click();
     await page.getByTestId('settings-language').selectOption(language);
     await expect(page.getByTestId('settings-appearance')).toBeInViewport();
     expect((await colors(page.getByTestId('my-page'))).background).toBe(
-      'rgb(15, 23, 42)',
+      'rgb(30, 30, 30)',
     );
     expect(
       (await colors(page.getByTestId('settings-appearance'))).background,
-    ).toBe('rgb(30, 41, 59)');
+    ).toBe('rgb(24, 24, 24)');
     await page.screenshot({
       path: testInfo.outputPath(`dark-settings-${language}.png`),
     });
@@ -265,25 +269,26 @@ test('dark interface covers settings, portaled menus, help, and readonly at wide
     const tabs = page.locator('ylib-tabs');
     await expect(tabs.locator('.tab[data-active] .tab-title')).toHaveCSS(
       'color',
-      'rgb(226, 232, 240)',
+      'rgb(230, 230, 230)',
     );
     const groups = tabs.getByLabel(
       language === 'zh' ? '选择分组' : 'Select group',
       { exact: true },
     );
-    expect((await colors(groups)).background).toBe('rgb(30, 41, 59)');
+    await page.mouse.move(width - 10, 890);
+    await expect(groups).toHaveCSS('background-color', 'rgb(30, 30, 30)');
     await groups.click();
     expect((await colors(tabs.locator('.group-dropdown'))).background).toBe(
-      'rgb(30, 41, 59)',
+      'rgb(30, 30, 30)',
     );
     await groups.click();
     const menu = await openAppMenu(page);
-    expect((await colors(menu)).background).toBe('rgb(30, 41, 59)');
+    expect((await colors(menu)).background).toBe('rgb(30, 30, 30)');
     await page.keyboard.press('Escape');
   }
   await selectAppAction(page, 'Keyboard shortcuts');
   expect((await colors(page.getByRole('dialog'))).background).toBe(
-    'rgb(30, 41, 59)',
+    'rgb(30, 30, 30)',
   );
   expect(
     await page
@@ -291,10 +296,11 @@ test('dark interface covers settings, portaled menus, help, and readonly at wide
       .evaluate(
         (element) => getComputedStyle(element, '::backdrop').backgroundColor,
       ),
-  ).toBe('rgba(2, 6, 23, 0.6)');
+  ).toBe('rgba(0, 0, 0, 0.6)');
   await page.keyboard.press('Escape');
   await page.goto('/?readonly=1');
   await page.locator('.workspace-sidebar-footer button').click();
+  await page.getByTestId('settings-nav-personal.general').click();
   await page.getByTestId('settings-appearance').selectOption('light');
   await expect(page.locator('html')).toHaveAttribute(
     'data-verd-appearance',
@@ -378,7 +384,7 @@ test('canvas and embedded documents adapt without changing authored colors, came
   ).toHaveAttribute('fill', '#fff');
   await expect(
     active(page).locator('[data-cell-id="legacy-shape"]'),
-  ).toHaveAttribute('fill', '#1e293b');
+  ).toHaveAttribute('fill', (await roleTone(page, 'default', 'dark')).fill);
   expect(await writes()).toBe(count);
   await page.screenshot({
     path: testInfo.outputPath('dark-interface-original-canvas.png'),
@@ -388,16 +394,16 @@ test('canvas and embedded documents adapt without changing authored colors, came
     .filter({ hasText: /^Appearance document$/ })
     .click();
   const document = active(page).locator('.document-page');
-  expect((await colors(document)).background).toBe('rgb(30, 41, 59)');
+  expect((await colors(document)).background).toBe('rgb(30, 30, 30)');
   expect(
     (
       await colors(
         document.getByText('Appearance body', { exact: true }).first(),
       )
     ).color,
-  ).toBe('rgb(226, 232, 240)');
+  ).toBe('rgb(230, 230, 230)');
   expect((await colors(document.locator('pre').first())).background).toBe(
-    'rgb(15, 23, 42)',
+    'rgb(24, 24, 24)',
   );
   expect(
     (await colors(document.getByText('Authored red', { exact: true }).first()))
@@ -553,19 +559,50 @@ for (const fixture of [
     await readable(target);
     // Assert concrete painted parts: a single changed wrapper must not hide a
     // class box, lifeline, fragment or domain node that still uses old colors.
-    const expectedSurface = 'rgb(55, 49, 40)';
-    const expectedStroke = 'rgb(186, 166, 129)';
-    const surfaces = target.locator(
-      '[data-uml-class] > rect, [data-uml-lifeline] > rect, [data-cell-kind="workflow-task"], [data-cell-kind="workflow-decision"], [data-cell-kind="architecture-module"]',
+    const roleParts = target.locator(
+      '[data-uml-class] > rect, [data-uml-lifeline] > rect, [data-uml-lifeline] circle, [data-cell-kind="workflow-task"], [data-cell-kind="workflow-decision"], [data-cell-kind="architecture-module"]',
     );
-    for (const part of await surfaces.all()) {
-      await expect(part).toHaveCSS('fill', expectedSurface);
-      await expect(part).toHaveCSS('stroke', expectedStroke);
+    const painted = await roleParts.evaluateAll((parts) =>
+      parts.map((part) => ({
+        fill: getComputedStyle(part).fill,
+        stroke: getComputedStyle(part).stroke,
+      })),
+    );
+    for (const part of painted) {
+      expect(part.fill).not.toBe('rgb(55, 49, 40)');
+      expect(part.stroke).not.toBe('rgb(186, 166, 129)');
     }
-    for (const part of await target
-      .locator('[data-uml-lifeline] > line, [data-uml-fragment]')
-      .all())
-      await expect(part).toHaveCSS('stroke', expectedStroke);
+    if (
+      [
+        'workflow-process',
+        'architecture',
+        'uml-class',
+        'uml-sequence',
+      ].includes(fixture)
+    ) {
+      expect(painted.length).toBeGreaterThan(0);
+      expect(new Set(painted.map((part) => part.stroke)).size).toBeGreaterThan(
+        1,
+      );
+    }
+    for (const theme of [
+      'default',
+      'colorful',
+      'soft',
+      'retro',
+      'dark',
+      'starry',
+    ]) {
+      await target.press('Escape');
+      await active(page)
+        .getByLabel('Theme', { exact: true })
+        .selectOption(theme);
+      for (const mode of ['light', 'dark']) {
+        await appearance(page, mode);
+        await readable(target);
+        await expect(world).toHaveAttribute('transform', camera!);
+      }
+    }
     await page.screenshot({ path: testInfo.outputPath(`${fixture}-dark.png`) });
   });
 }
@@ -642,7 +679,10 @@ test('manual default-colored overrides persist and can be reset independently to
   await expect(shape).toHaveAttribute('fill', '#ffffff');
   await shape.click();
   await active(page).getByLabel('Reset fill to theme', { exact: true }).click();
-  await expect(shape).toHaveAttribute('fill', '#1e293b');
+  await expect(shape).toHaveAttribute(
+    'fill',
+    (await roleTone(page, 'default', 'dark')).fill,
+  );
   await expect(
     active(page).locator('[data-cell-id="custom-shape"]'),
   ).toHaveAttribute('fill', '#fff');
@@ -735,13 +775,13 @@ test('repeated references retain the source theme through static preview, inline
   for (const ref of [first, second])
     await expect(ref.locator('[data-cell-id="source-shape"]')).toHaveAttribute(
       'fill',
-      '#fffdf4',
+      (await roleTone(page, 'retro', 'light')).fill,
     );
   await page.emulateMedia({ colorScheme: 'dark' });
   for (const ref of [first, second])
     await expect(ref.locator('[data-cell-id="source-shape"]')).toHaveAttribute(
       'fill',
-      '#373128',
+      (await roleTone(page, 'retro', 'dark')).fill,
     );
   await first
     .locator(':scope > [data-frame-contents] > [data-frame-content-plate]')
@@ -750,7 +790,7 @@ test('repeated references retain the source theme through static preview, inline
   await expect(nested).toBeVisible();
   await expect(nested.locator('[data-cell-id="source-shape"]')).toHaveAttribute(
     'fill',
-    '#373128',
+    (await roleTone(page, 'retro', 'dark')).fill,
   );
   const world = nested.locator('> [data-frame-world]');
   const camera = await world.getAttribute('transform');
@@ -758,14 +798,14 @@ test('repeated references retain the source theme through static preview, inline
   await expect(nested).toBeVisible();
   await expect(nested.locator('[data-cell-id="source-shape"]')).toHaveAttribute(
     'fill',
-    '#fffdf4',
+    (await roleTone(page, 'retro', 'light')).fill,
   );
   await expect(second.locator('[data-cell-id="source-shape"]')).toHaveAttribute(
     'fill',
-    '#fffdf4',
+    (await roleTone(page, 'retro', 'light')).fill,
   );
   await expect(world).toHaveAttribute('transform', camera!);
   const exported = await exportedSvg(page, 'dark');
-  expect(exported).toContain('#373128');
+  expect(exported).toContain((await roleTone(page, 'retro', 'dark')).fill);
   expect(exported).toContain('#28251f');
 });

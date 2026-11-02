@@ -264,6 +264,8 @@ describe('WorkspaceSession', () => {
       '..',
       '.verdboard',
       '.verdboard/trash',
+      '.verdscrolls',
+      '.verdscrolls/trash',
       'docs/board.verd.json',
     ])
       expect((await session.apply({ type: 'trash-directory', path })).ok).toBe(

@@ -24,7 +24,12 @@ export const ParagraphText: React.FC<ParagraphTextProps> = (props) => {
   useEffect(() => {
     if (!readonly && autoFocus && editor) {
       const timer = setTimeout(() => {
-        if (!editor.isDestroyed && !editor.isFocused) safeFocus(editor);
+        if (
+          !editor.isDestroyed &&
+          !editor.isFocused &&
+          editor.state.selection.empty
+        )
+          safeFocus(editor);
       }, 120);
       return () => clearTimeout(timer);
     }

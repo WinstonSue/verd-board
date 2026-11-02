@@ -636,12 +636,12 @@
         }
       ],
       "content": {
-        "label": "按活动文件挂载画布或文档\n无会话的内置工作区打开项目导览",
+        "label": "按活动文件挂载画布或文档\n无会话时按项目配置打开入口文档",
         "text": {
           "schemaVersion": 1,
           "id": "demo:load/mount/text",
           "kind": "inline",
-          "plainText": "按活动文件挂载画布或文档\n无会话的内置工作区打开项目导览",
+          "plainText": "按活动文件挂载画布或文档\n无会话时按项目配置打开入口文档",
           "content": {
             "type": "doc",
             "content": [
@@ -668,7 +668,7 @@
                 "content": [
                   {
                     "type": "text",
-                    "text": "无会话的内置工作区打开项目导览",
+                    "text": "无会话时按项目配置打开入口文档",
                     "marks": [
                       {
                         "type": "textStyle",
@@ -972,16 +972,15 @@
     "project:detail/04/01/document": {
       "id": "project:detail/04/01/document",
       "cellType": "node",
-      "kind": "document-reference",
+      "kind": "geometry",
       "geometry": {
         "x": 0,
         "y": 700,
         "width": 1000,
-        "height": 620
+        "height": 220,
+        "outline": "text"
       },
-      "data": {
-        "targetDocumentId": "project-doc:architecture/ARCHITECTURE"
-      },
+      "data": {},
       "content": {
         "text": {
           "schemaVersion": 1,
@@ -991,6 +990,23 @@
           "content": {
             "type": "doc",
             "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "相关文档：系统架构",
+                    "marks": [
+                      {
+                        "type": "link",
+                        "attrs": {
+                          "href": "verd://file/project-doc%3Aarchitecture%2FARCHITECTURE"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
               {
                 "type": "paragraph",
                 "content": [
@@ -1062,8 +1078,12 @@
               }
             ]
           },
-          "plainText": "读图：启动身份、目录选择与首次复制；旧资料转换进入下一张。\n返回专题总览\n相关细节：旧资料迁移与失败恢复\n桌面安装与使用 · 工作区目录\n源码入口：apps/desktop/electron/workspace-startup.ts；packages/product/app/src/workspace-app.tsx。"
+          "plainText": "相关文档：系统架构\n读图：启动身份、目录选择与首次复制；旧资料转换进入下一张。\n返回专题总览\n相关细节：旧资料迁移与失败恢复\n桌面安装与使用 · 工作区目录\n源码入口：apps/desktop/electron/workspace-startup.ts；packages/product/app/src/workspace-app.tsx。"
         }
+      },
+      "appearance": {
+        "fill": "none",
+        "strokeColor": "none"
       }
     }
   },

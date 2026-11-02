@@ -1,0 +1,95 @@
+@use '../surface' as *;
+.workspace-knowledge-dialog {
+  @include surface;
+  width: min(1000px, 90vw);
+  max-height: 85vh;
+  padding: 0;
+  border: 1px solid var(--vm-border-strong);
+  border-radius: 8px;
+  background: var(--vm-background);
+  color: var(--vm-foreground);
+  input {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 8px;
+    color: inherit;
+    background: var(--vm-background);
+    border: 1px solid var(--vm-border-strong);
+  }
+  small {
+    display: block;
+    color: var(--vm-foreground-tertiary);
+    overflow-wrap: anywhere;
+  }
+
+  fieldset {
+    border: 1px solid var(--vm-border-strong);
+    margin: 12px 0;
+  }
+  label {
+    display: block;
+    margin: 8px 0;
+  }
+  nav {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 12px;
+  }
+}
+.workspace-knowledge-columns {
+  display: grid;
+  grid-template-columns: minmax(220px, 1fr) minmax(260px, 1.5fr);
+  gap: 20px;
+  > section {
+    max-height: 65vh;
+    overflow: auto;
+    min-width: 0;
+  }
+}
+.workspace-knowledge-result {
+  display: block;
+  width: 100%;
+  text-align: start;
+}
+.workspace-knowledge-relation {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 6px;
+  > button:first-child {
+    flex: 1;
+    text-align: start;
+    min-width: 0;
+  }
+}
+@media (max-width: 640px) {
+  .workspace-knowledge-columns {
+    grid-template-columns: 1fr;
+  }
+}
+
+.workspace-knowledge-navigation {
+  min-width: 0;
+}
+
+.workspace-excerpt {
+  border-left: 3px solid var(--board-border);
+  padding: 12px;
+  margin: 12px 0;
+  background: var(--board-surface);
+}
+
+.workspace-content-segments {
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+  border-radius: var(--vm-radius-sm);
+  background: var(--vm-background-subtle);
+}
+.workspace-content-segments > button {
+  border: 0;
+  background: transparent;
+  &[aria-pressed='true'] {
+    background: var(--vm-fill-active);
+    color: var(--vm-foreground);
+  }
+}

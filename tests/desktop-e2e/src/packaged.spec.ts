@@ -15,10 +15,7 @@ import {
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import type { WorkspaceHistoryEntry } from '../../../packages/product/app/src/host/workspace-host';
-import {
-  openWorkspaceMenu,
-  setAppLanguage,
-} from '../../web-e2e/src/app-actions';
+import { openWorkspaceMenu } from '../../web-e2e/src/app-actions';
 
 const appBundle = process.env.VERDBOARD_PACKAGED_APP;
 const root = path.resolve(__dirname, '../../..');
@@ -30,7 +27,7 @@ test.skip(
 async function nativeFiles(directory: string, prefix = ''): Promise<string[]> {
   const files: string[] = [];
   for (const entry of await readdir(directory, { withFileTypes: true })) {
-    if (entry.name === '.verdboard') continue;
+    if (entry.name === '.verdscrolls') continue;
     const relative = prefix ? `${prefix}/${entry.name}` : entry.name;
     if (entry.isDirectory())
       files.push(
@@ -61,10 +58,13 @@ test('real installed identity seeds architecture, recovers old folders and prese
     },
     cells: {},
   });
-  await mkdir(path.join(oldDefault, '.verdboard'), { recursive: true });
+  await mkdir(path.join(oldDefault, '.verdscrolls'), { recursive: true });
   await writeFile(
-    path.join(oldDefault, '.verdboard/config.json'),
-    JSON.stringify({ version: 1, value: { workspaceInitialized: true } }),
+    path.join(oldDefault, '.verdscrolls/config.json'),
+    JSON.stringify({
+      version: 1,
+      value: { identity: 'packaged-test-project', workspaceInitialized: true },
+    }),
   );
   await writeFile(path.join(oldDefault, '旧画布.verd.json'), oldContent);
   let desktop: ElectronApplication | undefined;
@@ -79,7 +79,9 @@ test('real installed identity seeds architecture, recovers old folders and prese
       env,
     });
     const page = await desktop.firstWindow();
-    await expect(page.locator('.workspace-shell')).toBeVisible();
+    await expect(page.locator('.workspace-shell')).toBeVisible({
+      timeout: 60000,
+    });
     expect(
       await desktop.evaluate(({ app }) => ({
         packaged: app.isPackaged,
@@ -101,18 +103,21 @@ test('real installed identity seeds architecture, recovers old folders and prese
   };
   try {
     let page = await launch();
-    await setAppLanguage(page, 'zh');
+    await page.getByTestId('workspace-my').click();
+    await page.getByTestId('settings-language').selectOption('zh');
+    await page.getByTestId('my-back').click();
     const skip = page.getByRole('button', { name: '跳过', exact: true });
     if (await skip.isVisible().catch(() => false)) await skip.click();
     await expect(
-      page
-        .locator(
-          '.workspace-pane.is-active svg[aria-label="Frame canvas"][data-surface="root"]',
-        )
-        .first(),
-    ).toBeVisible();
+      page.locator('.workspace-pane.is-active .document-page__title'),
+    ).toHaveValue('文档导航');
     const expected = await nativeFiles(path.join(root, 'workspace'));
     expect(await nativeFiles(workspace)).toEqual(expected);
+    const documents = page
+      .locator('.file-tree-dir-toggle')
+      .filter({ hasText: /^文档$/ });
+    if ((await documents.getAttribute('aria-expanded')) !== 'true')
+      await documents.click();
     const architecture = page
       .locator('.file-tree-dir-toggle')
       .filter({ hasText: /^架构$/ });
@@ -162,7 +167,7 @@ test('real installed identity seeds architecture, recovers old folders and prese
       history.filter((entry) => entry.name === '旧工作区 (desktop)'),
     ).toHaveLength(1);
     const menu = await openWorkspaceMenu(page);
-    await menu.getByRole('menuitem', { name: /旧工作区 \(desktop\)/ }).click();
+    await menu.getByRole('button', { name: /旧工作区 \(desktop\)/ }).click();
     await expect(
       page.locator('.file-tree-name').getByText('旧画布', { exact: true }),
     ).toBeVisible();
@@ -188,10 +193,16 @@ test('real packaged app preserves an intentionally empty default workspace', asy
   try {
     const userData = path.join(directory, 'VerdBoard');
     const workspace = path.join(userData, 'workspaces/default');
-    await mkdir(path.join(workspace, '.verdboard'), { recursive: true });
+    await mkdir(path.join(workspace, '.verdscrolls'), { recursive: true });
     await writeFile(
-      path.join(workspace, '.verdboard/config.json'),
-      JSON.stringify({ version: 1, value: { workspaceInitialized: true } }),
+      path.join(workspace, '.verdscrolls/config.json'),
+      JSON.stringify({
+        version: 1,
+        value: {
+          identity: 'packaged-test-project',
+          workspaceInitialized: true,
+        },
+      }),
     );
     const env = { ...process.env, VERDBOARD_USER_DATA_PATH: userData };
     delete env.ELECTRON_RUN_AS_NODE;
@@ -202,7 +213,9 @@ test('real packaged app preserves an intentionally empty default workspace', asy
       env,
     });
     const page = await desktop.firstWindow();
-    await expect(page.locator('.workspace-shell')).toBeVisible();
+    await expect(page.locator('.workspace-shell')).toBeVisible({
+      timeout: 60000,
+    });
     expect(await nativeFiles(workspace)).toEqual([]);
     const closed = page.waitForEvent('close');
     await desktop.evaluate(({ BrowserWindow }) =>

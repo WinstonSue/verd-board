@@ -406,3 +406,60 @@ it('validates recorded workspace targets without a session and rejects current, 
   expect(invoke).toHaveBeenCalledWith('open-history', { historyId: 'b' });
   registry.dispose();
 });
+
+it('copies readonly file targets without flushing content and rejects stale or missing targets', async () => {
+  const session = await open();
+  let current: WorkspaceSession | null = session;
+  const flushEditing = vi.fn();
+  const invoke = vi.fn();
+  const registry = createWorkspaceActionRegistry({
+    getContext: () => ({ session: current, readonly: true, flushEditing }),
+    dialogs: createWorkspaceSurfaceActions({ getState: ui, invoke }),
+  });
+  const action = registry
+    .actions()
+    .find((item) => item.id === 'workspace.file.copy-link')!;
+  expect(action.getState({ fileId: 'a' }).enabled).toBe(true);
+  await action.execute({ fileId: 'a' });
+  expect(flushEditing).not.toHaveBeenCalled();
+  expect(invoke).toHaveBeenCalledWith('file.copy-link', { fileId: 'a' });
+  expect(action.getState({ fileId: 'missing' }).enabled).toBe(false);
+  const captured = action.capture();
+  current = null;
+  expect((await captured.execute({ fileId: 'a' })).status).toBe('cancelled');
+  registry.dispose();
+});
+
+it('merges queued project field patches against the latest configuration', async () => {
+  const session = await open();
+  session.setWorkspaceConfig({
+    identity: 'stable',
+    project: {
+      description: 'Original',
+      entryDocumentIds: ['a'],
+      extra: 'preserve',
+    },
+  });
+  await session.flush();
+  const registry = createWorkspaceActionRegistry({
+    getContext: () => ({ session }),
+    dialogs: createWorkspaceSurfaceActions({ getState: ui, invoke: () => {} }),
+  });
+  const first = registry.executeAction('workspace.settings.patch', {
+    project: { description: 'Updated' },
+  });
+  const second = registry.executeAction('workspace.settings.patch', {
+    project: { entryDocumentIds: ['b', 'a'] },
+  });
+  expect((await first).status).toBe('completed');
+  expect((await second).status).toBe('completed');
+  expect(session.getState().config.value).toEqual({
+    identity: 'stable',
+    project: {
+      description: 'Updated',
+      entryDocumentIds: ['b', 'a'],
+      extra: 'preserve',
+    },
+  });
+  registry.dispose();
+});

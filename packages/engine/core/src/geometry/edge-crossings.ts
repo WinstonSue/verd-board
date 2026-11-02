@@ -39,6 +39,12 @@ export function frameEdgeCrossingJumps(
           : [];
       })
     : [];
+  const signature = JSON.stringify([routes, routing.obstacles]);
+  const shared = routing.crossingsCache;
+  if (shared?.signature === signature && shared.value) {
+    frameCrossings.set(routing, shared.value);
+    return shared.value;
+  }
   const result = edgeCrossingJumps(routes);
   // Do not let a bridge bulge into a nearby node in a cramped manual drawing.
   for (const [id, jumps] of result) {
@@ -64,6 +70,10 @@ export function frameEdgeCrossingJumps(
       return radius >= 2 ? [{ point: jump.point, radius }] : [];
     });
     result.set(id, safe);
+  }
+  if (shared) {
+    shared.signature = signature;
+    shared.value = result;
   }
   frameCrossings.set(routing, result);
   return result;

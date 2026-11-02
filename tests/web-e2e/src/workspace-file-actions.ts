@@ -17,11 +17,12 @@ export async function folderAction(page: Page, name: string, action: string) {
 
 export async function createFolder(page: Page, name: string, parent?: string) {
   if (parent) await folderAction(page, parent, '在此新建文件夹…');
-  else
+  else {
+    await page.getByTestId('file-tree-new').click();
     await page
-      .locator('.file-tree-header')
-      .getByRole('button', { name: '新建文件夹', exact: true })
+      .getByRole('menuitem', { name: '新建文件夹', exact: true })
       .click();
+  }
   const dialog = page.getByRole('dialog');
   await dialog.getByRole('textbox').fill(name);
   await dialog.getByRole('button', { name: '确定', exact: true }).click();

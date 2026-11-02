@@ -1,3 +1,4 @@
+import { isContentProperties } from '../documents/content-properties';
 import { type MindRootData } from '@sue/board-mind';
 import { remapUmlCell } from '@sue/board-uml';
 import { createWorkspaceCellRegistry } from './plugins';
@@ -59,6 +60,7 @@ export type {
  * never owns another file's Frame through `children`.
  */
 export interface FrameFileV2 {
+  properties?: import('../documents/document-files').ContentProperties;
   format: 'verd-frame';
   version: 2;
   /**
@@ -85,6 +87,8 @@ export const isFrameFileV2 = (value: unknown): value is FrameFileV2 => {
   return (
     candidate.format === 'verd-frame' &&
     candidate.version === 2 &&
+    (candidate.properties === undefined ||
+      isContentProperties(candidate.properties)) &&
     isFrameCell(candidate.frame) &&
     !!candidate.cells &&
     typeof candidate.cells === 'object' &&

@@ -1,6 +1,9 @@
+import type { RichTextLinkActivation } from '@sue/board-react-text';
+
 /** Multipliers relative to the default canvas interaction speed. */
 export interface FrameCanvasInteractionSettings {
   smartGuides?: boolean;
+  linkActivation?: RichTextLinkActivation;
   zoomSensitivity?: number;
   dragPanSpeed?: number;
 }

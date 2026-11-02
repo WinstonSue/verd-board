@@ -13,6 +13,7 @@ const mocks = vi.hoisted(() => {
     legacyStorage: () => '',
   };
   const webContents = {
+    mainFrame: {},
     openDevTools: vi.fn(),
     on: vi.fn(),
     setWindowOpenHandler: vi.fn(),
@@ -81,7 +82,13 @@ vi.mock('electron', () => ({
     },
     on: vi.fn(),
   },
-  session: { defaultSession: { webRequest: { onHeadersReceived: vi.fn() } } },
+  session: {
+    defaultSession: {
+      webRequest: { onHeadersReceived: vi.fn() },
+      setPermissionCheckHandler: vi.fn(),
+      setPermissionRequestHandler: vi.fn(),
+    },
+  },
   dialog: {},
   shell: {},
 }));
@@ -150,10 +157,21 @@ describe('desktop startup and IPC registration', () => {
         { id: 'recent', name: 'Recent', available: true, lastOpenedAt: 1 },
       ];
       mocks.manager.listHistory.mockResolvedValueOnce(entries);
-      expect(await history({})).toEqual(entries);
+      expect(
+        await history({
+          sender: mocks.window.webContents,
+          senderFrame: mocks.window.webContents.mainFrame,
+        }),
+      ).toEqual(entries);
       expect(mocks.manager.listHistory).toHaveBeenCalledOnce();
       const handle = { key: 'workspace' };
-      await mocks.handlers.get('workspace-host:snapshot')!({}, handle);
+      await mocks.handlers.get('workspace-host:snapshot')!(
+        {
+          sender: mocks.window.webContents,
+          senderFrame: mocks.window.webContents.mainFrame,
+        },
+        handle,
+      );
       expect(mocks.host.readSnapshot).toHaveBeenCalledWith(handle);
       if (url) expect(mocks.window.loadURL).toHaveBeenCalledWith(url);
       else expect(mocks.window.loadFile).toHaveBeenCalledOnce();
@@ -185,7 +203,22 @@ describe('desktop startup and IPC registration', () => {
       new Error('History unavailable'),
     );
     await expect(
-      mocks.handlers.get('workspace-host:history')!({}),
+      mocks.handlers.get('workspace-host:history')!({
+        sender: mocks.window.webContents,
+        senderFrame: mocks.window.webContents.mainFrame,
+      }),
     ).rejects.toThrow('History unavailable');
   });
+});
+
+it('rejects workspace IPC from an external child frame', async () => {
+  await import('./main');
+  await vi.waitFor(() => expect(mocks.order).toContain('load'));
+  await expect(
+    mocks.handlers.get('workspace-host:snapshot')!(
+      { sender: mocks.window.webContents, senderFrame: {} },
+      { key: 'workspace' },
+    ),
+  ).rejects.toThrow('Untrusted IPC frame');
+  expect(mocks.host.readSnapshot).not.toHaveBeenCalled();
 });

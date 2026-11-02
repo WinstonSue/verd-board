@@ -1,5 +1,4 @@
 import {
-  resolveCellAppearance,
   isNodeCell,
   roundFramePoint,
   roundNodeGeometry,
@@ -18,6 +17,7 @@ import {
 } from '@sue/board-draw';
 import type { FrameRenderContext } from '@sue/board-react';
 import { memo, useMemo, useRef, useState, type PointerEvent } from 'react';
+import { resolveDrawAppearance } from './frame-draw-theme';
 const VisibleVectorPath = memo(function VisibleVectorPath({
   path,
   fill,
@@ -176,7 +176,7 @@ export function FrameVectorLine(context: FrameRenderContext) {
         path={path}
         fill={
           context.theme?.adaptive
-            ? (resolveCellAppearance(cell, context.theme).fill ?? 'none')
+            ? (resolveDrawAppearance(context).fill ?? 'none')
             : (cell.appearance?.fill ?? 'none')
         }
       />

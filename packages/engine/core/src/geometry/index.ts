@@ -31,3 +31,5 @@ export * from './resize';
 export * from './edge-display';
 
 export * from './edge-crossings';
+
+export * from './spatial-index';

@@ -163,15 +163,6 @@ export const mindFrameColorScheme = (
     : ThemeColorMode.default;
 };
 
-const explicitColor = (node: BoardTextNode): string | undefined => {
-  if (node.type === 'text') {
-    const color = node.marks?.find((mark) => mark.type === 'textStyle')
-      ?.attrs?.['color'];
-    return typeof color === 'string' ? color : undefined;
-  }
-  return node.content?.map(explicitColor).find(Boolean);
-};
-
 /**
  * A color applies as the node default only when every text leaf carries the
  * same explicit color; partially colored fragments must not promote one

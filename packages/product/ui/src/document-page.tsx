@@ -1,3 +1,5 @@
+import { parseWorkspaceLink } from '@sue/board-common';
+import { DocumentToolbarMenu } from './document-toolbar-menu';
 import React, {
   useCallback,
   useEffect,
@@ -7,33 +9,19 @@ import React, {
   useState,
 } from 'react';
 import {
-  AlignCenter,
-  AlignLeft,
-  AlignRight,
   Bold,
   CaseSensitive,
   ChevronDown,
   ChevronUp,
-  Code,
-  Command,
   Columns3,
-  Download,
-  Highlighter,
-  Image as ImageIcon,
   Italic,
-  Keyboard,
   Link as LinkIcon,
-  ListOrdered,
   ListTree,
-  Minus,
-  Paintbrush,
   Redo2,
-  RemoveFormatting,
   Replace,
   ReplaceAll,
   Rows3,
   Search,
-  Strikethrough,
   Table as TableIcon,
   Trash2,
   Underline as UnderlineIcon,
@@ -41,15 +29,9 @@ import {
   X,
   type LucideIcon,
 } from 'lucide-react';
-import {
-  Alignment,
-  actionLabel,
-  createActionRegistry,
-  type BoundAction,
-} from '@sue/board-common';
+import { createActionRegistry, type BoundAction } from '@sue/board-common';
 import {
   ActionScope,
-  formatActionShortcut,
   resolveActionShortcut,
   useActionScope,
   useActionState,
@@ -59,7 +41,8 @@ import {
 } from '@sue/board-react-actions';
 import {
   DocumentEditor,
-  type DocumentEditorChange,
+  useRichTextLinks,
+  type RichTextLinkActivation,
   type DocumentEditorController,
   type DocumentHistoryAdapter,
   type DocumentHeading,
@@ -71,7 +54,6 @@ import type { BoardTextDocument, WorkspaceTarget } from '@sue/board-common';
 import './document-page.scss';
 import { FrameColorInput, useFrameTheme } from '@sue/board-react';
 import { useAppearancePreference } from './appearance-preferences';
-import { shortcutLabels } from './shortcut-labels';
 
 export type {
   DocumentEditorChange,
@@ -84,7 +66,14 @@ export type DocumentSaveState =
   'saved' | 'unsaved' | 'saving' | 'error' | 'conflicted';
 
 export interface DocumentPageProps {
+  folding?: import('@sue/board-react-text').DocumentFoldingAdapter;
+  onAttachmentFile?: import('@sue/board-react-text').DocumentEditorProps['onAttachmentFile'];
+  renderAttachment?: import('@sue/board-react-text').DocumentEditorProps['renderAttachment'];
+  renderWebEmbed?: import('@sue/board-react-text').DocumentEditorProps['renderWebEmbed'];
   compact?: boolean;
+  linkActivation?: RichTextLinkActivation;
+  linkChoices?: readonly { href: string; title: string; detail: string }[];
+  onPreviewLink?(href: string): void;
   frameChoices?: readonly { frameId: string; title: string; path: string }[];
   renderFrameReference?: import('@sue/board-react-text').DocumentFrameReferenceRenderer;
   value: BoardTextDocument;
@@ -107,6 +96,12 @@ export interface DocumentPageProps {
   onOpenLink?(href: string): void;
   /** A fresh request also navigates an already mounted document. */
   navigation?: {
+    searchMatch?: {
+      revision: string;
+      term: string;
+      text: string;
+      from?: number;
+    };
     requestId: number;
     target: WorkspaceTarget;
     /** Session-only address; positions are resolved against the current editor. */
@@ -330,6 +325,7 @@ export function DocumentPage({
   restore,
   autoFocusTitle = false,
   compact = false,
+  linkActivation = 'modifier',
   onChange,
   onTitleCommit,
   onExport,
@@ -339,10 +335,31 @@ export function DocumentPage({
   navigation,
   onNavigationResult,
   frameChoices,
+  linkChoices,
+  onPreviewLink,
   renderFrameReference,
+  folding,
+  onAttachmentFile,
+  renderAttachment,
+  renderWebEmbed,
 }: DocumentPageProps) {
   const t = labels[locale];
   const textColorId = useId();
+  const headerRef = useRef<HTMLDivElement>(null);
+  const [toolbarWidth, setToolbarWidth] = useState(800);
+  useEffect(() => {
+    const node = headerRef.current;
+    if (!node || typeof ResizeObserver === 'undefined') return;
+    const observer = new ResizeObserver(([entry]) => {
+      if (entry) setToolbarWidth(entry.contentRect.width);
+    });
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, []);
+  const colorActions = useRef<{
+    text: BoundAction | null;
+    highlight: BoundAction | null;
+  }>({ text: null, highlight: null });
   const shortcutsButton = useRef<HTMLButtonElement>(null);
   const commandButton = useRef<HTMLButtonElement>(null);
   const [controller, setController] = useState<DocumentEditorController | null>(
@@ -359,8 +376,14 @@ export function DocumentPage({
   const [replacement, setReplacement] = useState('');
   const [linkOpen, setLinkOpen] = useState(false);
   const [linkDraft, setLinkDraft] = useState('');
+  const [linkQuery, setLinkQuery] = useState('');
+  const [frameQuery, setFrameQuery] = useState('');
+  const linkInputRef = useRef<HTMLInputElement>(null);
+  const linkSearchRef = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    if (linkOpen) (linkSearchRef.current ?? linkInputRef.current)?.focus();
+  }, [linkOpen]);
   const [notice, setNotice] = useState<string | null>(null);
-  const [exportOpen, setExportOpen] = useState(false);
   const [framePickerOpen, setFramePickerOpen] = useState(false);
   const [titleDraft, setTitleDraft] = useState<string | null>(null);
   const [charCount, setCharCount] = useState(0);
@@ -452,6 +475,48 @@ export function DocumentPage({
                 code: fresh ? 'missing-reference' : 'stale-reference',
               },
         );
+        return;
+      }
+      if (navigation?.searchMatch) {
+        const match = navigation.searchMatch;
+        const fresh =
+          JSON.stringify(controller.getDocument().content) === match.revision;
+        const found = fresh
+          ? controller.find(match.term, { caseSensitive: false })
+          : [];
+        const hit = found.find(
+          (hit) =>
+            match.from === undefined ||
+            hit.from ===
+              match.from + match.text.toLocaleLowerCase().indexOf(match.term),
+        );
+        if (hit) controller.selectMatch(hit);
+        setNotice(
+          hit
+            ? null
+            : locale === 'zh'
+              ? '内容已变化，请重新搜索。'
+              : 'Content changed; search again.',
+        );
+        onNavigationResult?.(
+          navigationRequestId,
+          hit
+            ? { status: 'revealed' }
+            : { status: 'unavailable', code: 'stale-search' },
+        );
+        return;
+      }
+      if (navigationAnchor?.startsWith('block:')) {
+        void controller
+          .executeAction('document.locate-block', navigationAnchor.slice(6))
+          .then((result) =>
+            onNavigationResult?.(
+              navigationRequestId,
+              result.status === 'completed'
+                ? { status: 'revealed' }
+                : { status: 'unavailable', code: 'missing-block' },
+            ),
+          );
         return;
       }
       const heading = navigationAnchor
@@ -570,6 +635,7 @@ export function DocumentPage({
 
   const closeFind = () => {
     setFindOpen(false);
+    controllerRef.current?.clearReveal?.();
     controllerRef.current?.focus();
   };
 
@@ -615,32 +681,24 @@ export function DocumentPage({
       closeFind();
       return;
     }
-    if (event.key === 'Escape' && (framePickerOpen || linkOpen || exportOpen)) {
+    if (event.key === 'Escape' && (framePickerOpen || linkOpen)) {
       event.preventDefault();
       setFramePickerOpen(false);
       setLinkOpen(false);
-      setExportOpen(false);
     }
   };
 
-  const linkInEditor = (target: EventTarget | null) => {
-    const link = target instanceof Element ? target.closest('a[href]') : null;
-    return link?.closest('.board-document-editor') ? link : null;
-  };
-
-  const openEditorLink = (event: React.MouseEvent) => {
-    const link = linkInEditor(event.target);
-    if (!link) return;
-    // Never let the browser or OS navigate the document's editing surface.
-    event.preventDefault();
-    if (event.button === 0 && (readonly || event.metaKey || event.ctrlKey)) {
-      const href = link.getAttribute('href');
-      if (href) onOpenLink?.(href);
-    }
-  };
+  const linkEvents = useRichTextLinks({
+    activation: linkActivation,
+    locale,
+    readonly,
+    onOpenLink,
+  });
 
   const scopeRef = useRef<ActionScopeValue | null>(null);
   const linkAction = useRef<BoundAction | null>(null);
+  const insertLinkAction = useRef<BoundAction | null>(null);
+  const insertExcerptAction = useRef<BoundAction | null>(null);
   const imageAction = useRef<BoundAction | null>(null);
   const frameAction = useRef<BoundAction | null>(null);
   const actionOptions = useRef({
@@ -779,7 +837,10 @@ export function DocumentPage({
     'find-replace': () => openFind('replace'),
     'link-dialog': () => {
       linkAction.current = capture('set-link');
+      insertLinkAction.current = capture('insert-link');
+      insertExcerptAction.current = capture('insert-excerpt');
       setLinkDraft(controllerRef.current?.getToolbarState().link ?? '');
+      setLinkQuery('');
       setLinkOpen((open) => !open);
     },
     'image-dialog': () => {
@@ -788,10 +849,11 @@ export function DocumentPage({
     },
     'frame-dialog': () => {
       frameAction.current = capture('insert-frame-reference');
+      setFrameQuery('');
       setFramePickerOpen(true);
     },
     'toggle-toc': () => setTocOpen((open) => !open),
-    'export-dialog': () => setExportOpen((open) => !open),
+    'export-dialog': () => commandButton.current?.click(),
     help: () =>
       scopeRef.current?.openHelp({
         returnFocus: () => shortcutsButton.current,
@@ -808,39 +870,39 @@ export function DocumentPage({
     toolbar?.block === 'heading'
       ? `h${toolbar.headingLevel ?? 1}`
       : (toolbar?.block ?? 'paragraph');
-  const shortcutsTrigger = (
-    <button
-      type="button"
-      ref={shortcutsButton}
-      className="doc-toolbar__btn"
-      aria-label={shortcutLabels[locale].title}
-      title={shortcutLabels[locale].title}
-      onMouseDown={(event) => event.preventDefault()}
-      onClick={() => invoke('help')}
-    >
-      <Keyboard size={16} aria-hidden />
-    </button>
-  );
-  const commandAction = pageActions
-    .actions()
-    .find((action) => action.id === 'document.command-palette')!;
-  const commandLabel = actionLabel(commandAction.label, locale);
-  const commandTrigger = (
-    <button
-      type="button"
-      ref={commandButton}
-      className="doc-toolbar__btn"
-      data-action-id={commandAction.id}
-      aria-label={commandLabel}
-      title={`${commandLabel} — ${formatActionShortcut(commandAction.shortcuts![0])}`}
-      disabled={!commandAction.getState().enabled}
-      onMouseDown={(event) => event.preventDefault()}
-      onClick={() => invoke('command-palette')}
-    >
-      <Command size={16} aria-hidden />
-    </button>
-  );
-
+  const menuActions = useRef(new Map<string, BoundAction>());
+  const captureMenu = () => {
+    menuActions.current = new Map(
+      source.actions().map((action) => [action.id, action.capture()]),
+    );
+  };
+  const menuItem = (
+    id: string,
+    label: string,
+    close: () => void,
+    args?: unknown,
+  ) => {
+    const action = menuActions.current.get(`document.${id}`);
+    const state = action?.getState(args);
+    if (state && !state.visible) return null;
+    return (
+      <button
+        type="button"
+        key={id}
+        disabled={!state?.enabled}
+        data-action-id={`document.${id}`}
+        aria-pressed={state?.checked}
+        onClick={() => {
+          close();
+          void action?.execute(args, { source: 'menu' });
+        }}
+      >
+        {label}
+      </button>
+    );
+  };
+  const narrow = toolbarWidth < 720;
+  const small = toolbarWidth < 480;
   return (
     <ActionScope
       registry={source}
@@ -852,30 +914,72 @@ export function DocumentPage({
       <div
         className={`document-page${compact ? ' document-page--compact' : ''}`}
         onKeyDownCapture={pageKeyDown}
-        onClickCapture={openEditorLink}
-        onAuxClickCapture={(event) => {
-          if (linkInEditor(event.target)) event.preventDefault();
-        }}
+        {...linkEvents}
       >
-        <header className="document-page__header">
-          <input
-            ref={titleInputRef}
-            className="document-page__title"
-            value={titleDraft ?? title}
-            placeholder={t.titlePlaceholder}
-            disabled={readonly}
-            onChange={(event) => setTitleDraft(event.target.value)}
-            onBlur={commitTitle}
-            onKeyDown={(event) => {
-              if (event.key === 'Enter') {
-                event.preventDefault();
-                commitTitle();
-                controllerRef.current?.focus('start');
-              } else if (event.key === 'Escape') {
-                setTitleDraft(null);
-              }
-            }}
-          />
+        <header className="document-page__header" ref={headerRef}>
+          <div className="document-page__title-row">
+            <input
+              ref={titleInputRef}
+              className="document-page__title"
+              value={titleDraft ?? title}
+              placeholder={t.titlePlaceholder}
+              disabled={readonly}
+              onChange={(event) => setTitleDraft(event.target.value)}
+              onBlur={commitTitle}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter') {
+                  event.preventDefault();
+                  commitTitle();
+                  controllerRef.current?.focus('start');
+                } else if (event.key === 'Escape') {
+                  setTitleDraft(null);
+                }
+              }}
+            />
+            <div className="document-page__actions">
+              <ToolbarButton
+                title={t.find}
+                pressed={!!findOpen}
+                onClick={() => (findOpen ? closeFind() : invoke('find'))}
+                icon={Search}
+              />
+              <ToolbarButton
+                title={t.toc}
+                pressed={tocOpen}
+                onClick={() => invoke('toggle-toc')}
+                icon={ListTree}
+              />
+              <DocumentToolbarMenu
+                label={locale === 'zh' ? '文档' : 'Document'}
+                onOpen={captureMenu}
+                buttonRef={(node) => {
+                  commandButton.current = node;
+                  shortcutsButton.current = node;
+                }}
+              >
+                {(close) => (
+                  <>
+                    {menuItem(
+                      'command-palette',
+                      locale === 'zh' ? '命令面板' : 'Command palette',
+                      close,
+                    )}
+                    {menuItem(
+                      'help',
+                      locale === 'zh' ? '快捷键' : 'Keyboard shortcuts',
+                      close,
+                    )}
+                    {onExport && (
+                      <>
+                        {menuItem('export-json', t.exportJson, close)}
+                        {menuItem('export-markdown', t.exportMarkdown, close)}
+                      </>
+                    )}
+                  </>
+                )}
+              </DocumentToolbarMenu>
+            </div>
+          </div>
           {!readonly && (
             <div className="doc-toolbar" role="toolbar" aria-label="document">
               <select
@@ -908,225 +1012,244 @@ export function DocumentPage({
                 <option value="codeBlock">{t.codeBlock}</option>
               </select>
               <span className="doc-toolbar__sep" />
+              {!narrow && (
+                <select
+                  className="doc-toolbar__select doc-toolbar__select--size"
+                  title={t.fontSize}
+                  value={toolbar?.marks.fontSize ?? ''}
+                  onChange={(event) =>
+                    invoke('set-font-size', event.target.value || null)
+                  }
+                >
+                  <option value="">{t.fontSize}</option>
+                  {FONT_SIZES.map((size) => (
+                    <option key={size} value={`${size}px`}>
+                      {size}
+                    </option>
+                  ))}
+                </select>
+              )}
               <ToolbarButton
-                actionId="document.toggle-bold"
                 title={t.bold}
-                pressed={!!toolbar?.marks.bold}
-                onClick={() => invoke('toggle-bold')}
+                actionId="document.toggle-bold"
                 icon={Bold}
               />
-              <ToolbarButton
-                actionId="document.toggle-italic"
-                title={t.italic}
-                pressed={!!toolbar?.marks.italic}
-                onClick={() => invoke('toggle-italic')}
-                icon={Italic}
-              />
-              <ToolbarButton
-                actionId="document.toggle-underline"
-                title={t.underline}
-                pressed={!!toolbar?.marks.underline}
-                onClick={() => invoke('toggle-underline')}
-                icon={UnderlineIcon}
-              />
-              <ToolbarButton
-                actionId="document.toggle-strike"
-                title={t.strike}
-                pressed={!!toolbar?.marks.strike}
-                onClick={() => invoke('toggle-strike')}
-                icon={Strikethrough}
-              />
-              <ToolbarButton
-                actionId="document.toggle-code"
-                title={t.inlineCode}
-                pressed={!!toolbar?.marks.code}
-                onClick={() => invoke('toggle-code')}
-                icon={Code}
-              />
-              <span className="doc-toolbar__sep" />
-              <select
-                className="doc-toolbar__select doc-toolbar__select--size"
-                title={t.fontSize}
-                value={toolbar?.marks.fontSize ?? ''}
-                onMouseDown={(event) => event.stopPropagation()}
-                onChange={(event) =>
-                  invoke('set-font-size', event.target.value || null)
-                }
-              >
-                <option value="">{t.fontSize}</option>
-                {FONT_SIZES.map((size) => (
-                  <option key={size} value={`${size}px`}>
-                    {size}
-                  </option>
-                ))}
-              </select>
-              <label
-                className="doc-toolbar__btn doc-toolbar__color"
-                title={t.textColor}
-                htmlFor={textColorId}
-                style={{ color: toolbar?.marks.color ?? undefined }}
-              >
-                <Paintbrush size={16} />
-                <FrameColorInput
-                  id={textColorId}
-                  aria-label={t.textColor}
-                  disabled={readonly}
-                  value={toolbar?.marks.color ?? '#111827'}
-                  onValue={(value) => invoke('set-text-color', value)}
+              {!small && (
+                <ToolbarButton
+                  title={t.italic}
+                  actionId="document.toggle-italic"
+                  icon={Italic}
                 />
-              </label>
-              <button
-                type="button"
-                className="doc-toolbar__btn"
-                aria-label="Reset document text color to theme"
-                disabled={readonly}
-                onClick={() => invoke('set-text-color', null)}
-              >
-                {locale === 'en' ? 'Theme color' : '主题颜色'}
-              </button>
-              <label
-                className="doc-toolbar__btn doc-toolbar__color"
-                title={t.highlight}
-                style={{ color: toolbar?.marks.highlight ?? undefined }}
-              >
-                <Highlighter size={16} />
-                <input
-                  type="color"
-                  value={toolbar?.marks.highlight ?? '#fef08a'}
-                  onChange={(event) =>
-                    invoke('set-highlight', event.target.value)
-                  }
+              )}
+              {!narrow && (
+                <ToolbarButton
+                  title={t.underline}
+                  actionId="document.toggle-underline"
+                  icon={UnderlineIcon}
                 />
-              </label>
-              <span className="doc-toolbar__sep" />
-              <ToolbarButton
-                actionId="document.align-left"
-                title={t.alignLeft}
-                pressed={toolbar?.align === Alignment.left}
-                onClick={() => invoke('align-left')}
-                icon={AlignLeft}
-              />
-              <ToolbarButton
-                actionId="document.align-center"
-                title={t.alignCenter}
-                pressed={toolbar?.align === Alignment.center}
-                onClick={() => invoke('align-center')}
-                icon={AlignCenter}
-              />
-              <ToolbarButton
-                actionId="document.align-right"
-                title={t.alignRight}
-                pressed={toolbar?.align === Alignment.right}
-                onClick={() => invoke('align-right')}
-                icon={AlignRight}
-              />
-              <span className="doc-toolbar__sep" />
+              )}
+              {!small && (
+                <DocumentToolbarMenu
+                  label={locale === 'zh' ? '颜色' : 'Color'}
+                  onOpen={() => {
+                    colorActions.current = {
+                      text: capture('set-text-color'),
+                      highlight: capture('set-highlight'),
+                    };
+                  }}
+                >
+                  {() => (
+                    <>
+                      <label className="doc-toolbar-menu__color">
+                        {t.textColor}
+                        <FrameColorInput
+                          id={textColorId}
+                          aria-label={t.textColor}
+                          value={toolbar?.marks.color ?? '#111827'}
+                          onValue={(value) => {
+                            void colorActions.current.text?.execute(value, {
+                              source: 'toolbar',
+                            });
+                          }}
+                        />
+                      </label>
+                      <button
+                        type="button"
+                        aria-label="Reset document text color to theme"
+                        onClick={() => {
+                          void colorActions.current.text?.execute(null, {
+                            source: 'toolbar',
+                          });
+                        }}
+                      >
+                        {locale === 'zh' ? '跟随主题' : 'Theme color'}
+                      </button>
+                      <label className="doc-toolbar-menu__color">
+                        {t.highlight}
+                        <FrameColorInput
+                          aria-label={t.highlight}
+                          value={toolbar?.marks.highlight ?? '#fef08a'}
+                          onValue={(value) => {
+                            void colorActions.current.highlight?.execute(
+                              value,
+                              { source: 'toolbar' },
+                            );
+                          }}
+                        />
+                      </label>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          void colorActions.current.highlight?.execute(null, {
+                            source: 'toolbar',
+                          });
+                        }}
+                      >
+                        {locale === 'zh' ? '清除高亮' : 'Clear highlight'}
+                      </button>
+                    </>
+                  )}
+                </DocumentToolbarMenu>
+              )}
+              {!narrow && (
+                <DocumentToolbarMenu
+                  label={locale === 'zh' ? '对齐' : 'Align'}
+                  onOpen={captureMenu}
+                >
+                  {(close) => (
+                    <>
+                      {menuItem('align-left', t.alignLeft, close)}
+                      {menuItem('align-center', t.alignCenter, close)}
+                      {menuItem('align-right', t.alignRight, close)}
+                    </>
+                  )}
+                </DocumentToolbarMenu>
+              )}
               <ToolbarButton
                 actionId="document.link-dialog"
                 title={t.link}
-                pressed={!!toolbar?.link}
-                onClick={() => {
-                  invoke('link-dialog');
-                }}
                 icon={LinkIcon}
               />
+              <DocumentToolbarMenu
+                label={locale === 'zh' ? '插入' : 'Insert'}
+                onOpen={captureMenu}
+              >
+                {(close) => (
+                  <>
+                    {menuItem('image-dialog', t.image, close)}
+                    {frameChoices &&
+                      menuItem(
+                        'frame-dialog',
+                        locale === 'zh' ? '图表' : 'Canvas',
+                        close,
+                      )}
+                    {menuItem('insert-table', t.table, close)}
+                    {menuItem(
+                      'insert-horizontal-rule',
+                      t.horizontalRule,
+                      close,
+                    )}
+                  </>
+                )}
+              </DocumentToolbarMenu>
+              <span className="doc-toolbar__sep" />
               <ToolbarButton
-                actionId="document.image-dialog"
-                title={t.image}
-                onClick={() => invoke('image-dialog')}
-                icon={ImageIcon}
+                title={t.undo}
+                actionId="document.undo"
+                icon={Undo2}
+                disabled={!canUndo}
               />
-              {frameChoices && (
+              {!small && (
                 <ToolbarButton
-                  actionId="document.frame-dialog"
-                  title={locale === 'zh' ? '插入图表' : 'Insert canvas'}
-                  icon={Columns3}
-                  onClick={() => invoke('frame-dialog')}
+                  title={t.redo}
+                  actionId="document.redo"
+                  icon={Redo2}
+                  disabled={!canRedo}
                 />
               )}
-              <ToolbarButton
-                actionId="document.insert-table"
-                title={t.table}
-                onClick={() => invoke('insert-table')}
-                icon={TableIcon}
-              />
-              <ToolbarButton
-                actionId="document.insert-horizontal-rule"
-                title={t.horizontalRule}
-                onClick={() => invoke('insert-horizontal-rule')}
-                icon={Minus}
-              />
-              <span className="doc-toolbar__sep" />
-              <ToolbarButton
-                actionId="document.clear-formatting"
-                title={t.clearFormat}
-                onClick={() => invoke('clear-formatting')}
-                icon={RemoveFormatting}
-              />
-              <ToolbarButton
-                actionId="document.undo"
-                title={t.undo}
-                disabled={!canUndo}
-                onClick={() => invoke('undo')}
-                icon={Undo2}
-              />
-              <ToolbarButton
-                actionId="document.redo"
-                title={t.redo}
-                disabled={!canRedo}
-                onClick={() => invoke('redo')}
-                icon={Redo2}
-              />
-              <span className="doc-toolbar__sep" />
-              <ToolbarButton
-                title={`${t.find} (⌘F)`}
-                pressed={!!findOpen}
-                onClick={() => (findOpen ? closeFind() : invoke('find'))}
-                icon={Search}
-              />
-              <ToolbarButton
-                actionId="document.toggle-toc"
-                title={t.toc}
-                pressed={tocOpen}
-                onClick={() => invoke('toggle-toc')}
-                icon={ListTree}
-              />
-              {commandTrigger}
-              {shortcutsTrigger}
-              {onExport && (
-                <span className="doc-export">
-                  <ToolbarButton
-                    title={t.export}
-                    pressed={exportOpen}
-                    onClick={() => invoke('export-dialog')}
-                    icon={Download}
-                  />
-                  {exportOpen && (
-                    <div className="doc-export__menu" role="menu">
-                      <button
-                        type="button"
-                        role="menuitem"
-                        onClick={() => {
-                          setExportOpen(false);
-                          invoke('export-json');
-                        }}
-                      >
-                        {t.exportJson}
-                      </button>
-                      <button
-                        type="button"
-                        role="menuitem"
-                        onClick={() => {
-                          setExportOpen(false);
-                          invoke('export-markdown');
-                        }}
-                      >
-                        {t.exportMarkdown}
-                      </button>
-                    </div>
-                  )}
-                </span>
-              )}
+              <DocumentToolbarMenu
+                label={locale === 'zh' ? '更多' : 'More'}
+                onOpen={captureMenu}
+              >
+                {(close) => (
+                  <>
+                    {small && menuItem('toggle-italic', t.italic, close)}
+                    {narrow && menuItem('toggle-underline', t.underline, close)}
+                    {menuItem('toggle-strike', t.strike, close)}
+                    {menuItem('toggle-code', t.inlineCode, close)}
+                    {menuItem('clear-formatting', t.clearFormat, close)}
+                    {narrow && (
+                      <>
+                        <label>
+                          {t.fontSize}
+                          <select
+                            aria-label={t.fontSize}
+                            value={toolbar?.marks.fontSize ?? ''}
+                            onChange={(event) => {
+                              void menuActions.current
+                                .get('document.set-font-size')
+                                ?.execute(event.target.value || null, {
+                                  source: 'menu',
+                                });
+                            }}
+                          >
+                            <option value="">{t.fontSize}</option>
+                            {FONT_SIZES.map((size) => (
+                              <option key={size} value={`${size}px`}>
+                                {size}
+                              </option>
+                            ))}
+                          </select>
+                        </label>
+                        {menuItem('align-left', t.alignLeft, close)}
+                        {menuItem('align-center', t.alignCenter, close)}
+                        {menuItem('align-right', t.alignRight, close)}
+                      </>
+                    )}
+                    {small && (
+                      <>
+                        <label>
+                          {t.textColor}
+                          <FrameColorInput
+                            aria-label={t.textColor}
+                            value={toolbar?.marks.color ?? '#111827'}
+                            onValue={(value) => {
+                              void menuActions.current
+                                .get('document.set-text-color')
+                                ?.execute(value, { source: 'menu' });
+                            }}
+                          />
+                        </label>
+                        {menuItem(
+                          'set-text-color',
+                          locale === 'zh' ? '跟随主题' : 'Theme color',
+                          close,
+                          null,
+                        )}
+                        <label>
+                          {t.highlight}
+                          <FrameColorInput
+                            aria-label={t.highlight}
+                            value={toolbar?.marks.highlight ?? '#fef08a'}
+                            onValue={(value) => {
+                              void menuActions.current
+                                .get('document.set-highlight')
+                                ?.execute(value, { source: 'menu' });
+                            }}
+                          />
+                        </label>
+                        {menuItem(
+                          'set-highlight',
+                          locale === 'zh' ? '清除高亮' : 'Clear highlight',
+                          close,
+                          null,
+                        )}
+                        {menuItem('redo', t.redo, close)}
+                      </>
+                    )}
+                  </>
+                )}
+              </DocumentToolbarMenu>
               <input
                 ref={imageInputRef}
                 type="file"
@@ -1146,12 +1269,6 @@ export function DocumentPage({
               />
             </div>
           )}
-          {readonly && (
-            <>
-              {commandTrigger}
-              {shortcutsTrigger}
-            </>
-          )}
           {framePickerOpen && !readonly && (
             <div
               className="doc-frame-picker"
@@ -1161,20 +1278,37 @@ export function DocumentPage({
               <button type="button" onClick={() => setFramePickerOpen(false)}>
                 {locale === 'zh' ? '取消' : 'Cancel'}
               </button>
-              {frameChoices?.map((frame) => (
-                <button
-                  type="button"
-                  key={frame.frameId}
-                  onClick={() => {
-                    void frameAction.current?.execute(frame.frameId, {
-                      source: 'toolbar',
-                    });
-                    setFramePickerOpen(false);
-                  }}
-                >
-                  {frame.title} <small>{frame.path}</small>
-                </button>
-              ))}
+              <input
+                aria-label={locale === 'zh' ? '搜索图表' : 'Search canvases'}
+                value={frameQuery}
+                onChange={(event) => setFrameQuery(event.target.value)}
+              />
+              {frameChoices
+                ?.filter((frame) =>
+                  frameQuery
+                    .toLocaleLowerCase()
+                    .trim()
+                    .split(/\s+/)
+                    .every((term) =>
+                      (frame.title + ' ' + frame.path)
+                        .toLocaleLowerCase()
+                        .includes(term),
+                    ),
+                )
+                .map((frame) => (
+                  <button
+                    type="button"
+                    key={frame.frameId}
+                    onClick={() => {
+                      void frameAction.current?.execute(frame.frameId, {
+                        source: 'toolbar',
+                      });
+                      setFramePickerOpen(false);
+                    }}
+                  >
+                    {frame.title} <small>{frame.path}</small>
+                  </button>
+                ))}
               {!frameChoices?.length && (
                 <p>
                   {locale === 'zh'
@@ -1186,19 +1320,109 @@ export function DocumentPage({
           )}
           {linkOpen && (
             <div className="doc-linkbar">
+              {linkChoices && !readonly && (
+                <div className="doc-link-choices">
+                  <input
+                    ref={linkSearchRef}
+                    aria-label={
+                      locale === 'zh' ? '搜索内部链接' : 'Search internal links'
+                    }
+                    placeholder={
+                      locale === 'zh'
+                        ? '搜索文档、章节或图元'
+                        : 'Find a document, heading or cell'
+                    }
+                    value={linkQuery}
+                    onChange={(event) => setLinkQuery(event.target.value)}
+                  />
+                  <div style={{ maxHeight: 220, overflow: 'auto' }}>
+                    {linkChoices
+                      .filter((item) =>
+                        linkQuery
+                          .toLocaleLowerCase()
+                          .trim()
+                          .split(/\s+/)
+                          .every((term) =>
+                            `${item.title} ${item.detail}`
+                              .toLocaleLowerCase()
+                              .includes(term),
+                          ),
+                      )
+                      .slice(0, 40)
+                      .map((item) => (
+                        <div key={item.href}>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              void insertLinkAction.current?.execute(
+                                { href: item.href, label: item.title },
+                                { source: 'toolbar' },
+                              );
+                              setLinkOpen(false);
+                            }}
+                          >
+                            {item.title} · {item.detail}
+                          </button>
+                          {item.href.includes('#block%3A') && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const target = parseWorkspaceLink(item.href);
+                                if (
+                                  target?.kind === 'heading' &&
+                                  target.slug.startsWith('block:')
+                                ) {
+                                  void insertExcerptAction.current?.execute(
+                                    {
+                                      targetDocumentId: target.fileId,
+                                      blockId: target.slug.slice(6),
+                                    },
+                                    { source: 'toolbar' },
+                                  );
+                                  setLinkOpen(false);
+                                }
+                              }}
+                            >
+                              引用此段
+                            </button>
+                          )}
+                          {onPreviewLink && (
+                            <button
+                              type="button"
+                              aria-label={`${locale === 'zh' ? '预览' : 'Preview'} ${item.title}`}
+                              onClick={() => onPreviewLink(item.href)}
+                            >
+                              {locale === 'zh' ? '预览' : 'Preview'}
+                            </button>
+                          )}
+                        </div>
+                      ))}
+                  </div>
+                </div>
+              )}
               <input
-                ref={(node) => node?.focus()}
+                ref={linkInputRef}
                 value={linkDraft}
                 placeholder={t.linkPlaceholder}
                 onChange={(event) => setLinkDraft(event.target.value)}
                 onKeyDown={(event) => {
-                  if (event.key === 'Enter') applyLink();
+                  if (event.key === 'Enter' && !event.nativeEvent.isComposing)
+                    applyLink();
                   if (event.key === 'Escape') setLinkOpen(false);
                 }}
               />
               <button type="button" onClick={applyLink}>
                 {t.linkApply}
               </button>
+              {onPreviewLink && (
+                <button
+                  type="button"
+                  disabled={!linkDraft.trim()}
+                  onClick={() => onPreviewLink(linkDraft.trim())}
+                >
+                  {locale === 'zh' ? '预览链接' : 'Preview link'}
+                </button>
+              )}
               {onOpenLink && (
                 <button
                   type="button"
@@ -1418,6 +1642,10 @@ export function DocumentPage({
           )}
           <div className="document-page__content">
             <DocumentEditor
+              folding={folding}
+              onAttachmentFile={onAttachmentFile}
+              renderAttachment={renderAttachment}
+              renderWebEmbed={renderWebEmbed}
               {...managedEditorFocus}
               renderFrameReference={renderFrameReference}
               value={value}

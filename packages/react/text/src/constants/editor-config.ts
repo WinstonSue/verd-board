@@ -1,3 +1,15 @@
+import {
+  Attachment,
+  WebEmbed,
+} from '../components/document/document-resources';
+import {
+  Details,
+  DetailsSummary,
+  DetailsContent,
+} from '@tiptap/extension-details';
+import { InlineMath, BlockMath } from '@tiptap/extension-mathematics';
+import { DocumentFolding } from '../components/document/document-rich-content';
+import { StableBlocks } from './stable-blocks';
 import { StarterKit } from '@tiptap/starter-kit';
 import { Heading } from '@tiptap/extension-heading';
 import { BulletList } from '@tiptap/extension-bullet-list';
@@ -13,7 +25,10 @@ import { TextStyle, FontSize, FontFamily } from '@tiptap/extension-text-style';
 import { ThemeColor } from './theme-color';
 import { TextAlign } from '@tiptap/extension-text-align';
 import { Highlight, Superscript, Subscript, Image } from './content-extensions';
-import { DocumentFrameReference } from '../components/document/document-frame-reference';
+import {
+  DocumentFrameReference,
+  DocumentExcerpt,
+} from '../components/document/document-frame-reference';
 
 const sharedMarks = [
   Underline,
@@ -27,6 +42,7 @@ const sharedMarks = [
 ];
 
 const linkOptions = {
+  protocols: ['verd'],
   openOnClick: false,
   HTMLAttributes: {
     class: 'board-link',
@@ -91,13 +107,17 @@ export interface DocumentExtensionOptions {
    * Local TipTap undo/redo. Workspaces pass a central history adapter and
    * turn this off; standalone consumers keep it on.
    */
+  folding?: import('../components/document/folding-store').DocumentFoldingAdapter;
   history?: boolean;
   placeholder?: string;
+  onMathEdit?(latex: string, pos: number, block: boolean): void;
 }
 
 export const createDocumentExtensions = ({
   history = true,
   placeholder,
+  onMathEdit,
+  folding,
 }: DocumentExtensionOptions = {}) => [
   StarterKit.configure({
     ...starterKitOptions,
@@ -106,7 +126,23 @@ export const createDocumentExtensions = ({
     ...(history ? {} : { undoRedo: false as const }),
   }),
   ...blockContentExtensions,
+  Details.configure({ persist: false }),
+  DetailsSummary,
+  DetailsContent,
+  InlineMath.extend({ addInputRules: () => [] }).configure({
+    katexOptions: { trust: false, throwOnError: false },
+    onClick: (node, pos) => onMathEdit?.(node.attrs['latex'], pos, false),
+  }),
+  BlockMath.extend({ addInputRules: () => [] }).configure({
+    katexOptions: { trust: false, throwOnError: false },
+    onClick: (node, pos) => onMathEdit?.(node.attrs['latex'], pos, true),
+  }),
+  DocumentFolding.configure({ folding }),
+  Attachment,
+  WebEmbed,
   DocumentFrameReference,
+  DocumentExcerpt,
+  StableBlocks,
   Placeholder.configure({
     placeholder: placeholder ?? DEFAULT_PLACEHOLDERS.document,
   }),

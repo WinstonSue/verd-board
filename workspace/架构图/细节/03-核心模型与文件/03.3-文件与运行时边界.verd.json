@@ -970,16 +970,15 @@
     "project:detail/03/03/document": {
       "id": "project:detail/03/03/document",
       "cellType": "node",
-      "kind": "document-reference",
+      "kind": "geometry",
       "geometry": {
         "x": 0,
         "y": 1080,
         "width": 1000,
-        "height": 620
+        "height": 288,
+        "outline": "text"
       },
-      "data": {
-        "targetDocumentId": "project-doc:packages/board/canvas-modes"
-      },
+      "data": {},
       "content": {
         "text": {
           "schemaVersion": 1,
@@ -989,6 +988,23 @@
           "content": {
             "type": "doc",
             "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "相关文档：画布模式",
+                    "marks": [
+                      {
+                        "type": "link",
+                        "attrs": {
+                          "href": "verd://file/project-doc%3Apackages%2Fboard%2Fcanvas-modes"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
               {
                 "type": "paragraph",
                 "content": [
@@ -1094,8 +1110,12 @@
               }
             ]
           },
-          "plainText": "读图：解释持久化边界和复制闭包；事务步骤进入⑤，保存步骤进入⑥。\n返回专题总览\n相关细节：领域场景与图文引用\n相关细节：CellStore 与 Frame 所有权\nAI画布数据规范 · 2. 数据模型速览\nAI画布数据规范 · 4. 通用字段表\n源码入口：packages/product/app/src/frames/frame-files.ts；packages/product/app/src/documents/document-files.ts；packages/engine/core/src/cell/runtime.ts。"
+          "plainText": "相关文档：画布模式\n读图：解释持久化边界和复制闭包；事务步骤进入⑤，保存步骤进入⑥。\n返回专题总览\n相关细节：领域场景与图文引用\n相关细节：CellStore 与 Frame 所有权\nAI画布数据规范 · 2. 数据模型速览\nAI画布数据规范 · 4. 通用字段表\n源码入口：packages/product/app/src/frames/frame-files.ts；packages/product/app/src/documents/document-files.ts；packages/engine/core/src/cell/runtime.ts。"
         }
+      },
+      "appearance": {
+        "fill": "none",
+        "strokeColor": "none"
       }
     }
   },

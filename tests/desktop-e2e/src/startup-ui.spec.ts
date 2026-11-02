@@ -3,7 +3,11 @@ import { expect, test, type ElectronApplication } from '@playwright/test';
 import { mkdtemp, mkdir, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { openWorkspaceMenu } from '../../web-e2e/src/app-actions';
+import {
+  openActiveFile,
+  openWorkspaceMenu,
+} from '../../web-e2e/src/app-actions';
+import { seedEmptyCanvas } from './workspace-disk';
 
 test('Desktop fills the window, registers history and restores saved tabs', async () => {
   const directory = await mkdtemp(path.join(tmpdir(), 'verd-startup-ui-'));
@@ -13,6 +17,7 @@ test('Desktop fills the window, registers history and restores saved tabs', asyn
     const workspace = path.join(directory, 'workspace');
     await mkdir(userData);
     await mkdir(workspace);
+    await seedEmptyCanvas(workspace);
     const launcher = path.join(directory, 'launch.cjs');
     await writeDesktopLauncher(launcher, userData);
     const env: NodeJS.ProcessEnv = {
@@ -24,7 +29,6 @@ test('Desktop fills the window, registers history and restores saved tabs', asyn
       desktop = await electron.launch({ args: [launcher], env });
       const page = await desktop.firstWindow();
       await expect(page.locator('.workspace-shell')).toBeVisible();
-      await expect(page.getByRole('tab', { selected: true })).toBeVisible();
       return page;
     };
     const close = async () => {
@@ -38,6 +42,7 @@ test('Desktop fills the window, registers history and restores saved tabs', asyn
       desktop = undefined;
     };
     let page = await launch();
+    await openActiveFile(page);
     await expect(
       page.locator('.workspace-pane.is-active svg[aria-label="Frame canvas"]'),
     ).toBeVisible();
@@ -74,7 +79,7 @@ test('Desktop fills the window, registers history and restores saved tabs', asyn
       .toContain('workspace');
     const menu = await openWorkspaceMenu(page);
     await expect(
-      menu.getByRole('menuitem', { name: /workspace.*当前/ }),
+      menu.getByRole('button', { name: 'workspace', exact: true }),
     ).toBeDisabled();
     await page.keyboard.press('Escape');
     for (const width of [1200, 1600]) {
@@ -102,7 +107,8 @@ test('Desktop fills the window, registers history and restores saved tabs', asyn
       expect(Math.abs(bounds.right - bounds.viewport)).toBeLessThanOrEqual(1);
       expect(bounds.inspector).toBe(300);
     }
-    await page.getByRole('button', { name: '新建文档', exact: true }).click();
+    await page.getByTestId('file-tree-new').click();
+    await page.getByRole('menuitem', { name: '新建文档', exact: true }).click();
     await expect(page.getByRole('tab')).toHaveCount(2);
     const tabs = await page
       .getByRole('tab')

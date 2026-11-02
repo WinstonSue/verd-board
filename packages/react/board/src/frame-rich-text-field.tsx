@@ -7,7 +7,11 @@ import {
   textWithDefaultAlignment,
   textWithoutDefaultAlignment,
 } from '@sue/board-common';
-import { LineText } from '@sue/board-react-text';
+import {
+  useRichTextLinks,
+  type RichTextLinkActivation,
+  LineText,
+} from '@sue/board-react-text';
 
 export function existingTextDocument(
   text: unknown,
@@ -24,7 +28,13 @@ export function FrameRichTextField({
   testId,
   defaultAlign,
   onChange,
+  onOpenLink,
+  linkActivation,
+  locale,
 }: {
+  onOpenLink?(href: string): void;
+  linkActivation?: RichTextLinkActivation;
+  locale?: 'zh' | 'en';
   text: BoardTextDocument;
   readonly?: boolean;
   label: string;
@@ -39,26 +49,34 @@ export function FrameRichTextField({
     () => (defaultAlign ? textWithDefaultAlignment(text, defaultAlign) : text),
     [text, defaultAlign],
   );
+  const linkEvents = useRichTextLinks({
+    activation: linkActivation,
+    locale,
+    readonly,
+    onOpenLink,
+  });
   return (
-    <LineText
-      key={epoch}
-      text={effectiveText}
-      // Property fields must not take focus when the selection changes.
-      // eslint-disable-next-line jsx-a11y/no-autofocus
-      autoFocus={false}
-      readonly={readonly}
-      attributes={{
-        'aria-label': label,
-        ...(testId ? { 'data-testid': testId } : {}),
-      }}
-      onChange={({ newText }) => {
-        if (defaultAlign)
-          newText = textWithoutDefaultAlignment(newText, text, defaultAlign);
-        if (sameBoardText(text, newText)) return;
-        void Promise.resolve(onChange(newText)).then((result) => {
-          if (result?.status === 'rejected') setEpoch((value) => value + 1);
-        });
-      }}
-    />
+    <div {...linkEvents}>
+      <LineText
+        key={epoch}
+        text={effectiveText}
+        // Property fields must not take focus when the selection changes.
+        // eslint-disable-next-line jsx-a11y/no-autofocus
+        autoFocus={false}
+        readonly={readonly}
+        attributes={{
+          'aria-label': label,
+          ...(testId ? { 'data-testid': testId } : {}),
+        }}
+        onChange={({ newText }) => {
+          if (defaultAlign)
+            newText = textWithoutDefaultAlignment(newText, text, defaultAlign);
+          if (sameBoardText(text, newText)) return;
+          void Promise.resolve(onChange(newText)).then((result) => {
+            if (result?.status === 'rejected') setEpoch((value) => value + 1);
+          });
+        }}
+      />
+    </div>
   );
 }

@@ -59,6 +59,9 @@ const commandTypes = [
   'file',
   'create-file',
   'move-file',
+  'organize-entries',
+  'move-directory',
+  'rename-canvas',
   'rename-document',
   'trash-file',
   'restore-file',
@@ -184,7 +187,10 @@ export function createWorkspaceActionRegistry(options: {
         resultFor(await context.session![direction]()),
     });
   }
-  registry.register<{ fileId: string; action: 'keep-local' | 'load-disk' }>({
+  registry.register<{
+    fileId: string;
+    action: 'keep-local' | 'load-disk' | 'save-copy';
+  }>({
     id: 'workspace.resolve-conflict',
     label: 'Resolve conflict',
     category: 'workspace',
@@ -192,13 +198,18 @@ export function createWorkspaceActionRegistry(options: {
     palette: false,
     validateArgs: (
       args,
-    ): args is { fileId: string; action: 'keep-local' | 'load-disk' } =>
+    ): args is {
+      fileId: string;
+      action: 'keep-local' | 'load-disk' | 'save-copy';
+    } =>
       !!args &&
       typeof args === 'object' &&
       'fileId' in args &&
       typeof args.fileId === 'string' &&
       'action' in args &&
-      (args.action === 'keep-local' || args.action === 'load-disk'),
+      (args.action === 'keep-local' ||
+        args.action === 'load-disk' ||
+        args.action === 'save-copy'),
     getState: (context) => availability(context, true),
     execute: async (context, args) =>
       resultFor(

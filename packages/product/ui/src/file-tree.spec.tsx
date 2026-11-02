@@ -195,7 +195,11 @@ describe('FileTree', () => {
     ).toBe('2');
     expect(button('Child').getAttribute('title')).toBe('c.verd.json');
     expect(container.querySelectorAll('[data-file-id="c"]')).toHaveLength(2);
-    expect(container.querySelector('details, summary')).toBeNull();
+    expect(
+      container.querySelector(
+        '.file-tree-body details, .file-tree-body summary',
+      ),
+    ).toBeNull();
     expect(container.textContent).not.toContain('更多');
   });
   it('opens ordered actions and closes the menu after selecting trash', async () => {
@@ -335,7 +339,7 @@ describe('FileTree', () => {
         new Promise<void>((resolve) => requestAnimationFrame(() => resolve())),
     );
     expect(document.activeElement).toBe(button('Child'));
-    button('新建画布').focus();
+    button('新建').focus();
     await act(async () =>
       root.render(
         <FileTree
@@ -368,6 +372,7 @@ describe('FileTree', () => {
   });
   it('keeps an empty naming dialog open and can reopen it after cancellation', async () => {
     await setup();
+    await click(button('新建'));
     await click(button('新建文件夹'));
     expect(button('确定').disabled).toBe(true);
     await act(async () => {
@@ -379,7 +384,43 @@ describe('FileTree', () => {
     });
     expect(container.querySelector('dialog')).toBeTruthy();
     await click(button('取消'));
+    await click(button('新建'));
     await click(button('新建文件夹'));
     expect(container.querySelector('dialog')).toBeTruthy();
   });
+});
+
+it('dismisses on an outside captured pointer without swallowing it, and copies the original file', async () => {
+  const onCopyLink = vi.fn();
+  await setup({ onCopyLink });
+  await click(button('「Alpha」的操作'));
+  await click(button('复制链接'));
+  expect(onCopyLink).toHaveBeenCalledExactlyOnceWith('a');
+  await click(button('「Alpha」的操作'));
+  const outside = document.createElement('button');
+  const received = vi.fn((event: Event) => event.stopPropagation());
+  outside.addEventListener('pointerdown', received, true);
+  document.body.append(outside);
+  try {
+    await act(async () => {
+      outside.dispatchEvent(new MouseEvent('pointerdown', { bubbles: true }));
+    });
+    expect(document.querySelector('[role="menu"]')).toBeNull();
+    expect(received).toHaveBeenCalledOnce();
+  } finally {
+    outside.remove();
+  }
+});
+
+it('exposes selected paths and creation through a floating menu', async () => {
+  await setup({ selectedPaths: ['b.verd.json'] });
+  expect(
+    container
+      .querySelector('[data-entry-path="b.verd.json"]')
+      ?.getAttribute('aria-selected'),
+  ).toBe('true');
+  expect(container.querySelector('.file-tree-header details')).toBeNull();
+  await click(button('新建'));
+  expect(document.querySelector('[role="menu"]')).toBeTruthy();
+  expect(button('新建文件夹')).toBeTruthy();
 });

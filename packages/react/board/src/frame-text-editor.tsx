@@ -1,4 +1,22 @@
 import {
+  Bold,
+  Italic,
+  Underline,
+  Strikethrough,
+  Code,
+  Link as LinkIcon,
+  MoreHorizontal,
+} from 'lucide-react';
+import { useFrameTheme, frameThemeStyle } from './frame-theme';
+import { useFrameI18n } from './frame-i18n';
+import './frame-text-editor.scss';
+import { useContext } from 'react';
+import { useRichTextLinks } from '@sue/board-react-text';
+import {
+  FrameRichTextLinkContext,
+  FrameRichTextLinkPolicyContext,
+} from './frame-rich-text';
+import {
   useEffect,
   useLayoutEffect,
   useRef,
@@ -49,6 +67,24 @@ export function FrameTextEditor({
   onTab?(): void;
   onHistory(action: 'undo' | 'redo'): void;
 }) {
+  const host = useContext(FrameRichTextLinkContext);
+  const policy = useContext(FrameRichTextLinkPolicyContext);
+  const linkEvents = useRichTextLinks({
+    ...policy,
+    readonly,
+    onOpenLink: host
+      ? (href) => {
+          void host.openLink(href);
+        }
+      : undefined,
+  });
+  const theme = useFrameTheme();
+  const { language } = useFrameI18n();
+  const zh = language === 'zh';
+  const [selectionVisible, setSelectionVisible] = useState(false);
+  const [panel, setPanel] = useState<'link' | 'more' | null>(null);
+  const composing = useRef(false);
+  const selectedRange = useRef<Range | null>(null);
   const effectiveText = useMemo(
     () => (defaultAlign ? textWithDefaultAlignment(text, defaultAlign) : text),
     [text, defaultAlign],
@@ -57,18 +93,23 @@ export function FrameTextEditor({
   const toolbarRef = useRef<HTMLDivElement>(null);
   useFrameWheelPortal(toolbarRef);
   useLayoutEffect(() => {
-    if (readonly) return;
+    if (readonly || !selectionVisible) return;
     let frame = 0;
     const position = () => {
       const body = bodyRef.current;
       const toolbar = toolbarRef.current;
       if (body && toolbar) {
-        const anchor = body.getBoundingClientRect();
+        const anchor =
+          selectedRange.current?.getBoundingClientRect() ??
+          body.getBoundingClientRect();
         const controls = toolbar.getBoundingClientRect();
         const margin = 8;
         const left = Math.max(
           margin,
-          Math.min(anchor.left, window.innerWidth - controls.width - margin),
+          Math.min(
+            anchor.left + (anchor.width - controls.width) / 2,
+            window.innerWidth - controls.width - margin,
+          ),
         );
         const above = anchor.top - controls.height - margin;
         const top = Math.max(
@@ -90,7 +131,7 @@ export function FrameTextEditor({
     };
     position();
     return () => cancelAnimationFrame(frame);
-  }, [readonly]);
+  }, [readonly, selectionVisible, panel]);
   const [controller, setController] = useState<BoardTextController | null>(
     null,
   );
@@ -132,9 +173,57 @@ export function FrameTextEditor({
     const selection = selectionRef.current;
     if (selection) controller?.selectRange(selection.from, selection.to);
   };
+  useEffect(() => {
+    let pending = 0;
+    const update = () => {
+      cancelAnimationFrame(pending);
+      pending = requestAnimationFrame(() => {
+        if (toolbarRef.current?.contains(document.activeElement)) return;
+        const native = window.getSelection();
+        const selection = controller?.getSelection();
+        const visible =
+          !readonly &&
+          !composing.current &&
+          !!selection &&
+          !selection.collapsed &&
+          (!!bodyRef.current?.contains(document.activeElement) ||
+            !!bodyRef.current?.contains(native?.anchorNode ?? null));
+        if (visible) {
+          const previous = selectionRef.current;
+          if (
+            previous?.from !== selection.from ||
+            previous?.to !== selection.to
+          ) {
+            refresh((value) => value + 1);
+          }
+          selectionRef.current = selection;
+          if (
+            native &&
+            !native.isCollapsed &&
+            native.rangeCount &&
+            bodyRef.current?.contains(native.anchorNode)
+          )
+            selectedRange.current = native.getRangeAt(0).cloneRange();
+        } else setPanel(null);
+        setSelectionVisible(visible);
+      });
+    };
+    document.addEventListener('selectionchange', update);
+    update();
+    return () => {
+      cancelAnimationFrame(pending);
+      document.removeEventListener('selectionchange', update);
+    };
+  }, [controller, readonly]);
+  const apply = (run: () => void) => {
+    restoreSelection();
+    run();
+    refresh((value) => value + 1);
+  };
   return (
     <div
       data-frame-text-editor=""
+      {...linkEvents}
       ref={bodyRef}
       className="board-text-layout"
       style={{
@@ -142,10 +231,34 @@ export function FrameTextEditor({
         textAlign: effectiveText.align ?? 'center',
         ...style,
       }}
+      onCompositionStart={() => {
+        composing.current = true;
+        setSelectionVisible(false);
+        setPanel(null);
+      }}
+      onCompositionEnd={() => {
+        composing.current = false;
+        document.dispatchEvent(new Event('selectionchange'));
+      }}
       onPointerDown={(event) => event.stopPropagation()}
       onContextMenu={(event) => event.stopPropagation()}
       onKeyDownCapture={(event) => {
         if (event.nativeEvent.isComposing || event.keyCode === 229) return;
+        if (event.altKey && event.key === 'F10' && selectionVisible) {
+          event.preventDefault();
+          toolbarRef.current
+            ?.querySelector<HTMLButtonElement>('button')
+            ?.focus();
+          return;
+        }
+        if (event.key === 'Escape' && panel) {
+          event.preventDefault();
+          event.stopPropagation();
+          setPanel(null);
+          restoreSelection();
+          bodyRef.current?.querySelector<HTMLElement>('.ProseMirror')?.focus();
+          return;
+        }
         if (
           (event.target as Element).closest('[data-frame-text-toolbar]') &&
           event.key !== 'Escape'
@@ -211,45 +324,65 @@ export function FrameTextEditor({
       }}
     >
       {!readonly &&
+        selectionVisible &&
         createPortal(
           <div
             ref={toolbarRef}
             data-frame-text-toolbar
             role="toolbar"
             aria-label="Text formatting"
+            onKeyDown={(event) => {
+              if (
+                !(event.target instanceof HTMLButtonElement) ||
+                !['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)
+              )
+                return;
+              event.preventDefault();
+              event.stopPropagation();
+              const buttons = [
+                ...(toolbarRef.current?.querySelectorAll<HTMLButtonElement>(
+                  '.frame-text-toolbar__row:first-child > button:not(:disabled)',
+                ) ?? []),
+              ];
+              const at = buttons.indexOf(event.target);
+              buttons[
+                event.key === 'Home'
+                  ? 0
+                  : event.key === 'End'
+                    ? buttons.length - 1
+                    : (at +
+                        (event.key === 'ArrowRight' ? 1 : -1) +
+                        buttons.length) %
+                      buttons.length
+              ]?.focus();
+            }}
             onMouseDownCapture={(event) => {
               const selection = controller?.getSelection();
               if (selection) selectionRef.current = selection;
               if ((event.target as Element).closest('button'))
                 event.preventDefault();
             }}
+            className="frame-text-toolbar"
             style={{
+              ...frameThemeStyle(theme),
               position: 'fixed',
-              zIndex: 60,
               visibility: 'hidden',
               top: 0,
               left: 0,
-              display: 'flex',
-              gap: 3,
-              background: '#fff',
-              color: '#0f172a',
-              border: '1px solid #cbd5e1',
-              borderRadius: 6,
-              padding: 4,
-              whiteSpace: 'nowrap',
-              maxWidth: 'calc(100vw - 16px)',
-              overflowX: 'auto',
-              boxSizing: 'border-box',
-              font: '13px system-ui, sans-serif',
-              lineHeight: 1.3,
             }}
           >
-            {(['bold', 'italic', 'underline', 'strike', 'code'] as const).map(
-              (mark) => (
+            <div className="frame-text-toolbar__row">
+              {(['bold', 'italic', 'underline'] as const).map((mark) => (
                 <button
                   key={mark}
                   type="button"
-                  aria-label={mark[0].toUpperCase() + mark.slice(1)}
+                  aria-label={
+                    zh
+                      ? { bold: '加粗', italic: '斜体', underline: '下划线' }[
+                          mark
+                        ]
+                      : mark[0].toUpperCase() + mark.slice(1)
+                  }
                   aria-pressed={!!controller?.getActiveMarks()[mark]}
                   disabled={!controller}
                   onMouseDown={(event) => {
@@ -270,94 +403,191 @@ export function FrameTextEditor({
                   }}
                   style={{ minWidth: 24, padding: 2 }}
                 >
-                  {
-                    {
-                      bold: 'B',
-                      italic: 'I',
-                      underline: 'U',
-                      strike: 'S',
-                      code: '<>',
-                    }[mark]
-                  }
+                  {(() => {
+                    const Icon = {
+                      bold: Bold,
+                      italic: Italic,
+                      underline: Underline,
+                    }[mark];
+                    return <Icon size={16} />;
+                  })()}
                 </button>
-              ),
-            )}
-            <select
-              aria-label="Font size"
-              disabled={!controller}
-              defaultValue={String(style?.fontSize ?? 16).replace('px', '')}
-              onChange={(event) => {
-                restoreSelection();
-                controller?.applyMark('fontSize', Number(event.target.value));
-              }}
-            >
-              {[12, 13, 14, 16, 18, 20, 24, 28, 32, 40, 48].map((size) => (
-                <option key={size}>{size}</option>
               ))}
-            </select>
-            <FrameColorInput
-              aria-label="Text color"
-              disabled={!controller}
-              value={
-                controller?.getActiveMarks().color ??
-                (typeof style?.color === 'string' ? style.color : '#0f172a')
-              }
-              style={{ width: 28, height: 24, padding: 0 }}
-              onValue={(value) => {
-                restoreSelection();
-                controller?.applyMark('color', value);
-              }}
-            />
-            <button
-              type="button"
-              aria-label="Reset text color to theme"
-              disabled={!controller}
-              onClick={() => {
-                restoreSelection();
-                controller?.applyMark('color');
-                refresh((value) => value + 1);
-              }}
-            >
-              主题颜色
-            </button>
-            <select
-              aria-label="Text alignment"
-              disabled={!controller}
-              value={
-                controller?.getActiveAlign?.() ??
-                effectiveText.align ??
-                'center'
-              }
-              onChange={(event) => {
-                restoreSelection();
-                controller?.setAlign(event.target.value as Alignment);
-                refresh((value) => value + 1);
-              }}
-            >
-              <option value="left">左</option>
-              <option value="center">中</option>
-              <option value="right">右</option>
-            </select>
-            <input
-              aria-label="Link URL"
-              type="url"
-              value={link}
-              onChange={(event) => setLink(event.target.value)}
-              placeholder="URL"
-              style={{ width: 100 }}
-            />
-            <button
-              type="button"
-              aria-label="Apply link"
-              disabled={!controller}
-              onPointerDown={(event) => event.preventDefault()}
-              onClick={() => {
-                restoreSelection();
-                controller?.setLink(link ? { href: link } : null);
-              }}
-            >
-              ↗
-            </button>
+              <button
+                type="button"
+                aria-label={zh ? '链接' : 'Link'}
+                aria-expanded={panel === 'link'}
+                onClick={() => {
+                  setLink(controller?.getActiveLink()?.href ?? '');
+                  setPanel(panel === 'link' ? null : 'link');
+                }}
+              >
+                <LinkIcon size={16} />
+              </button>
+              <button
+                type="button"
+                aria-label={zh ? '更多文字格式' : 'More text formatting'}
+                aria-expanded={panel === 'more'}
+                onClick={() => setPanel(panel === 'more' ? null : 'more')}
+              >
+                <MoreHorizontal size={16} />
+              </button>
+            </div>
+            {panel === 'more' && (
+              <div
+                className="frame-text-toolbar__panel"
+                role="group"
+                aria-label={zh ? '更多文字格式' : 'More text formatting'}
+              >
+                <div className="frame-text-toolbar__row">
+                  <button
+                    type="button"
+                    aria-label={zh ? '删除线' : 'Strikethrough'}
+                    aria-pressed={!!controller?.getActiveMarks().strike}
+                    onClick={() =>
+                      apply(() => controller?.toggleMark('strike'))
+                    }
+                  >
+                    <Strikethrough size={16} />
+                  </button>
+                  <button
+                    type="button"
+                    aria-label={zh ? '行内代码' : 'Inline code'}
+                    aria-pressed={!!controller?.getActiveMarks().code}
+                    onClick={() => apply(() => controller?.toggleMark('code'))}
+                  >
+                    <Code size={16} />
+                  </button>
+                </div>
+                <label>
+                  {zh ? '字号' : 'Font size'}
+                  <select
+                    aria-label="Font size"
+                    disabled={!controller}
+                    value={String(
+                      controller?.getActiveMarks().fontSize ??
+                        style?.fontSize ??
+                        16,
+                    ).replace('px', '')}
+                    onChange={(event) => {
+                      restoreSelection();
+                      controller?.applyMark(
+                        'fontSize',
+                        Number(event.target.value),
+                      );
+                    }}
+                  >
+                    {[12, 13, 14, 16, 18, 20, 24, 28, 32, 40, 48].map(
+                      (size) => (
+                        <option key={size}>{size}</option>
+                      ),
+                    )}
+                  </select>
+                </label>
+                <label>
+                  {zh ? '文字颜色' : 'Text color'}
+                  <FrameColorInput
+                    aria-label="Text color"
+                    disabled={!controller}
+                    value={
+                      controller?.getActiveMarks().color ??
+                      (typeof style?.color === 'string'
+                        ? style.color
+                        : '#0f172a')
+                    }
+                    style={{ width: 28, height: 24, padding: 0 }}
+                    onValue={(value) => {
+                      restoreSelection();
+                      controller?.applyMark('color', value);
+                    }}
+                  />
+                  <button
+                    type="button"
+                    aria-label="Reset text color to theme"
+                    disabled={!controller}
+                    onClick={() => {
+                      restoreSelection();
+                      controller?.applyMark('color');
+                      refresh((value) => value + 1);
+                    }}
+                  >
+                    {zh ? '跟随主题' : 'Theme color'}
+                  </button>
+                </label>
+                <label>
+                  {zh ? '对齐' : 'Align'}
+                  <select
+                    aria-label="Text alignment"
+                    disabled={!controller}
+                    value={
+                      controller?.getActiveAlign?.() ??
+                      effectiveText.align ??
+                      'center'
+                    }
+                    onChange={(event) => {
+                      restoreSelection();
+                      controller?.setAlign(event.target.value as Alignment);
+                      refresh((value) => value + 1);
+                    }}
+                  >
+                    <option value="left">{zh ? '左' : 'Left'}</option>
+                    <option value="center">{zh ? '中' : 'Center'}</option>
+                    <option value="right">{zh ? '右' : 'Right'}</option>
+                  </select>
+                </label>
+              </div>
+            )}
+            {panel === 'link' && (
+              <div
+                className="frame-text-toolbar__panel"
+                role="group"
+                aria-label={zh ? '链接设置' : 'Link settings'}
+              >
+                <input
+                  aria-label="Link URL"
+                  type="url"
+                  value={link}
+                  onChange={(event) => setLink(event.target.value)}
+                  placeholder="https://…"
+                  style={{ width: 100 }}
+                />
+                <button
+                  type="button"
+                  aria-label="Apply link"
+                  disabled={!controller}
+                  onPointerDown={(event) => event.preventDefault()}
+                  onClick={() => {
+                    restoreSelection();
+                    controller?.setLink(link ? { href: link } : null);
+                    setPanel(null);
+                  }}
+                >
+                  {zh ? '应用链接' : 'Apply link'}
+                </button>
+                <button
+                  type="button"
+                  aria-label="Remove link"
+                  onClick={() => {
+                    apply(() => controller?.setLink(null));
+                    setPanel(null);
+                  }}
+                >
+                  {zh ? '移除链接' : 'Remove link'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setPanel(null);
+                    restoreSelection();
+                    bodyRef.current
+                      ?.querySelector<HTMLElement>('.ProseMirror')
+                      ?.focus();
+                  }}
+                >
+                  {zh ? '取消' : 'Cancel'}
+                </button>
+              </div>
+            )}
           </div>,
           document.body,
         )}

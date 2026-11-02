@@ -13,6 +13,17 @@ import type {
 } from './workspace-host';
 
 interface DesktopBridge {
+  checkBuiltinUpdates: NonNullable<WorkspaceHost['checkBuiltinUpdates']>;
+  prepareBuiltinUpdate: NonNullable<WorkspaceHost['prepareBuiltinUpdate']>;
+  snoozeBuiltinUpdate: NonNullable<WorkspaceHost['snoozeBuiltinUpdate']>;
+  subscribeBuiltinUpdates: NonNullable<
+    WorkspaceHost['subscribeBuiltinUpdates']
+  >;
+  createWorkspace: NonNullable<WorkspaceHost['createWorkspace']>;
+  updateWorkspaceHistory: NonNullable<WorkspaceHost['updateWorkspaceHistory']>;
+  readBuiltinUpdate: NonNullable<WorkspaceHost['readBuiltinUpdate']>;
+  updateBuiltinWorkspace: NonNullable<WorkspaceHost['updateBuiltinWorkspace']>;
+  revealBuiltinBackups: NonNullable<WorkspaceHost['revealBuiltinBackups']>;
   readGlobalConfig(): Promise<GlobalConfigSnapshot>;
   writeGlobalConfig(
     value: Record<string, unknown>,
@@ -63,6 +74,17 @@ export const createDesktopWorkspaceHost = (): WorkspaceHost => {
     return api;
   };
   return {
+    checkBuiltinUpdates: (force) => bridge().checkBuiltinUpdates(force),
+    prepareBuiltinUpdate: (id) => bridge().prepareBuiltinUpdate(id),
+    snoozeBuiltinUpdate: (id) => bridge().snoozeBuiltinUpdate(id),
+    subscribeBuiltinUpdates: (listener) =>
+      bridge().subscribeBuiltinUpdates(listener),
+    readBuiltinUpdate: (h) => bridge().readBuiltinUpdate(h),
+    updateBuiltinWorkspace: (h, id) => bridge().updateBuiltinWorkspace(h, id),
+    revealBuiltinBackups: (h) => bridge().revealBuiltinBackups(h),
+    createWorkspace: (request) => bridge().createWorkspace(request),
+    updateWorkspaceHistory: (request) =>
+      bridge().updateWorkspaceHistory(request),
     readGlobalConfig: () => bridge().readGlobalConfig(),
     writeGlobalConfig: (value, expectedVersion) =>
       bridge().writeGlobalConfig(value, expectedVersion),

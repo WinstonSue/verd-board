@@ -8,9 +8,8 @@
   padding: min(16vh, 120px) 16px 24px;
   background: var(--verd-actions-backdrop, rgb(0 0 0 / 24%));
   color: var(--verd-actions-text, CanvasText);
-  font:
-    14px/1.5 system-ui,
-    sans-serif;
+  font: var(--verd-actions-text-size, 14px)/1.5
+    var(--verd-actions-font, system-ui, sans-serif);
 }
 .verd-actions-panel {
   position: relative;
@@ -35,7 +34,7 @@
 }
 .verd-actions-panel h2 {
   margin: 0;
-  font-size: 16px;
+  font-size: var(--verd-actions-title-size, 16px);
   font-weight: 600;
 }
 .verd-actions-panel header button {
@@ -87,7 +86,7 @@
 }
 .verd-actions-label small {
   display: block;
-  font-size: 11px;
+  font-size: var(--verd-actions-small-size, 12px);
   opacity: 0.75;
 }
 .verd-actions-keys {
@@ -97,9 +96,8 @@
   gap: 6px;
 }
 .verd-actions-keys kbd {
-  font:
-    11px/1.5 system-ui,
-    sans-serif;
+  font: var(--verd-actions-kbd-size, 11px)/1.5
+    var(--verd-actions-font, system-ui, sans-serif);
   border: 1px solid currentColor;
   border-radius: 3px;
   padding: 0 4px;
@@ -108,7 +106,7 @@
 }
 .verd-actions-list h3 {
   margin: 14px 8px 4px;
-  font-size: 12px;
+  font-size: var(--verd-actions-small-size, 12px);
   opacity: 0.7;
 }
 .verd-actions-help-row {

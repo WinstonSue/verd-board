@@ -1,5 +1,6 @@
 import {
   isEdgeCell,
+  isFrameCell,
   type Cell,
   type CellRegistry,
   type CellStore,
@@ -121,6 +122,25 @@ export const createMindFrameExtensions = (
   return [
     {
       layout,
+      // Other domains can virtualize even when the Mind plugin is installed.
+      virtualizable: (store, frameId) => {
+        const frame = store.cells[frameId];
+        return (
+          isFrameCell(frame) &&
+          !frame.children.some((id) =>
+            store.cells[id]?.kind.startsWith('mind-'),
+          )
+        );
+      },
+      layoutCacheKey: (store, frameId) => {
+        const frame = store.cells[frameId];
+        return isFrameCell(frame)
+          ? [
+              JSON.stringify(frame),
+              ...frame.children.map((id) => store.cells[id]),
+            ]
+          : [frame];
+      },
       visible: ({ store, cell, frameId, viewProjection }) => {
         if (!cell.kind.startsWith('mind-')) return true;
         const nodes = layout(store, frameId, viewProjection);

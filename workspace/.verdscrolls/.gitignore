@@ -1,0 +1,4 @@
+# Project config is portable. Runtime data and machine links are not.
+*
+!.gitignore
+!config.json

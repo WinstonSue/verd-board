@@ -150,11 +150,11 @@ test('native documents navigate to unmounted files, duplicate sections and canva
   ).toBeInViewport();
   // The contents are real editor DOM, so verify the native document export.
   await activePane(page)
-    .getByRole('button', { name: '导出', exact: true })
+    .getByRole('button', { name: '文档', exact: true })
     .click();
   const downloading = page.waitForEvent('download');
-  await activePane(page)
-    .getByRole('menuitem', { name: 'VerdBoard 文档 (.json)', exact: true })
+  await page
+    .getByRole('button', { name: 'VerdBoard 文档 (.json)', exact: true })
     .click();
   const download = await downloading;
   const stream = await download.createReadStream();

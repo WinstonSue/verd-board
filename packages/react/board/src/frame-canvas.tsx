@@ -1,3 +1,5 @@
+import { FrameVirtualLayer } from './frame-virtual-layer';
+import { shouldActivateRichTextLink } from '@sue/board-react-text';
 import {
   resolveBoardTheme,
   readableThemeText,
@@ -7,6 +9,8 @@ import {
 import {
   resolveFrameCellAppearance,
   type FrameThemeAppearanceContext,
+  type FrameThemeAppearance,
+  type ResolvedFrameCellAppearance,
 } from './frame-appearance';
 import {
   FrameThemeContext,
@@ -17,7 +21,6 @@ import {
 import {
   createFrameLayouts,
   sameGeometry,
-  type FrameLayoutEntry,
   type FrameLayoutMemory,
 } from './frame-scene-layout';
 import {
@@ -51,13 +54,13 @@ import {
   optimizeEdges,
   optimizableEdgeIds,
   arrangementAvailability,
-  arrowMarkerGeometry,
   assertRegisteredCellKinds,
   bindEdgeRouteTerminals,
   cellArrangementBounds,
   collectArrangementBlocks,
   copyCellFragment,
   createCellRegistry,
+  changedCellIds,
   createCellRuntime,
   createDefaultShapeGeometryRegistry,
   createEdgeRoutingContext,
@@ -78,7 +81,6 @@ import {
   frameMinimumSize,
   frameScene,
   frameVisualBounds,
-  geometryBounds,
   groupAncestors,
   groupBounds,
   groupCells,
@@ -105,7 +107,6 @@ import {
   polylinePath,
   portAnchor,
   relativeAnchor,
-  reorderCells,
   replaceEdgeTerminal,
   resizeNodeGeometry,
   rotateNodeGeometry,
@@ -130,7 +131,6 @@ import {
   type CellStore,
   type CellTransaction,
   type EdgeCell,
-  type EdgeRoutingContext,
   type FrameSnapshot,
   type NodeCell,
   type NodeGeometry,
@@ -151,7 +151,6 @@ import {
   type FrameSelectionOperation,
 } from './frame-actions';
 import {
-  canonicalFrameProjection,
   type FrameViewProjection,
   type FrameLinkHost,
   type FrameRevealRequest,
@@ -164,7 +163,6 @@ import {
   useCallback,
   useContext,
   useEffect,
-  useId,
   useImperativeHandle,
   useLayoutEffect,
   useMemo,
@@ -215,6 +213,7 @@ import {
   FrameRichText,
   FrameRichTextPreviewContext,
   FrameRichTextLinkContext,
+  FrameRichTextLinkPolicyContext,
 } from './frame-rich-text';
 import { frameSelectionWorldBounds } from './frame-selection-camera';
 import { FrameSelectionHandles } from './frame-selection-handles';
@@ -240,6 +239,7 @@ export type { FrameCanvasInteractionSettings } from './frame-interaction-setting
 export interface FrameRenderContext {
   appearance?: BoardAppearance;
   theme?: ResolvedBoardTheme;
+  resolvedAppearance?: Readonly<ResolvedFrameCellAppearance>;
   selectionIds?: readonly string[];
   store: CellStore;
   viewProjection: FrameViewProjection;
@@ -283,9 +283,7 @@ export interface FrameRenderExtension {
   /** Theme defaults for this kind; explicit per-field custom colors still win. */
   themeAppearance?: (
     context: FrameThemeAppearanceContext,
-  ) =>
-    | Pick<import('@sue/board-core').NodeAppearance, 'fill' | 'strokeColor'>
-    | undefined;
+  ) => FrameThemeAppearance | undefined;
   plugin?: FrameUIPlugin;
   kind?: string;
   layout?: (
@@ -293,6 +291,17 @@ export interface FrameRenderExtension {
     frameId: string,
     projection?: FrameViewProjection,
   ) => Map<string, NodeGeometry>;
+  /** Complete immutable dependencies; omitted keys retain eager computation. */
+  layoutCacheKey?: (
+    store: CellStore,
+    frameId: string,
+    projection?: FrameViewProjection,
+  ) => readonly unknown[];
+  layoutEdgesCacheKey?: (
+    store: CellStore,
+    frameId: string,
+    geometry: ReadonlyMap<string, NodeGeometry>,
+  ) => readonly unknown[];
   /** Pure runtime projection of existing edges, shared by paint, hit testing and export. */
   layoutEdges?: (
     store: CellStore,
@@ -314,6 +323,8 @@ export interface FrameRenderExtension {
   /** Hover controls. Wrappers are excluded from image export. */
   renderControls?: (context: FrameRenderContext) => ReactNode;
   visible?: (context: FrameRenderContext) => boolean;
+  /** Opt in when model bounds remain authoritative for this Frame. */
+  virtualizable?: (store: CellStore, frameId: string) => boolean;
   /** Pure move plan shared by the live preview and final drop. */
   previewMove?: (
     context: FrameMovePreviewContext,
@@ -428,9 +439,7 @@ interface FrameViewServices {
   getContentBounds(): RectangleClient;
 }
 export interface FrameCanvasController {
-  resolveAppearance(
-    cellId: string,
-  ): import('@sue/board-core').NodeAppearance | undefined;
+  resolveAppearance(cellId: string): ResolvedFrameCellAppearance | undefined;
   readonly actionSource: ActionSource;
   getActionContext(): FrameActionContext;
   getActiveController(): FrameCanvasController;
@@ -734,7 +743,6 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
     registry: suppliedProps.pluginSet?.registry ?? suppliedProps.registry,
     extensions: combinedExtensions,
   };
-  const renderScope = useId();
   const snapshot = useMemo(() => {
     const projected = props.adapter
       ? props.adapter.toFrameSnapshot(props.value as T)
@@ -1030,6 +1038,19 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
       ? captureViewportRect()
       : viewportRectRef.current;
   const presenting = props.inputMode === 'present';
+  const richTextLinkPolicy = useMemo(
+    () => ({
+      activation: props.interactionSettings?.linkActivation,
+      readonly: props.readonly || presenting,
+      locale: props.actionHost?.language,
+    }),
+    [
+      props.interactionSettings?.linkActivation,
+      props.readonly,
+      presenting,
+      props.actionHost?.language,
+    ],
+  );
   const editable =
     !presenting &&
     !props.readonly &&
@@ -1173,9 +1194,7 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
           setAutoCalculation(next);
         }
       };
-      if (
-        JSON.stringify(expected.cells) === JSON.stringify(runtime.store.cells)
-      )
+      if (!changedCellIds(runtime.store, expected).length)
         return { status: 'accepted' };
       if (current.adapter) {
         // Host mode never mutates its source or publishes a speculative state.
@@ -1190,7 +1209,7 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
         } else settleAutoConfig();
         return result;
       }
-      const change = runtime.transact(transaction);
+      const change = runtime.transact(transaction, expected);
       current.onSelectionChange?.(runtime.selection);
       current.onChange?.(change);
       settleAutoConfig();
@@ -1713,26 +1732,13 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
         }
         const scope = resolveCellArrangementScope(store, selection);
         if (!scope.ids.length) return { enabled: false };
-        const blocks = collectArrangementBlocks(
+        return arrangementAvailability(
           store,
           scope.frameId,
           scope.ids,
+          command,
           runtime.registry,
         );
-        const specialized = runtime.registry.scenes.some(
-          (scene) =>
-            scene.anchorKinds.includes(
-              frameScene(store, scope.frameId, runtime.registry) ?? '',
-            ) && scene.layouts?.some((layout) => layout.id === command.style),
-        );
-        return {
-          enabled:
-            blocks.filter((block) => !block.locked).length >= 2 &&
-            (specialized ||
-              ['grid', 'horizontal', 'vertical', 'relationships'].includes(
-                command.style,
-              )),
-        };
       } catch (error) {
         return {
           enabled: false,
@@ -2218,6 +2224,15 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
       const svg = svgRef.current;
       if (!svg) return false;
       const bounds = frameSelectionWorldBounds({
+        allowUnmounted:
+          isFrameCell(runtime.store.cells[frameId]) &&
+          (runtime.store.cells[frameId] as import('@sue/board-core').FrameCell)
+            .children.length >= 1000 &&
+          !props.extensions?.some(
+            (extension) =>
+              extension.visible &&
+              !extension.virtualizable?.(runtime.store, frameId),
+          ),
         svg,
         world: worldRef.current,
         store: runtime.store,
@@ -2732,6 +2747,15 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
     const rect = captureViewportRect()!;
     if (rect.width < 8 || rect.height < 8) return;
     const bounds = frameSelectionWorldBounds({
+      allowUnmounted:
+        isFrameCell(runtime.store.cells[frameId]) &&
+        (runtime.store.cells[frameId] as import('@sue/board-core').FrameCell)
+          .children.length >= 1000 &&
+        !props.extensions?.some(
+          (extension) =>
+            extension.visible &&
+            !extension.virtualizable?.(runtime.store, frameId),
+        ),
       svg,
       world: worldRef.current,
       store: runtime.store,
@@ -2827,6 +2851,15 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
     const svg = svgRef.current;
     if (!svg) return { status: 'cancelled', code: 'unmounted' };
     const bounds = frameSelectionWorldBounds({
+      allowUnmounted:
+        isFrameCell(runtime.store.cells[frameId]) &&
+        (runtime.store.cells[frameId] as import('@sue/board-core').FrameCell)
+          .children.length >= 1000 &&
+        !props.extensions?.some(
+          (extension) =>
+            extension.visible &&
+            !extension.virtualizable?.(runtime.store, frameId),
+        ),
       includeEdges: true,
       svg,
       world: worldRef.current,
@@ -2965,6 +2998,15 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
       frameId,
       selection: runtime.selection,
       bounds: frameSelectionWorldBounds({
+        allowUnmounted:
+          isFrameCell(runtime.store.cells[frameId]) &&
+          (runtime.store.cells[frameId] as import('@sue/board-core').FrameCell)
+            .children.length >= 1000 &&
+          !props.extensions?.some(
+            (extension) =>
+              extension.visible &&
+              !extension.virtualizable?.(runtime.store, frameId),
+          ),
         svg,
         world: worldRef.current,
         store: runtime.store,
@@ -3887,40 +3929,53 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
     const zoom = cameraRef.current.zoom ?? 1;
     const frame = runtime.store.cells[frameId];
     if (!isFrameCell(frame)) return;
-    frame.children.forEach((id) => {
-      const cell = frameLayouts(frameId).store.cells[id];
-      if (isEdgeCell(cell) && !cell.locked && !cell.hidden) {
-        const layout = frameLayouts(frameId);
-        const points = edgePolyline(
-          layout.store,
-          cell,
-          undefined,
-          layout.routing,
-        );
-        if (
-          distanceToPolyline(
-            point,
-            cell.route.mode === 'curve' ? flattenCurve(points) : points,
-          ) <=
-          10 / zoom
-        )
-          gestureRef.current?.erased.add(id);
-        return;
-      }
-      if (!isNodeCell(cell) || cell.locked || cell.hidden || isFrameCell(cell))
-        return;
-      const util = runtime.registry.get(cell.kind);
-      const hit =
-        util && 'hitTest' in util
-          ? (util as import('@sue/board-core').NodeUtil).hitTest(
-              runtime.store,
-              cell,
+    const radius = 10 / zoom;
+    frameLayouts(frameId)
+      .query({
+        x: point[0] - radius,
+        y: point[1] - radius,
+        width: radius * 2,
+        height: radius * 2,
+      })
+      .forEach((id) => {
+        const cell = frameLayouts(frameId).store.cells[id];
+        if (isEdgeCell(cell) && !cell.locked && !cell.hidden) {
+          const layout = frameLayouts(frameId);
+          const points = edgePolyline(
+            layout.store,
+            cell,
+            undefined,
+            layout.routing,
+          );
+          if (
+            distanceToPolyline(
               point,
-              10 / zoom,
-            )
-          : hitNodeShape(cell, point, 10 / zoom);
-      if (hit) gestureRef.current?.erased.add(id);
-    });
+              cell.route.mode === 'curve' ? flattenCurve(points) : points,
+            ) <=
+            10 / zoom
+          )
+            gestureRef.current?.erased.add(id);
+          return;
+        }
+        if (
+          !isNodeCell(cell) ||
+          cell.locked ||
+          cell.hidden ||
+          isFrameCell(cell)
+        )
+          return;
+        const util = runtime.registry.get(cell.kind);
+        const hit =
+          util && 'hitTest' in util
+            ? (util as import('@sue/board-core').NodeUtil).hitTest(
+                runtime.store,
+                cell,
+                point,
+                10 / zoom,
+              )
+            : hitNodeShape(cell, point, 10 / zoom);
+        if (hit) gestureRef.current?.erased.add(id);
+      });
   };
   const commitEditingTab = () => {
     const id = editing;
@@ -4161,6 +4216,19 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
       12 /
         (matrix ? 1 / Math.hypot(matrix.a, matrix.b) : zoom * connection.scale),
       runtime.registry,
+      (() => {
+        const radius =
+          12 /
+          (matrix
+            ? 1 / Math.hypot(matrix.a, matrix.b)
+            : zoom * connection.scale);
+        return base.query({
+          x: point[0] - radius,
+          y: point[1] - radius,
+          width: 2 * radius,
+          height: 2 * radius,
+        });
+      })(),
     );
     if (!('cellId' in target) || !target.portId) target = { point };
     if ('cellId' in target) {
@@ -4521,12 +4589,25 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
             relationEdges.set(terminal.cellId, connected);
           }
       }
+      const resolvedAppearances = new Map<Cell, ResolvedFrameCellAppearance>();
+      const appearanceForCell = (cell: Cell) => {
+        let visual = resolvedAppearances.get(cell);
+        if (!visual) {
+          visual = resolveFrameCellAppearance(
+            { cell, store, frameId: id, theme },
+            props.extensions,
+          );
+          resolvedAppearances.set(cell, visual);
+        }
+        return visual;
+      };
       const contextForCell = (
         cell: Cell,
         bounds?: NodeGeometry,
       ): FrameRenderContext => ({
         appearance,
         theme,
+        resolvedAppearance: appearanceForCell(cell),
         store,
         viewProjection: staticScene ? previewProjection : viewProjection,
         clearRevealOverrides: staticScene ? undefined : clearRevealOverrides,
@@ -4756,6 +4837,14 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
           svgRef.current?.setPointerCapture(event.pointerId);
         };
         const beginFrameMove = (event: React.PointerEvent<SVGElement>) => {
+          if (
+            (event.target as Element).closest('a[href]') &&
+            shouldActivateRichTextLink(event, {
+              activation: propsRef.current.interactionSettings?.linkActivation,
+              readonly: propsRef.current.readonly || presenting,
+            })
+          )
+            return;
           event.stopPropagation();
           activeControllerRef.current = null;
           propsRef.current.onActiveInstance?.(null);
@@ -5052,6 +5141,13 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
                         !isDocumentFrameCell(cell) ||
                         documentIsEditing ||
                         documentReadonly ||
+                        ((event.target as Element).closest('a[href]') &&
+                          shouldActivateRichTextLink(event, {
+                            activation:
+                              propsRef.current.interactionSettings
+                                ?.linkActivation,
+                            readonly: documentReadonly,
+                          })) ||
                         (event.target as Element).closest(
                           'button, input, select, [data-frame-text-toolbar]',
                         )
@@ -5065,6 +5161,13 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
                     onDoubleClick={(event) => {
                       if (
                         documentReadonly ||
+                        ((event.target as Element).closest('a[href]') &&
+                          shouldActivateRichTextLink(event, {
+                            activation:
+                              propsRef.current.interactionSettings
+                                ?.linkActivation,
+                            readonly: documentReadonly,
+                          })) ||
                         (event.target as Element).closest('button')
                       )
                         return;
@@ -5082,6 +5185,13 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
                       if (
                         documentIsEditing ||
                         documentReadonly ||
+                        ((event.target as Element).closest('a[href]') &&
+                          shouldActivateRichTextLink(event, {
+                            activation:
+                              propsRef.current.interactionSettings
+                                ?.linkActivation,
+                            readonly: documentReadonly,
+                          })) ||
                         (event.target as Element).closest('button') ||
                         event.metaKey ||
                         event.ctrlKey
@@ -5752,11 +5862,8 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
             height:
               Math.max(...shadowPoints.map((point) => point[1])) - minY + 12,
           };
-          const stroke =
-            resolveFrameCellAppearance(
-              { cell, store, frameId: id, theme },
-              props.extensions,
-            ).strokeColor ?? '#64748b';
+          const visual = context.resolvedAppearance ?? appearanceForCell(cell);
+          const stroke = visual.strokeColor ?? '#64748b';
           return (
             <g
               key={cellId}
@@ -5940,7 +6047,7 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
                                         color: theme.adaptive
                                           ? readableThemeText(
                                               theme.background,
-                                              theme.text,
+                                              visual.textColor ?? theme.text,
                                             )
                                           : stroke,
                                       }}
@@ -6030,7 +6137,7 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
                                         color: theme.adaptive
                                           ? readableThemeText(
                                               theme.background,
-                                              theme.text,
+                                              visual.textColor ?? theme.text,
                                             )
                                           : stroke,
                                       }}
@@ -6207,10 +6314,7 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
             extension.renderShape,
         );
         const shapeCacheKey = shapeExtension?.renderShapeCacheKey?.(context);
-        const visual = resolveFrameCellAppearance(
-          { cell, store, frameId: id, theme },
-          props.extensions,
-        );
+        const visual = context.resolvedAppearance ?? appearanceForCell(cell);
         const label = cell.content?.label ?? '';
         const presentationExtensions = props.extensions?.filter(
           (extension) =>
@@ -6251,7 +6355,7 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
                       (fill ?? visual.fill) === 'transparent'
                       ? theme.background
                       : (fill ?? visual.fill ?? theme.background),
-                    theme.text,
+                    visual.textColor ?? theme.text,
                   )
                 : '#0f172a'),
           };
@@ -6987,66 +7091,104 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
                 />
               );
             })}
-          {(scene?.children ?? frame.children).map((cellId) => {
-            const body = renderCell(cellId);
-            if (
-              staticScene ||
-              drawingPreview ||
-              id !== frameId ||
-              !gestureRef.current?.erased.has(cellId)
-            )
-              return body;
-            const cell = laidOut.cells[cellId];
-            const bounds = isNodeCell(cell)
-              ? (geometry.get(cellId) ?? cell.geometry)
-              : undefined;
-            return (
-              <g key={cellId} data-erase-candidate={cellId}>
-                <g data-erase-dim opacity={0.35}>
-                  {body}
+          <FrameVirtualLayer
+            camera={cameraStore}
+            svg={svgRef}
+            ids={scene?.children ?? frame.children}
+            query={base.query}
+            pinned={[
+              editing ?? '',
+              activeReferenceId ?? '',
+              labelEditing?.id ?? '',
+              edgePreview?.id ?? '',
+              ...(documentEditing
+                ? frame.children.filter((cellId) =>
+                    documentEditing.endsWith('/' + cellId),
+                  )
+                : []),
+              ...(dragging
+                ? [...runtime.selection.ids, dragRef.current?.id ?? ''].flatMap(
+                    (id) =>
+                      isGroupCell(store.cells[id])
+                        ? groupLeafMembers(store, id)
+                        : [id],
+                  )
+                : []),
+            ]}
+            enabled={
+              id === frameId &&
+              !staticScene &&
+              !drawingPreview &&
+              !props.exporting &&
+              frame.children.length >= 1000 &&
+              !props.extensions?.some(
+                (extension) =>
+                  extension.visible &&
+                  !extension.virtualizable?.(runtime.store, frameId),
+              )
+            }
+          >
+            {(cellId) => {
+              const body = renderCell(cellId);
+              if (
+                staticScene ||
+                drawingPreview ||
+                id !== frameId ||
+                !gestureRef.current?.erased.has(cellId)
+              )
+                return body;
+              const cell = laidOut.cells[cellId];
+              const bounds = isNodeCell(cell)
+                ? (geometry.get(cellId) ?? cell.geometry)
+                : undefined;
+              return (
+                <g key={cellId} data-erase-candidate={cellId}>
+                  <g data-erase-dim opacity={0.35}>
+                    {body}
+                  </g>
+                  <FrameScaleContent
+                    camera={cameraStore}
+                    cellId={drawingPreview ? undefined : cellId}
+                    render={(zoom) => (
+                      <g
+                        data-frame-export-exclude
+                        pointerEvents="none"
+                        fill="none"
+                        stroke="#ef4444"
+                        strokeWidth={2 / (zoom * parentScale * placement.scale)}
+                      >
+                        {bounds ? (
+                          <rect {...bounds} />
+                        ) : isEdgeCell(cell) ? (
+                          <path
+                            d={
+                              cell.route.mode === 'curve'
+                                ? curvePath(
+                                    edgePolyline(
+                                      laidOut,
+                                      cell,
+                                      geometry,
+                                      routing,
+                                    ),
+                                  )
+                                : polylinePath(
+                                    edgePolyline(
+                                      laidOut,
+                                      cell,
+                                      geometry,
+                                      routing,
+                                    ),
+                                  )
+                            }
+                          />
+                        ) : null}
+                      </g>
+                    )}
+                  />
                 </g>
-                <FrameScaleContent
-                  camera={cameraStore}
-                  cellId={drawingPreview ? undefined : cellId}
-                  render={(zoom) => (
-                    <g
-                      data-frame-export-exclude
-                      pointerEvents="none"
-                      fill="none"
-                      stroke="#ef4444"
-                      strokeWidth={2 / (zoom * parentScale * placement.scale)}
-                    >
-                      {bounds ? (
-                        <rect {...bounds} />
-                      ) : isEdgeCell(cell) ? (
-                        <path
-                          d={
-                            cell.route.mode === 'curve'
-                              ? curvePath(
-                                  edgePolyline(
-                                    laidOut,
-                                    cell,
-                                    geometry,
-                                    routing,
-                                  ),
-                                )
-                              : polylinePath(
-                                  edgePolyline(
-                                    laidOut,
-                                    cell,
-                                    geometry,
-                                    routing,
-                                  ),
-                                )
-                          }
-                        />
-                      ) : null}
-                    </g>
-                  )}
-                />
-              </g>
-            );
-          })}
+              );
+            }}
+          </FrameVirtualLayer>
           {!drawingPreview &&
             dragRef.current?.frameId === id &&
             alignmentGuides.length > 0 && (
@@ -7072,9 +7214,32 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
                 ))}
               </g>
             )}
-          {!staticScene &&
-            !drawingPreview &&
-            frame.children.map((cellId) => renderCell(cellId, 'controls'))}
+          {!staticScene && !drawingPreview && (
+            <FrameVirtualLayer
+              camera={cameraStore}
+              svg={svgRef}
+              ids={frame.children}
+              query={base.query}
+              pinned={[
+                editing ?? '',
+                labelEditing?.id ?? '',
+                edgePreview?.id ?? '',
+                activeReferenceId ?? '',
+              ]}
+              enabled={
+                id === frameId &&
+                !props.exporting &&
+                frame.children.length >= 1000 &&
+                !props.extensions?.some(
+                  (extension) =>
+                    extension.visible &&
+                    !extension.virtualizable?.(runtime.store, frameId),
+                )
+              }
+            >
+              {(cellId) => renderCell(cellId, 'controls')}
+            </FrameVirtualLayer>
+          )}
           {!drawingPreview &&
             moveGhostScene &&
             moveGhost?.frameId === id &&
@@ -7241,458 +7406,214 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
       runtime={runtime}
       wheelOwner={wheelOwner}
     >
-      <FrameRichTextLinkContext.Provider value={props.linkHost}>
-        <ActionScope
-          registry={actionRuntime}
-          language={props.actionHost?.language}
-          enabled={!props.suspended && !props.exporting}
-        >
-          <div
-            className={props.className}
-            style={{
-              position: 'relative',
-              width: '100%',
-              height: '100%',
-              minHeight: 320,
-              ...props.style,
-            }}
+      <FrameRichTextLinkPolicyContext.Provider value={richTextLinkPolicy}>
+        <FrameRichTextLinkContext.Provider value={props.linkHost}>
+          <ActionScope
+            registry={actionRuntime}
+            language={props.actionHost?.language}
+            enabled={!props.suspended && !props.exporting}
           >
-            <svg
-              ref={svgRef}
-              role="application"
-              aria-label="Frame canvas"
-              data-reveal-cell-id={revealHighlight ?? undefined}
-              data-instance-id={propsRef.current.instanceId ?? frameId}
-              data-board-appearance={props.appearance}
-              data-theme-id={resolvedTheme.id}
-              data-surface={props.surface ?? 'root'}
-              tabIndex={props.suspended || props.surface === 'nested' ? -1 : 0}
-              onClickCapture={(event) => {
-                if (
-                  (event.target as Element).closest?.(
-                    '[data-document-preview-body]',
-                  )
-                )
-                  return;
-                if (propsRef.current.inputMode === 'present') {
-                  event.preventDefault();
-                  event.stopPropagation();
-                }
-              }}
-              onPointerDownCapture={(event) => {
-                viewportAnimation.current = viewportIsAnimated();
-                captureViewportRect();
-                if (
-                  (event.target as Element).closest?.(
-                    'button, [data-document-header-actions]',
-                  )
-                )
-                  return;
-                if (
-                  (event.ctrlKey || event.metaKey) &&
-                  (event.target as Element).closest('a[href]')
-                ) {
-                  event.preventDefault();
-                  return;
-                }
-
-                if (
-                  (event.target as Element).closest?.(
-                    '[data-document-preview-body]',
-                  )
-                )
-                  return;
-                if (propsRef.current.suspended) return;
-                if (
-                  propsRef.current.placing &&
-                  event.button === 0 &&
-                  !(event.target as Element).closest(
-                    '[data-reference-instance]',
-                  )
-                ) {
-                  event.preventDefault();
-                  event.stopPropagation();
-                  propsRef.current.onPlace?.(pointFromEventRef.current(event));
-                  return;
-                }
-                if (
-                  propsRef.current.inputMode !== 'present' &&
-                  !(event.target as Element).closest?.(
-                    '[data-reference-instance]',
-                  )
-                ) {
-                  activeControllerRef.current = null;
-                  propsRef.current.onActiveInstance?.(null);
-                }
-                const zoom = cameraRef.current.zoom ?? 1;
-                // Portal controls bubble through the React canvas tree, but their
-                // pointer events belong to the editor, not canvas focus/gestures.
-                if (
-                  (event.target as Element).closest('[data-frame-text-toolbar]')
-                )
-                  return;
-                if (event.button === 0 && pointersRef.current.size === 0) {
-                  keyboardSelectionRef.current = null;
-                  keyboardEditRef.current = null;
-                  actionAfterToken.current = null;
-                }
-                if (
-                  !(event.target as Element).closest?.(
-                    '[contenteditable="true"], input, textarea, select, [data-frame-text-editor]',
-                  )
-                )
-                  svgRef.current?.focus();
-                pointersRef.current.set(event.pointerId, [
-                  event.clientX,
-                  event.clientY,
-                ]);
-                if (pointersRef.current.size >= 2) {
-                  presentTapRef.current = null;
-                  event.preventDefault();
-                  event.stopPropagation();
-                  blockSinglePointerRef.current = true;
-                  cancelInteraction();
-                  const points = [...pointersRef.current.values()];
-                  const rect = captureViewportRect()!;
-                  pinchRef.current = {
-                    distance:
-                      Math.hypot(
-                        points[0][0] - points[1][0],
-                        points[0][1] - points[1][1],
-                      ) || 1,
-                    zoom: cameraRef.current.zoom ?? 1,
-                    origin: [...(cameraRef.current.origination ?? zeroOrigin)],
-                    center: [
-                      (points[0][0] + points[1][0]) / 2 - rect.left,
-                      (points[0][1] + points[1][1]) / 2 - rect.top,
-                    ],
-                  };
-                  setDragging(true);
-                  return;
-                }
-                if (
-                  propsRef.current.referenceInteraction === 'activate' &&
-                  activeReferenceRef.current !== null &&
-                  propsRef.current.surface !== 'nested' &&
-                  (event.target as Element).closest?.(
-                    'svg[data-surface="nested"]',
-                  )
-                )
-                  return;
-                if (propsRef.current.inputMode === 'present') {
-                  presentTapRef.current = null;
-                  event.preventDefault();
-                  event.stopPropagation();
-                  if (event.button === 0 || event.button === 1) {
-                    cancelInteraction();
-                    if (event.button === 0 && !spaceHandRef.current) {
-                      let target = event.target as Element | null;
-                      let cellId: string | null = null;
-                      while (target && target !== svgRef.current) {
-                        const id = target.getAttribute('data-cell-id');
-                        if (id && runtime.index.parentOf.get(id) === frameId) {
-                          cellId = id;
-                          break;
-                        }
-                        target = target.parentElement;
-                      }
-                      presentTapRef.current = {
-                        pointerId: event.pointerId,
-                        x: event.clientX,
-                        y: event.clientY,
-                        cellId,
-                      };
-                    }
-                    gestureRef.current = {
-                      mode: 'hand',
-                      dragPanSpeed: normalizeInteractionMultiplier(
-                        propsRef.current.interactionSettings?.dragPanSpeed,
-                      ),
-                      points: [pointFromEvent(event)],
-                      erased: new Set(),
-                      origin: [
-                        ...(cameraRef.current.origination ?? zeroOrigin),
-                      ],
-                      zoom: cameraRef.current.zoom ?? 1,
-                      additive: false,
-                    };
-                    setDragging(true);
-                    svgRef.current?.setPointerCapture(event.pointerId);
-                    return;
-                  }
-                }
-                if (event.button === 1 || spaceHandRef.current) {
-                  event.preventDefault();
-                  event.stopPropagation();
-                  cancelInteraction();
-                  const point = pointFromEvent(event);
-                  gestureRef.current = {
-                    mode: 'hand',
-                    dragPanSpeed: normalizeInteractionMultiplier(
-                      propsRef.current.interactionSettings?.dragPanSpeed,
-                    ),
-                    points: [point],
-                    erased: new Set(),
-                    origin: [...(cameraRef.current.origination ?? zeroOrigin)],
-                    zoom: cameraRef.current.zoom ?? 1,
-                    additive: false,
-                  };
-                  setDragging(true);
-                  svgRef.current?.setPointerCapture(event.pointerId);
-                  return;
-                }
-                if (event.button === 2) {
-                  rightDragRef.current = {
-                    pointerId: event.pointerId,
-                    x: event.clientX,
-                    y: event.clientY,
-                    moved: false,
-                  };
-                  return;
-                }
-                if (event.button !== 0) return;
-                const tool = props.tool;
-                if (
-                  connectingRef.current &&
-                  !(event.target as Element).closest('[data-port-id]')
-                ) {
-                  updateConnection(event);
-                  const chosen = (event.target as Element)
-                    .closest('[data-cell-id]')
-                    ?.getAttribute('data-cell-id');
-                  if (chosen && runtime.store.cells[chosen]) {
-                    const focus: string[] = [];
-                    let owner = runtime.index.parentOf.get(chosen);
-                    while (owner) {
-                      focus.unshift(owner);
-                      if (owner === frameId) break;
-                      owner = runtime.index.parentOf.get(owner);
-                    }
-                    if (focus[0] === frameId) selectContextCell(chosen, focus);
-                  }
-                  event.stopPropagation();
-                  event.preventDefault();
-                  return;
-                }
-                if (tool?.mode === 'polyline') {
-                  if (!editable || pendingRef.current || event.button !== 0)
-                    return;
-                  event.stopPropagation();
-                  event.preventDefault();
-                  svgRef.current?.focus();
-                  const rawPoint = pointFromEvent(event);
-                  const point = vectorDraftRef.current?.hover ?? rawPoint;
-                  const draft = vectorDraftRef.current ?? {
-                    points: [],
-                    frameId,
-                    tool,
-                    key: activeToolKey,
-                    context: drawingContext(cameraRef.current.zoom ?? 1),
-                  };
-                  if (
-                    draft.points.length > 1 &&
-                    Math.hypot(
-                      point[0] - draft.points[0][0],
-                      point[1] - draft.points[0][1],
-                    ) *
-                      zoom <=
-                      8
-                  ) {
-                    draft.points.push([...draft.points[0]]);
-                    vectorDraftRef.current = draft;
-                    finishVectorDraft();
-                    return;
-                  }
-                  if (
-                    !draft.points.length ||
-                    Math.hypot(
-                      point[0] - draft.points.at(-1)![0],
-                      point[1] - draft.points.at(-1)![1],
-                    ) *
-                      zoom >
-                      0.5
-                  )
-                    draft.points.push(point);
-                  draft.hover = undefined;
-                  vectorDraftRef.current = draft;
-                  scheduleDraftPaint();
-                  return;
-                }
-                const background = event.target === event.currentTarget;
-                if (!tool || (tool.mode === 'select' && !background)) return;
-                if (
-                  tool.mode !== 'hand' &&
-                  tool.mode !== 'select' &&
-                  (!editable || pendingRef.current)
-                )
-                  return;
-                event.stopPropagation();
-                event.preventDefault();
-                const point = pointFromEvent(event);
-                gestureRef.current = {
-                  mode: tool.mode,
-                  dragPanSpeed: normalizeInteractionMultiplier(
-                    propsRef.current.interactionSettings?.dragPanSpeed,
-                  ),
-                  key: activeToolKey,
-                  frameId,
-                  tool: 'complete' in tool ? tool : undefined,
-                  context: drawingContext(cameraRef.current.zoom ?? 1),
-                  points: [point],
-                  erased: new Set(),
-                  origin: [...(cameraRef.current.origination ?? zeroOrigin)],
-                  zoom: cameraRef.current.zoom ?? 1,
-                  additive: event.shiftKey,
-                  focus:
-                    runtime.selection.focus
-                      .filter(
-                        (id) => runtime.store.cells[id]?.cellType === 'frame',
-                      )
-                      .at(-1) === frameId
-                      ? runtime.selection.focus
-                      : [frameId],
-                };
-                scheduleDraftPaint();
-                svgRef.current?.setPointerCapture(event.pointerId);
-                if (tool.mode === 'hand') setDragging(true);
-                if (tool.mode === 'erase') eraseAt(point);
-                if (tool.mode === 'select' && !event.shiftKey)
-                  runtime.select({
-                    focus: gestureRef.current.focus ?? [frameId],
-                    ids: [],
-                  });
-              }}
+            <div
+              className={props.className}
               style={{
-                ...frameThemeStyle(resolvedTheme),
+                position: 'relative',
                 width: '100%',
                 height: '100%',
-                outline: 'none',
-                overflow: 'hidden',
-                touchAction: 'none',
-                backgroundColor: resolvedTheme.background,
-                backgroundImage: view?.theme?.gridEnabled
-                  ? `radial-gradient(circle, ${resolvedTheme.grid} 1px, transparent 1px)`
-                  : undefined,
-                backgroundSize: view?.theme?.gridEnabled
-                  ? `${Math.max(4, view.theme.gridSize ?? 20) * zoom}px ${Math.max(4, view.theme.gridSize ?? 20) * zoom}px`
-                  : undefined,
-                backgroundPosition: `${-origin[0] * zoom}px ${-origin[1] * zoom}px`,
-                cursor:
-                  props.tool?.mode === 'hand' || spaceHandRef.current
-                    ? 'grab'
-                    : props.tool?.mode === 'erase'
-                      ? 'crosshair'
-                      : undefined,
+                minHeight: 320,
+                ...props.style,
               }}
-              onDragStart={(event) => event.preventDefault()}
-              onPointerDown={(event) => {
-                if (propsRef.current.inputMode === 'present') return;
-                if (
-                  (event.target as Element).closest?.(
-                    '[data-frame-text-editor], [contenteditable="true"]',
+            >
+              <svg
+                ref={svgRef}
+                role="application"
+                aria-label="Frame canvas"
+                data-reveal-cell-id={revealHighlight ?? undefined}
+                data-instance-id={propsRef.current.instanceId ?? frameId}
+                data-board-appearance={props.appearance}
+                data-theme-id={resolvedTheme.id}
+                data-surface={props.surface ?? 'root'}
+                tabIndex={
+                  props.suspended || props.surface === 'nested' ? -1 : 0
+                }
+                onClickCapture={(event) => {
+                  if (
+                    (event.target as Element).closest?.(
+                      '[data-document-preview-body]',
+                    )
                   )
-                )
-                  return;
-                if (
-                  dragRef.current ||
-                  gestureRef.current ||
-                  connectingRef.current
-                )
-                  return;
-                keyboardSelectionRef.current = null;
-                keyboardEditRef.current = null;
-                runtime.select({ focus: [frameId], ids: [] });
-                props.onSelectionChange?.(runtime.selection);
-                setEditing(null);
-                setLabelEditing(null);
-              }}
-              onDoubleClickCapture={(event) => {
-                if (propsRef.current.inputMode === 'present') {
-                  event.preventDefault();
-                  event.stopPropagation();
-                  return;
-                }
-                if (props.tool?.mode === 'polyline' && vectorDraftRef.current) {
-                  event.stopPropagation();
-                  event.preventDefault();
-                  finishVectorDraft();
-                }
-              }}
-              onPointerLeave={() => {
-                cameraStore.setHovered(null);
-                if (props.tool?.mode === 'erase' && !gestureRef.current) {
-                  eraserHoverRef.current = null;
-                  clearDraftPaint();
-                }
-              }}
-              onPointerMove={(event) => {
-                const tap = presentTapRef.current;
-                if (
-                  tap &&
-                  tap.pointerId === event.pointerId &&
-                  Math.hypot(event.clientX - tap.x, event.clientY - tap.y) > 4
-                )
-                  presentTapRef.current = null;
-                const zoom = cameraRef.current.zoom ?? 1;
-                if (props.tool?.mode === 'erase' && !gestureRef.current) {
-                  eraserHoverRef.current = pointFromEvent(event);
-                  scheduleDraftPaint();
-                }
-                if (pointersRef.current.has(event.pointerId))
+                    return;
+                  if (
+                    (event.target as Element).closest('a[href]') &&
+                    shouldActivateRichTextLink(event, {
+                      activation:
+                        propsRef.current.interactionSettings?.linkActivation,
+                      readonly: propsRef.current.readonly || presenting,
+                    })
+                  )
+                    return;
+                  if (propsRef.current.inputMode === 'present') {
+                    event.preventDefault();
+                    event.stopPropagation();
+                  }
+                }}
+                onPointerDownCapture={(event) => {
+                  viewportAnimation.current = viewportIsAnimated();
+                  captureViewportRect();
+                  if (
+                    (event.target as Element).closest?.(
+                      'button, [data-document-header-actions]',
+                    )
+                  )
+                    return;
+                  if (
+                    shouldActivateRichTextLink(event, {
+                      activation:
+                        propsRef.current.interactionSettings?.linkActivation,
+                      readonly: propsRef.current.readonly || presenting,
+                    }) &&
+                    (event.target as Element).closest('a[href]')
+                  ) {
+                    return;
+                  }
+
+                  if (
+                    (event.target as Element).closest?.(
+                      '[data-document-preview-body]',
+                    )
+                  )
+                    return;
+                  if (propsRef.current.suspended) return;
+                  if (
+                    propsRef.current.placing &&
+                    event.button === 0 &&
+                    !(event.target as Element).closest(
+                      '[data-reference-instance]',
+                    )
+                  ) {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    propsRef.current.onPlace?.(
+                      pointFromEventRef.current(event),
+                    );
+                    return;
+                  }
+                  if (
+                    propsRef.current.inputMode !== 'present' &&
+                    !(event.target as Element).closest?.(
+                      '[data-reference-instance]',
+                    )
+                  ) {
+                    activeControllerRef.current = null;
+                    propsRef.current.onActiveInstance?.(null);
+                  }
+                  const zoom = cameraRef.current.zoom ?? 1;
+                  // Portal controls bubble through the React canvas tree, but their
+                  // pointer events belong to the editor, not canvas focus/gestures.
+                  if (
+                    (event.target as Element).closest(
+                      '[data-frame-text-toolbar]',
+                    )
+                  )
+                    return;
+                  if (event.button === 0 && pointersRef.current.size === 0) {
+                    keyboardSelectionRef.current = null;
+                    keyboardEditRef.current = null;
+                    actionAfterToken.current = null;
+                  }
+                  if (
+                    !(event.target as Element).closest?.(
+                      '[contenteditable="true"], input, textarea, select, [data-frame-text-editor]',
+                    )
+                  )
+                    svgRef.current?.focus();
                   pointersRef.current.set(event.pointerId, [
                     event.clientX,
                     event.clientY,
                   ]);
-                if (pinchRef.current && pointersRef.current.size >= 2) {
-                  const points = [...pointersRef.current.values()];
-                  const distance =
-                    Math.hypot(
-                      points[0][0] - points[1][0],
-                      points[0][1] - points[1][1],
-                    ) || 1;
-                  const rect = readViewportRect()!;
-                  const center: Point = [
-                    (points[0][0] + points[1][0]) / 2 - rect.left,
-                    (points[0][1] + points[1][1]) / 2 - rect.top,
-                  ];
-                  const nextZoom = Math.max(
-                    propsRef.current.inputMode === 'present' ? 0.01 : 0.1,
-                    Math.min(
-                      8,
-                      pinchRef.current.zoom *
-                        (distance / pinchRef.current.distance),
-                    ),
-                  );
-                  const pinch = pinchRef.current;
-                  rememberGesture({
-                    zoom: nextZoom,
-                    origination: [
-                      pinch.origin[0] +
-                        pinch.center[0] / pinch.zoom -
-                        center[0] / nextZoom,
-                      pinch.origin[1] +
-                        pinch.center[1] / pinch.zoom -
-                        center[1] / nextZoom,
-                    ],
-                  });
-                  return;
-                }
-                const rightDrag = rightDragRef.current;
-                if (
-                  rightDrag &&
-                  rightDrag.pointerId === event.pointerId &&
-                  !rightDrag.moved
-                ) {
-                  if ((event.buttons & 2) === 0) rightDragRef.current = null;
-                  else if (
-                    Math.hypot(
-                      event.clientX - rightDrag.x,
-                      event.clientY - rightDrag.y,
-                    ) > 6
-                  ) {
+                  if (pointersRef.current.size >= 2) {
+                    presentTapRef.current = null;
+                    event.preventDefault();
+                    event.stopPropagation();
+                    blockSinglePointerRef.current = true;
                     cancelInteraction();
-                    rightDrag.moved = true;
-                    propsRef.current.onCanvasContextMenu?.(null);
+                    const points = [...pointersRef.current.values()];
+                    const rect = captureViewportRect()!;
+                    pinchRef.current = {
+                      distance:
+                        Math.hypot(
+                          points[0][0] - points[1][0],
+                          points[0][1] - points[1][1],
+                        ) || 1,
+                      zoom: cameraRef.current.zoom ?? 1,
+                      origin: [
+                        ...(cameraRef.current.origination ?? zeroOrigin),
+                      ],
+                      center: [
+                        (points[0][0] + points[1][0]) / 2 - rect.left,
+                        (points[0][1] + points[1][1]) / 2 - rect.top,
+                      ],
+                    };
+                    setDragging(true);
+                    return;
+                  }
+                  if (
+                    propsRef.current.referenceInteraction === 'activate' &&
+                    activeReferenceRef.current !== null &&
+                    propsRef.current.surface !== 'nested' &&
+                    (event.target as Element).closest?.(
+                      'svg[data-surface="nested"]',
+                    )
+                  )
+                    return;
+                  if (propsRef.current.inputMode === 'present') {
+                    presentTapRef.current = null;
+                    event.preventDefault();
+                    event.stopPropagation();
+                    if (event.button === 0 || event.button === 1) {
+                      cancelInteraction();
+                      if (event.button === 0 && !spaceHandRef.current) {
+                        let target = event.target as Element | null;
+                        let cellId: string | null = null;
+                        while (target && target !== svgRef.current) {
+                          const id = target.getAttribute('data-cell-id');
+                          if (
+                            id &&
+                            runtime.index.parentOf.get(id) === frameId
+                          ) {
+                            cellId = id;
+                            break;
+                          }
+                          target = target.parentElement;
+                        }
+                        presentTapRef.current = {
+                          pointerId: event.pointerId,
+                          x: event.clientX,
+                          y: event.clientY,
+                          cellId,
+                        };
+                      }
+                      gestureRef.current = {
+                        mode: 'hand',
+                        dragPanSpeed: normalizeInteractionMultiplier(
+                          propsRef.current.interactionSettings?.dragPanSpeed,
+                        ),
+                        points: [pointFromEvent(event)],
+                        erased: new Set(),
+                        origin: [
+                          ...(cameraRef.current.origination ?? zeroOrigin),
+                        ],
+                        zoom: cameraRef.current.zoom ?? 1,
+                        additive: false,
+                      };
+                      setDragging(true);
+                      svgRef.current?.setPointerCapture(event.pointerId);
+                      return;
+                    }
+                  }
+                  if (event.button === 1 || spaceHandRef.current) {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    cancelInteraction();
                     const point = pointFromEvent(event);
                     gestureRef.current = {
                       mode: 'hand',
@@ -7709,377 +7630,666 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
                     };
                     setDragging(true);
                     svgRef.current?.setPointerCapture(event.pointerId);
+                    return;
                   }
-                }
-                if (connectingRef.current) {
-                  updateConnection(event);
-                  return;
-                }
-                const draft = vectorDraftRef.current;
-                if (draft) {
-                  let point = pointFromEvent(event);
-                  const first = draft.points[0],
-                    last = draft.points.at(-1)!;
+                  if (event.button === 2) {
+                    rightDragRef.current = {
+                      pointerId: event.pointerId,
+                      x: event.clientX,
+                      y: event.clientY,
+                      moved: false,
+                    };
+                    return;
+                  }
+                  if (event.button !== 0) return;
+                  const tool = props.tool;
                   if (
-                    draft.points.length > 1 &&
-                    Math.hypot(point[0] - first[0], point[1] - first[1]) *
-                      zoom <=
-                      8
-                  )
-                    point = [...first];
-                  else if (event.shiftKey) {
-                    const angle =
-                        Math.round(
-                          Math.atan2(point[1] - last[1], point[0] - last[0]) /
-                            (Math.PI / 4),
-                        ) *
-                        (Math.PI / 4),
-                      distance = Math.hypot(
-                        point[0] - last[0],
-                        point[1] - last[1],
-                      );
-                    point = [
-                      last[0] + distance * Math.cos(angle),
-                      last[1] + distance * Math.sin(angle),
-                    ];
-                  } else if (Math.abs(point[0] - last[0]) * zoom <= 5)
-                    point = [last[0], point[1]];
-                  else if (Math.abs(point[1] - last[1]) * zoom <= 5)
-                    point = [point[0], last[1]];
-                  draft.hover = point;
-                  scheduleDraftPaint();
-                  return;
-                }
-                if (edgeDragRef.current) {
-                  updateEdgeDrag(event);
-                  scheduleDraftPaint();
-                  return;
-                }
-                const gesture = gestureRef.current;
-                if (gesture) {
-                  if (gesture.mode === 'hand') {
-                    const rect = readViewportRect()!;
-                    const originalClient: Point = [
-                      (gesture.points[0][0] - gesture.origin[0]) * gesture.zoom,
-                      (gesture.points[0][1] - gesture.origin[1]) * gesture.zoom,
-                    ];
-                    setViewport({
-                      zoom: gesture.zoom,
-                      origination: [
-                        gesture.origin[0] -
-                          ((event.clientX - rect.left - originalClient[0]) *
-                            (gesture.dragPanSpeed ?? 1)) /
-                            gesture.zoom,
-                        gesture.origin[1] -
-                          ((event.clientY - rect.top - originalClient[1]) *
-                            (gesture.dragPanSpeed ?? 1)) /
-                            gesture.zoom,
-                      ],
-                    });
-                  } else {
-                    const point = pointFromEvent(event);
+                    connectingRef.current &&
+                    !(event.target as Element).closest('[data-port-id]')
+                  ) {
+                    updateConnection(event);
+                    const chosen = (event.target as Element)
+                      .closest('[data-cell-id]')
+                      ?.getAttribute('data-cell-id');
+                    if (chosen && runtime.store.cells[chosen]) {
+                      const focus: string[] = [];
+                      let owner = runtime.index.parentOf.get(chosen);
+                      while (owner) {
+                        focus.unshift(owner);
+                        if (owner === frameId) break;
+                        owner = runtime.index.parentOf.get(owner);
+                      }
+                      if (focus[0] === frameId)
+                        selectContextCell(chosen, focus);
+                    }
+                    event.stopPropagation();
+                    event.preventDefault();
+                    return;
+                  }
+                  if (tool?.mode === 'polyline') {
+                    if (!editable || pendingRef.current || event.button !== 0)
+                      return;
+                    event.stopPropagation();
+                    event.preventDefault();
+                    svgRef.current?.focus();
+                    const rawPoint = pointFromEvent(event);
+                    const point = vectorDraftRef.current?.hover ?? rawPoint;
+                    const draft = vectorDraftRef.current ?? {
+                      points: [],
+                      frameId,
+                      tool,
+                      key: activeToolKey,
+                      context: drawingContext(cameraRef.current.zoom ?? 1),
+                    };
                     if (
-                      ['select', 'box', 'line', 'erase'].includes(gesture.mode)
+                      draft.points.length > 1 &&
+                      Math.hypot(
+                        point[0] - draft.points[0][0],
+                        point[1] - draft.points[0][1],
+                      ) *
+                        zoom <=
+                        8
+                    ) {
+                      draft.points.push([...draft.points[0]]);
+                      vectorDraftRef.current = draft;
+                      finishVectorDraft();
+                      return;
+                    }
+                    if (
+                      !draft.points.length ||
+                      Math.hypot(
+                        point[0] - draft.points.at(-1)![0],
+                        point[1] - draft.points.at(-1)![1],
+                      ) *
+                        zoom >
+                        0.5
                     )
-                      gesture.points = [gesture.points[0], point];
-                    else gesture.points.push(point);
-                    if (gesture.mode === 'erase') eraseAt(point);
+                      draft.points.push(point);
+                    draft.hover = undefined;
+                    vectorDraftRef.current = draft;
+                    scheduleDraftPaint();
+                    return;
+                  }
+                  const background = event.target === event.currentTarget;
+                  if (!tool || (tool.mode === 'select' && !background)) return;
+                  if (
+                    tool.mode !== 'hand' &&
+                    tool.mode !== 'select' &&
+                    (!editable || pendingRef.current)
+                  )
+                    return;
+                  event.stopPropagation();
+                  event.preventDefault();
+                  const point = pointFromEvent(event);
+                  gestureRef.current = {
+                    mode: tool.mode,
+                    dragPanSpeed: normalizeInteractionMultiplier(
+                      propsRef.current.interactionSettings?.dragPanSpeed,
+                    ),
+                    key: activeToolKey,
+                    frameId,
+                    tool: 'complete' in tool ? tool : undefined,
+                    context: drawingContext(cameraRef.current.zoom ?? 1),
+                    points: [point],
+                    erased: new Set(),
+                    origin: [...(cameraRef.current.origination ?? zeroOrigin)],
+                    zoom: cameraRef.current.zoom ?? 1,
+                    additive: event.shiftKey,
+                    focus:
+                      runtime.selection.focus
+                        .filter(
+                          (id) => runtime.store.cells[id]?.cellType === 'frame',
+                        )
+                        .at(-1) === frameId
+                        ? runtime.selection.focus
+                        : [frameId],
+                  };
+                  scheduleDraftPaint();
+                  svgRef.current?.setPointerCapture(event.pointerId);
+                  if (tool.mode === 'hand') setDragging(true);
+                  if (tool.mode === 'erase') eraseAt(point);
+                  if (tool.mode === 'select' && !event.shiftKey)
+                    runtime.select({
+                      focus: gestureRef.current.focus ?? [frameId],
+                      ids: [],
+                    });
+                }}
+                style={{
+                  ...frameThemeStyle(resolvedTheme),
+                  width: '100%',
+                  height: '100%',
+                  outline: 'none',
+                  overflow: 'hidden',
+                  touchAction: 'none',
+                  backgroundColor: resolvedTheme.background,
+                  backgroundImage: view?.theme?.gridEnabled
+                    ? `radial-gradient(circle, ${resolvedTheme.grid} 1px, transparent 1px)`
+                    : undefined,
+                  backgroundSize: view?.theme?.gridEnabled
+                    ? `${Math.max(4, view.theme.gridSize ?? 20) * zoom}px ${Math.max(4, view.theme.gridSize ?? 20) * zoom}px`
+                    : undefined,
+                  backgroundPosition: `${-origin[0] * zoom}px ${-origin[1] * zoom}px`,
+                  cursor:
+                    props.tool?.mode === 'hand' || spaceHandRef.current
+                      ? 'grab'
+                      : props.tool?.mode === 'erase'
+                        ? 'crosshair'
+                        : undefined,
+                }}
+                onDragStart={(event) => event.preventDefault()}
+                onPointerDown={(event) => {
+                  if (propsRef.current.inputMode === 'present') return;
+                  if (
+                    (event.target as Element).closest?.(
+                      '[data-frame-text-editor], [contenteditable="true"]',
+                    )
+                  )
+                    return;
+                  if (
+                    dragRef.current ||
+                    gestureRef.current ||
+                    connectingRef.current
+                  )
+                    return;
+                  keyboardSelectionRef.current = null;
+                  keyboardEditRef.current = null;
+                  runtime.select({ focus: [frameId], ids: [] });
+                  props.onSelectionChange?.(runtime.selection);
+                  setEditing(null);
+                  setLabelEditing(null);
+                }}
+                onDoubleClickCapture={(event) => {
+                  if (propsRef.current.inputMode === 'present') {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    return;
+                  }
+                  if (
+                    props.tool?.mode === 'polyline' &&
+                    vectorDraftRef.current
+                  ) {
+                    event.stopPropagation();
+                    event.preventDefault();
+                    finishVectorDraft();
+                  }
+                }}
+                onPointerLeave={() => {
+                  cameraStore.setHovered(null);
+                  if (props.tool?.mode === 'erase' && !gestureRef.current) {
+                    eraserHoverRef.current = null;
+                    clearDraftPaint();
+                  }
+                }}
+                onPointerMove={(event) => {
+                  const tap = presentTapRef.current;
+                  if (
+                    tap &&
+                    tap.pointerId === event.pointerId &&
+                    Math.hypot(event.clientX - tap.x, event.clientY - tap.y) > 4
+                  )
+                    presentTapRef.current = null;
+                  const zoom = cameraRef.current.zoom ?? 1;
+                  if (props.tool?.mode === 'erase' && !gestureRef.current) {
+                    eraserHoverRef.current = pointFromEvent(event);
                     scheduleDraftPaint();
                   }
-                  return;
-                }
-                const drag = dragRef.current;
-                if (drag) {
-                  if (drag.pointerId !== event.pointerId) return;
-                  if ((event.buttons & 1) === 0) {
-                    clearNodeDrag();
-                    return;
-                  }
-                  const point = pointFromEvent(event);
-                  if (
-                    (!drag.mode || drag.mode === 'content-pan') &&
-                    !preview &&
-                    Math.hypot(
-                      point[0] - drag.start[0],
-                      point[1] - drag.start[1],
-                    ) *
-                      zoom <
-                      3
-                  )
-                    return;
-                  // Capturing on pointerdown retargets clicks to the SVG and loses double clicks.
-                  if (!svgRef.current?.hasPointerCapture(event.pointerId))
-                    svgRef.current?.setPointerCapture(event.pointerId);
-                  let dx = (point[0] - drag.start[0]) / drag.scale;
-                  let dy = (point[1] - drag.start[1]) / drag.scale;
-                  const ownerFrame = runtime.index.parentOf.get(drag.id);
-                  if (
-                    (!drag.mode || drag.mode === 'move') &&
-                    ownerFrame &&
-                    !props.extensions?.some((extension) =>
-                      extension.plugin?.fitLayoutBounds?.(
-                        runtime.store,
-                        ownerFrame,
-                      ),
-                    ) &&
-                    propsRef.current.interactionSettings?.smartGuides !==
-                      false &&
-                    !event.altKey
-                  ) {
-                    if (!drag.snapBounds) {
-                      const cells = { ...runtime.store.cells };
-                      drag.geometry.forEach((geometry, id) => {
-                        const cell = cells[id];
-                        if (isNodeCell(cell)) cells[id] = { ...cell, geometry };
-                      });
-                      const displayed = { ...runtime.store, cells };
-                      const moving = drag.ids ?? [drag.id];
-                      const selected = new Set(moving);
-                      drag.snapBounds = unionCellBounds(
-                        moving.flatMap((id) => {
-                          const b = cellArrangementBounds(displayed, id);
-                          return b ? [b] : [];
-                        }),
-                      );
-                      const focusId = runtime.selection.focus.at(-1)!;
-                      const targets = focusedCellIds(displayed, focusId);
-                      drag.snapTargets = collectArrangementBlocks(
-                        displayed,
-                        ownerFrame,
-                        targets,
-                        runtime.registry,
-                      )
-                        .filter(
-                          (block) =>
-                            !selected.has(block.id) &&
-                            !block.members.some((id) => selected.has(id)),
-                        )
-                        .map((block) => block.bounds);
-                      drag.frameId = ownerFrame;
-                    }
-                    if (drag.snapBounds) {
-                      const snap = snapArrangementDelta(
-                        drag.snapBounds,
-                        [dx, dy],
-                        drag.snapTargets ?? [],
-                        6 / (zoom * drag.scale),
-                      );
-                      [dx, dy] = snap.delta;
-                      setAlignmentGuides(snap.guides);
-                    }
-                  } else setAlignmentGuides([]);
-                  const nextPreview = (
-                    drag.mode === 'resize'
-                      ? roundNodeGeometry
-                      : drag.mode === 'content-pan'
-                        ? (geometry: NodeGeometry) => geometry
-                        : roundNodePosition
-                  )(
-                    drag.mode === 'resize'
-                      ? resizeNodeGeometry(
-                          drag.original,
-                          drag.handle ?? 'se',
-                          [dx, dy],
-                          {
-                            preserveRatio:
-                              event.shiftKey ||
-                              (() => {
-                                const c = runtime.store.cells[drag.id];
-                                return (
-                                  (isFrameCell(c) || isFrameReferenceCell(c)) &&
-                                  c.aspectRatio !== undefined &&
-                                  c.aspectRatio !== 'custom'
-                                );
-                              })(),
-                            fromCenter: event.altKey,
-                            minSize:
-                              isFrameCell(runtime.store.cells[drag.id]) ||
-                              isFrameReferenceCell(runtime.store.cells[drag.id])
-                                ? frameMinimumSize
-                                : 8,
-                          },
-                        )
-                      : drag.mode === 'rotate'
-                        ? rotateNodeGeometry(
-                            drag.original,
-                            drag.localStart!,
-                            [
-                              drag.localStart![0] + dx,
-                              drag.localStart![1] + dy,
-                            ],
-                            event.shiftKey,
-                          )
-                        : {
-                            ...drag.original,
-                            x: drag.original.x + dx,
-                            y: drag.original.y + dy,
-                            derived: false,
-                          },
-                  );
-                  setPreview(nextPreview);
-                  const local = drag.pointerMatrix
-                    ? new DOMPoint(
-                        event.clientX,
-                        event.clientY,
-                      ).matrixTransform(drag.pointerMatrix)
-                    : undefined;
-                  updateMoveGhost(
-                    drag,
-                    nextPreview,
-                    local
-                      ? [local.x, local.y]
-                      : [
-                          nextPreview.x + nextPreview.width / 2,
-                          nextPreview.y + nextPreview.height / 2,
-                        ],
-                  );
-                }
-              }}
-              onContextMenu={(event) => {
-                if (
-                  (event.target as Element).closest(
-                    '[contenteditable="true"], input, textarea',
-                  )
-                )
-                  return;
-                event.preventDefault();
-                // Native right-click menus can fire on press or release. Pointerup
-                // handles mouse menus; keep this path for keyboard invocation.
-                if (event.button === 2 || rightDragRef.current) return;
-                propsRef.current.onCanvasContextMenu?.([
-                  event.clientX,
-                  event.clientY,
-                ]);
-              }}
-              onDragOver={(event) => {
-                if ([...event.dataTransfer.types].includes('Files'))
-                  event.preventDefault();
-              }}
-              onDrop={(event) => {
-                if (
-                  (event.target as Element).closest(
-                    '[contenteditable="true"], input, textarea',
-                  ) ||
-                  !editable ||
-                  pendingRef.current
-                )
-                  return;
-                const file = [...event.dataTransfer.files].find((item) =>
-                  item.type.startsWith('image/'),
-                );
-                if (!file) return;
-                event.preventDefault();
-                void insertExternal(
-                  { image: file },
-                  pointFromEvent(event as unknown as React.PointerEvent),
-                  event.clientX,
-                  event.clientY,
-                );
-              }}
-              onPointerUp={(event) => {
-                const tap = presentTapRef.current;
-                if (tap?.pointerId === event.pointerId)
-                  presentTapRef.current = null;
-                const rightDrag = rightDragRef.current;
-                if (rightDrag?.pointerId === event.pointerId) {
-                  rightDragRef.current = null;
-                  if (
-                    event.button === 2 &&
-                    !rightDrag.moved &&
-                    Math.hypot(
-                      event.clientX - rightDrag.x,
-                      event.clientY - rightDrag.y,
-                    ) <= 6 &&
-                    !(event.target as Element).closest(
-                      '[contenteditable="true"], input, textarea',
-                    )
-                  )
-                    propsRef.current.onCanvasContextMenu?.([
+                  if (pointersRef.current.has(event.pointerId))
+                    pointersRef.current.set(event.pointerId, [
                       event.clientX,
                       event.clientY,
                     ]);
-                }
-                pointersRef.current.delete(event.pointerId);
-                if (blockSinglePointerRef.current) {
-                  if (pointersRef.current.size < 2 && pinchRef.current) {
-                    commitGesture();
-                    pinchRef.current = null;
-                    setDragging(false);
-                  }
-                  if (pointersRef.current.size === 0)
-                    blockSinglePointerRef.current = false;
-                  return;
-                }
-                if (propsRef.current.inputMode === 'present') {
-                  if (pointersRef.current.size === 0) {
-                    if (gestureRef.current?.mode === 'hand' || pinchRef.current)
-                      commitGesture();
-                    gestureRef.current = null;
-                    pinchRef.current = null;
-                    setDragging(false);
-                  }
-                  // Settle the pan before a tap starts a camera animation; a later
-                  // gesture commit would otherwise cancel that animation.
-                  if (
-                    tap?.pointerId === event.pointerId &&
-                    Math.hypot(event.clientX - tap.x, event.clientY - tap.y) <=
-                      4
-                  )
-                    propsRef.current.onPresentTap?.(tap.cellId);
-                  return;
-                }
-                if (pointersRef.current.size < 2) {
-                  if (pinchRef.current || gestureRef.current?.mode === 'hand')
-                    commitGesture();
-                  pinchRef.current = null;
-                  setDragging(false);
-                }
-                if (vectorDraftRef.current) return;
-                if (edgeDragRef.current) {
-                  const final = updateEdgeDrag(event, false);
-                  if (final)
-                    void dispatch({
-                      id: transactionId(),
-                      operations: [{ type: 'replace_cell', cell: final }],
-                    });
-                  edgeDragRef.current = null;
-                  setDragging(false);
-                  edgePendingPreviewRef.current = null;
-                  setEdgePreview(null);
-                  clearDraftPaint();
-                  return;
-                }
-                const gesture = gestureRef.current;
-                if (gesture) {
-                  const tool = gesture.tool;
-                  if (gesture.mode !== 'hand') {
-                    const end = pointFromEvent(event);
-                    if (gesture.mode === 'path') {
-                      const last = gesture.points.at(-1)!;
-                      if (last[0] !== end[0] || last[1] !== end[1])
-                        gesture.points.push(end);
-                    } else gesture.points = [gesture.points[0], end];
-                    if (gesture.mode === 'erase') eraseAt(end);
-                  }
-                  if (gesture.mode === 'hand') commitGesture();
-                  else if (gesture.mode === 'erase' && gesture.erased.size)
-                    void dispatch({
-                      id: transactionId(),
-                      operations: deleteCells(
-                        runtime.store,
-                        [...gesture.erased],
-                        {
-                          registry: runtime.registry,
-                        },
+                  if (pinchRef.current && pointersRef.current.size >= 2) {
+                    const points = [...pointersRef.current.values()];
+                    const distance =
+                      Math.hypot(
+                        points[0][0] - points[1][0],
+                        points[0][1] - points[1][1],
+                      ) || 1;
+                    const rect = readViewportRect()!;
+                    const center: Point = [
+                      (points[0][0] + points[1][0]) / 2 - rect.left,
+                      (points[0][1] + points[1][1]) / 2 - rect.top,
+                    ];
+                    const nextZoom = Math.max(
+                      propsRef.current.inputMode === 'present' ? 0.01 : 0.1,
+                      Math.min(
+                        8,
+                        pinchRef.current.zoom *
+                          (distance / pinchRef.current.distance),
                       ),
+                    );
+                    const pinch = pinchRef.current;
+                    rememberGesture({
+                      zoom: nextZoom,
+                      origination: [
+                        pinch.origin[0] +
+                          pinch.center[0] / pinch.zoom -
+                          center[0] / nextZoom,
+                        pinch.origin[1] +
+                          pinch.center[1] / pinch.zoom -
+                          center[1] / nextZoom,
+                      ],
                     });
-                  else if (gesture.mode === 'select') {
-                    const first = gesture.points[0],
-                      last = gesture.points.at(-1)!;
-                    const focus = gesture.focus ?? [frameId];
-                    const displayed = selectionDisplayStore();
-                    const ids = focusedCellIds(displayed, focus.at(-1)!).filter(
-                      (id) => {
+                    return;
+                  }
+                  const rightDrag = rightDragRef.current;
+                  if (
+                    rightDrag &&
+                    rightDrag.pointerId === event.pointerId &&
+                    !rightDrag.moved
+                  ) {
+                    if ((event.buttons & 2) === 0) rightDragRef.current = null;
+                    else if (
+                      Math.hypot(
+                        event.clientX - rightDrag.x,
+                        event.clientY - rightDrag.y,
+                      ) > 6
+                    ) {
+                      cancelInteraction();
+                      rightDrag.moved = true;
+                      propsRef.current.onCanvasContextMenu?.(null);
+                      const point = pointFromEvent(event);
+                      gestureRef.current = {
+                        mode: 'hand',
+                        dragPanSpeed: normalizeInteractionMultiplier(
+                          propsRef.current.interactionSettings?.dragPanSpeed,
+                        ),
+                        points: [point],
+                        erased: new Set(),
+                        origin: [
+                          ...(cameraRef.current.origination ?? zeroOrigin),
+                        ],
+                        zoom: cameraRef.current.zoom ?? 1,
+                        additive: false,
+                      };
+                      setDragging(true);
+                      svgRef.current?.setPointerCapture(event.pointerId);
+                    }
+                  }
+                  if (connectingRef.current) {
+                    updateConnection(event);
+                    return;
+                  }
+                  const draft = vectorDraftRef.current;
+                  if (draft) {
+                    let point = pointFromEvent(event);
+                    const first = draft.points[0],
+                      last = draft.points.at(-1)!;
+                    if (
+                      draft.points.length > 1 &&
+                      Math.hypot(point[0] - first[0], point[1] - first[1]) *
+                        zoom <=
+                        8
+                    )
+                      point = [...first];
+                    else if (event.shiftKey) {
+                      const angle =
+                          Math.round(
+                            Math.atan2(point[1] - last[1], point[0] - last[0]) /
+                              (Math.PI / 4),
+                          ) *
+                          (Math.PI / 4),
+                        distance = Math.hypot(
+                          point[0] - last[0],
+                          point[1] - last[1],
+                        );
+                      point = [
+                        last[0] + distance * Math.cos(angle),
+                        last[1] + distance * Math.sin(angle),
+                      ];
+                    } else if (Math.abs(point[0] - last[0]) * zoom <= 5)
+                      point = [last[0], point[1]];
+                    else if (Math.abs(point[1] - last[1]) * zoom <= 5)
+                      point = [point[0], last[1]];
+                    draft.hover = point;
+                    scheduleDraftPaint();
+                    return;
+                  }
+                  if (edgeDragRef.current) {
+                    updateEdgeDrag(event);
+                    scheduleDraftPaint();
+                    return;
+                  }
+                  const gesture = gestureRef.current;
+                  if (gesture) {
+                    if (gesture.mode === 'hand') {
+                      const rect = readViewportRect()!;
+                      const originalClient: Point = [
+                        (gesture.points[0][0] - gesture.origin[0]) *
+                          gesture.zoom,
+                        (gesture.points[0][1] - gesture.origin[1]) *
+                          gesture.zoom,
+                      ];
+                      setViewport({
+                        zoom: gesture.zoom,
+                        origination: [
+                          gesture.origin[0] -
+                            ((event.clientX - rect.left - originalClient[0]) *
+                              (gesture.dragPanSpeed ?? 1)) /
+                              gesture.zoom,
+                          gesture.origin[1] -
+                            ((event.clientY - rect.top - originalClient[1]) *
+                              (gesture.dragPanSpeed ?? 1)) /
+                              gesture.zoom,
+                        ],
+                      });
+                    } else {
+                      const point = pointFromEvent(event);
+                      if (
+                        ['select', 'box', 'line', 'erase'].includes(
+                          gesture.mode,
+                        )
+                      )
+                        gesture.points = [gesture.points[0], point];
+                      else gesture.points.push(point);
+                      if (gesture.mode === 'erase') eraseAt(point);
+                      scheduleDraftPaint();
+                    }
+                    return;
+                  }
+                  const drag = dragRef.current;
+                  if (drag) {
+                    if (drag.pointerId !== event.pointerId) return;
+                    if ((event.buttons & 1) === 0) {
+                      clearNodeDrag();
+                      return;
+                    }
+                    const point = pointFromEvent(event);
+                    if (
+                      (!drag.mode || drag.mode === 'content-pan') &&
+                      !preview &&
+                      Math.hypot(
+                        point[0] - drag.start[0],
+                        point[1] - drag.start[1],
+                      ) *
+                        zoom <
+                        3
+                    )
+                      return;
+                    // Capturing on pointerdown retargets clicks to the SVG and loses double clicks.
+                    if (!svgRef.current?.hasPointerCapture(event.pointerId))
+                      svgRef.current?.setPointerCapture(event.pointerId);
+                    let dx = (point[0] - drag.start[0]) / drag.scale;
+                    let dy = (point[1] - drag.start[1]) / drag.scale;
+                    const ownerFrame = runtime.index.parentOf.get(drag.id);
+                    if (
+                      (!drag.mode || drag.mode === 'move') &&
+                      ownerFrame &&
+                      !props.extensions?.some((extension) =>
+                        extension.plugin?.fitLayoutBounds?.(
+                          runtime.store,
+                          ownerFrame,
+                        ),
+                      ) &&
+                      propsRef.current.interactionSettings?.smartGuides !==
+                        false &&
+                      !event.altKey
+                    ) {
+                      if (!drag.snapBounds) {
+                        const cells = { ...runtime.store.cells };
+                        drag.geometry.forEach((geometry, id) => {
+                          const cell = cells[id];
+                          if (isNodeCell(cell))
+                            cells[id] = { ...cell, geometry };
+                        });
+                        const displayed = { ...runtime.store, cells };
+                        const moving = drag.ids ?? [drag.id];
+                        const selected = new Set(moving);
+                        drag.snapBounds = unionCellBounds(
+                          moving.flatMap((id) => {
+                            const b = cellArrangementBounds(displayed, id);
+                            return b ? [b] : [];
+                          }),
+                        );
+                        const focusId = runtime.selection.focus.at(-1)!;
+                        const targets = focusedCellIds(displayed, focusId);
+                        drag.snapTargets = collectArrangementBlocks(
+                          displayed,
+                          ownerFrame,
+                          targets,
+                          runtime.registry,
+                        )
+                          .filter(
+                            (block) =>
+                              !selected.has(block.id) &&
+                              !block.members.some((id) => selected.has(id)),
+                          )
+                          .map((block) => block.bounds);
+                        drag.frameId = ownerFrame;
+                      }
+                      if (drag.snapBounds) {
+                        const snap = snapArrangementDelta(
+                          drag.snapBounds,
+                          [dx, dy],
+                          drag.snapTargets ?? [],
+                          6 / (zoom * drag.scale),
+                        );
+                        [dx, dy] = snap.delta;
+                        setAlignmentGuides(snap.guides);
+                      }
+                    } else setAlignmentGuides([]);
+                    const nextPreview = (
+                      drag.mode === 'resize'
+                        ? roundNodeGeometry
+                        : drag.mode === 'content-pan'
+                          ? (geometry: NodeGeometry) => geometry
+                          : roundNodePosition
+                    )(
+                      drag.mode === 'resize'
+                        ? resizeNodeGeometry(
+                            drag.original,
+                            drag.handle ?? 'se',
+                            [dx, dy],
+                            {
+                              preserveRatio:
+                                event.shiftKey ||
+                                (() => {
+                                  const c = runtime.store.cells[drag.id];
+                                  return (
+                                    (isFrameCell(c) ||
+                                      isFrameReferenceCell(c)) &&
+                                    c.aspectRatio !== undefined &&
+                                    c.aspectRatio !== 'custom'
+                                  );
+                                })(),
+                              fromCenter: event.altKey,
+                              minSize:
+                                isFrameCell(runtime.store.cells[drag.id]) ||
+                                isFrameReferenceCell(
+                                  runtime.store.cells[drag.id],
+                                )
+                                  ? frameMinimumSize
+                                  : 8,
+                            },
+                          )
+                        : drag.mode === 'rotate'
+                          ? rotateNodeGeometry(
+                              drag.original,
+                              drag.localStart!,
+                              [
+                                drag.localStart![0] + dx,
+                                drag.localStart![1] + dy,
+                              ],
+                              event.shiftKey,
+                            )
+                          : {
+                              ...drag.original,
+                              x: drag.original.x + dx,
+                              y: drag.original.y + dy,
+                              derived: false,
+                            },
+                    );
+                    setPreview(nextPreview);
+                    const local = drag.pointerMatrix
+                      ? new DOMPoint(
+                          event.clientX,
+                          event.clientY,
+                        ).matrixTransform(drag.pointerMatrix)
+                      : undefined;
+                    updateMoveGhost(
+                      drag,
+                      nextPreview,
+                      local
+                        ? [local.x, local.y]
+                        : [
+                            nextPreview.x + nextPreview.width / 2,
+                            nextPreview.y + nextPreview.height / 2,
+                          ],
+                    );
+                  }
+                }}
+                onContextMenu={(event) => {
+                  if (
+                    (event.target as Element).closest(
+                      '[contenteditable="true"], input, textarea',
+                    )
+                  )
+                    return;
+                  event.preventDefault();
+                  // Native right-click menus can fire on press or release. Pointerup
+                  // handles mouse menus; keep this path for keyboard invocation.
+                  if (event.button === 2 || rightDragRef.current) return;
+                  propsRef.current.onCanvasContextMenu?.([
+                    event.clientX,
+                    event.clientY,
+                  ]);
+                }}
+                onDragOver={(event) => {
+                  if ([...event.dataTransfer.types].includes('Files'))
+                    event.preventDefault();
+                }}
+                onDrop={(event) => {
+                  if (
+                    (event.target as Element).closest(
+                      '[contenteditable="true"], input, textarea',
+                    ) ||
+                    !editable ||
+                    pendingRef.current
+                  )
+                    return;
+                  const file = [...event.dataTransfer.files].find((item) =>
+                    item.type.startsWith('image/'),
+                  );
+                  if (!file) return;
+                  event.preventDefault();
+                  void insertExternal(
+                    { image: file },
+                    pointFromEvent(event as unknown as React.PointerEvent),
+                    event.clientX,
+                    event.clientY,
+                  );
+                }}
+                onPointerUp={(event) => {
+                  const tap = presentTapRef.current;
+                  if (tap?.pointerId === event.pointerId)
+                    presentTapRef.current = null;
+                  const rightDrag = rightDragRef.current;
+                  if (rightDrag?.pointerId === event.pointerId) {
+                    rightDragRef.current = null;
+                    if (
+                      event.button === 2 &&
+                      !rightDrag.moved &&
+                      Math.hypot(
+                        event.clientX - rightDrag.x,
+                        event.clientY - rightDrag.y,
+                      ) <= 6 &&
+                      !(event.target as Element).closest(
+                        '[contenteditable="true"], input, textarea',
+                      )
+                    )
+                      propsRef.current.onCanvasContextMenu?.([
+                        event.clientX,
+                        event.clientY,
+                      ]);
+                  }
+                  pointersRef.current.delete(event.pointerId);
+                  if (blockSinglePointerRef.current) {
+                    if (pointersRef.current.size < 2 && pinchRef.current) {
+                      commitGesture();
+                      pinchRef.current = null;
+                      setDragging(false);
+                    }
+                    if (pointersRef.current.size === 0)
+                      blockSinglePointerRef.current = false;
+                    return;
+                  }
+                  if (propsRef.current.inputMode === 'present') {
+                    if (pointersRef.current.size === 0) {
+                      if (
+                        gestureRef.current?.mode === 'hand' ||
+                        pinchRef.current
+                      )
+                        commitGesture();
+                      gestureRef.current = null;
+                      pinchRef.current = null;
+                      setDragging(false);
+                    }
+                    // Settle the pan before a tap starts a camera animation; a later
+                    // gesture commit would otherwise cancel that animation.
+                    if (
+                      tap?.pointerId === event.pointerId &&
+                      Math.hypot(
+                        event.clientX - tap.x,
+                        event.clientY - tap.y,
+                      ) <= 4
+                    )
+                      propsRef.current.onPresentTap?.(tap.cellId);
+                    return;
+                  }
+                  if (pointersRef.current.size < 2) {
+                    if (pinchRef.current || gestureRef.current?.mode === 'hand')
+                      commitGesture();
+                    pinchRef.current = null;
+                    setDragging(false);
+                  }
+                  if (vectorDraftRef.current) return;
+                  if (edgeDragRef.current) {
+                    const final = updateEdgeDrag(event, false);
+                    if (final)
+                      void dispatch({
+                        id: transactionId(),
+                        operations: [{ type: 'replace_cell', cell: final }],
+                      });
+                    edgeDragRef.current = null;
+                    setDragging(false);
+                    edgePendingPreviewRef.current = null;
+                    setEdgePreview(null);
+                    clearDraftPaint();
+                    return;
+                  }
+                  const gesture = gestureRef.current;
+                  if (gesture) {
+                    const tool = gesture.tool;
+                    if (gesture.mode !== 'hand') {
+                      const end = pointFromEvent(event);
+                      if (gesture.mode === 'path') {
+                        const last = gesture.points.at(-1)!;
+                        if (last[0] !== end[0] || last[1] !== end[1])
+                          gesture.points.push(end);
+                      } else gesture.points = [gesture.points[0], end];
+                      if (gesture.mode === 'erase') eraseAt(end);
+                    }
+                    if (gesture.mode === 'hand') commitGesture();
+                    else if (gesture.mode === 'erase' && gesture.erased.size)
+                      void dispatch({
+                        id: transactionId(),
+                        operations: deleteCells(
+                          runtime.store,
+                          [...gesture.erased],
+                          {
+                            registry: runtime.registry,
+                          },
+                        ),
+                      });
+                    else if (gesture.mode === 'select') {
+                      const first = gesture.points[0],
+                        last = gesture.points.at(-1)!;
+                      const focus = gesture.focus ?? [frameId];
+                      const displayed = selectionDisplayStore();
+                      const ids = focusedCellIds(
+                        displayed,
+                        focus.at(-1)!,
+                      ).filter((id) => {
                         const bounds = cellArrangementBounds(displayed, id);
                         return (
                           bounds &&
@@ -8090,625 +8300,682 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
                           bounds.y + bounds.height <=
                             Math.max(first[1], last[1])
                         );
-                      },
-                    );
-                    runtime.select({
-                      focus,
-                      ids: gesture.additive
-                        ? [...new Set([...runtime.selection.ids, ...ids])]
-                        : ids,
-                    });
-                    props.onSelectionChange?.(runtime.selection);
-                  } else if (tool && 'complete' in tool) {
-                    try {
-                      const operations = tool.complete(
-                        runtime.store,
-                        gesture.frameId ?? frameId,
-                        gesture.points,
-                        gesture.context
-                          ? {
-                              ...gesture.context,
-                              zoom: cameraRef.current.zoom ?? 1,
-                            }
-                          : undefined,
-                      );
-                      commitCreatedCells(
-                        operations,
-                        gesture.frameId ?? frameId,
-                        tool,
-                      );
-                    } catch (error) {
-                      setFailure(
-                        error instanceof Error ? error.message : String(error),
-                      );
-                    }
-                  }
-                  gestureRef.current = null;
-                  setDragging(false);
-                  rightDragRef.current = null;
-                  clearDraftPaint();
-                  return;
-                }
-                const drag = dragRef.current;
-                if (drag && drag.pointerId !== event.pointerId) return;
-                const currentPreview = previewRef.current;
-                let preview =
-                  drag &&
-                  currentPreview?.sessionId === drag.sessionId &&
-                  currentPreview.id === drag.id
-                    ? currentPreview.geometry
-                    : null;
-                if (
-                  drag &&
-                  preview &&
-                  (!drag.mode || drag.mode === 'move') &&
-                  propsRef.current.extensions?.some(
-                    (extension) =>
-                      (!extension.kind ||
-                        extension.kind ===
-                          runtime.store.cells[drag.id]?.kind) &&
-                      extension.previewMove,
-                  )
-                ) {
-                  const finalPoint = pointFromEvent(event);
-                  preview = roundNodePosition({
-                    ...drag.original,
-                    x:
-                      drag.original.x +
-                      (finalPoint[0] - drag.start[0]) / drag.scale,
-                    y:
-                      drag.original.y +
-                      (finalPoint[1] - drag.start[1]) / drag.scale,
-                    derived: false,
-                  });
-                }
-                if (drag?.collapseId && !preview)
-                  select(drag.collapseId, drag.focus);
-                if (drag && preview) {
-                  const cell = runtime.store.cells[drag.id];
-                  if (
-                    drag.mode === 'content-pan' &&
-                    drag.panFrameId &&
-                    isNodeCell(cell) &&
-                    propsRef.current.embedShell
-                  ) {
-                    const shell = propsRef.current.embedShell;
-                    const layout = frameLayouts(drag.panFrameId);
-                    const frame = runtime.store.cells[drag.panFrameId];
-                    if (isFrameCell(frame)) {
-                      const requested: Point = [
-                        (drag.contentOffset?.[0] ?? 0) +
-                          preview.x -
-                          drag.original.x,
-                        (drag.contentOffset?.[1] ?? 0) +
-                          preview.y -
-                          drag.original.y,
-                      ];
-                      const offset = projectEmbeddedContent(
-                        props.extensions,
-                        runtime.store,
-                        { ...frame, geometry: shell.geometry },
-                        layout.baseGeometry,
-                        layout.fitBounds,
-                        new Map([[cell.id, requested]]),
-                      ).offsets.get(cell.id);
-                      if (
-                        offset &&
-                        (offset[0] !== drag.contentOffset?.[0] ||
-                          offset[1] !== drag.contentOffset?.[1])
-                      )
-                        shell.onContentOffset(cell.id, offset);
-                    }
-                  } else if (
-                    drag.mode === 'content-pan' &&
-                    drag.panFrameId &&
-                    isNodeCell(cell)
-                  ) {
-                    const layout = frameLayouts(drag.panFrameId);
-                    const frame = runtime.store.cells[drag.panFrameId];
-                    const refCell = drag.panRefId
-                      ? runtime.store.cells[drag.panRefId]
-                      : undefined;
-                    const ref =
-                      refCell && isFrameReferenceCell(refCell)
-                        ? refCell
-                        : undefined;
-                    if (isFrameCell(frame) && (!drag.panRefId || ref)) {
-                      // Occurrence pans clamp against the ref shell geometry and
-                      // persist on the reference, never on shared target content.
-                      const displayed = ref
-                        ? { ...frame, geometry: ref.geometry }
-                        : frame;
-                      const requested: Point = [
-                        (drag.contentOffset?.[0] ?? 0) +
-                          preview.x -
-                          drag.original.x,
-                        (drag.contentOffset?.[1] ?? 0) +
-                          preview.y -
-                          drag.original.y,
-                      ];
-                      const offset = projectEmbeddedContent(
-                        props.extensions,
-                        runtime.store,
-                        displayed,
-                        layout.baseGeometry,
-                        layout.fitBounds,
-                        new Map([[cell.id, requested]]),
-                      ).offsets.get(cell.id);
-                      if (
-                        offset &&
-                        (offset[0] !== drag.contentOffset?.[0] ||
-                          offset[1] !== drag.contentOffset?.[1])
-                      )
-                        void dispatch({
-                          id: transactionId(),
-                          operations: ref
-                            ? [
-                                {
-                                  type: 'replace_cell',
-                                  cell: updateContentOffset(
-                                    props.extensions,
-                                    ref,
-                                    cell.id,
-                                    offset,
-                                  ),
-                                },
-                              ]
-                            : [
-                                {
-                                  type: 'replace_cell',
-                                  cell: updateContentOffset(
-                                    props.extensions,
-                                    cell,
-                                    cell.id,
-                                    offset,
-                                  ),
-                                },
-                              ],
-                        });
-                    }
-                  } else if (drag.ids) {
-                    void dispatch({
-                      id: transactionId(),
-                      operations: translateCellSelection(
-                        runtime.store,
-                        drag.ids,
-                        [
-                          preview.x - drag.original.x,
-                          preview.y - drag.original.y,
-                        ],
-                        runtime.registry,
-                      ),
-                    });
-                  } else if (isGroupCell(cell)) {
-                    void dispatch({
-                      id: transactionId(),
-                      operations: moveGroup(
-                        runtime.store,
-                        cell.id,
-                        [
-                          preview.x - drag.original.x,
-                          preview.y - drag.original.y,
-                        ],
-                        runtime.registry,
-                      ),
-                    });
-                  } else if (isNodeCell(cell)) {
-                    const util = runtime.registry.get(cell.kind);
-                    try {
-                      const position = drag.pointerMatrix
-                        ? new DOMPoint(
-                            event.clientX,
-                            event.clientY,
-                          ).matrixTransform(drag.pointerMatrix)
-                        : undefined;
-                      const point: Point = position
-                        ? [position.x, position.y]
-                        : [
-                            preview.x + preview.width / 2,
-                            preview.y + preview.height / 2,
-                          ];
-                      const base =
-                        util as import('@sue/board-core').BaseCellUtil;
-                      const authoredPreview =
-                        drag.mode === 'rotate'
-                          ? { ...cell.geometry, rotation: preview.rotation }
-                          : drag.mode === 'resize' && drag.canonicalOriginal
+                      });
+                      runtime.select({
+                        focus,
+                        ids: gesture.additive
+                          ? [...new Set([...runtime.selection.ids, ...ids])]
+                          : ids,
+                      });
+                      props.onSelectionChange?.(runtime.selection);
+                    } else if (tool && 'complete' in tool) {
+                      try {
+                        const operations = tool.complete(
+                          runtime.store,
+                          gesture.frameId ?? frameId,
+                          gesture.points,
+                          gesture.context
                             ? {
-                                ...preview,
-                                x:
-                                  preview.x -
-                                  drag.original.x +
-                                  drag.canonicalOriginal.x,
-                                y:
-                                  preview.y -
-                                  drag.original.y +
-                                  drag.canonicalOriginal.y,
+                                ...gesture.context,
+                                zoom: cameraRef.current.zoom ?? 1,
                               }
-                            : preview;
-                      const movePlan = resolveMovePreview(drag, preview, point);
-                      const operations = movePlan
-                        ? movePlan.operations
-                        : util && 'move' in util
-                          ? drag.mode === 'resize'
-                            ? base.resize(runtime.store, cell, authoredPreview)
-                            : drag.mode === 'rotate'
-                              ? base.rotate(
+                            : undefined,
+                        );
+                        commitCreatedCells(
+                          operations,
+                          gesture.frameId ?? frameId,
+                          tool,
+                        );
+                      } catch (error) {
+                        setFailure(
+                          error instanceof Error
+                            ? error.message
+                            : String(error),
+                        );
+                      }
+                    }
+                    gestureRef.current = null;
+                    setDragging(false);
+                    rightDragRef.current = null;
+                    clearDraftPaint();
+                    return;
+                  }
+                  const drag = dragRef.current;
+                  if (drag && drag.pointerId !== event.pointerId) return;
+                  const currentPreview = previewRef.current;
+                  let preview =
+                    drag &&
+                    currentPreview?.sessionId === drag.sessionId &&
+                    currentPreview.id === drag.id
+                      ? currentPreview.geometry
+                      : null;
+                  if (
+                    drag &&
+                    preview &&
+                    (!drag.mode || drag.mode === 'move') &&
+                    propsRef.current.extensions?.some(
+                      (extension) =>
+                        (!extension.kind ||
+                          extension.kind ===
+                            runtime.store.cells[drag.id]?.kind) &&
+                        extension.previewMove,
+                    )
+                  ) {
+                    const finalPoint = pointFromEvent(event);
+                    preview = roundNodePosition({
+                      ...drag.original,
+                      x:
+                        drag.original.x +
+                        (finalPoint[0] - drag.start[0]) / drag.scale,
+                      y:
+                        drag.original.y +
+                        (finalPoint[1] - drag.start[1]) / drag.scale,
+                      derived: false,
+                    });
+                  }
+                  if (drag?.collapseId && !preview)
+                    select(drag.collapseId, drag.focus);
+                  if (drag && preview) {
+                    const cell = runtime.store.cells[drag.id];
+                    if (
+                      drag.mode === 'content-pan' &&
+                      drag.panFrameId &&
+                      isNodeCell(cell) &&
+                      propsRef.current.embedShell
+                    ) {
+                      const shell = propsRef.current.embedShell;
+                      const layout = frameLayouts(drag.panFrameId);
+                      const frame = runtime.store.cells[drag.panFrameId];
+                      if (isFrameCell(frame)) {
+                        const requested: Point = [
+                          (drag.contentOffset?.[0] ?? 0) +
+                            preview.x -
+                            drag.original.x,
+                          (drag.contentOffset?.[1] ?? 0) +
+                            preview.y -
+                            drag.original.y,
+                        ];
+                        const offset = projectEmbeddedContent(
+                          props.extensions,
+                          runtime.store,
+                          { ...frame, geometry: shell.geometry },
+                          layout.baseGeometry,
+                          layout.fitBounds,
+                          new Map([[cell.id, requested]]),
+                        ).offsets.get(cell.id);
+                        if (
+                          offset &&
+                          (offset[0] !== drag.contentOffset?.[0] ||
+                            offset[1] !== drag.contentOffset?.[1])
+                        )
+                          shell.onContentOffset(cell.id, offset);
+                      }
+                    } else if (
+                      drag.mode === 'content-pan' &&
+                      drag.panFrameId &&
+                      isNodeCell(cell)
+                    ) {
+                      const layout = frameLayouts(drag.panFrameId);
+                      const frame = runtime.store.cells[drag.panFrameId];
+                      const refCell = drag.panRefId
+                        ? runtime.store.cells[drag.panRefId]
+                        : undefined;
+                      const ref =
+                        refCell && isFrameReferenceCell(refCell)
+                          ? refCell
+                          : undefined;
+                      if (isFrameCell(frame) && (!drag.panRefId || ref)) {
+                        // Occurrence pans clamp against the ref shell geometry and
+                        // persist on the reference, never on shared target content.
+                        const displayed = ref
+                          ? { ...frame, geometry: ref.geometry }
+                          : frame;
+                        const requested: Point = [
+                          (drag.contentOffset?.[0] ?? 0) +
+                            preview.x -
+                            drag.original.x,
+                          (drag.contentOffset?.[1] ?? 0) +
+                            preview.y -
+                            drag.original.y,
+                        ];
+                        const offset = projectEmbeddedContent(
+                          props.extensions,
+                          runtime.store,
+                          displayed,
+                          layout.baseGeometry,
+                          layout.fitBounds,
+                          new Map([[cell.id, requested]]),
+                        ).offsets.get(cell.id);
+                        if (
+                          offset &&
+                          (offset[0] !== drag.contentOffset?.[0] ||
+                            offset[1] !== drag.contentOffset?.[1])
+                        )
+                          void dispatch({
+                            id: transactionId(),
+                            operations: ref
+                              ? [
+                                  {
+                                    type: 'replace_cell',
+                                    cell: updateContentOffset(
+                                      props.extensions,
+                                      ref,
+                                      cell.id,
+                                      offset,
+                                    ),
+                                  },
+                                ]
+                              : [
+                                  {
+                                    type: 'replace_cell',
+                                    cell: updateContentOffset(
+                                      props.extensions,
+                                      cell,
+                                      cell.id,
+                                      offset,
+                                    ),
+                                  },
+                                ],
+                          });
+                      }
+                    } else if (drag.ids) {
+                      void dispatch({
+                        id: transactionId(),
+                        operations: translateCellSelection(
+                          runtime.store,
+                          drag.ids,
+                          [
+                            preview.x - drag.original.x,
+                            preview.y - drag.original.y,
+                          ],
+                          runtime.registry,
+                        ),
+                      });
+                    } else if (isGroupCell(cell)) {
+                      void dispatch({
+                        id: transactionId(),
+                        operations: moveGroup(
+                          runtime.store,
+                          cell.id,
+                          [
+                            preview.x - drag.original.x,
+                            preview.y - drag.original.y,
+                          ],
+                          runtime.registry,
+                        ),
+                      });
+                    } else if (isNodeCell(cell)) {
+                      const util = runtime.registry.get(cell.kind);
+                      try {
+                        const position = drag.pointerMatrix
+                          ? new DOMPoint(
+                              event.clientX,
+                              event.clientY,
+                            ).matrixTransform(drag.pointerMatrix)
+                          : undefined;
+                        const point: Point = position
+                          ? [position.x, position.y]
+                          : [
+                              preview.x + preview.width / 2,
+                              preview.y + preview.height / 2,
+                            ];
+                        const base =
+                          util as import('@sue/board-core').BaseCellUtil;
+                        const authoredPreview =
+                          drag.mode === 'rotate'
+                            ? { ...cell.geometry, rotation: preview.rotation }
+                            : drag.mode === 'resize' && drag.canonicalOriginal
+                              ? {
+                                  ...preview,
+                                  x:
+                                    preview.x -
+                                    drag.original.x +
+                                    drag.canonicalOriginal.x,
+                                  y:
+                                    preview.y -
+                                    drag.original.y +
+                                    drag.canonicalOriginal.y,
+                                }
+                              : preview;
+                        const movePlan = resolveMovePreview(
+                          drag,
+                          preview,
+                          point,
+                        );
+                        const operations = movePlan
+                          ? movePlan.operations
+                          : util && 'move' in util
+                            ? drag.mode === 'resize'
+                              ? base.resize(
                                   runtime.store,
                                   cell,
                                   authoredPreview,
                                 )
-                              : base.move(
-                                  runtime.store,
-                                  cell,
-                                  {
-                                    ...cell.geometry,
-                                    x: preview.x,
-                                    y: preview.y,
-                                    derived: false,
+                              : drag.mode === 'rotate'
+                                ? base.rotate(
+                                    runtime.store,
+                                    cell,
+                                    authoredPreview,
+                                  )
+                                : base.move(
+                                    runtime.store,
+                                    cell,
+                                    {
+                                      ...cell.geometry,
+                                      x: preview.x,
+                                      y: preview.y,
+                                      derived: false,
+                                    },
+                                    undefined,
+                                    {
+                                      point,
+                                      geometry: drag.geometry,
+                                      scale: cameraStore.getZoom() * drag.scale,
+                                    },
+                                  )
+                            : [
+                                {
+                                  type: 'replace_cell' as const,
+                                  cell: {
+                                    ...cell,
+                                    geometry:
+                                      drag.mode === 'resize' ||
+                                      drag.mode === 'rotate'
+                                        ? authoredPreview
+                                        : {
+                                            ...cell.geometry,
+                                            x: preview.x,
+                                            y: preview.y,
+                                            derived: false,
+                                          },
                                   },
-                                  undefined,
-                                  {
-                                    point,
-                                    geometry: drag.geometry,
-                                    scale: cameraStore.getZoom() * drag.scale,
-                                  },
-                                )
-                          : [
-                              {
-                                type: 'replace_cell' as const,
-                                cell: {
-                                  ...cell,
-                                  geometry:
-                                    drag.mode === 'resize' ||
-                                    drag.mode === 'rotate'
-                                      ? authoredPreview
-                                      : {
-                                          ...cell.geometry,
-                                          x: preview.x,
-                                          y: preview.y,
-                                          derived: false,
-                                        },
                                 },
-                              },
-                            ];
-                      if (operations.length)
-                        void dispatch({ id: transactionId(), operations });
-                    } catch (error) {
-                      const result = {
-                        status: 'rejected' as const,
-                        message:
-                          error instanceof Error
-                            ? error.message
-                            : String(error),
-                      };
-                      props.onReject?.(result);
-                      setFailure(result.message);
+                              ];
+                        if (operations.length)
+                          void dispatch({ id: transactionId(), operations });
+                      } catch (error) {
+                        const result = {
+                          status: 'rejected' as const,
+                          message:
+                            error instanceof Error
+                              ? error.message
+                              : String(error),
+                        };
+                        props.onReject?.(result);
+                        setFailure(result.message);
+                      }
                     }
                   }
-                }
-                clearNodeDrag();
-              }}
-              onLostPointerCapture={() => {
-                presentTapRef.current = null;
-                pointersRef.current.clear();
-                if (pinchRef.current || gestureRef.current?.mode === 'hand')
-                  commitGesture();
-                pinchRef.current = null;
-                blockSinglePointerRef.current = false;
-                cancelInteraction();
-              }}
-              onPointerCancel={() => {
-                presentTapRef.current = null;
-                pointersRef.current.clear();
-                if (pinchRef.current || gestureRef.current?.mode === 'hand')
-                  commitGesture();
-                pinchRef.current = null;
-                blockSinglePointerRef.current = false;
-                cancelInteraction();
-              }}
-              onKeyDown={(event) => {
-                if (
-                  event.defaultPrevented ||
-                  propsRef.current.suspended ||
-                  event.nativeEvent.isComposing ||
-                  event.nativeEvent.keyCode === 229 ||
-                  ['Process', 'Dead', 'AltGraph'].includes(event.key) ||
-                  event.getModifierState('AltGraph')
-                )
-                  return;
+                  clearNodeDrag();
+                }}
+                onLostPointerCapture={() => {
+                  presentTapRef.current = null;
+                  pointersRef.current.clear();
+                  if (pinchRef.current || gestureRef.current?.mode === 'hand')
+                    commitGesture();
+                  pinchRef.current = null;
+                  blockSinglePointerRef.current = false;
+                  cancelInteraction();
+                }}
+                onPointerCancel={() => {
+                  presentTapRef.current = null;
+                  pointersRef.current.clear();
+                  if (pinchRef.current || gestureRef.current?.mode === 'hand')
+                    commitGesture();
+                  pinchRef.current = null;
+                  blockSinglePointerRef.current = false;
+                  cancelInteraction();
+                }}
+                onKeyDown={(event) => {
+                  if (
+                    event.defaultPrevented ||
+                    propsRef.current.suspended ||
+                    event.nativeEvent.isComposing ||
+                    event.nativeEvent.keyCode === 229 ||
+                    ['Process', 'Dead', 'AltGraph'].includes(event.key) ||
+                    event.getModifierState('AltGraph')
+                  )
+                    return;
 
-                if (
-                  propsRef.current.suspended ||
-                  propsRef.current.surface === 'nested'
-                ) {
+                  if (
+                    propsRef.current.suspended ||
+                    propsRef.current.surface === 'nested'
+                  ) {
+                    if (
+                      propsRef.current.surface === 'nested' &&
+                      event.key === 'Escape'
+                    )
+                      event.stopPropagation();
+                    if (propsRef.current.suspended) return;
+                  }
                   if (
                     propsRef.current.surface === 'nested' &&
-                    event.key === 'Escape'
+                    event.code === 'Space'
                   )
-                    event.stopPropagation();
-                  if (propsRef.current.suspended) return;
-                }
-                if (
-                  propsRef.current.surface === 'nested' &&
-                  event.code === 'Space'
-                )
-                  return;
-                if (vectorDraftRef.current && event.key === 'Enter') {
-                  event.preventDefault();
-                  finishVectorDraft(true);
-                  return;
-                }
-                if (
-                  editing &&
-                  event.key === 'Tab' &&
-                  !event.ctrlKey &&
-                  !event.metaKey &&
-                  !event.altKey
-                ) {
-                  event.preventDefault();
-                  event.stopPropagation();
-                  commitEditingTab();
-                  return;
-                }
-                if (editing || labelEditing) {
-                  if (event.key === 'Escape') {
+                    return;
+                  if (vectorDraftRef.current && event.key === 'Enter') {
                     event.preventDefault();
+                    finishVectorDraft(true);
+                    return;
+                  }
+                  if (
+                    editing &&
+                    event.key === 'Tab' &&
+                    !event.ctrlKey &&
+                    !event.metaKey &&
+                    !event.altKey
+                  ) {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    commitEditingTab();
+                    return;
+                  }
+                  if (editing || labelEditing) {
+                    if (event.key === 'Escape') {
+                      event.preventDefault();
+                      setEditing(null);
+                      setLabelEditing(null);
+                      svgRef.current?.focus();
+                      return;
+                    }
+                    if (event.key !== 'Tab') return;
                     setEditing(null);
                     setLabelEditing(null);
-                    svgRef.current?.focus();
-                    return;
                   }
-                  if (event.key !== 'Tab') return;
-                  setEditing(null);
-                  setLabelEditing(null);
-                }
-                if (
-                  (event.target as Element).closest(
-                    '[contenteditable="true"], input, textarea',
+                  if (
+                    (event.target as Element).closest(
+                      '[contenteditable="true"], input, textarea',
+                    )
                   )
-                )
-                  return;
-                if (
-                  event.code === 'Space' &&
-                  !event.ctrlKey &&
-                  !event.metaKey &&
-                  !event.altKey
-                ) {
-                  event.preventDefault();
-                  spaceHandRef.current = true;
-                  return;
-                }
-                if (propsRef.current.inputMode === 'present') return;
-                if (event.key === 'Escape') {
-                  event.preventDefault();
-                  clearRevealOverrides();
-                  setRevealHighlight(null);
-                  if (propsRef.current.placing) {
-                    propsRef.current.onCancelPlace?.();
+                    return;
+                  if (
+                    event.code === 'Space' &&
+                    !event.ctrlKey &&
+                    !event.metaKey &&
+                    !event.altKey
+                  ) {
+                    event.preventDefault();
+                    spaceHandRef.current = true;
+                    return;
+                  }
+                  if (propsRef.current.inputMode === 'present') return;
+                  if (event.key === 'Escape') {
+                    event.preventDefault();
+                    clearRevealOverrides();
+                    setRevealHighlight(null);
+                    if (propsRef.current.placing) {
+                      propsRef.current.onCancelPlace?.();
+                      return;
+                    }
+                    if (
+                      gestureRef.current ||
+                      vectorDraftRef.current ||
+                      connectingRef.current ||
+                      edgeDragRef.current ||
+                      dragRef.current
+                    ) {
+                      event.stopPropagation();
+                      cancelInteraction();
+                      return;
+                    }
+                    if (
+                      propsRef.current.surface === 'nested' &&
+                      propsRef.current.onExitInstance
+                    ) {
+                      event.stopPropagation();
+                      propsRef.current.onExitInstance();
+                      return;
+                    }
+                    const focus = runtime.selection.focus;
+                    const group = runtime.store.cells[focus.at(-1)!];
+                    runtime.select(
+                      isGroupCell(group)
+                        ? { focus: focus.slice(0, -1), ids: [group.id] }
+                        : {
+                            focus:
+                              runtime.selection.ids.length || focus.length === 1
+                                ? focus
+                                : focus.slice(0, -1),
+                            ids: [],
+                          },
+                    );
+                    props.onSelectionChange?.(runtime.selection);
                     return;
                   }
                   if (
+                    dragRef.current ||
                     gestureRef.current ||
-                    vectorDraftRef.current ||
-                    connectingRef.current ||
                     edgeDragRef.current ||
-                    dragRef.current
+                    connectingRef.current ||
+                    vectorDraftRef.current
                   ) {
+                    const owner = resolveActionShortcut(
+                      actionRuntime.actions(),
+                      event,
+                    );
+                    if (
+                      owner.status === 'matched' &&
+                      (owner.action.id.startsWith('draw.') ||
+                        owner.action.id.startsWith('canvas.tool.') ||
+                        owner.action.id.startsWith('product.diagram.'))
+                    ) {
+                      cancelInteraction();
+                      event.preventDefault();
+                      event.stopPropagation();
+                      void owner.action.execute(undefined, {
+                        source: 'shortcut',
+                      });
+                      return;
+                    }
+                    event.preventDefault();
                     event.stopPropagation();
-                    cancelInteraction();
                     return;
                   }
-                  if (
-                    propsRef.current.surface === 'nested' &&
-                    propsRef.current.onExitInstance
-                  ) {
-                    event.stopPropagation();
-                    propsRef.current.onExitInstance();
-                    return;
-                  }
-                  const focus = runtime.selection.focus;
-                  const group = runtime.store.cells[focus.at(-1)!];
-                  runtime.select(
-                    isGroupCell(group)
-                      ? { focus: focus.slice(0, -1), ids: [group.id] }
-                      : {
-                          focus:
-                            runtime.selection.ids.length || focus.length === 1
-                              ? focus
-                              : focus.slice(0, -1),
-                          ids: [],
-                        },
-                  );
-                  props.onSelectionChange?.(runtime.selection);
-                  return;
-                }
-                if (
-                  dragRef.current ||
-                  gestureRef.current ||
-                  edgeDragRef.current ||
-                  connectingRef.current ||
-                  vectorDraftRef.current
-                ) {
-                  const owner = resolveActionShortcut(
+                  const selected =
+                    runtime.selection.ids.length === 1
+                      ? runtime.store.cells[runtime.selection.ids[0]]
+                      : undefined;
+                  const resolved = resolveActionShortcut(
                     actionRuntime.actions(),
                     event,
                   );
-                  if (
-                    owner.status === 'matched' &&
-                    (owner.action.id.startsWith('draw.') ||
-                      owner.action.id.startsWith('canvas.tool.') ||
-                      owner.action.id.startsWith('product.diagram.'))
-                  ) {
-                    cancelInteraction();
+                  if (resolved.status === 'matched') {
                     event.preventDefault();
                     event.stopPropagation();
-                    void owner.action.execute(undefined, {
+                    void resolved.action.execute(undefined, {
                       source: 'shortcut',
                     });
                     return;
                   }
-                  event.preventDefault();
-                  event.stopPropagation();
-                  return;
-                }
-                const selected =
-                  runtime.selection.ids.length === 1
-                    ? runtime.store.cells[runtime.selection.ids[0]]
-                    : undefined;
-                const resolved = resolveActionShortcut(
-                  actionRuntime.actions(),
-                  event,
-                );
-                if (resolved.status === 'matched') {
-                  event.preventDefault();
-                  event.stopPropagation();
-                  void resolved.action.execute(undefined, {
-                    source: 'shortcut',
-                  });
-                  return;
-                }
-                if (resolved.status === 'conflict') {
-                  event.preventDefault();
-                  event.stopPropagation();
-                  setFailure('Conflicting shortcuts');
-                  return;
-                }
-                if (
-                  editable &&
-                  !pendingRef.current &&
-                  isNodeCell(selected) &&
-                  !selected.locked &&
-                  frameCellUI(props.extensions, selected.kind).topic &&
-                  !event.ctrlKey &&
-                  !event.metaKey &&
-                  !event.altKey &&
-                  event.key.length === 1 &&
-                  event.code !== 'Space' &&
-                  !event.nativeEvent.isComposing
-                ) {
-                  event.preventDefault();
-                  const text = createInlineText(event.key);
-                  const previous = selected.content?.text;
-                  if (isBoardTextDocument(previous)) {
-                    text.id = previous.id;
-                    text.align = previous.align;
-                    const findText = (
-                      node: import('@sue/board-common').BoardTextNode,
-                    ): import('@sue/board-common').BoardTextNode | undefined =>
-                      node.type === 'text'
-                        ? node
-                        : node.content?.map(findText).find(Boolean);
-                    const leaf = findText(text.content),
-                      prior = findText(previous.content);
-                    if (leaf && prior?.marks) leaf.marks = prior.marks;
+                  if (resolved.status === 'conflict') {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    setFailure('Conflicting shortcuts');
+                    return;
                   }
-                  const request = {
-                    id: selected.id,
-                    label: event.key,
-                    accepted: false,
-                  };
-                  nameSession.current =
-                    selected.name === undefined
-                      ? {
-                          id: selected.id,
-                          initial: nodeContentName(selected),
-                        }
-                      : null;
-                  keyboardEditRef.current = request;
-                  void dispatch({
-                    id: transactionId(),
-                    operations: [
-                      {
-                        type: 'replace_cell',
-                        deferName: true,
-                        cell: {
-                          ...selected,
-                          name:
-                            selected.name ??
-                            (nameSession.current?.initial || undefined),
-                          content: {
-                            ...selected.content,
-                            label: event.key,
-                            text,
+                  if (
+                    editable &&
+                    !pendingRef.current &&
+                    isNodeCell(selected) &&
+                    !selected.locked &&
+                    frameCellUI(props.extensions, selected.kind).topic &&
+                    !event.ctrlKey &&
+                    !event.metaKey &&
+                    !event.altKey &&
+                    event.key.length === 1 &&
+                    event.code !== 'Space' &&
+                    !event.nativeEvent.isComposing
+                  ) {
+                    event.preventDefault();
+                    const text = createInlineText(event.key);
+                    const previous = selected.content?.text;
+                    if (isBoardTextDocument(previous)) {
+                      text.id = previous.id;
+                      text.align = previous.align;
+                      const findText = (
+                        node: import('@sue/board-common').BoardTextNode,
+                      ):
+                        | import('@sue/board-common').BoardTextNode
+                        | undefined =>
+                        node.type === 'text'
+                          ? node
+                          : node.content?.map(findText).find(Boolean);
+                      const leaf = findText(text.content),
+                        prior = findText(previous.content);
+                      if (leaf && prior?.marks) leaf.marks = prior.marks;
+                    }
+                    const request = {
+                      id: selected.id,
+                      label: event.key,
+                      accepted: false,
+                    };
+                    nameSession.current =
+                      selected.name === undefined
+                        ? {
+                            id: selected.id,
+                            initial: nodeContentName(selected),
+                          }
+                        : null;
+                    keyboardEditRef.current = request;
+                    void dispatch({
+                      id: transactionId(),
+                      operations: [
+                        {
+                          type: 'replace_cell',
+                          deferName: true,
+                          cell: {
+                            ...selected,
+                            name:
+                              selected.name ??
+                              (nameSession.current?.initial || undefined),
+                            content: {
+                              ...selected.content,
+                              label: event.key,
+                              text,
+                            },
                           },
                         },
-                      },
-                    ],
-                  }).then((result) => {
-                    if (keyboardEditRef.current !== request) return;
-                    if (result.status === 'rejected')
-                      keyboardEditRef.current = null;
-                    else {
-                      request.accepted = true;
-                      applyKeyboardSelection();
-                    }
-                  });
-                  return;
-                }
-              }}
-              onCompositionStart={() => {
-                composingRef.current = true;
-              }}
-              onCompositionEnd={() => {
-                composingRef.current = false;
-              }}
-              onCopy={(event) => {
-                if (
-                  (event.target as Element).closest(
-                    '[contenteditable="true"], input, textarea',
-                  ) ||
-                  !runtime.selection.ids.length
-                )
-                  return;
-                if (
-                  !actionRuntime.getActionState('canvas.clipboard.copy').enabled
-                )
-                  return;
-                event.preventDefault();
-                const fragment = copyCellFragment(
-                  runtime.store,
-                  runtime.selection.ids,
-                  runtime.registry,
-                  { fileId: frameId },
-                );
-                event.clipboardData.setData(
-                  'application/x-verd-cells',
-                  JSON.stringify(fragment),
-                );
-                event.clipboardData.setData(
-                  'text/plain',
-                  clipboardText(fragment),
-                );
-                void actionRuntime.executeAction(
-                  'canvas.clipboard.copy',
-                  { performNative: async () => ({ status: 'accepted' }) },
-                  { source: 'native' },
-                );
-              }}
-              onCut={(event) => {
-                if (
-                  (event.target as Element).closest(
-                    '[contenteditable="true"], input, textarea',
-                  ) ||
-                  !actionRuntime.getActionState('canvas.clipboard.cut').enabled
-                )
-                  return;
-                event.preventDefault();
-                try {
-                  const cut = cutSelection();
-                  if (!cut.ids.length) return;
+                      ],
+                    }).then((result) => {
+                      if (keyboardEditRef.current !== request) return;
+                      if (result.status === 'rejected')
+                        keyboardEditRef.current = null;
+                      else {
+                        request.accepted = true;
+                        applyKeyboardSelection();
+                      }
+                    });
+                    return;
+                  }
+                }}
+                onCompositionStart={() => {
+                  composingRef.current = true;
+                }}
+                onCompositionEnd={() => {
+                  composingRef.current = false;
+                }}
+                onCopy={(event) => {
+                  if (
+                    (event.target as Element).closest(
+                      '[contenteditable="true"], input, textarea',
+                    ) ||
+                    !runtime.selection.ids.length
+                  )
+                    return;
+                  if (
+                    !actionRuntime.getActionState('canvas.clipboard.copy')
+                      .enabled
+                  )
+                    return;
+                  event.preventDefault();
+                  const fragment = copyCellFragment(
+                    runtime.store,
+                    runtime.selection.ids,
+                    runtime.registry,
+                    { fileId: frameId },
+                  );
                   event.clipboardData.setData(
                     'application/x-verd-cells',
-                    JSON.stringify(cut.fragment),
+                    JSON.stringify(fragment),
                   );
                   event.clipboardData.setData(
                     'text/plain',
-                    clipboardText(cut.fragment),
+                    clipboardText(fragment),
                   );
+                  void actionRuntime.executeAction(
+                    'canvas.clipboard.copy',
+                    { performNative: async () => ({ status: 'accepted' }) },
+                    { source: 'native' },
+                  );
+                }}
+                onCut={(event) => {
+                  if (
+                    (event.target as Element).closest(
+                      '[contenteditable="true"], input, textarea',
+                    ) ||
+                    !actionRuntime.getActionState('canvas.clipboard.cut')
+                      .enabled
+                  )
+                    return;
+                  event.preventDefault();
+                  try {
+                    const cut = cutSelection();
+                    if (!cut.ids.length) return;
+                    event.clipboardData.setData(
+                      'application/x-verd-cells',
+                      JSON.stringify(cut.fragment),
+                    );
+                    event.clipboardData.setData(
+                      'text/plain',
+                      clipboardText(cut.fragment),
+                    );
+                    const source = runtime.store;
+                    void actionRuntime.executeAction(
+                      'canvas.clipboard.cut',
+                      {
+                        performNative: async () => {
+                          if (runtime.store !== source)
+                            return {
+                              status: 'rejected',
+                              message: 'Clipboard target changed',
+                            };
+                          return dispatch({
+                            id: transactionId(),
+                            operations: cut.operations,
+                          });
+                        },
+                      },
+                      { source: 'native' },
+                    );
+                  } catch (error) {
+                    clipboardFailure(error);
+                  }
+                }}
+                onPaste={(event) => {
+                  if (
+                    (event.target as Element).closest(
+                      '[contenteditable="true"], input, textarea',
+                    ) ||
+                    !actionRuntime.getActionState('canvas.clipboard.paste')
+                      .enabled
+                  )
+                    return;
+                  const custom = event.clipboardData.getData(
+                    'application/x-verd-cells',
+                  );
+                  const plain = event.clipboardData.getData('text/plain');
+                  const items = event.clipboardData.items;
+                  const image =
+                    items && typeof items[Symbol.iterator] === 'function'
+                      ? [...items]
+                          .find((item) => item.type.startsWith('image/'))
+                          ?.getAsFile()
+                      : null;
+                  if (!custom && !plain && !image) return;
+                  event.preventDefault();
                   const source = runtime.store;
                   void actionRuntime.executeAction(
-                    'canvas.clipboard.cut',
+                    'canvas.clipboard.paste',
                     {
                       performNative: async () => {
                         if (runtime.store !== source)
@@ -8716,310 +8983,269 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
                             status: 'rejected',
                             message: 'Clipboard target changed',
                           };
-                        return dispatch({
-                          id: transactionId(),
-                          operations: cut.operations,
-                        });
+                        try {
+                          if (custom)
+                            return await pasteFragment(JSON.parse(custom));
+                          if (image)
+                            return await insertExternal(
+                              { image },
+                              viewportCenter(),
+                            );
+                          let fragment: CellFragment;
+                          try {
+                            fragment = readClipboardText(plain);
+                          } catch {
+                            return await insertExternal(
+                              { text: plain },
+                              viewportCenter(),
+                            );
+                          }
+                          return await pasteFragment(fragment);
+                        } catch (error) {
+                          return clipboardFailure(error);
+                        }
                       },
                     },
                     { source: 'native' },
                   );
-                } catch (error) {
-                  clipboardFailure(error);
-                }
-              }}
-              onPaste={(event) => {
-                if (
-                  (event.target as Element).closest(
-                    '[contenteditable="true"], input, textarea',
-                  ) ||
-                  !actionRuntime.getActionState('canvas.clipboard.paste')
-                    .enabled
-                )
-                  return;
-                const custom = event.clipboardData.getData(
-                  'application/x-verd-cells',
-                );
-                const plain = event.clipboardData.getData('text/plain');
-                const items = event.clipboardData.items;
-                const image =
-                  items && typeof items[Symbol.iterator] === 'function'
-                    ? [...items]
-                        .find((item) => item.type.startsWith('image/'))
-                        ?.getAsFile()
-                    : null;
-                if (!custom && !plain && !image) return;
-                event.preventDefault();
-                const source = runtime.store;
-                void actionRuntime.executeAction(
-                  'canvas.clipboard.paste',
-                  {
-                    performNative: async () => {
-                      if (runtime.store !== source)
-                        return {
-                          status: 'rejected',
-                          message: 'Clipboard target changed',
-                        };
-                      try {
-                        if (custom)
-                          return await pasteFragment(JSON.parse(custom));
-                        if (image)
-                          return await insertExternal(
-                            { image },
-                            viewportCenter(),
-                          );
-                        let fragment: CellFragment;
-                        try {
-                          fragment = readClipboardText(plain);
-                        } catch {
-                          return await insertExternal(
-                            { text: plain },
-                            viewportCenter(),
-                          );
-                        }
-                        return await pasteFragment(fragment);
-                      } catch (error) {
-                        return clipboardFailure(error);
-                      }
-                    },
-                  },
-                  { source: 'native' },
-                );
-              }}
-              onKeyUp={(event) => {
-                if (event.code === 'Space') spaceHandRef.current = false;
-              }}
-            >
-              <style>{`[data-drawing-preview], [data-drawing-preview] * { pointer-events: none !important; }`}</style>
-              <style>{frameTitleCss}</style>
-              <g
-                ref={worldRef}
-                data-frame-world="true"
-                transform={`scale(${zoom}) translate(${-origin[0]} ${-origin[1]})`}
+                }}
+                onKeyUp={(event) => {
+                  if (event.code === 'Space') spaceHandRef.current = false;
+                }}
               >
-                {sceneContent}
-                {revealHighlight && revealBounds && (
-                  <rect
-                    data-frame-export-exclude
-                    data-reveal-highlight={revealHighlight}
-                    x={revealBounds.x - 6}
-                    y={revealBounds.y - 6}
-                    width={revealBounds.width + 12}
-                    height={revealBounds.height + 12}
-                    fill="none"
-                    stroke="var(--vm-primary,#6366f1)"
-                    strokeWidth={3 / zoom}
-                    strokeDasharray="6 3"
-                    pointerEvents="none"
-                  />
-                )}
-                {vectorDraftRef.current && (
-                  <circle
-                    data-vector-close="true"
-                    cx={vectorDraftRef.current.points[0][0]}
-                    cy={vectorDraftRef.current.points[0][1]}
-                    r={5 / zoom}
-                    fill={
-                      gesturePreview.length > 2 &&
-                      gesturePreview.at(-1)![0] ===
-                        vectorDraftRef.current.points[0][0] &&
-                      gesturePreview.at(-1)![1] ===
-                        vectorDraftRef.current.points[0][1]
-                        ? '#6366f1'
-                        : '#fff'
-                    }
-                    stroke="#6366f1"
-                    strokeWidth={1 / zoom}
-                    pointerEvents="none"
-                  />
-                )}
-                {draftScene && (
-                  <FrameRichTextPreviewContext.Provider value={true}>
-                    <g
-                      data-drawing-preview="true"
-                      data-frame-export-exclude
-                      aria-hidden="true"
-                      pointerEvents="none"
-                    >
-                      {renderFrame(frameId, [frameId], false, 1, draftScene)}
-                    </g>
-                  </FrameRichTextPreviewContext.Provider>
-                )}
-                {gesturePreview.length > 0 &&
-                  gestureRef.current?.mode !== 'hand' &&
-                  !draftScene &&
-                  (gestureRef.current?.mode === 'select' ? (
+                <style>{`[data-drawing-preview], [data-drawing-preview] * { pointer-events: none !important; }`}</style>
+                <style>{frameTitleCss}</style>
+                <g
+                  ref={worldRef}
+                  data-frame-world="true"
+                  transform={`scale(${zoom}) translate(${-origin[0]} ${-origin[1]})`}
+                >
+                  {sceneContent}
+                  {revealHighlight && revealBounds && (
                     <rect
-                      data-selection-marquee="true"
-                      x={Math.min(
-                        gesturePreview[0][0],
-                        gesturePreview.at(-1)![0],
-                      )}
-                      y={Math.min(
-                        gesturePreview[0][1],
-                        gesturePreview.at(-1)![1],
-                      )}
-                      width={Math.abs(
-                        gesturePreview.at(-1)![0] - gesturePreview[0][0],
-                      )}
-                      height={Math.abs(
-                        gesturePreview.at(-1)![1] - gesturePreview[0][1],
-                      )}
-                      fill="#6366f1"
-                      fillOpacity={0.1}
-                      stroke="#6366f1"
-                      strokeWidth={1 / zoom}
-                      pointerEvents="none"
-                    />
-                  ) : props.tool?.mode === 'erase' ? (
-                    <circle
-                      data-eraser-preview="true"
                       data-frame-export-exclude
-                      cx={gesturePreview.at(-1)![0]}
-                      cy={gesturePreview.at(-1)![1]}
-                      r={10 / zoom}
-                      fill="#ef4444"
-                      fillOpacity={0.08}
-                      stroke="#ef4444"
-                      strokeWidth={1 / zoom}
-                      pointerEvents="none"
-                    />
-                  ) : (vectorDraftRef.current?.tool ?? gestureRef.current?.tool)
-                      ?.preview ? null : gestureRef.current?.mode === 'box' ? (
-                    <rect
-                      data-drawing-preview="true"
-                      data-frame-export-exclude
-                      x={Math.min(
-                        gesturePreview[0][0],
-                        gesturePreview.at(-1)![0],
-                      )}
-                      y={Math.min(
-                        gesturePreview[0][1],
-                        gesturePreview.at(-1)![1],
-                      )}
-                      width={Math.abs(
-                        gesturePreview.at(-1)![0] - gesturePreview[0][0],
-                      )}
-                      height={Math.abs(
-                        gesturePreview.at(-1)![1] - gesturePreview[0][1],
-                      )}
+                      data-reveal-highlight={revealHighlight}
+                      x={revealBounds.x - 6}
+                      y={revealBounds.y - 6}
+                      width={revealBounds.width + 12}
+                      height={revealBounds.height + 12}
                       fill="none"
-                      stroke="#6366f1"
-                      strokeWidth={2 / zoom}
+                      stroke="var(--vm-primary,#6366f1)"
+                      strokeWidth={3 / zoom}
+                      strokeDasharray="6 3"
                       pointerEvents="none"
                     />
-                  ) : (
-                    <path
-                      data-drawing-preview="true"
-                      data-frame-export-exclude
-                      d={polylinePath(
-                        ['path', 'polyline'].includes(
-                          (
-                            vectorDraftRef.current?.tool ??
-                            gestureRef.current?.tool
-                          )?.mode ?? '',
-                        )
-                          ? gesturePreview
-                          : [gesturePreview[0], gesturePreview.at(-1)!],
-                      )}
-                      fill="none"
-                      stroke="#6366f1"
-                      strokeWidth={2 / zoom}
-                      pointerEvents="none"
-                    />
-                  ))}
-              </g>
-            </svg>
-            {editing &&
-              (isFrameCell(runtime.store.cells[editing]) ||
-                isFrameReferenceCell(runtime.store.cells[editing])) &&
-              !runtime.store.cells[editing].hidden &&
-              editable &&
-              selectionAllows(
-                runtime.store,
-                [editing],
-                runtime.registry,
-                'edit',
-                runtime.mountedRootId,
-              ) && (
-                <FrameTitleEditor
-                  cellId={editing}
-                  svg={svgRef.current}
-                  style={frameTitleStyle(
-                    runtime.selection.ids.includes(editing),
                   )}
-                  text={
-                    isBoardTextDocument(
-                      (runtime.store.cells[editing] as NodeCell).content?.text,
-                    )
-                      ? ((runtime.store.cells[editing] as NodeCell).content!
-                          .text as BoardTextDocument)
-                      : plainTextDocument(
-                          runtime.store.cells[editing],
-                          (runtime.store.cells[editing] as NodeCell).content
-                            ?.label ??
-                            (runtime.store.cells[editing] as NodeCell).name ??
-                            '',
-                        )
-                  }
-                  readonly={!editable || pending}
-                  onClose={() => setEditing(null)}
-                  onExitKey={() => svgRef.current?.focus()}
-                  onHistory={publishHistory}
-                  onChange={({ newText }) => {
-                    const cell = runtime.store.cells[editing];
-                    if (
-                      !(isFrameCell(cell) || isFrameReferenceCell(cell)) ||
-                      !selectionAllows(
-                        runtime.store,
-                        [editing],
-                        runtime.registry,
-                        'edit',
-                        runtime.mountedRootId,
+                  {vectorDraftRef.current && (
+                    <circle
+                      data-vector-close="true"
+                      cx={vectorDraftRef.current.points[0][0]}
+                      cy={vectorDraftRef.current.points[0][1]}
+                      r={5 / zoom}
+                      fill={
+                        gesturePreview.length > 2 &&
+                        gesturePreview.at(-1)![0] ===
+                          vectorDraftRef.current.points[0][0] &&
+                        gesturePreview.at(-1)![1] ===
+                          vectorDraftRef.current.points[0][1]
+                          ? '#6366f1'
+                          : '#fff'
+                      }
+                      stroke="#6366f1"
+                      strokeWidth={1 / zoom}
+                      pointerEvents="none"
+                    />
+                  )}
+                  {draftScene && (
+                    <FrameRichTextPreviewContext.Provider value={true}>
+                      <g
+                        data-drawing-preview="true"
+                        data-frame-export-exclude
+                        aria-hidden="true"
+                        pointerEvents="none"
+                      >
+                        {renderFrame(frameId, [frameId], false, 1, draftScene)}
+                      </g>
+                    </FrameRichTextPreviewContext.Provider>
+                  )}
+                  {gesturePreview.length > 0 &&
+                    gestureRef.current?.mode !== 'hand' &&
+                    !draftScene &&
+                    (gestureRef.current?.mode === 'select' ? (
+                      <rect
+                        data-selection-marquee="true"
+                        x={Math.min(
+                          gesturePreview[0][0],
+                          gesturePreview.at(-1)![0],
+                        )}
+                        y={Math.min(
+                          gesturePreview[0][1],
+                          gesturePreview.at(-1)![1],
+                        )}
+                        width={Math.abs(
+                          gesturePreview.at(-1)![0] - gesturePreview[0][0],
+                        )}
+                        height={Math.abs(
+                          gesturePreview.at(-1)![1] - gesturePreview[0][1],
+                        )}
+                        fill="#6366f1"
+                        fillOpacity={0.1}
+                        stroke="#6366f1"
+                        strokeWidth={1 / zoom}
+                        pointerEvents="none"
+                      />
+                    ) : props.tool?.mode === 'erase' ? (
+                      <circle
+                        data-eraser-preview="true"
+                        data-frame-export-exclude
+                        cx={gesturePreview.at(-1)![0]}
+                        cy={gesturePreview.at(-1)![1]}
+                        r={10 / zoom}
+                        fill="#ef4444"
+                        fillOpacity={0.08}
+                        stroke="#ef4444"
+                        strokeWidth={1 / zoom}
+                        pointerEvents="none"
+                      />
+                    ) : (
+                        vectorDraftRef.current?.tool ?? gestureRef.current?.tool
+                      )?.preview ? null : gestureRef.current?.mode === 'box' ? (
+                      <rect
+                        data-drawing-preview="true"
+                        data-frame-export-exclude
+                        x={Math.min(
+                          gesturePreview[0][0],
+                          gesturePreview.at(-1)![0],
+                        )}
+                        y={Math.min(
+                          gesturePreview[0][1],
+                          gesturePreview.at(-1)![1],
+                        )}
+                        width={Math.abs(
+                          gesturePreview.at(-1)![0] - gesturePreview[0][0],
+                        )}
+                        height={Math.abs(
+                          gesturePreview.at(-1)![1] - gesturePreview[0][1],
+                        )}
+                        fill="none"
+                        stroke="#6366f1"
+                        strokeWidth={2 / zoom}
+                        pointerEvents="none"
+                      />
+                    ) : (
+                      <path
+                        data-drawing-preview="true"
+                        data-frame-export-exclude
+                        d={polylinePath(
+                          ['path', 'polyline'].includes(
+                            (
+                              vectorDraftRef.current?.tool ??
+                              gestureRef.current?.tool
+                            )?.mode ?? '',
+                          )
+                            ? gesturePreview
+                            : [gesturePreview[0], gesturePreview.at(-1)!],
+                        )}
+                        fill="none"
+                        stroke="#6366f1"
+                        strokeWidth={2 / zoom}
+                        pointerEvents="none"
+                      />
+                    ))}
+                </g>
+              </svg>
+              {editing &&
+                (isFrameCell(runtime.store.cells[editing]) ||
+                  isFrameReferenceCell(runtime.store.cells[editing])) &&
+                !runtime.store.cells[editing].hidden &&
+                editable &&
+                selectionAllows(
+                  runtime.store,
+                  [editing],
+                  runtime.registry,
+                  'edit',
+                  runtime.mountedRootId,
+                ) && (
+                  <FrameTitleEditor
+                    cellId={editing}
+                    svg={svgRef.current}
+                    style={frameTitleStyle(
+                      runtime.selection.ids.includes(editing),
+                    )}
+                    text={
+                      isBoardTextDocument(
+                        (runtime.store.cells[editing] as NodeCell).content
+                          ?.text,
                       )
-                    )
-                      return Promise.resolve({ status: 'rejected' as const });
-                    const previous = isBoardTextDocument(cell.content?.text)
-                      ? cell.content.text
-                      : createInlineText(cell.content?.label ?? '');
-                    if (sameBoardText(previous, newText)) return;
-                    const request = dispatch({
-                      id: transactionId(),
-                      operations: [
-                        {
-                          type: 'replace_cell',
-                          deferName: true,
-                          cell: {
-                            ...cell,
-                            name:
-                              cell.name ??
-                              (nameSession.current?.initial || undefined),
-                            content: {
-                              ...cell.content,
-                              label: newText.plainText,
-                              text: newText,
+                        ? ((runtime.store.cells[editing] as NodeCell).content!
+                            .text as BoardTextDocument)
+                        : plainTextDocument(
+                            runtime.store.cells[editing],
+                            (runtime.store.cells[editing] as NodeCell).content
+                              ?.label ??
+                              (runtime.store.cells[editing] as NodeCell).name ??
+                              '',
+                          )
+                    }
+                    readonly={!editable || pending}
+                    onClose={() => setEditing(null)}
+                    onExitKey={() => svgRef.current?.focus()}
+                    onHistory={publishHistory}
+                    onChange={({ newText }) => {
+                      const cell = runtime.store.cells[editing];
+                      if (
+                        !(isFrameCell(cell) || isFrameReferenceCell(cell)) ||
+                        !selectionAllows(
+                          runtime.store,
+                          [editing],
+                          runtime.registry,
+                          'edit',
+                          runtime.mountedRootId,
+                        )
+                      )
+                        return Promise.resolve({ status: 'rejected' as const });
+                      const previous = isBoardTextDocument(cell.content?.text)
+                        ? cell.content.text
+                        : createInlineText(cell.content?.label ?? '');
+                      if (sameBoardText(previous, newText)) return;
+                      const request = dispatch({
+                        id: transactionId(),
+                        operations: [
+                          {
+                            type: 'replace_cell',
+                            deferName: true,
+                            cell: {
+                              ...cell,
+                              name:
+                                cell.name ??
+                                (nameSession.current?.initial || undefined),
+                              content: {
+                                ...cell.content,
+                                label: newText.plainText,
+                                text: newText,
+                              },
                             },
                           },
-                        },
-                      ],
-                    });
-                    textCommitRef.current = request;
-                    return request;
-                  }}
-                />
+                        ],
+                      });
+                      textCommitRef.current = request;
+                      return request;
+                    }}
+                  />
+                )}
+              {props.overlays}
+              {failure && (
+                <div
+                  role="alert"
+                  style={{ position: 'absolute', bottom: 8, left: 8 }}
+                >
+                  {failure}
+                </div>
               )}
-            {props.overlays}
-            {failure && (
-              <div
-                role="alert"
-                style={{ position: 'absolute', bottom: 8, left: 8 }}
-              >
-                {failure}
-              </div>
-            )}
-          </div>
-        </ActionScope>
-      </FrameRichTextLinkContext.Provider>
+            </div>
+          </ActionScope>
+        </FrameRichTextLinkContext.Provider>
+      </FrameRichTextLinkPolicyContext.Provider>
     </FrameCanvasProviders>
   );
 }) as <T = FrameSnapshot>(

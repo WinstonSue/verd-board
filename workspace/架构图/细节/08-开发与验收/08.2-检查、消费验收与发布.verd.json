@@ -46,7 +46,11 @@
       "demo:development/branch/4-1",
       "demo:development/branch/4-2",
       "demo:development/branch/4-3",
-      "project:detail/08/02/document"
+      "project:detail/08/02/document",
+      "project:content-release/node/4-4",
+      "project:content-release/branch/4-4",
+      "project:content-release/node/4-5",
+      "project:content-release/branch/4-5"
     ],
     "groups": [],
     "data": {},
@@ -1433,16 +1437,15 @@
     "project:detail/08/02/document": {
       "id": "project:detail/08/02/document",
       "cellType": "node",
-      "kind": "document-reference",
+      "kind": "geometry",
       "geometry": {
         "x": 0,
         "y": 1080,
         "width": 1000,
-        "height": 620
+        "height": 254,
+        "outline": "text"
       },
-      "data": {
-        "targetDocumentId": "project-doc:development/README"
-      },
+      "data": {},
       "content": {
         "text": {
           "schemaVersion": 1,
@@ -1452,6 +1455,23 @@
           "content": {
             "type": "doc",
             "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "相关文档：开发指南",
+                    "marks": [
+                      {
+                        "type": "link",
+                        "attrs": {
+                          "href": "verd://file/project-doc%3Adevelopment%2FREADME"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
               {
                 "type": "paragraph",
                 "content": [
@@ -1540,8 +1560,152 @@
               }
             ]
           },
-          "plainText": "读图：区分开发服务验收与生产构建验收；正式打包和发布由维护者执行。\n返回专题总览\n相关细节：环境、源码与文档维护\n配置与源码索引 · 迁移边界与验收\n文档维护指南 · 更新与验收\n源码入口：package.json；tests/desktop-e2e/playwright.config.ts；tests/desktop-e2e/playwright.prod.config.ts。"
+          "plainText": "相关文档：开发指南\n读图：区分开发服务验收与生产构建验收；正式打包和发布由维护者执行。\n返回专题总览\n相关细节：环境、源码与文档维护\n配置与源码索引 · 迁移边界与验收\n文档维护指南 · 更新与验收\n源码入口：package.json；tests/desktop-e2e/playwright.config.ts；tests/desktop-e2e/playwright.prod.config.ts。"
         }
+      },
+      "appearance": {
+        "fill": "none",
+        "strokeColor": "none"
+      }
+    },
+    "project:content-release/node/4-4": {
+      "id": "project:content-release/node/4-4",
+      "kind": "mind-child",
+      "cellType": "node",
+      "geometry": {
+        "x": 0,
+        "y": 0,
+        "width": 240,
+        "height": 48,
+        "derived": true,
+        "outline": "roundRectangle"
+      },
+      "content": {
+        "label": "内容包：build:content → tarball 校验",
+        "text": {
+          "schemaVersion": 1,
+          "id": "project:content-release/node/4-4/text",
+          "kind": "inline",
+          "plainText": "内容包：build:content → tarball 校验",
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "内容包：build:content → tarball 校验"
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "appearance": {
+        "fill": "#ffffff",
+        "strokeColor": "#0f766e",
+        "strokeWidth": 1
+      },
+      "data": {
+        "collapsed": false,
+        "branchAppearance": {
+          "strokeColor": "#0f766e",
+          "strokeWidth": 2
+        }
+      },
+      "name": "内容包：build:content → tarball 校验"
+    },
+    "project:content-release/branch/4-4": {
+      "id": "project:content-release/branch/4-4",
+      "kind": "mind-branch",
+      "cellType": "edge",
+      "source": {
+        "cellId": "demo:development/node/4"
+      },
+      "target": {
+        "cellId": "project:content-release/node/4-4"
+      },
+      "route": {
+        "mode": "auto"
+      },
+      "data": {
+        "order": "00000004"
+      },
+      "appearance": {
+        "strokeColor": "#0f766e",
+        "strokeWidth": 2
+      }
+    },
+    "project:content-release/node/4-5": {
+      "id": "project:content-release/node/4-5",
+      "kind": "mind-child",
+      "cellType": "node",
+      "geometry": {
+        "x": 0,
+        "y": 0,
+        "width": 240,
+        "height": 48,
+        "derived": true,
+        "outline": "roundRectangle"
+      },
+      "content": {
+        "label": "内容发布：publish:content（维护者执行）",
+        "text": {
+          "schemaVersion": 1,
+          "id": "project:content-release/node/4-5/text",
+          "kind": "inline",
+          "plainText": "内容发布：publish:content（维护者执行）",
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "内容发布：publish:content（维护者执行）"
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "appearance": {
+        "fill": "#ffffff",
+        "strokeColor": "#0f766e",
+        "strokeWidth": 1
+      },
+      "data": {
+        "collapsed": false,
+        "branchAppearance": {
+          "strokeColor": "#0f766e",
+          "strokeWidth": 2
+        }
+      },
+      "name": "内容发布：publish:content（维护者执行）"
+    },
+    "project:content-release/branch/4-5": {
+      "id": "project:content-release/branch/4-5",
+      "kind": "mind-branch",
+      "cellType": "edge",
+      "source": {
+        "cellId": "demo:development/node/4"
+      },
+      "target": {
+        "cellId": "project:content-release/node/4-5"
+      },
+      "route": {
+        "mode": "auto"
+      },
+      "data": {
+        "order": "00000005"
+      },
+      "appearance": {
+        "strokeColor": "#0f766e",
+        "strokeWidth": 2
       }
     }
   },

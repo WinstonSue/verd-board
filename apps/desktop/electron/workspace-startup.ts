@@ -1,3 +1,4 @@
+import { stageBuiltinWorkspace } from '@sue/verd-board-agent/node';
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import { createHash } from 'crypto';
@@ -29,77 +30,6 @@ async function hasWorkspaceState(target: string): Promise<boolean> {
   }
 }
 
-async function validateBuiltinFiles(root: string): Promise<void> {
-  const identities = new Set<string>();
-  const frames = new Set<string>();
-  const references: string[] = [];
-  const addIdentity = (id: unknown, file: string) => {
-    if (typeof id !== 'string' || !id || identities.has(id))
-      throw new Error(`Invalid or duplicate built-in identity: ${file}`);
-    identities.add(id);
-    return id;
-  };
-  const visit = async (dir: string) => {
-    for (const entry of await fs.readdir(dir, { withFileTypes: true })) {
-      const file = path.join(dir, entry.name);
-      if (entry.isDirectory()) {
-        await visit(file);
-        continue;
-      }
-      const value = JSON.parse(await fs.readFile(file, 'utf8'));
-      if (entry.name.endsWith('.verd-doc.json')) {
-        const id = addIdentity(value.id, file);
-        if (
-          value.format !== 'verd-document' ||
-          value.version !== 1 ||
-          typeof value.title !== 'string' ||
-          value.text?.id !== id ||
-          value.text?.kind !== 'block' ||
-          value.text?.schemaVersion !== 1 ||
-          value.text?.content?.type !== 'doc'
-        )
-          throw new Error(`Invalid built-in document: ${file}`);
-      } else {
-        if (
-          value.format !== 'verd-frame' ||
-          value.version !== 2 ||
-          value.frame?.cellType !== 'frame' ||
-          !Array.isArray(value.frame.children) ||
-          !Array.isArray(value.frame.groups) ||
-          !value.cells ||
-          typeof value.cells !== 'object' ||
-          Array.isArray(value.cells)
-        )
-          throw new Error(`Invalid built-in canvas: ${file}`);
-        frames.add(addIdentity(value.frame.id, file));
-        for (const [key, cell] of Object.entries(value.cells)) {
-          const candidate = cell as {
-            id?: unknown;
-            cellType?: unknown;
-            kind?: unknown;
-            data?: { targetFrameId?: unknown };
-          };
-          if (
-            addIdentity(candidate.id, file) !== key ||
-            candidate.cellType === 'frame'
-          )
-            throw new Error(`Invalid built-in cell: ${file}`);
-          if (candidate.kind === 'frame-reference') {
-            if (typeof candidate.data?.targetFrameId !== 'string')
-              throw new Error(`Invalid built-in reference: ${file}`);
-            references.push(candidate.data.targetFrameId);
-          }
-        }
-      }
-    }
-  };
-  await visit(root);
-  if (!frames.has('board-root') || references.some((id) => !frames.has(id)))
-    throw new Error(
-      'Built-in workspace is missing its entry or a referenced canvas',
-    );
-}
-
 /** Publishes the complete built-in workspace once; existing workspaces win. */
 export async function seedBuiltinWorkspace(
   source: string,
@@ -113,25 +43,7 @@ export async function seedBuiltinWorkspace(
   await fs.mkdir(path.dirname(target), { recursive: true });
   const staging = await fs.mkdtemp(`${target}.seed-`);
   try {
-    await fs.cp(source, staging, {
-      recursive: true,
-      filter: async (entry) => {
-        if (
-          path
-            .relative(source, entry)
-            .split(path.sep)
-            .some((part) => part === '.verdboard' || part === '.DS_Store')
-        )
-          return false;
-        const stat = await fs.lstat(entry);
-        return (
-          stat.isDirectory() ||
-          (stat.isFile() && entry.endsWith('.verd.json')) ||
-          (stat.isFile() && entry.endsWith('.verd-doc.json'))
-        );
-      },
-    });
-    await validateBuiltinFiles(staging);
+    await stageBuiltinWorkspace(source, staging, 'project');
     if (await hasWorkspaceState(target)) return;
     // rmdir only succeeds for an empty target; racing user content survives.
     try {
@@ -177,6 +89,7 @@ export function createDesktopWorkspaceManager(options: {
           typeof item.name === 'string' && item.name
             ? item.name
             : path.basename(root),
+        pinned: item.pinned === true,
         lastOpenedAt:
           typeof item.lastOpenedAt === 'number' &&
           Number.isFinite(item.lastOpenedAt)
@@ -255,32 +168,92 @@ export function createDesktopWorkspaceManager(options: {
       const entries = readHistory(
         (await options.host.readGlobalConfig()).value,
       );
-      return entries.map((entry) => {
-        const peers = entries.filter((item) => item.name === entry.name);
-        let description: string | undefined;
-        if (peers.length > 1) {
-          const parents = peers.map((item) =>
-            path.dirname(item.path).split(path.sep).filter(Boolean),
+      return Promise.all(
+        entries.map(async (entry) => {
+          const peers = entries.filter((item) => item.name === entry.name);
+          let description: string | undefined;
+          if (peers.length > 1) {
+            const parents = peers.map((item) =>
+              path.dirname(item.path).split(path.sep).filter(Boolean),
+            );
+            const own = path
+              .dirname(entry.path)
+              .split(path.sep)
+              .filter(Boolean);
+            let depth = 1;
+            while (
+              depth < own.length &&
+              parents.filter(
+                (parts) =>
+                  parts.slice(-depth).join('/') === own.slice(-depth).join('/'),
+              ).length > 1
+            )
+              depth++;
+            description = own.slice(-depth).join('/');
+          }
+          return {
+            id: entry.id,
+            name: entry.name,
+            lastOpenedAt: entry.lastOpenedAt,
+            pinned: entry.pinned,
+            availability: await fs.stat(entry.path).then(
+              (stat) =>
+                stat.isDirectory()
+                  ? ('available' as const)
+                  : ('unavailable' as const),
+              (error) =>
+                (error as NodeJS.ErrnoException).code === 'ENOENT'
+                  ? ('missing' as const)
+                  : ('unavailable' as const),
+            ),
+            ...(description ? { description } : {}),
+          };
+        }),
+      );
+    },
+    async create(request: { name: string }): Promise<WorkspaceHandle | null> {
+      const name = request.name.trim();
+      if (!name || name === '.' || name === '..' || /[/\\]/.test(name))
+        throw new Error('Invalid workspace name');
+      const parent = await options.pickDirectory();
+      if (!parent) return null;
+      const root = path.join(parent, name);
+      await fs.mkdir(root);
+      return this.open({ path: root, name });
+    },
+    async updateHistory(request: {
+      id: string;
+      pinned?: boolean;
+      remove?: boolean;
+    }) {
+      for (let attempt = 0; attempt < 5; attempt++) {
+        const config = await options.host.readGlobalConfig();
+        const selected = config.value[selectionKey] as
+          { path?: string } | undefined;
+        if (
+          request.remove &&
+          selected?.path &&
+          historyIdFor(path.resolve(selected.path)) === request.id
+        )
+          throw new Error('Cannot remove the current workspace');
+        const history = readHistory(config.value)
+          .filter((e) => !request.remove || e.id !== request.id)
+          .map((e) =>
+            e.id === request.id && request.pinned !== undefined
+              ? { ...e, pinned: request.pinned }
+              : e,
           );
-          const own = path.dirname(entry.path).split(path.sep).filter(Boolean);
-          let depth = 1;
-          while (
-            depth < own.length &&
-            parents.filter(
-              (parts) =>
-                parts.slice(-depth).join('/') === own.slice(-depth).join('/'),
-            ).length > 1
-          )
-            depth++;
-          description = own.slice(-depth).join('/');
-        }
-        return {
-          id: entry.id,
-          name: entry.name,
-          lastOpenedAt: entry.lastOpenedAt,
-          ...(description ? { description } : {}),
-        };
-      });
+        if (
+          (
+            await options.host.writeGlobalConfig(
+              { ...config.value, [historyKey]: history },
+              config.version,
+            )
+          ).applied
+        )
+          return;
+      }
+      throw new Error('Workspace history changed; retry');
     },
     async open(
       request?: OpenWorkspaceRequest,

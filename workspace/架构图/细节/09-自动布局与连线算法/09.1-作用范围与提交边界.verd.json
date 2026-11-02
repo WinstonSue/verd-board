@@ -925,16 +925,15 @@
     "project:detail/09/01/document": {
       "id": "project:detail/09/01/document",
       "cellType": "node",
-      "kind": "document-reference",
+      "kind": "geometry",
       "geometry": {
         "x": 0,
         "y": 680,
         "width": 1000,
-        "height": 620
+        "height": 322,
+        "outline": "text"
       },
-      "data": {
-        "targetDocumentId": "project-doc:packages/board/arrangement"
-      },
+      "data": {},
       "content": {
         "text": {
           "schemaVersion": 1,
@@ -944,6 +943,23 @@
           "content": {
             "type": "doc",
             "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "相关文档：排列与组合",
+                    "marks": [
+                      {
+                        "type": "link",
+                        "attrs": {
+                          "href": "verd://file/project-doc%3Apackages%2Fboard%2Farrangement"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
               {
                 "type": "paragraph",
                 "content": [
@@ -1098,8 +1114,12 @@
               }
             ]
           },
-          "plainText": "读图：范围固定、锁定对象不动；两个自动开关默认关闭，自动结果合入原事务。\n保存边界与典型场景\n相关细节：连线路由与优化\n相关细节：各场景节点布局\n返回专题总览\n自动布局算法 · 连线路由算法\n自动开关 · 三种结果与典型场景\n源码入口：packages/engine/core/src/cell/layout-plan.ts；packages/react/board/src/frame-editor-properties.tsx；packages/product/app/src/canvas/canvas-session.ts。"
+          "plainText": "相关文档：排列与组合\n读图：范围固定、锁定对象不动；两个自动开关默认关闭，自动结果合入原事务。\n保存边界与典型场景\n相关细节：连线路由与优化\n相关细节：各场景节点布局\n返回专题总览\n自动布局算法 · 连线路由算法\n自动开关 · 三种结果与典型场景\n源码入口：packages/engine/core/src/cell/layout-plan.ts；packages/react/board/src/frame-editor-properties.tsx；packages/product/app/src/canvas/canvas-session.ts。"
         }
+      },
+      "appearance": {
+        "fill": "none",
+        "strokeColor": "none"
       }
     }
   },

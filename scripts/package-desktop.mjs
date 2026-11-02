@@ -52,7 +52,7 @@ async function unregisterMacApps(directory) {
 async function nativeFiles(directory, prefix = '') {
   const files = [];
   for (const entry of await readdir(directory, { withFileTypes: true })) {
-    if (entry.name === '.verdboard') continue;
+    if (['.verdboard', '.verdscrolls'].includes(entry.name)) continue;
     const relative = prefix ? `${prefix}/${entry.name}` : entry.name;
     if (entry.isDirectory())
       files.push(
@@ -170,6 +170,7 @@ try {
     publish: 'never',
     config: {
       ...config.build,
+      beforePack: path.resolve(desktop, config.build.beforePack),
       directories: { ...config.build.directories, output: staging },
     },
   });

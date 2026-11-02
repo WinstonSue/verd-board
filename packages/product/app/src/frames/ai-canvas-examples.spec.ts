@@ -81,7 +81,14 @@ const textFiles = [
   'uml-class.mmd',
   'uml-sequence.mmd',
 ];
-const allFiles = [...frameFiles, bundleFile, snapshotFile, ...textFiles];
+const documentFile = 'document-rich-resources.verd-doc.json';
+const allFiles = [
+  ...frameFiles,
+  bundleFile,
+  snapshotFile,
+  ...textFiles,
+  documentFile,
+];
 
 describe('native AI specification embedded blocks', () => {
   it('embeds every example file exactly', () => {
@@ -108,6 +115,22 @@ describe('native AI specification embedded blocks', () => {
         file,
       ).toHaveLength(1);
     }
+  });
+});
+
+describe('standalone document example', () => {
+  it('preserves document-only resource nodes in native JSON', () => {
+    const value = readJson(documentFile);
+    expect(isDocumentFileV1(value)).toBe(true);
+    if (!isDocumentFileV1(value)) throw new Error('Invalid document fixture');
+    expect(value.text.id).toBe(value.id);
+    expect(value.text.content.content?.map((node) => node.type)).toEqual([
+      'heading',
+      'paragraph',
+      'details',
+      'attachment',
+      'webEmbed',
+    ]);
   });
 });
 

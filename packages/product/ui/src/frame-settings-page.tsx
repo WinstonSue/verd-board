@@ -1,11 +1,14 @@
+import { SettingsSection } from './components/settings-layout';
+import { SettingsDraftInput } from './settings-draft';
+import { validMindMaxWidth } from '@sue/board-mind';
 import {
   ConfigPanel,
   defineSettings,
   type SettingEditorProps,
 } from '@sue/board-react';
 import type { ControlProps } from '@sue/schema-settings-react';
-import { useId } from 'react';
-import { SettingsPageShell } from './settings-page-shell';
+import { useId, useState } from 'react';
+import { SettingsCenter } from './settings-center';
 import { useI18n } from './i18n';
 import { useMindMaxWidth, setMindMaxWidth } from './mind-preferences';
 import { FrameMindWidthInput } from './frame-mind-width-input';
@@ -29,6 +32,7 @@ type ApplicationValues = {
   zoomSensitivity: number;
   dragPanSpeed: number;
   smartGuides: boolean;
+  linkActivation: import('@sue/board-react-text').RichTextLinkActivation;
 };
 type ApplicationControls = ControlProps & { mindWidth: { testId: string } };
 const applicationComponents = {
@@ -47,10 +51,7 @@ const applicationComponents = {
   ),
 };
 
-export function FrameSettingsContent({
-  headingLevel = 2,
-}: { headingLevel?: 2 | 3 } = {}) {
-  const Heading = headingLevel === 3 ? 'h3' : 'h2';
+export function useApplicationSettingsModel() {
   const id = useId();
   const { t, language, setLanguage } = useI18n();
   const preferences = useInteractionPreferences();
@@ -73,6 +74,24 @@ export function FrameSettingsContent({
       { id: 'interaction', label: t('settings.interaction') },
     ],
     fields: [
+      {
+        key: 'linkActivation',
+        editor: 'select',
+        group: 'interaction',
+        label: language === 'zh' ? '链接打开方式' : 'Open links',
+        description:
+          language === 'zh'
+            ? '适用于编辑中的富文本；只读与演示始终单击打开。'
+            : 'Applies while editing. Readonly and presentation links always open with a click.',
+        props: { attributes: { 'data-testid': 'settings-link-activation' } },
+        options: [
+          {
+            value: 'modifier',
+            label: language === 'zh' ? '⌘/Ctrl + 点击' : '⌘/Ctrl + click',
+          },
+          { value: 'click', label: language === 'zh' ? '单击' : 'Click' },
+        ],
+      },
       {
         key: 'appearance',
         editor: 'select',
@@ -132,9 +151,33 @@ export function FrameSettingsContent({
       },
     ],
   });
+  return { id, t, language, setLanguage, values, definition };
+}
+
+export function FrameSettingsContent({
+  section,
+}: { headingLevel?: 2 | 3; section?: string } = {}) {
+  const { id, t, setLanguage, values, definition } =
+    useApplicationSettingsModel();
   return (
     <ConfigPanel
-      definition={definition}
+      definition={{
+        ...definition,
+        groups: definition.groups?.filter(
+          (group) =>
+            !section ||
+            (section === 'editor'
+              ? group.id !== 'general'
+              : group.id === section),
+        ),
+        fields: definition.fields.filter(
+          (field) =>
+            !section ||
+            (section === 'editor'
+              ? field.group !== 'general'
+              : field.group === section),
+        ),
+      }}
       values={values}
       identity="application-settings"
       components={applicationComponents}
@@ -153,8 +196,23 @@ export function FrameSettingsContent({
         }
       }}
       renderField={({ key, label, description, editor }) =>
-        key === 'zoomSensitivity' || key === 'dragPanSpeed' ? (
-          <div className="frame-settings-control">
+        key === 'mindWidth' ? (
+          <div className="settings-form-row" data-setting-key={key}>
+            <span>{label}</span>
+            <SettingsDraftInput
+              numeric
+              value={values.mindWidth}
+              label={String(label)}
+              testId="settings-mind-max-width"
+              onSave={(value) => {
+                if (!value || !validMindMaxWidth(Number(value)))
+                  throw new Error('请输入有效宽度 / Enter a valid width');
+                setMindMaxWidth(Number(value));
+              }}
+            />
+          </div>
+        ) : key === 'zoomSensitivity' || key === 'dragPanSpeed' ? (
+          <div className="frame-settings-control" data-setting-key={key}>
             <label htmlFor={`${id}-${key}`}>
               {label}
               <output htmlFor={`${id}-${key}`}>
@@ -170,7 +228,7 @@ export function FrameSettingsContent({
           </div>
         ) : (
           <>
-            <label className="frame-settings-row">
+            <label className="frame-settings-row" data-setting-key={key}>
               <span>{label}</span>
               {editor}
             </label>
@@ -179,8 +237,7 @@ export function FrameSettingsContent({
         )
       }
       renderGroup={({ id: group, label, children }) => (
-        <section aria-labelledby={`${id}-${group}`}>
-          <Heading id={`${id}-${group}`}>{label}</Heading>
+        <SettingsSection title={label}>
           {group === 'interaction' && (
             <p>{t('settings.interactionDescription')}</p>
           )}
@@ -208,7 +265,7 @@ export function FrameSettingsContent({
               {t('settings.resetInteraction')}
             </button>
           )}
-        </section>
+        </SettingsSection>
       )}
     />
   );
@@ -221,16 +278,15 @@ export function FrameSettingsPage({
   onBack(): void;
   backLabel?: string;
 }) {
-  const { t } = useI18n();
+  const [section, setSection] = useState('personal.general');
   return (
-    <SettingsPageShell
-      title={t('settings.title')}
-      backLabel={backLabel ?? t('settings.back')}
+    <SettingsCenter
+      section={section}
+      onSection={setSection}
       onBack={onBack}
+      backLabel={backLabel}
       testId="settings-page"
       backTestId="settings-back"
-    >
-      <FrameSettingsContent />
-    </SettingsPageShell>
+    />
   );
 }

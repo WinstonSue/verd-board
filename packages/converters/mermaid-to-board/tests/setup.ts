@@ -16,9 +16,10 @@ if (typeof SVGElement !== 'undefined') {
     };
   }
   if (typeof SVGElement.prototype.getComputedTextLength !== 'function') {
-    SVGElement.prototype.getComputedTextLength = function getComputedTextLength() {
-      return this.textContent?.length ?? 0;
-    };
+    SVGElement.prototype.getComputedTextLength =
+      function getComputedTextLength() {
+        return this.textContent?.length ?? 0;
+      };
   }
   if (typeof SVGElement.prototype.getTotalLength !== 'function') {
     SVGElement.prototype.getTotalLength = function getTotalLength() {

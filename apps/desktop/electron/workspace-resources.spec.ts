@@ -32,23 +32,35 @@ it('electron-builder includes every native document and nested diagram while exc
     const output = path.join(dir, 'resources');
     await fs.cp(path.join(repoRoot, 'workspace'), source, {
       recursive: true,
-      filter: (file) =>
-        !path
+      filter: (file) => {
+        const relative = path
           .relative(path.join(repoRoot, 'workspace'), file)
           .split(path.sep)
-          .includes('.verdboard'),
+          .join('/');
+        return (
+          !relative.startsWith('.verdboard') &&
+          (!relative.startsWith('.verdscrolls/') ||
+            ['.verdscrolls/config.json', '.verdscrolls/.gitignore'].includes(
+              relative,
+            ))
+        );
+      },
     });
     const native = (await listing(source)).filter((file) =>
       /\.verd(?:-doc)?\.json$/.test(file),
     );
-    await fs.mkdir(path.join(source, '.verdboard', 'trash'), {
+    await fs.mkdir(path.join(source, '.verdscrolls', 'trash'), {
       recursive: true,
     });
     await fs.writeFile(
-      path.join(source, '.verdboard', 'trash', 'private.verd-doc.json'),
+      path.join(source, '.verdscrolls', 'trash', 'private.verd-doc.json'),
       '{}',
     );
     await fs.writeFile(path.join(source, 'unfinished.tmp'), 'private');
+    const { prepareBuiltinWorkspaces } =
+      await import('../../../scripts/prepare-builtin-workspaces.mjs');
+    const prepared = path.join(dir, 'prepared');
+    await prepareBuiltinWorkspaces(prepared, { project: source });
     const config = JSON.parse(
       await fs.readFile(path.join(desktopDir, 'package.json'), 'utf8'),
     );
@@ -56,7 +68,13 @@ it('electron-builder includes every native document and nested diagram while exc
       {
         ...config.build,
         extraResources: config.build.extraResources.map(
-          (entry: Record<string, unknown>) => ({ ...entry, from: source }),
+          (entry: Record<string, unknown>) => ({
+            ...entry,
+            from: path.join(
+              prepared,
+              entry.to === 'workspace' ? 'workspace' : 'agent-patterns',
+            ),
+          }),
         ),
       },
       'extraResources',
@@ -69,8 +87,16 @@ it('electron-builder includes every native document and nested diagram while exc
       },
     );
     await copyFiles(matchers, null, false);
-    expect(await listing(path.join(output, 'workspace'))).toEqual(native);
-    expect(native).toContain('项目导览.verd.json');
+    expect(await listing(path.join(output, 'workspace'))).toEqual(
+      [
+        ...native,
+        'AGENTS.md',
+        '.verdscrolls/config.json',
+        '.verdscrolls/.gitignore',
+        '.verdscrolls/release.json',
+      ].sort(),
+    );
+    expect(native).toContain('架构图/项目导览.verd.json');
     expect(native).toContain('文档/架构/系统架构.verd-doc.json');
   } finally {
     await fs.rm(dir, { recursive: true, force: true });

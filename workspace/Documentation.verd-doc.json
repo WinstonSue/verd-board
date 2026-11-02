@@ -1,0 +1,614 @@
+{
+  "format": "verd-document",
+  "version": 1,
+  "id": "project-doc:README_en",
+  "title": "Documentation",
+  "text": {
+    "schemaVersion": 1,
+    "id": "project-doc:README_en",
+    "kind": "block",
+    "content": {
+      "type": "doc",
+      "content": [
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 1
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "VerdBoard Documentation"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "Start with the project documents; follow diagram links when you need a visual explanation. Native documents and diagrams are the maintained editable sources."
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "中文导航",
+              "marks": [
+                {
+                  "type": "link",
+                  "attrs": {
+                    "href": "verd://file/project-doc%3AREADME"
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 2
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "Start here"
+            }
+          ]
+        },
+        {
+          "type": "bulletList",
+          "content": [
+            {
+              "type": "listItem",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "Product overview",
+                      "marks": [
+                        {
+                          "type": "link",
+                          "attrs": {
+                            "href": "verd://file/project-doc%3Aproduct%2F%E4%BA%A7%E5%93%81%E6%A6%82%E8%A7%88"
+                          }
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "listItem",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "System architecture",
+                      "marks": [
+                        {
+                          "type": "link",
+                          "attrs": {
+                            "href": "verd://file/project-doc%3Aarchitecture%2FARCHITECTURE"
+                          }
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "listItem",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "Development guide",
+                      "marks": [
+                        {
+                          "type": "link",
+                          "attrs": {
+                            "href": "verd://file/project-doc%3Adevelopment%2FREADME"
+                          }
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 2
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "Documentation"
+            }
+          ]
+        },
+        {
+          "type": "bulletList",
+          "content": [
+            {
+              "type": "listItem",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "Product overview",
+                      "marks": [
+                        {
+                          "type": "link",
+                          "attrs": {
+                            "href": "verd://file/project-doc%3Aproduct%2F%E4%BA%A7%E5%93%81%E6%A6%82%E8%A7%88"
+                          }
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "listItem",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "System architecture",
+                      "marks": [
+                        {
+                          "type": "link",
+                          "attrs": {
+                            "href": "verd://file/project-doc%3Aarchitecture%2FARCHITECTURE"
+                          }
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "listItem",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "Development guide",
+                      "marks": [
+                        {
+                          "type": "link",
+                          "attrs": {
+                            "href": "verd://file/project-doc%3Adevelopment%2FREADME"
+                          }
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "listItem",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "Desktop setup",
+                      "marks": [
+                        {
+                          "type": "link",
+                          "attrs": {
+                            "href": "verd://file/project-doc%3Aguides%2FSETUP"
+                          }
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "listItem",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "Package index",
+                      "marks": [
+                        {
+                          "type": "link",
+                          "attrs": {
+                            "href": "verd://file/project-doc%3Apackages%2FREADME"
+                          }
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "text": " and "
+                    },
+                    {
+                      "type": "text",
+                      "text": "React APIs",
+                      "marks": [
+                        {
+                          "type": "link",
+                          "attrs": {
+                            "href": "verd://file/project-doc%3Apackages%2Freact%2FREADME"
+                          }
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "listItem",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "Documentation maintenance",
+                      "marks": [
+                        {
+                          "type": "link",
+                          "attrs": {
+                            "href": "verd://file/project-doc%3ADOCUMENTATION_GUIDE"
+                          }
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "text": " and "
+                    },
+                    {
+                      "type": "text",
+                      "text": "Source index",
+                      "marks": [
+                        {
+                          "type": "link",
+                          "attrs": {
+                            "href": "verd://file/project-doc%3Aguides%2F%E9%85%8D%E7%BD%AE%E4%B8%8E%E6%BA%90%E7%A0%81%E7%B4%A2%E5%BC%95"
+                          }
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "listItem",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "Canvas modes",
+                      "marks": [
+                        {
+                          "type": "link",
+                          "attrs": {
+                            "href": "verd://file/project-doc%3Apackages%2Fboard%2Fcanvas-modes"
+                          }
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "text": ", "
+                    },
+                    {
+                      "type": "text",
+                      "text": "Converters",
+                      "marks": [
+                        {
+                          "type": "link",
+                          "attrs": {
+                            "href": "verd://file/project-doc%3Apackages%2Fboard%2Fframe-converters"
+                          }
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "text": ", "
+                    },
+                    {
+                      "type": "text",
+                      "text": "Arrangement and groups",
+                      "marks": [
+                        {
+                          "type": "link",
+                          "attrs": {
+                            "href": "verd://file/project-doc%3Apackages%2Fboard%2Farrangement"
+                          }
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "listItem",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "Mind features",
+                      "marks": [
+                        {
+                          "type": "link",
+                          "attrs": {
+                            "href": "verd://file/project-doc%3Apackages%2Fboard%2Fmind-features"
+                          }
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "text": ", "
+                    },
+                    {
+                      "type": "text",
+                      "text": "Node sizing",
+                      "marks": [
+                        {
+                          "type": "link",
+                          "attrs": {
+                            "href": "verd://file/project-doc%3Apackages%2Fboard%2FNODE_WIDTH_SPECIFICATION"
+                          }
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "text": ", "
+                    },
+                    {
+                      "type": "text",
+                      "text": "Mind engine",
+                      "marks": [
+                        {
+                          "type": "link",
+                          "attrs": {
+                            "href": "verd://file/project-doc%3Apackages%2Fboard%2FREADME"
+                          }
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "listItem",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "AI canvas data specification",
+                      "marks": [
+                        {
+                          "type": "link",
+                          "attrs": {
+                            "href": "verd://file/project-doc%3Aguides%2Fai-canvas-data-spec"
+                          }
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "text": ": complete fields, kinds, import rules and 11 validated examples under tests/fixtures/ai-canvas/."
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "listItem",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "Dated acceptance records",
+                      "marks": [
+                        {
+                          "type": "link",
+                          "attrs": {
+                            "href": "verd://file/project-doc%3Aguides%2F%E4%BD%93%E9%AA%8C%E5%9B%9E%E5%BD%92%E9%AA%8C%E6%94%B6"
+                          }
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 2
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "Diagrams"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "Project overview canvas",
+              "marks": [
+                {
+                  "type": "link",
+                  "attrs": {
+                    "href": "verd://file/board-root"
+                  }
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "text": ": nine topic overviews and twenty-one mechanism diagrams."
+            }
+          ]
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 2
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "Quick Start"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "Requirements: Node.js >= 22 and pnpm >= 11.18.0. Root package.json, package manifests and pnpm-lock.yaml define the actual commands and dependency versions."
+            }
+          ]
+        },
+        {
+          "type": "codeBlock",
+          "attrs": {
+            "language": "bash"
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "pnpm install\npnpm dev:desktop\n# Web development\npnpm dev:web\n# Public packages and Web; excludes Desktop\npnpm build\n# Desktop frontend, main process and preload\npnpm build:desktop\n# Validated installer; macOS defaults to DMG, add --with-zip for ZIP\npnpm package:desktop\npnpm typecheck\npnpm test"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "Workspace navigation uses Home, Search and All content, with Charts available as an All content tab. Cmd/Ctrl+P opens a cancellable quick file picker. Settings combines personal and workspace preferences in a bounded dialog; text and numeric drafts save when editing finishes. The workspace name opens the switcher, with creation separated from filtering."
+            }
+          ]
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 2
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "Knowledge authoring and reusable content"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "Documents offer slash insertion, paragraph actions, stable block links and live read-only excerpts. Native templates cover technical proposals, ADRs, system design and requirements. Content management adds portable properties, saved filters, persistent checkpoints, conflict comparison, independent recovery copies and managed images. Folder/ZIP migration preserves linked notes and assets; portable archives include native sources, Markdown and conversion reports."
+            }
+          ]
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 2
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "Document and resource reading"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "Standalone documents add nested-list folding, details, inline/block LaTeX, binary attachments, local media and PDF reading with stable page links. HTTPS embeds are click-to-load and retain external navigation. Portable v2 preserves original resources; task lists, databases and clipping are deferred."
+            }
+          ]
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 2
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "Agent integration and independent content updates"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "Workspaces expose AGENTS.md, portable project configuration and a shared verd CLI for AI authoring. Project documents ship in @sue/verd-board-docs; patterns ship separately. Desktop checks compatible npm releases and downloads only after confirmation, validates them, backs up the existing workspace and replaces its contents. Bundled content remains available for offline recovery. See the development and desktop guides for details."
+            }
+          ]
+        }
+      ]
+    },
+    "plainText": "VerdBoard Documentation\nStart with the project documents; follow diagram links when you need a visual explanation. Native documents and diagrams are the maintained editable sources.\n中文导航\nStart here\nProduct overview\nSystem architecture\nDevelopment guide\nDocumentation\nProduct overview\nSystem architecture\nDevelopment guide\nDesktop setup\nPackage index and React APIs\nDocumentation maintenance and Source index\nCanvas modes, Converters, Arrangement and groups\nMind features, Node sizing, Mind engine\nAI canvas data specification: complete fields, kinds, import rules and 11 validated examples under tests/fixtures/ai-canvas/.\nDated acceptance records\nDiagrams\nProject overview canvas: nine topic overviews and twenty-one mechanism diagrams.\nQuick Start\nRequirements: Node.js >= 22 and pnpm >= 11.18.0. Root package.json, package manifests and pnpm-lock.yaml define the actual commands and dependency versions.\npnpm install\npnpm dev:desktop\n# Web development\npnpm dev:web\n# Public packages and Web; excludes Desktop\npnpm build\n# Desktop frontend, main process and preload\npnpm build:desktop\n# Validated installer; macOS defaults to DMG, add --with-zip for ZIP\npnpm package:desktop\npnpm typecheck\npnpm test\nWorkspace navigation uses Home, Search and All content, with Charts available as an All content tab. Cmd/Ctrl+P opens a cancellable quick file picker. Settings combines personal and workspace preferences in a bounded dialog; text and numeric drafts save when editing finishes. The workspace name opens the switcher, with creation separated from filtering.\nKnowledge authoring and reusable content\nDocuments offer slash insertion, paragraph actions, stable block links and live read-only excerpts. Native templates cover technical proposals, ADRs, system design and requirements. Content management adds portable properties, saved filters, persistent checkpoints, conflict comparison, independent recovery copies and managed images. Folder/ZIP migration preserves linked notes and assets; portable archives include native sources, Markdown and conversion reports.\nDocument and resource reading\nStandalone documents add nested-list folding, details, inline/block LaTeX, binary attachments, local media and PDF reading with stable page links. HTTPS embeds are click-to-load and retain external navigation. Portable v2 preserves original resources; task lists, databases and clipping are deferred.\nAgent integration and independent content updates\nWorkspaces expose AGENTS.md, portable project configuration and a shared verd CLI for AI authoring. Project documents ship in @sue/verd-board-docs; patterns ship separately. Desktop checks compatible npm releases and downloads only after confirmation, validates them, backs up the existing workspace and replaces its contents. Bundled content remains available for offline recovery. See the development and desktop guides for details.",
+    "align": "left"
+  }
+}

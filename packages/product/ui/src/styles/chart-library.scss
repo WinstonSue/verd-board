@@ -14,7 +14,7 @@
   padding: 20px 24px 14px;
   h2 {
     margin: 0;
-    font-size: 18px;
+    font-size: var(--vm-text-lg);
   }
 }
 .chart-library-count {
@@ -147,7 +147,7 @@
 }
 .chart-library-path {
   color: var(--vm-foreground-tertiary);
-  font-size: 11px;
+  font-size: var(--vm-text-xs);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -176,7 +176,7 @@
   color: var(--vm-foreground);
   background: var(--vm-background);
   box-shadow: var(--vm-shadow-menu);
-  font: 13px/1.5 var(--vm-font);
+  font: var(--vm-text-md)/1.5 var(--vm-font);
   &[open] {
     display: flex;
     flex-direction: column;
@@ -188,7 +188,7 @@
     padding: 20px 24px 12px;
     h2 {
       margin: 0 0 8px;
-      font-size: 18px;
+      font-size: var(--vm-text-lg);
     }
     p {
       margin: 0;

@@ -1890,16 +1890,15 @@
     "project:detail/06/01/document": {
       "id": "project:detail/06/01/document",
       "cellType": "node",
-      "kind": "document-reference",
+      "kind": "geometry",
       "geometry": {
         "x": 0,
         "y": 1340,
         "width": 1000,
-        "height": 620
+        "height": 254,
+        "outline": "text"
       },
-      "data": {
-        "targetDocumentId": "project-doc:guides/SETUP"
-      },
+      "data": {},
       "content": {
         "text": {
           "schemaVersion": 1,
@@ -1909,6 +1908,23 @@
           "content": {
             "type": "doc",
             "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "相关文档：桌面安装与使用",
+                    "marks": [
+                      {
+                        "type": "link",
+                        "attrs": {
+                          "href": "verd://file/project-doc%3Aguides%2FSETUP"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
               {
                 "type": "paragraph",
                 "content": [
@@ -1997,8 +2013,12 @@
               }
             ]
           },
-          "plainText": "读图：expectedVersion 防止覆盖外部变更；transactionId 确保未知结果可安全重放。\n返回专题总览\n相关细节：关闭与工作区切换屏障\n系统架构 · 持久化和迁移\n布局、路由与保存边界\n源码入口：packages/product/app/src/session/workspace-session.ts；packages/product/app/src/host/workspace-host.ts；packages/product/app/src/host/desktop-workspace-host.ts。"
+          "plainText": "相关文档：桌面安装与使用\n读图：expectedVersion 防止覆盖外部变更；transactionId 确保未知结果可安全重放。\n返回专题总览\n相关细节：关闭与工作区切换屏障\n系统架构 · 持久化和迁移\n布局、路由与保存边界\n源码入口：packages/product/app/src/session/workspace-session.ts；packages/product/app/src/host/workspace-host.ts；packages/product/app/src/host/desktop-workspace-host.ts。"
         }
+      },
+      "appearance": {
+        "fill": "none",
+        "strokeColor": "none"
       }
     }
   },

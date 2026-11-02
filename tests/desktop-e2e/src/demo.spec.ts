@@ -24,7 +24,7 @@ const nativeFiles = async (
 ): Promise<Record<string, string>> => {
   const files: Record<string, string> = {};
   for (const entry of await readdir(dir, { withFileTypes: true })) {
-    if (entry.name === '.verdboard') continue;
+    if (entry.name === '.verdscrolls') continue;
     const relative = prefix ? `${prefix}/${entry.name}` : entry.name;
     if (entry.isDirectory())
       Object.assign(
@@ -50,11 +50,19 @@ test('built-in native workspace opens its diagrams and documents, follows links 
     await mkdir(userData);
     await cp(path.join(root, 'workspace'), source, {
       recursive: true,
-      filter: (file) =>
-        !path
+      filter: (file) => {
+        const relative = path
           .relative(path.join(root, 'workspace'), file)
           .split(path.sep)
-          .includes('.verdboard'),
+          .join('/');
+        return (
+          !relative.startsWith('.verdboard') &&
+          (!relative.startsWith('.verdscrolls/') ||
+            ['.verdscrolls/config.json', '.verdscrolls/.gitignore'].includes(
+              relative,
+            ))
+        );
+      },
     });
     const original = await nativeFiles(source);
     const launcher = path.join(directory, 'launch.cjs');
@@ -92,6 +100,12 @@ test('built-in native workspace opens its diagrams and documents, follows links 
       active()
         .locator('svg[aria-label="Frame canvas"][data-surface="root"]')
         .first();
+    await expect(active().locator('.document-page__title')).toHaveValue(
+      '文档导航',
+    );
+    await active()
+      .getByRole('link', { name: '项目导览（画布）', exact: true })
+      .click({ modifiers: ['ControlOrMeta'] });
     await expect(canvas()).toBeVisible();
     await expect(
       canvas().locator(
@@ -100,7 +114,7 @@ test('built-in native workspace opens its diagrams and documents, follows links 
     ).toHaveCount(9);
     await expect(
       canvas().locator('[data-cell-kind="document-frame"]'),
-    ).toHaveCount(3);
+    ).toHaveCount(0);
     expect(Object.keys(await canvasFiles(userData))).toHaveLength(31);
     expect(Object.keys(await nativeFiles(workspace))).toHaveLength(
       Object.keys(original).length,
@@ -145,7 +159,7 @@ test('built-in native workspace opens its diagrams and documents, follows links 
     };
     for (const [index, file] of topics.entries()) {
       const topic = JSON.parse(original[file]);
-      const home = JSON.parse(original['项目导览.verd.json']);
+      const home = JSON.parse(original['架构图/项目导览.verd.json']);
       const homeRef = Object.values<any>(home.cells).find(
         (c) => c.data?.targetFrameId === topic.frame.id,
       )!;
@@ -168,12 +182,8 @@ test('built-in native workspace opens its diagrams and documents, follows links 
         const cardId = `${ref.data.targetFrameId}/document`;
         const card = canvas().locator(`[data-cell-id="${cardId}"]`).first();
         await expect(card).toBeVisible();
-        await expect(
-          card
-            .locator('[data-document-preview-scroll]')
-            .getByRole('heading', { level: 1 })
-            .first(),
-        ).toBeVisible();
+        await expect(card).toHaveAttribute('data-cell-kind', 'geometry');
+        await expect(card.locator('a')).not.toHaveCount(0);
         await page.screenshot({
           path: info.outputPath(
             `builtin-detail-${index + 1}-${detailIndex + 1}.png`,

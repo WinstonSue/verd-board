@@ -1,6 +1,9 @@
 import {
   createDefaultShapeGeometryRegistry,
   createCellRegistry,
+  createSpatialIndex,
+  edgePolyline,
+  edgeLabelLayout,
   createEdgeRoutingContext,
   frameContentBounds,
   geometryBounds,
@@ -60,6 +63,7 @@ export type FrameLayoutEntry = {
       markers?: ReturnType<typeof arrowMarkerGeometry>[];
     }
   >;
+  query(bounds: RectangleClient): readonly string[];
   getGeometry(id: string): NodeGeometry | undefined;
   baseRouting: EdgeRoutingContext;
 };
@@ -72,6 +76,13 @@ export type FrameLayoutMemory = Pick<
   | 'outlines'
   | 'routes'
 > & {
+  extensionCache?: Map<
+    FrameRenderExtension,
+    {
+      layout?: { key: readonly unknown[]; value: Map<string, NodeGeometry> };
+      edges?: { key: readonly unknown[]; value: Map<string, EdgeCell> };
+    }
+  >;
   baseNodes: Map<string, { original: NodeCell; derived: NodeCell }>;
   nodes: Map<string, { original: NodeCell; derived: NodeCell }>;
 };
@@ -136,6 +147,29 @@ export function createFrameLayouts(
     const existing = cache.get(id);
     if (existing) return existing;
     const previous = memory.get(id);
+    const extensionCache = previous?.extensionCache ?? new Map();
+    for (const extension of extensionCache.keys())
+      if (!extensions.includes(extension)) extensionCache.delete(extension);
+    const cached = <T>(
+      extension: FrameRenderExtension,
+      kind: 'layout' | 'edges',
+      key: readonly unknown[] | undefined,
+      compute: () => T,
+    ): T => {
+      if (!key) return compute();
+      const entry = extensionCache.get(extension) ?? {};
+      const old = entry[kind];
+      if (
+        old &&
+        old.key.length === key.length &&
+        key.every((value, i) => Object.is(value, old.key[i]))
+      )
+        return old.value as T;
+      const value = compute();
+      entry[kind] = { key: [...key], value };
+      extensionCache.set(extension, entry);
+      return value;
+    };
     let geometry = new Map<string, NodeGeometry>();
     if (seed?.frameId === id)
       seed.geometry.forEach((value, key) =>
@@ -143,16 +177,35 @@ export function createFrameLayouts(
       );
     else
       extensions.forEach((extension) =>
-        extension
-          .layout?.(store, id, viewProjection)
-          .forEach((value, key) => geometry.set(key, roundNodeGeometry(value))),
+        cached(
+          extension,
+          'layout',
+          extension.layoutCacheKey && [
+            viewProjection.identity,
+            ...extension.layoutCacheKey(store, id, viewProjection),
+          ],
+          () =>
+            extension.layout?.(store, id, viewProjection) ??
+            new Map<string, NodeGeometry>(),
+        ).forEach((value, key) => geometry.set(key, roundNodeGeometry(value))),
       );
     canonicalGeometry(store, geometry, previous?.baseGeometry);
     const base = applyLayoutGeometry(store, geometry, previous?.baseNodes);
     const applyEdges = (source: CellStore) => {
       let result = source;
       extensions.forEach((extension) =>
-        extension.layoutEdges?.(source, id, geometry).forEach((edge, key) => {
+        cached(
+          extension,
+          'edges',
+          extension.layoutEdgesCacheKey && [
+            viewProjection.identity,
+            ...[...geometry].flatMap(([key, value]) => [key, value]),
+            ...extension.layoutEdgesCacheKey(source, id, geometry),
+          ],
+          () =>
+            extension.layoutEdges?.(source, id, geometry) ??
+            new Map<string, EdgeCell>(),
+        ).forEach((edge, key) => {
           if (
             !isEdgeCell(source.cells[key]) ||
             edge.id !== key ||
@@ -209,14 +262,13 @@ export function createFrameLayouts(
     laidOut = applyEdges(projected.laidOut);
     const outlines = previous?.outlines ?? new Map();
     const routes = previous?.routes ?? new Map();
+    const childIds = new Set(isFrameCell(frame) ? frame.children : []);
+    const childOrder = new Map([...childIds].map((id, index) => [id, index]));
     for (const map of [outlines, routes])
       for (const key of map.keys())
-        if (
-          !isFrameCell(frame) ||
-          !frame.children.includes(key) ||
-          !store.cells[key]
-        )
+        if (!isFrameCell(frame) || !childIds.has(key) || !store.cells[key])
           map.delete(key);
+    let spatial: ReturnType<typeof createSpatialIndex> | undefined;
     const entry: NonNullable<ReturnType<typeof cache.get>> = {
       geometry,
       baseGeometry,
@@ -237,6 +289,46 @@ export function createFrameLayouts(
             ),
       outlines,
       routes,
+      query: (bounds) => {
+        if (!spatial) {
+          const entries = isFrameCell(frame)
+            ? frame.children.flatMap((cellId) => {
+                const cell = laidOut.cells[cellId];
+                if (!cell || cell.hidden) return [];
+                if (isNodeCell(cell))
+                  return [
+                    {
+                      id: cellId,
+                      ...geometryBounds(geometry.get(cellId) ?? cell.geometry),
+                    },
+                  ];
+                if (!isEdgeCell(cell)) return [];
+                const points = edgePolyline(
+                  laidOut,
+                  cell,
+                  undefined,
+                  entry.routing,
+                );
+                const boxes = points.map(([x, y]) => ({
+                  x: x - 24,
+                  y: y - 24,
+                  width: 48,
+                  height: 48,
+                }));
+                for (let i = 0; i < (cell.labels?.length ?? 0); i++)
+                  boxes.push(
+                    edgeLabelLayout(cell, i, points, entry.routing).bounds,
+                  );
+                const box = unionCellBounds(boxes);
+                return box ? [{ id: cellId, ...box }] : [];
+              })
+            : [];
+          spatial = createSpatialIndex(entries);
+        }
+        return spatial
+          .query(bounds)
+          .sort((a, b) => childOrder.get(a)! - childOrder.get(b)!);
+      },
       getGeometry: (cellId: string) => {
         const node = store.cells[cellId];
         return isNodeCell(node)
@@ -245,6 +337,7 @@ export function createFrameLayouts(
       },
     };
     memory.set(id, {
+      extensionCache,
       baseGeometry,
       geometry,
       baseRouting,

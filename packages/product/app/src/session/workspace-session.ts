@@ -1,3 +1,9 @@
+import { pruneWorkspaceTabs } from './workspace-navigation';
+import {
+  topLevelPaths,
+  remapOrganization,
+  readOrganization,
+} from '../management/organization';
 import type { CellId, CellRegistry, CellStore } from '@sue/board-core';
 import {
   isDocumentCell,
@@ -60,6 +66,7 @@ import {
   type WorkspaceEntryMeta,
   type WorkspaceHandle,
   type WorkspaceHost,
+  type WorkspaceHostSnapshot,
   type WorkspaceSessionState,
   type WorkspaceTrashMeta,
 } from '../host/workspace-host';
@@ -68,11 +75,11 @@ import {
   createFilePersistence,
   type FilePersistenceState,
 } from './file-persistence';
-export type { FilePersistenceState } from './file-persistence';
 import {
   readWorkspaceFiles,
   type FailedWorkspaceFile,
 } from './workspace-file-load';
+export type { FilePersistenceState } from './file-persistence';
 export type { FailedWorkspaceFile } from './workspace-file-load';
 
 /** Authoritative per-file state inside a session. */
@@ -153,6 +160,16 @@ export type WorkspaceCommand =
     }
   | ({ type: 'move-file'; toPath: string; label?: string } & FileRefInput)
   /** Atomic document rename: title and `*.verd-doc.json` path together. */
+  | {
+      type: 'organize-entries';
+      moves?: { from: string; to: string }[];
+      trashPaths?: string[];
+      restores?: { entryId: string; toPath: string }[];
+      navigation?: unknown;
+      label?: string;
+    }
+  | { type: 'move-directory'; path: string; toPath: string; label?: string }
+  | { type: 'rename-canvas'; fileId: CellId; title: string; label?: string }
   | { type: 'rename-document'; fileId: CellId; title: string; label?: string }
   | ({ type: 'trash-file'; label?: string } & FileRefInput)
   | { type: 'restore-file'; entryId: string; toPath?: string; label?: string }
@@ -264,6 +281,10 @@ interface FileSnapshot {
 }
 
 interface HistoryEntry {
+  storage?: {
+    undo: Extract<WorkspaceCommand, { type: 'organize-entries' }>;
+    redo: Extract<WorkspaceCommand, { type: 'organize-entries' }>;
+  };
   /** Whole-subtree operations replay via host trash/restore, including raw files. */
   subtree?: { action: 'trash' | 'restore'; path: string; entryId: string };
   origin?: DocumentEditOrigin;
@@ -311,6 +332,7 @@ export interface WorkspaceSessionSnapshot {
   /** Raw host entries (directories, non-canvas files) for the tree view. */
   entries: WorkspaceEntryMeta[];
   trash: WorkspaceTrashMeta[];
+  agent?: WorkspaceHostSnapshot['agent'];
   config: { version: number; value: Record<string, unknown> };
   diagnostics: FrameFileDiagnostic[];
   canUndo: boolean;
@@ -322,6 +344,13 @@ export interface WorkspaceSessionSnapshot {
 export interface WorkspaceSession {
   /** Stable between changes; published snapshots and their values are read-only. */
   getState(): WorkspaceSessionSnapshot;
+  readRawFile(
+    path: string,
+  ): Promise<import('../host/workspace-host').RawFileRead>;
+  commitResources(
+    writes: FileWriteOp[],
+    liveFileIds?: readonly string[],
+  ): Promise<CommitReceipt>;
   apply(command: WorkspaceCommand): Promise<CommandResult>;
   undo(): Promise<CommandResult>;
   redo(): Promise<CommandResult>;
@@ -340,7 +369,7 @@ export interface WorkspaceSession {
    */
   resolveConflict(
     fileId: CellId,
-    action: 'keep-local' | 'load-disk',
+    action: 'keep-local' | 'load-disk' | 'save-copy',
   ): Promise<CommandResult>;
   /** The file plus its transitive dependency closure, for export. */
   exportFiles(frameId: CellId): FrameFileV2[];
@@ -395,7 +424,7 @@ const uuid = () =>
 const clone = <T>(value: T): T => JSON.parse(JSON.stringify(value)) as T;
 
 const sameFile = (left: WorkspaceFile, right: WorkspaceFile) =>
-  JSON.stringify(left) === JSON.stringify(right);
+  left === right || JSON.stringify(left) === JSON.stringify(right);
 
 const fileRef = (input: FileRefInput): CellId | undefined =>
   input.fileId ?? input.frameId;
@@ -473,6 +502,7 @@ export const createWorkspaceSession = (options: {
   onStatus?: (status: SaveStatus) => void;
   onCommitted?: (savedAt: number) => void;
   files: Map<CellId, WorkspaceFileEntry>;
+  agent?: WorkspaceHostSnapshot['agent'];
   config: { version: number; value: Record<string, unknown> };
   session: WorkspaceSessionState | null;
   trash: WorkspaceTrashMeta[];
@@ -489,6 +519,7 @@ export const createWorkspaceSession = (options: {
     [...options.files].map(([id, entry]) => [id, clone(entry)]),
   );
   let config = clone(options.config);
+  let agent = options.agent ? clone(options.agent) : undefined;
   let session = options.session ? clone(options.session) : clone(EMPTY_SESSION);
   let trash = [...options.trash];
   let entries = [...(options.entries ?? [])];
@@ -570,19 +601,21 @@ export const createWorkspaceSession = (options: {
     cachedSnapshot = undefined;
   };
 
-  const rebuildDerived = () => {
+  const rebuildDerived = (canvasChanged = true) => {
     invalidateSnapshot();
     // The canvas store and reference graph only ever see frame files;
     // documents are peers, never cells or reference targets.
     const frameList = [...files.values()]
       .map((entry) => entry.file)
       .filter((file): file is FrameFileV2 => file.format === 'verd-frame');
-    store = assembleWorkspaceStore(frameList, registry).store;
-    graph = buildFrameReferenceGraph(frameList);
+    if (canvasChanged) {
+      store = assembleWorkspaceStore(frameList, registry).store;
+      graph = buildFrameReferenceGraph(frameList);
+      organization = buildOrganizationIndex(frameList);
+    }
     references = buildWorkspaceReferenceGraph(
       [...files.values()].map((entry) => entry.file),
     );
-    organization = buildOrganizationIndex(frameList);
   };
   rebuildDerived();
 
@@ -591,7 +624,79 @@ export const createWorkspaceSession = (options: {
     listeners.forEach((listener) => listener());
   };
 
+  const preparedResourceRequests = new WeakSet<CommitRequest>();
   const commitFiles = async (request: CommitRequest) => {
+    const historyPath = '.verd-resources/history/index.json';
+    if (
+      !preparedResourceRequests.has(request) &&
+      (request.trash?.length || request.purge?.length) &&
+      entries.some((entry) => entry.path === historyPath)
+    ) {
+      const raw = await host.readFile(handle, historyPath);
+      const history = JSON.parse(new TextDecoder().decode(raw.content)) as {
+        version: number;
+        revisions: { fileId: string; path: string }[];
+        trashed?: Record<string, string[]>;
+      };
+      if (history.version !== 1 || !Array.isArray(history.revisions))
+        throw new Error(
+          'History manifest is corrupt; repair it before permanently deleting files',
+        );
+      history.trashed ??= {};
+      for (const operation of request.trash ?? [])
+        history.trashed[operation.path] = [
+          ...new Set([
+            ...(trashOpIdentities.get(operation) ?? []),
+            ...[...files]
+              .filter(
+                ([, entry]) =>
+                  entry.path === operation.path ||
+                  entry.path.startsWith(operation.path + '/'),
+              )
+              .map(([id]) => id),
+          ]),
+        ];
+      const purgedIds = new Set(
+        (request.purge ?? []).flatMap((entryId) => {
+          const original = trash.find(
+            (item) => item.entryId === entryId,
+          )?.originalPath;
+          return [
+            ...(trashIdentities.get(entryId) ?? []),
+            ...(original ? (history.trashed?.[original] ?? []) : []),
+          ];
+        }),
+      );
+      const writes: FileWriteOp[] = [];
+      for (const revision of history.revisions.filter((item) =>
+        purgedIds.has(item.fileId),
+      )) {
+        if (
+          !/^\.verd-resources\/history\/[a-zA-Z0-9-]+\.snapshot\.json$/.test(
+            revision.path,
+          )
+        )
+          throw new Error('Invalid history snapshot path');
+        if (entries.some((entry) => entry.path === revision.path)) {
+          const original = await host.readFile(handle, revision.path);
+          writes.push({
+            path: revision.path,
+            content: JSON.stringify({ purged: true }),
+            expectedVersion: original.version,
+          });
+        }
+      }
+      history.revisions = history.revisions.filter(
+        (item) => !purgedIds.has(item.fileId),
+      );
+      writes.push({
+        path: historyPath,
+        content: JSON.stringify(history),
+        expectedVersion: raw.version,
+      });
+      request.writes = [...(request.writes ?? []), ...writes];
+      preparedResourceRequests.add(request);
+    }
     const attempt = filePersistence.begin(request);
     if (attempt.members.size) emit();
     try {
@@ -1121,6 +1226,11 @@ export const createWorkspaceSession = (options: {
     meta?: HistoryMeta & { primaryFileId?: CellId },
     organizationOnly = false,
   ) => {
+    const canvasChanged = [...plan.affected].some(
+      (id) =>
+        files.get(id)?.file.format === 'verd-frame' ||
+        plan.candidate.get(id)?.file.format === 'verd-frame',
+    );
     const before: HistoryEntry['before'] = new Map();
     const after: HistoryEntry['after'] = new Map();
     plan.affected.forEach((id) => {
@@ -1197,7 +1307,7 @@ export const createWorkspaceSession = (options: {
         },
       ];
     });
-    rebuildDerived();
+    rebuildDerived(canvasChanged);
     if (recordHistory && plan.affected.size) {
       const primaryFileId =
         meta?.primaryFileId ??
@@ -1252,7 +1362,7 @@ export const createWorkspaceSession = (options: {
   ): { candidate: Map<CellId, FileSnapshot> } | CommandResult => {
     const candidate = new Map<CellId, FileSnapshot>();
     files.forEach((entry, id) =>
-      candidate.set(id, { file: clone(entry.file), path: entry.path }),
+      candidate.set(id, { file: entry.file, path: entry.path }),
     );
     if (command.type === 'batch') {
       for (const id of command.removeIds ?? []) candidate.delete(id);
@@ -1345,6 +1455,29 @@ export const createWorkspaceSession = (options: {
       candidate.set(id, {
         file: clone(entry.file),
         path: command.toPath,
+      });
+      return { candidate };
+    }
+    if (command.type === 'rename-canvas') {
+      const entry = files.get(command.fileId);
+      const title = command.title.trim();
+      if (
+        !entry ||
+        entry.file.format !== 'verd-frame' ||
+        !title ||
+        /[/\\]/.test(title)
+      )
+        return invalid('Invalid canvas name');
+      const dir = parentWorkspacePath(entry.path);
+      const path = (dir ? dir + '/' : '') + title + CANVAS_FILE_SUFFIX;
+      if (path !== entry.path && takenPaths(command.fileId).has(path))
+        return invalid('Path is occupied');
+      candidate.set(command.fileId, {
+        file: {
+          ...clone(entry.file),
+          frame: { ...clone(entry.file.frame), name: title },
+        },
+        path,
       });
       return { candidate };
     }
@@ -1680,6 +1813,20 @@ export const createWorkspaceSession = (options: {
     recordHistory: boolean,
   ): Promise<CommandResult> => {
     if (
+      command.type === 'organize-entries' ||
+      command.type === 'move-directory'
+    )
+      return organizeEntries(
+        command.type === 'move-directory'
+          ? {
+              type: 'organize-entries',
+              moves: [{ from: command.path, to: command.toPath }],
+              label: command.label,
+            }
+          : command,
+        recordHistory,
+      );
+    if (
       command.type === 'restore-file' ||
       command.type === 'trash-directory' ||
       command.type === 'purge-trash'
@@ -1708,6 +1855,11 @@ export const createWorkspaceSession = (options: {
     );
     const plan = planDiff(planned.candidate, repairPaths);
     if (!plan.affected.size) return { ok: true, diagnostics: [] };
+    for (const [id, item] of plan.candidate) {
+      const previous = files.get(id)?.file.properties;
+      if (previous && !item.file.properties)
+        item.file = { ...item.file, properties: clone(previous) };
+    }
     const structural = validateCandidate(plan, repairPaths);
     if (structural.length) return { ok: false, diagnostics: structural };
     const meta =
@@ -1733,7 +1885,8 @@ export const createWorkspaceSession = (options: {
 
   const within = (path: string, root: string) =>
     path === root || path.startsWith(`${root}/`);
-  const storageKey = (command: StorageCommand) => JSON.stringify(command);
+  const storageKey = (command: WorkspaceCommand | StorageCommand) =>
+    JSON.stringify(command);
 
   /** Keep the exact request after an unknown outcome; only replay may proceed. */
   const storageCommand = async (
@@ -1855,7 +2008,10 @@ export const createWorkspaceSession = (options: {
             affectedIds.has(id),
           ) ||
           (entry.subtree &&
-            operation.request.purge!.includes(entry.subtree.entryId));
+            operation.request.purge!.includes(entry.subtree.entryId)) ||
+          !!entry.storage?.undo.restores?.some((r) =>
+            operation.request.purge!.includes(r.entryId),
+          );
         for (const stack of [undoStack, redoStack])
           for (let at = stack.length - 1; at >= 0; at -= 1)
             if (touches(stack[at])) stack.splice(at, 1);
@@ -1928,6 +2084,9 @@ export const createWorkspaceSession = (options: {
         }
         rebuildDerived();
       }
+      if (JSON.stringify(agent) !== JSON.stringify(snapshot.agent)) {
+        agent = snapshot.agent ? clone(snapshot.agent) : undefined;
+      }
       entries = snapshot.entries;
       trash = snapshot.trash;
       storageRetry = null;
@@ -1941,6 +2100,200 @@ export const createWorkspaceSession = (options: {
     } finally {
       mutationsPaused = false;
       suspendSync -= 1;
+      emit();
+      drainSync();
+    }
+  };
+
+  const organizeEntries = async (
+    command: Extract<WorkspaceCommand, { type: 'organize-entries' }>,
+    recordHistory: boolean,
+    replay?: { entry: HistoryEntry; direction: 'undo' | 'redo' },
+  ): Promise<CommandResult> => {
+    mutationsPaused = true;
+    suspendSync++;
+    emit();
+    try {
+      if (!storageRetry) {
+        if (!(await flush()))
+          return invalid('Save pending changes and resolve conflicts first');
+        const moves = command.moves ?? [];
+        const roots = topLevelPaths(
+          moves.map((m) => normalizeWorkspacePath(m.from)),
+        );
+        const selectedMoves = moves.filter(
+          (m) => roots.includes(m.from) && m.from !== m.to,
+        );
+        const trashPaths = topLevelPaths(
+          (command.trashPaths ?? []).map(normalizeWorkspacePath),
+        );
+        const source = (path: string) => {
+          const item = entries.find((e) => e.path === path);
+          if (!item) throw new Error('Source is missing: ' + path);
+          const current = [...files.values()].find((e) => e.path === path);
+          return {
+            ...item,
+            version:
+              current?.version ??
+              failedFiles.get(path)?.version ??
+              item.version,
+          };
+        };
+        for (const move of selectedMoves) {
+          normalizeWorkspacePath(move.to);
+          if (move.to.startsWith(move.from + '/'))
+            throw new Error('Cannot move a directory into itself');
+          source(move.from);
+        }
+        const request: CommitRequest = {
+          transactionId: createId() + '-organize',
+          moves: selectedMoves.map((m) => ({
+            ...m,
+            expectedVersion: source(m.from).version,
+          })),
+          trash: trashPaths.map((path) => ({
+            path,
+            expectedVersion: source(path).version,
+          })),
+          restore: command.restores,
+        };
+        const value: Record<string, unknown> = remapOrganization(
+          config.value,
+          selectedMoves,
+        );
+        if (command.navigation !== undefined)
+          value['navigation'] = remapOrganization(
+            { navigation: command.navigation },
+            selectedMoves,
+          )['navigation'];
+        if (replay && command.navigation !== undefined) {
+          const restored = readOrganization(value);
+          value['navigation'] = {
+            ...readOrganization(config.value),
+            order: restored.order,
+          };
+        }
+        request.config = { value, expectedVersion: config.version };
+        storageRetry = {
+          key: storageKey(command),
+          request,
+          paths: [...roots, ...trashPaths],
+          before: new Map(
+            [...files]
+              .filter(([, entry]) =>
+                [...roots, ...trashPaths].some((path) =>
+                  within(entry.path, path),
+                ),
+              )
+              .map(([id, entry]) => [
+                id,
+                { file: clone(entry.file), path: entry.path },
+              ]),
+          ),
+          resume: () => organizeEntries(command, recordHistory, replay),
+        };
+      }
+      const operation = storageRetry;
+      const beforeNavigation = readOrganization(config.value);
+      const receipt = await commitFiles(operation.request);
+      if (receipt.outcome !== 'applied') {
+        if (receipt.reason !== 'io-error') storageRetry = null;
+        else setStatus('error');
+        return invalid('Organization failed: ' + receipt.reason);
+      }
+      for (const item of receipt.trashEntries ?? [])
+        trashIdentities.set(
+          item.entryId,
+          new Set(
+            [...operation.before]
+              .filter(([, entry]) => entry && within(entry.path, item.path))
+              .map(([id]) => id),
+          ),
+        );
+      const snapshot = await host.readSnapshot(handle);
+      const loaded = await readWorkspaceFiles(
+        host,
+        handle,
+        snapshot,
+        registry,
+        files,
+        failedFiles,
+      );
+      const inverse: Extract<WorkspaceCommand, { type: 'organize-entries' }> = {
+        type: 'organize-entries',
+        moves: operation.request.moves?.map((m) => ({
+          from: m.to,
+          to: m.from,
+        })),
+        restores: receipt.trashEntries?.map((t) => ({
+          entryId: t.entryId,
+          toPath: t.path,
+        })),
+        trashPaths: operation.request.restore
+          ?.map((r) => r.toPath!)
+          .filter(Boolean),
+        navigation: beforeNavigation,
+      };
+      if (replay)
+        replay.entry.storage![replay.direction === 'undo' ? 'redo' : 'undo'] =
+          inverse;
+      else if (
+        recordHistory &&
+        (operation.request.moves?.length ?? 0) +
+          (operation.request.trash?.length ?? 0) +
+          (operation.request.restore?.length ?? 0) >
+          0
+      ) {
+        undoStack.push({
+          before: operation.before,
+          after: new Map(),
+          label: command.label ?? 'Organize files',
+          storage: { undo: inverse, redo: command },
+        });
+        redoStack.length = 0;
+      }
+      const previousFiles = new Map(files);
+      files.clear();
+      for (const payload of loaded.files.values()) {
+        const file = payload.file!;
+        const id = workspaceFileId(file);
+        const previous = previousFiles.get(id);
+        if (
+          previous?.path === payload.path &&
+          previous?.version === payload.version
+        )
+          files.set(id, previous);
+        else {
+          files.set(id, {
+            file: clone(file),
+            path: payload.path,
+            version: payload.version,
+            dirty: false,
+          });
+          filePersistence.adoptDisk(id);
+        }
+      }
+      failedFiles = loaded.failedFiles;
+      entries = snapshot.entries;
+      trash = snapshot.trash;
+      config = clone(snapshot.config);
+      session.expandedDirs = session.expandedDirs.map((path) => {
+        const move = operation.request.moves?.find((m) => within(path, m.from));
+        return move ? move.to + path.slice(move.from.length) : path;
+      });
+      session = pruneWorkspaceTabs(session, (id) => files.has(id));
+      pending.session = clone(session);
+      storageRetry = null;
+      rebuildDerived();
+      schedule();
+      emit();
+      return { ok: true, diagnostics: [] };
+    } catch (error) {
+      if (storageRetry) setStatus('error');
+      return invalid(error instanceof Error ? error.message : String(error));
+    } finally {
+      mutationsPaused = false;
+      suspendSync--;
       emit();
       drainSync();
     }
@@ -2107,6 +2460,10 @@ export const createWorkspaceSession = (options: {
     changed ||=
       JSON.stringify(entries) !== JSON.stringify(snapshot.entries) ||
       JSON.stringify(trash) !== JSON.stringify(snapshot.trash);
+    if (JSON.stringify(agent) !== JSON.stringify(snapshot.agent)) {
+      agent = snapshot.agent ? clone(snapshot.agent) : undefined;
+      changed = true;
+    }
     entries = snapshot.entries;
     trash = snapshot.trash;
     // Loading errors are replaced on every read; save/conflict diagnostics survive.
@@ -2137,6 +2494,11 @@ export const createWorkspaceSession = (options: {
     entry: HistoryEntry,
     direction: 'undo' | 'redo',
   ): Promise<CommandResult> => {
+    if (entry.storage)
+      return organizeEntries(entry.storage[direction], false, {
+        entry,
+        direction,
+      });
     if (storageRetry && !entry.subtree)
       return invalid(
         'Retry the previous trash operation before replaying history',
@@ -2172,7 +2534,7 @@ export const createWorkspaceSession = (options: {
     const source = direction === 'undo' ? entry.before : entry.after;
     const candidate = new Map<CellId, FileSnapshot>();
     files.forEach((entry_, id) =>
-      candidate.set(id, { file: clone(entry_.file), path: entry_.path }),
+      candidate.set(id, { file: entry_.file, path: entry_.path }),
     );
     if (entry.organizationOnly) {
       const expected = direction === 'undo' ? entry.after : entry.before;
@@ -2545,6 +2907,7 @@ export const createWorkspaceSession = (options: {
         session: clone(session),
         entries: [...entries],
         trash: [...trash],
+        agent: agent ? clone(agent) : undefined,
         config: pending.config
           ? { version: config.version, value: clone(pending.config.value) }
           : clone(config),
@@ -2619,11 +2982,93 @@ export const createWorkspaceSession = (options: {
       emit();
       return { ok: true, diagnostics: [] };
     },
+    readRawFile: (path) => host.readFile(handle, normalizeWorkspacePath(path)),
+    async commitResources(writes, liveFileIds = []) {
+      if (
+        workspaceReadonly ||
+        mutationsPaused ||
+        frozen ||
+        storageRetry ||
+        !(await flush())
+      )
+        throw new Error('Workspace is not ready to save resources');
+      if (workspaceReadonly || mutationsPaused || frozen || storageRetry)
+        throw new Error('Workspace became unavailable');
+      if (liveFileIds.some((id) => !files.has(id)))
+        throw new Error('Resource source was removed while saving');
+      if (
+        writes.some(
+          (write) =>
+            !normalizeWorkspacePath(write.path).startsWith('.verd-resources/'),
+        )
+      )
+        throw new Error('Invalid resource path');
+      const receipt = await host.commit(handle, {
+        transactionId: createId(),
+        writes,
+      });
+      if (receipt.outcome === 'applied') await syncFromHost();
+      return receipt;
+    },
     async resolveConflict(fileId, action) {
       if (workspaceReadonly || mutationsPaused || frozen || storageRetry)
         return invalid('Workspace is unavailable');
       const entry = files.get(fileId);
       if (!entry) return invalid(`Unknown file: ${fileId}`, fileId);
+      if (action === 'save-copy') {
+        const closure = workspaceFileClosure(
+          [...files.values()].map((item) => item.file),
+          fileId,
+        );
+        const sourceIds = new Set(
+          closure.flatMap((file) =>
+            file.format === 'verd-document'
+              ? [file.id]
+              : [file.frame.id, ...Object.keys(file.cells)],
+          ),
+        );
+        const remapped = remapWorkspaceFiles(
+          closure,
+          (id) => sourceIds.has(id),
+          createId,
+          undefined,
+          registry,
+        ).files;
+        const taken = new Set(entries.map((item) => item.path));
+        const candidate = new Map(
+          [...files].map(([id, item]) => [
+            id,
+            { file: item.file, path: item.path },
+          ]),
+        );
+        const writes: FileWriteOp[] = [];
+        for (const file of remapped) {
+          const id = workspaceFileId(file);
+          if (candidate.has(id))
+            return invalid('Recovered copy identity is occupied');
+          const path =
+            file.format === 'verd-document'
+              ? documentPathFor(file, '', taken)
+              : canvasPathFor(file, '', taken);
+          taken.add(path);
+          candidate.set(id, { file, path });
+          writes.push({
+            path,
+            content: JSON.stringify(file, null, 2),
+            expectedVersion: null,
+          });
+        }
+        const issues = validateCandidate({ candidate });
+        if (issues.length) return { ok: false, diagnostics: issues };
+        const copyReceipt = await host.commit(handle, {
+          transactionId: createId(),
+          writes,
+        });
+        if (copyReceipt.outcome !== 'applied')
+          return invalid('Could not preserve the local copy');
+        await syncFromHost();
+        action = 'load-disk';
+      }
       const capturedWrite = pending.writes.get(entry.path);
       suspendSync += 1;
       const transactionId = `${createId()}-resolve`;
@@ -2846,6 +3291,7 @@ export const openWorkspaceSession = async (
     onCommitted: options.onCommitted,
     files: loaded.files,
     failedFiles: loaded.failedFiles,
+    agent: snapshot.agent,
     config: snapshot.config,
     // Legacy `{frameId}` tabs and v2 `{fileId}` tabs converge here.
     session: normalizeWorkspaceSessionState(snapshot.session),

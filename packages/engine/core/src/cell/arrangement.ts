@@ -9,10 +9,9 @@ import { translateCellSelection } from './commands';
 import { frameScene } from './frame';
 import {
   cellArrangementBounds,
-  groupAncestors,
+  createCellHierarchy,
   groupHasLockedLeaf,
   groupLeafMembers,
-  lockedByAncestor,
   unionCellBounds,
 } from './group';
 import { indexCells, type CellOperation } from './index';
@@ -73,6 +72,7 @@ export function collectArrangementBlocks(
   if (candidates.some((id) => index.parentOf.get(id) !== frameId))
     throw new Error('Arrangement crosses frame');
   const selected = new Set(candidates);
+  const hierarchy = createCellHierarchy(store, index);
   let frameLocked = false;
   for (let id: string | undefined = frameId; id; id = index.parentOf.get(id))
     frameLocked ||= !!store.cells[id]?.locked;
@@ -85,7 +85,7 @@ export function collectArrangementBlocks(
       registry.get(cell.kind)?.arrangeable === false
     )
       return [];
-    if (groupAncestors(store, id).some((owner) => selected.has(owner)))
+    if (hierarchy.groupAncestors(id).some((owner) => selected.has(owner)))
       return [];
     const bounds = cellArrangementBounds(store, id);
     if (!bounds) return [];
@@ -97,7 +97,7 @@ export function collectArrangementBlocks(
         locked:
           frameLocked ||
           !!cell.locked ||
-          lockedByAncestor(store, id) ||
+          hierarchy.lockedByAncestor(id) ||
           groupHasLockedLeaf(store, id),
       },
     ];
@@ -240,7 +240,14 @@ export function arrangeCells(
   const blocks = collectArrangementBlocks(store, frameId, ids, registry).filter(
     (block) =>
       !block.locked &&
-      (!layout || !block.members.some((id) => isDocumentCell(store.cells[id]))),
+      (!layout ||
+        !block.members.some(
+          (id) =>
+            isDocumentCell(store.cells[id]) ||
+            (store.cells[id]?.kind === 'geometry' &&
+              (store.cells[id] as import('./types').NodeCell).geometry
+                .outline === 'text'),
+        )),
   );
   if (layout) blocks.sort((a, b) => a.id.localeCompare(b.id));
   else stableBlocks(blocks);

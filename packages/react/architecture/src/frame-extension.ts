@@ -1,6 +1,64 @@
-import { layoutArchitectureCells } from '@sue/board-architecture';
-import { isNodeCell, type CellRegistry } from '@sue/board-core';
-import type { FrameRenderExtension } from '@sue/board-react';
+import {
+  architectureLayerIds,
+  layoutArchitectureCells,
+  type ArchitectureLayerData,
+} from '@sue/board-architecture';
+import {
+  isNodeCell,
+  resolveThemeRole,
+  resolveThemeSeries,
+  type CellRegistry,
+  type CellStore,
+} from '@sue/board-core';
+import type {
+  FrameRenderExtension,
+  FrameThemeAppearanceContext,
+} from '@sue/board-react';
+
+const seriesCache = new WeakMap<CellStore, Map<string, Map<string, number>>>();
+
+const architectureSeries = (store: CellStore, frameId: string) => {
+  let frames = seriesCache.get(store);
+  if (!frames) seriesCache.set(store, (frames = new Map()));
+  let indices = frames.get(frameId);
+  if (!indices) {
+    indices = new Map();
+    architectureLayerIds(store, frameId).forEach((id, ordinal) => {
+      indices!.set(id, ordinal);
+      const layer = store.cells[id];
+      if (!isNodeCell(layer)) return;
+      const members = (layer.data as ArchitectureLayerData)?.memberIds ?? [];
+      members.forEach((memberId) => indices!.set(memberId, ordinal));
+    });
+    frames.set(frameId, indices);
+  }
+  return indices;
+};
+
+const architectureThemeAppearance = ({
+  cell,
+  store,
+  frameId,
+  theme,
+}: FrameThemeAppearanceContext) => {
+  const indices = architectureSeries(store, frameId);
+  const id =
+    cell.cellType === 'edge'
+      ? 'cellId' in cell.source
+        ? cell.source.cellId
+        : undefined
+      : cell.id;
+  const ordinal = id === undefined ? undefined : indices.get(id);
+  const tone =
+    ordinal === undefined
+      ? resolveThemeRole(theme, 'neutral')
+      : resolveThemeSeries(
+          theme,
+          ordinal,
+          cell.kind === 'architecture-layer' ? 'subtle' : 'normal',
+        );
+  return cell.cellType === 'edge' ? { strokeColor: tone.strokeColor } : tone;
+};
 export const createArchitectureFrameExtensions = (
   registry: CellRegistry,
 ): FrameRenderExtension[] => {
@@ -11,6 +69,7 @@ export const createArchitectureFrameExtensions = (
   return [
     {
       kind: 'architecture-layer',
+      themeAppearance: architectureThemeAppearance,
       textBounds: ({ cell, geometry }) => {
         const node = isNodeCell(cell) ? cell : undefined;
         const bounds = geometry ?? node?.geometry;
@@ -35,6 +94,10 @@ export const createArchitectureFrameExtensions = (
         };
       },
     },
+    ...['architecture-module', 'architecture-edge'].map((kind) => ({
+      kind,
+      themeAppearance: architectureThemeAppearance,
+    })),
     {
       layout: (store, frameId) =>
         new Map(

@@ -1,4 +1,4 @@
-import React, { act } from 'react';
+import { act } from 'react';
 import { createRoot } from 'react-dom/client';
 import { expect, it, vi } from 'vitest';
 import { I18nProvider } from './i18n';
@@ -30,7 +30,7 @@ it('shows personal preferences without workspace trash and returns to the caller
     container.querySelector('[data-testid="settings-language"]'),
   ).toBeTruthy();
   expect(container.querySelector('[data-testid="workspace-trash"]')).toBeNull();
-  expect(container.querySelectorAll('nav button')).toHaveLength(1);
+  expect(container.querySelectorAll('nav button')).toHaveLength(2);
   await act(async () =>
     container
       .querySelector<HTMLButtonElement>('[data-testid="my-back"]')!

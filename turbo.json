@@ -1,10 +1,19 @@
 {
   "$schema": "https://turbo.build/schema.json",
-  "globalDependencies": ["**/.env.*local"],
+  "globalDependencies": [
+    "**/.env.*local",
+    "scripts/lib-vite.ts",
+    "scripts/pdf-assets.ts"
+  ],
   "tasks": {
     "build": {
-      "dependsOn": ["^build"],
-      "outputs": ["dist/**", "dist-electron/**"]
+      "dependsOn": [
+        "^build"
+      ],
+      "outputs": [
+        "dist/**",
+        "dist-electron/**"
+      ]
     },
     "dev": {
       "cache": false,
@@ -16,11 +25,48 @@
       ]
     },
     "lint": {
-      "dependsOn": ["^build"]
+      "dependsOn": [
+        "^build"
+      ]
     },
     "test": {
-      "dependsOn": ["^build"],
+      "dependsOn": [
+        "^build"
+      ],
       "outputs": []
+    },
+    "@sue/verd-board-docs#build": {
+      "inputs": [
+        "$TURBO_DEFAULT$",
+        "$TURBO_ROOT$/scripts/**",
+        "$TURBO_ROOT$/packages/engine/**/src/**",
+        "$TURBO_ROOT$/packages/react/**/src/**",
+        "$TURBO_ROOT$/packages/product/app/src/**",
+        "$TURBO_ROOT$/packages/product/agent/src/**",
+        "$TURBO_ROOT$/workspace/**/*.verd.json",
+        "$TURBO_ROOT$/workspace/**/*.verd-doc.json",
+        "$TURBO_ROOT$/workspace/AGENTS.md",
+        "$TURBO_ROOT$/workspace/.verdscrolls/config.json",
+        "$TURBO_ROOT$/workspace/.verdscrolls/.gitignore"
+      ],
+      "outputs": [
+        "dist/**"
+      ]
+    },
+    "@sue/verd-board-agent-patterns#build": {
+      "inputs": [
+        "$TURBO_DEFAULT$",
+        "$TURBO_ROOT$/scripts/**",
+        "$TURBO_ROOT$/packages/engine/**/src/**",
+        "$TURBO_ROOT$/packages/react/**/src/**",
+        "$TURBO_ROOT$/packages/product/app/src/**",
+        "$TURBO_ROOT$/packages/product/agent/src/**",
+        "workspace/.verdscrolls/config.json",
+        "workspace/.verdscrolls/.gitignore"
+      ],
+      "outputs": [
+        "dist/**"
+      ]
     }
   }
 }

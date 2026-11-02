@@ -1,6 +1,7 @@
 import { unified } from 'unified';
 import remarkParse from 'remark-parse';
 import remarkGfm from 'remark-gfm';
+import remarkMath from 'remark-math';
 import remarkStringify from 'remark-stringify';
 import type {
   BlockContent,
@@ -90,6 +91,9 @@ function phrasingToNodes(
     switch (node.type) {
       case 'text':
         pushText(node.value.replace(SOFT_BREAK, ' '));
+        break;
+      case 'inlineMath':
+        out.push({ type: 'inlineMath', attrs: { latex: node.value } });
         break;
       case 'inlineCode':
         if (marks.length)
@@ -292,6 +296,8 @@ function blockToNodes(
         },
       ];
     }
+    case 'math':
+      return [{ type: 'blockMath', attrs: { latex: node.value } }];
     case 'code':
       return [
         {
@@ -360,6 +366,7 @@ export function parseMarkdownToTextDocument(
   const tree = unified()
     .use(remarkParse)
     .use(remarkGfm)
+    .use(remarkMath)
     .parse(markdown) as Root;
   const definitions = new Map<string, Definition>();
   const collect = (node: Root | RootContent | Definition) => {
@@ -448,6 +455,12 @@ function nodesToPhrasing(
         out.push(current);
         break;
       }
+      case 'inlineMath':
+        out.push({
+          type: 'inlineMath',
+          value: String(node.attrs?.['latex'] ?? ''),
+        });
+        break;
       case 'hardBreak':
         out.push({ type: 'break' });
         break;
@@ -576,8 +589,58 @@ function nodeToBlocks(
           value: (node.content ?? []).map(textContentOf).join(''),
         },
       ];
+    case 'blockMath':
+      return [{ type: 'math', value: String(node.attrs?.['latex'] ?? '') }];
+    case 'details':
+      ctx.warn('折叠结构已展开');
+      return (node.content ?? []).flatMap((child) =>
+        child.type === 'detailsSummary'
+          ? [
+              {
+                type: 'paragraph' as const,
+                children: nodesToPhrasing(child.content, ctx),
+              },
+            ]
+          : (child.content ?? []).flatMap((n) => nodeToBlocks(n, ctx)),
+      );
+    case 'attachment':
+    case 'webEmbed':
+      ctx.warn('Interactive content exported as a resource link');
+      return [
+        {
+          type: 'paragraph',
+          children: [
+            {
+              type: 'link',
+              url: String(node.attrs?.['src'] ?? node.attrs?.['url'] ?? ''),
+              children: [
+                {
+                  type: 'text',
+                  value: String(
+                    node.attrs?.['name'] ?? node.attrs?.['title'] ?? '资料',
+                  ),
+                },
+              ],
+            },
+          ],
+        },
+      ];
     case 'horizontalRule':
       return [{ type: 'thematicBreak' }];
+    case 'documentExcerpt':
+      ctx.warn('Live excerpt exported as a stable source-block link');
+      return [
+        {
+          type: 'paragraph',
+          children: [
+            {
+              type: 'link',
+              url: `verd://file/${encodeURIComponent(String(node.attrs?.['targetDocumentId'] ?? ''))}#${encodeURIComponent('block:' + String(node.attrs?.['targetBlockId'] ?? ''))}`,
+              children: [{ type: 'text', value: '引用段落' }],
+            },
+          ],
+        },
+      ];
     case 'frameReference':
       ctx.warn('Embedded canvas exported as a source-file link');
       return [
@@ -674,6 +737,7 @@ export function serializeTextDocumentToMarkdown(
   };
   const markdown = unified()
     .use(remarkGfm)
+    .use(remarkMath)
     .use(remarkStringify)
     .stringify(root);
   return { markdown, warnings };

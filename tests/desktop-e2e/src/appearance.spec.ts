@@ -8,6 +8,7 @@ import {
 import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
+import { roleTone } from '../../web-e2e/src/theme-role-values';
 import { workspaceDigest } from './workspace-disk';
 
 async function close(desktop: ElectronApplication, page: Page) {
@@ -159,7 +160,7 @@ test('Desktop follows system, remembers manual appearance after restart, and lea
         .evaluate(
           (element) => getComputedStyle(element, '::backdrop').backgroundColor,
         ),
-    ).toBe('rgb(15, 23, 42)');
+    ).toBe('rgba(0, 0, 0, 0.6)');
     await page.getByTestId('settings-appearance').selectOption('light');
     expect(
       await page
@@ -167,7 +168,7 @@ test('Desktop follows system, remembers manual appearance after restart, and lea
         .evaluate(
           (element) => getComputedStyle(element, '::backdrop').backgroundColor,
         ),
-    ).toBe('rgb(248, 250, 252)');
+    ).toBe('rgba(0, 0, 0, 0.32)');
     await page.getByTestId('my-back').click();
     await page
       .locator('.file-tree-name')
@@ -178,7 +179,7 @@ test('Desktop follows system, remembers manual appearance after restart, and lea
     ).toBeVisible();
     await expect(page.getByText('Original body', { exact: true })).toHaveCSS(
       'color',
-      'rgb(23, 32, 51)',
+      'rgb(37, 37, 37)',
     );
     const content = await readFile(docPath, 'utf8');
     const canvases = await workspaceDigest(userData);
@@ -187,12 +188,17 @@ test('Desktop follows system, remembers manual appearance after restart, and lea
     await page.getByTestId('my-back').click();
     await expect(page.getByText('Original body', { exact: true })).toHaveCSS(
       'color',
-      'rgb(226, 232, 240)',
+      'rgb(230, 230, 230)',
     );
     await close(desktop, page);
     desktop = await electron.launch({ args: [launcher], env });
     page = await desktop.firstWindow();
-    await expect(page.locator('.workspace-shell')).toBeVisible();
+    await expect(page.locator('.workspace-shell'))
+      .toBeVisible({ timeout: 20000 })
+      .catch(async (error) => {
+        console.log('STARTUP BODY', await page.locator('body').innerText());
+        throw error;
+      });
     await page.emulateMedia({ colorScheme: 'light' });
     await expect(page.locator('html')).toHaveAttribute(
       'data-verd-appearance',
@@ -211,10 +217,13 @@ test('Desktop follows system, remembers manual appearance after restart, and lea
     await expect(canvas).toHaveAttribute('data-board-appearance', 'dark');
     await expect(
       canvas.locator('[data-cell-id="legacy-shape"]'),
-    ).toHaveAttribute('fill', '#1e293b');
+    ).toHaveAttribute('fill', (await roleTone(page, 'default', 'dark')).fill);
     await expect(
       canvas.locator('[data-cell-id="legacy-shape"]'),
-    ).toHaveAttribute('stroke', '#94a3b8');
+    ).toHaveAttribute(
+      'stroke',
+      (await roleTone(page, 'default', 'dark')).strokeColor,
+    );
     await expect(
       canvas.locator('[data-cell-id="custom-shape"]'),
     ).toHaveAttribute('fill', '#fff');
@@ -235,9 +244,35 @@ test('Desktop follows system, remembers manual appearance after restart, and lea
         '.workspace-pane.is-active [data-uml-lifeline] > rect, .workspace-pane.is-active [data-cell-kind="workflow-task"]',
       );
       await expect.poll(() => parts.count()).toBeGreaterThan(0);
+      const sequence =
+        fixture === 'uml-sequence'
+          ? JSON.parse(
+              await readFile(
+                path.resolve(
+                  __dirname,
+                  '../../fixtures/ai-canvas/uml-sequence.verd.json',
+                ),
+                'utf8',
+              ),
+            )
+          : undefined;
+      const participants: string[] = sequence
+        ? (Object.values<any>(sequence.cells).find(
+            (cell) => cell.kind === 'uml-sequence-root',
+          )?.data.participantIds ?? [])
+        : [];
       for (const part of await parts.all()) {
-        await expect(part).toHaveAttribute('fill', '#1e293b');
-        await expect(part).toHaveAttribute('stroke', '#94a3b8');
+        const ownerId = await part.evaluate((element) =>
+          element.closest('[data-cell-id]')?.getAttribute('data-cell-id'),
+        );
+        const tone = await roleTone(
+          page,
+          'default',
+          'dark',
+          sequence ? participants.indexOf(ownerId!) : 'primary',
+        );
+        await expect(part).toHaveAttribute('fill', tone.fill);
+        await expect(part).toHaveAttribute('stroke', tone.strokeColor);
       }
     }
     await page
@@ -252,7 +287,7 @@ test('Desktop follows system, remembers manual appearance after restart, and lea
     );
     await expect(
       canvas.locator('[data-cell-id="legacy-shape"]'),
-    ).toHaveAttribute('fill', '#ffffff');
+    ).toHaveAttribute('fill', (await roleTone(page, 'default', 'light')).fill);
     await page.emulateMedia({ colorScheme: 'dark' });
     await expect(page.locator('html')).toHaveAttribute(
       'data-verd-appearance',

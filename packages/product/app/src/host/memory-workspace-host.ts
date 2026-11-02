@@ -11,7 +11,6 @@ import {
   type ChangeHint,
   type CommitReceipt,
   type CommitRequest,
-  type ConflictResolution,
   type FileVersion,
   type GlobalConfigSnapshot,
   type OpenWorkspaceRequest,

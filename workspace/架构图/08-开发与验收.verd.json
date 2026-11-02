@@ -380,16 +380,15 @@
     "project:topic/08/document": {
       "id": "project:topic/08/document",
       "cellType": "node",
-      "kind": "document-reference",
+      "kind": "geometry",
       "geometry": {
         "x": 0,
-        "y": 980,
+        "y": 840,
         "width": 1000,
-        "height": 600
+        "height": 118,
+        "outline": "text"
       },
-      "data": {
-        "targetDocumentId": "project-doc:development/README"
-      },
+      "data": {},
       "content": {
         "text": {
           "schemaVersion": 1,
@@ -399,6 +398,23 @@
           "content": {
             "type": "doc",
             "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "相关文档：开发指南",
+                    "marks": [
+                      {
+                        "type": "link",
+                        "attrs": {
+                          "href": "verd://file/project-doc%3Adevelopment%2FREADME"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
               {
                 "type": "paragraph",
                 "content": [
@@ -435,8 +451,12 @@
               }
             ]
           },
-          "plainText": "配置与源码索引 · 迁移边界与验收\n文档维护指南 · 更新与验收"
+          "plainText": "相关文档：开发指南\n配置与源码索引 · 迁移边界与验收\n文档维护指南 · 更新与验收"
         }
+      },
+      "appearance": {
+        "fill": "none",
+        "strokeColor": "none"
       }
     },
     "project:overview/08/relation/0": {

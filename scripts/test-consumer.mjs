@@ -30,6 +30,14 @@ const fromRegistry = process.env.VERD_CONSUMER_SOURCE === 'registry';
 const packages = fromRegistry
   ? publicPackages.map(({ pkg }) => ({ name: pkg.name, version: pkg.version }))
   : packPublicPackages(path.join(tmp, 'tarballs'));
+const runtimePackages = packages.filter((entry) =>
+  publicPackages.some(
+    ({ pkg }) => pkg.name === entry.name && (pkg.main || pkg.exports?.['.']),
+  ),
+);
+const contentPackages = packages.filter(
+  (entry) => !runtimePackages.includes(entry),
+);
 const packageDependencies = Object.fromEntries(
   packages.map((pkg) => [
     pkg.name,
@@ -309,9 +317,13 @@ const dom = new JSDOM('<!doctype html><html><body></body></html>', { url: 'http:
 for (const key of ['window', 'document', 'HTMLElement', 'Element', 'Node', 'navigator', 'customElements', 'CustomEvent'])
   Object.defineProperty(globalThis, key, { value: dom.window[key], configurable: true });
 const require = createRequire(import.meta.url);
-for (const name of ${JSON.stringify(packages.map((pkg) => pkg.name))}) {
+for (const name of ${JSON.stringify(runtimePackages.map((pkg) => pkg.name))}) {
   const entry = process.argv[2] === 'esm' ? await import(name) : require(name);
   if (!Object.keys(entry).length) throw new Error(name + ' has no runtime exports');
+}
+for (const name of ${JSON.stringify(contentPackages.map((pkg) => pkg.name))}) {
+  const manifest = require(name + '/manifest');
+  if (!manifest || !Object.keys(manifest).length) throw new Error(name + ' has no content manifest');
 }
 dom.window.close();
 console.log(process.argv[2] + ': all public package entries loaded');

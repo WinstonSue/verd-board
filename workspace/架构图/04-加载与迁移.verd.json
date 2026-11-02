@@ -380,16 +380,15 @@
     "project:topic/04/document": {
       "id": "project:topic/04/document",
       "cellType": "node",
-      "kind": "document-reference",
+      "kind": "geometry",
       "geometry": {
         "x": 0,
-        "y": 980,
+        "y": 840,
         "width": 1000,
-        "height": 600
+        "height": 100,
+        "outline": "text"
       },
-      "data": {
-        "targetDocumentId": "project-doc:architecture/ARCHITECTURE"
-      },
+      "data": {},
       "content": {
         "text": {
           "schemaVersion": 1,
@@ -399,6 +398,23 @@
           "content": {
             "type": "doc",
             "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "相关文档：系统架构",
+                    "marks": [
+                      {
+                        "type": "link",
+                        "attrs": {
+                          "href": "verd://file/project-doc%3Aarchitecture%2FARCHITECTURE"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
               {
                 "type": "paragraph",
                 "content": [
@@ -418,8 +434,12 @@
               }
             ]
           },
-          "plainText": "桌面安装与使用 · 工作区目录"
+          "plainText": "相关文档：系统架构\n桌面安装与使用 · 工作区目录"
         }
+      },
+      "appearance": {
+        "fill": "none",
+        "strokeColor": "none"
       }
     },
     "project:overview/04/relation/0": {

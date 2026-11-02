@@ -1,15 +1,144 @@
 @mixin backdrop-light {
-  --vm-background-subtle: #f8fafc;
-  --vm-backdrop: #17203366;
+  --vm-background-subtle: #f7f7f7;
+  --vm-backdrop: #00000052;
 }
 
 @mixin backdrop-dark {
-  --vm-background-subtle: #0f172a;
-  --vm-backdrop: #02061799;
+  --vm-background-subtle: #181818;
+  --vm-backdrop: #00000099;
 }
 
 @mixin light {
   @include backdrop-light;
+  --vm-font:
+    system-ui, -apple-system, BlinkMacSystemFont, 'PingFang SC',
+    'Hiragino Sans GB', 'Microsoft YaHei UI', 'Microsoft YaHei',
+    'Noto Sans CJK SC', 'Source Han Sans SC', sans-serif;
+  --vm-font-mono:
+    ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace;
+  --vm-text-2xs: 11px;
+  --vm-text-xs: 12px;
+  --vm-text-sm: 13px;
+  --vm-text-md: 14px;
+  --vm-text-lg: 16px;
+  --vm-text-xl: 20px;
+  --vm-text-2xl: 24px;
+  --vm-leading: 1.5;
+  --vm-leading-heading: 1.3;
+  --vm-leading-prose: 1.65;
+  --vm-weight-normal: 400;
+  --vm-weight-medium: 500;
+  --vm-weight-heading: 600;
+  --vm-control-height: 32px;
+  --vm-control-sm: 28px;
+  --vm-sidebar-row: 30px;
+  --vm-menu-row: 32px;
+  --vm-list-row: 40px;
+  --vm-list-row-detail: 52px;
+  --vm-icon-size: 16px;
+  --vm-icon-sm: 14px;
+  --vm-radius-badge: 4px;
+  --vm-focus-width: 2px;
+  --vm-focus-offset: 2px;
+  --vm-space-2: 2px;
+  --vm-space-4: 4px;
+  --vm-space-6: 6px;
+  --vm-space-8: 8px;
+  --vm-space-12: 12px;
+  --vm-space-16: 16px;
+  --vm-space-20: 20px;
+  --vm-space-24: 24px;
+  --vm-space-32: 32px;
+  --vm-space-40: 40px;
+  --vm-foreground: #252525;
+  --vm-foreground-secondary: #737373;
+  --vm-foreground-tertiary: #a3a3a3;
+  --vm-background: #fff;
+  --vm-border: #e7e7e7;
+  --vm-border-strong: #d4d4d4;
+  --vm-fill-hover: #ededed;
+  --vm-fill-active: #eef2ff;
+  --vm-primary: #4f46e5;
+  --vm-primary-hover: #4338ca;
+  --vm-focus: #6366f1;
+  --vm-focus-border: #a5b4fc;
+  --vm-info: #3730a3;
+  --vm-info-bg: #eef2ff;
+  --vm-warning: #92400e;
+  --vm-warning-bg: #fffbeb;
+  --vm-warning-border: #fde68a;
+  --vm-danger: #dc2626;
+  --vm-danger-strong: #9f1239;
+  --vm-danger-bg: #fef2f2;
+  --vm-danger-border: #fecaca;
+  --vm-on-primary: #fff;
+  --vm-tooltip-bg: #252525;
+  --vm-tooltip-text: #fff;
+  --vm-shadow-tint: #00000033;
+  --vm-shadow-card: 0 4px 18px #00000012;
+  --vm-shadow-toolbar: 0 4px 12px #0000000d;
+  --vm-shadow-menu: 0 8px 24px #00000022;
+  --vm-shadow-dialog: 0 24px 80px #00000033;
+  --vm-radius-sm: 6px;
+  --vm-radius: 8px;
+  --vm-radius-lg: 12px;
+}
+
+@mixin dark {
+  @include backdrop-dark;
+  --vm-foreground: #e6e6e6;
+  --vm-foreground-secondary: #a3a3a3;
+  --vm-foreground-tertiary: #8a8a8a;
+  --vm-background: #1e1e1e;
+  --vm-border: #343434;
+  --vm-border-strong: #484848;
+  --vm-fill-hover: #2b2b2b;
+  --vm-fill-active: #34343d;
+  --vm-primary: #a5b4fc;
+  --vm-primary-hover: #c7d2fe;
+  --vm-focus: #a5b4fc;
+  --vm-focus-border: #818cf8;
+  --vm-info: #c7d2fe;
+  --vm-info-bg: #312e58;
+  --vm-warning: #fcd34d;
+  --vm-warning-bg: #382a16;
+  --vm-warning-border: #785b26;
+  --vm-danger: #fda4af;
+  --vm-danger-strong: #fecdd3;
+  --vm-danger-bg: #3b202d;
+  --vm-danger-border: #7f3347;
+  --vm-on-primary: #0f172a;
+  --vm-tooltip-bg: #e6e6e6;
+  --vm-tooltip-text: #1e1e1e;
+  --vm-shadow-tint: #0008;
+  --vm-shadow-card: 0 4px 18px #0004;
+  --vm-shadow-toolbar: 0 4px 12px #00000026;
+  --vm-shadow-menu: 0 8px 24px #0006;
+  --vm-shadow-dialog: 0 24px 80px #0008;
+}
+
+// Keep the text package independent of product UI. These aliases are inherited
+// only by document pages, and are reset again at each canvas boundary.
+@mixin document {
+  --board-unmarked-text-color: currentColor;
+  --board-bg: var(--vm-background);
+  --board-surface: var(--vm-background);
+  --board-text: var(--vm-foreground);
+  --board-text-secondary: var(--vm-foreground-secondary);
+  --board-text-placeholder: var(--vm-foreground-tertiary);
+  --board-border: var(--vm-border);
+  --board-hover: var(--vm-fill-hover);
+  --board-active: var(--vm-fill-active);
+  --board-primary: var(--vm-primary);
+  --board-danger: var(--vm-danger);
+  --board-danger-bg: var(--vm-danger-bg);
+  --board-code-bg: var(--vm-background-subtle);
+  --board-table-head: var(--vm-background-subtle);
+}
+
+@mixin canvas-legacy-light {
+  --vm-background-subtle: #f8fafc;
+  --vm-backdrop: #17203366;
   --vm-font: system-ui, sans-serif;
   --vm-foreground: #172033;
   --vm-foreground-secondary: #64748b;
@@ -42,55 +171,4 @@
   --vm-radius-sm: 6px;
   --vm-radius: 8px;
   --vm-radius-lg: 12px;
-}
-
-@mixin dark {
-  @include backdrop-dark;
-  --vm-foreground: #e2e8f0;
-  --vm-foreground-secondary: #a8b5c9;
-  --vm-foreground-tertiary: #94a3b8;
-  --vm-background: #1e293b;
-  --vm-border: #334155;
-  --vm-border-strong: #475569;
-  --vm-fill-hover: #334155;
-  --vm-fill-active: #312e58;
-  --vm-primary: #a5b4fc;
-  --vm-primary-hover: #c7d2fe;
-  --vm-focus: #a5b4fc;
-  --vm-focus-border: #818cf8;
-  --vm-info: #c7d2fe;
-  --vm-info-bg: #312e58;
-  --vm-warning: #fcd34d;
-  --vm-warning-bg: #382a16;
-  --vm-warning-border: #785b26;
-  --vm-danger: #fda4af;
-  --vm-danger-strong: #fecdd3;
-  --vm-danger-bg: #3b202d;
-  --vm-danger-border: #7f3347;
-  --vm-on-primary: #0f172a;
-  --vm-tooltip-bg: #e2e8f0;
-  --vm-tooltip-text: #172033;
-  --vm-shadow-tint: #0008;
-  --vm-shadow-card: 0 4px 18px #0004;
-  --vm-shadow-toolbar: 0 4px 12px #00000026;
-  --vm-shadow-menu: 0 8px 24px #0006;
-}
-
-// Keep the text package independent of product UI. These aliases are inherited
-// only by document pages, and are reset again at each canvas boundary.
-@mixin document {
-  --board-unmarked-text-color: currentColor;
-  --board-bg: var(--vm-background);
-  --board-surface: var(--vm-background);
-  --board-text: var(--vm-foreground);
-  --board-text-secondary: var(--vm-foreground-secondary);
-  --board-text-placeholder: var(--vm-foreground-tertiary);
-  --board-border: var(--vm-border);
-  --board-hover: var(--vm-fill-hover);
-  --board-active: var(--vm-fill-active);
-  --board-primary: var(--vm-primary);
-  --board-danger: var(--vm-danger);
-  --board-danger-bg: var(--vm-danger-bg);
-  --board-code-bg: var(--vm-background-subtle);
-  --board-table-head: var(--vm-background-subtle);
 }

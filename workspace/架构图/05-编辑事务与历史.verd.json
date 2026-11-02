@@ -499,16 +499,15 @@
     "project:topic/05/document": {
       "id": "project:topic/05/document",
       "cellType": "node",
-      "kind": "document-reference",
+      "kind": "geometry",
       "geometry": {
         "x": 0,
-        "y": 980,
+        "y": 840,
         "width": 1000,
-        "height": 600
+        "height": 118,
+        "outline": "text"
       },
-      "data": {
-        "targetDocumentId": "project-doc:packages/react/README"
-      },
+      "data": {},
       "content": {
         "text": {
           "schemaVersion": 1,
@@ -518,6 +517,23 @@
           "content": {
             "type": "doc",
             "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "相关文档：React接入",
+                    "marks": [
+                      {
+                        "type": "link",
+                        "attrs": {
+                          "href": "verd://file/project-doc%3Apackages%2Freact%2FREADME"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
               {
                 "type": "paragraph",
                 "content": [
@@ -554,8 +570,12 @@
               }
             ]
           },
-          "plainText": "系统架构 · 模型和事务\n布局、路由与保存边界"
+          "plainText": "相关文档：React接入\n系统架构 · 模型和事务\n布局、路由与保存边界"
         }
+      },
+      "appearance": {
+        "fill": "none",
+        "strokeColor": "none"
       }
     },
     "project:overview/05/relation/0": {

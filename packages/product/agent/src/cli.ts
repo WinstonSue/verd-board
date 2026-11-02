@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { createFsWorkspaceHost } from './node/workspace-host-fs';
 import * as fs from 'node:fs/promises';
 import { realpathSync } from 'node:fs';
 import path from 'node:path';
@@ -8,6 +9,8 @@ import { createRequire } from 'node:module';
 import { patterns, patternRules } from '@sue/verd-board-agent-patterns';
 import {
   isWorkspaceFile,
+  storeAttachment,
+  openWorkspaceSession,
   workspaceFileId,
   validateNativeWorkspace,
   WORKSPACE_RULES,
@@ -16,6 +19,12 @@ import { describeAuthoring, prepareAuthoringBatch } from './authoring';
 import { applyPreparedBatch } from './apply';
 import { readNativeSnapshot } from './node/workspace-lock';
 import { initializePatternWorkspace } from './node/pattern-workspace';
+import { discoverWorkspace } from './node/workspace-metadata';
+import {
+  readWorkspaceProjectContext,
+  inspectWorkspaceAgent,
+} from './node/workspace-project';
+import { initializeWorkspaceProject } from './node/workspace-init';
 import type { PreparedBatch } from './types';
 import { deriveBoardTextPlainText } from '@sue/board-common';
 
@@ -41,7 +50,7 @@ export async function runCli(
       if (flags.has(key)) throw new Error('Repeated option: ' + key);
       flags.set(
         key,
-        ['json', 'install-browser'].includes(key)
+        ['json', 'install-browser', 'repair'].includes(key)
           ? 'true'
           : args[0] && !args[0].startsWith('--')
             ? args.shift()!
@@ -54,13 +63,16 @@ export async function runCli(
     if (!value || value === 'true') throw new Error('Missing --' + name);
     return value;
   };
-  const root = flags.get('workspace') ?? process.cwd();
+  const workspace = flags.has('workspace') ? option('workspace') : undefined;
   const extras: Record<string, string[]> = {
     patterns: ['dest'],
     plan: ['input', 'out'],
+    'resource-import': ['input', 'mime'],
     validate: ['plan', 'profile'],
     preview: ['plan', 'out', 'install-browser'],
     apply: ['plan'],
+    init: ['shared', 'name'],
+    doctor: ['repair', 'shared'],
   };
   const allowed = new Set(['workspace', 'json', ...(extras[command] ?? [])]);
   for (const key of flags.keys())
@@ -70,6 +82,10 @@ export async function runCli(
       result: {
         commands: [
           'describe',
+          'resource-import --input FILE [--mime MIME]',
+          'context',
+          'init [--name NAME] [--shared RESOURCE_DIR]',
+          'doctor [--repair] [--shared RESOURCE_DIR]',
           'rules',
           'patterns [id]',
           'patterns workspace --dest PATH',
@@ -115,6 +131,80 @@ export async function runCli(
     if (result.status !== 0) throw new Error('Browser installation failed');
     return { result: { installed: 'chromium' } };
   }
+  if (command === 'init' || (command === 'doctor' && flags.has('repair'))) {
+    const root =
+      command === 'init'
+        ? path.resolve(workspace ?? process.cwd())
+        : await discoverWorkspace(process.cwd(), workspace);
+    const context = await initializeWorkspaceProject(root, {
+      name: flags.has('name') ? option('name') : undefined,
+      resources: flags.has('shared')
+        ? option('shared')
+        : process.env['VERD_AGENT_RESOURCES'],
+    });
+    return { result: context, exitCode: context.agent.ready ? 0 : 1 };
+  }
+  if (command === 'doctor') {
+    const root = await discoverWorkspace(process.cwd(), workspace);
+    return { result: { root, ...(await inspectWorkspaceAgent(root)) } };
+  }
+  if (
+    ![
+      'context',
+      'inspect',
+      'plan',
+      'validate',
+      'preview',
+      'apply',
+      'resource-import',
+    ].includes(command)
+  )
+    throw new Error('Unknown command: ' + command);
+  const root = await discoverWorkspace(process.cwd(), workspace);
+  if (command === 'resource-import') {
+    const source = path.resolve(option('input'));
+    const name = path.basename(source);
+    const extension = path.extname(name).toLowerCase();
+    const mime =
+      flags.get('mime') ||
+      (
+        {
+          '.pdf': 'application/pdf',
+          '.mp3': 'audio/mpeg',
+          '.mp4': 'video/mp4',
+          '.webm': 'video/webm',
+          '.wav': 'audio/wav',
+          '.png': 'image/png',
+          '.jpg': 'image/jpeg',
+          '.jpeg': 'image/jpeg',
+          '.webp': 'image/webp',
+          '.gif': 'image/gif',
+        } as Record<string, string>
+      )[extension] ||
+      'application/octet-stream';
+    const limit =
+      (/^image\//.test(mime) ? 10 : /^(audio|video)\//.test(mime) ? 100 : 50) *
+      1024 *
+      1024;
+    if ((await fs.stat(source)).size > limit)
+      throw new Error('Attachment exceeds size limit');
+    const host = createFsWorkspaceHost({ defaultRoot: () => root });
+    const handle = await host.openWorkspace({ path: root });
+    if (!handle) throw new Error('Workspace could not be opened');
+    const session = await openWorkspaceSession(host, handle);
+    try {
+      return {
+        result: await storeAttachment(
+          session,
+          new File([await fs.readFile(source)], name, { type: mime }),
+        ),
+      };
+    } finally {
+      await host.closeWorkspace(handle);
+    }
+  }
+  if (command === 'context')
+    return { result: await readWorkspaceProjectContext(root) };
   if (command === 'apply')
     return {
       result: await applyPreparedBatch(
@@ -202,8 +292,13 @@ export async function runCli(
   let entries = snapshot.entries;
   if (flags.has('plan')) {
     const plan = (await readJson(option('plan'))) as PreparedBatch;
-    if (plan.workspaceVersion !== snapshot.version)
-      throw new Error('VERSION_CONFLICT: plan has a stale base');
+    if (
+      plan.workspaceVersion !== snapshot.version ||
+      (plan.resourceId ?? null) !== (snapshot.resourceId ?? null)
+    )
+      throw new Error(
+        'VERSION_CONFLICT: workspace or shared tool/specification version changed; prepare again',
+      );
     const removed = new Set([
       ...plan.removeIds,
       ...plan.files.map((e) => workspaceFileId(e.file)),
@@ -241,6 +336,7 @@ export async function runCli(
         .map((e) => e.file as never),
       positional[0],
       option('out'),
+      { workspaceRoot: root },
     ),
   };
 }

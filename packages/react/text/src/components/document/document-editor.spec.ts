@@ -128,7 +128,7 @@ describe('createDocumentExtensions', () => {
     scroll.mockRestore();
   });
 
-  it('permits workspace links only in standalone documents', async () => {
+  it('permits workspace links in documents and canvas text while rejecting unsafe URLs', async () => {
     const content = doc(
       paragraph(
         text('Guide', [
@@ -143,7 +143,7 @@ describe('createDocumentExtensions', () => {
     const canvas = new Editor({ extensions: contentExtensions, content });
     editors.push(canvas);
     expect(standalone.getHTML()).toContain('href="verd://file/guide#章节"');
-    expect(canvas.getHTML()).not.toContain('href="verd:');
+    expect(canvas.getHTML()).toContain('href="verd://file/guide#章节"');
     standalone.commands.selectAll();
     expect(standalone.commands.setLink({ href: 'javascript:alert(1)' })).toBe(
       false,
@@ -408,6 +408,36 @@ describe('createDocumentController', () => {
     expect(editor.getText()).toContain('dog sat cat');
   });
 
+  it('finds formula sources and protects their nodes from ordinary replacements', async () => {
+    const editor = makeEditor(
+      doc(
+        paragraph(text('x'), { type: 'inlineMath', attrs: { latex: 'x^2' } }),
+        { type: 'blockMath', attrs: { latex: 'x+1' } },
+      ),
+    );
+    const { controller } = makeController(editor);
+    const matches = controller.find('x');
+    expect(matches).toHaveLength(3);
+    expect(matches.filter((match) => match.replaceable === false)).toHaveLength(
+      2,
+    );
+    const before = editor.getJSON();
+    await controller.executeAction('document.replace', {
+      match: matches[1],
+      text: 'lost',
+    });
+    expect(editor.getJSON()).toEqual(before);
+    await controller.executeAction('document.replace-all', {
+      query: 'x',
+      text: 'y',
+    });
+    expect(editor.getJSON().content?.[0].content?.[0].text).toBe('y');
+    expect(editor.getJSON().content?.[0].content?.[1].attrs?.['latex']).toBe(
+      'x^2',
+    );
+    expect(editor.getJSON().content?.[1].attrs?.['latex']).toBe('x+1');
+  });
+
   it('inserts images and tables and guards table commands via can()', async () => {
     const editor = makeEditor(doc(paragraph(text('x'))));
     const { controller } = makeController(editor);
@@ -451,5 +481,93 @@ describe('createDocumentController', () => {
     expect(editor.getText()).toBe('alpha beta');
     expect(controller.find('beta')).toHaveLength(1);
     expect(controller.getToolbarState().editable).toBe(false);
+  });
+});
+
+describe('internal link insertion', () => {
+  it('inserts a labeled link at a caret as one undo step, and preserves selected text', async () => {
+    const editor = makeEditor();
+    const { controller } = makeController(editor);
+    await controller.executeAction('document.insert-link', {
+      href: 'verd://file/target',
+      label: 'Target',
+    });
+    expect(editor.getJSON().content?.[0].content?.[0]).toMatchObject({
+      text: 'Target',
+      marks: [{ type: 'link', attrs: { href: 'verd://file/target' } }],
+    });
+    await controller.executeAction('document.undo');
+    expect(editor.getText()).toBe('');
+    editor.commands.insertContent('Selected');
+    editor.commands.setTextSelection({ from: 1, to: 9 });
+    const captured = controller
+      .actions()
+      .find((action) => action.id === 'document.insert-link')!
+      .capture();
+    editor.commands.setTextSelection(1);
+    await captured.execute({ href: 'verd://file/target', label: 'Ignored' });
+    expect(editor.getText()).toBe('Selected');
+    expect(
+      editor.getJSON().content?.[0].content?.[0].marks?.[0].attrs?.['href'],
+    ).toBe('verd://file/target');
+    editor.setEditable(false);
+    expect(
+      await controller.executeAction('document.insert-link', {
+        href: 'verd://file/target',
+        label: 'Blocked',
+      }),
+    ).toMatchObject({ status: 'rejected', code: 'readonly' });
+  });
+});
+
+describe('stable paragraph operations', () => {
+  it('keeps the original address when pasting before it and gives copies unique identities', async () => {
+    const editor = makeEditor(doc(paragraph(text('Original'))));
+    const { controller } = makeController(editor);
+    editor.commands.insertContent('!');
+    const original = editor.state.doc.child(0);
+    const id = original.attrs['blockId'];
+    expect(id).toBeTruthy();
+    editor.commands.insertContentAt(0, original.toJSON());
+    expect(editor.state.doc.child(1).attrs['blockId']).toBe(id);
+    expect(editor.state.doc.child(0).attrs['blockId']).not.toBe(id);
+    editor.commands.setTextSelection(editor.state.doc.child(0).nodeSize + 1);
+    await controller.executeAction('document.block-up');
+    expect(editor.state.doc.child(0).attrs['blockId']).toBe(id);
+    editor.setEditable(false);
+    expect(
+      await controller.executeAction('document.locate-block', id),
+    ).toMatchObject({ status: 'completed' });
+  });
+  it('preserves stable IDs while converting paragraphs and duplicates in one undo step', async () => {
+    const editor = makeEditor(doc(paragraph(text('Decision'))));
+    const { controller } = makeController(editor);
+    editor.commands.insertContent('!');
+    const id = editor.state.doc.child(0).attrs['blockId'];
+    await controller.executeAction('document.set-heading', 2);
+    expect(editor.state.doc.child(0).attrs['blockId']).toBe(id);
+    await controller.executeAction('document.block-duplicate');
+    expect(editor.state.doc.childCount).toBe(2);
+    expect(editor.state.doc.child(1).attrs['blockId']).not.toBe(id);
+    await controller.executeAction('document.undo');
+    expect(editor.state.doc.childCount).toBe(1);
+  });
+  it('persists a readonly excerpt as a source identity without copying source text', async () => {
+    const editor = makeEditor();
+    const { controller } = makeController(editor);
+    await controller.executeAction('document.insert-excerpt', {
+      targetDocumentId: 'source',
+      blockId: 'block',
+    });
+    expect(
+      editor
+        .getJSON()
+        .content?.some(
+          (node) =>
+            node.type === 'documentExcerpt' &&
+            node.attrs?.['targetDocumentId'] === 'source',
+        ),
+    ).toBe(true);
+    expect(editor.getText()).not.toContain('copied source');
   });
 });

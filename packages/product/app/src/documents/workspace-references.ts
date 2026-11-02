@@ -132,6 +132,12 @@ export function workspaceReferences(file: WorkspaceFile): WorkspaceReference[] {
   } else {
     const visit = (node: BoardTextNode) => {
       if (node.type === 'codeBlock') return;
+      if (node.type === 'documentExcerpt')
+        result.push({
+          sourceId,
+          targetId: String(node.attrs?.['targetDocumentId'] ?? ''),
+          targetKind: 'document',
+        });
       if (node.type === 'frameReference')
         result.push({
           sourceId,
@@ -214,7 +220,14 @@ function remapText(
             ids.get(String(node.attrs?.['targetFrameId'])) ??
             node.attrs?.['targetFrameId'],
         }
-      : node.attrs;
+      : node.type === 'documentExcerpt'
+        ? {
+            ...node.attrs,
+            targetDocumentId:
+              ids.get(String(node.attrs?.['targetDocumentId'])) ??
+              node.attrs?.['targetDocumentId'],
+          }
+        : node.attrs;
   return {
     ...node,
     ...(attrs ? { attrs } : {}),

@@ -349,7 +349,7 @@ test('Frame title stays inside a stable enclosing shell and preserves edits, mar
   await editor.press('ControlOrMeta+a');
   await page
     .getByRole('toolbar', { name: 'Text formatting' })
-    .getByRole('button', { name: 'Bold', exact: true })
+    .getByRole('button', { name: /^(Bold|加粗)$/, exact: true })
     .click();
   await editor.press('Enter');
   await expect(editor).toHaveCount(0);

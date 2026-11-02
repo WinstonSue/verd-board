@@ -124,6 +124,23 @@ export function createBoardTextController(
           break;
         }
       }
+      if (!editor.isDestroyed) {
+        // Select-all starts at the document boundary, outside any paragraph.
+        const { from, to } = editor.state.selection;
+        let first: Alignment | undefined;
+        editor.state.doc.nodesBetween(from, to, (node) => {
+          if (
+            first !== undefined ||
+            !['paragraph', 'heading'].includes(node.type.name)
+          )
+            return;
+          const value = node.attrs['textAlign'];
+          first = Object.values(Alignment).includes(value)
+            ? (value as Alignment)
+            : (document.align ?? Alignment.center);
+        });
+        if (first !== undefined) return first;
+      }
       return document.align ?? Alignment.center;
     },
     applyMark(mark, value) {

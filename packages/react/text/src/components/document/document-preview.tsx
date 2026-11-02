@@ -1,4 +1,16 @@
-import React, { useEffect, useLayoutEffect, useMemo, useRef } from 'react';
+import {
+  DocumentResourcesContext,
+  type DocumentResourceHost,
+  ResourceContent,
+} from './document-resources';
+import katex from 'katex';
+import {
+  prepareListFolding,
+  revealPreviewTarget,
+  validateRichContent,
+} from './document-rich-content';
+import { DocumentAssetContext } from './asset-resolver';
+import { useEffect, useLayoutEffect, useMemo, useRef, useContext } from 'react';
 import { createPortal } from 'react-dom';
 import { getSchema } from '@tiptap/react';
 import { DOMSerializer } from '@tiptap/pm/model';
@@ -18,6 +30,11 @@ export type DocumentPreviewController = Pick<
 >;
 
 export interface DocumentPreviewProps {
+  mode?: 'preview' | 'export';
+  folding?: import('./folding-store').DocumentFoldingAdapter;
+  foldingKey?: string;
+  renderAttachment?: DocumentResourceHost['renderAttachment'];
+  renderWebEmbed?: DocumentResourceHost['renderWebEmbed'];
   value: BoardTextDocument;
   renderFrameReference?: DocumentFrameReferenceRenderer;
   onReady?(controller: DocumentPreviewController | null): void;
@@ -32,6 +49,20 @@ const documentSerializer = DOMSerializer.fromSchema(schema);
 const serializer = new DOMSerializer(
   {
     ...documentSerializer.nodes,
+    details: (node) => [
+      'details',
+      { 'data-block-id': node.attrs['blockId'] || '' },
+      0,
+    ],
+    detailsSummary: () => ['summary', {}, 0],
+    detailsContent: () => ['div', {}, 0],
+    documentExcerpt: (node) => [
+      'div',
+      {
+        class: 'document-frame-reference',
+        'data-document-excerpt': node.attrs['targetDocumentId'],
+      },
+    ],
     frameReference: (node) => [
       'div',
       {
@@ -43,8 +74,13 @@ const serializer = new DOMSerializer(
   documentSerializer.marks,
 );
 
-function preparePreview(content: BoardTextDocument['content']) {
+function preparePreview(
+  content: BoardTextDocument['content'],
+  folding?: import('./folding-store').DocumentFoldingAdapter,
+  exporting = false,
+) {
   try {
+    validateRichContent(content);
     const node = schema.nodeFromJSON(content);
     node.check();
     const body = document.createElement('div');
@@ -52,6 +88,27 @@ function preparePreview(content: BoardTextDocument['content']) {
     // A preview can itself be embedded inside an editable document.
     body.setAttribute('contenteditable', 'false');
     body.append(serializer.serializeFragment(node.content));
+    if (!exporting) prepareListFolding(body, folding);
+    for (const element of body.querySelectorAll<HTMLDetailsElement>(
+      'details',
+    )) {
+      if (exporting) {
+        element.open = true;
+        continue;
+      }
+      const id = element.dataset['blockId'];
+      if (id) {
+        element.open = folding?.getSnapshot().get(id) === false;
+        element.ontoggle = () => folding?.setCollapsed(id, !element.open);
+      }
+    }
+    for (const formula of body.querySelectorAll<HTMLElement>('[data-latex]')) {
+      formula.innerHTML = katex.renderToString(formula.dataset['latex'] ?? '', {
+        displayMode: formula.tagName === 'DIV',
+        throwOnError: false,
+        trust: false,
+      });
+    }
     // Match ProseMirror's line boxes for empty blocks and trailing hard breaks.
     body.querySelectorAll('p, h1, h2, h3, h4, h5, h6').forEach((block) => {
       if (!block.childNodes.length || block.lastChild?.nodeName === 'BR')
@@ -59,6 +116,22 @@ function preparePreview(content: BoardTextDocument['content']) {
     });
     body.querySelectorAll('a').forEach((link) => {
       link.draggable = false;
+    });
+    const resources: {
+      attrs: Record<string, unknown>;
+      web: boolean;
+      container: HTMLElement;
+    }[] = [];
+    const resourceElements = Array.from(
+      body.querySelectorAll<HTMLElement>('[data-attachment],[data-web-embed]'),
+    );
+    node.descendants((child) => {
+      if (child.type.name === 'attachment' || child.type.name === 'webEmbed')
+        resources.push({
+          attrs: child.attrs,
+          web: child.type.name === 'webEmbed',
+          container: resourceElements[resources.length],
+        });
     });
     const headings: DocumentHeading[] = [];
     const references: { targetFrameId: string; instanceId: string }[] = [];
@@ -74,8 +147,17 @@ function preparePreview(content: BoardTextDocument['content']) {
         });
         return false;
       }
-      if (child.type.name === 'frameReference') {
-        const targetFrameId = String(child.attrs['targetFrameId'] ?? '');
+      if (
+        child.type.name === 'frameReference' ||
+        child.type.name === 'documentExcerpt'
+      ) {
+        const targetFrameId =
+          child.type.name === 'documentExcerpt'
+            ? 'excerpt:' +
+              encodeURIComponent(String(child.attrs['targetDocumentId'])) +
+              ':' +
+              encodeURIComponent(String(child.attrs['targetBlockId']))
+            : String(child.attrs['targetFrameId'] ?? '');
         const occurrence = referenceOccurrences.get(targetFrameId) ?? 0;
         referenceOccurrences.set(targetFrameId, occurrence + 1);
         references.push({
@@ -97,6 +179,7 @@ function preparePreview(content: BoardTextDocument['content']) {
     return {
       body,
       headings,
+      resources,
       targets,
       references: references.map((reference, index) => ({
         ...reference,
@@ -112,16 +195,87 @@ function preparePreview(content: BoardTextDocument['content']) {
 /** Readonly document rendering, including live native canvas reference blocks. */
 export function DocumentPreview({
   value,
+  mode = 'preview',
+  folding: suppliedFolding,
+  foldingKey,
   renderFrameReference,
   onReady,
   onError,
   className,
+  renderAttachment,
+  renderWebEmbed,
 }: DocumentPreviewProps) {
-  const prepared = useMemo(
-    () => preparePreview(value.content),
-    [value.content],
+  const inheritedResources = useContext(DocumentResourcesContext);
+  const resources = useMemo(
+    () => ({
+      ...inheritedResources,
+      ...(renderAttachment ? { renderAttachment } : {}),
+      ...(renderWebEmbed ? { renderWebEmbed } : {}),
+    }),
+    [inheritedResources, renderAttachment, renderWebEmbed],
   );
+  const resolveAsset = useContext(DocumentAssetContext);
+  const folding =
+    suppliedFolding ?? resources.foldingFor?.(foldingKey ?? value.id);
+  const prepared = useMemo(
+    () => preparePreview(value.content, folding, mode === 'export'),
+    [value.content, folding, mode],
+  );
+  useEffect(() => {
+    if (!folding || mode === 'export') return;
+    return folding.subscribe(() => {
+      const state = folding.getSnapshot();
+      for (const item of prepared.body?.querySelectorAll<HTMLElement>(
+        'li[data-block-id]',
+      ) ?? []) {
+        const collapsed = state.get(item.dataset['blockId']!);
+        if (collapsed === undefined) continue;
+        for (const child of item.children)
+          if (child instanceof HTMLElement && child.matches('ul,ol'))
+            child.hidden = collapsed;
+        const button = item.querySelector<HTMLButtonElement>(
+          ':scope > .document-list-fold',
+        );
+        if (button) {
+          button.setAttribute('aria-expanded', String(!collapsed));
+          button.textContent = collapsed ? '▸' : '▾';
+        }
+      }
+      for (const item of prepared.body?.querySelectorAll<HTMLDetailsElement>(
+        'details[data-block-id]',
+      ) ?? []) {
+        const collapsed = state.get(item.dataset['blockId']!);
+        if (collapsed !== undefined) item.open = !collapsed;
+      }
+    });
+  }, [folding, prepared, mode]);
   const container = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    let alive = true;
+    for (const image of prepared.body?.querySelectorAll('img') ?? []) {
+      const src = image.getAttribute('src') ?? '';
+      if (!src.startsWith('verd-asset:')) continue;
+      image.dataset['referencePending'] = 'true';
+      void resolveAsset(src).then(
+        (url) => {
+          if (alive) {
+            image.src = url;
+            delete image.dataset['referencePending'];
+          }
+        },
+        () => {
+          if (alive) {
+            image.alt = '图片资源不可用';
+            delete image.dataset['referencePending'];
+          }
+        },
+      );
+    }
+    return () => {
+      alive = false;
+    };
+  }, [prepared, resolveAsset]);
+
   const committedReferences = useRef(new Map<string, HTMLElement>());
   // Reuse committed portal hosts while preparing the next body offscreen.
   // Moving a live host during render would mutate the currently visible body.
@@ -147,6 +301,7 @@ export function DocumentPreview({
       getHeadings: () =>
         current.current?.headings?.map((item) => ({ ...item })) ?? [],
       locateHeading(pos) {
+        revealPreviewTarget(current.current?.targets?.get(pos));
         current.current?.targets?.get(pos)?.scrollIntoView?.({
           block: 'start',
           inline: 'nearest',
@@ -185,24 +340,37 @@ export function DocumentPreview({
     );
 
   return (
-    <div
-      key="preview"
-      ref={container}
-      className={`board-document-editor readonly${className ? ` ${className}` : ''}`}
-    >
-      {references.map(({ targetFrameId, instanceId, container }) =>
-        createPortal(
-          renderFrameReference ? (
-            renderFrameReference({ targetFrameId, instanceId })
-          ) : (
-            <a href={`verd://file/${encodeURIComponent(targetFrameId)}`}>
-              打开画布 · {targetFrameId}
-            </a>
+    <DocumentResourcesContext.Provider value={resources}>
+      <div
+        key="preview"
+        ref={container}
+        className={`board-document-editor readonly${className ? ` ${className}` : ''}`}
+      >
+        {prepared.resources?.map((resource, index) =>
+          createPortal(
+            <ResourceContent
+              attrs={resource.attrs}
+              web={resource.web}
+              preview
+            />,
+            resource.container,
+            `resource-${index}`,
           ),
-          container,
-          instanceId,
-        ),
-      )}
-    </div>
+        )}
+        {references.map(({ targetFrameId, instanceId, container }) =>
+          createPortal(
+            renderFrameReference ? (
+              renderFrameReference({ targetFrameId, instanceId })
+            ) : (
+              <a href={`verd://file/${encodeURIComponent(targetFrameId)}`}>
+                打开画布 · {targetFrameId}
+              </a>
+            ),
+            container,
+            instanceId,
+          ),
+        )}
+      </div>
+    </DocumentResourcesContext.Provider>
   );
 }

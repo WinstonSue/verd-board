@@ -16,6 +16,11 @@ export interface OrthogonalRoutingOptions {
   crossingPenalty?: number;
   /** Previously planned edges are soft obstacles, never impassable walls. */
   occupied?: readonly RoutingSegment[];
+  /** Hard limit checked before allocating the dense search grid. */
+  maxSearchBytes?: number;
+  maxSearchSteps?: number;
+  /** Shared broad phase over unexpanded scene obstacles. */
+  obstacleQuery?: (bounds: RectangleClient) => readonly string[];
 }
 
 export interface RoutingSegment {
@@ -356,6 +361,8 @@ const findRoute = (
     ys = coordinates(1),
     width = xs.length,
     height = ys.length;
+  const bytes = 8 * (width + 1) * (height + 1) + 64 * width * height;
+  if (bytes > (options.maxSearchBytes ?? 32 * 1024 * 1024)) return;
   const grid = visibility(xs, ys, boxes);
   const congestion = {
     horizontal: new Float64Array(width * height),
@@ -411,7 +418,9 @@ const findRoute = (
     estimate: Math.abs(start[0] - end[0]) + Math.abs(start[1] - end[1]),
   });
   let entry: QueueEntry | undefined;
+  let steps = 0;
   while ((entry = queue.pop())) {
+    if (++steps > (options.maxSearchSteps ?? 100000)) return;
     const { state, cost } = entry;
     if (cost !== distances[state]) continue;
     const node = Math.floor(state / 4),
@@ -501,15 +510,62 @@ export const routeOrthogonalAvoiding = (
         )
     )
       return { points: original, status: 'clear' };
-    const points = findRoute(
-      source,
-      sourceSide,
-      target,
-      targetSide,
-      boxes,
-      options,
+    // Bound the problem before allocating; distant obstacles cannot inflate a
+    // local search. Every candidate is still checked against all obstacles.
+    const span = Math.max(
+      64,
+      Math.abs(source[0] - target[0]),
+      Math.abs(source[1] - target[1]),
     );
-    if (points) return { points, status: 'routed' };
+    const axisCount = (axis: 'x' | 'y', size: 'width' | 'height') =>
+      new Set(boxes.flatMap((box) => [box[axis], box[axis] + box[size]])).size +
+      32;
+    const w = axisCount('x', 'width'),
+      h = axisCount('y', 'height');
+    const windows =
+      8 * (w + 1) * (h + 1) + 64 * w * h <=
+      (options.maxSearchBytes ?? 32 * 1024 * 1024)
+        ? [Infinity]
+        : [span, span * 4, Infinity];
+    const boxById =
+      windows.length > 1 && options.obstacleQuery
+        ? new Map(boxes.map((box) => [box.id, box]))
+        : undefined;
+    for (const padding of windows) {
+      const nearby =
+        boxById && padding !== Infinity
+          ? options.obstacleQuery!({
+              x: Math.min(source[0], target[0]) - padding - clearance,
+              y: Math.min(source[1], target[1]) - padding - clearance,
+              width:
+                Math.abs(source[0] - target[0]) + 2 * (padding + clearance),
+              height:
+                Math.abs(source[1] - target[1]) + 2 * (padding + clearance),
+            }).flatMap((id) => (boxById.has(id) ? [boxById.get(id)!] : []))
+          : boxes;
+      const local =
+        padding === Infinity
+          ? boxes
+          : nearby.filter(
+              (box) =>
+                box.x + box.width >= Math.min(source[0], target[0]) - padding &&
+                box.x <= Math.max(source[0], target[0]) + padding &&
+                box.y + box.height >=
+                  Math.min(source[1], target[1]) - padding &&
+                box.y <= Math.max(source[1], target[1]) + padding,
+            );
+      const points = findRoute(
+        source,
+        sourceSide,
+        target,
+        targetSide,
+        local,
+        options,
+      );
+      if (points && clearRoute(points, boxes, sourceSide, targetSide, options))
+        return { points, status: 'routed' };
+      if (local.length === boxes.length) break;
+    }
   }
   return { points: original, status: 'blocked' };
 };

@@ -46,10 +46,6 @@
       "frame-ref:demo:import-export",
       "frame-ref:detached/25:mind/mind-mudf73s2-9hi9x8",
       "project:home/capability/document",
-      "project:home/documents-title",
-      "project:home/document/navigation",
-      "project:home/document/architecture",
-      "project:home/document/development",
       "project:home/capability/uml",
       "demo:home/title/8",
       "demo:home/summary/8",
@@ -308,17 +304,17 @@
         "x": 0,
         "y": 564,
         "width": 2960,
-        "height": 100,
+        "height": 112,
         "outline": "text",
         "derived": false
       },
       "content": {
-        "label": "阅读路径：项目导览 → 九张专题总览 → 二十一张机制细节图。\n选中图卡点「打开」进入源文件；逐层返回恢复阅读位置，文档 Frame 双击编辑。",
+        "label": "图解阅读：九张专题总览 → 二十一张机制细节图。\n选中图卡点「打开」进入源文件，逐层返回恢复阅读位置。\n返回文档导航",
         "text": {
           "schemaVersion": 1,
           "id": "demo:home/guide/text",
           "kind": "inline",
-          "plainText": "阅读路径：项目导览 → 九张专题总览 → 二十一张机制细节图。\n选中图卡点「打开」进入源文件；逐层返回恢复阅读位置，文档 Frame 双击编辑。",
+          "plainText": "图解阅读：九张专题总览 → 二十一张机制细节图。\n选中图卡点「打开」进入源文件，逐层返回恢复阅读位置。\n返回文档导航",
           "content": {
             "type": "doc",
             "content": [
@@ -327,16 +323,7 @@
                 "content": [
                   {
                     "type": "text",
-                    "text": "阅读路径：项目导览 → 九张专题总览 → 二十一张机制细节图。",
-                    "marks": [
-                      {
-                        "type": "textStyle",
-                        "attrs": {
-                          "fontSize": "26px",
-                          "color": "#1e293b"
-                        }
-                      }
-                    ]
+                    "text": "图解阅读：九张专题总览 → 二十一张机制细节图。"
                   }
                 ]
               },
@@ -345,13 +332,21 @@
                 "content": [
                   {
                     "type": "text",
-                    "text": "选中图卡点「打开」进入源文件；逐层返回恢复阅读位置，文档 Frame 双击编辑。",
+                    "text": "选中图卡点「打开」进入源文件，逐层返回恢复阅读位置。"
+                  }
+                ]
+              },
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "返回文档导航",
                     "marks": [
                       {
-                        "type": "textStyle",
+                        "type": "link",
                         "attrs": {
-                          "fontSize": "26px",
-                          "color": "#1e293b"
+                          "href": "verd://file/project-doc%3AREADME"
                         }
                       }
                     ]
@@ -886,12 +881,12 @@
         "derived": false
       },
       "content": {
-        "label": "两个应用 · 二十二个公开包 · 显式插件与依赖",
+        "label": "应用入口 · 产品、引擎、React 与转换器包",
         "text": {
           "schemaVersion": 1,
           "id": "demo:home/summary/0/text",
           "kind": "inline",
-          "plainText": "两个应用 · 二十二个公开包 · 显式插件与依赖",
+          "plainText": "应用入口 · 产品、引擎、React 与转换器包",
           "content": {
             "type": "doc",
             "content": [
@@ -900,16 +895,7 @@
                 "content": [
                   {
                     "type": "text",
-                    "text": "两个应用 · 二十二个公开包 · 显式插件与依赖",
-                    "marks": [
-                      {
-                        "type": "textStyle",
-                        "attrs": {
-                          "fontSize": "23px",
-                          "color": "#1e293b"
-                        }
-                      }
-                    ]
+                    "text": "应用入口 · 产品、引擎、React 与转换器包"
                   }
                 ]
               }
@@ -2541,124 +2527,6 @@
           "offset": 0.5
         }
       ]
-    },
-    "project:home/documents-title": {
-      "id": "project:home/documents-title",
-      "kind": "geometry",
-      "cellType": "node",
-      "geometry": {
-        "x": 0,
-        "y": 2980,
-        "width": 2960,
-        "height": 70,
-        "outline": "text",
-        "derived": false
-      },
-      "content": {
-        "label": "原生文档 · 双击 Frame 编辑，引用卡片只读",
-        "text": {
-          "schemaVersion": 1,
-          "id": "project:home/documents-title/text",
-          "kind": "inline",
-          "plainText": "原生文档 · 双击 Frame 编辑，引用卡片只读",
-          "content": {
-            "type": "doc",
-            "content": [
-              {
-                "type": "paragraph",
-                "content": [
-                  {
-                    "type": "text",
-                    "text": "原生文档 · 双击 Frame 编辑，引用卡片只读",
-                    "marks": [
-                      {
-                        "type": "textStyle",
-                        "attrs": {
-                          "fontSize": "32px",
-                          "color": "#334155"
-                        }
-                      }
-                    ]
-                  }
-                ]
-              }
-            ]
-          }
-        }
-      },
-      "appearance": {
-        "fill": "none",
-        "strokeColor": "none",
-        "strokeWidth": 1
-      },
-      "ports": [
-        {
-          "id": "top",
-          "side": "top",
-          "direction": "both",
-          "offset": 0.5
-        },
-        {
-          "id": "right",
-          "side": "right",
-          "direction": "both",
-          "offset": 0.5
-        },
-        {
-          "id": "bottom",
-          "side": "bottom",
-          "direction": "both",
-          "offset": 0.5
-        },
-        {
-          "id": "left",
-          "side": "left",
-          "direction": "both",
-          "offset": 0.5
-        }
-      ]
-    },
-    "project:home/document/navigation": {
-      "id": "project:home/document/navigation",
-      "kind": "document-frame",
-      "cellType": "node",
-      "geometry": {
-        "x": 0,
-        "y": 3080,
-        "width": 940,
-        "height": 680
-      },
-      "data": {
-        "targetDocumentId": "project-doc:README"
-      }
-    },
-    "project:home/document/architecture": {
-      "id": "project:home/document/architecture",
-      "kind": "document-frame",
-      "cellType": "node",
-      "geometry": {
-        "x": 1010,
-        "y": 3080,
-        "width": 940,
-        "height": 680
-      },
-      "data": {
-        "targetDocumentId": "project-doc:architecture/ARCHITECTURE"
-      }
-    },
-    "project:home/document/development": {
-      "id": "project:home/document/development",
-      "kind": "document-frame",
-      "cellType": "node",
-      "geometry": {
-        "x": 2020,
-        "y": 3080,
-        "width": 940,
-        "height": 680
-      },
-      "data": {
-        "targetDocumentId": "project-doc:development/README"
-      }
     },
     "project:home/capability/uml": {
       "id": "project:home/capability/uml",

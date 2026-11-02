@@ -1,4 +1,4 @@
-import React, { act, useState } from 'react';
+import { act, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { describe, expect, it, vi } from 'vitest';
 import { createMindFrameSnapshot } from '@sue/board-mind';
@@ -149,7 +149,7 @@ describe('tool shortcuts and real focus', () => {
     await act(async () => trigger.click());
     await act(async () =>
       [...document.querySelectorAll<HTMLButtonElement>('[role="menuitem"]')]
-        .find((item) => item.textContent === '我的')!
+        .find((item) => item.textContent === '设置')!
         .click(),
     );
     expect(

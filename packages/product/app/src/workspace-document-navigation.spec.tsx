@@ -1,4 +1,4 @@
-import React, { act } from 'react';
+import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { parseMarkdownToTextDocument } from '@sue/board-markdown-to-text';
@@ -9,13 +9,13 @@ import {
   type DocumentFileV1,
 } from './documents/document-files';
 import { createWorkspaceLink, parseWorkspaceLink } from '@sue/board-common';
+import { createFrameFile } from './frames/frame-files';
+import { createMemoryWorkspaceHost } from './host/memory-workspace-host';
+import { openWorkspaceSession } from './session/workspace-session';
 const createDocumentLink = (fileId: string, slug?: string) =>
   createWorkspaceLink(
     slug ? { kind: 'heading', fileId, slug } : { kind: 'file', fileId },
   );
-import { createFrameFile } from './frames/frame-files';
-import { createMemoryWorkspaceHost } from './host/memory-workspace-host';
-import { openWorkspaceSession } from './session/workspace-session';
 
 // Keep the workspace, document page and TipTap editor real; canvas rendering
 // has separate coverage and is not involved in document link activation.

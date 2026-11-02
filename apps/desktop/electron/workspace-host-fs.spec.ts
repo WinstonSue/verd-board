@@ -25,7 +25,7 @@ const sha256 = (content: string | Uint8Array) =>
   `sha256-${crypto.createHash('sha256').update(content).digest('hex')}`;
 
 const journalDir = (root: string) =>
-  path.join(root, '.verdboard', 'transactions');
+  path.join(root, '.verdscrolls', 'transactions');
 const journalFile = (root: string, id: string) =>
   path.join(journalDir(root), `${id}.json`);
 const stagingDir = (root: string, id: string) =>
@@ -100,7 +100,7 @@ describe('fs host transaction recovery', () => {
         { kind: 'purge', entryId: second.entryId },
       ],
     });
-    await fs.rm(path.join(workspace, '.verdboard', 'trash', first.entryId), {
+    await fs.rm(path.join(workspace, '.verdscrolls', 'trash', first.entryId), {
       recursive: true,
     });
     await host.commit(handle, {
@@ -388,7 +388,7 @@ describe('fs host transaction recovery', () => {
     });
     expect(rejected.outcome).toBe('rejected');
     const receipts = await fs.readdir(
-      path.join(workspace, '.verdboard', 'receipts'),
+      path.join(workspace, '.verdscrolls', 'receipts'),
     );
     expect(receipts).toContain('tx-reject.json');
     const again = await host.commit(handle, {

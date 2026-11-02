@@ -13,7 +13,7 @@ import {
   combineFrameActionSources,
   type FrameActionDefinition,
 } from '@sue/board-react';
-import { actionLabel, type ActionResult } from '@sue/board-common';
+import { actionLabel } from '@sue/board-common';
 import type { FramePluginContext } from '@sue/board-react';
 import { mergeSettingsPatch } from '@sue/board-react';
 import { FrameGeometryControls } from '@sue/board-react';
@@ -66,10 +66,7 @@ import {
   type FrameInstanceHost,
   type FrameOpenSource,
 } from '@sue/board-react';
-import {
-  materializeWorkflowPositions,
-  type WorkflowStartData,
-} from '@sue/board-workflow';
+import { materializeWorkflowPositions } from '@sue/board-workflow';
 import {
   ArrowDown,
   ArrowLeftRight,
@@ -195,7 +192,7 @@ const productMenuLabels: Record<string, { zh: string; en: string }> = {
     en: 'Reference document (read-only)…',
   },
   shortcuts: { zh: shortcutLabels.zh.title, en: shortcutLabels.en.title },
-  my: { zh: '我的', en: 'My' },
+  my: { zh: '设置', en: 'Settings' },
   'command-palette': { zh: '命令面板', en: 'Command palette' },
 };
 const shapes = [
@@ -291,7 +288,6 @@ export function FrameProductShell({
   detachedFrameIds = [],
   parseLegacy,
   onDuplicateReference,
-  mindDefaultWidth,
   history,
   readonly = false,
   instanceHost,
@@ -317,15 +313,6 @@ export function FrameProductShell({
     controller.current?.getActiveController() ?? controller.current;
   useActionSource(controller.current?.actionSource);
   useActionSource(activeController()?.actionSource);
-  const emptyActionSource = useMemo<ActionSource>(
-    () => ({
-      actions: () => [],
-      subscribe: () => () => {},
-      revision: 0,
-      getActionState: () => ({ visible: false, enabled: false }),
-    }),
-    [],
-  );
   const [actionTool, setActionTool] = useState<
     import('@sue/board-react').FrameCanvasTool | null
   >(null);
@@ -1431,7 +1418,7 @@ export function FrameProductShell({
     },
     {
       id: 'my',
-      label: language === 'zh' ? '我的' : 'My',
+      label: language === 'zh' ? '设置' : 'Settings',
       icon: UserRound,
       group: 'settings',
       onSelect: () => (onOpenMy ? onOpenMy() : setMyOpen(true)),
@@ -2672,6 +2659,11 @@ export function FrameProductShell({
                               {language === 'zh' ? '标签' : 'Label'} {index + 1}
                             </span>
                             <FrameRichTextField
+                              onOpenLink={linkHost?.openLink}
+                              locale={language}
+                              linkActivation={
+                                interactionSettings.linkActivation
+                              }
                               text={
                                 existingTextDocument(label.richText) ??
                                 createInlineText(label.text)
@@ -3422,6 +3414,7 @@ export function FrameProductShell({
         )}
         {presenting && (
           <PresentationMode
+            linkHost={linkHost}
             documentReferences={documentReferences}
             value={value}
             frameId={frameId}

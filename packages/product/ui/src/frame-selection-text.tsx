@@ -171,7 +171,8 @@ export function FrameSelectionText({
     if (!nodes.length) return key === 'fontSize' ? '16px' : '#0f172a';
     const values = texts.flatMap((text, at) => {
       const owner = owners[at];
-      const fill = controller?.resolveAppearance?.(owner.id)?.fill;
+      const appearance = controller?.resolveAppearance?.(owner.id);
+      const fill = appearance?.fill;
       const defaultColor = theme.adaptive
         ? readableThemeText(
             !isNodeCell(owner) ||
@@ -180,7 +181,7 @@ export function FrameSelectionText({
               fill === 'transparent'
               ? theme.background
               : fill,
-            theme.text,
+            appearance?.textColor ?? theme.text,
           )
         : '#0f172a';
       return leaves(text.content).map((node) => {

@@ -1,0 +1,5 @@
+@mixin surface {
+  font: var(--vm-text-md)/var(--vm-leading) var(--vm-font);
+  color: var(--vm-foreground);
+  background: var(--vm-background);
+}

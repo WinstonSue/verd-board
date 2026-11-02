@@ -43,6 +43,7 @@ export interface PresentationModeProps {
   registry?: FrameCanvasProps['registry'];
   extensions?: FrameCanvasProps['extensions'];
   instanceHost?: FrameCanvasProps['instanceHost'];
+  linkHost?: FrameCanvasProps['linkHost'];
   documentReferences?: FrameCanvasProps['documentReferences'];
   interactionSettings?: FrameCanvasProps['interactionSettings'];
   scene?:
@@ -468,6 +469,17 @@ export function PresentationMode(props: PresentationModeProps) {
       onPointerDown={showHud}
     >
       <FrameCanvas
+        linkHost={
+          props.linkHost
+            ? {
+                createLink: props.linkHost.createLink,
+                openLink: (href) => {
+                  exit();
+                  return props.linkHost!.openLink(href);
+                },
+              }
+            : undefined
+        }
         documentReferences={props.documentReferences}
         ref={canvas}
         value={value}

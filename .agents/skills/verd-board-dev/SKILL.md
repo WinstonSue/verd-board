@@ -5,11 +5,11 @@ description: VerdBoard 本仓开发口径：包落点、workspace 依赖、命�
 
 # VerdBoard 开发规范
 
-只写本仓库要统一的结论。项目知识正文位于根 workspace/文档/，画布位于同一 workspace；版本以 package.json、pnpm-workspace.yaml overrides 和 pnpm-lock.yaml 为准。
+只写本仓库要统一的结论。中英文导航文档位于根 workspace/，分类正文位于 workspace/文档/，图解位于 workspace/架构图/；版本以 package.json、pnpm-workspace.yaml overrides 和 pnpm-lock.yaml 为准。
 
 ## 先读原生文档
 
-- 总入口：`workspace/文档/文档导航.verd-doc.json`
+- 总入口：`workspace/文档导航.verd-doc.json`
 - 架构与数据流：`workspace/文档/架构/系统架构.verd-doc.json`
 - 命令、提交、测试、发布：`workspace/文档/开发/开发指南.verd-doc.json`
 - 文档维护：`workspace/文档/开发/文档维护指南.verd-doc.json`

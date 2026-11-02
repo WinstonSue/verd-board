@@ -1,4 +1,4 @@
-import React, { act, type ComponentProps } from 'react';
+import { act, type ComponentProps } from 'react';
 import { createRoot } from 'react-dom/client';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { FramePropertyNumber } from './frame-property-number';

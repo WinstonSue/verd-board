@@ -12,6 +12,24 @@ const isBoardTextMark = (value: unknown): value is BoardTextMarkNode =>
   typeof value['type'] === 'string' &&
   (value['attrs'] === undefined || isPlainRecord(value['attrs']));
 
+const DOCUMENT_NODE_ATTRIBUTES: Record<string, readonly string[]> = {
+  inlineMath: ['latex'],
+  blockMath: ['latex', 'blockId'],
+  details: ['blockId'],
+  detailsSummary: [],
+  detailsContent: [],
+  attachment: ['src', 'name', 'mime', 'size', 'caption', 'blockId', 'display'],
+  webEmbed: [
+    'url',
+    'title',
+    'caption',
+    'width',
+    'height',
+    'blockId',
+    'display',
+  ],
+};
+
 /**
  * DOM-free structural check of one serialized rich-text node. This only
  * proves the value is well-formed JSON in the BoardTextNode shape; the
@@ -19,6 +37,65 @@ const isBoardTextMark = (value: unknown): value is BoardTextMarkNode =>
  */
 export const isBoardTextNode = (value: unknown): value is BoardTextNode => {
   if (!isPlainRecord(value) || typeof value['type'] !== 'string') return false;
+  const attrs = value['attrs'];
+  if (
+    DOCUMENT_NODE_ATTRIBUTES[String(value['type'])] &&
+    isPlainRecord(attrs) &&
+    Object.keys(attrs).some(
+      (key) => !DOCUMENT_NODE_ATTRIBUTES[String(value['type'])].includes(key),
+    )
+  )
+    return false;
+
+  if (DOCUMENT_NODE_ATTRIBUTES[String(value['type'])] && isPlainRecord(attrs)) {
+    for (const key of ['name', 'mime', 'caption', 'title', 'latex'])
+      if (attrs[key] !== undefined && typeof attrs[key] !== 'string')
+        return false;
+    if (attrs['blockId'] != null && typeof attrs['blockId'] !== 'string')
+      return false;
+    for (const key of ['width', 'height'])
+      if (
+        attrs[key] !== undefined &&
+        (typeof attrs[key] !== 'number' ||
+          !Number.isFinite(attrs[key]) ||
+          attrs[key] <= 0)
+      )
+        return false;
+    if (
+      attrs['display'] !== undefined &&
+      !['card', 'embed'].includes(String(attrs['display']))
+    )
+      return false;
+  }
+  if (['inlineMath', 'blockMath'].includes(value['type'])) {
+    if (!isPlainRecord(attrs) || typeof attrs['latex'] !== 'string')
+      return false;
+  }
+  if (value['type'] === 'attachment') {
+    if (
+      !isPlainRecord(attrs) ||
+      typeof attrs['src'] !== 'string' ||
+      !/^verd-asset:\.verd-resources\/assets\/[a-f0-9]{64}\.[a-z0-9]+$/.test(
+        attrs['src'],
+      ) ||
+      typeof attrs['name'] !== 'string' ||
+      typeof attrs['mime'] !== 'string' ||
+      typeof attrs['size'] !== 'number' ||
+      !Number.isSafeInteger(attrs['size']) ||
+      attrs['size'] < 0
+    )
+      return false;
+  }
+  if (value['type'] === 'webEmbed') {
+    if (!isPlainRecord(attrs) || typeof attrs['url'] !== 'string') return false;
+    try {
+      const url = new URL(attrs['url']);
+      if (url.protocol !== 'https:' || url.username || url.password)
+        return false;
+    } catch {
+      return false;
+    }
+  }
   if (value['attrs'] !== undefined && !isPlainRecord(value['attrs']))
     return false;
   if (value['text'] !== undefined && typeof value['text'] !== 'string')
@@ -62,7 +139,12 @@ export const isBoardTextDocumentShape = (
 };
 
 /** Blocks whose children are inline content (text, breaks, marks). */
-const INLINE_PARENTS = new Set(['paragraph', 'heading', 'codeBlock']);
+const INLINE_PARENTS = new Set([
+  'paragraph',
+  'heading',
+  'codeBlock',
+  'detailsSummary',
+]);
 
 /**
  * Pure derivation of a document's readable text. The persisted `plainText`
@@ -75,7 +157,19 @@ export const deriveBoardTextPlainText = (
 ): string => {
   if (!node) return '';
   if (node.type === 'text') return node.text ?? '';
+  if (node.type === 'inlineMath' || node.type === 'blockMath')
+    return String(node.attrs?.['latex'] ?? '');
+  if (node.type === 'attachment')
+    return [node.attrs?.['name'], node.attrs?.['caption']]
+      .filter(Boolean)
+      .join(' ');
+  if (node.type === 'webEmbed')
+    return [node.attrs?.['title'], node.attrs?.['url'], node.attrs?.['caption']]
+      .filter(Boolean)
+      .join(' ');
   if (node.type === 'hardBreak') return '\n';
+  if (node.type === 'documentExcerpt')
+    return `引用段落 verd://file/${encodeURIComponent(String(node.attrs?.['targetDocumentId'] ?? ''))}#${encodeURIComponent('block:' + String(node.attrs?.['targetBlockId'] ?? ''))}`;
   if (node.type === 'frameReference')
     return `打开画布 verd://file/${encodeURIComponent(String(node.attrs?.['targetFrameId'] ?? ''))}`;
   const children = node.content ?? [];

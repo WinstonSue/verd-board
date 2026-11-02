@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { ArrowLeft, FileText, Info, MapPin, PanelsTopLeft } from 'lucide-react';
 import { FileTreeMenu, type FileTreeMenuItem } from './file-tree-menu';
 import type { WorkspaceActionBinding } from './workspace-action-bindings';
@@ -11,6 +11,7 @@ export interface WorkspaceReferenceLocationGroup {
 }
 
 export interface WorkspaceFileNavigationProps {
+  actions?: ReactNode;
   title: string;
   path: string;
   active: boolean;
@@ -25,6 +26,7 @@ export interface WorkspaceFileNavigationProps {
 /** File identity, latest entry and inbound embeds are intentionally separate. */
 export function WorkspaceFileNavigation({
   title,
+  actions,
   path,
   active,
   locale,
@@ -101,6 +103,7 @@ export function WorkspaceFileNavigation({
         <Info size={15} aria-hidden />
       </button>
       <div className="workspace-file-navigation-actions">
+        {actions}
         {source && source.action.getState().visible ? (
           <button
             type="button"

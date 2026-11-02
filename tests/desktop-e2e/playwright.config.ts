@@ -9,6 +9,8 @@ export default defineConfig({
   grepInvert: /@prod/,
   workers: 1,
   timeout: 120_000,
+  // Fresh profiles load the Vite source graph and install bundled agent tools.
+  expect: { timeout: 30_000 },
   outputDir: '../../test-results/desktop-dev',
   use: { trace: 'retain-on-failure' },
   webServer: {

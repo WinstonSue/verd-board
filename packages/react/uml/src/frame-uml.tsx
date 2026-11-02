@@ -262,16 +262,7 @@ export function UmlPalette({
   );
 }
 export function UmlProperties(props: Props) {
-  const {
-      store,
-      frameId,
-      cell,
-      zh,
-      disabled,
-      dispatch,
-      getStore,
-      executeAction,
-    } = props,
+  const { store, frameId, cell, zh, disabled, getStore, executeAction } = props,
     root = umlRoot(store, frameId);
   if (!root) return null;
   const replace = (next: Cell) => {

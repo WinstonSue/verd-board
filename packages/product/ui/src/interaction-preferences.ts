@@ -1,7 +1,9 @@
 import { useSyncExternalStore } from 'react';
+import type { RichTextLinkActivation } from '@sue/board-react-text';
 
 export interface InteractionPreferences {
   smartGuides: boolean;
+  linkActivation: RichTextLinkActivation;
   zoomSensitivity: number;
   dragPanSpeed: number;
 }
@@ -9,6 +11,7 @@ export interface InteractionPreferences {
 export const interactionPreferencesKey = 'verdboard.interaction-settings';
 export const defaultInteractionPreferences: InteractionPreferences = {
   smartGuides: true,
+  linkActivation: 'modifier',
   zoomSensitivity: 1,
   dragPanSpeed: 1,
 };
@@ -27,6 +30,8 @@ export function readInteractionPreferences(): InteractionPreferences {
       return defaultInteractionPreferences;
     const values = stored as Record<string, unknown>;
     return {
+      linkActivation:
+        values['linkActivation'] === 'click' ? 'click' : 'modifier',
       smartGuides:
         typeof values['smartGuides'] === 'boolean'
           ? values['smartGuides']
@@ -59,10 +64,11 @@ const subscribe = (listener: () => void) => {
 };
 
 export function setInteractionPreferences(
-  values: Omit<InteractionPreferences, 'smartGuides'> &
-    Partial<Pick<InteractionPreferences, 'smartGuides'>>,
+  values: Omit<InteractionPreferences, 'smartGuides' | 'linkActivation'> &
+    Partial<Pick<InteractionPreferences, 'smartGuides' | 'linkActivation'>>,
 ) {
   snapshot = {
+    linkActivation: values.linkActivation ?? getSnapshot().linkActivation,
     smartGuides: values.smartGuides ?? getSnapshot().smartGuides,
     zoomSensitivity: multiplier(values['zoomSensitivity']),
     dragPanSpeed: multiplier(values['dragPanSpeed']),

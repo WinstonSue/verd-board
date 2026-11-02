@@ -301,6 +301,7 @@ for (const viewport of [
         page,
         language === 'zh' ? '工作区设置' : 'Workspace settings',
       );
+      await page.getByTestId('settings-nav-workspace.project').click();
       await page.getByTestId('workspace-settings-mind-width').fill('336');
       await page.getByTestId('workspace-settings-back').click();
       await hit(node(page, 'topic'));

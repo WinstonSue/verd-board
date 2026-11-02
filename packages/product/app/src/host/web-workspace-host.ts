@@ -12,7 +12,6 @@ import {
   type ChangeHint,
   type CommitReceipt,
   type CommitRequest,
-  type ConflictResolution,
   type FileMoveOp,
   type FileVersion,
   type FileWriteOp,
@@ -412,7 +411,7 @@ export const createWebWorkspaceHost = (
       }
       for (const entryId of request_.purge ?? []) {
         await request(trashStore.delete(trashKey(wsKey, entryId)));
-        touched.add(`.verdboard/trash/${entryId}`);
+        touched.add(`.verdscrolls/trash/${entryId}`);
       }
       for (const op of ops.moves) {
         const node = await get(op.from);
@@ -628,19 +627,30 @@ export const createWebWorkspaceHost = (
       await completion;
       return { applied: true, snapshot: next };
     },
-    async openWorkspace(request_: OpenWorkspaceRequest = { default: true }) {
-      const key = request_.default
-        ? 'default'
-        : request_.path
-          ? normalizeWorkspacePath(request_.path)
-          : 'default';
+    async openWorkspace(request_: OpenWorkspaceRequest = {}) {
+      let key =
+        request_.historyId ??
+        (request_.default
+          ? 'default'
+          : request_.path
+            ? normalizeWorkspacePath(request_.path)
+            : 'default');
+      if (
+        !request_.default &&
+        !request_.path &&
+        !request_.historyId &&
+        !request_.pick
+      ) {
+        const history = await this.listWorkspaceHistory?.();
+        if (history?.[0]?.lastOpenedAt) key = history[0].id;
+      }
       const { txn, stores } = await store(['workspaces', 'meta'], 'readwrite');
       const completion = done(txn);
       const existing = (await request(stores[0].get(key))) as
         { key: string; name: string } | undefined;
       if (existing) {
         await completion;
-        return { key, name: existing.name };
+        return { key, name: existing.name, historyId: key };
       }
       if (request_.create === false || request_.pick) {
         await completion;
@@ -653,13 +663,71 @@ export const createWebWorkspaceHost = (
           wsKey: key,
           config: {
             version: 1,
-            value: { identity: globalThis.crypto.randomUUID() },
+            value: {
+              identity: globalThis.crypto.randomUUID(),
+              ...(request_.name
+                ? { name: request_.name, workspaceInitialized: true }
+                : {}),
+            },
           },
           session: null,
         } satisfies StoredMeta),
       );
       await completion;
-      return { key, name };
+      return { key, name, historyId: key };
+    },
+    async createWorkspace({ name }) {
+      if (!name.trim()) throw new Error('Workspace name is empty');
+      return this.openWorkspace({
+        path: globalThis.crypto.randomUUID(),
+        name: name.trim(),
+      });
+    },
+    async listWorkspaceHistory() {
+      const { stores } = await store('workspaces', 'readonly');
+      const items = (await request(stores[0].getAll())) as {
+        key: string;
+        name: string;
+        lastOpenedAt?: number;
+        pinned?: boolean;
+        hidden?: boolean;
+      }[];
+      return items
+        .filter((i) => !i.hidden)
+        .map((i) => ({
+          id: i.key,
+          name: i.name,
+          lastOpenedAt: i.lastOpenedAt ?? 0,
+          pinned: i.pinned,
+          availability: 'available' as const,
+        }))
+        .sort((a, b) => b.lastOpenedAt - a.lastOpenedAt);
+    },
+    async activateWorkspace(handle) {
+      const { txn, stores } = await store('workspaces', 'readwrite');
+      const completion = done(txn);
+      const item = (await request(stores[0].get(handle.key))) as
+        Record<string, unknown> | undefined;
+      if (item)
+        await request(
+          stores[0].put({ ...item, hidden: false, lastOpenedAt: now() }),
+        );
+      await completion;
+    },
+    async updateWorkspaceHistory({ id, pinned, remove }) {
+      const { txn, stores } = await store('workspaces', 'readwrite');
+      const completion = done(txn);
+      const item = (await request(stores[0].get(id))) as
+        Record<string, unknown> | undefined;
+      if (item)
+        await request(
+          stores[0].put({
+            ...item,
+            ...(pinned !== undefined ? { pinned } : {}),
+            ...(remove ? { hidden: true } : {}),
+          }),
+        );
+      await completion;
     },
     async readSnapshot(handle) {
       const wsKey = workspaceOf(handle);

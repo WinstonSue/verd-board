@@ -1,6 +1,7 @@
 import {
   EdgeUtil,
   NodeUtil,
+  memoizeCellValidationRead,
   isEdgeCell,
   isNodeCell,
   type Cell,
@@ -30,11 +31,15 @@ import {
 } from './cell-metrics';
 import { MindKind, type MindChildData, type MindRootData } from './public-api';
 
-const branches = (store: CellStore) =>
-  Object.values(store.cells).filter(
-    (cell): cell is EdgeCell<{ order: string }> =>
-      isEdgeCell(cell) && cell.kind === MindKind.mindBranch,
-  );
+const branchRead = Symbol('mind-branches');
+const branches = (store: CellStore) => [
+  ...memoizeCellValidationRead(store, branchRead, () =>
+    Object.values(store.cells).filter(
+      (cell): cell is EdgeCell<{ order: string }> =>
+        isEdgeCell(cell) && cell.kind === MindKind.mindBranch,
+    ),
+  ),
+];
 export const mindChildIds = (store: CellStore, parentId: string): string[] =>
   branches(store)
     .filter(

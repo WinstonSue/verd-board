@@ -3,7 +3,7 @@
   inset: 0;
   z-index: 200;
   overflow: hidden;
-  background: var(--vm-background, #fff);
+  background: var(--vm-background);
   color: #172033;
   outline: none;
   isolation: isolate;
@@ -92,7 +92,7 @@
     border-radius: 8px;
     background: var(--vm-tooltip-bg);
     color: var(--vm-tooltip-text);
-    font-size: 12px;
+    font-size: var(--vm-text-xs);
     text-align: center;
     pointer-events: none;
 
@@ -104,7 +104,7 @@
 
   .presentation-step {
     min-width: 56px;
-    font-size: 12px;
+    font-size: var(--vm-text-xs);
     font-variant-numeric: tabular-nums;
     text-align: center;
     white-space: nowrap;

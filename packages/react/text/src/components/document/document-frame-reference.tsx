@@ -22,7 +22,13 @@ function FrameReferenceView({ node, getPos }: NodeViewProps) {
   const render = useContext(DocumentFrameReferenceContext);
   const fallback = useId();
   const instanceId = String(getPos() ?? fallback);
-  const targetFrameId = String(node.attrs['targetFrameId'] ?? '');
+  const targetFrameId =
+    node.type.name === 'documentExcerpt'
+      ? 'excerpt:' +
+        encodeURIComponent(String(node.attrs['targetDocumentId'])) +
+        ':' +
+        encodeURIComponent(String(node.attrs['targetBlockId']))
+      : String(node.attrs['targetFrameId'] ?? '');
   return (
     <NodeViewWrapper
       className="document-frame-reference"
@@ -75,6 +81,44 @@ export const DocumentFrameReference = Node.create({
   renderText({ node }) {
     return `打开画布 verd://file/${encodeURIComponent(String(node.attrs['targetFrameId']))}`;
   },
+  addNodeView() {
+    return ReactNodeViewRenderer(FrameReferenceView);
+  },
+});
+
+export const DocumentExcerpt = Node.create({
+  name: 'documentExcerpt',
+  group: 'block',
+  atom: true,
+  draggable: true,
+  isolating: true,
+  addAttributes: () => ({
+    targetDocumentId: { default: '' },
+    targetBlockId: { default: '' },
+  }),
+  parseHTML: () => [
+    {
+      tag: 'figure[data-document-excerpt]',
+      getAttrs: (element) => ({
+        targetDocumentId: element.getAttribute('data-document-excerpt'),
+        targetBlockId: element.getAttribute('data-excerpt-block'),
+      }),
+    },
+  ],
+  renderHTML: ({ node }) => [
+    'figure',
+    {
+      'data-document-excerpt': node.attrs['targetDocumentId'],
+      'data-excerpt-block': node.attrs['targetBlockId'],
+    },
+    [
+      'a',
+      {
+        href: `verd://file/${encodeURIComponent(String(node.attrs['targetDocumentId']))}#${encodeURIComponent('block:' + node.attrs['targetBlockId'])}`,
+      },
+      '引用段落',
+    ],
+  ],
   addNodeView() {
     return ReactNodeViewRenderer(FrameReferenceView);
   },

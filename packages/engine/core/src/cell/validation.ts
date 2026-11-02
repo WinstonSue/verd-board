@@ -1,3 +1,4 @@
+import { withCellValidationReads } from './validation-read-context';
 import { groupLeafMembers } from './group';
 import { createCellRegistry, type CellRegistry } from './registry';
 import {
@@ -21,7 +22,13 @@ export interface CellValidationIssue {
 export const validateCellStore = (
   store: CellStore,
   registry: CellRegistry = createCellRegistry(),
-): CellValidationIssue[] => {
+): CellValidationIssue[] =>
+  withCellValidationReads(store, () => validateStoreContents(store, registry));
+
+function validateStoreContents(
+  store: CellStore,
+  registry: CellRegistry,
+): CellValidationIssue[] {
   const issues: CellValidationIssue[] = [];
   const report = (cellId: string, message: string) =>
     issues.push({ cellId, message });
@@ -57,7 +64,14 @@ export const validateCellStore = (
       if (scenes.length > 1) report(id, 'Mixed frame scenes');
       const scene = scenes[0];
       for (const child of children) {
-        if (isFrameCell(child) || isDocumentReferenceCell(child)) continue;
+        if (
+          isFrameCell(child) ||
+          isDocumentReferenceCell(child) ||
+          (isNodeCell(child) &&
+            child.kind === 'geometry' &&
+            child.geometry.outline === 'text')
+        )
+          continue;
         const childScene = registry.scenes.find((candidate) =>
           candidate.kinds.includes(child.kind),
         );
@@ -228,4 +242,4 @@ export const validateCellStore = (
     }
   });
   return issues;
-};
+}

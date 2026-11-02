@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type Ref } from 'react';
+import { useEffect, useRef, useState, type Ref, type ReactNode } from 'react';
 import {
   ChevronDown,
   Command,
@@ -12,12 +12,16 @@ import { bindWorkspaceAction } from './workspace-action-bindings';
 import { FileTreeMenu, type FileTreeMenuItem } from './file-tree-menu';
 
 export interface WorkspaceMenuProps {
+  updatesAvailable?: boolean;
+  trailing?: ReactNode;
+  switcherOpen?: boolean;
   actionSource?: ActionSource;
   name: string;
   locale?: 'zh' | 'en';
   switching?: boolean;
   isDefault?: boolean;
   triggerRef?: Ref<HTMLButtonElement>;
+  onSwitch?(): void;
   onSettings(): void;
   onOpenFolder?(): void;
   onOpenBuiltin?(): void;
@@ -29,6 +33,9 @@ export interface WorkspaceMenuProps {
 }
 
 export function WorkspaceMenu({
+  updatesAvailable,
+  trailing,
+  switcherOpen = false,
   actionSource,
   name,
   locale = 'zh',
@@ -36,6 +43,7 @@ export function WorkspaceMenu({
   isDefault = false,
   triggerRef,
   onSettings,
+  onSwitch,
   onOpenFolder,
   onOpenBuiltin,
   onOpenPatterns,
@@ -133,25 +141,45 @@ export function WorkspaceMenu({
           else if (triggerRef) triggerRef.current = element;
         }}
         title={name}
-        aria-label={zh ? `工作区菜单：${name}` : `Workspace menu: ${name}`}
-        aria-haspopup="menu"
-        aria-expanded={open}
+        aria-label={`${zh ? `工作区菜单：${name}` : `Workspace menu: ${name}`}${updatesAvailable ? (zh ? '，内置内容有更新' : ', built-in content updates available') : ''}`}
+        aria-haspopup={onSwitch ? 'dialog' : 'menu'}
+        aria-expanded={onSwitch ? switcherOpen : open}
         disabled={switching}
         onClick={() => {
+          if (onSwitch) {
+            onSwitch();
+            return;
+          }
           if (!open) onRefreshHistory?.();
           setOpen((value) => !value);
         }}
         onKeyDown={(event) => {
           if (event.key === 'ArrowDown') {
             event.preventDefault();
+            if (onSwitch) {
+              onSwitch();
+              return;
+            }
             if (!open) onRefreshHistory?.();
             setOpen(true);
           }
         }}
       >
-        <span className="workspace-menu-name">{name}</span>
+        <span className="workspace-menu-name">
+          {name}
+          {updatesAvailable && (
+            <span
+              className="vm-dot"
+              title={
+                zh ? '内置内容有更新' : 'Built-in content updates available'
+              }
+              aria-hidden
+            />
+          )}
+        </span>
         <ChevronDown size={14} aria-hidden />
       </button>
+      {trailing}
       {open && button.current && (
         <FileTreeMenu
           className="workspace-switch-menu"

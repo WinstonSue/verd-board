@@ -53,6 +53,7 @@ export function updateWorkspaceNavigation(
   );
   return {
     ...state,
+    activeView: patch.activeView ?? state.activeView,
     expandedDirs: patch.expandedDirs ?? state.expandedDirs,
     groups,
     activeGroupId: active.id,

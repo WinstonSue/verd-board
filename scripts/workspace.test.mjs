@@ -38,31 +38,34 @@ test('project content validates, package facts are current, refresh is idempoten
       .every((e) => e.file.organization?.kind === 'standalone'),
     true,
   );
-  assert.deepEqual(
-    Object.values(home.cells)
-      .filter((cell) => cell.kind === 'document-frame')
-      .map((cell) => cell.data.targetDocumentId)
-      .sort(),
-    [
-      'project-doc:README',
-      'project-doc:architecture/ARCHITECTURE',
-      'project-doc:development/README',
-    ].sort(),
+  assert.equal(
+    entries.find((e) => e.file.id === 'project-doc:README').path,
+    '文档导航.verd-doc.json',
   );
-  for (const entry of entries.filter(
-    (e) => e.file.format === 'verd-frame' && e.file.frame.id !== 'board-root',
-  )) {
-    const cards = Object.values(entry.file.cells).filter(
-      (cell) => cell.kind === 'document-reference',
-    );
-    assert.equal(cards.length, 1, entry.path);
-    assert.ok(cards[0].content.text.plainText.length > 0, entry.path);
+  assert.equal(
+    entries.find((e) => e.file.id === 'project-doc:README_en').path,
+    'Documentation.verd-doc.json',
+  );
+  assert.equal(
+    entries.find((e) => e.file.frame?.id === 'board-root').path,
+    '架构图/项目导览.verd.json',
+  );
+  for (const entry of entries.filter((e) => e.file.format === 'verd-frame')) {
     assert.equal(
-      Object.values(entry.file.cells).some(
-        (cell) => cell.kind === 'document-frame',
+      Object.values(entry.file.cells).some((c) =>
+        ['document-frame', 'document-reference'].includes(c.kind),
       ),
       false,
+      entry.path,
     );
+    if (entry.file.frame.id !== 'board-root') {
+      const note = Object.values(entry.file.cells).find((c) =>
+        c.content?.text?.plainText?.startsWith('相关文档：'),
+      );
+      assert.equal(note.kind, 'geometry');
+      assert.ok(note.content.text.plainText.includes('相关文档：'), entry.path);
+      assert.ok(note.geometry.height < 400, entry.path);
+    }
   }
   const embeddedTargets = new Set();
   for (const entry of entries.filter(
@@ -102,6 +105,15 @@ test('project content validates, package facts are current, refresh is idempoten
   );
   await withWorkspaceRuntime(async (runtime) => {
     assert.deepEqual(await validateWorkspace(entries, runtime), []);
+    const closure = runtime.references.workspaceFileClosure(
+      entries.map((e) => e.file),
+      'board-root',
+    );
+    assert.equal(closure.length, 31);
+    assert.ok(
+      closure.every((file) => file.format === 'verd-frame'),
+      'ordinary documentation links must not export document bodies',
+    );
     const duplicate = structuredClone(entries[0]);
     duplicate.path = 'duplicate.verd.json';
     assert.ok(
@@ -249,8 +261,8 @@ test('nine overviews reach exactly twenty-one standalone details without changin
         ),
         false,
       );
-      const card = Object.values(detail.file.cells).find(
-        (c) => c.kind === 'document-reference',
+      const card = Object.values(detail.file.cells).find((c) =>
+        c.content?.text?.plainText?.startsWith('相关文档：'),
       );
       assert.match(card.content.text.plainText, /源码入口：/);
       assert.match(card.content.text.plainText, /返回专题总览/);

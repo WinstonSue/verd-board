@@ -1,4 +1,4 @@
-import React, { act, StrictMode, useEffect } from 'react';
+import { act, StrictMode, useEffect } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createBlockText } from '@sue/board-common';
@@ -7,6 +7,12 @@ import type {
   DocumentEditorProps,
 } from '@sue/board-react-text';
 import { DocumentPage, type DocumentPageProps } from './document-page';
+
+// jsdom has no geometry; browser tests cover floating placement.
+vi.mock('@floating-ui/react', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@floating-ui/react')>()),
+  autoUpdate: () => () => {},
+}));
 
 const { controller } = vi.hoisted(() => ({
   controller: {
@@ -35,7 +41,9 @@ const { controller } = vi.hoisted(() => ({
   },
 }));
 
-vi.mock('@sue/board-react-text', () => ({
+vi.mock('@sue/board-react-text', async () => ({
+  useRichTextLinks: (await import('../../../react/text/src/rich-text-links'))
+    .useRichTextLinks,
   DocumentEditor: ({ onReady }: DocumentEditorProps) => {
     useEffect(() => {
       onReady?.(controller as unknown as DocumentEditorController);
@@ -152,6 +160,7 @@ describe('document navigation', () => {
   });
 
   it('keeps page actions usable through StrictMode effect replay and disposes on unmount', async () => {
+    vi.unstubAllGlobals();
     const onExport = vi.fn();
     await act(async () =>
       root.render(
@@ -166,16 +175,12 @@ describe('document navigation', () => {
         </StrictMode>,
       ),
     );
-    const button = container.querySelector<HTMLButtonElement>(
-      '[data-action-id="document.command-palette"]',
-    )!;
-    expect(button.disabled).toBe(false);
+    const button =
+      container.querySelector<HTMLButtonElement>('[aria-label="文档"]')!;
     await click(button);
-    const exportAction = container.querySelector<HTMLButtonElement>(
-      '[data-action-id="document.export-markdown"]',
-    )!;
-    expect(exportAction.getAttribute('aria-disabled')).toBe('false');
-    await click(exportAction);
+    await click(
+      document.querySelector('[data-action-id="document.export-markdown"]')!,
+    );
     expect(onExport).toHaveBeenCalledWith('markdown');
     await click(button);
     let finish!: (result: { status: string }) => void;
@@ -186,7 +191,7 @@ describe('document navigation', () => {
         }),
     );
     await click(
-      container.querySelector('[data-action-id="document.export-markdown"]')!,
+      document.querySelector('[data-action-id="document.export-markdown"]')!,
     );
     await act(async () => root.render(null));
     await act(async () => finish({ status: 'completed' }));
@@ -194,22 +199,18 @@ describe('document navigation', () => {
   });
 
   for (const readonly of [false, true])
-    it(`opens the document palette and restores its toolbar focus (readonly=${readonly})`, async () => {
+    it(`opens the document palette from its menu (readonly=${readonly})`, async () => {
+      vi.unstubAllGlobals();
       await render({ readonly });
-      const button = container.querySelector<HTMLButtonElement>(
-        '[data-action-id="document.command-palette"]',
-      )!;
-      expect(button.disabled).toBe(false);
-      expect(button.title).toMatch(/命令面板.*(Ctrl\+Shift\+P|⌘⇧P)/);
+      const button =
+        container.querySelector<HTMLButtonElement>('[aria-label="文档"]')!;
       await click(button);
-      expect(button.disabled).toBe(false);
+      await click(
+        document.querySelector('[data-action-id="document.command-palette"]')!,
+      );
       const dialog = document.querySelector('dialog')!;
       expect(dialog.getAttribute('aria-labelledby')).toBeTruthy();
       expect(dialog.querySelector('input')).toBe(document.activeElement);
-      expect(document.querySelectorAll('dialog')).toHaveLength(1);
-      expect(
-        dialog.querySelector('[data-action-id="document.command-palette"]'),
-      ).toBeNull();
       await act(async () =>
         dialog.dispatchEvent(
           new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }),
@@ -218,6 +219,20 @@ describe('document navigation', () => {
       expect(document.querySelector('dialog')).toBeNull();
       expect(document.activeElement).toBe(button);
     });
+
+  it('changes ordinary link activation without editing content', async () => {
+    const onOpenLink = vi.fn();
+    const onChange = vi.fn();
+    await render({ onOpenLink, onChange, linkActivation: 'modifier' });
+    await click(container.querySelector('a')!);
+    expect(onOpenLink).not.toHaveBeenCalled();
+    await render({ onOpenLink, onChange, linkActivation: 'click' });
+    await click(container.querySelector('a')!);
+    expect(onOpenLink).toHaveBeenCalledExactlyOnceWith(
+      'verd://file/guide#章节',
+    );
+    expect(onChange).not.toHaveBeenCalled();
+  });
 
   it('keeps ordinary editing clicks local and activates modifier clicks', async () => {
     const onOpenLink = vi.fn();

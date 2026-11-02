@@ -2,6 +2,7 @@ import { test, expect, type Page } from '@playwright/test';
 import { selectDrawingTool } from './drawing-tools';
 import {
   openSettings,
+  openActiveFile,
   openTrash,
   selectWorkspaceAction,
   openWorkspaceMenu,
@@ -16,16 +17,15 @@ const settings = (page: Page) => page.getByTestId('workspace-menu-trigger');
 
 test.beforeEach(async ({ page }) => {
   await page.goto('/');
+  await openActiveFile(page);
   await expect(canvas(page)).toBeVisible();
   const skip = page.getByRole('button', { name: '跳过', exact: true });
   if (await skip.isVisible()) await skip.click();
 });
 
 test('file rows switch tabs and remain compact', async ({ page }) => {
-  await page
-    .locator('.file-tree-header')
-    .getByRole('button', { name: '新建画布', exact: true })
-    .click();
+  await page.getByTestId('file-tree-new').click();
+  await page.getByRole('menuitem', { name: '新建画布', exact: true }).click();
   await expect(rows(page)).toHaveCount(2);
   await rows(page).first().locator('.file-tree-name').click();
   await expect(rows(page).first()).toHaveClass(/is-active/);
@@ -93,11 +93,8 @@ test('row menus trash and restore files, support keyboard dismissal and pointer 
 test('library highlights navigation and clicking the active tab returns to editing', async ({
   page,
 }) => {
-  await page.locator('.file-tree-nav').click();
-  await expect(page.locator('.file-tree-nav')).toHaveAttribute(
-    'aria-current',
-    'page',
-  );
+  await page.getByRole('button', { name: '所有内容', exact: true }).click();
+  await page.getByRole('button', { name: '图表', exact: true }).click();
   await expect(page.locator('.chart-library')).toBeVisible();
   await expect(
     page.locator('ylib-tabs').getByRole('tab', { selected: true }),
@@ -157,26 +154,29 @@ test('owned subgraphs indent and file navigation stays above the canvas', async 
   ).toBeGreaterThanOrEqual(crumbBox.y + crumbBox.height);
 });
 
-test('workspace settings fill the viewport, retain names, restore focus and persist after reload', async ({
+test('workspace settings use a centered dialog, retain names, restore focus and persist after reload', async ({
   page,
 }) => {
   await selectWorkspaceAction(page, '工作区设置');
   const dialog = page.getByTestId('workspace-settings-page');
   await expect(dialog).toBeVisible();
-  expect((await dialog.boundingBox())!.width).toBe(page.viewportSize()!.width);
+  expect((await dialog.boundingBox())!.width).toBeLessThanOrEqual(1040);
+  await page.getByTestId('settings-nav-workspace.project').click();
+  await dialog
+    .getByRole('combobox', { name: '宽度来源' })
+    .selectOption('custom');
   const width = page.getByTestId('workspace-settings-mind-width');
   await width.fill('320');
   await expect(width).toHaveValue('320');
-  await expect(
-    page.getByTestId('workspace-settings-mind-width-reset'),
-  ).toBeEnabled();
-  await width.fill('');
-  await expect(width).toHaveValue('');
-  await expect(
-    page.getByTestId('workspace-settings-mind-width-reset'),
-  ).toBeDisabled();
+  await width.press('Tab');
+  await dialog
+    .getByRole('combobox', { name: '宽度来源' })
+    .selectOption('inherit');
+  await expect(width).toHaveCount(0);
+  await page.getByTestId('settings-nav-workspace.project').click();
   const input = page.getByTestId('workspace-settings-name');
   await input.fill('团队规划');
+  await input.press('Tab');
   await expect(page.locator('.workspace-sidebar-header')).toHaveText(
     '团队规划',
   );
@@ -208,15 +208,17 @@ test('workspace settings and My have independent single-step return destinations
   await expect(
     my.getByRole('heading', { name: '通用', exact: true }),
   ).toBeVisible();
+  await my.getByTestId('settings-nav-personal.editor').click();
   await expect(
     my.getByRole('heading', { name: '思维导图', exact: true }),
   ).toBeVisible();
+  await my.getByTestId('settings-nav-personal.editor').click();
   await expect(
     my.getByRole('heading', { name: '画布交互', exact: true }),
   ).toBeVisible();
   await expect(page.getByTestId('my-open-settings')).toHaveCount(0);
   await page.getByTestId('my-back').click();
-  await expect(page.getByTestId('app-menu-trigger')).toBeFocused();
+  await expect(page.getByTestId('workspace-my')).toBeFocused();
 });
 
 test('sidebar My opens global preferences and returns without remounting the canvas', async ({
@@ -227,7 +229,7 @@ test('sidebar My opens global preferences and returns without remounting the can
   );
   await page.getByTestId('workspace-my').click();
   await expect(
-    page.getByRole('heading', { name: '我的', exact: true }),
+    page.getByRole('heading', { name: '设置', exact: true }),
   ).toBeVisible();
   await expect(page.getByTestId('settings-language')).toBeVisible();
   await page.keyboard.press('Escape');
@@ -240,14 +242,12 @@ test('sidebar keeps only My at the bottom and groups workspace actions under the
 }) => {
   await expect(page.locator('.workspace-sidebar-footer button')).toHaveCount(1);
   await expect(page.locator('.workspace-sidebar-footer button')).toHaveText(
-    '我的',
+    '设置',
   );
   await page.getByTestId('workspace-menu-trigger').press('ArrowDown');
-  const menu = page.getByRole('menu', { name: '工作区', exact: true });
-  await expect(menu.getByRole('menuitem')).toHaveCount(2);
-  await expect(
-    menu.getByRole('menuitem', { name: '工作区设置', exact: true }),
-  ).toBeFocused();
+  const menu = page.getByTestId('workspace-switcher-dialog');
+  await expect(menu.getByRole('searchbox')).toBeFocused();
+  await expect(menu.getByTestId('workspace-open-settings')).toBeVisible();
   await page.keyboard.press('Escape');
   await expect(page.getByTestId('workspace-menu-trigger')).toBeFocused();
   await expect(menu).toHaveCount(0);
@@ -271,7 +271,7 @@ test('long workspace names truncate in narrow layouts and retain their full titl
     expect((await trigger.boundingBox())!.width).toBeLessThanOrEqual(240);
     await openWorkspaceMenu(page);
     await expect(
-      page.getByRole('menu', { name: '工作区', exact: true }),
+      page.getByTestId('workspace-switcher-dialog'),
     ).toBeInViewport();
     await page.keyboard.press('Escape');
   }
@@ -282,31 +282,25 @@ test('workspace settings own trash while My contains personal preferences', asyn
 }) => {
   await selectWorkspaceAction(page, '工作区设置');
   const navigation = page.getByRole('navigation', {
-    name: '工作区设置菜单',
+    name: '设置栏目',
     exact: true,
   });
   await expect(
-    navigation.getByRole('button', { name: '基本设置', exact: true }),
+    navigation.getByRole('button', { name: '常规', exact: true }),
   ).toHaveAttribute('aria-current', 'page');
   await navigation.getByRole('button', { name: '回收站', exact: true }).click();
   await expect(page.getByTestId('workspace-trash')).toContainText('回收站为空');
   await expect(page.getByTestId('workspace-trash')).toContainText('当前工作区');
-  await navigation
-    .getByRole('button', { name: '基本设置', exact: true })
-    .click();
+  await navigation.getByRole('button', { name: '常规', exact: true }).click();
   await expect(page.getByTestId('workspace-settings-name')).toBeVisible();
   expect((await navigation.boundingBox())!.x).toBeLessThan(
-    (await page
-      .locator('.workspace-settings .settings-sections-main')
-      .boundingBox())!.x,
+    (await page.locator('.settings-sections-main').boundingBox())!.x,
   );
   await page.getByTestId('workspace-settings-back').click();
   await expect(page.getByTestId('workspace-menu-trigger')).toBeFocused();
   await page.getByTestId('workspace-my').click();
   await expect(page.getByTestId('settings-language')).toBeVisible();
-  await expect(
-    page.getByRole('button', { name: '回收站', exact: true }),
-  ).toHaveCount(0);
+  await expect(page.getByTestId('settings-nav-workspace.trash')).toHaveCount(1);
   await page.getByTestId('my-back').click();
   await expect(page.getByTestId('workspace-my')).toBeFocused();
 });

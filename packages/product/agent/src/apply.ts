@@ -9,7 +9,8 @@ import {
   type WorkspaceHost,
 } from '@sue/verd-board-app/headless';
 import { createFsWorkspaceHost } from './node/workspace-host-fs';
-import { readNativeSnapshot } from './node/workspace-lock';
+import { readNativeSnapshot, withWorkspaceLock } from './node/workspace-lock';
+import { migrateWorkspaceMetadataUnlocked } from './node/workspace-metadata';
 import { planIntegrity } from './authoring';
 import type { PreparedBatch } from './types';
 
@@ -28,24 +29,29 @@ export async function applyPreparedBatch(root: string, plan: PreparedBatch) {
   // An already confirmed transaction wins over the now-stale input snapshot.
   const receiptPath = path.join(
     root,
-    '.verdboard',
+    '.verdscrolls',
     'receipts',
     plan.transactionId + '.json',
   );
-  const recorded = await fs.readFile(receiptPath, 'utf8').then(
-    (s) => JSON.parse(s) as CommitReceipt,
-    (error) => {
-      if (error.code === 'ENOENT') return null;
-      throw error;
-    },
-  );
+  const readRecordedReceipt = () =>
+    fs.readFile(receiptPath, 'utf8').then(
+      (s) => JSON.parse(s) as CommitReceipt,
+      (error) => {
+        if (error.code === 'ENOENT') return null;
+        throw error;
+      },
+    );
+  let recorded = await readRecordedReceipt();
+  if (recorded?.outcome === 'applied') return recorded;
+  await withWorkspaceLock(root, () => migrateWorkspaceMetadataUnlocked(root));
+  recorded = await readRecordedReceipt();
   if (recorded?.outcome === 'applied') return recorded;
   if (
     await fs
       .access(
         path.join(
           root,
-          '.verdboard',
+          '.verdscrolls',
           'transactions',
           plan.transactionId + '.json',
         ),
@@ -65,6 +71,10 @@ export async function applyPreparedBatch(root: string, plan: PreparedBatch) {
     if (confirmed?.outcome === 'applied') return confirmed;
   }
   const snapshot = await readNativeSnapshot(root);
+  if ((plan.resourceId ?? null) !== (snapshot.resourceId ?? null))
+    throw new Error(
+      'VERSION_CONFLICT: shared tool/specification version changed; prepare a new plan',
+    );
   if (snapshot.version !== plan.workspaceVersion)
     throw new Error('VERSION_CONFLICT: inspect and prepare again');
   const final = new Map(
@@ -99,6 +109,7 @@ export async function applyPreparedBatch(root: string, plan: PreparedBatch) {
       ...request,
       transactionId: plan.transactionId,
       expectedWorkspaceVersion: plan.workspaceVersion,
+      expectedAgentResourceId: plan.resourceId ?? null,
     });
     return receipt;
   };

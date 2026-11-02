@@ -14,7 +14,6 @@ export interface WorkspaceHostContractContext {
   open: () => Promise<WorkspaceHandle>;
 }
 
-const text = (value: string) => new TextEncoder().encode(value);
 const decode = (content: Uint8Array) => new TextDecoder().decode(content);
 
 const canvasJson = (frameId: string) =>
@@ -143,7 +142,11 @@ export const describeWorkspaceHostContract = (
         });
         expect(receipt.outcome).toBe('rejected');
       }
-      expect((await host.readSnapshot(handle)).entries).toEqual([]);
+      expect(
+        (await host.readSnapshot(handle)).entries.filter(
+          (e) => e.path !== 'AGENTS.md',
+        ),
+      ).toEqual([]);
     });
 
     it('creates a default workspace with initialized config', async () => {
@@ -152,7 +155,9 @@ export const describeWorkspaceHostContract = (
       const snapshot = await host.readSnapshot(handle);
       expect(snapshot.config.version).toBeGreaterThanOrEqual(1);
       expect(snapshot.session).toBeNull();
-      expect(snapshot.entries).toEqual([]);
+      expect(snapshot.entries.filter((e) => e.path !== 'AGENTS.md')).toEqual(
+        [],
+      );
       expect(snapshot.canvases).toEqual([]);
     });
 

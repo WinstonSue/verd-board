@@ -18,6 +18,8 @@ export const WORKSPACE_UI_ACTION_IDS = [
   'settings',
   'my',
   'command-palette',
+  'quick-open',
+  'search',
   'return',
   'open-folder',
   'open-builtin',
@@ -28,8 +30,12 @@ export const WORKSPACE_UI_ACTION_IDS = [
   'file.return',
   'reference.locate',
   'file.rename',
+  'file.move-dialog',
+  'directory.rename',
+  'directory.move',
   'file.move',
   'file.duplicate',
+  'file.copy-link',
   'file.export',
   'file.trash',
   'directory.create-canvas',
@@ -68,6 +74,8 @@ export const WORKSPACE_UI_ACTION_IDS = [
   'library.organization-dialog',
   'conflict.keep-local',
   'conflict.load-disk',
+  'conflict.save-copy',
+  'conflict.compare',
   'organize',
   'organize.retry',
 ] as const;
@@ -89,6 +97,7 @@ export const WORKSPACE_ACTION_SURFACES = {
     'file.rename',
     'file.move',
     'file.duplicate',
+    'file.copy-link',
     'file.export',
     'file.trash',
     'directory.create-canvas',
@@ -149,6 +158,8 @@ export const WORKSPACE_ACTION_SURFACES = {
   banners: [
     'conflict.keep-local',
     'conflict.load-disk',
+    'conflict.save-copy',
+    'conflict.compare',
     'trash.retry',
     'save-retry',
   ],
@@ -265,7 +276,15 @@ export function createWorkspaceSurfaceActions(options: {
   add('import', '导入画布/包', 'Import canvas/bundle', write());
   add('library', '图表库', 'Chart library');
   add('settings', '工作区设置', 'Workspace settings');
-  add('my', '我的', 'My preferences');
+  add('my', '设置', 'Settings');
+  add('quick-open', '快速打开', 'Quick open', {
+    flushEditing: true,
+    shortcuts: [{ key: 'p', mod: true }],
+  });
+  add('search', '搜索工作区', 'Search workspace', {
+    flushEditing: true,
+    shortcuts: [{ key: 'f', mod: true, shift: true }],
+  });
   add('command-palette', '命令面板', 'Command palette', {
     palette: false,
     shortcuts: [{ key: 'p', mod: true, shift: true }],
@@ -372,6 +391,7 @@ export function createWorkspaceSurfaceActions(options: {
     ['file.open', '打开', 'Open', 'view'],
     ['file.reveal', '在文件夹中显示', 'Show in folder', 'view'],
     ['file.export', '导出(含依赖)', 'Export (with closure)', 'external'],
+    ['file.copy-link', '复制链接', 'Copy link', 'external'],
   ] as const)
     add(id, zh, en, {
       effect,
@@ -386,6 +406,38 @@ export function createWorkspaceSurfaceActions(options: {
     callback();
     return { status: 'completed' };
   };
+  add(
+    'file.move-dialog',
+    '移动到…',
+    'Move to…',
+    write({
+      palette: false,
+      validateArgs: (args) => stringArg(args, 'fileId'),
+      getState: (c, args) => ({
+        ...targetState(fileExists(c, args)),
+        visible: !c.readonly,
+      }),
+      execute: present,
+    }),
+  );
+  for (const [id, zh, en] of [
+    ['directory.rename', '重命名', 'Rename'],
+    ['directory.move', '移动到…', 'Move to…'],
+  ] as const)
+    add(
+      id,
+      zh,
+      en,
+      write({
+        palette: false,
+        validateArgs: (args) => stringArg(args, 'dirPath'),
+        getState: (c, args) => ({
+          ...targetState(directoryExists(c, args)),
+          visible: !c.readonly,
+        }),
+        execute: present,
+      }),
+    );
   add(
     'file.rename',
     '重命名/移动',
@@ -717,9 +769,21 @@ export function createWorkspaceSurfaceActions(options: {
       palette: false,
       validateArgs: (args) => !!args && typeof args === 'object',
       execute: async (c, args) => {
+        const current = c.session!.getState().config.value;
+        const patch = args as Record<string, unknown>;
         c.session!.setWorkspaceConfig({
-          ...c.session!.getState().config.value,
-          ...(args as Record<string, unknown>),
+          ...current,
+          ...patch,
+          ...(patch['project'] &&
+          typeof patch['project'] === 'object' &&
+          !Array.isArray(patch['project'])
+            ? {
+                project: {
+                  ...((current['project'] as object) ?? {}),
+                  ...patch['project'],
+                },
+              }
+            : {}),
         });
         return (await c.session!.flush())
           ? { status: 'completed' }
@@ -894,6 +958,7 @@ export function createWorkspaceSurfaceActions(options: {
   for (const [action, zh, en] of [
     ['keep-local', '保留本地', 'Keep local'],
     ['load-disk', '采用磁盘', 'Load disk'],
+    ['save-copy', '保留两份', 'Keep both'],
   ] as const)
     add(
       `conflict.${action}`,
@@ -923,6 +988,17 @@ export function createWorkspaceSurfaceActions(options: {
           ),
       }),
     );
+  add('conflict.compare', '比较两版', 'Compare versions', {
+    validateArgs: (args) => stringArg(args, 'fileId'),
+    getState: (context, args) => {
+      const id = String(workspaceActionArgument(args, 'fileId'));
+      const state = context.session?.getState();
+      return targetState(
+        state?.files.get(id)?.conflicted ||
+          state?.documents.get(id)?.conflicted,
+      );
+    },
+  });
   const barriers = new Set([
     'create-canvas',
     'create-document',

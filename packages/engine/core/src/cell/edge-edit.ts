@@ -24,10 +24,11 @@ export const snapEdgeTerminal = (
   kind: string,
   tolerance = 12,
   registry: CellRegistry = createCellRegistry(),
+  candidates?: readonly string[],
 ): EdgeTerminal => {
   const frame = store.cells[frameId];
   if (!isFrameCell(frame)) throw new Error('Missing edge frame');
-  for (const id of [...frame.children].reverse()) {
+  for (const id of [...(candidates ?? frame.children)].reverse()) {
     const node = store.cells[id];
     if (!isNodeCell(node) || isFrameCell(node) || node.hidden || node.locked)
       continue;

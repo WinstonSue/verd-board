@@ -8,3 +8,5 @@ export * from './host/workspace-host';
 export { createMemoryWorkspaceHost } from './host/memory-workspace-host';
 export * from './session/workspace-session';
 export * from './workspace-validation';
+
+export { storeAttachment } from './documents/workspace-resources';

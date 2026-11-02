@@ -13,23 +13,5 @@ body {
 }
 html {
   -webkit-text-size-adjust: 100%;
-  font-family:
-    'Source Han Sans SC',
-    'Source Han Sans CN',
-    'Noto Sans CJK SC',
-    ui-sans-serif,
-    system-ui,
-    -apple-system,
-    BlinkMacSystemFont,
-    'Segoe UI',
-    Roboto,
-    'Helvetica Neue',
-    Arial,
-    'Noto Sans',
-    sans-serif,
-    'Apple Color Emoji',
-    'Segoe UI Emoji',
-    'Segoe UI Symbol',
-    'Noto Color Emoji';
-  line-height: 1.5;
+  font: 14px/1.5 var(--vm-font);
 }

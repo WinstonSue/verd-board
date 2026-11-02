@@ -1,3 +1,8 @@
+import { createPortal } from 'react-dom';
+import { useContext } from 'react';
+import { DocumentResourcesContext } from './document-resources';
+import katex from 'katex';
+import { validateRichContent } from './document-rich-content';
 import React, {
   useCallback,
   useEffect,
@@ -70,15 +75,67 @@ export const DocumentEditor: React.FC<DocumentEditorProps> = ({
   className,
   onImageFile,
   renderFrameReference,
+  folding: suppliedFolding,
+  foldingKey,
+  onAttachmentFile,
+  renderAttachment,
+  renderWebEmbed,
 }) => {
+  const [mathEdit, setMathEdit] = useState<{
+    latex: string;
+    pos: number;
+    block: boolean;
+    original: string;
+    documentId: string;
+    insertion?: { to: number; revision: unknown };
+  } | null>(null);
+  const readonlyRef = useRef(readonly);
+  readonlyRef.current = readonly;
+  const [webEdit, setWebEdit] = useState<{
+    url: string;
+    title: string;
+    caption: string;
+    from: number;
+    to: number;
+    revision: unknown;
+    documentId: string;
+  } | null>(null);
+  const inheritedResources = useContext(DocumentResourcesContext);
+  const resources = useMemo(
+    () => ({
+      ...inheritedResources,
+      ...(onAttachmentFile ? { store: onAttachmentFile } : {}),
+      ...(renderAttachment ? { renderAttachment } : {}),
+      ...(renderWebEmbed ? { renderWebEmbed } : {}),
+    }),
+    [inheritedResources, onAttachmentFile, renderAttachment, renderWebEmbed],
+  );
+  const resourceInput = useRef<HTMLInputElement>(null);
+  const folding =
+    suppliedFolding ?? resources.foldingFor?.(foldingKey ?? value.id);
   const schema = useMemo(getValidationSchema, []);
   const localHistory = !history;
   const extensions = useMemo(
-    () => createDocumentExtensions({ history: localHistory, placeholder }),
-    [localHistory, placeholder],
+    () =>
+      createDocumentExtensions({
+        history: localHistory,
+        placeholder,
+        folding,
+        onMathEdit: (latex, pos, block) =>
+          !readonlyRef.current &&
+          setMathEdit({
+            latex,
+            pos,
+            block,
+            original: latex,
+            documentId: originalElementRef.current.id,
+          }),
+      }),
+    [localHistory, placeholder, folding],
   );
   const contentError = useMemo(() => {
     try {
+      validateRichContent(value.content);
       schema.nodeFromJSON(value.content).check();
       return null;
     } catch (error) {
@@ -88,6 +145,12 @@ export const DocumentEditor: React.FC<DocumentEditorProps> = ({
   const contentErrorRef = useRef(contentError);
   contentErrorRef.current = contentError;
   const containerRef = useRef<HTMLDivElement>(null);
+  const [slashOpen, setSlashOpen] = useState(false);
+  const [blockNotice, setBlockNotice] = useState('');
+  const slashBindings = useRef(
+    new Map<string, import('@sue/board-common').BoundAction>(),
+  );
+  const [slashQuery, setSlashQuery] = useState('');
   const originalElementRef = useRef<BoardTextDocument>(value);
   /** JSON of the content the editor currently reflects (echo suppression). */
   const baselineJsonRef = useRef<string | undefined>(undefined);
@@ -146,6 +209,36 @@ export const DocumentEditor: React.FC<DocumentEditorProps> = ({
    * whatever tab happens to be active when the file finishes reading.
    */
   const insertImageFile = (file: File, position: number) => {
+    if (!file.type.startsWith('image/') && resources.store) {
+      const target = editor;
+      const original = target?.state.doc;
+      setBlockNotice('正在保存附件…');
+      void resources
+        .store(file)
+        .then((attrs) => {
+          if (
+            !target ||
+            target.isDestroyed ||
+            !target.isEditable ||
+            target.state.doc !== original
+          ) {
+            setBlockNotice('编辑位置已变化，请重新插入附件');
+            return;
+          }
+          target
+            .chain()
+            .focus()
+            .insertContentAt(position, { type: 'attachment', attrs })
+            .run();
+          setBlockNotice('');
+        })
+        .catch((error) =>
+          setBlockNotice(
+            error instanceof Error ? error.message : String(error),
+          ),
+        );
+      return true;
+    }
     const resolver = onImageFileRef.current;
     if (!resolver || !file.type.startsWith('image/')) return false;
     const action = controllerRef.current
@@ -291,6 +384,23 @@ export const DocumentEditor: React.FC<DocumentEditorProps> = ({
         attributes: { class: 'board-document-content' },
         handleKeyDown: (view, event) => {
           if (view.composing) return false;
+          if (
+            event.key === '/' &&
+            view.editable &&
+            view.state.selection.$from.parent.type.name === 'paragraph' &&
+            !view.state.selection.$from.parent.textContent
+          ) {
+            setSlashQuery('');
+            setBlockNotice('');
+            slashBindings.current = new Map(
+              (controllerRef.current?.actions() ?? []).map((action) => [
+                action.id,
+                action.capture(),
+              ]),
+            );
+            setSlashOpen(true);
+            return true;
+          }
           const actions = controllerRef.current?.actions() ?? [];
           const resolution = resolveActionShortcut(actions, event);
           if (resolution.status === 'matched') {
@@ -313,11 +423,26 @@ export const DocumentEditor: React.FC<DocumentEditorProps> = ({
           return false;
         },
         handlePaste: (view, event) => {
-          const file = [...(event.clipboardData?.files ?? [])].find((item) =>
-            item.type.startsWith('image/'),
-          );
+          const file = event.clipboardData?.files[0];
           if (file && insertImageFile(file, view.state.selection.from))
             return true;
+          const pasted = event.clipboardData?.getData('text/plain').trim();
+          if (
+            pasted &&
+            /^https:\/\/\S+$/.test(pasted) &&
+            !readonlyRef.current
+          ) {
+            setWebEdit({
+              url: pasted,
+              title: '',
+              caption: '',
+              from: view.state.selection.from,
+              to: view.state.selection.to,
+              revision: view.state.doc,
+              documentId: originalElementRef.current.id,
+            });
+            return true;
+          }
           pendingSourceRef.current = 'paste';
           queueMicrotask(() => {
             if (pendingSourceRef.current === 'paste')
@@ -326,9 +451,7 @@ export const DocumentEditor: React.FC<DocumentEditorProps> = ({
           return false;
         },
         handleDrop: (view, event) => {
-          const file = [...(event.dataTransfer?.files ?? [])].find((item) =>
-            item.type.startsWith('image/'),
-          );
+          const file = event.dataTransfer?.files[0];
           if (!file) {
             pendingSourceRef.current = 'drop';
             queueMicrotask(() => {
@@ -380,6 +503,17 @@ export const DocumentEditor: React.FC<DocumentEditorProps> = ({
       typeof editor.commands.redo === 'function';
     baselineEditorDocument.current = editor.state.doc;
     const controller = createDocumentController(editor, {
+      onMathInsert: (block) => {
+        const { from, to } = editor.state.selection;
+        setMathEdit({
+          latex: editor.state.doc.textBetween(from, to),
+          pos: from,
+          block,
+          original: '',
+          documentId: originalElementRef.current.id,
+          insertion: { to, revision: editor.state.doc },
+        });
+      },
       withSource,
       getBaseDocument: () => originalElementRef.current,
       flushEditing: async () => {
@@ -471,16 +605,381 @@ export const DocumentEditor: React.FC<DocumentEditorProps> = ({
 
   return (
     <ActionScope registry={actionSource ?? emptyActions}>
-      <div
-        ref={containerRef}
-        className={`board-document-editor${readonly ? ' readonly' : ''}${
-          className ? ` ${className}` : ''
-        }`}
-      >
-        <DocumentFrameReferenceContext.Provider value={renderFrameReference}>
-          <EditorContent editor={editor} />
-        </DocumentFrameReferenceContext.Provider>
-      </div>
+      <DocumentResourcesContext.Provider value={resources}>
+        <div
+          ref={containerRef}
+          className={`board-document-editor${readonly ? ' readonly' : ''}${
+            className ? ` ${className}` : ''
+          }`}
+        >
+          <DocumentFrameReferenceContext.Provider value={renderFrameReference}>
+            {!readonly && (
+              <div className="document-resource-tools">
+                <input
+                  ref={resourceInput}
+                  type="file"
+                  hidden
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file)
+                      insertImageFile(file, editor.state.selection.from);
+                    e.target.value = '';
+                  }}
+                />
+                {resources.store && (
+                  <button
+                    type="button"
+                    onClick={() => resourceInput.current?.click()}
+                  >
+                    插入附件
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setWebEdit({
+                      url: '',
+                      title: '',
+                      caption: '',
+                      from: editor.state.selection.from,
+                      to: editor.state.selection.to,
+                      revision: editor.state.doc,
+                      documentId: originalElementRef.current.id,
+                    });
+                  }}
+                >
+                  插入网页
+                </button>
+              </div>
+            )}
+            {!readonly && (
+              <details className="document-block-menu">
+                <summary>段落操作</summary>
+                {[
+                  ['block-up', '上移'],
+                  ['block-down', '下移'],
+                  ['block-duplicate', '复制'],
+                  ['block-delete', '删除'],
+                  ['anchor-block', '复制此段链接'],
+                ].map(([id, label]) => (
+                  <button
+                    type="button"
+                    key={id}
+                    onMouseDown={(event) => event.preventDefault()}
+                    onClick={() => {
+                      void controllerRef.current?.executeAction(
+                        'document.' + id,
+                      );
+                    }}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </details>
+            )}
+            {slashOpen && !readonly && (
+              <div
+                role="menu"
+                tabIndex={-1}
+                aria-label="插入内容"
+                className="document-slash-menu"
+                onKeyDown={(event) => {
+                  if (event.nativeEvent.isComposing) return;
+                  if (
+                    ['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(event.key)
+                  ) {
+                    event.preventDefault();
+                    const buttons = [
+                      ...event.currentTarget.querySelectorAll<HTMLButtonElement>(
+                        'button',
+                      ),
+                    ];
+                    const current = buttons.indexOf(
+                      document.activeElement as HTMLButtonElement,
+                    );
+                    const index =
+                      event.key === 'Home'
+                        ? 0
+                        : event.key === 'End'
+                          ? buttons.length - 1
+                          : event.key === 'ArrowDown'
+                            ? (current + 1) % buttons.length
+                            : (current - 1 + buttons.length) % buttons.length;
+                    buttons[index]?.focus();
+                    return;
+                  }
+                  if (event.key === 'Escape') {
+                    event.preventDefault();
+                    setSlashOpen(false);
+                    editor?.commands.focus();
+                  }
+                }}
+              >
+                <input
+                  ref={(node) => {
+                    if (
+                      node &&
+                      document.activeElement?.closest(
+                        '.document-slash-menu',
+                      ) !== node.parentElement
+                    )
+                      node.focus();
+                  }}
+                  aria-label="搜索内容块"
+                  value={slashQuery}
+                  onChange={(event) => setSlashQuery(event.target.value)}
+                />
+                {(
+                  [
+                    ['set-paragraph', '正文', undefined],
+                    ['set-heading', '一级标题', 1],
+                    ['set-heading', '二级标题', 2],
+                    ['toggle-bullet-list', '无序列表', undefined],
+                    ['toggle-ordered-list', '有序列表', undefined],
+                    ['toggle-blockquote', '引用', undefined],
+                    ['toggle-code-block', '代码块', undefined],
+                    ['wrap-details', '折叠块', undefined],
+                    ['unwrap-details', '取消折叠块', undefined],
+                    ['insert-inline-math', '行内公式', undefined],
+                    ['insert-block-math', '公式块', undefined],
+                    ['insert-table', '表格', undefined],
+                    ['insert-horizontal-rule', '分隔线', undefined],
+                  ] as const
+                )
+                  .filter(([, label]) => label.includes(slashQuery))
+                  .map(([id, label, args]) => (
+                    <button
+                      key={label}
+                      type="button"
+                      onMouseDown={(event) => event.preventDefault()}
+                      onClick={() => {
+                        void slashBindings.current
+                          .get('document.' + id)
+                          ?.execute(args)
+                          .then((result) => {
+                            if (
+                              result.status === 'completed' ||
+                              result.status === 'noop'
+                            ) {
+                              setSlashOpen(false);
+                              editor?.commands.focus();
+                            } else
+                              setBlockNotice(
+                                'code' in result ? result.code : '执行失败',
+                              );
+                          });
+                      }}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSlashOpen(false);
+                    editor?.commands.focus();
+                  }}
+                >
+                  取消
+                </button>
+              </div>
+            )}
+            {blockNotice && <p role="status">{blockNotice}</p>}
+            {webEdit &&
+              createPortal(
+                <div
+                  role="dialog"
+                  aria-label="插入网页"
+                  className="document-math-dialog"
+                >
+                  <label>
+                    HTTPS 地址
+                    <input
+                      value={webEdit.url}
+                      onChange={(e) =>
+                        setWebEdit({ ...webEdit, url: e.target.value })
+                      }
+                    />
+                  </label>
+                  <label>
+                    标题
+                    <input
+                      value={webEdit.title}
+                      onChange={(e) =>
+                        setWebEdit({ ...webEdit, title: e.target.value })
+                      }
+                    />
+                  </label>
+                  <label>
+                    说明
+                    <textarea
+                      value={webEdit.caption}
+                      onChange={(e) =>
+                        setWebEdit({ ...webEdit, caption: e.target.value })
+                      }
+                    />
+                  </label>
+                  {['普通链接', '书签卡片', '嵌入'].map((label, index) => (
+                    <button
+                      type="button"
+                      key={label}
+                      onClick={() => {
+                        try {
+                          const url = new URL(webEdit.url);
+                          if (
+                            url.protocol !== 'https:' ||
+                            url.username ||
+                            url.password ||
+                            url.origin === location.origin
+                          )
+                            throw new Error('请输入外部 HTTPS 地址');
+                          if (
+                            webEdit.documentId !==
+                              originalElementRef.current.id ||
+                            webEdit.revision !== editor.state.doc ||
+                            !editor.isEditable
+                          )
+                            throw new Error('编辑位置已变化，请重新插入');
+                          const title = webEdit.title || url.hostname;
+                          withSource('insert', () =>
+                            editor
+                              .chain()
+                              .focus()
+                              .insertContentAt(
+                                { from: webEdit.from, to: webEdit.to },
+                                index === 0
+                                  ? {
+                                      type: 'text',
+                                      text: title,
+                                      marks: [
+                                        {
+                                          type: 'link',
+                                          attrs: { href: url.href },
+                                        },
+                                      ],
+                                    }
+                                  : {
+                                      type: 'webEmbed',
+                                      attrs: {
+                                        url: url.href,
+                                        title,
+                                        caption: webEdit.caption,
+                                        display: index === 1 ? 'card' : 'embed',
+                                      },
+                                    },
+                              )
+                              .run(),
+                          );
+                          setWebEdit(null);
+                        } catch (error) {
+                          setBlockNotice(String(error));
+                        }
+                      }}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                  <button type="button" onClick={() => setWebEdit(null)}>
+                    取消
+                  </button>
+                </div>,
+                document.body,
+              )}
+            {mathEdit &&
+              createPortal(
+                <div
+                  role="dialog"
+                  aria-label="编辑公式"
+                  className="document-math-dialog"
+                >
+                  <label>
+                    LaTeX
+                    <textarea
+                      value={mathEdit.latex}
+                      onChange={(e) =>
+                        setMathEdit({ ...mathEdit, latex: e.target.value })
+                      }
+                    />
+                  </label>
+                  <div
+                    dangerouslySetInnerHTML={{
+                      __html: katex.renderToString(mathEdit.latex, {
+                        displayMode: mathEdit.block,
+                        throwOnError: false,
+                        trust: false,
+                      }),
+                    }}
+                  />
+                  <button type="button" onClick={() => setMathEdit(null)}>
+                    取消
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (
+                        mathEdit.documentId !== originalElementRef.current.id ||
+                        !editor.isEditable
+                      ) {
+                        setMathEdit(null);
+                        return;
+                      }
+                      if (mathEdit.insertion) {
+                        if (mathEdit.insertion.revision !== editor.state.doc) {
+                          setBlockNotice('正文已变化，请重新插入公式');
+                          return;
+                        }
+                        if (!mathEdit.latex.trim()) return;
+                        withSource('insert', () =>
+                          editor
+                            .chain()
+                            .focus()
+                            .insertContentAt(
+                              {
+                                from: mathEdit.pos,
+                                to: mathEdit.insertion!.to,
+                              },
+                              {
+                                type: mathEdit.block
+                                  ? 'blockMath'
+                                  : 'inlineMath',
+                                attrs: { latex: mathEdit.latex },
+                              },
+                            )
+                            .run(),
+                        );
+                        setMathEdit(null);
+                        return;
+                      }
+                      const node = editor.state.doc.nodeAt(mathEdit.pos);
+                      if (
+                        node?.type.name ===
+                          (mathEdit.block ? 'blockMath' : 'inlineMath') &&
+                        node.attrs['latex'] === mathEdit.original &&
+                        editor.isEditable
+                      ) {
+                        editor.view.dispatch(
+                          editor.state.tr.setNodeMarkup(
+                            mathEdit.pos,
+                            undefined,
+                            {
+                              ...node.attrs,
+                              latex: mathEdit.latex,
+                            },
+                          ),
+                        );
+                        setMathEdit(null);
+                      } else setBlockNotice('公式已变化，请重新打开编辑');
+                    }}
+                  >
+                    确认
+                  </button>
+                </div>,
+                document.body,
+              )}
+            <EditorContent editor={editor} />
+          </DocumentFrameReferenceContext.Provider>
+        </div>
+      </DocumentResourcesContext.Provider>
     </ActionScope>
   );
 };

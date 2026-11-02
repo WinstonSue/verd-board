@@ -8,8 +8,8 @@ import {
 import { mkdtemp, mkdir, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { committedCells } from './workspace-disk';
-import { setAppLanguage } from '../../web-e2e/src/app-actions';
+import { committedCells, seedEmptyCanvas } from './workspace-disk';
+import { openActiveFile, setAppLanguage } from '../../web-e2e/src/app-actions';
 
 test.use({ actionTimeout: 6000 });
 
@@ -19,6 +19,8 @@ const canvas = (page: Page) =>
 const panel = (page: Page) => pane(page).locator('.frame-inspector');
 const x = (page: Page) => panel(page).getByLabel('x', { exact: true });
 async function ready(page: Page) {
+  await expect(page.locator('.workspace-shell')).toBeVisible();
+  await openActiveFile(page);
   await expect(canvas(page)).toBeVisible();
   await setAppLanguage(page, 'zh');
   const skip = page.getByRole('button', { name: '跳过', exact: true });
@@ -42,6 +44,7 @@ test('Desktop numeric inspector commits one history step, cancels locked drafts 
   const env = { ...process.env };
 
   env.VERDBOARD_WORKSPACE_PATH = path.join(userData, 'workspaces', 'default');
+  await seedEmptyCanvas(env.VERDBOARD_WORKSPACE_PATH);
   let desktop = await electron.launch({ args: [launcher], env });
   try {
     let page = await desktop.firstWindow();

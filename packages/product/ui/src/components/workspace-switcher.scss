@@ -20,7 +20,7 @@
 
 .exclusive-editor-bar__back,
 .exclusive-editor-bar__title {
-  font-size: 13px;
+  font-size: var(--vm-text-sm);
 }
 
 .exclusive-editor-bar__back {
@@ -51,7 +51,7 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  font-size: 12px;
+  font-size: var(--vm-text-xs);
 }
 
 .workflow-graph-mode select {

@@ -72,7 +72,7 @@ test('first complete body session supplies a plain name, then body and explicit 
   await editor.press('ControlOrMeta+a');
   await page
     .getByRole('toolbar', { name: 'Text formatting' })
-    .getByRole('button', { name: 'Bold', exact: true })
+    .getByRole('button', { name: /^(Bold|加粗)$/, exact: true })
     .click();
   await editor.press('Escape');
   const name = page.getByTestId('inspector-name');

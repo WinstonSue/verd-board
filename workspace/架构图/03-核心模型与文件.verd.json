@@ -573,16 +573,15 @@
     "project:topic/03/document": {
       "id": "project:topic/03/document",
       "cellType": "node",
-      "kind": "document-reference",
+      "kind": "geometry",
       "geometry": {
         "x": 0,
-        "y": 980,
+        "y": 840,
         "width": 1000,
-        "height": 600
+        "height": 118,
+        "outline": "text"
       },
-      "data": {
-        "targetDocumentId": "project-doc:packages/board/canvas-modes"
-      },
+      "data": {},
       "content": {
         "text": {
           "schemaVersion": 1,
@@ -592,6 +591,23 @@
           "content": {
             "type": "doc",
             "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "相关文档：画布模式",
+                    "marks": [
+                      {
+                        "type": "link",
+                        "attrs": {
+                          "href": "verd://file/project-doc%3Apackages%2Fboard%2Fcanvas-modes"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
               {
                 "type": "paragraph",
                 "content": [
@@ -628,8 +644,12 @@
               }
             ]
           },
-          "plainText": "AI画布数据规范 · 2. 数据模型速览\nAI画布数据规范 · 4. 通用字段表"
+          "plainText": "相关文档：画布模式\nAI画布数据规范 · 2. 数据模型速览\nAI画布数据规范 · 4. 通用字段表"
         }
+      },
+      "appearance": {
+        "fill": "none",
+        "strokeColor": "none"
       }
     },
     "project:overview/03/relation/0": {

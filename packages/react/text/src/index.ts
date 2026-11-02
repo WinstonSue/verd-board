@@ -1,4 +1,5 @@
 import './style.scss';
+export * from './rich-text-links';
 
 export { Text } from './text';
 export { TextPreview } from './text-preview';
@@ -51,3 +52,22 @@ export {
 } from './constants/editor-config';
 
 export { measureBoardText, type TextMeasurement } from './measure-text';
+
+export {
+  DocumentAssetContext,
+  type DocumentAssetResolver,
+} from './components/document/asset-resolver';
+
+export {
+  DocumentResourcesContext,
+  ResourceContent,
+  type DocumentAttachment,
+  type DocumentResourceHost,
+  type DocumentResourceHandle,
+} from './components/document/document-resources';
+
+export {
+  createDocumentFoldingStore,
+  createDocumentFoldingRegistry,
+  type DocumentFoldingAdapter,
+} from './components/document/folding-store';

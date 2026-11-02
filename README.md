@@ -6,17 +6,17 @@
 
 ## 📖 文档
 
-项目文档和架构图直接保存在仓库根 [`workspace/`](workspace/)；桌面端开发默认使用该目录的独立副本，维护文档需主动打开原目录。文档正文使用 `.verd-doc.json`，画布使用 `.verd.json`，两者均可在产品中直接编辑。
+内置项目工作区以“文档导航”为主入口，首次打开或手动全量更新后从文档开始阅读，已有会话继续恢复。项目文档和架构图直接保存在仓库根 [`workspace/`](workspace/)；桌面端开发默认使用该目录的独立副本，维护文档需主动打开原目录。文档正文使用 `.verd-doc.json`，画布使用 `.verd.json`，两者均可在产品中直接编辑。
 
-- **[文档导航](workspace/文档/文档导航.verd-doc.json)** / **[English](workspace/文档/Documentation.verd-doc.json)**
+- **[文档导航](workspace/文档导航.verd-doc.json)** / **[English](workspace/Documentation.verd-doc.json)**
 - **[产品概览](workspace/文档/产品/产品概览.verd-doc.json)** / **[系统架构](workspace/文档/架构/系统架构.verd-doc.json)**
 - **[开发指南](workspace/文档/开发/开发指南.verd-doc.json)** / **[桌面安装与使用](workspace/文档/指南/桌面安装与使用.verd-doc.json)**
 - **[包索引](workspace/文档/包/包索引.verd-doc.json)** / **[React 接入](workspace/文档/包/React接入.verd-doc.json)**
 - **[AI 画布数据规范](workspace/文档/指南/AI画布数据规范.verd-doc.json)** / 配套输入 [`tests/fixtures/ai-canvas/`](tests/fixtures/ai-canvas/)
-- **Agent 工具与范式库**：`@sue/verd-board-agent` 提供 `verd` CLI 与 Skill（本仓可用 `pnpm agent describe --json`）；独立内容包 `@sue/verd-board-agent-patterns` 维护原生模板与规则。Desktop 工作区菜单可打开安装后的可编辑副本，首次复制、后续保留修改。
+- **Agent 工具与范式库**：`@sue/verd-board-agent` 提供 `verd` CLI 与 Skill（本仓可用 `pnpm agent describe --json`）；独立内容包 `@sue/verd-board-agent-patterns` 维护原生模板与规则。Desktop 工作区菜单可打开安装后的可编辑副本，首次复制、后续保留修改。新建或打开工作区会初始化 `.verdscrolls`、项目根 `AGENTS.md` 和共享工具链接；AI 通过项目内 `.verdscrolls/shared/bin/verd context --json` 获取项目身份、简介和入口。Desktop 内置独立 Node 与完整 CLI，无需全局安装。
 - **[文档维护指南](workspace/文档/开发/文档维护指南.verd-doc.json)**
 
-Open the root `workspace/` folder in Desktop to read and edit native documentation and architecture diagrams. Native files are the maintained source; Markdown remains an optional import/export format.
+The built-in project workspace starts with document navigation. Open the root `workspace/` folder in Desktop to read and edit native documentation, then follow links to architecture diagrams. Native files are the maintained source; Markdown remains an optional import/export format.
 
 <a id="npm-2"></a>
 
@@ -155,9 +155,9 @@ Mind 节点按内容自适应，默认最大外框宽度为 240，长内容换�
 
 Mind topics fit their content with a default maximum outer width of 240 and unlimited height. Application settings define the default, and each map can override it. Other supported nodes offer “Fit size to content” for the selection.
 
-工作区文件夹可整体移入回收站并还原；回收站支持确认后永久删除单项或清空。侧栏底部和画布「更多」菜单打开「我的」管理个人偏好；顶部工作区名称菜单打开工作区设置，分为基本设置和当前工作区回收站，Desktop 目录切换也位于此菜单。文件树完整显示真实目录，所属画布下另列图表快捷入口，两处共用源文件。
+工作区文件夹可整体移入回收站并还原；回收站支持确认后永久删除单项或清空。侧栏底部和画布「更多」菜单统一打开「设置」，管理个人外观、编辑及当前工作区的常规、数据维护和回收站；顶部名称打开工作区切换器。所有内容页统一浏览文件和图表，Cmd/Ctrl+P 快速打开文件。文件树完整显示真实目录，所属画布下另列图表快捷入口，两处共用源文件。
 
-应用支持浅色、深色和跟随系统，默认跟随系统；在「我的 → 设置 → 通用」即时切换并记住本机选择。经典、缤纷、柔和、复古、清新、海洋六个画布主题均提供深浅变体，画布、独立和嵌入文档的未标记富文本颜色同步适配；仅明确标为 custom 的文字色保留，支持逐项恢复主题。图像导出可选择当前外观、浅色或深色。
+应用支持浅色、深色和跟随系统，默认跟随系统；在「设置 → 外观」即时切换并记住本机选择。经典、缤纷、柔和、复古、清新、海洋六个画布主题均提供深浅变体，画布、独立和嵌入文档的未标记富文本颜色同步适配；仅明确标为 custom 的文字色保留，支持逐项恢复主题。图像导出可选择当前外观、浅色或深色。 主题通过五种颜色角色、三级强调和六组协调色为流程、架构、UML、形状、表格及泳道提供领域配色；完整映射与色板维护在原生系统架构文档。
 
 Workspace folders move to trash and restore as complete subtrees. Confirm before permanently deleting an item or emptying trash. My opens from the sidebar or canvas More menu for device preferences. Workspace settings have separate General and Trash sections. Workspace settings and Desktop folder actions are grouped under the workspace name at the top of the sidebar. The file tree shows actual paths and marked owner-canvas shortcuts, both opening the same source.
 
@@ -207,6 +207,36 @@ export function Editor() {
 
 The next-major source shares Actions across editor controls, keyboard shortcuts, palettes and help, with a renderer-independent React actions package. Stable Cell links follow moves, navigation awaits host commit receipts, and temporary Mind reveals stay out of files, history and exports. Controllers and plugins migrate to Actions and typed reveal/link contracts; no version bump or publication is performed here.
 
+### 知识关联与链接预览
+
+文档链接栏可搜索工作区文档、章节和图元；文档与画布的「关联内容」面板分别展示文字链接、图元链接和嵌入来源，支持只读预览、复制链接和定位来源。Alt + 单击正文内部链接可直接预览，关闭后保留编辑与阅读位置。关联索引仅在运行时派生，保持原生格式和导出依赖范围。独立 `DocumentPage` 可通过可选 `linkChoices` 与 `onPreviewLink` 接入宿主提供的目标和预览。
+
+Documents offer searchable internal link targets. Related content shows text links, Cell links and embeds with read-only previews and source navigation. Alt-click an internal link to preview without leaving the current editor. Knowledge relationships remain separate from export dependencies.
+
+### 写作、版本与资料管理
+
+空段输入 `/` 插入内容，段落操作支持移动、复制、删除和稳定链接；链接选择器中的「引用此段」插入随源内容更新的只读摘录。首页「从模板创建」提供原生技术方案、ADR、系统设计、需求梳理及图表范式，支持搜索、预览和目标目录。
+
+「内容管理」提供标签、状态、来源、命名版本、版本预览与恢复、图片尺寸／说明和引用管理。所有内容与全文搜索可组合属性筛选并保存视图；冲突横幅支持比较两版和保留两份。资源和历史位于工作区 `.verd-resources/`，由 `WorkspaceSession` 条件提交；编辑空闲两分钟或十分钟周期生成检查点，恢复前保存当前版本，永久删除同步清除相关版本。
+
+首页支持 Markdown 文件夹和 ZIP 迁入；便携 ZIP 包含原生源、Markdown、图片和转换报告。图片按内容哈希管理，原生文件导出仍自包含；重新导入便携包优先使用原生源保留属性与稳定身份。Notion CSV 数据库不在本轮适配范围。
+
+Slash insertion, paragraph actions and live read-only excerpts support reusable writing. Native templates cover proposals, ADRs, system design and requirements. Content management adds portable properties, saved filters, durable checkpoints, conflict comparison and managed images. Folder/ZIP migration preserves note links and assets; portable archives retain native source alongside Markdown and conversion reports.
+
 ### 两层系统介绍
 
-使用桌面端打开仓库的 `workspace/`，从项目导览进入九张专题总览，再打开二十一张机制细节图，查看主要流程、失败分支、保存边界和源码入口。细节按专题收在 `workspace/架构图/细节/`，复用现有原生文档；逐层返回恢复阅读位置。完整包依赖图位于“01.1 完整包分层与依赖”，继续通过 `pnpm workspace:refresh` 更新。
+使用桌面端打开仓库的 `workspace/`，从文档导航阅读产品与架构说明，再按需打开项目导览画布，进入九张专题总览，再打开二十一张机制细节图，查看主要流程、失败分支、保存边界和源码入口。细节按专题收在 `workspace/架构图/细节/`，复用现有原生文档；逐层返回恢复阅读位置。完整包依赖图位于“01.1 完整包分层与依赖”，继续通过 `pnpm workspace:refresh` 更新。
+
+内置项目工作区与 Agent 范式库遵循统一项目规范。已有副本不自动更新；在工作区设置中可手动备份并完整替换为当前应用附带的最新内容，保留项目身份与历史事务回执。
+
+Built-in project and Agent pattern workspaces use portable project context. Existing copies update only on request: Workspace settings can back up and fully replace a copy with the bundled version while retaining project identity and transaction receipts.
+
+内置项目图文与 Agent 范式库支持独立 npm 版本及确认后的备份更新，无需随 Desktop 重装。资源构建与检查：`pnpm build:content`、`node --test scripts/builtin-package.test.mjs`。完整说明见原生桌面安装与开发指南。
+
+### 文档折叠、公式与资料阅读（源码）
+
+独立文档和文档 Frame 新增列表子项折叠、通用折叠块及行内／块级 LaTeX。新增通用附件卡片、本地音视频、PDF 阅读与页码引用、HTTPS 网页卡片和按需嵌入。待办与数据库不在本轮范围。附件原件保存在工作区资源目录，便携 ZIP v2 携带二进制资源；旧包仍可导入。PDF、音视频和网页在静态预览中显示资料卡片，网页需联网且遵守站点嵌入限制。
+
+Standalone documents add folding, LaTeX and attachment cards, local media/PDF reading and HTTPS embeds. Portable v2 archives preserve original binary resources. Task lists and databases remain deferred.
+
+当前源码接口清理与迁移说明见内置《2.0 接入与迁移》的下一主版本章节：归属索引使用 `groupOf` / `domainOwnerOf`，编辑器类型统一为 `EditorKind`，主题颜色解析使用四参数 `resolveThemeColor`。

@@ -71,3 +71,14 @@ Thumbs.db
 # Installed pattern library copies keep device state out of source assets.
 /packages/product/agent-patterns/workspace/.verdboard/
 /packages/product/agent-patterns/workspace/**/*.tmp
+
+# Generated, self-contained agent runtime resources (never user data).
+/apps/desktop/build/agent-resources/
+
+# Generated portable built-in workspace releases.
+/apps/desktop/build/builtin-workspaces/
+
+# Local CodeNote session state and generated plugin copies.
+/.codenote/run.json
+/.codenote/run.json.previous
+/.claude/plugins/.codenote-generated/

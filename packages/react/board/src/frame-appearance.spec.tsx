@@ -19,6 +19,8 @@ import {
 } from '../../../engine/uml/src/public-api';
 import { createTestFramePluginSet } from '../../../../tests/fixtures/plugins/ui';
 import { FrameCanvas, type FrameCanvasController } from './frame-canvas';
+import { resolveTableEntryAppearance } from '../../draw/src/frame-draw-theme';
+import { resolveThemeRole } from '@sue/board-core';
 import type { TableCellData } from '../../../engine/draw/src/cell-commands';
 
 (
@@ -162,12 +164,10 @@ it.each([
                 `[data-table-entry="${entry.id}"] > rect`,
               );
               if (!rect) continue; // Swimlane body cells intentionally have no individual paint.
-              const expected =
-                entry.fillSource === 'custom' || entry.fill === 'transparent'
-                  ? entry.fill
-                  : entry.role && entry.role !== 'body'
-                    ? theme.header
-                    : theme.surface;
+              const expected = resolveTableEntryAppearance(
+                { cell: table, store: value.store, frameId: frame.id, theme },
+                entry,
+              ).fill;
               expect(rect.getAttribute('fill')).toBe(expected);
             }
           }
@@ -201,7 +201,10 @@ it.each([
             expect(
               colorContrast(visual.strokeColor!, background),
             ).toBeGreaterThanOrEqual(3);
-            if (cell.kind === 'uml-note') expect(visual.fill).toBe(theme.note);
+            if (cell.kind === 'uml-note')
+              expect(visual.fill).toBe(
+                resolveThemeRole(theme, 'annotation').fill,
+              );
             for (const text of element.querySelectorAll('text[fill]')) {
               const color = text.getAttribute('fill');
               if (color && color !== 'none')

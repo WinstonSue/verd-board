@@ -1,3 +1,6 @@
+import { readFileSync } from 'node:fs';
+import { createBuiltinPackageService } from './builtin-package-service';
+import { createBuiltinWorkspaceUpdater } from './builtin-workspace-update';
 import { app, BrowserWindow, dialog, ipcMain, session, shell } from 'electron';
 import * as path from 'path';
 import { configureApplicationIdentity } from './application-identity';
@@ -20,6 +23,7 @@ import {
 import {
   createFsWorkspaceHost,
   initializePatternWorkspace,
+  deployAgentResources,
 } from './workspace-host-fs';
 import { createDesktopWorkspaceManager } from './workspace-startup';
 
@@ -54,11 +58,28 @@ const pickWorkspaceDirectory = async () => {
     : await dialog.showOpenDialog(options);
   return result.canceled || !result.filePaths[0] ? null : result.filePaths[0];
 };
+let agentResources: Promise<string> | undefined;
 const workspaceHost = createFsWorkspaceHost({
   defaultRoot: defaultWorkspaceRoot,
   globalConfigPath: () =>
     path.join(app.getPath('userData'), 'verdboard-global-config.json'),
   pickDirectory: pickWorkspaceDirectory,
+  sharedResources: () => {
+    agentResources ??= deployAgentResources(
+      app.isPackaged
+        ? path.join(process.resourcesPath, 'agent-tools')
+        : (process.env['VERD_AGENT_RESOURCES'] ??
+            path.resolve(
+              __dirname,
+              `../build/agent-resources/${process.platform === 'darwin' ? 'mac' : process.platform === 'win32' ? 'win' : 'linux'}-${process.arch}`,
+            )),
+      path.join(app.getPath('userData'), 'agent-resources'),
+    ).catch((error) => {
+      agentResources = undefined;
+      throw error;
+    });
+    return agentResources;
+  },
 });
 const workspaceManager = createDesktopWorkspaceManager({
   host: workspaceHost,
@@ -75,19 +96,148 @@ const workspaceManager = createDesktopWorkspaceManager({
   pickDirectory: pickWorkspaceDirectory,
 });
 
+const contentSource = (kind: 'project' | 'agent-patterns') =>
+  kind === 'project' &&
+  !app.isPackaged &&
+  process.env['VERDBOARD_BUILTIN_WORKSPACE_PATH']
+    ? path.resolve(process.env['VERDBOARD_BUILTIN_WORKSPACE_PATH'])
+    : app.isPackaged
+      ? path.join(
+          process.resourcesPath,
+          kind === 'project' ? 'workspace' : kind,
+        )
+      : path.resolve(
+          __dirname,
+          kind === 'project'
+            ? '../../../workspace'
+            : '../../../packages/product/agent-patterns/workspace',
+        );
+const packageService = createBuiltinPackageService({
+  userData: () => app.getPath('userData'),
+  appVersion: () =>
+    app.isPackaged
+      ? app.getVersion()
+      : (JSON.parse(
+          readFileSync(path.resolve(__dirname, '../package.json'), 'utf8'),
+        ).version as string),
+  source: contentSource,
+  ...(!app.isPackaged && process.env['VERDBOARD_CONTENT_REGISTRY']
+    ? { registry: process.env['VERDBOARD_CONTENT_REGISTRY'] }
+    : {}),
+});
+packageService.subscribe(() => {
+  for (const window of BrowserWindow.getAllWindows())
+    window.webContents.send('workspace-host:builtin-changed');
+});
+const builtinUpdater = createBuiltinWorkspaceUpdater({
+  resolveCandidate: (id, kind) => packageService.resolve(id, kind),
+  host: workspaceHost,
+  userData: () => app.getPath('userData'),
+  source: (kind) =>
+    kind === 'project'
+      ? !app.isPackaged && process.env['VERDBOARD_BUILTIN_WORKSPACE_PATH']
+        ? path.resolve(process.env['VERDBOARD_BUILTIN_WORKSPACE_PATH'])
+        : app.isPackaged
+          ? path.join(process.resourcesPath, 'workspace')
+          : path.resolve(__dirname, '../../../workspace')
+      : app.isPackaged
+        ? path.join(process.resourcesPath, 'agent-patterns')
+        : path.resolve(
+            __dirname,
+            '../../../packages/product/agent-patterns/workspace',
+          ),
+});
+
+function trustedSender(
+  event: Electron.IpcMainInvokeEvent | Electron.IpcMainEvent,
+) {
+  return (
+    !!mainWindow &&
+    event.sender === mainWindow.webContents &&
+    event.senderFrame === mainWindow.webContents.mainFrame
+  );
+}
+const handleTrusted: typeof ipcMain.handle = (channel, listener) =>
+  ipcMain.handle(channel, async (event, ...args) => {
+    if (!trustedSender(event)) throw new Error('Untrusted IPC frame');
+    return listener(event, ...args);
+  });
+
 const workspaceSubscriptions = new Map<number, Map<string, () => void>>();
 
 function registerWorkspaceHostIpc() {
-  ipcMain.handle('workspace-host:read-global-config', () =>
+  handleTrusted('link:external', async (_event, href: string) => {
+    const url = new URL(href);
+    if (
+      !['http:', 'https:'].includes(url.protocol) ||
+      url.username ||
+      url.password
+    )
+      throw new Error('Invalid external URL');
+    await shell.openExternal(url.href);
+  });
+  handleTrusted('pdf:asset', async (_event, kind: string, filename: string) => {
+    const folders: Record<string, string> = {
+      worker: '',
+      cMapUrl: 'cmaps',
+      standardFontDataUrl: 'standard_fonts',
+      wasmUrl: 'wasm',
+    };
+    if (
+      !(kind in folders) ||
+      !/^[a-zA-Z0-9_.-]+$/.test(filename) ||
+      filename.includes('..') ||
+      (kind === 'worker' && filename !== 'pdf.worker.min.mjs')
+    )
+      throw new Error('Invalid PDF asset');
+    const root = !process.env['VITE_DEV_SERVER_URL']
+      ? path.join(__dirname, '../dist/pdf-assets')
+      : path.dirname(
+          require.resolve('pdfjs-dist/package.json', {
+            paths: [path.resolve(__dirname, '../../../packages/product/app')],
+          }),
+        );
+    const folder =
+      !!process.env['VITE_DEV_SERVER_URL'] && kind === 'worker'
+        ? 'legacy/build'
+        : folders[kind];
+    return new Uint8Array(readFileSync(path.join(root, folder, filename)));
+  });
+  handleTrusted('workspace-host:builtin-check', (_, force) =>
+    packageService.check(force === true),
+  );
+  handleTrusted('workspace-host:builtin-prepare', (_, id) =>
+    packageService.prepare(id),
+  );
+  handleTrusted('workspace-host:builtin-snooze', (_, id) =>
+    packageService.snooze(id),
+  );
+  handleTrusted('workspace-host:builtin-info', async (_, h) => {
+    const info = await builtinUpdater.info(h);
+    return info ? { ...info, update: packageService.status(info.kind) } : null;
+  });
+  handleTrusted('workspace-host:builtin-update', async (_, h, id) => {
+    const next = await builtinUpdater.update(h, id);
+    void packageService.check(true).catch(() => {});
+    return workspaceManager.open({
+      path: workspaceHost.workspaces.get(next.key)!.root,
+    });
+  });
+  handleTrusted('workspace-host:builtin-backups', async (_, h) => {
+    const error = await shell.openPath(await builtinUpdater.backups(h));
+    if (error) throw new Error(error);
+  });
+  handleTrusted('workspace-host:read-global-config', () =>
     workspaceHost.readGlobalConfig(),
   );
-  ipcMain.handle(
+  handleTrusted(
     'workspace-host:write-global-config',
     (_, value: Record<string, unknown>, expectedVersion: number) =>
       workspaceHost.writeGlobalConfig(value, expectedVersion),
   );
-  ipcMain.handle('workspace-host:open', (_, request) =>
-    request?.patterns
+  handleTrusted('workspace-host:open', async (_, request) => {
+    await builtinUpdater.recover();
+    return request?.patterns
       ? initializePatternWorkspace(
           path.join(app.getPath('userData'), 'workspaces', 'agent-patterns'),
           {
@@ -102,33 +252,38 @@ function registerWorkspaceHostIpc() {
         ).then((result) =>
           workspaceManager.open({ path: result.path, name: 'Agent 范式库' }),
         )
-      : workspaceManager.open(request),
-  );
-  ipcMain.handle('workspace-host:activate', (_, handle) =>
+      : workspaceManager.open(request);
+  });
+  handleTrusted('workspace-host:activate', (_, handle) =>
     workspaceManager.activate(handle),
   );
-  ipcMain.handle('workspace-host:history', () =>
-    workspaceManager.listHistory(),
+  handleTrusted('workspace-host:create', (_, request) =>
+    workspaceManager.create(request),
   );
-  ipcMain.handle('workspace-host:snapshot', (_, handle) =>
+  handleTrusted('workspace-host:update-history', (_, request) =>
+    workspaceManager.updateHistory(request),
+  );
+  handleTrusted('workspace-host:history', () => workspaceManager.listHistory());
+  handleTrusted('workspace-host:snapshot', (_, handle) =>
     workspaceHost.readSnapshot(handle),
   );
-  ipcMain.handle('workspace-host:read-file', (_, handle, path: string) =>
+  handleTrusted('workspace-host:read-file', (_, handle, path: string) =>
     workspaceHost.readFile(handle, path),
   );
-  ipcMain.handle('workspace-host:commit', (_, handle, request) =>
+  handleTrusted('workspace-host:commit', (_, handle, request) =>
     workspaceHost.commit(handle, request),
   );
-  ipcMain.handle('workspace-host:resolve-conflict', (_, handle, request) =>
+  handleTrusted('workspace-host:resolve-conflict', (_, handle, request) =>
     workspaceHost.resolveConflict(handle, request),
   );
-  ipcMain.handle('workspace-host:close', (_, handle) =>
+  handleTrusted('workspace-host:close', (_, handle) =>
     workspaceHost.closeWorkspace(handle),
   );
   ipcMain.on(
     'workspace-host:subscribe',
     (event, handle: { key: string }, subId: string) => {
       if (typeof subId !== 'string' || !handle?.key) return;
+      if (!trustedSender(event)) return;
       const sender = event.sender;
       const unsub = workspaceHost.subscribe(handle as never, (hint) => {
         if (!sender.isDestroyed())
@@ -149,6 +304,7 @@ function registerWorkspaceHostIpc() {
   ipcMain.on(
     'workspace-host:unsubscribe',
     (event, _handle: { key: string }, subId: string) => {
+      if (!trustedSender(event)) return;
       const subs = workspaceSubscriptions.get(event.sender.id);
       subs?.get(subId)?.();
       subs?.delete(subId);
@@ -192,6 +348,7 @@ function createWindow() {
       contextIsolation: true,
       nodeIntegration: false,
       sandbox: true,
+      nodeIntegrationInSubFrames: false,
       // Keep HTML fullscreen independent of the macOS Spaces animation. Electron
       // 28 can leave the renderer stuck while that native transition is pending.
       disableHtmlFullscreenWindowResize: process.platform === 'darwin',
@@ -249,8 +406,7 @@ function createWindow() {
     mainWindow.loadFile(path.join(__dirname, '../dist/index.html'));
   }
 
-  mainWindow.webContents.setWindowOpenHandler(({ url }) => {
-    if (/^https?:\/\//i.test(url)) void shell.openExternal(url);
+  mainWindow.webContents.setWindowOpenHandler(() => {
     return { action: 'deny' };
   });
   mainWindow.webContents.on('will-navigate', (event, url) => {
@@ -258,6 +414,52 @@ function createWindow() {
     event.preventDefault();
     if (/^https?:\/\//i.test(url)) void shell.openExternal(url);
   });
+  mainWindow.webContents.on('will-frame-navigate', (event) => {
+    if (event.isMainFrame) return;
+    try {
+      const url = new URL(event.url);
+      if (
+        url.protocol !== 'https:' ||
+        url.username ||
+        url.password ||
+        (process.env['VITE_DEV_SERVER_URL'] &&
+          url.origin === new URL(process.env['VITE_DEV_SERVER_URL']).origin)
+      )
+        event.preventDefault();
+    } catch {
+      event.preventDefault();
+    }
+  });
+  mainWindow.webContents.on(
+    'will-redirect',
+    (event, url, _inPlace, isMainFrame) => {
+      if (isMainFrame) {
+        event.preventDefault();
+        return;
+      }
+      try {
+        const target = new URL(url);
+        if (
+          target.protocol !== 'https:' ||
+          target.username ||
+          target.password ||
+          (process.env['VITE_DEV_SERVER_URL'] &&
+            target.origin ===
+              new URL(process.env['VITE_DEV_SERVER_URL']).origin)
+        )
+          event.preventDefault();
+      } catch {
+        event.preventDefault();
+      }
+    },
+  );
+  session.defaultSession.setPermissionCheckHandler(
+    (_contents, _permission, _origin, details) => details.isMainFrame === true,
+  );
+  session.defaultSession.setPermissionRequestHandler(
+    (_contents, _permission, callback, details) =>
+      callback(details.isMainFrame === true),
+  );
   const window = mainWindow;
   const shutdown = createShutdownCoordinator(
     (requestId) =>
@@ -341,28 +543,28 @@ app.on('window-all-closed', () => {
   }
 });
 
-ipcMain.handle('storage:get', async (_, key: string) => {
+handleTrusted('storage:get', async (_, key: string) => {
   return getStorageValue(storagePath, key);
 });
 
-ipcMain.handle('storage:set', async (_, key: string, value: unknown) => {
+handleTrusted('storage:set', async (_, key: string, value: unknown) => {
   await enqueueStorageWrite(() => setStorageValue(storagePath, key, value));
   return true;
 });
 
-ipcMain.handle('storage:remove', async (_, key: string) => {
+handleTrusted('storage:remove', async (_, key: string) => {
   await enqueueStorageWrite(() => removeStorageValue(storagePath, key));
   return true;
 });
 
-ipcMain.handle('storage:clear', async () => {
+handleTrusted('storage:clear', async () => {
   await enqueueStorageWrite(() => clearStorage(storagePath));
   return true;
 });
 
-ipcMain.handle('storage:keys', async () => listStorageKeys(storagePath));
+handleTrusted('storage:keys', async () => listStorageKeys(storagePath));
 
-ipcMain.handle('storage:reset', async (_, record: Record<string, unknown>) => {
+handleTrusted('storage:reset', async (_, record: Record<string, unknown>) => {
   if (!record || typeof record !== 'object' || Array.isArray(record))
     throw new Error('Invalid workspace reset');
   await enqueueStorageWrite(() =>
@@ -371,7 +573,7 @@ ipcMain.handle('storage:reset', async (_, record: Record<string, unknown>) => {
   return true;
 });
 
-ipcMain.handle('window:fullscreen-ready', (event) => {
+handleTrusted('window:fullscreen-ready', (event) => {
   if (
     !mainWindow ||
     mainWindow.isDestroyed() ||

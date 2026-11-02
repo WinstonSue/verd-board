@@ -87,8 +87,9 @@
       "demo:packages/module/@sue/verd-board-agent",
       "demo:packages/module/@sue/verd-board-agent-patterns",
       "demo:packages/edge/desktop>%40sue%2Fverd-board-agent",
-      "demo:packages/edge/%40sue%2Fverd-board-agent>%40sue%2Fverd-board-agent-patterns",
-      "demo:packages/edge/%40sue%2Fverd-board-agent>%40sue%2Fverd-board-app"
+      "demo:packages/edge/%40sue%2Fverd-board-agent>%40sue%2Fverd-board-app",
+      "demo:packages/edge/%40sue%2Fverd-board-app>%40sue%2Fverd-board-agent-patterns",
+      "demo:packages/module/@sue/verd-board-docs"
     ],
     "groups": [],
     "data": {},
@@ -4390,6 +4391,7 @@
           "demo:packages/module/@sue/verd-board-agent",
           "demo:packages/module/@sue/verd-board-agent-patterns",
           "demo:packages/module/@sue/verd-board-app",
+          "demo:packages/module/@sue/verd-board-docs",
           "demo:packages/module/@sue/verd-board-ui"
         ]
       },
@@ -4654,16 +4656,15 @@
     "project:detail/01/01/document": {
       "id": "project:detail/01/01/document",
       "cellType": "node",
-      "kind": "document-reference",
+      "kind": "geometry",
       "geometry": {
         "x": 0,
         "y": 1722,
         "width": 1100,
-        "height": 620
+        "height": 220,
+        "outline": "text"
       },
-      "data": {
-        "targetDocumentId": "project-doc:packages/README"
-      },
+      "data": {},
       "content": {
         "text": {
           "schemaVersion": 1,
@@ -4673,6 +4674,23 @@
           "content": {
             "type": "doc",
             "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "相关文档：包索引",
+                    "marks": [
+                      {
+                        "type": "link",
+                        "attrs": {
+                          "href": "verd://file/project-doc%3Apackages%2FREADME"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
               {
                 "type": "paragraph",
                 "content": [
@@ -4744,8 +4762,12 @@
               }
             ]
           },
-          "plainText": "读图：按六层理解实际包依赖；依赖关系由源码清单维护。\n返回专题总览\n相关细节：产品组合与按需接入\n系统架构 · 包职责与公共接入\n源码入口：package.json；pnpm-workspace.yaml；scripts/workspace.mjs。"
+          "plainText": "相关文档：包索引\n读图：按六层理解实际包依赖；依赖关系由源码清单维护。\n返回专题总览\n相关细节：产品组合与按需接入\n系统架构 · 包职责与公共接入\n源码入口：package.json；pnpm-workspace.yaml；scripts/workspace.mjs。"
         }
+      },
+      "appearance": {
+        "fill": "none",
+        "strokeColor": "none"
       }
     },
     "demo:packages/module/@sue/verd-board-agent": {
@@ -4932,24 +4954,6 @@
         "strokeWidth": 1.5
       }
     },
-    "demo:packages/edge/%40sue%2Fverd-board-agent>%40sue%2Fverd-board-agent-patterns": {
-      "id": "demo:packages/edge/%40sue%2Fverd-board-agent>%40sue%2Fverd-board-agent-patterns",
-      "kind": "architecture-edge",
-      "cellType": "edge",
-      "source": {
-        "cellId": "demo:packages/module/@sue/verd-board-agent"
-      },
-      "target": {
-        "cellId": "demo:packages/module/@sue/verd-board-agent-patterns"
-      },
-      "route": {
-        "mode": "orthogonal"
-      },
-      "appearance": {
-        "strokeColor": "#64748b",
-        "strokeWidth": 1.5
-      }
-    },
     "demo:packages/edge/%40sue%2Fverd-board-agent>%40sue%2Fverd-board-app": {
       "id": "demo:packages/edge/%40sue%2Fverd-board-agent>%40sue%2Fverd-board-app",
       "kind": "architecture-edge",
@@ -4966,6 +4970,107 @@
       "appearance": {
         "strokeColor": "#64748b",
         "strokeWidth": 1.5
+      }
+    },
+    "demo:packages/edge/%40sue%2Fverd-board-app>%40sue%2Fverd-board-agent-patterns": {
+      "id": "demo:packages/edge/%40sue%2Fverd-board-app>%40sue%2Fverd-board-agent-patterns",
+      "kind": "architecture-edge",
+      "cellType": "edge",
+      "source": {
+        "cellId": "demo:packages/module/@sue/verd-board-app"
+      },
+      "target": {
+        "cellId": "demo:packages/module/@sue/verd-board-agent-patterns"
+      },
+      "route": {
+        "mode": "orthogonal"
+      },
+      "appearance": {
+        "strokeColor": "#64748b",
+        "strokeWidth": 1.5
+      }
+    },
+    "demo:packages/module/@sue/verd-board-docs": {
+      "id": "demo:packages/module/@sue/verd-board-docs",
+      "kind": "architecture-module",
+      "cellType": "node",
+      "geometry": {
+        "x": 3241,
+        "y": 312,
+        "width": 372,
+        "height": 98,
+        "derived": false,
+        "outline": {
+          "kind": "roundRectangle",
+          "radius": 8
+        }
+      },
+      "data": {
+        "shape": "box",
+        "placed": true
+      },
+      "appearance": {
+        "fill": "#f0fdfa",
+        "strokeColor": "#94a3b8",
+        "strokeWidth": 1.5
+      },
+      "ports": [
+        {
+          "id": "top",
+          "side": "top",
+          "offset": 0.5,
+          "direction": "both"
+        },
+        {
+          "id": "right",
+          "side": "right",
+          "offset": 0.5,
+          "direction": "both"
+        },
+        {
+          "id": "bottom",
+          "side": "bottom",
+          "offset": 0.5,
+          "direction": "both"
+        },
+        {
+          "id": "left",
+          "side": "left",
+          "offset": 0.5,
+          "direction": "both"
+        }
+      ],
+      "content": {
+        "label": "@sue/verd-board-docs\npackages/product/docs",
+        "text": {
+          "schemaVersion": 1,
+          "id": "demo:packages/module/@sue/verd-board-docs/text",
+          "kind": "inline",
+          "plainText": "@sue/verd-board-docs\npackages/product/docs",
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "@sue/verd-board-docs"
+                  }
+                ]
+              },
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "packages/product/docs"
+                  }
+                ]
+              }
+            ]
+          }
+        }
       }
     }
   },

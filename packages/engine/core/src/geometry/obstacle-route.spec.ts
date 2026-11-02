@@ -417,3 +417,33 @@ describe('obstacle-avoiding orthogonal routing', () => {
     }
   });
 });
+
+it('bounds search allocation and validates local routes against distant obstacles', () => {
+  const obstacles = Array.from({ length: 10000 }, (_, i) => ({
+    id: String(i),
+    x: 10000 + i * 37,
+    y: 10000 + i * 41,
+    width: 10,
+    height: 10,
+  }));
+  obstacles.push({ id: 'blocking', x: 40, y: -10, width: 20, height: 20 });
+  const result = routeOrthogonalAvoiding(
+    [0, 0],
+    'right',
+    [100, 0],
+    'left',
+    obstacles,
+    { maxSearchBytes: 1024 * 1024 },
+  );
+  expect(result.status).toBe('routed');
+  assertClear(result.points, obstacles);
+  const blocked = routeOrthogonalAvoiding(
+    [0, 0],
+    'right',
+    [100, 0],
+    'left',
+    obstacles,
+    { maxSearchBytes: 0 },
+  );
+  expect(blocked.status).toBe('blocked');
+});

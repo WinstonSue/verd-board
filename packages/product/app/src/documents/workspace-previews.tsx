@@ -1,11 +1,20 @@
+import { DocumentAssetContext } from '@sue/board-react-text';
 import {
   WorkspaceContentBoundary,
   WorkspaceFileError,
 } from '../workspace-content-boundary';
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  useContext,
+} from 'react';
 import { Check, ExternalLink } from 'lucide-react';
 import {
   CanvasPreview,
+  type RichTextLinkActivation,
+  useRichTextLinks,
   DocumentEditor,
   DocumentPreview,
   usePreviewMount,
@@ -26,6 +35,7 @@ import { createPreviewRevisions } from './preview-revisions';
 
 export interface PreviewOptions {
   referenceCards?: boolean;
+  linkActivation?: RichTextLinkActivation;
   snapshot: WorkspaceSessionSnapshot;
   open(fileId: string, anchor?: string | null): void;
   openLink(href: string, sourceId: string): void;
@@ -36,6 +46,8 @@ export interface PreviewOptions {
   locale?: 'zh' | 'en';
   exporting?: boolean;
   retry?(): Promise<void>;
+  insertImage?(file: File): Promise<string | null>;
+  resolveAsset?: import('@sue/board-react-text').DocumentAssetResolver;
   history?: DocumentHistoryAdapter;
   edit?(
     id: string,
@@ -187,6 +199,7 @@ export function createWorkspaceDocumentPreviewCache() {
       const latest = entry.options;
       return [
         latest.referenceCards,
+        latest.linkActivation,
         latest.active,
         latest.locale,
         latest.exporting,
@@ -465,6 +478,8 @@ export function WorkspaceCanvasReference({
   targetFrameId: string;
   options: PreviewOptions;
 }) {
+  if (targetFrameId.startsWith('excerpt:'))
+    return <WorkspaceExcerpt target={targetFrameId} options={options} />;
   const entry = options.snapshot.files.get(targetFrameId);
   const failure = [...(options.snapshot.failedFiles?.values() ?? [])].find(
     (item) => item.fileId === targetFrameId,
@@ -593,6 +608,7 @@ function DocumentReferencePreview({
   shell?: boolean;
   annotation?: import('@sue/board-common').BoardTextDocument;
 }) {
+  const inheritedAssetResolver = useContext(DocumentAssetContext);
   const file = options.snapshot.documents.get(targetId)?.file;
   const body = useRef<HTMLDivElement>(null);
   const ctl = useRef<DocumentPreviewController | null>(null);
@@ -622,6 +638,24 @@ function DocumentReferencePreview({
   const stop = (event: React.SyntheticEvent) => {
     if (!shell) event.stopPropagation();
   };
+  const linkEvents = useRichTextLinks({
+    locale: options.locale,
+    readonly: true,
+    onOpenLink: (href) => {
+      rememberScroll();
+      if (href.startsWith('#')) {
+        const link = parseWorkspaceLink(href, targetId);
+        const heading =
+          link?.kind === 'heading'
+            ? ctl.current
+                ?.getHeadings()
+                .find((item) => item.anchor === link.slug)
+            : null;
+        if (heading) ctl.current?.locateHeading(heading.pos);
+        else options.openLink(href, targetId);
+      } else options.openLink(href, targetId);
+    },
+  });
   const failure = [...(options.snapshot.failedFiles?.values() ?? [])].find(
     (item) => item.fileId === targetId,
   );
@@ -664,25 +698,8 @@ function DocumentReferencePreview({
         event.stopPropagation();
       }}
       onContextMenu={stop}
-      onClick={(event) => {
-        event.stopPropagation();
-        const anchor = (event.target as Element).closest('a[href]');
-        if (!anchor) return;
-        event.preventDefault();
-        rememberScroll();
-        const href = anchor.getAttribute('href') ?? '';
-        if (href.startsWith('#')) {
-          const link = parseWorkspaceLink(href, targetId);
-          const heading =
-            link?.kind === 'heading'
-              ? ctl.current
-                  ?.getHeadings()
-                  .find((item) => item.anchor === link.slug)
-              : null;
-          if (heading) ctl.current?.locateHeading(heading.pos);
-          else options.openLink(href, targetId);
-        } else options.openLink(href, targetId);
-      }}
+      {...linkEvents}
+      onClick={stop}
     >
       {annotation && (
         <div
@@ -694,7 +711,11 @@ function DocumentReferencePreview({
             boxSizing: 'border-box',
           }}
         >
-          <DocumentPreview value={annotation} />
+          <DocumentAssetContext.Provider
+            value={options.resolveAsset ?? inheritedAssetResolver}
+          >
+            <DocumentPreview value={annotation} />
+          </DocumentAssetContext.Provider>
         </div>
       )}
       <div
@@ -729,33 +750,39 @@ function DocumentReferencePreview({
             viewport={body}
             retain
           >
-            <DocumentPreview
-              value={file.text}
-              onError={() => setReady(true)}
-              onReady={(controller) => {
-                ctl.current = controller;
-                restoring.current = true;
-                if (controller)
-                  requestAnimationFrame(() => {
-                    restoreScroll();
-                    restoring.current = false;
-                    setReady(true);
-                  });
-              }}
-              renderFrameReference={({ targetFrameId, instanceId }) => (
-                <WorkspaceCanvasReference
-                  targetFrameId={targetFrameId}
-                  options={{
-                    ...next,
-                    instance: JSON.stringify([
-                      next.instance,
-                      'block',
-                      instanceId,
-                    ]),
-                  }}
-                />
-              )}
-            />
+            <DocumentAssetContext.Provider
+              value={options.resolveAsset ?? inheritedAssetResolver}
+            >
+              <DocumentPreview
+                mode={options.exporting ? 'export' : 'preview'}
+                foldingKey={JSON.stringify([options.instance, targetId])}
+                value={file.text}
+                onError={() => setReady(true)}
+                onReady={(controller) => {
+                  ctl.current = controller;
+                  restoring.current = true;
+                  if (controller)
+                    requestAnimationFrame(() => {
+                      restoreScroll();
+                      restoring.current = false;
+                      setReady(true);
+                    });
+                }}
+                renderFrameReference={({ targetFrameId, instanceId }) => (
+                  <WorkspaceCanvasReference
+                    targetFrameId={targetFrameId}
+                    options={{
+                      ...next,
+                      instance: JSON.stringify([
+                        next.instance,
+                        'block',
+                        instanceId,
+                      ]),
+                    }}
+                  />
+                )}
+              />
+            </DocumentAssetContext.Provider>
           </VisiblePreview>
         )}
       </div>
@@ -816,6 +843,7 @@ function DocumentFrameEditor({
   };
   const closeFind = () => {
     setFindOpen(false);
+    controller.current?.clearReveal?.();
     controller.current?.focus('preserve');
   };
   const stepMatch = (delta: number) => {
@@ -834,6 +862,23 @@ function DocumentFrameEditor({
     },
     [],
   );
+  const linkEvents = useRichTextLinks({
+    activation: options.linkActivation,
+    locale: options.locale,
+    onOpenLink: (href) => {
+      const link = href.startsWith('#')
+        ? parseWorkspaceLink(href, targetId)
+        : null;
+      const heading =
+        link?.kind === 'heading'
+          ? controller.current
+              ?.getHeadings()
+              .find((item) => item.anchor === link.slug)
+          : null;
+      if (heading) controller.current?.locateHeading(heading.pos);
+      else options.openLink(href, targetId);
+    },
+  });
   if (!file) return <p>文档引用缺失 · {targetId}</p>;
   return (
     <div
@@ -856,28 +901,7 @@ function DocumentFrameEditor({
       onContextMenu={stop}
       onKeyUp={stop}
       onClick={stop}
-      onClickCapture={(event) => {
-        const anchor = (event.target as Element).closest('a[href]');
-        if (!anchor) return;
-        event.preventDefault();
-        if (event.button !== 0 || (!event.metaKey && !event.ctrlKey)) return;
-        const href = anchor.getAttribute('href') ?? '';
-        const link = href.startsWith('#')
-          ? parseWorkspaceLink(href, targetId)
-          : null;
-        const heading =
-          link?.kind === 'heading'
-            ? controller.current
-                ?.getHeadings()
-                .find((item) => item.anchor === link.slug)
-            : null;
-        if (heading) controller.current?.locateHeading(heading.pos);
-        else options.openLink(href, targetId);
-      }}
-      onAuxClickCapture={(event) => {
-        if ((event.target as Element).closest('a[href]'))
-          event.preventDefault();
-      }}
+      {...linkEvents}
       onKeyDownCapture={(event) => {
         if (event.nativeEvent.isComposing) return;
         const mod = event.metaKey || event.ctrlKey;
@@ -1014,10 +1038,11 @@ function DocumentFrameEditor({
       >
         <DocumentEditor
           {...embeddedEditorFocus}
+          foldingKey={JSON.stringify([options.instance, targetId])}
           value={file.text}
           history={options.history}
           restore={options.restore?.get(instanceId)}
-          onImageFile={readDocumentImage}
+          onImageFile={options.insertImage ?? readDocumentImage}
           renderFrameReference={({ targetFrameId, instanceId: blockId }) => (
             <WorkspaceCanvasReference
               targetFrameId={targetFrameId}
@@ -1098,5 +1123,50 @@ function DocumentFrameEditor({
         />
       </div>
     </div>
+  );
+}
+
+function WorkspaceExcerpt({
+  target,
+  options,
+}: {
+  target: string;
+  options: PreviewOptions;
+}) {
+  const [, encodedId, encodedBlock] = target.split(':');
+  const id = decodeURIComponent(encodedId ?? ''),
+    blockId = decodeURIComponent(encodedBlock ?? '');
+  const file = options.snapshot.documents.get(id)?.file;
+  let block: import('@sue/board-common').BoardTextNode | undefined;
+  const find = (node: import('@sue/board-common').BoardTextNode) => {
+    if (node.attrs?.['blockId'] === blockId) block = node;
+    else node.content?.forEach(find);
+  };
+  if (file) find(file.text.content);
+  const token = id + '#' + blockId;
+  const next = { ...options, path: [...options.path, token] };
+  const href = `verd://file/${encodeURIComponent(id)}#${encodeURIComponent('block:' + blockId)}`;
+  return (
+    <section className="workspace-excerpt" contentEditable={false}>
+      <button
+        type="button"
+        onClick={() => options.openLink(href, options.path[0] ?? id)}
+      >
+        打开来源 · {file?.title ?? id}
+      </button>
+      {block && file && !options.path.includes(token) ? (
+        <DocumentPreview
+          value={{ ...file.text, content: { type: 'doc', content: [block] } }}
+          renderFrameReference={(props) => (
+            <WorkspaceCanvasReference
+              targetFrameId={props.targetFrameId}
+              options={next}
+            />
+          )}
+        />
+      ) : (
+        <p>{block ? '循环引用已停止' : '引用段落已删除或不可用'}</p>
+      )}
+    </section>
   );
 }

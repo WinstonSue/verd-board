@@ -117,6 +117,8 @@ export interface ActionScopeProps {
   enabled?: boolean;
   /** Opt in on one root scope to handle palette keys when focus is on body/html. */
   paletteFallback?: boolean;
+  /** Root navigation actions available even while an editor or body has focus. */
+  globalActionIds?: readonly string[];
   className?: string;
   onResult?(result: ActionResult, actionId: string): void;
   onConflict?(actionIds: readonly string[]): void;
@@ -128,6 +130,7 @@ export function ActionScope({
   language: suppliedLanguage,
   enabled = true,
   paletteFallback = false,
+  globalActionIds,
   className,
   onResult,
   onConflict,
@@ -181,21 +184,49 @@ export function ActionScope({
     const document = containerRef.current?.ownerDocument;
     if (!document || !paletteFallback || parent || !active || panel) return;
     const handle = (event: globalThis.KeyboardEvent) => {
+      const global = resolveActionShortcut(
+        scope.source
+          .actions()
+          .filter((action) => globalActionIds?.includes(action.id)),
+        event,
+      );
+      const globalMatch = global.status === 'matched';
       if (
-        (event.target !== document.body &&
+        globalMatch &&
+        event.target !== document.body &&
+        event.target !== document.documentElement &&
+        !containerRef.current?.contains(event.target as Node)
+      )
+        return;
+      if (
+        (!globalMatch &&
+          event.target !== document.body &&
           event.target !== document.documentElement) ||
         ignoreKey(event) ||
-        !isPaletteKey(event) ||
+        (!isPaletteKey(event) && !globalMatch) ||
         hasVisibleModal(document)
       )
         return;
       event.preventDefault();
       event.stopPropagation();
-      scope.openPalette();
+      if (global.status === 'matched') {
+        const action = global.action.capture();
+        void action
+          .execute(undefined, { source: 'shortcut' })
+          .then((result) => onResult?.(result, action.id));
+      } else scope.openPalette();
     };
     document.addEventListener('keydown', handle);
     return () => document.removeEventListener('keydown', handle);
-  }, [paletteFallback, parent, active, panel, scope]);
+  }, [
+    paletteFallback,
+    globalActionIds,
+    parent,
+    active,
+    panel,
+    scope,
+    onResult,
+  ]);
   const handlePaletteKey = (event: KeyboardEvent<HTMLDivElement>) => {
     if (
       !active ||

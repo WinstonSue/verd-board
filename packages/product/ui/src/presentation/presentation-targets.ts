@@ -4,7 +4,8 @@ import {
   type ArchitectureLayerData,
 } from '@sue/board-architecture';
 import {
-  groupAncestors,
+  createCellHierarchy,
+  type CellHierarchy,
   groupLeafMembers,
   isEdgeCell,
   isFrameCell,
@@ -40,20 +41,21 @@ const isMindRelation = (cell: CellStore['cells'][string] | undefined) =>
   isEdgeCell(cell) &&
   (cell.kind === MindKind.mindBranch || cell.kind === MindKind.mindSummaryEdge);
 
-const visible = (store: CellStore, id: string) =>
+const visible = (store: CellStore, id: string, hierarchy: CellHierarchy) =>
   !!store.cells[id] &&
   !store.cells[id].hidden &&
-  !groupAncestors(store, id).some((owner) => store.cells[owner]?.hidden);
+  !hierarchy.groupAncestors(id).some((owner) => store.cells[owner]?.hidden);
 
 /** Visible topics and summaries in a subtree; never changes the snapshot. */
 export function presentationMindIds(
   store: CellStore,
   rootId: string,
+  hierarchy = createCellHierarchy(store),
 ): string[] {
   const ids = new Set<string>();
   const visit = (id: string) => {
     const cell = store.cells[id];
-    if (ids.has(id) || !isMind(cell) || !visible(store, id)) return;
+    if (ids.has(id) || !isMind(cell) || !visible(store, id, hierarchy)) return;
     ids.add(id);
     if (!collapsed(cell)) mindChildIds(store, id).forEach(visit);
   };
@@ -68,7 +70,7 @@ export function presentationMindIds(
         !isEdgeCell(edge) ||
         edge.kind !== MindKind.mindSummaryEdge ||
         !('cellId' in edge.target) ||
-        !visible(store, edge.id)
+        !visible(store, edge.id, hierarchy)
       )
         continue;
       const range = edge.data as MindSummaryData | undefined;
@@ -78,7 +80,7 @@ export function presentationMindIds(
         range &&
         ids.has(range.startSiblingId) &&
         ids.has(range.endSiblingId) &&
-        visible(store, id)
+        visible(store, id, hierarchy)
       ) {
         const before = ids.size;
         visit(id);
@@ -89,20 +91,26 @@ export function presentationMindIds(
   return [...ids];
 }
 
-const frameVisibleIds = (store: CellStore, frameId: string): Set<string> => {
+const frameVisibleIds = (
+  store: CellStore,
+  frameId: string,
+  hierarchy = createCellHierarchy(store),
+): Set<string> => {
   const frame = store.cells[frameId];
   if (!isFrameCell(frame) || frame.hidden) return new Set();
   const ids = new Set(
     frame.children.filter(
       (id) =>
-        visible(store, id) &&
+        visible(store, id, hierarchy) &&
         !isMind(store.cells[id]) &&
         !isMindRelation(store.cells[id]),
     ),
   );
   for (const id of frame.children) {
     if (store.cells[id]?.kind === MindKind.mindRoot)
-      presentationMindIds(store, id).forEach((member) => ids.add(member));
+      presentationMindIds(store, id, hierarchy).forEach((member) =>
+        ids.add(member),
+      );
   }
   // Relationship edges are drawable only while both topics are mounted. They
   // must not make an otherwise invisible/collapsed tree count as content.
@@ -111,7 +119,7 @@ const frameVisibleIds = (store: CellStore, frameId: string): Set<string> => {
     if (
       isEdgeCell(edge) &&
       isMindRelation(edge) &&
-      visible(store, id) &&
+      visible(store, id, hierarchy) &&
       'cellId' in edge.source &&
       ids.has(edge.source.cellId) &&
       'cellId' in edge.target &&
@@ -135,6 +143,7 @@ export function presentationSteps(
 ): string[] {
   const frame = store.cells[frameId];
   if (!isFrameCell(frame) || frame.hidden) return [];
+  if (scene !== 'architecture' && scene !== 'mind') return [];
   const shown = frameVisibleIds(store, frameId);
   if (scene === 'architecture')
     return architectureLayerIds(store, frameId).filter((id) => shown.has(id));
@@ -155,16 +164,19 @@ export function presentationTargetIds(
   frameId: string,
   cellId: string,
 ): string[] {
-  const shown = frameVisibleIds(store, frameId);
+  const hierarchy = createCellHierarchy(store);
+  const shown = frameVisibleIds(store, frameId, hierarchy);
   const cell = store.cells[cellId];
-  if (!cell || !visible(store, cellId)) return [];
+  if (!cell || !visible(store, cellId, hierarchy)) return [];
   if (isMind(cell))
     return shown.has(cellId)
-      ? presentationMindIds(store, cellId).filter((id) => shown.has(id))
+      ? presentationMindIds(store, cellId, hierarchy).filter((id) =>
+          shown.has(id),
+        )
       : [];
   // Group membership wins over an edge's terminals, so clicking any member
   // focuses the outermost group as a single unit.
-  const owners = groupAncestors(store, cellId);
+  const owners = hierarchy.groupAncestors(cellId);
   const outerId = owners.at(-1) ?? cellId;
   if (isGroupCell(store.cells[outerId]))
     return groupLeafMembers(store, outerId).filter((id) => shown.has(id));

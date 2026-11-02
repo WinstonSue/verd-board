@@ -1,4 +1,5 @@
-import { Fragment, useLayoutEffect, useRef, useState } from 'react';
+import { usePortalRoot } from './components/portal-root';
+import { Fragment, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
 import { useActionSource, type ActionSource } from '@sue/board-react-actions';
 import type { WorkspaceActionBinding } from './workspace-action-bindings';
@@ -23,6 +24,7 @@ export interface FileTreeMenuItem {
   label: string;
   icon: LucideIcon;
   danger?: boolean;
+  checked?: boolean;
   groupStart?: boolean;
   groupLabel?: string;
   disabled?: boolean;
@@ -43,6 +45,7 @@ export function FileTreeMenu({
   onError,
   preserveItemLabels = false,
   className,
+  portalRoot,
 }: {
   label: string;
   anchor: HTMLElement | { x: number; y: number };
@@ -55,7 +58,9 @@ export function FileTreeMenu({
   /** Contextual navigation labels may include the source and instance name. */
   preserveItemLabels?: boolean;
   className?: string;
+  portalRoot?: HTMLElement | null;
 }) {
+  const inheritedRoot = usePortalRoot();
   useActionSource(actionSource);
   items = items.flatMap((item) => {
     if (!item.action) return [item];
@@ -110,7 +115,24 @@ export function FileTreeMenu({
         }),
       });
   }, [anchor, refs]);
-  const dismiss = useDismiss(context);
+  const closeRef = useRef(onClose);
+  closeRef.current = onClose;
+  useEffect(() => {
+    const dismissOutside = (event: PointerEvent) => {
+      const path = event.composedPath();
+      if (
+        path.includes(refs.floating.current as EventTarget) ||
+        (anchor instanceof HTMLElement && path.includes(anchor))
+      )
+        return;
+      flushSync(() => setReturnFocus(false));
+      closeRef.current();
+    };
+    document.addEventListener('pointerdown', dismissOutside, true);
+    return () =>
+      document.removeEventListener('pointerdown', dismissOutside, true);
+  }, [anchor, refs.floating]);
+  const dismiss = useDismiss(context, { outsidePress: false });
   const role = useRole(context, { role: 'menu' });
   const navigation = useListNavigation(context, {
     listRef,
@@ -128,7 +150,9 @@ export function FileTreeMenu({
     navigation,
   ]);
   return (
-    <FloatingPortal>
+    <FloatingPortal
+      root={portalRoot !== undefined ? portalRoot : inheritedRoot}
+    >
       <FloatingFocusManager
         context={context}
         modal={false}
@@ -153,7 +177,8 @@ export function FileTreeMenu({
               ) : null}
               <button
                 type="button"
-                role="menuitem"
+                role={item.checked === undefined ? 'menuitem' : 'menuitemradio'}
+                aria-checked={item.checked}
                 key={item.id}
                 disabled={item.disabled}
                 data-testid={item.testId}
@@ -179,7 +204,15 @@ export function FileTreeMenu({
                   },
                 })}
               >
-                <item.icon size={15} aria-hidden />
+                <item.icon
+                  size={16}
+                  aria-hidden
+                  className={
+                    item.checked === false
+                      ? 'workspace-menu-icon--unchecked'
+                      : undefined
+                  }
+                />
                 <span>{item.label}</span>
               </button>
             </Fragment>

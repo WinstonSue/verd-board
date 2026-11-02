@@ -11,9 +11,9 @@ export function findInDocument(
   doc: PMNode,
   query: string,
   caseSensitive = false,
-): { from: number; to: number }[] {
+): { from: number; to: number; replaceable?: boolean }[] {
   if (!query) return [];
-  const matches: { from: number; to: number }[] = [];
+  const matches: { from: number; to: number; replaceable?: boolean }[] = [];
   const needle = caseSensitive ? query : query.toLowerCase();
   doc.descendants((node, pos) => {
     if (!node.isTextblock) return true;
@@ -31,7 +31,13 @@ export function findInDocument(
     }
     return false;
   });
-  return matches;
+  doc.descendants((node, pos) => {
+    if (!['inlineMath', 'blockMath'].includes(node.type.name)) return;
+    const source = String(node.attrs['latex'] ?? '');
+    if ((caseSensitive ? source : source.toLowerCase()).includes(needle))
+      matches.push({ from: pos, to: pos + node.nodeSize, replaceable: false });
+  });
+  return matches.sort((left, right) => left.from - right.from);
 }
 
 /**

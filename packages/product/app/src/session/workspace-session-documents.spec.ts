@@ -596,3 +596,17 @@ describe('WorkspaceSession documents', () => {
     reopened.dispose();
   });
 });
+
+it('preserves the canvas store and indexes across document-only edits', async () => {
+  const { session } = await openSession();
+  await session.apply({ type: 'create-file', file: frameFile('canvas') });
+  await session.apply({ type: 'create-file', file: docFile('document') });
+  const before = session.getState();
+  const edited = docFile('document', 'Changed title');
+  expect((await session.apply({ type: 'file', file: edited })).ok).toBe(true);
+  const after = session.getState();
+  expect(after.store).toBe(before.store);
+  await session.undo();
+  expect(session.getState().store).toBe(before.store);
+  await session.dispose();
+});

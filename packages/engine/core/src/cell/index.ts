@@ -1,3 +1,4 @@
+import { memoizeCellValidationRead } from './validation-read-context';
 import type { NodeOutline } from '../geometry/shape';
 import type { Point } from '../interfaces/point';
 import { cellDeletionLocked, groupLeafMembers } from './group';
@@ -23,6 +24,7 @@ import {
   stripFrameViewports,
 } from './types';
 import { validateCellStore } from './validation';
+export { memoizeCellValidationRead } from './validation-read-context';
 export * from './arrangement';
 export * from './layout-plan';
 export * from './clipboard';
@@ -43,13 +45,20 @@ export interface CellIndex {
   orderOf: Map<CellId, CellId[]>;
   groupOf: Map<CellId, CellId>;
   domainOwnerOf: Map<CellId, CellId>;
-  /** @deprecated Use groupOf or domainOwnerOf to distinguish ownership. */
-  membersOf: Map<CellId, CellId>;
   incoming: Map<CellId, CellId[]>;
   outgoing: Map<CellId, CellId[]>;
 }
 
+const defaultIndexRead = Symbol('cell-index');
 export const indexCells = (
+  store: CellStore,
+  registry?: CellRegistry,
+): CellIndex =>
+  memoizeCellValidationRead(store, registry ?? defaultIndexRead, () =>
+    buildCellIndex(store, registry),
+  );
+
+const buildCellIndex = (
   store: CellStore,
   registry?: CellRegistry,
 ): CellIndex => {
@@ -63,7 +72,6 @@ export const indexCells = (
     cell.children.forEach((childId) => parentOf.set(childId, cell.id));
     cell.groups.forEach((groupId) => parentOf.set(groupId, cell.id));
   });
-  const membersOf = new Map<CellId, CellId>();
   const groupOf = new Map<CellId, CellId>();
   const domainOwnerOf = new Map<CellId, CellId>();
   const incoming = new Map<CellId, CellId[]>();
@@ -73,29 +81,111 @@ export const indexCells = (
       (isGroupCell(cell) ? groupOf : domainOwnerOf).set(id, cell.id),
     );
     if (isEdgeCell(cell)) {
-      if ('cellId' in cell.source)
-        outgoing.set(cell.source.cellId, [
-          ...(outgoing.get(cell.source.cellId) ?? []),
-          cell.id,
-        ]);
-      if ('cellId' in cell.target)
-        incoming.set(cell.target.cellId, [
-          ...(incoming.get(cell.target.cellId) ?? []),
-          cell.id,
-        ]);
+      if ('cellId' in cell.source) {
+        const list = outgoing.get(cell.source.cellId) ?? [];
+        list.push(cell.id);
+        outgoing.set(cell.source.cellId, list);
+      }
+      if ('cellId' in cell.target) {
+        const list = incoming.get(cell.target.cellId) ?? [];
+        list.push(cell.id);
+        incoming.set(cell.target.cellId, list);
+      }
     }
   });
-  groupOf.forEach((owner, id) => membersOf.set(id, owner));
-  domainOwnerOf.forEach((owner, id) => membersOf.set(id, owner));
   return {
     parentOf,
     orderOf,
     groupOf,
     domainOwnerOf,
-    membersOf,
     incoming,
     outgoing,
   };
+};
+
+/** Update topology from actual changes; content and geometry edits retain identity. */
+export const updateCellIndex = (
+  before: CellStore,
+  after: CellStore,
+  previous: CellIndex,
+  registry?: CellRegistry,
+): CellIndex => {
+  const topology = (cell: Cell | undefined) =>
+    !cell
+      ? null
+      : [
+          cell.cellType,
+          isFrameCell(cell) ? [cell.children, cell.groups] : null,
+          listedMembers(cell, registry),
+          isEdgeCell(cell)
+            ? [
+                'cellId' in cell.source ? cell.source.cellId : null,
+                'cellId' in cell.target ? cell.target.cellId : null,
+              ]
+            : null,
+        ];
+  const changed = changedCellIds(before, after).filter(
+    (id) =>
+      JSON.stringify(topology(before.cells[id])) !==
+      JSON.stringify(topology(after.cells[id])),
+  );
+  if (!changed.length) return previous;
+  const next: CellIndex = {
+    parentOf: new Map(previous.parentOf),
+    orderOf: new Map(previous.orderOf),
+    groupOf: new Map(previous.groupOf),
+    domainOwnerOf: new Map(previous.domainOwnerOf),
+    incoming: new Map(previous.incoming),
+    outgoing: new Map(previous.outgoing),
+  };
+  const neighborKeys = new Map<Map<CellId, CellId[]>, Set<CellId>>([
+    [next.incoming, new Set()],
+    [next.outgoing, new Set()],
+  ]);
+  const apply = (cell: Cell | undefined, adding: boolean) => {
+    if (!cell) return;
+    if (isFrameCell(cell)) {
+      if (adding) next.orderOf.set(cell.id, [...cell.children]);
+      else next.orderOf.delete(cell.id);
+      for (const id of [...cell.children, ...cell.groups])
+        if (adding) next.parentOf.set(id, cell.id);
+        else if (next.parentOf.get(id) === cell.id) next.parentOf.delete(id);
+    }
+    for (const id of listedMembers(cell, registry)) {
+      const map = isGroupCell(cell) ? next.groupOf : next.domainOwnerOf;
+      if (adding) map.set(id, cell.id);
+      else if (map.get(id) === cell.id) map.delete(id);
+    }
+    if (isEdgeCell(cell))
+      for (const [terminal, map] of [
+        [cell.source, next.outgoing],
+        [cell.target, next.incoming],
+      ] as const) {
+        if (!('cellId' in terminal)) continue;
+        neighborKeys.get(map)!.add(terminal.cellId);
+        const list = (map.get(terminal.cellId) ?? []).filter(
+          (id) => id !== cell.id,
+        );
+        if (adding) list.push(cell.id);
+        if (list.length) map.set(terminal.cellId, list);
+        else map.delete(terminal.cellId);
+      }
+  };
+  changed.forEach((id) => apply(before.cells[id], false));
+  changed.forEach((id) => apply(after.cells[id], true));
+  const rank = new Map(
+    Object.keys(after.cells).map((id, order) => [id, order]),
+  );
+  for (const [map, keys] of neighborKeys)
+    for (const id of keys) {
+      const list = map.get(id);
+      if (list)
+        map.set(
+          id,
+          [...list].sort((a, b) => rank.get(a)! - rank.get(b)!),
+        );
+    }
+  return next;
 };
 
 export const parentOf = (store: CellStore, cellId: CellId) =>
@@ -191,8 +281,9 @@ const applyUnchecked = (
   store: CellStore,
   operation: CellOperation,
   registry?: CellRegistry,
+  mutable = false,
 ): CellStore => {
-  const cells = { ...store.cells };
+  const cells = mutable ? store.cells : { ...store.cells };
   if (operation.type === 'patch_cells') {
     Object.entries(operation.cells).forEach(([id, cell]) => {
       if (cell === null) delete cells[id];
@@ -446,8 +537,8 @@ export const applyCellOperations = (
   const context = registry ?? createCellRegistry();
   assertRegisteredCellKinds(store, context);
   let candidate = operations.reduce(
-    (next, operation) => applyUnchecked(next, operation, context),
-    store,
+    (next, operation) => applyUnchecked(next, operation, context, true),
+    { ...store, cells: { ...store.cells } },
   );
   assertRegisteredCellKinds(candidate, context);
   candidate = normalizeRelations(store, candidate, context);
@@ -480,7 +571,55 @@ export const applyCellOperations = (
   const issues = validateCellStore(candidate, context);
   if (issues.length)
     throw new Error(issues.map((issue) => issue.message).join('; '));
+  preparedCandidates.set(candidate, {
+    before: new WeakRef(store),
+    registry: context,
+    operations: [...operations],
+    fingerprint: JSON.stringify(operations),
+  });
   return candidate;
+};
+
+const preparedCandidates = new WeakMap<
+  CellStore,
+  {
+    before: WeakRef<CellStore>;
+    registry: CellRegistry;
+    operations: readonly CellOperation[];
+    fingerprint: string;
+  }
+>();
+/** Only candidates produced by the validated pipeline can bypass preparation. */
+export const resolvePreparedCellOperations = (
+  before: CellStore,
+  operations: readonly CellOperation[],
+  registry: CellRegistry,
+  prepared?: CellStore,
+): CellStore => {
+  let cursor = prepared;
+  const batches: (readonly CellOperation[])[] = [];
+  while (cursor && cursor !== before) {
+    const record = preparedCandidates.get(cursor);
+    if (
+      !record ||
+      record.registry !== registry ||
+      record.fingerprint !== JSON.stringify(record.operations)
+    )
+      break;
+    batches.unshift(record.operations);
+    cursor = record.before.deref();
+  }
+  const reusable =
+    prepared &&
+    cursor === before &&
+    JSON.stringify(batches.flat()) === JSON.stringify(operations);
+  if (reusable) {
+    preparedCandidates.delete(prepared);
+    return prepared;
+  }
+  const result = applyCellOperations(before, operations, registry);
+  preparedCandidates.delete(result);
+  return result;
 };
 
 export const applyCellOperation = (
@@ -501,7 +640,23 @@ export interface CellHistory {
 }
 export const emptyCellHistory = (): CellHistory => ({ undos: [], redos: [] });
 
+const cellDiffs = new WeakMap<
+  CellStore,
+  {
+    before: WeakRef<CellStore>;
+    diff: {
+      forward: { type: 'patch_cells'; cells: Record<CellId, Cell | null> };
+      inverse: { type: 'patch_cells'; cells: Record<CellId, Cell | null> };
+    };
+  }
+>();
+export const changedCellIds = (
+  before: CellStore,
+  after: CellStore,
+): readonly CellId[] => Object.keys(diffCells(before, after).forward.cells);
 const diffCells = (before: CellStore, after: CellStore) => {
+  const cached = cellDiffs.get(after);
+  if (cached?.before.deref() === before) return cached.diff;
   const forward: Record<CellId, Cell | null> = {},
     inverse: Record<CellId, Cell | null> = {};
   for (const id of new Set([
@@ -518,10 +673,12 @@ const diffCells = (before: CellStore, after: CellStore) => {
     forward[id] = right ? clone(right) : null;
     inverse[id] = left ? clone(left) : null;
   }
-  return {
+  const diff = {
     forward: { type: 'patch_cells' as const, cells: forward },
     inverse: { type: 'patch_cells' as const, cells: inverse },
   };
+  cellDiffs.set(after, { before: new WeakRef(before), diff });
+  return diff;
 };
 
 export const commitCellOperations = (
@@ -529,9 +686,16 @@ export const commitCellOperations = (
   history: CellHistory,
   operations: readonly CellOperation[],
   registry?: CellRegistry,
-  options?: { restoreView?: boolean },
+  options?: { restoreView?: boolean; prepared?: CellStore },
 ) => {
-  const next = applyCellOperations(store, operations, registry);
+  const next = registry
+    ? resolvePreparedCellOperations(
+        store,
+        operations,
+        registry,
+        options?.prepared,
+      )
+    : applyCellOperations(store, operations, registry);
   const { forward, inverse } = diffCells(store, next);
   if (forward.type === 'patch_cells' && !Object.keys(forward.cells).length)
     return { store, history };

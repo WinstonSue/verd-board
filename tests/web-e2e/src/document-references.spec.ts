@@ -271,7 +271,7 @@ test('inserts both directions through the UI, updates source previews and preser
   await openFrame(page, frame.frame.name);
   await selectAppAction(page, '引用文档（只读）…');
   await page
-    .getByRole('dialog', { name: '引用文档', exact: true })
+    .getByRole('dialog', { name: '引用文档（只读）', exact: true })
     .getByRole('button', { name: /Reference reading/ })
     .click();
   const canvas = active(page)
@@ -288,8 +288,10 @@ test('inserts both directions through the UI, updates source previews and preser
   await editor.click();
   await page.keyboard.press('ControlOrMeta+End');
   await page.keyboard.type(' Updated source');
-  await active(page)
-    .getByRole('button', { name: '插入图表', exact: true })
+  await active(page).getByRole('button', { name: '插入', exact: true }).click();
+  await page
+    .getByRole('dialog', { name: '插入', exact: true })
+    .getByRole('button', { name: '图表', exact: true })
     .click();
   await page
     .getByRole('dialog', { name: '插入图表', exact: true })

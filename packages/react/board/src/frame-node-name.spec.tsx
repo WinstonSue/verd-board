@@ -9,7 +9,6 @@ import {
 import { act, createRef } from 'react';
 import { createRoot } from 'react-dom/client';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { createTestCellRegistry as createFixtureRegistry } from '../../../../tests/fixtures/plugins/registry';
 import { createTestFramePluginSet } from '../../../../tests/fixtures/plugins/ui';
 import {
   FrameCanvas,
@@ -17,9 +16,9 @@ import {
   type FrameIntentResult,
 } from './frame-canvas';
 const testFramePluginSet = createTestFramePluginSet();
-const testCellRegistry = createFixtureRegistry();
 
-vi.mock('@sue/board-react-text', () => ({
+vi.mock('@sue/board-react-text', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@sue/board-react-text')>()),
   LineText: ({
     text,
     onChange,

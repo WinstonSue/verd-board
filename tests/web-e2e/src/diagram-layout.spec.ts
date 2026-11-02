@@ -1,7 +1,7 @@
 import { expect, test, type Page, type Locator } from '@playwright/test';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
-import { selectAppAction, setAppLanguage } from './app-actions';
+import { selectAppAction, setAppLanguage, openActiveFile } from './app-actions';
 import { expandPropertyGroup } from './property-group';
 import {
   type FrameCell,
@@ -24,6 +24,7 @@ const fixture = (name: string): FrameSnapshot =>
 
 async function openSnapshot(page: Page, snapshot: FrameSnapshot) {
   await page.goto('/');
+  await openActiveFile(page);
   await expect(canvas(page)).toBeVisible();
   await expect(page.getByTestId('save-status')).toHaveAttribute(
     'data-save-state',
@@ -72,6 +73,7 @@ async function openSnapshot(page: Page, snapshot: FrameSnapshot) {
   }, snapshot);
   await clearWorkspaceStorage(page);
   await page.reload();
+  await openActiveFile(page);
   await expect(canvas(page)).toBeVisible();
 }
 
@@ -733,6 +735,7 @@ test('automatic calculation switches are independent, survive tab switches and r
   await expect(edges).not.toBeChecked();
   await nodes.check();
   await page.reload();
+  await openActiveFile(page);
   await expect(canvas(page)).toBeVisible();
   await expandPropertyGroup(page);
   await expect(nodes).not.toBeChecked();

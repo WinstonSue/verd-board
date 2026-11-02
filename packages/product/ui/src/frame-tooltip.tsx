@@ -1,3 +1,4 @@
+import { usePortalRoot } from './components/portal-root';
 import { cloneElement, useId, useState, type ReactElement } from 'react';
 import {
   autoUpdate,
@@ -22,6 +23,7 @@ export function FrameTooltip({
   placement = 'top',
   className = '',
   delay = 120,
+  portalRoot,
 }: {
   content?: string;
   children: ReactElement<{ 'aria-describedby'?: string }>;
@@ -30,7 +32,9 @@ export function FrameTooltip({
   placement?: Placement;
   className?: string;
   delay?: number;
+  portalRoot?: HTMLElement | null;
 }) {
+  const inheritedRoot = usePortalRoot();
   const [open, setOpen] = useState(false);
   const id = useId();
   const enabled = !!content && !suppressed;
@@ -69,7 +73,9 @@ export function FrameTooltip({
     >
       {cloneElement(children, { 'aria-describedby': visible ? id : undefined })}
       {visible && (
-        <FloatingPortal>
+        <FloatingPortal
+          root={portalRoot !== undefined ? portalRoot : inheritedRoot}
+        >
           <div
             id={id}
             role="tooltip"

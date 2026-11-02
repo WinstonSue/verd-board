@@ -1459,16 +1459,15 @@
     "project:detail/08/01/document": {
       "id": "project:detail/08/01/document",
       "cellType": "node",
-      "kind": "document-reference",
+      "kind": "geometry",
       "geometry": {
         "x": 0,
         "y": 1080,
         "width": 1000,
-        "height": 620
+        "height": 254,
+        "outline": "text"
       },
-      "data": {
-        "targetDocumentId": "project-doc:development/README"
-      },
+      "data": {},
       "content": {
         "text": {
           "schemaVersion": 1,
@@ -1478,6 +1477,23 @@
           "content": {
             "type": "doc",
             "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "相关文档：开发指南",
+                    "marks": [
+                      {
+                        "type": "link",
+                        "attrs": {
+                          "href": "verd://file/project-doc%3Adevelopment%2FREADME"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
               {
                 "type": "paragraph",
                 "content": [
@@ -1566,8 +1582,12 @@
               }
             ]
           },
-          "plainText": "读图：日常开发使用隔离 Dev 身份；长期图文直接维护在原生工作区。\n返回专题总览\n相关细节：检查、消费验收与发布\n配置与源码索引 · 迁移边界与验收\n文档维护指南 · 更新与验收\n源码入口：package.json；workspace/文档/开发/开发指南.verd-doc.json；scripts/workspace.mjs。"
+          "plainText": "相关文档：开发指南\n读图：日常开发使用隔离 Dev 身份；长期图文直接维护在原生工作区。\n返回专题总览\n相关细节：检查、消费验收与发布\n配置与源码索引 · 迁移边界与验收\n文档维护指南 · 更新与验收\n源码入口：package.json；workspace/文档/开发/开发指南.verd-doc.json；scripts/workspace.mjs。"
         }
+      },
+      "appearance": {
+        "fill": "none",
+        "strokeColor": "none"
       }
     }
   },

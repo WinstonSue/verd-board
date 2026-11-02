@@ -31,6 +31,16 @@ const action = (page: Page, name: string) =>
   });
 
 async function ready(page: Page) {
+  if (!(await editorCanvas(page).isVisible())) {
+    // Home is a workspace view independent of the retained selected tab.
+    const tab = page.getByRole('tab', { selected: true }).first();
+    await expect(tab).toBeVisible();
+    const id = await tab.getAttribute('data-tab-id');
+    if (!id) throw new Error('Missing retained canvas tab identity');
+    await page
+      .locator(`[data-file-id=${JSON.stringify(id)}] .file-tree-name`)
+      .click();
+  }
   await expect(editorCanvas(page)).toBeVisible();
   const skip = page.getByRole('button', { name: '跳过', exact: true });
   if (await skip.isVisible()) await skip.click();

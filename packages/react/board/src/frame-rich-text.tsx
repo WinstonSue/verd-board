@@ -1,12 +1,19 @@
 import { createContext, useContext, memo, type CSSProperties } from 'react';
 import type { FrameLinkHost } from './frame-view-projection';
 import { type BoardTextDocument, type Alignment } from '@sue/board-common';
-import { TextPreview } from '@sue/board-react-text';
+import {
+  useRichTextLinks,
+  type RichTextLinkOptions,
+  TextPreview,
+} from '@sue/board-react-text';
 
 export const FrameRichTextPreviewContext = createContext(false);
 export const FrameRichTextLinkContext = createContext<
   FrameLinkHost | undefined
 >(undefined);
+
+export const FrameRichTextLinkPolicyContext =
+  createContext<RichTextLinkOptions>({});
 
 /** Static rich text shares its content schema and typography with the editor. */
 export const FrameRichText = memo(
@@ -21,19 +28,22 @@ export const FrameRichText = memo(
   }) {
     const preview = useContext(FrameRichTextPreviewContext);
     const links = useContext(FrameRichTextLinkContext);
+    const policy = useContext(FrameRichTextLinkPolicyContext);
+    const events = useRichTextLinks({
+      ...policy,
+      blockPointer: true,
+      onOpenLink:
+        !preview && links
+          ? (href) => {
+              void links.openLink(href);
+            }
+          : undefined,
+    });
     return (
       <div
         data-frame-rich-text
         className="board-text-layout"
-        onClickCapture={(event) => {
-          if (preview || !links || (!event.ctrlKey && !event.metaKey)) return;
-          const anchor = (event.target as Element).closest('a[href]');
-          const href = anchor?.getAttribute('href');
-          if (!href) return;
-          event.preventDefault();
-          event.stopPropagation();
-          void links.openLink(href);
-        }}
+        {...events}
         style={{
           pointerEvents: 'none',
           userSelect: 'none',

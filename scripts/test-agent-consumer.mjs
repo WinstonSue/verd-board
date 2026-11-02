@@ -80,7 +80,7 @@ const cli = path.join(base, 'node_modules/.bin/verd');
 const run = args => { const r=spawnSync(cli,args,{encoding:'utf8'}); assert.equal(r.status,0,r.stderr); return JSON.parse(r.stdout); };
 await fs.mkdir(root,{recursive:true});
 assert.ok(run(['describe','--json']).document.nodes.frameReference);
-assert.equal(run(['patterns','--json']).length,9);
+assert.equal(run(['patterns','--json']).length,13);
 assert.ok((await fs.readFile(run(['skill']).path,'utf8')).includes('verd plan'));
 assert.equal(validateNativeWorkspace((await readNativeSnapshot(fileURLToPath(patternWorkspaceUrl))).entries).length,0);
 const previews = [];

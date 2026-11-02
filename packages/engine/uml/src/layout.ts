@@ -302,7 +302,6 @@ export function layoutUmlCells(
     for (const id of frame.children) {
       const cell = store.cells[id];
       if (isNodeCell(cell) && cell.kind === 'uml-class') {
-        const data = cell.data as UmlClassData;
         result.set(id, {
           ...cell.geometry,
           height: umlClassMetrics(cell as NodeCell<UmlClassData>).height,

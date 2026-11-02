@@ -126,11 +126,30 @@ export async function withWorkspaceLock<T>(
   }
 }
 
+export async function readWorkspaceGeneration(
+  root: string,
+): Promise<string | null> {
+  try {
+    const file = path.join(root, '.verdscrolls/instance.json');
+    const stat = await fs.lstat(file);
+    if (!stat.isFile() || stat.isSymbolicLink())
+      throw new Error('Invalid workspace instance');
+    const value = JSON.parse(await fs.readFile(file, 'utf8'));
+    if (typeof value.generation !== 'string' || !value.generation)
+      throw new Error('Invalid workspace instance');
+    return value.generation;
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === 'ENOENT') return null;
+    throw error;
+  }
+}
+
 export interface NativeSnapshot {
   root: string;
   version: string;
   entries: (NativeWorkspaceEntry & { source: string; version: string })[];
   diagnostics: AuthoringDiagnostic[];
+  resourceId?: string | null;
 }
 /** Caller must hold the common workspace lock. Does not create metadata or recover. */
 export async function readNativeSnapshotUnlocked(
@@ -179,7 +198,7 @@ export async function readNativeSnapshotUnlocked(
   }
   await walk('');
   const journals = await fs
-    .readdir(path.join(root, '.verdboard', 'transactions'))
+    .readdir(path.join(root, '.verdscrolls', 'transactions'))
     .catch((error) => {
       if (error.code === 'ENOENT') return [];
       throw error;
@@ -191,12 +210,38 @@ export async function readNativeSnapshotUnlocked(
       message:
         'A pending transaction needs recovery before authoring; read-only inspection did not change it.',
     });
+  const generation = await readWorkspaceGeneration(root);
   return {
     root,
-    version: digest(JSON.stringify(manifest)),
+    version: digest(
+      JSON.stringify(generation ? [generation, manifest] : manifest),
+    ),
     entries,
     diagnostics,
+    resourceId: await readWorkspaceResourceId(root),
   };
+}
+/** Metadata identity is independent of the native-file digest. No initialization or recovery. */
+export async function readWorkspaceResourceId(
+  root: string,
+): Promise<string | null> {
+  try {
+    const manifest = JSON.parse(
+      await fs.readFile(
+        path.join(root, '.verdscrolls/shared/manifest.json'),
+        'utf8',
+      ),
+    );
+    if (
+      manifest.format !== 'verd-agent-resources' ||
+      typeof manifest.id !== 'string'
+    )
+      throw new Error('Invalid shared resources manifest');
+    return manifest.id;
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === 'ENOENT') return null;
+    throw error;
+  }
 }
 export const readNativeSnapshot = (root: string) =>
   withWorkspaceLock(root, () => readNativeSnapshotUnlocked(root));

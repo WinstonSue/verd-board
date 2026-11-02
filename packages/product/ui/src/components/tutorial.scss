@@ -1,19 +1,5 @@
 .verd-board-tutorial {
-  font-family:
-    'Source Han Sans SC',
-    'Source Han Sans CN',
-    'Noto Sans CJK SC',
-    -apple-system,
-    BlinkMacSystemFont,
-    'Segoe UI',
-    Roboto,
-    'PingFang SC',
-    'Noto Sans',
-    'Noto Sans CJK SC',
-    'Microsoft Yahei',
-    'Hiragino Sans GB',
-    Arial,
-    sans-serif;
+  font-family: var(--vm-font);
   position: fixed;
   top: 0;
   left: 0;
@@ -23,7 +9,7 @@
   background-color: transparent;
   p {
     margin: 0;
-    font-size: 14px;
+    font-size: var(--vm-text-md);
     color: var(--vm-foreground-secondary);
     line-height: 1.5;
   }
@@ -49,7 +35,7 @@
   }
 
   .brand-title {
-    font-size: 72px;
+    font-size: var(--vm-text-2xl);
     font-weight: 400;
     color: var(--vm-foreground);
     letter-spacing: 2px;
@@ -58,7 +44,7 @@
   }
 
   .brand-description {
-    font-size: 18px;
+    font-size: var(--vm-text-lg);
     color: var(--vm-foreground);
     text-align: center;
     max-width: 600px;
@@ -84,7 +70,7 @@
     border-radius: 6px;
     background: var(--vm-background);
     color: var(--vm-foreground-secondary);
-    font-size: 14px;
+    font-size: var(--vm-text-md);
     cursor: pointer;
   }
 
@@ -123,7 +109,8 @@
     right: 40px;
     .pointer-content {
       position: absolute;
-      top: -30px;
+      top: 0;
+      transform: translateY(-100%);
       right: 80px;
       width: 100%;
     }

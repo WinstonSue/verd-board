@@ -1,9 +1,11 @@
+@use './primitives';
+@use './surface' as *;
 .workspace-shell {
   position: relative;
   display: flex;
   height: 100%;
   min-height: 0;
-  font: 13px/1.5 var(--vm-font);
+  font: var(--vm-text-md)/1.5 var(--vm-font);
   color: var(--vm-foreground);
   background: var(--vm-background);
 }
@@ -16,18 +18,24 @@
   min-height: 0;
   border-right: 1px solid var(--vm-border);
   background: var(--vm-background-subtle);
+
+  position: relative;
 }
 .workspace-sidebar-header {
   box-sizing: border-box;
   height: 39px;
   flex: none;
-  padding: 4px 6px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
   border-bottom: 1px solid var(--vm-border);
   font-weight: 600;
 }
 .workspace-menu-trigger {
   box-sizing: border-box;
-  width: 100%;
+  flex: 1;
+  min-width: 0;
   height: 30px;
   display: flex;
   align-items: center;
@@ -62,15 +70,15 @@
 }
 .workspace-sidebar-footer {
   flex: none;
-  padding: 6px;
+  padding: 6px 8px;
   border-top: 1px solid var(--vm-border);
   button {
     width: 100%;
     display: flex;
     align-items: center;
     gap: 8px;
-    height: 36px;
-    padding: 0 10px;
+    height: 30px;
+    padding: 0 8px;
     border: 0;
     border-radius: var(--vm-radius-sm);
     color: var(--vm-foreground-secondary);
@@ -101,12 +109,12 @@ button.workspace-reference-action,
   padding: 0;
   border: 0;
   border-radius: 5px;
-  color: var(--vm-foreground-secondary, #64748b);
+  color: var(--vm-foreground-secondary);
   background: transparent;
   cursor: pointer;
   &:hover:not(:disabled) {
-    color: var(--vm-primary, #4f46e5);
-    background: var(--vm-fill-active, #eef2ff);
+    color: var(--vm-primary);
+    background: var(--vm-fill-active);
   }
   &:disabled {
     opacity: 0.4;
@@ -146,6 +154,7 @@ button.workspace-reference-action,
   &:hover {
     background: var(--vm-fill-hover);
   }
+  &.is-selected,
   &.is-active {
     background: var(--vm-fill-active);
     color: var(--vm-primary);
@@ -155,8 +164,12 @@ button.workspace-reference-action,
 .file-tree-header {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  padding: 8px 12px 6px;
+  gap: 8px;
+  padding: 8px 16px 6px;
+  font-size: var(--vm-text-xs);
+  > span {
+    flex: 1;
+  }
   color: var(--vm-foreground-secondary);
   font-weight: 600;
 }
@@ -191,14 +204,15 @@ button.workspace-reference-action,
   display: flex;
   align-items: center;
   gap: 6px;
-  height: 28px;
-  margin: 1px 6px;
-  padding: 0 6px 0 calc(6px + var(--depth, 0) * 14px);
+  height: var(--vm-sidebar-row);
+  margin: 1px 8px;
+  padding: 0 8px 0 calc(8px + var(--depth, 0) * 14px);
   border-radius: var(--vm-radius-sm);
   &:hover,
   &.is-menu-open {
     background: var(--vm-fill-hover);
   }
+  &.is-selected,
   &.is-active {
     background: var(--vm-fill-active);
     color: var(--vm-primary);
@@ -230,6 +244,7 @@ button.workspace-reference-action,
   white-space: nowrap;
 }
 .file-tree-twisty {
+  box-sizing: border-box;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -257,8 +272,6 @@ button.workspace-reference-action,
   &:hover {
     background: var(--vm-border);
   }
-}
-.file-tree-more {
   opacity: 0;
   .file-tree-row:hover &,
   .file-tree-row:focus-within &,
@@ -284,6 +297,7 @@ button.workspace-reference-action,
   color: var(--vm-foreground-tertiary);
 }
 .workspace-menu {
+  @include surface;
   z-index: 1100;
   min-width: 190px;
   overflow-y: auto;
@@ -294,7 +308,7 @@ button.workspace-reference-action,
   background: var(--vm-background);
   color: var(--vm-foreground);
   box-shadow: var(--vm-shadow-menu);
-  font: 13px/1.5 var(--vm-font);
+  font: var(--vm-text-md)/1.5 var(--vm-font);
   button {
     display: flex;
     align-items: center;
@@ -327,7 +341,8 @@ button.workspace-reference-action,
       &::before {
         content: '';
         position: absolute;
-        top: -4px;
+        top: 0;
+        transform: translateY(-50%);
         left: 0;
         right: 0;
         border-top: 1px solid var(--vm-border);
@@ -339,7 +354,7 @@ button.workspace-reference-action,
   flex: none;
   border-bottom: 1px solid var(--vm-border);
   --tabs-height: 38px;
-  --tabs-font: 13px var(--vm-font);
+  --tabs-font: var(--vm-text-md) var(--vm-font);
   --tabs-background: var(--vm-background-subtle);
   --tabs-accent-color: var(--vm-primary);
   --tab-radius: 8px;
@@ -433,32 +448,7 @@ button.workspace-reference-action,
   background: var(--vm-background);
   border-bottom: 1px solid var(--vm-border);
   color: var(--vm-foreground);
-  font: 13px/1.5 var(--vm-font);
-  button {
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-    flex: none;
-    min-width: 0;
-    max-width: 100%;
-    border: 0;
-    border-radius: 6px;
-    padding: 3px 6px;
-    color: var(--vm-foreground-secondary);
-    background: transparent;
-    font: inherit;
-    white-space: nowrap;
-    cursor: pointer;
-    &:hover:not(:disabled),
-    &:focus-visible {
-      background: var(--vm-fill-hover);
-      color: var(--vm-primary);
-    }
-    &:disabled {
-      opacity: 0.5;
-      cursor: default;
-    }
-  }
+  font: var(--vm-text-md)/1.5 var(--vm-font);
 }
 .workspace-file-navigation-title {
   flex: 0 1 auto;
@@ -494,7 +484,7 @@ button.workspace-reference-action,
   white-space: nowrap;
   padding: 6px 8px 3px;
   color: var(--vm-foreground-tertiary);
-  font-size: 12px;
+  font-size: var(--vm-text-xs);
   &:not(:first-child) {
     margin-top: 4px;
     border-top: 1px solid var(--vm-border);
@@ -513,47 +503,19 @@ button.workspace-reference-action,
   }
 }
 
-.workspace-button-primary,
-.workspace-button-secondary,
-.workspace-button-ghost {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  box-sizing: border-box;
-  height: 32px;
-  padding: 0 12px;
-  border: 1px solid transparent;
-  border-radius: var(--vm-radius);
-  font: 13px var(--vm-font);
-  cursor: pointer;
-  &:disabled {
-    opacity: 0.5;
-    cursor: default;
-  }
-}
 .workspace-button-primary {
-  background: var(--vm-primary);
-  color: var(--vm-on-primary);
-  &:hover:not(:disabled) {
-    background: var(--vm-primary-hover);
-  }
+  @extend .vm-btn;
+  @extend .vm-btn--primary;
 }
 .workspace-button-secondary {
-  background: var(--vm-background);
-  border-color: var(--vm-border);
-  color: var(--vm-foreground);
-  &:hover:not(:disabled) {
-    background: var(--vm-fill-hover);
-  }
+  @extend .vm-btn;
+  @extend .vm-btn--secondary;
 }
 .workspace-button-ghost {
-  background: transparent;
-  color: var(--vm-foreground-secondary);
-  &:hover:not(:disabled) {
-    background: var(--vm-fill-hover);
-  }
+  @extend .vm-btn;
+  @extend .vm-btn--ghost;
 }
+
 .workspace-empty {
   position: absolute;
   inset: 0;
@@ -577,7 +539,7 @@ button.workspace-reference-action,
   color: var(--vm-primary);
 }
 .workspace-empty-title {
-  font-size: 16px;
+  font-size: var(--vm-text-lg);
   font-weight: 600;
   color: var(--vm-foreground);
   margin-bottom: 6px;
@@ -601,7 +563,7 @@ button.workspace-reference-action,
   gap: 12px;
   background: var(--vm-background-subtle);
   color: var(--vm-foreground-secondary);
-  font: 13px/1.5 var(--vm-font);
+  font: var(--vm-text-md)/1.5 var(--vm-font);
 }
 .workspace-loading svg {
   color: var(--vm-primary);
@@ -643,9 +605,15 @@ button.workspace-reference-action,
     color: var(--vm-danger);
   }
   h1 {
-    font-size: 16px;
+    font-size: var(--vm-text-lg);
     color: var(--vm-foreground);
   }
+
+  box-sizing: border-box;
+  padding: 24px;
+  max-height: 100%;
+  overflow: auto;
+  overflow-wrap: anywhere;
 }
 .workspace-banners {
   position: absolute;
@@ -689,34 +657,21 @@ button.workspace-reference-action,
   color: var(--vm-warning);
   background: var(--vm-warning-bg);
 }
-.file-tree-prompt {
+.file-tree-prompt input,
+.file-tree-prompt select {
   box-sizing: border-box;
-  width: min(360px, calc(100vw - 32px));
-  padding: 20px;
-  border: 1px solid var(--vm-border);
-  border-radius: var(--vm-radius-lg);
-  color: var(--vm-foreground);
+  width: 100%;
+  height: var(--vm-control-height);
+  padding: 0 10px;
+  border: 1px solid var(--vm-border-strong);
+  border-radius: var(--vm-radius-sm);
   background: var(--vm-background);
-  box-shadow: var(--vm-shadow-menu);
-  font: 13px/1.5 var(--vm-font);
-  &::backdrop {
-    background: rgb(15 23 42 / 32%);
-  }
-  input,
-  select {
-    box-sizing: border-box;
-    width: 100%;
-    padding: 8px 12px;
-    border: 1px solid var(--vm-border);
-    border-radius: 8px;
-    background: var(--vm-background);
-    color: inherit;
-    font: inherit;
-  }
+  color: inherit;
+  font: inherit;
 }
 .file-tree-prompt__title {
   margin: 0 0 14px;
-  font-size: 15px;
+  font-size: var(--vm-text-lg);
   font-weight: 600;
 }
 .file-tree-prompt__actions {
@@ -776,7 +731,79 @@ button.workspace-reference-action,
   margin: 16px 0;
 
   h2 {
-    font-size: 14px;
+    font-size: var(--vm-text-md);
     margin: 0;
   }
+}
+
+.file-tree-row[data-drop-side] {
+  position: relative;
+}
+.file-tree-row[data-drop-side='inside'] {
+  background: var(--vm-fill-active);
+  outline: 1px solid var(--vm-focus);
+}
+.file-tree-row[data-drop-side='before']::before,
+.file-tree-row[data-drop-side='after']::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: var(--vm-primary);
+  pointer-events: none;
+}
+.file-tree-row[data-drop-side='before']::before {
+  top: 0;
+}
+.file-tree-row[data-drop-side='after']::after {
+  bottom: 0;
+}
+
+.workspace-error-card pre {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-family: var(--vm-font-mono);
+}
+
+.workspace-document-picker-row {
+  display: flex;
+  justify-content: flex-start;
+  width: 100%;
+  min-width: 0;
+  text-align: left;
+}
+.workspace-document-picker-row small {
+  color: var(--vm-foreground-secondary);
+}
+
+.workspace-file-navigation > button,
+.workspace-file-navigation-actions > .vm-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex: none;
+  min-width: 0;
+  max-width: 100%;
+  border: 0;
+  border-radius: 6px;
+  padding: 3px 6px;
+  color: var(--vm-foreground-secondary);
+  background: transparent;
+  font: inherit;
+  white-space: nowrap;
+  cursor: pointer;
+  &:hover:not(:disabled),
+  &:focus-visible {
+    background: var(--vm-fill-hover);
+    color: var(--vm-primary);
+  }
+  &:disabled {
+    opacity: 0.5;
+    cursor: default;
+  }
+}
+
+.workspace-menu-icon--unchecked {
+  opacity: 0;
 }

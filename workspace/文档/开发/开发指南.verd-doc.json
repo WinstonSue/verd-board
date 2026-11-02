@@ -1811,7 +1811,7 @@
           "content": [
             {
               "type": "text",
-              "text": "开发应用名为 VerdBoard Dev，窗口带 [DEV]，userData 为 appData/VerdBoard Dev，默认工作区为其中的 workspaces/default。首次从仓库 workspace/ 复制原生图文，排除 .verdboard 等运行记录；后续保留修改，不自动覆盖或重置，也不继承旧 desktop 的目录选择。项目文档需要主动打开仓库 workspace/ 维护。VERDBOARD_USER_DATA_PATH 与 VERDBOARD_WORKSPACE_PATH 可显式指定隔离目录；开发旧存储也位于独立 userData，不再写 apps/desktop/。正式版继续使用 appData/VerdBoard，并保留原有旧目录恢复行为。"
+              "text": "开发应用名为 VerdBoard Dev，窗口带 [DEV]，userData 为 appData/VerdBoard Dev，默认工作区为其中的 workspaces/default。首次从仓库 workspace/ 复制原生图文，排除 .verdscrolls 等运行记录；后续保留修改，不自动覆盖或重置，也不继承旧 desktop 的目录选择。项目文档需要主动打开仓库 workspace/ 维护。VERDBOARD_USER_DATA_PATH 与 VERDBOARD_WORKSPACE_PATH 可显式指定隔离目录；开发旧存储也位于独立 userData，不再写 apps/desktop/。正式版继续使用 appData/VerdBoard，并保留原有旧目录恢复行为。"
             }
           ]
         },
@@ -1856,10 +1856,139 @@
               "text": "pnpm --filter @sue/verd-board-agent... build\npnpm --filter @sue/verd-board-agent test\nnode packages/product/agent/dist/cli.js describe --json\nnode packages/product/agent/dist/cli.js patterns workspace --dest /tmp/verd-patterns-new\nnode packages/product/agent/dist/cli.js preview --install-browser"
             }
           ]
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 2
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "工作区自动接入 AI"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "Desktop 创建或首次打开目录时初始化 .verdscrolls；旧 .verdboard 在共享工作区锁内整体迁移，保留身份、事务回执、staging 与回收内容。两边都有内容时停止写入，迁移后旧目录重新出现也阻断写入。无法解析的恢复日志保留并报告。config.json 是项目身份与名称的唯一来源，project.description 和 project.entryDocumentIds 可在工作区设置中编辑，未填写返回空值。根 AGENTS.md 仅更新专属受管块，其他正文保留；.verdscrolls/shared 链接到用户数据目录中的版本化 CLI、规范、范式和 Skill。链接不可创建时工作区仍可使用，设置页明确显示 AI 未就绪。"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "AI 先读取 AGENTS.md 和共享 Skill，再从项目根执行 .verdscrolls/shared/bin/verd context --json（Windows 使用 shared\\bin\\verd.cmd）。context 与 doctor 只读；init 和 doctor --repair 执行初始化、迁移和修复。命令从当前目录向上寻找最近工作区，遇到未初始化的 Git 根停止；--workspace 显式选择优先。共享资源升级后重新生成未提交计划，已确认事务仍按原 ID 查询回执。AGENTS.md 与 .verdscrolls/config.json 可共享；本机链接、会话、事务与回收区由元数据目录内 .gitignore 排除。范式库浏览副本继续保留用户修改，AI 默认消费共享发布规范。"
+            }
+          ]
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 2
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "内置工作区的手动全量更新"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "首次创建或手动全量更新后的工作区，在没有已保存会话时按 project.entryDocumentIds 的顺序打开第一个可用文件，并直接显示其编辑页。内置项目以“文档导航”为主入口，Agent 范式库同样以导航文档为主入口；文档通过稳定链接进入项目导览和专题图。已有会话继续恢复，主动关闭全部标签后的空会话也会保留。"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "默认项目工作区与 Agent 范式库均包含便携项目配置、稳定阅读入口与 AGENTS 引导。安装新应用不会自动替换已有副本及其会话。在“设置 → 数据与维护 → 内置内容”中选择“替换为内置内容…”并确认“备份并全部更新”，会先保存并完整备份旧目录，再替换全部图文、目录和项目设置；用户编辑及新增文件仅保留在备份。项目身份和终态事务回执保留，新会话与回收站重新初始化。备份长期保留，可从设置打开目录。相同版本也可主动重置。"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "目录更新由独立维护事务执行，使用工作区锁与 userData 级恢复日志；启动时先恢复再打开或首次复制。每次替换生成新的本机实例代次，旧窗口、旧文件宿主和未提交 Agent 计划必须重新打开或规划；已确认事务仍可查询原回执。日常文件编辑继续由 WorkspaceSession 统一提交。"
+            }
+          ]
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 2
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "Agent 编写工具与范式库"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "独立安装 @sue/verd-board-agent，使用 verd describe、rules、patterns 查询已安装规则与模板，通过 inspect、plan、validate、preview、apply 编辑任意原生工作区。"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "范式模板和说明同仓维护在独立 @sue/verd-board-agent-patterns 包中。Desktop 工作区菜单提供 Agent 范式库入口，首次打开复制到独立用户工作区，后续保留修改。浏览副本不回写源包，也不改变 CLI 使用的模板。"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "内置图文资源独立通过 npm 更新：项目文档使用 @sue/verd-board-docs，范式库使用 @sue/verd-board-agent-patterns。Desktop 首次启动、应用版本或附带资源变化后立即检查，其他检查间隔为 24 小时；设置中的“检查更新”可主动重试。主进程读取本机用户级和系统级 npm 配置中的匹配凭证，不需要安装 npm，凭证不随应用分发。缺少认证、断网或资源尚未发布均保留本地内容。发现兼容的新稳定版本后，菜单显示标记并提供“查看”和“稍后”；用户确认后才下载精确版本，经 integrity、文件摘要及原生校验后完整备份并替换，重新打开导航文档。范式库浏览内容更新不改变 CLI 和共享工具链。应用附带内容仍可离线恢复，降级会明确提示。"
+            }
+          ]
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 2
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "内容包构建与检查"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "pnpm build:content 构建两个内容包；node --test scripts/builtin-package.test.mjs 检查真实 tarball 与清单逐文件摘要一致。发布由维护者显式运行 pnpm publish:content，与 Desktop 发布分开。ESLint 启用未使用局部符号检查，忽略函数参数、catch 参数及 rest 同级解构。"
+            }
+          ]
         }
       ]
     },
-    "plainText": "开发指南\n打开画布 verd://file/detached%2F25%3Amind%2Fmind-mudf73s2-9hi9x8\n本文档介绍如何参与 VerdBoard 项目的开发。\n环境要求\nNode.js: >= 22.0.0\npnpm: >= 11.18.0\nGit: >= 2.0.0\n快速开始\n1. 克隆项目\ngit clone https://github.com/WinstonSue/verd-board.git\ncd verd-board\n2. 安装依赖\npnpm install\n3. 启动开发环境\n# 启动桌面应用（根目录脚本）\npnpm dev:desktop\n\n# 启动 Web\npnpm dev:web\n\n# 构建某个包（示例）\npnpm --filter @sue/board-react-text build\n4. 构建项目\n# 构建公开包和 Web（不含 Desktop）\npnpm build\n\n# 构建特定包\npnpm --filter @sue/board-react-text build\n\n# 类型检查（Desktop、应用与原生 Cell 内核；consumer 另跑）\npnpm typecheck\n\n# Desktop 前端构建（tsc && vite build，不含 electron-builder）\npnpm build:desktop\n# 当前平台正式安装包；macOS 默认 DMG，--with-zip 可额外生成 ZIP\npnpm package:desktop\n项目结构\nverd-board/\n├── apps/              # 应用层（web / desktop）\n├── packages/          # 核心包\n├── tests/             # E2E 与 consumer 验收\n├── workspace/       # 原生项目文档与架构图\n└── scripts/          # 构建脚本\n开发规范\n代码规范\nTypeScript: 严格模式，所有函数都要有类型定义\nESLint: 使用项目配置，提交前自动检查\nPrettier: 统一代码格式\n文件命名: kebab-case for folders, PascalCase for components\nGit 提交规范\n使用 Conventional Commits 规范：\nfeat: 新功能\nfix: 修复 bug\ndocs: 文档更新\nstyle: 代码格式调整\nrefactor: 重构\ntest: 测试相关\nchore: 构建工具、依赖更新\n分支策略\nmain: 主分支，稳定版本\ndevelop: 开发分支\nfeature/*: 功能分支\nhotfix/*: 热修复分支\n包开发\n创建新包\n在 packages/ 目录下创建新包\n添加 package.json 配置\n更新 pnpm-workspace.yaml\n在 workspace/文档/包/ 中维护原生 .verd-doc.json 包说明，并更新包索引\n包依赖管理\nReact / React DOM 统一到 19.2.x：在根目录 pnpm-workspace.yaml 的 overrides 中锁定（pnpm 11 不再读取 package.json 的 pnpm 字段）。\n使用 workspace 协议管理内部依赖：\n{\n  \"dependencies\": {\n    \"@sue/board-common\": \"workspace:*\"\n  }\n}\n测试\n单元测试\n# 运行所有测试\npnpm test\n\n# 运行特定包的测试\npnpm --filter @sue/board-react-text test\n\n# 监听模式\npnpm --filter @sue/verd-board-app exec vitest --watch\nE2E 测试\n项目使用 Playwright 进行 E2E 测试。\n# 运行 E2E 测试\ncd tests/web-e2e\npnpm exec playwright test\n\n# 以 UI 模式运行\npnpm exec playwright test --ui\n\n# 运行特定测试文件\npnpm exec playwright test src/ai-canvas-examples.spec.ts\nDesktop 产品 E2E\n# 日常功能验证：自动启动真实 dev，无需构建\npnpm test:e2e:desktop\n# 生产构建专项验收\npnpm build:desktop\npnpm test:e2e:desktop:prod\n测试位于 tests/desktop-e2e。默认命令直接验证 dev 源码，覆盖交互、关闭前保存及重启恢复；生产构建命令 test:e2e:desktop:prod 复用普通用例并补充内置资源升级、旧文件迁移和损坏存储专项。安装包测试使用独立 playwright.packaged.config.ts，仅由显式打包流程调用。所有测试使用临时 userData 与工作区，不访问日常资料。生产验收必须先重建，不能使用旧 dist 验收新源码。\n插件与内置内容验收\npnpm check:plugins\npnpm test:plugin-consumers\npnpm workspace:check\n# 内置图文回归前重建 Desktop\npnpm build:desktop\npnpm test:e2e:desktop:prod -- src/demo.spec.ts src/diagram-readability.spec.ts\n插件消费者与 Schema 候选联调按当前依赖状态运行，不把本地候选写成 registry 发布证明。工作区检查覆盖结构、身份、引用、锚点与依赖漂移；正文语义和算法流程仍需对照源码与现有用例。专题渲染及保存重启验证使用临时副本，不编辑仓库内正在使用的内容。\n构建和发布\n构建包\n# 构建公开包和 Web（排除 Desktop）\npnpm build\n\n# 构建特定包\npnpm --filter @sue/board-react-text build\n发布流程\n项目使用 Changesets 管理版本与 changelog。\n# 1. 记录本次变更\npnpm changeset\n\n# 2. 升版本并生成 changelog\npnpm release\n\n# 3. 构建并发布到 npm\npnpm pub\npnpm release 对应 changeset version\npnpm pub 会先 pnpm build，再 changeset publish\n预发布版本使用 0.4.0-beta.1 格式，正式版本使用 0.4.0\n发布前应跑通 pnpm typecheck、pnpm lint、pnpm test、pnpm workspace:check、pnpm build、pnpm build:desktop、pnpm test:e2e:prod、pnpm test:e2e:desktop、pnpm test:e2e:desktop:prod 和 pnpm test:consumer。先重建两端再运行对应 E2E；不能用旧构建验收新源码。\n注意事项\n发布前确保所有测试通过\n确保有 npm 发布权限\n不要使用 Nx release；本仓发布入口只有 Changesets\n调试\nVS Code 调试\n仓库保留 .vscode/settings.json；需要调试主进程时，配置与当前 Electron/Vite 启动方式一致的调试会话。\n浏览器调试\n开发模式下支持热重载和 Source Map。\n常见问题\n依赖问题\n如果遇到依赖问题，尝试：\n# 检查并清理包缓存\npnpm store prune\n\n# 重新安装\npnpm install\n构建问题\n如果构建失败，检查：\nTypeScript 类型错误\n依赖版本冲突\n环境变量配置\nElectron 28.3.3 EOL\n当前桌面端锁定在 Electron 28.3.3（apps/desktop 与根依赖均为 electron@^28.0.0，解析到 28.x）。Electron 28 已结束官方支持窗口，继续使用的风险主要是 Chromium / Node 安全补丁不再回端口，以及后续原生模块兼容性。\n本轮不升级 major，原因：\nElectron 29+ 会连带 Chromium 与 Node 大版本，桌面主进程、preload、sandbox 与打包配置都需要单独回归。\n当前保留已验证的主版本；升级属于独立运行时变更，需要单独完成主进程、preload、sandbox、打包和存储验收。\n现有桌面边界启用 sandbox: true，通过受控 preload/IPC 使用 WorkspaceHost、expectedVersion 条件写入和可恢复事务日志；旧 key/value 存储仅用于迁移。\n建议下一轮单独排期：先在隔离分支升到仍在 LTS/支持窗口的 Electron，再跑 pnpm build:desktop、手动安装包与存储回归。\n贡献流程\n创建功能分支\n提交代码\n发起评审\n合并代码\n原生文档维护\n长期正文直接编辑 workspace/文档/ 的 .verd-doc.json，系统图直接编辑同一 workspace 的 .verd.json。文档身份保持稳定；内部链接使用 verd://file/ 加编码后的 ID 与标题 slug。详见 文档维护指南。AI 导入夹具位于 tests/fixtures/ai-canvas/，规范测试直接读取原生 codeBlock。\n资源链接\n项目架构\n包文档\n使用指南\nnpm 2.0.0 发布与第三方接入\n2.0 接入与迁移\n发布以两个阿里云 scope 为准，各公开包 publishConfig.registry 指向 @sue 仓库；pnpm release 生成版本，pnpm pub 构建并由 Changesets 发布。pack:dry 实际打包到临时目录后检查并清理；test:consumer 安装真实 tarball，逐一验证 React18/19。发布后使用 VERD_CONSUMER_SOURCE=registry pnpm test:consumer 验证两个仓库的安装。\n发布工作流的 ALIYUN_SUE_NPM_TOKEN 需具备 @sue 仓库读写权限；ALIYUN_YLIB_NPM_TOKEN 只需依赖仓库读权限。两者由 GitHub Actions secret 注入，不使用 npmjs.org 的 token。新发包在 pnpm minimumReleaseAge 限制下需要消费项目显式排除 @sue/*，不要全局关闭其他包的检查。\nSchema SDK 双仓联调\nSchema 仓库使用自己的 pnpm 9 / TypeScript 5 工具链；corepack pnpm build:settings 构建 SDK 及最小依赖闭包，node scripts/pack-settings.cjs /absolute/artifacts 产出 tarball 和 manifest.json，corepack pnpm test:settings 运行 SDK 测试。消费者验证执行 node scripts/settings-consumer-check.cjs /absolute/artifacts/manifest.json，需要先安装对应 Playwright Chromium。\n在 Verd 执行 node scripts/prepare-schema-integration.mjs --schema-artifacts /absolute/artifacts/manifest.json，命令输出临时副本路径。在该副本执行 pnpm install --ignore-scripts 后运行 typecheck、test、build、build:desktop 等现有门禁；候选包只进入副本的 overrides 和锁文件。消费者脚本同样接受 --schema-artifacts；VERD_SCHEMA_ARTIFACTS 环境变量可向嵌套命令传递清单。\n发布顺序为 Schema runtime 与 Settings SDK 先发布，再将 Verd 的依赖及锁文件固定到实际发布版本，最后在无本地 overrides 的 registry 模式完成消费者验收。候选源码版本不是发布证明；本次不执行版本升级或发布。 SDK 尚未发布时，根仓正式依赖及锁文件的 registry 安装门禁尚不成立；应通过上述临时副本验收，不将候选 overrides 提交为正式依赖。\n桌面开发调试与完整重启\n桌面开发默认不自动打开 DevTools；需要调试时使用 Electron 的 View 菜单或平台快捷键手动打开，避免停靠的调试面板挤占画布。修改主进程或 preload 的 IPC 接口后，应等待工作区保存完成，通过正常退出流程关闭旧实例，再启动 Dev 实例；仅刷新页面不能更新已运行的主进程。若保存失败，保留窗口并处理失败，不强制结束。真实 dev 与生产构建分别运行 Desktop startup-ui.spec.ts 验证默认调试状态、窗口宽度、真实历史接口和标签页恢复，main.spec.ts 验证接口在页面加载前注册。\n日常开发与正式使用隔离\npnpm dev:desktop（pnpm dev / pnpm start 的同义入口）直接读取 workspace 包源码，支持 Vite 热更新，无需先构建公开包。pnpm test:e2e:desktop 自动启动独占端口 7310 的 Vite 和主进程/preload watcher，使用临时 userData 与工作区；不复用手动开发服务。手动开发使用端口 7300 和 dist-electron-dev，自动化使用 dist-electron-e2e，生产构建使用 dist-electron，缓存亦分开。日常验证不调用打包、安装或 LaunchServices 注册，不关闭或替换正式应用。\n开发应用名为 VerdBoard Dev，窗口带 [DEV]，userData 为 appData/VerdBoard Dev，默认工作区为其中的 workspaces/default。首次从仓库 workspace/ 复制原生图文，排除 .verdboard 等运行记录；后续保留修改，不自动覆盖或重置，也不继承旧 desktop 的目录选择。项目文档需要主动打开仓库 workspace/ 维护。VERDBOARD_USER_DATA_PATH 与 VERDBOARD_WORKSPACE_PATH 可显式指定隔离目录；开发旧存储也位于独立 userData，不再写 apps/desktop/。正式版继续使用 appData/VerdBoard，并保留原有旧目录恢复行为。\nAgent 工具开发与验证\n范式源位于 packages/product/agent-patterns/workspace/。维护其原生文档与图，目录和参数登记在同包 catalog.json。安装后的工作区是副本；试用不会弄脏源码。\n构建工具包会同时构建自包含浏览器预览资源。结构查询和校验无需浏览器；预览可按需安装 Chromium。使用实际 pnpm pack 产物在仓库外验证，不能依赖开发源码。\npnpm --filter @sue/verd-board-agent... build\npnpm --filter @sue/verd-board-agent test\nnode packages/product/agent/dist/cli.js describe --json\nnode packages/product/agent/dist/cli.js patterns workspace --dest /tmp/verd-patterns-new\nnode packages/product/agent/dist/cli.js preview --install-browser",
+    "plainText": "开发指南\n打开画布 verd://file/detached%2F25%3Amind%2Fmind-mudf73s2-9hi9x8\n本文档介绍如何参与 VerdBoard 项目的开发。\n环境要求\nNode.js: >= 22.0.0\npnpm: >= 11.18.0\nGit: >= 2.0.0\n快速开始\n1. 克隆项目\ngit clone https://github.com/WinstonSue/verd-board.git\ncd verd-board\n2. 安装依赖\npnpm install\n3. 启动开发环境\n# 启动桌面应用（根目录脚本）\npnpm dev:desktop\n\n# 启动 Web\npnpm dev:web\n\n# 构建某个包（示例）\npnpm --filter @sue/board-react-text build\n4. 构建项目\n# 构建公开包和 Web（不含 Desktop）\npnpm build\n\n# 构建特定包\npnpm --filter @sue/board-react-text build\n\n# 类型检查（Desktop、应用与原生 Cell 内核；consumer 另跑）\npnpm typecheck\n\n# Desktop 前端构建（tsc && vite build，不含 electron-builder）\npnpm build:desktop\n# 当前平台正式安装包；macOS 默认 DMG，--with-zip 可额外生成 ZIP\npnpm package:desktop\n项目结构\nverd-board/\n├── apps/              # 应用层（web / desktop）\n├── packages/          # 核心包\n├── tests/             # E2E 与 consumer 验收\n├── workspace/       # 原生项目文档与架构图\n└── scripts/          # 构建脚本\n开发规范\n代码规范\nTypeScript: 严格模式，所有函数都要有类型定义\nESLint: 使用项目配置，提交前自动检查\nPrettier: 统一代码格式\n文件命名: kebab-case for folders, PascalCase for components\nGit 提交规范\n使用 Conventional Commits 规范：\nfeat: 新功能\nfix: 修复 bug\ndocs: 文档更新\nstyle: 代码格式调整\nrefactor: 重构\ntest: 测试相关\nchore: 构建工具、依赖更新\n分支策略\nmain: 主分支，稳定版本\ndevelop: 开发分支\nfeature/*: 功能分支\nhotfix/*: 热修复分支\n包开发\n创建新包\n在 packages/ 目录下创建新包\n添加 package.json 配置\n更新 pnpm-workspace.yaml\n在 workspace/文档/包/ 中维护原生 .verd-doc.json 包说明，并更新包索引\n包依赖管理\nReact / React DOM 统一到 19.2.x：在根目录 pnpm-workspace.yaml 的 overrides 中锁定（pnpm 11 不再读取 package.json 的 pnpm 字段）。\n使用 workspace 协议管理内部依赖：\n{\n  \"dependencies\": {\n    \"@sue/board-common\": \"workspace:*\"\n  }\n}\n测试\n单元测试\n# 运行所有测试\npnpm test\n\n# 运行特定包的测试\npnpm --filter @sue/board-react-text test\n\n# 监听模式\npnpm --filter @sue/verd-board-app exec vitest --watch\nE2E 测试\n项目使用 Playwright 进行 E2E 测试。\n# 运行 E2E 测试\ncd tests/web-e2e\npnpm exec playwright test\n\n# 以 UI 模式运行\npnpm exec playwright test --ui\n\n# 运行特定测试文件\npnpm exec playwright test src/ai-canvas-examples.spec.ts\nDesktop 产品 E2E\n# 日常功能验证：自动启动真实 dev，无需构建\npnpm test:e2e:desktop\n# 生产构建专项验收\npnpm build:desktop\npnpm test:e2e:desktop:prod\n测试位于 tests/desktop-e2e。默认命令直接验证 dev 源码，覆盖交互、关闭前保存及重启恢复；生产构建命令 test:e2e:desktop:prod 复用普通用例并补充内置资源升级、旧文件迁移和损坏存储专项。安装包测试使用独立 playwright.packaged.config.ts，仅由显式打包流程调用。所有测试使用临时 userData 与工作区，不访问日常资料。生产验收必须先重建，不能使用旧 dist 验收新源码。\n插件与内置内容验收\npnpm check:plugins\npnpm test:plugin-consumers\npnpm workspace:check\n# 内置图文回归前重建 Desktop\npnpm build:desktop\npnpm test:e2e:desktop:prod -- src/demo.spec.ts src/diagram-readability.spec.ts\n插件消费者与 Schema 候选联调按当前依赖状态运行，不把本地候选写成 registry 发布证明。工作区检查覆盖结构、身份、引用、锚点与依赖漂移；正文语义和算法流程仍需对照源码与现有用例。专题渲染及保存重启验证使用临时副本，不编辑仓库内正在使用的内容。\n构建和发布\n构建包\n# 构建公开包和 Web（排除 Desktop）\npnpm build\n\n# 构建特定包\npnpm --filter @sue/board-react-text build\n发布流程\n项目使用 Changesets 管理版本与 changelog。\n# 1. 记录本次变更\npnpm changeset\n\n# 2. 升版本并生成 changelog\npnpm release\n\n# 3. 构建并发布到 npm\npnpm pub\npnpm release 对应 changeset version\npnpm pub 会先 pnpm build，再 changeset publish\n预发布版本使用 0.4.0-beta.1 格式，正式版本使用 0.4.0\n发布前应跑通 pnpm typecheck、pnpm lint、pnpm test、pnpm workspace:check、pnpm build、pnpm build:desktop、pnpm test:e2e:prod、pnpm test:e2e:desktop、pnpm test:e2e:desktop:prod 和 pnpm test:consumer。先重建两端再运行对应 E2E；不能用旧构建验收新源码。\n注意事项\n发布前确保所有测试通过\n确保有 npm 发布权限\n不要使用 Nx release；本仓发布入口只有 Changesets\n调试\nVS Code 调试\n仓库保留 .vscode/settings.json；需要调试主进程时，配置与当前 Electron/Vite 启动方式一致的调试会话。\n浏览器调试\n开发模式下支持热重载和 Source Map。\n常见问题\n依赖问题\n如果遇到依赖问题，尝试：\n# 检查并清理包缓存\npnpm store prune\n\n# 重新安装\npnpm install\n构建问题\n如果构建失败，检查：\nTypeScript 类型错误\n依赖版本冲突\n环境变量配置\nElectron 28.3.3 EOL\n当前桌面端锁定在 Electron 28.3.3（apps/desktop 与根依赖均为 electron@^28.0.0，解析到 28.x）。Electron 28 已结束官方支持窗口，继续使用的风险主要是 Chromium / Node 安全补丁不再回端口，以及后续原生模块兼容性。\n本轮不升级 major，原因：\nElectron 29+ 会连带 Chromium 与 Node 大版本，桌面主进程、preload、sandbox 与打包配置都需要单独回归。\n当前保留已验证的主版本；升级属于独立运行时变更，需要单独完成主进程、preload、sandbox、打包和存储验收。\n现有桌面边界启用 sandbox: true，通过受控 preload/IPC 使用 WorkspaceHost、expectedVersion 条件写入和可恢复事务日志；旧 key/value 存储仅用于迁移。\n建议下一轮单独排期：先在隔离分支升到仍在 LTS/支持窗口的 Electron，再跑 pnpm build:desktop、手动安装包与存储回归。\n贡献流程\n创建功能分支\n提交代码\n发起评审\n合并代码\n原生文档维护\n长期正文直接编辑 workspace/文档/ 的 .verd-doc.json，系统图直接编辑同一 workspace 的 .verd.json。文档身份保持稳定；内部链接使用 verd://file/ 加编码后的 ID 与标题 slug。详见 文档维护指南。AI 导入夹具位于 tests/fixtures/ai-canvas/，规范测试直接读取原生 codeBlock。\n资源链接\n项目架构\n包文档\n使用指南\nnpm 2.0.0 发布与第三方接入\n2.0 接入与迁移\n发布以两个阿里云 scope 为准，各公开包 publishConfig.registry 指向 @sue 仓库；pnpm release 生成版本，pnpm pub 构建并由 Changesets 发布。pack:dry 实际打包到临时目录后检查并清理；test:consumer 安装真实 tarball，逐一验证 React18/19。发布后使用 VERD_CONSUMER_SOURCE=registry pnpm test:consumer 验证两个仓库的安装。\n发布工作流的 ALIYUN_SUE_NPM_TOKEN 需具备 @sue 仓库读写权限；ALIYUN_YLIB_NPM_TOKEN 只需依赖仓库读权限。两者由 GitHub Actions secret 注入，不使用 npmjs.org 的 token。新发包在 pnpm minimumReleaseAge 限制下需要消费项目显式排除 @sue/*，不要全局关闭其他包的检查。\nSchema SDK 双仓联调\nSchema 仓库使用自己的 pnpm 9 / TypeScript 5 工具链；corepack pnpm build:settings 构建 SDK 及最小依赖闭包，node scripts/pack-settings.cjs /absolute/artifacts 产出 tarball 和 manifest.json，corepack pnpm test:settings 运行 SDK 测试。消费者验证执行 node scripts/settings-consumer-check.cjs /absolute/artifacts/manifest.json，需要先安装对应 Playwright Chromium。\n在 Verd 执行 node scripts/prepare-schema-integration.mjs --schema-artifacts /absolute/artifacts/manifest.json，命令输出临时副本路径。在该副本执行 pnpm install --ignore-scripts 后运行 typecheck、test、build、build:desktop 等现有门禁；候选包只进入副本的 overrides 和锁文件。消费者脚本同样接受 --schema-artifacts；VERD_SCHEMA_ARTIFACTS 环境变量可向嵌套命令传递清单。\n发布顺序为 Schema runtime 与 Settings SDK 先发布，再将 Verd 的依赖及锁文件固定到实际发布版本，最后在无本地 overrides 的 registry 模式完成消费者验收。候选源码版本不是发布证明；本次不执行版本升级或发布。 SDK 尚未发布时，根仓正式依赖及锁文件的 registry 安装门禁尚不成立；应通过上述临时副本验收，不将候选 overrides 提交为正式依赖。\n桌面开发调试与完整重启\n桌面开发默认不自动打开 DevTools；需要调试时使用 Electron 的 View 菜单或平台快捷键手动打开，避免停靠的调试面板挤占画布。修改主进程或 preload 的 IPC 接口后，应等待工作区保存完成，通过正常退出流程关闭旧实例，再启动 Dev 实例；仅刷新页面不能更新已运行的主进程。若保存失败，保留窗口并处理失败，不强制结束。真实 dev 与生产构建分别运行 Desktop startup-ui.spec.ts 验证默认调试状态、窗口宽度、真实历史接口和标签页恢复，main.spec.ts 验证接口在页面加载前注册。\n日常开发与正式使用隔离\npnpm dev:desktop（pnpm dev / pnpm start 的同义入口）直接读取 workspace 包源码，支持 Vite 热更新，无需先构建公开包。pnpm test:e2e:desktop 自动启动独占端口 7310 的 Vite 和主进程/preload watcher，使用临时 userData 与工作区；不复用手动开发服务。手动开发使用端口 7300 和 dist-electron-dev，自动化使用 dist-electron-e2e，生产构建使用 dist-electron，缓存亦分开。日常验证不调用打包、安装或 LaunchServices 注册，不关闭或替换正式应用。\n开发应用名为 VerdBoard Dev，窗口带 [DEV]，userData 为 appData/VerdBoard Dev，默认工作区为其中的 workspaces/default。首次从仓库 workspace/ 复制原生图文，排除 .verdscrolls 等运行记录；后续保留修改，不自动覆盖或重置，也不继承旧 desktop 的目录选择。项目文档需要主动打开仓库 workspace/ 维护。VERDBOARD_USER_DATA_PATH 与 VERDBOARD_WORKSPACE_PATH 可显式指定隔离目录；开发旧存储也位于独立 userData，不再写 apps/desktop/。正式版继续使用 appData/VerdBoard，并保留原有旧目录恢复行为。\nAgent 工具开发与验证\n范式源位于 packages/product/agent-patterns/workspace/。维护其原生文档与图，目录和参数登记在同包 catalog.json。安装后的工作区是副本；试用不会弄脏源码。\n构建工具包会同时构建自包含浏览器预览资源。结构查询和校验无需浏览器；预览可按需安装 Chromium。使用实际 pnpm pack 产物在仓库外验证，不能依赖开发源码。\npnpm --filter @sue/verd-board-agent... build\npnpm --filter @sue/verd-board-agent test\nnode packages/product/agent/dist/cli.js describe --json\nnode packages/product/agent/dist/cli.js patterns workspace --dest /tmp/verd-patterns-new\nnode packages/product/agent/dist/cli.js preview --install-browser\n工作区自动接入 AI\nDesktop 创建或首次打开目录时初始化 .verdscrolls；旧 .verdboard 在共享工作区锁内整体迁移，保留身份、事务回执、staging 与回收内容。两边都有内容时停止写入，迁移后旧目录重新出现也阻断写入。无法解析的恢复日志保留并报告。config.json 是项目身份与名称的唯一来源，project.description 和 project.entryDocumentIds 可在工作区设置中编辑，未填写返回空值。根 AGENTS.md 仅更新专属受管块，其他正文保留；.verdscrolls/shared 链接到用户数据目录中的版本化 CLI、规范、范式和 Skill。链接不可创建时工作区仍可使用，设置页明确显示 AI 未就绪。\nAI 先读取 AGENTS.md 和共享 Skill，再从项目根执行 .verdscrolls/shared/bin/verd context --json（Windows 使用 shared\\bin\\verd.cmd）。context 与 doctor 只读；init 和 doctor --repair 执行初始化、迁移和修复。命令从当前目录向上寻找最近工作区，遇到未初始化的 Git 根停止；--workspace 显式选择优先。共享资源升级后重新生成未提交计划，已确认事务仍按原 ID 查询回执。AGENTS.md 与 .verdscrolls/config.json 可共享；本机链接、会话、事务与回收区由元数据目录内 .gitignore 排除。范式库浏览副本继续保留用户修改，AI 默认消费共享发布规范。\n内置工作区的手动全量更新\n首次创建或手动全量更新后的工作区，在没有已保存会话时按 project.entryDocumentIds 的顺序打开第一个可用文件，并直接显示其编辑页。内置项目以“文档导航”为主入口，Agent 范式库同样以导航文档为主入口；文档通过稳定链接进入项目导览和专题图。已有会话继续恢复，主动关闭全部标签后的空会话也会保留。\n默认项目工作区与 Agent 范式库均包含便携项目配置、稳定阅读入口与 AGENTS 引导。安装新应用不会自动替换已有副本及其会话。在“设置 → 数据与维护 → 内置内容”中选择“替换为内置内容…”并确认“备份并全部更新”，会先保存并完整备份旧目录，再替换全部图文、目录和项目设置；用户编辑及新增文件仅保留在备份。项目身份和终态事务回执保留，新会话与回收站重新初始化。备份长期保留，可从设置打开目录。相同版本也可主动重置。\n目录更新由独立维护事务执行，使用工作区锁与 userData 级恢复日志；启动时先恢复再打开或首次复制。每次替换生成新的本机实例代次，旧窗口、旧文件宿主和未提交 Agent 计划必须重新打开或规划；已确认事务仍可查询原回执。日常文件编辑继续由 WorkspaceSession 统一提交。\nAgent 编写工具与范式库\n独立安装 @sue/verd-board-agent，使用 verd describe、rules、patterns 查询已安装规则与模板，通过 inspect、plan、validate、preview、apply 编辑任意原生工作区。\n范式模板和说明同仓维护在独立 @sue/verd-board-agent-patterns 包中。Desktop 工作区菜单提供 Agent 范式库入口，首次打开复制到独立用户工作区，后续保留修改。浏览副本不回写源包，也不改变 CLI 使用的模板。\n内置图文资源独立通过 npm 更新：项目文档使用 @sue/verd-board-docs，范式库使用 @sue/verd-board-agent-patterns。Desktop 首次启动、应用版本或附带资源变化后立即检查，其他检查间隔为 24 小时；设置中的“检查更新”可主动重试。主进程读取本机用户级和系统级 npm 配置中的匹配凭证，不需要安装 npm，凭证不随应用分发。缺少认证、断网或资源尚未发布均保留本地内容。发现兼容的新稳定版本后，菜单显示标记并提供“查看”和“稍后”；用户确认后才下载精确版本，经 integrity、文件摘要及原生校验后完整备份并替换，重新打开导航文档。范式库浏览内容更新不改变 CLI 和共享工具链。应用附带内容仍可离线恢复，降级会明确提示。\n内容包构建与检查\npnpm build:content 构建两个内容包；node --test scripts/builtin-package.test.mjs 检查真实 tarball 与清单逐文件摘要一致。发布由维护者显式运行 pnpm publish:content，与 Desktop 发布分开。ESLint 启用未使用局部符号检查，忽略函数参数、catch 参数及 rest 同级解构。",
     "align": "left"
   }
 }

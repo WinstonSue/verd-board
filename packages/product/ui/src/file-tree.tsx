@@ -1,6 +1,7 @@
+import { VmDialog } from './components/vm-dialog';
+import { IconButton } from './components/icon-button';
 import {
   useEffect,
-  useId,
   useMemo,
   useRef,
   useState,
@@ -10,9 +11,11 @@ import {
 } from 'react';
 import {
   Boxes,
+  Plus,
   ChevronDown,
   ChevronRight,
   CopyPlus,
+  Link as LinkIcon,
   Download,
   Ellipsis,
   ExternalLink,
@@ -94,6 +97,12 @@ interface TreeFile {
 }
 
 export interface FileTreeProps {
+  selectedPaths?: readonly string[];
+  dropTarget?: { path: string; side: 'before' | 'after' | 'inside' } | null;
+  headerOptions?: import('react').ReactNode;
+  manualOrder?: Record<string, string[]>;
+  hideLibraryNavigation?: boolean;
+  onOrganize?(path: string, kind: 'rename' | 'move'): void;
   actionSource?: ActionSource;
   entries: FileTreeEntry[];
   canvases: FileTreeCanvas[];
@@ -121,6 +130,7 @@ export interface FileTreeProps {
   onDuplicate?(frameId: string): void;
   /** Exports the file plus its dependency closure as a bundle. */
   onExport?(frameId: string): void;
+  onCopyLink?(fileId: string): void | Promise<void>;
   /** Imports a `.verd.json` file or canvas bundle into the workspace. */
   onImport?(): void;
   /** Hides every control that would write to the workspace. */
@@ -283,13 +293,9 @@ function FileTreePrompt({
   onSubmit(value: string): void;
   onClose(): void;
 }) {
-  const ref = useRef<HTMLDialogElement>(null);
   const input = useRef<HTMLInputElement>(null);
-  const titleId = useId();
   const [value, setValue] = useState(initialValue);
   useEffect(() => {
-    const element = ref.current!;
-    element.showModal();
     input.current?.focus();
     if (rename) {
       const start = initialValue.lastIndexOf('/') + 1;
@@ -303,15 +309,11 @@ function FileTreePrompt({
     // queues a close event during StrictMode's replay and dismisses the new mount.
   }, [initialValue, rename]);
   return (
-    <dialog
-      ref={ref}
+    <VmDialog
+      title={title}
+      closeLabel={cancel === '取消' ? '关闭' : 'Close'}
       className="file-tree-prompt"
-      aria-labelledby={titleId}
       onClose={onClose}
-      onCancel={(event) => {
-        event.preventDefault();
-        onClose();
-      }}
     >
       <form
         onSubmit={(event) => {
@@ -322,9 +324,6 @@ function FileTreePrompt({
           }
         }}
       >
-        <h2 id={titleId} className="file-tree-prompt__title">
-          {title}
-        </h2>
         <input
           ref={input}
           aria-label={title}
@@ -348,7 +347,7 @@ function FileTreePrompt({
           </button>
         </div>
       </form>
-    </dialog>
+    </VmDialog>
   );
 }
 const diagramIcons = {
@@ -362,6 +361,9 @@ const diagramIcons = {
 
 export function FileTree({
   actionSource,
+  manualOrder,
+  hideLibraryNavigation,
+  onOrganize,
   entries,
   canvases,
   documents = [],
@@ -381,6 +383,7 @@ export function FileTree({
   onMove,
   onDuplicate,
   onExport,
+  onCopyLink,
   onImport,
   readonly = false,
   subgraphs = [],
@@ -388,6 +391,9 @@ export function FileTree({
   onToggleOwner,
   onOpenLibrary,
   libraryActive = false,
+  headerOptions,
+  selectedPaths = [],
+  dropTarget,
   revealFile,
   onRevealFile,
 }: FileTreeProps) {
@@ -421,7 +427,11 @@ export function FileTree({
     | { kind: 'newFolder'; dirPath: string; commit?: WorkspaceActionBinding }
     | null
   >(null);
-  const requestRename = (file: TreeFile) =>
+  const requestRename = (file: TreeFile) => {
+    if (onOrganize) {
+      onOrganize(file.path, 'rename');
+      return;
+    }
     setPrompt({
       kind: 'rename',
       file,
@@ -429,6 +439,7 @@ export function FileTree({
         fileId: file.fileId,
       }),
     });
+  };
   const requestFolder = (dirPath: string) => {
     const disclosure = bindWorkspaceAction(
       actionSource,
@@ -576,8 +587,26 @@ export function FileTree({
   };
   const fileItems = (file: TreeFile, shortcut = false): FileTreeMenuItem[] => {
     const id = file.fileId;
+    const copyItems =
+      actionSource || onCopyLink
+        ? [
+            actionItem(
+              'copy-link',
+              'workspace.file.copy-link',
+              { fileId: id },
+              locale === 'en' ? 'Copy link' : '复制链接',
+              LinkIcon,
+              () => {
+                void Promise.resolve()
+                  .then(() => onCopyLink?.(id))
+                  .catch((error) => setOperationError(String(error)));
+              },
+            ),
+          ]
+        : [];
     if (shortcut)
       return [
+        ...copyItems,
         actionItem(
           'open',
           'workspace.file.open',
@@ -607,9 +636,20 @@ export function FileTree({
             'rename',
             'workspace.file.rename',
             { fileId: id, present: () => requestRename(file) },
-            t.rename,
+            onOrganize ? (locale === 'zh' ? '重命名' : 'Rename') : t.rename,
             Pencil,
             () => requestRename(file),
+          ),
+        );
+      if (onOrganize)
+        result.push(
+          actionItem(
+            'move-to',
+            'workspace.file.move-dialog',
+            { fileId: id, present: () => onOrganize(file.path, 'move') },
+            locale === 'zh' ? '移动到…' : 'Move to…',
+            FolderOpen,
+            () => onOrganize(file.path, 'move'),
           ),
         );
       if (onDuplicate)
@@ -624,6 +664,7 @@ export function FileTree({
           ),
         );
     }
+    result.push(...copyItems);
     if (onExport)
       result.push(
         actionItem(
@@ -691,7 +732,17 @@ export function FileTree({
     return (
       <div key={rowKey} className="file-tree-block">
         <div
-          className={`file-tree-row file-tree-file${subgraph ? ' file-tree-subgraph' : ''}${active ? ' is-active' : ''}${file.conflicted ? ' is-conflicted' : ''}${menu?.key === rowKey ? ' is-menu-open' : ''}`}
+          className={`file-tree-row file-tree-file${subgraph ? ' file-tree-subgraph' : ''}${active ? ' is-active' : ''}${selectedPaths.includes(file.path ?? '') ? ' is-selected' : ''}${file.conflicted ? ' is-conflicted' : ''}${menu?.key === rowKey ? ' is-menu-open' : ''}`}
+          draggable={!readonly && !subgraph}
+          data-entry-path={subgraph ? undefined : file.path}
+          aria-selected={
+            (!subgraph && selectedPaths.includes(file.path ?? '')) || undefined
+          }
+          data-drop-side={
+            !subgraph && dropTarget?.path === file.path
+              ? dropTarget?.side
+              : undefined
+          }
           data-file-id={file.fileId}
           data-entry-kind={subgraph ? 'shortcut' : 'file'}
           style={{ '--depth': depth } as CSSProperties}
@@ -856,11 +907,36 @@ export function FileTree({
                 ]
               : []),
           ];
+    if (onOrganize && dir.path && !readonly)
+      items.push(
+        actionItem(
+          'rename-directory',
+          'workspace.directory.rename',
+          { dirPath: dir.path, present: () => onOrganize(dir.path, 'rename') },
+          locale === 'zh' ? '重命名' : 'Rename',
+          Pencil,
+          () => onOrganize(dir.path, 'rename'),
+        ),
+        actionItem(
+          'move-directory',
+          'workspace.directory.move',
+          { dirPath: dir.path, present: () => onOrganize(dir.path, 'move') },
+          locale === 'zh' ? '移动到…' : 'Move to…',
+          FolderOpen,
+          () => onOrganize(dir.path, 'move'),
+        ),
+      );
     return (
       <div key={dir.path || '__root'}>
         {dir.path ? (
           <div
-            className={`file-tree-row file-tree-dir${menu?.key === dirKey ? ' is-menu-open' : ''}`}
+            draggable={!readonly}
+            data-entry-path={dir.path}
+            aria-selected={selectedPaths.includes(dir.path) || undefined}
+            data-drop-side={
+              dropTarget?.path === dir.path ? dropTarget.side : undefined
+            }
+            className={`file-tree-row file-tree-dir${selectedPaths.includes(dir.path) ? ' is-selected' : ''}${menu?.key === dirKey ? ' is-menu-open' : ''}`}
             style={{ '--depth': depth } as CSSProperties}
             onContextMenu={(event) => openMenu(event, dirKey, dir.name, items)}
           >
@@ -889,8 +965,35 @@ export function FileTree({
         ) : null}
         {open || !dir.path ? (
           <div className={dir.path ? 'file-tree-children' : undefined}>
-            {dir.dirs.map((child) => dirRows(child, dir.path ? depth + 1 : 0))}
-            {dir.files.map((file) => fileRow(file, dir.path ? depth + 1 : 0))}
+            {[
+              ...dir.dirs.map((child) => ({
+                ref: 'path:' + child.path,
+                node: dirRows(child, dir.path ? depth + 1 : 0),
+                name: child.name,
+                directory: true,
+              })),
+              ...dir.files.map((file) => ({
+                ref: 'file:' + file.fileId,
+                node: fileRow(file, dir.path ? depth + 1 : 0),
+                name: file.name,
+                directory: false,
+              })),
+            ]
+              .sort((a, b) => {
+                if (!manualOrder)
+                  return (
+                    Number(b.directory) - Number(a.directory) ||
+                    a.name.localeCompare(b.name)
+                  );
+                const order = manualOrder[dir.path] ?? [];
+                const ai = order.indexOf(a.ref),
+                  bi = order.indexOf(b.ref);
+                return (
+                  (ai < 0 ? Infinity : ai) - (bi < 0 ? Infinity : bi) ||
+                  a.name.localeCompare(b.name)
+                );
+              })
+              .map((item) => item.node)}
             {dir.failures.map((failure) => (
               <div
                 key={failure.path}
@@ -926,33 +1029,61 @@ export function FileTree({
       </div>
     );
   };
-  const headerButton = (
-    label: string,
-    Icon: LucideIcon,
-    action: () => void,
-    actionId: string,
-    args?: unknown,
-  ) => {
-    const binding = bindWorkspaceAction(actionSource, actionId, args);
-    const state = binding?.getState();
-    if (actionSource && (!binding || !state?.visible)) return null;
-    const name = binding?.label(locale) ?? label;
-    return (
-      <button
-        type="button"
-        data-action-id={binding?.id}
-        aria-label={name}
-        title={name}
-        disabled={state ? !state.enabled : false}
-        onClick={() => execute(actionId, args, action)}
-      >
-        <Icon size={15} aria-hidden />
-      </button>
-    );
-  };
+  const headerItems: FileTreeMenuItem[] = [
+    {
+      id: 'canvas',
+      label: t.newCanvas,
+      icon: FilePlus2,
+      action: bindWorkspaceAction(actionSource, 'workspace.create-canvas', {
+        dirPath: '',
+      }),
+      onSelect: () => onCreateCanvas(''),
+    },
+    ...(onCreateDocument
+      ? [
+          {
+            id: 'document',
+            label: t.newDocument,
+            icon: FileText,
+            action: bindWorkspaceAction(
+              actionSource,
+              'workspace.create-document',
+              { dirPath: '' },
+            ),
+            onSelect: () => onCreateDocument(''),
+          },
+        ]
+      : []),
+    ...(onCreateFolder
+      ? [
+          {
+            id: 'folder',
+            label: t.newFolder,
+            icon: FolderPlus,
+            action: bindWorkspaceAction(
+              actionSource,
+              'workspace.directory.new',
+              { dirPath: '', present: () => requestFolder('') },
+            ),
+            onSelect: () => requestFolder(''),
+          },
+        ]
+      : []),
+    ...(onImport
+      ? [
+          {
+            id: 'import',
+            label: t.import,
+            icon: Upload,
+            action: bindWorkspaceAction(actionSource, 'workspace.import'),
+            onSelect: onImport,
+          },
+        ]
+      : []),
+  ];
   return (
     <div className="file-tree">
-      {onOpenLibrary ? (
+      {onOpenLibrary && !hideLibraryNavigation ? (
         <button
           type="button"
           className={`file-tree-nav${libraryActive ? ' is-active' : ''}`}
@@ -978,41 +1109,25 @@ export function FileTree({
       ) : null}
       <div className="file-tree-header">
         <span>{t.files}</span>
-        {actionSource || !readonly ? (
-          <span className="file-tree-header-actions">
-            {headerButton(
-              t.newCanvas,
-              FilePlus2,
-              () => onCreateCanvas(''),
-              'workspace.create-canvas',
-              { dirPath: '' },
-            )}
-            {onCreateDocument
-              ? headerButton(
-                  t.newDocument,
-                  FileText,
-                  () => onCreateDocument(''),
-                  'workspace.create-document',
-                  { dirPath: '' },
-                )
-              : null}
-            {onCreateFolder
-              ? headerButton(
-                  t.newFolder,
-                  FolderPlus,
-                  () => requestFolder(''),
-                  'workspace.directory.new',
-                  {
-                    dirPath: '',
-                    present: () => requestFolder(''),
-                  },
-                )
-              : null}
-            {onImport
-              ? headerButton(t.import, Upload, onImport, 'workspace.import')
-              : null}
-          </span>
-        ) : null}
+        <div className="file-tree-header-actions">
+          {actionSource || !readonly ? (
+            <IconButton
+              icon={Plus}
+              data-testid="file-tree-new"
+              aria-label={locale === 'zh' ? '新建' : 'New'}
+              aria-haspopup="menu"
+              onClick={(e) =>
+                setMenu({
+                  key: 'header-new',
+                  label: locale === 'zh' ? '新建' : 'New',
+                  anchor: e.currentTarget,
+                  items: headerItems,
+                })
+              }
+            />
+          ) : null}
+          {headerOptions}
+        </div>
       </div>
       <div className="file-tree-body">
         {tree.dirs.length + tree.files.length + tree.failures.length ? (

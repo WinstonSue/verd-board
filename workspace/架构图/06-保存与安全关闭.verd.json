@@ -380,16 +380,15 @@
     "project:topic/06/document": {
       "id": "project:topic/06/document",
       "cellType": "node",
-      "kind": "document-reference",
+      "kind": "geometry",
       "geometry": {
         "x": 0,
-        "y": 980,
+        "y": 840,
         "width": 1000,
-        "height": 600
+        "height": 118,
+        "outline": "text"
       },
-      "data": {
-        "targetDocumentId": "project-doc:guides/SETUP"
-      },
+      "data": {},
       "content": {
         "text": {
           "schemaVersion": 1,
@@ -399,6 +398,23 @@
           "content": {
             "type": "doc",
             "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "相关文档：桌面安装与使用",
+                    "marks": [
+                      {
+                        "type": "link",
+                        "attrs": {
+                          "href": "verd://file/project-doc%3Aguides%2FSETUP"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
               {
                 "type": "paragraph",
                 "content": [
@@ -435,8 +451,12 @@
               }
             ]
           },
-          "plainText": "系统架构 · 持久化和迁移\n布局、路由与保存边界"
+          "plainText": "相关文档：桌面安装与使用\n系统架构 · 持久化和迁移\n布局、路由与保存边界"
         }
+      },
+      "appearance": {
+        "fill": "none",
+        "strokeColor": "none"
       }
     },
     "project:overview/06/relation/0": {

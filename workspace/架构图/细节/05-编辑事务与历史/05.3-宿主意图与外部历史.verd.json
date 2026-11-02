@@ -729,16 +729,15 @@
     "project:detail/05/03/document": {
       "id": "project:detail/05/03/document",
       "cellType": "node",
-      "kind": "document-reference",
+      "kind": "geometry",
       "geometry": {
         "x": 0,
         "y": 506,
         "width": 1000,
-        "height": 620
+        "height": 288,
+        "outline": "text"
       },
-      "data": {
-        "targetDocumentId": "project-doc:packages/react/README"
-      },
+      "data": {},
       "content": {
         "text": {
           "schemaVersion": 1,
@@ -748,6 +747,23 @@
           "content": {
             "type": "doc",
             "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "相关文档：React接入",
+                    "marks": [
+                      {
+                        "type": "link",
+                        "attrs": {
+                          "href": "verd://file/project-doc%3Apackages%2Freact%2FREADME"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
               {
                 "type": "paragraph",
                 "content": [
@@ -853,8 +869,12 @@
               }
             ]
           },
-          "plainText": "读图：宿主持有业务 value；编辑器等待回执后重新投影，不擅自持久化业务数据。\n返回专题总览\n相关细节：Cell 事务与统一历史\n相关细节：Actions 与编辑提交屏障\n系统架构 · 模型和事务\n布局、路由与保存边界\n源码入口：packages/react/board/src/frame-canvas.tsx；packages/react/board/src/frame-canvas.tsx；packages/react/board/src/frame-editor.tsx。"
+          "plainText": "相关文档：React接入\n读图：宿主持有业务 value；编辑器等待回执后重新投影，不擅自持久化业务数据。\n返回专题总览\n相关细节：Cell 事务与统一历史\n相关细节：Actions 与编辑提交屏障\n系统架构 · 模型和事务\n布局、路由与保存边界\n源码入口：packages/react/board/src/frame-canvas.tsx；packages/react/board/src/frame-canvas.tsx；packages/react/board/src/frame-editor.tsx。"
         }
+      },
+      "appearance": {
+        "fill": "none",
+        "strokeColor": "none"
       }
     }
   },

@@ -115,7 +115,9 @@ describe('workspace content boundary', () => {
         ?.classList.contains('is-active'),
     ).toBe(false);
     await act(async () =>
-      container.querySelector<HTMLButtonElement>('button')!.click(),
+      [...container.querySelectorAll<HTMLButtonElement>('button')]
+        .find((b) => b.textContent === '重试')!
+        .click(),
     );
     expect(retry).toHaveBeenCalledOnce();
     expect(container.textContent).toContain('Recovered');
@@ -133,7 +135,9 @@ describe('workspace content boundary', () => {
       ),
     );
     await act(async () =>
-      container.querySelector<HTMLButtonElement>('button')!.click(),
+      [...container.querySelectorAll<HTMLButtonElement>('button')]
+        .find((b) => b.textContent === '重试')!
+        .click(),
     );
     expect(container.querySelector('[role="alert"]')?.textContent).toContain(
       'Read failed',

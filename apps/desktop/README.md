@@ -26,7 +26,7 @@ pnpm workspace:check
 
 ## 默认工作区
 
-仓库根目录的 [workspace](../../workspace/) 是正式项目内容，包含项目导览、原生架构图与可直接编辑的文档；纳入 Git 管理。开发启动默认使用 `appData/VerdBoard Dev/workspaces/default` 的独立副本，首次复制原生内容并排除运行记录，之后保留修改且不自动覆盖。维护项目文档需主动打开仓库原目录。`.verdboard/` 保存本机会话、配置、事务日志和回收站，不提交版本库。
+仓库根目录的 [workspace](../../workspace/) 是正式项目内容，包含项目导览、原生架构图与可直接编辑的文档；纳入 Git 管理。开发启动默认使用 `appData/VerdBoard Dev/workspaces/default` 的独立副本，首次复制原生内容并排除运行记录，之后保留修改且不自动覆盖。维护项目文档需主动打开仓库原目录。`.verdscrolls/` 保存项目配置与本机运行状态；内部 `.gitignore` 保留可共享的 `config.json`，排除会话、事务、回收站和本机共享链接。旧 `.verdboard` 在锁内整体迁移，冲突时停止写入。
 
 打包时将这些原生文件放入应用资源。全新用户首次打开默认工作区时，先完整复制到用户数据目录，再以可编辑工作区打开：
 
@@ -42,7 +42,7 @@ pnpm workspace:check
 
 测试和自动化可用 `VERDBOARD_USER_DATA_PATH` 覆盖数据目录；只有正式包执行旧区恢复，且仅检查该数据目录旁的 `desktop`，避免访问真实用户资料。
 
-全局选择记录固定在 userData 的 `verdboard-global-config.json`，不写入项目目录。首次打开内置工作区且没有会话记录时显示项目导览；关闭全部标签后的空会话也会保留。
+全局选择记录固定在 userData 的 `verdboard-global-config.json`，不写入项目目录。没有会话记录时按项目配置的阅读入口顺序打开第一个可用文件；内置项目默认显示“文档导航”，范式库默认显示其导航文档。项目导览画布由文档链接进入；已有会话及关闭全部标签后的空会话继续保留。
 
 ## 内容维护
 
@@ -59,3 +59,11 @@ pnpm workspace:refresh
 刷新保留非托管标注与用户新增内容，遇到冲突会停止。执行刷新前关闭正在编辑该工作区的 Desktop，避免自动保存覆盖手工变更；正文不会由生成脚本重建。
 
 手动开发使用端口 7300、`dist-electron-dev`；dev E2E 使用独占端口 7310、`dist-electron-e2e` 和独立 Vite 缓存，生产构建仍用 `dist-electron`。测试不复用或关闭手动 Dev，日常开发和验证不调用打包、安装或 LaunchServices 注册。安装包测试使用独立 `playwright.packaged.config.ts`，仅在显式打包时执行。
+
+自测不得堆积 Dev 应用或 Dock 图标。Desktop dev/prod E2E 统一使用 `tests/desktop-e2e/src/desktop-launcher.ts`，单 worker 串行执行，关闭前一个测试进程后才可重启；macOS 测试窗口以 accessory 模式运行，不占 Dock。用例必须在 `finally` / teardown 中关闭实例；公共启动器在关闭超过 10 秒时回收自己启动的子进程，worker 退出或消失时也自动回收。手动自测优先复用已运行的 Dev，主进程或 preload 变更需要重启时先正常保存退出，再启动一个实例。测试清理只针对本轮启动且使用临时数据的进程。
+
+新建或打开文件夹自动维护根 `AGENTS.md` 的专属受管块，并将 `.verdscrolls/shared` 链接到 userData 中按版本保留的工具资源。工作区设置显示 AI 就绪状态，可维护简介和入口文档 ID。打包钩子按目标平台准备经官方 SHA-256 校验的 Node 24.18.1 与完整 CLI；旧资源版本保留。开发时先运行 `pnpm exec turbo run build --filter=@sue/verd-board-agent` 和 `pnpm prepare:agent-resources apps/desktop/build/agent-resources/mac-arm64`，目标平台/CPU 按本机调整；也可用 `VERD_AGENT_RESOURCES` 指向临时准备目录。资源未准备时工作区仍可使用，并显示 AI 接入未就绪。
+
+内置图文独立更新：项目资源来自 `@sue/verd-board-docs`，范式资源来自 `@sue/verd-board-agent-patterns`。启动和应用资源变化触发后台检查，通常间隔 24 小时。主进程复用本机用户/系统 npm 配置的匹配凭证，不要求系统安装 npm，也不把凭证打包。用户确认后才下载并校验精确版本，再完整备份和替换托管工作区；自选目录不会被替换。断网、认证失败和资源包尚未发布时继续使用本地内容。
+
+`pnpm build:content` 构建两种发布描述；`node --test scripts/builtin-package.test.mjs` 验证真实 npm tarball；`pnpm publish:content` 是单独的显式发布命令。正式 Desktop 打包消费这些相同产物。先发布资源包，再交付启用在线检查的应用；开发/测试不自动发布。

@@ -128,7 +128,7 @@ describe('selection commands', () => {
       ],
       testCellRegistry,
     );
-    const runtime = createCellRuntime({ store }, testCellRegistry);
+    createCellRuntime({ store }, testCellRegistry);
     const locked = applyCellOperations(
       store,
       [{ type: 'replace_cell', cell: { ...store.cells.outer, locked: true } }],
@@ -288,7 +288,7 @@ describe('selection commands', () => {
       expect((runtime.store.cells.root as FrameCell).children).toEqual(
         expected,
       );
-      expect(runtime.index.membersOf.get('c')).toBe('group');
+      expect(runtime.index.groupOf.get('c')).toBe('group');
       runtime.undo();
       expect((runtime.store.cells.root as FrameCell).children).toEqual([
         'a',

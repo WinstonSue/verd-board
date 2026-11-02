@@ -1,5 +1,5 @@
 /* eslint-disable jsx-a11y/no-autofocus -- These tests explicitly prevent editors from taking focus on mount. */
-import React, { act } from 'react';
+import { act } from 'react';
 import { createRoot } from 'react-dom/client';
 import { Editor } from '@tiptap/react';
 import { describe, expect, it, vi } from 'vitest';

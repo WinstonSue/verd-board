@@ -57,7 +57,7 @@
   }
   input::placeholder {
     color: var(--vm-foreground-tertiary);
-    font-size: 12px;
+    font-size: var(--vm-text-xs);
   }
   input[aria-invalid='true'] {
     border-color: var(--vm-danger);
@@ -92,7 +92,7 @@
       max-width: 100%;
     }
     > button {
-      font-size: 11px;
+      font-size: var(--vm-text-xs);
     }
   }
   .frame-field {
@@ -114,7 +114,7 @@
   p {
     margin: 0;
     color: var(--vm-foreground-secondary);
-    font-size: 12px;
+    font-size: var(--vm-text-xs);
     line-height: 1.5;
   }
 }
@@ -123,7 +123,7 @@
   padding: 16px;
   border-bottom: 1px solid var(--vm-border);
   background: var(--vm-background);
-  font-size: 14px;
+  font-size: var(--vm-text-md);
   font-weight: 600;
   overflow-wrap: anywhere;
   input {
@@ -136,7 +136,7 @@
 .frame-inspector__type {
   display: block;
   color: var(--vm-foreground-secondary);
-  font-size: 12px;
+  font-size: var(--vm-text-xs);
   font-weight: 500;
 }
 .frame-inspector__scroll {
@@ -161,7 +161,7 @@
   border-radius: 0;
   padding: 0 16px;
   background: transparent;
-  font-size: 12px;
+  font-size: var(--vm-text-xs);
   font-weight: 600;
   svg {
     transition: transform 0.15s;
@@ -186,7 +186,7 @@
     display: grid;
     grid-template-columns: max-content minmax(0, 1fr);
     gap: 6px;
-    font-size: 11px;
+    font-size: var(--vm-text-xs);
     > span:first-child {
       white-space: nowrap;
     }
@@ -208,7 +208,7 @@
 .frame-property-error {
   display: block;
   color: var(--vm-danger);
-  font-size: 11px;
+  font-size: var(--vm-text-xs);
   line-height: 1.4;
   margin-top: 4px;
 }
@@ -235,14 +235,14 @@
   gap: 10px;
   h4 {
     margin: 0;
-    font-size: 12px;
+    font-size: var(--vm-text-xs);
   }
 }
 .frame-inspector .frame-arrangement h4 {
   display: none;
 }
 .frame-arrangement-hint {
-  font-size: 11px;
+  font-size: var(--vm-text-xs);
   line-height: 1.5;
   color: var(--vm-foreground-secondary);
   margin: 0;
@@ -280,6 +280,6 @@
   }
   span {
     color: var(--vm-foreground-secondary);
-    font-size: 11px;
+    font-size: var(--vm-text-xs);
   }
 }

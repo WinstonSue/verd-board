@@ -1,4 +1,4 @@
-import { actionLabel, type ActionResult } from '@sue/board-common';
+import { actionLabel } from '@sue/board-common';
 import {
   ActionScope,
   type ActionSource,
@@ -522,7 +522,11 @@ function Editor<T>(
                   aria-label="Properties"
                   className="frame-editor__properties"
                 >
-                  <FrameEditorProperties {...context} />
+                  <FrameEditorProperties
+                    {...context}
+                    onOpenLink={canvas.linkHost?.openLink}
+                    linkActivation={canvas.interactionSettings?.linkActivation}
+                  />
                   {plugins.map((plugin) => (
                     <Fragment key={plugin.id}>
                       {(plugin.propertyPanels ?? []).map((panel) => (

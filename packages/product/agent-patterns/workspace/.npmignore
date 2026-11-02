@@ -1,0 +1,6 @@
+.verdboard/
+.verdscrolls/*
+!.verdscrolls/config.json
+!.verdscrolls/.gitignore
+**/*.tmp
+**/.DS_Store

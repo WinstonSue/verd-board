@@ -133,6 +133,7 @@ test('Mind width inherits settings, supports a saved map override and keeps long
   await fits(topic);
   await expect(topic.locator('[data-resize-handle]')).toHaveCount(0);
   await openSettings(page);
+  await page.getByTestId('settings-nav-personal.editor').click();
   await page.getByTestId('settings-mind-max-width').fill('320');
 
   await page.getByTestId('my-back').click();
@@ -149,6 +150,7 @@ test('Mind width inherits settings, supports a saved map override and keeps long
   await page.getByRole('button', { name: '重做', exact: true }).click();
   await expect.poll(() => width(topic)).toBe(160);
   await openSettings(page);
+  await page.getByTestId('settings-nav-personal.editor').click();
   await page.getByTestId('settings-mind-max-width').fill('400');
 
   await page.getByTestId('my-back').click();

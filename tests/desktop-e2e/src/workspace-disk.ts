@@ -1,5 +1,28 @@
-import { readdir, readFile } from 'node:fs/promises';
+import { mkdir, readdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
+
+/** Canvas interaction tests create their own content; empty workspaces stay empty. */
+export async function seedEmptyCanvas(workspace: string) {
+  await mkdir(workspace, { recursive: true });
+  await writeFile(
+    path.join(workspace, '画布.verd.json'),
+    JSON.stringify({
+      format: 'verd-frame',
+      version: 2,
+      frame: {
+        id: 'desktop-test-board',
+        kind: 'frame',
+        cellType: 'frame',
+        name: '画布',
+        geometry: { x: 0, y: 0, width: 1200, height: 800 },
+        children: [],
+        groups: [],
+      },
+      cells: {},
+    }),
+    { flag: 'wx' },
+  );
+}
 
 /** Every `.verd.json` canvas file in the workspace, keyed by relative path. */
 export const canvasFiles = async (
@@ -14,7 +37,7 @@ export const canvasFiles = async (
       return;
     }
     for (const entry of listing) {
-      if (entry.name === '.verdboard') continue;
+      if (['.verdscrolls', '.verdscrolls'].includes(entry.name)) continue;
       const rel = prefix ? `${prefix}/${entry.name}` : entry.name;
       if (entry.isDirectory()) {
         await walk(path.join(dir, entry.name), rel);

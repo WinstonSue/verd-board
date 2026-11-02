@@ -28,7 +28,9 @@ export function textColorSamples(root: Element) {
       .map((c) => (c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4))
       .reduce((sum, c, at) => sum + c * [0.2126, 0.7152, 0.0722][at], 0);
   return [
-    ...root.querySelectorAll<HTMLElement>('span[data-board-original-color]'),
+    ...root.querySelectorAll<HTMLElement>(
+      'span[data-board-original-color], [data-uml-class] text, [data-uml-class] foreignObject > div, [data-uml-fragment] text',
+    ),
   ]
     .filter(
       (leaf) =>
@@ -52,8 +54,27 @@ export function textColorSamples(root: Element) {
       if (!background && svg) {
         const tableEntry = leaf.closest('[data-table-entry]');
         const cell = leaf.closest('[data-cell-id]');
+        const leafBox = leaf.getBoundingClientRect();
+        const center = {
+          x: leafBox.x + leafBox.width / 2,
+          y: leafBox.y + leafBox.height / 2,
+        };
+        const part = [
+          ...(cell?.querySelectorAll(
+            '[data-uml-class-header], [data-uml-fragment-label]',
+          ) ?? []),
+        ].find((candidate) => {
+          const box = candidate.getBoundingClientRect();
+          return (
+            center.x >= box.x &&
+            center.x <= box.right &&
+            center.y >= box.y &&
+            center.y <= box.bottom
+          );
+        });
         const shape =
           tableEntry?.querySelector('rect') ??
+          part ??
           leaf.closest('[data-frame-header]')?.querySelector('rect') ??
           cell?.querySelector(
             '[data-frame-shell], [data-frame-node-outline], [data-uml-class] > rect, [data-uml-lifeline] > rect',
@@ -77,7 +98,11 @@ export function textColorSamples(root: Element) {
       let opacity = 1;
       for (let node: Element | null = leaf; node; node = node.parentElement)
         opacity *= Number(getComputedStyle(node).opacity || 1);
-      const foreground = rgb(getComputedStyle(leaf).color),
+      const paint =
+        leaf instanceof SVGElement && leaf.tagName.toLowerCase() === 'text'
+          ? getComputedStyle(leaf).fill
+          : getComputedStyle(leaf).color;
+      const foreground = rgb(paint),
         bg = rgb(background);
       const visible = foreground.map(
         (c, at) => c * opacity + bg[at] * (1 - opacity),
@@ -86,7 +111,7 @@ export function textColorSamples(root: Element) {
         b = luminance(bg);
       return {
         text: leaf.textContent?.slice(0, 45),
-        color: getComputedStyle(leaf).color,
+        color: paint,
         background,
         opacity,
         source: leaf.getAttribute('data-board-color-source'),

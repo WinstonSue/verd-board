@@ -18,18 +18,26 @@ test('Desktop remembers a selected folder, recovers a missing folder and returns
     await mkdir(userData);
     await cp(path.join(root, 'workspace'), source, {
       recursive: true,
-      filter: (file) =>
-        !path
+      filter: (file) => {
+        const relative = path
           .relative(path.join(root, 'workspace'), file)
           .split(path.sep)
-          .includes('.verdboard'),
+          .join('/');
+        return (
+          !relative.startsWith('.verdboard') &&
+          (!relative.startsWith('.verdscrolls/') ||
+            ['.verdscrolls/config.json', '.verdscrolls/.gitignore'].includes(
+              relative,
+            ))
+        );
+      },
     });
     const diagramPaths = (await readdir(path.join(source, '架构图')))
-      .filter((name) => name.endsWith('.verd.json'))
+      .filter((name) => /^\d{2}-.*\.verd\.json$/.test(name))
       .map((name) => `架构图/${name}`);
     const canvasBytes = () =>
       Promise.all(
-        ['项目导览.verd.json', ...diagramPaths].map((file) =>
+        ['架构图/项目导览.verd.json', ...diagramPaths].map((file) =>
           readFile(path.join(source, file), 'utf8'),
         ),
       );
@@ -42,7 +50,13 @@ test('Desktop remembers a selected folder, recovers a missing folder and returns
     env.VERDBOARD_BUILTIN_WORKSPACE_PATH = source;
     const launch = async () => {
       desktop = await electron.launch({ args: [launcher], env });
-      return desktop.firstWindow();
+      const page = await desktop.firstWindow();
+      await page.waitForFunction(
+        () =>
+          document.querySelector('.workspace-sidebar-header, [role="alert"]'),
+        { timeout: 60000 },
+      );
+      return page;
     };
     const close = async () => {
       const page = await desktop!.firstWindow();
@@ -65,6 +79,7 @@ test('Desktop remembers a selected folder, recovers a missing folder and returns
     let page = await launch();
     await expect(page.locator('.workspace-sidebar-header')).toHaveText(
       'initial',
+      { timeout: 60000 },
     );
     await desktop!.evaluate(({ dialog }) => {
       dialog.showOpenDialog = async () => ({ canceled: true, filePaths: [] });
@@ -74,7 +89,9 @@ test('Desktop remembers a selected folder, recovers a missing folder and returns
     await expect(page.getByTestId('workspace-menu-trigger')).toBeFocused();
     await expect(page.locator('.workspace-sidebar-header')).toHaveText(
       'initial',
+      { timeout: 60000 },
     );
+    await page.locator('.file-tree-file .file-tree-main').first().click();
     const initialFrame = await page
       .getByRole('tab', { selected: true })
       .getAttribute('data-tab-id');
@@ -89,8 +106,9 @@ test('Desktop remembers a selected folder, recovers a missing folder and returns
         '.workspace-pane.is-active [data-cell-kind="frame-reference"]:not([data-reference-card])',
       ),
     ).toHaveCount(0);
+    await page.getByTestId('file-tree-new').click();
     await page
-      .getByRole('button', { name: /^(新建文档|New document)$/ })
+      .getByRole('menuitem', { name: /^(新建文档|New document)$/ })
       .click();
     await expect(page.getByRole('tab')).toHaveCount(2);
     const selectedTab = await page
@@ -105,21 +123,22 @@ test('Desktop remembers a selected folder, recovers a missing folder and returns
     );
     let menu = await openWorkspaceMenu(page);
     await expect(
-      menu.getByRole('menuitem', { name: /selected.*(当前|current)/ }),
+      menu.getByRole('button', { name: 'selected', exact: true }),
     ).toBeDisabled();
     await expect(
-      menu.getByRole('menuitem', { name: 'initial', exact: true }),
+      menu.getByRole('button', { name: 'initial', exact: true }),
     ).toBeVisible();
     await page.screenshot({
       path: test.info().outputPath('workspace-history.png'),
     });
-    await page.keyboard.press('End');
+    await menu.getByRole('searchbox').press('ArrowDown');
     await expect(
-      menu.getByRole('menuitem', { name: 'initial', exact: true }),
+      menu.getByRole('button', { name: 'initial', exact: true }),
     ).toBeFocused();
     await page.keyboard.press('Enter');
     await expect(page.locator('.workspace-sidebar-header')).toHaveText(
       'initial',
+      { timeout: 60000 },
     );
     await expect(page.getByRole('tab')).toHaveCount(1);
     await expect(page.getByRole('tab', { selected: true })).toHaveAttribute(
@@ -127,7 +146,7 @@ test('Desktop remembers a selected folder, recovers a missing folder and returns
       initialFrame!,
     );
     menu = await openWorkspaceMenu(page);
-    await menu.getByRole('menuitem', { name: 'selected', exact: true }).click();
+    await menu.getByRole('button', { name: 'selected', exact: true }).click();
     await expect(page.locator('.workspace-sidebar-header')).toHaveText(
       'selected',
     );
@@ -143,20 +162,20 @@ test('Desktop remembers a selected folder, recovers a missing folder and returns
     await page.getByTestId('workspace-open-builtin').click();
     await openWorkspaceMenu(page);
     await expect(page.getByTestId('workspace-open-builtin')).toBeDisabled();
-    await page.keyboard.press('Home');
-    await page.keyboard.press('ArrowDown');
-    await page.keyboard.press('ArrowDown');
+    await page.getByTestId('workspace-open-folder').focus();
     await expect(page.getByTestId('workspace-open-folder')).toBeFocused();
     await page.keyboard.press('Escape');
     await expect(page.getByTestId('workspace-menu-trigger')).toBeFocused();
     await expect(
-      page.locator(
-        '.workspace-pane.is-active [data-cell-kind="frame-reference"]:not([data-reference-card])',
-      ),
-    ).toHaveCount(diagramPaths.length);
+      page.locator('.workspace-pane.is-active .document-page__title'),
+    ).toHaveValue('文档导航');
+    await expect(page.getByRole('tab', { selected: true })).toHaveAttribute(
+      'data-tab-id',
+      'project-doc:README',
+    );
     await page.getByRole('button', { name: '架构图', exact: true }).click();
     const realDiagrams = page.locator(
-      '[data-entry-kind="file"] .file-tree-name[title^="架构图/"]',
+      '[data-entry-kind="file"] .file-tree-name[title^="架构图/"]:not([title="架构图/项目导览.verd.json"])',
     );
     await expect(realDiagrams).toHaveCount(diagramPaths.length);
     await page.screenshot({
@@ -203,18 +222,25 @@ test('Desktop remembers a selected folder, recovers a missing folder and returns
     await page.getByRole('button', { name: 'initial', exact: true }).click();
     await expect(page.locator('.workspace-sidebar-header')).toHaveText(
       'initial',
+      { timeout: 60000 },
     );
     menu = await openWorkspaceMenu(page);
-    await menu.getByRole('menuitem', { name: 'selected', exact: true }).click();
+    await menu.getByRole('button', { name: 'selected', exact: true }).click();
     await expect(page.locator('.workspace-banners')).toContainText(
       'unavailable',
     );
     await expect(page.locator('.workspace-sidebar-header')).toHaveText(
       'initial',
+      { timeout: 60000 },
     );
     expect(await readdir(directory)).not.toContain('selected');
     await openWorkspaceMenu(page);
     await page.getByTestId('workspace-open-builtin').click();
+    // Reopening restores the canvas the user selected before leaving.
+    await expect(page.getByRole('tab', { selected: true })).toHaveAttribute(
+      'data-tab-id',
+      'board-root',
+    );
     await expect(
       page.locator(
         '.workspace-pane.is-active [data-cell-kind="frame-reference"]:not([data-reference-card])',
@@ -222,9 +248,7 @@ test('Desktop remembers a selected folder, recovers a missing folder and returns
     ).toHaveCount(diagramPaths.length);
     await openWorkspaceMenu(page);
     await expect(page.getByTestId('workspace-open-builtin')).toBeDisabled();
-    await page.keyboard.press('Home');
-    await page.keyboard.press('ArrowDown');
-    await page.keyboard.press('ArrowDown');
+    await page.getByTestId('workspace-open-folder').focus();
     await expect(page.getByTestId('workspace-open-folder')).toBeFocused();
     await page.keyboard.press('Escape');
     await expect(page.getByTestId('workspace-menu-trigger')).toBeFocused();

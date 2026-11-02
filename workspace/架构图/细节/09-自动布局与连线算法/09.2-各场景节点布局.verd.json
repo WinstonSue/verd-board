@@ -456,16 +456,15 @@
     "project:detail/09/02/document": {
       "id": "project:detail/09/02/document",
       "cellType": "node",
-      "kind": "document-reference",
+      "kind": "geometry",
       "geometry": {
         "x": 0,
         "y": 400,
         "width": 1000,
-        "height": 620
+        "height": 322,
+        "outline": "text"
       },
-      "data": {
-        "targetDocumentId": "project-doc:packages/board/arrangement"
-      },
+      "data": {},
       "content": {
         "text": {
           "schemaVersion": 1,
@@ -475,6 +474,23 @@
           "content": {
             "type": "doc",
             "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "相关文档：排列与组合",
+                    "marks": [
+                      {
+                        "type": "link",
+                        "attrs": {
+                          "href": "verd://file/project-doc%3Apackages%2Fboard%2Farrangement"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
               {
                 "type": "paragraph",
                 "content": [
@@ -629,8 +645,12 @@
               }
             ]
           },
-          "plainText": "读图：白板循环支持不代表所有领域允许循环；Mind 与 UML 时序采用派生几何。\n自动布局算法\n相关细节：连线路由与优化\n相关细节：作用范围与提交边界\n返回专题总览\n自动布局算法 · 连线路由算法\n自动开关 · 三种结果与典型场景\n源码入口：packages/engine/core/src/cell/relationship-layout.ts；packages/engine/workflow/src；packages/engine/architecture/src；packages/engine/mind/src。"
+          "plainText": "相关文档：排列与组合\n读图：白板循环支持不代表所有领域允许循环；Mind 与 UML 时序采用派生几何。\n自动布局算法\n相关细节：连线路由与优化\n相关细节：作用范围与提交边界\n返回专题总览\n自动布局算法 · 连线路由算法\n自动开关 · 三种结果与典型场景\n源码入口：packages/engine/core/src/cell/relationship-layout.ts；packages/engine/workflow/src；packages/engine/architecture/src；packages/engine/mind/src。"
         }
+      },
+      "appearance": {
+        "fill": "none",
+        "strokeColor": "none"
       }
     }
   },

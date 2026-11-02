@@ -17,6 +17,7 @@ export function App() {
   return (
     <WorkspaceApp
       host={host}
+      allowWorkspaceSwitching
       readonly={params.get('readonly') === '1'}
       importLegacy={async () => {
         const adapter = createWebStorageAdapter();

@@ -33,6 +33,7 @@ const setup = async () => {
         id: 'board-root',
         cellType: 'frame',
         kind: 'frame',
+        geometry: { x: 0, y: 0, width: 960, height: 640 },
         children: [],
         groups: [],
       },
@@ -50,7 +51,22 @@ const setup = async () => {
         id: 'reading',
         kind: 'block',
         schemaVersion: 1,
-        content: { type: 'doc', content: [] },
+        plainText: '',
+        content: { type: 'doc', content: [{ type: 'paragraph' }] },
+      },
+    }),
+  );
+  await fs.mkdir(path.join(source, '.verdscrolls'), { recursive: true });
+  await fs.writeFile(path.join(source, 'AGENTS.md'), '# Built-in project');
+  await fs.writeFile(path.join(source, '.verdscrolls/.gitignore'), '*');
+  await fs.writeFile(
+    path.join(source, '.verdscrolls/config.json'),
+    JSON.stringify({
+      version: 1,
+      value: {
+        identity: 'template',
+        name: 'Test project',
+        project: { description: 'Test', entryDocumentIds: ['board-root'] },
       },
     }),
   );
@@ -78,8 +94,8 @@ const setup = async () => {
 describe('desktop built-in workspace startup', () => {
   it('copies all content once, excludes runtime metadata and never overwrites edits on upgrade', async () => {
     const { source, target, legacy } = await setup();
-    await fs.mkdir(path.join(source, '.verdboard'));
-    await fs.writeFile(path.join(source, '.verdboard', 'session.json'), '{}');
+    await fs.mkdir(path.join(source, '.verdscrolls'), { recursive: true });
+    await fs.writeFile(path.join(source, '.verdscrolls', 'session.json'), '{}');
     await seedBuiltinWorkspace(source, target, legacy);
     expect(
       JSON.parse(
@@ -89,7 +105,9 @@ describe('desktop built-in workspace startup', () => {
         ),
       ).title,
     ).toBe('original');
-    expect(await exists(path.join(target, '.verdboard'))).toBe(false);
+    expect(
+      await exists(path.join(target, '.verdscrolls', 'session.json')),
+    ).toBe(false);
     await fs.writeFile(
       path.join(target, '文档', 'reading.verd-doc.json'),
       'user edit',
@@ -113,10 +131,13 @@ describe('desktop built-in workspace startup', () => {
     await seedBuiltinWorkspace(source, target, legacy);
     expect(await exists(path.join(target, 'board.verd.json'))).toBe(true);
     await fs.rm(target, { recursive: true });
-    await fs.mkdir(path.join(target, '.verdboard'), { recursive: true });
+    await fs.mkdir(path.join(target, '.verdscrolls'), { recursive: true });
     await fs.writeFile(
-      path.join(target, '.verdboard', 'config.json'),
-      JSON.stringify({ version: 1, value: { workspaceInitialized: true } }),
+      path.join(target, '.verdscrolls', 'config.json'),
+      JSON.stringify({
+        version: 1,
+        value: { identity: 'legacy-project', workspaceInitialized: true },
+      }),
     );
     await seedBuiltinWorkspace(source, target, legacy);
     expect(await exists(path.join(target, 'board.verd.json'))).toBe(false);
@@ -129,7 +150,7 @@ describe('desktop built-in workspace startup', () => {
       path.join(source, 'duplicate.verd.json'),
     );
     await expect(seedBuiltinWorkspace(source, target, legacy)).rejects.toThrow(
-      'duplicate',
+      'Duplicate',
     );
     expect(await exists(target)).toBe(false);
   });
@@ -213,10 +234,13 @@ describe('desktop workspace history', () => {
     const oldRoot = path.join(dir, 'desktop');
     const oldDefault = path.join(oldRoot, 'workspaces', 'default');
     const custom = path.join(dir, 'custom');
-    await fs.mkdir(path.join(oldDefault, '.verdboard'), { recursive: true });
+    await fs.mkdir(path.join(oldDefault, '.verdscrolls'), { recursive: true });
     await fs.writeFile(
-      path.join(oldDefault, '.verdboard', 'config.json'),
-      JSON.stringify({ version: 1, value: { workspaceInitialized: true } }),
+      path.join(oldDefault, '.verdscrolls', 'config.json'),
+      JSON.stringify({
+        version: 1,
+        value: { identity: 'legacy-project', workspaceInitialized: true },
+      }),
     );
     await fs.writeFile(
       path.join(oldDefault, 'old.verd.json'),
@@ -307,7 +331,13 @@ describe('desktop workspace history', () => {
     const startup = manager();
     const entries = await startup.listHistory();
     expect(entries).toEqual([
-      { id: expect.any(String), name: 'missing', lastOpenedAt: 0 },
+      {
+        id: expect.any(String),
+        name: 'missing',
+        lastOpenedAt: 0,
+        pinned: false,
+        availability: 'missing',
+      },
     ]);
     await expect(
       startup.open({ historyId: entries[0].id, create: true }),
@@ -389,4 +419,27 @@ describe('desktop workspace history', () => {
     expect(results.filter((result) => result.applied)).toHaveLength(1);
     expect((await host.readGlobalConfig()).version).toBe(1);
   });
+});
+
+it('creates an empty desktop workspace, pins its record and removes only history', async () => {
+  const { dir, host, manager } = await setup();
+  const startup = manager({ pickDirectory: async () => dir });
+  const handle = (await startup.create({ name: 'Notes' }))!;
+  expect((await host.readSnapshot(handle)).canvases).toHaveLength(0);
+  await startup.activate(handle);
+  await startup.updateHistory({ id: handle.historyId!, pinned: true });
+  expect(
+    (await startup.listHistory()).find((e) => e.id === handle.historyId)
+      ?.pinned,
+  ).toBe(true);
+  await expect(
+    startup.updateHistory({ id: handle.historyId!, remove: true }),
+  ).rejects.toThrow('current');
+  const builtin = (await startup.open({ default: true }))!;
+  await startup.activate(builtin);
+  await startup.updateHistory({ id: handle.historyId!, remove: true });
+  expect(
+    (await startup.listHistory()).some((e) => e.id === handle.historyId),
+  ).toBe(false);
+  expect(await exists(path.join(dir, 'Notes'))).toBe(true);
 });

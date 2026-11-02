@@ -1,6 +1,11 @@
 @use './appearance-tokens' as tokens;
 
 @mixin action-tokens {
+  --verd-actions-font: var(--vm-font);
+  --verd-actions-text-size: var(--vm-text-md);
+  --verd-actions-small-size: var(--vm-text-xs);
+  --verd-actions-title-size: var(--vm-text-lg);
+  --verd-actions-kbd-size: var(--vm-text-2xs);
   --verd-actions-background: var(--vm-background);
   --verd-actions-text: var(--vm-foreground);
   --verd-actions-border: var(--vm-border-strong);
@@ -20,9 +25,11 @@
 // ::backdrop. Declare its two paint tokens directly on the pseudo-element.
 :where(dialog)::backdrop {
   @include tokens.backdrop-light;
+  background: var(--vm-backdrop);
 }
 :root[data-verd-appearance='dark'] :where(dialog)::backdrop {
   @include tokens.backdrop-dark;
+  background: var(--vm-backdrop);
 }
 .verd-actions-panel::backdrop {
   --verd-actions-backdrop: var(--vm-backdrop);
@@ -40,7 +47,7 @@ html[data-verd-appearance] {
 // Legacy embedded canvases retain their original colors. Adaptive canvases
 // receive scoped presentation tokens from their renderer.
 svg[data-surface][aria-label='Frame canvas']:not([data-board-appearance]) {
-  @include tokens.light;
+  @include tokens.canvas-legacy-light;
   @include action-tokens;
   // An invalid custom-property value restores each text component's original
   // fallback, rather than imposing document-page colors on canvas text.

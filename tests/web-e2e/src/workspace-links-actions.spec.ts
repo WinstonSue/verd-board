@@ -370,3 +370,79 @@ test('return to an embedded document waits for its editor and restores the origi
     .toBeLessThanOrEqual(2);
   await expect(editing.locator('.tiptap p')).toHaveCount(61);
 });
+
+test('canvas text opens with click preference and presentation overrides modifier preference', async ({
+  page,
+}) => {
+  await page.goto('/');
+  const scene = fixture('whiteboard-basic.verd.json');
+  const node = scene.cells['shape-request'];
+  if (node.cellType !== 'node') throw new Error('Expected fixture node');
+  const label = 'Open toolbar document';
+  const text = {
+    schemaVersion: 1,
+    id: 'canvas-link-text',
+    kind: 'inline',
+    plainText: label,
+    content: {
+      type: 'doc',
+      content: [
+        {
+          type: 'paragraph',
+          content: [
+            {
+              type: 'text',
+              text: label,
+              marks: [
+                {
+                  type: 'link',
+                  attrs: { href: 'verd://file/canvas-link-target' },
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    },
+  };
+  node.content = { ...node.content, label, text } as typeof node.content;
+  await importJson(page, 'linked.verd.json', scene);
+  await importJson(
+    page,
+    'target.verd-doc.json',
+    documentWithLink(
+      'canvas-link-target',
+      'Canvas link target',
+      'https://example.com',
+    ),
+  );
+  await fileRow(page, scene.frame.name!).click();
+  const link = pane(page).getByRole('link', { name: label, exact: true });
+  await link.click();
+  await expect(canvas(page)).toBeVisible();
+  await page.evaluate(() => {
+    const key = 'verdboard.interaction-settings';
+    localStorage.setItem(key, JSON.stringify({ linkActivation: 'click' }));
+    window.dispatchEvent(new StorageEvent('storage', { key }));
+  });
+  await link.hover();
+  await expect(link).toHaveAttribute('title', '单击打开链接');
+  await link.click();
+  await expect(pane(page).locator('.document-page__title')).toHaveValue(
+    'Canvas link target',
+  );
+  await fileRow(page, scene.frame.name!).click();
+  await page.evaluate(() => {
+    const key = 'verdboard.interaction-settings';
+    localStorage.setItem(key, JSON.stringify({ linkActivation: 'modifier' }));
+    window.dispatchEvent(new StorageEvent('storage', { key }));
+  });
+  await page.getByRole('button', { name: '演示', exact: true }).click();
+  const presentation = page.getByTestId('presentation-mode');
+  await expect(presentation).toBeVisible();
+  await presentation.getByRole('link', { name: label, exact: true }).click();
+  await expect(presentation).toHaveCount(0);
+  await expect(pane(page).locator('.document-page__title')).toHaveValue(
+    'Canvas link target',
+  );
+});

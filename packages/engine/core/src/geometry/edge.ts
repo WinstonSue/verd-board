@@ -1,3 +1,5 @@
+import { createSpatialIndex } from './spatial-index';
+import type { RectangleClient } from '../interfaces/rectangle-client';
 import type { CellRegistry } from '../cell/registry';
 import {
   isEdgeCell,
@@ -35,6 +37,11 @@ import { facingSides, sideAnchor, type GeometrySide } from './side';
 
 type TerminalPosition = { point: Point; side: GeometrySide };
 export interface EdgeRoutingContext {
+  /** Shared across equivalent contexts; entries contain pure derived geometry. */
+  crossingsCache?: {
+    signature?: string;
+    value?: Map<string, import('./edge-intersections').EdgeJump[]>;
+  };
   /** Explicit one-shot optimization; persisted route strategies never enable it. */
   readonly optimizeIds?: ReadonlySet<string>;
   readonly fixedTerminalIds?: ReadonlySet<string>;
@@ -42,6 +49,7 @@ export interface EdgeRoutingContext {
   readonly preview?: EdgeRoutingContext;
   readonly registry?: CellRegistry;
   readonly obstacles: readonly RoutingObstacle[];
+  readonly queryObstacles?: (bounds: RectangleClient) => readonly string[];
   readonly clearance?: number;
   /** Lazy frame-wide planning keeps all consumers independent of render order. */
   prepare?: () => void;
@@ -115,8 +123,12 @@ export const createEdgeRoutingContext = (
       });
     }
   obstacles.sort((a, b) => a.id.localeCompare(b.id));
+  let obstacleIndex: ReturnType<typeof createSpatialIndex> | undefined;
   const context: EdgeRoutingContext = {
     obstacles,
+    queryObstacles: (bounds) =>
+      (obstacleIndex ??= createSpatialIndex(obstacles)).query(bounds),
+    crossingsCache: previous?.crossingsCache ?? {},
     registry,
     routes: new Map(),
     clearance: previous?.clearance,
@@ -414,6 +426,7 @@ function planFrameRoutes(
           strokeWidth: edge.appearance?.strokeWidth,
           occupied,
           crossingPenalty,
+          obstacleQuery: context.queryObstacles,
         },
       );
     const old = previous?.routes.get(edge.id);
@@ -496,6 +509,7 @@ function planFrameRoutes(
           strokeWidth: edge.appearance?.strokeWidth,
           occupied: other,
           crossingPenalty,
+          obstacleQuery: context.queryObstacles,
         },
       );
       if (

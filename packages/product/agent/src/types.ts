@@ -151,6 +151,8 @@ export interface PreparedBatch {
   version: 1;
   transactionId: string;
   workspaceVersion: string;
+  /** Binds pending plans to the shared tool/specification build. Receipts remain confirmable. */
+  resourceId: string | null;
   /** Hash of all other plan fields. Detects accidental editing of prepared content. */
   integrity: string;
   files: AuthoringEntry[];

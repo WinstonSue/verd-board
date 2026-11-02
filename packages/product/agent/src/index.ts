@@ -1,4 +1,9 @@
 export * from './types';
+export type {
+  WorkspaceProjectContext,
+  WorkspaceAgentStatus,
+  AgentSetupDiagnostic,
+} from './node/workspace-project';
 export * from './schema';
 export * from './authoring';
 export * from './apply';

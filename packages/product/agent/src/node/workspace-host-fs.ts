@@ -1,3 +1,4 @@
+import { readWorkspaceGeneration } from './workspace-lock';
 import * as crypto from 'crypto';
 import { watch, type FSWatcher } from 'fs';
 import * as fs from 'fs/promises';
@@ -6,7 +7,18 @@ import {
   createSerialQueue,
   withWorkspaceLock,
   readNativeSnapshotUnlocked,
+  readWorkspaceResourceId,
 } from './workspace-lock';
+import {
+  migrateWorkspaceMetadataUnlocked,
+  assertCurrentMetadataUnlocked,
+  markCurrentMetadataUnlocked,
+} from './workspace-metadata';
+import {
+  initializeWorkspaceAgentUnlocked,
+  inspectWorkspaceAgentUnlocked,
+  type AgentSetupDiagnostic,
+} from './workspace-project';
 import {
   baseName,
   conflictCommit,
@@ -20,7 +32,6 @@ import {
   type ChangeHint,
   type CommitReceipt,
   type CommitRequest,
-  type ConflictResolution,
   type FileVersion,
   type GlobalConfigSnapshot,
   type OpenWorkspaceRequest,
@@ -157,7 +168,72 @@ interface TransactionJournal {
   ops: JournalOp[];
 }
 
+/** Recovery records are data, never blindly trusted executable file operations. */
+function isTransactionJournal(raw: unknown): raw is TransactionJournal {
+  if (!raw || typeof raw !== 'object') return false;
+  const journal = raw as TransactionJournal;
+  if (
+    typeof journal.transactionId !== 'string' ||
+    !/^[a-zA-Z0-9][a-zA-Z0-9._-]*$/.test(journal.transactionId) ||
+    !['prepared', 'applying', 'applied'].includes(journal.phase) ||
+    !Array.isArray(journal.ops)
+  )
+    return false;
+  const contentPath = (value: unknown) =>
+    typeof value === 'string' && normalizeWorkspacePath(value) === value;
+  const stagedPathValid = (value: unknown) =>
+    typeof value === 'string' &&
+    value.startsWith(`transactions/${journal.transactionId}.staging/`) &&
+    !value.includes('\\') &&
+    !value.split('/').some((p) => !p || p === '.' || p === '..');
+  try {
+    return journal.ops.every((op) => {
+      if (!op || typeof op !== 'object') return false;
+      switch (op.kind) {
+        case 'write':
+          return (
+            contentPath(op.path) &&
+            typeof op.after === 'string' &&
+            stagedPathValid(op.staged)
+          );
+        case 'config':
+          return typeof op.after === 'string' && stagedPathValid(op.staged);
+        case 'session':
+          return stagedPathValid(op.staged);
+        case 'move':
+          return contentPath(op.from) && contentPath(op.to);
+        case 'mkdir':
+          return contentPath(op.path);
+        case 'trash':
+          return (
+            contentPath(op.path) &&
+            normalizeTrashEntryId(op.entryId) === op.entryId
+          );
+        case 'purge':
+          return normalizeTrashEntryId(op.entryId) === op.entryId;
+        case 'restore':
+          return (
+            contentPath(op.to) &&
+            normalizeTrashEntryId(op.entryId) === op.entryId &&
+            Array.isArray(op.subtree) &&
+            op.subtree.every(
+              (entry) =>
+                typeof entry.path === 'string' &&
+                ['file', 'directory'].includes(entry.kind),
+            )
+          );
+        default:
+          return false;
+      }
+    });
+  } catch {
+    return false;
+  }
+}
+
 interface FsWorkspace {
+  generation: string | null;
+  closing?: boolean;
   id: string;
   root: string;
   name: string;
@@ -168,6 +244,7 @@ interface FsWorkspace {
   listeners: Set<(hint: ChangeHint) => void>;
   /** Recovery conflicts detected at open; surfaced via snapshot diagnostics. */
   recoveryDiagnostics: string[];
+  agentSetupDiagnostics: AgentSetupDiagnostic[];
 }
 
 export interface FsWorkspaceHostOptions {
@@ -178,6 +255,8 @@ export interface FsWorkspaceHostOptions {
   pickDirectory?: () => Promise<string | null>;
   now?: () => number;
   watchDebounceMs?: number;
+  /** Versioned resources deployed outside the Desktop bundle. */
+  sharedResources?: () => string | Promise<string>;
 }
 
 const metaPath = (root: string, ...parts: string[]) =>
@@ -250,7 +329,11 @@ const createFsWorkspaceHostInner = (
   options: FsWorkspaceHostOptions,
 ): WorkspaceHost & {
   workspaces: Map<string, FsWorkspace>;
-  recoverWorkspace: (root: string) => Promise<string[]>;
+  suspendWorkspaceWatch: (handle: WorkspaceHandle) => () => void;
+  recoverWorkspace: (
+    root: string,
+    expectedGeneration?: string | null,
+  ) => Promise<string[]>;
   /** Resolves once every workspace write channel has drained. */
   waitIdle: () => Promise<void>;
 } => {
@@ -264,8 +347,6 @@ const createFsWorkspaceHostInner = (
     (() => path.join(options.defaultRoot(), '..', GLOBAL_CONFIG_FILE));
   let counter = 0;
 
-  const relative = (root: string, absolute: string) =>
-    path.relative(root, absolute).split(path.sep).join('/');
   const absolute = (root: string, relativePath: string) =>
     path.join(root, ...relativePath.split('/'));
 
@@ -536,9 +617,13 @@ const createFsWorkspaceHostInner = (
       const journal = (await readJsonFile(
         path.join(dir, name),
       )) as TransactionJournal | null;
-      if (!journal || typeof journal.phase !== 'string') {
-        diagnostics.push(`Discarding unreadable transaction log: ${name}`);
-        await fs.rm(path.join(dir, name), { force: true });
+      if (
+        !isTransactionJournal(journal) ||
+        name !== journal.transactionId + '.json'
+      ) {
+        diagnostics.push(
+          `Unreadable transaction log preserved; recovery required: ${name}`,
+        );
         continue;
       }
       if (journal.phase === 'prepared') {
@@ -589,7 +674,7 @@ const createFsWorkspaceHostInner = (
       timer = null;
       const paths = pending;
       pending = null;
-      if (!paths || !workspace.listeners.size) return;
+      if (!paths || workspace.closing || !workspace.listeners.size) return;
       void (async () => {
         const external: string[] = [];
         for (const relativePath of paths) {
@@ -605,7 +690,7 @@ const createFsWorkspaceHostInner = (
           }
           external.push(relativePath);
         }
-        if (external.length)
+        if (external.length && !workspace.closing)
           workspace.listeners.forEach((listener) =>
             listener({ paths: external }),
           );
@@ -643,8 +728,37 @@ const createFsWorkspaceHostInner = (
     workspace: FsWorkspace,
     request: CommitRequest,
   ): Promise<CommitReceipt> => {
+    if (
+      workspace.closing ||
+      workspace.generation !== (await readWorkspaceGeneration(workspace.root))
+    )
+      throw new Error('WORKSPACE_REPLACED: reopen the workspace');
+    await assertCurrentMetadataUnlocked(workspace.root);
     const recorded = await readReceipt(workspace.root, request.transactionId);
     if (recorded && recorded.reason !== 'io-error') return recorded;
+    if (
+      request.expectedAgentResourceId !== undefined &&
+      request.expectedAgentResourceId !==
+        (await readWorkspaceResourceId(workspace.root))
+    )
+      return reject(request.transactionId, 'version-conflict', {
+        path: '.verdscrolls/shared',
+      });
+    const logs = await fs
+      .readdir(metaPath(workspace.root, TRANSACTIONS_DIR))
+      .catch(() => [] as string[]);
+    for (const log of logs.filter((n) => n.endsWith('.json'))) {
+      const pending = (await readJsonFile(
+        metaPath(workspace.root, TRANSACTIONS_DIR, log),
+      )) as TransactionJournal | null;
+      if (
+        !isTransactionJournal(pending) ||
+        log !== pending.transactionId + '.json'
+      )
+        return reject(request.transactionId, 'invalid', {
+          path: `${META_DIR}/transactions/${log}`,
+        });
+    }
     if (recorded?.reason === 'io-error') {
       const journal = (await readJsonFile(
         journalPath(workspace.root, request.transactionId),
@@ -1115,7 +1229,7 @@ const createFsWorkspaceHostInner = (
         op.kind === 'move'
           ? [op.from, op.to]
           : op.kind === 'purge'
-            ? [`.verdboard/trash/${op.entryId}`]
+            ? [`${META_DIR}/trash/${op.entryId}`]
             : op.kind === 'trash'
               ? [op.path]
               : [],
@@ -1130,7 +1244,8 @@ const createFsWorkspaceHostInner = (
 
   const workspaceOf = (handle: WorkspaceHandle): FsWorkspace => {
     const workspace = workspaces.get(handle.key);
-    if (!workspace) throw new Error(`Unknown workspace: ${handle.key}`);
+    if (!workspace || workspace.closing)
+      throw new Error(`Unknown workspace: ${handle.key}`);
     return workspace;
   };
 
@@ -1139,11 +1254,21 @@ const createFsWorkspaceHostInner = (
     create: boolean,
     name?: string,
   ): Promise<WorkspaceHandle | null> => {
-    const existing = workspacesByRoot.get(root);
-    if (existing) return { key: existing.id, name: existing.name };
     if (!(await exists(root))) {
       if (!create) return null;
       await fs.mkdir(root, { recursive: true });
+    }
+    await migrateWorkspaceMetadataUnlocked(root);
+    let existing = workspacesByRoot.get(root);
+    if (
+      existing &&
+      existing.generation !== (await readWorkspaceGeneration(root))
+    ) {
+      existing.watcher?.close();
+      existing.listeners.clear();
+      workspaces.delete(existing.id);
+      workspacesByRoot.delete(root);
+      existing = undefined;
     }
     const configTarget = metaPath(root, CONFIG_FILE);
     if (!(await exists(configTarget))) {
@@ -1155,19 +1280,59 @@ const createFsWorkspaceHostInner = (
       await fs.mkdir(metaPath(root, 'migration'), { recursive: true });
       await writeJsonFile(configTarget, {
         version: 1,
-        value: { identity: crypto.randomUUID() },
+        value: {
+          identity: crypto.randomUUID(),
+          name: name ?? baseName(root),
+          project: { description: '', entryDocumentIds: [] },
+        },
       });
     }
+    await markCurrentMetadataUnlocked(root);
     const recoveryDiagnostics = await recoverWorkspace(root);
+    const configStat = await fs.lstat(configTarget);
+    if (!configStat.isFile() || configStat.isSymbolicLink())
+      throw new Error(
+        'WORKSPACE_CONFIG_INVALID: config.json must be an ordinary file',
+      );
+    const config = (await readJsonFile(configTarget)) as {
+      value?: { identity?: string; name?: string };
+    } | null;
+    if (!config?.value || typeof config.value.identity !== 'string')
+      throw new Error(
+        'WORKSPACE_CONFIG_INVALID: config.json is unreadable or has no identity',
+      );
+    let shared: string | undefined;
+    const agentSetupDiagnostics: AgentSetupDiagnostic[] = [];
+    try {
+      shared =
+        (await options.sharedResources?.()) ??
+        process.env['VERD_AGENT_RESOURCES'];
+    } catch (error) {
+      agentSetupDiagnostics.push({
+        code: 'agent.resources-unavailable',
+        message: String(error),
+      });
+    }
+    const setup = await initializeWorkspaceAgentUnlocked(root, shared);
+    agentSetupDiagnostics.push(
+      ...setup.diagnostics.filter((d) => d.code.endsWith('-conflict')),
+    );
+    if (existing) {
+      existing.recoveryDiagnostics = recoveryDiagnostics;
+      existing.agentSetupDiagnostics = agentSetupDiagnostics;
+      return { key: existing.id, name: existing.name };
+    }
     const workspace: FsWorkspace = {
+      generation: await readWorkspaceGeneration(root),
       id: `ws-${++counter}`,
       root,
-      name: name ?? baseName(root),
+      name: config.value.name || name || baseName(root),
       queue: createSerialQueue(),
       watcher: null,
       ownWrites: new Map(),
       listeners: new Set(),
       recoveryDiagnostics,
+      agentSetupDiagnostics,
     };
     workspaces.set(workspace.id, workspace);
     workspacesByRoot.set(root, workspace);
@@ -1204,7 +1369,7 @@ const createFsWorkspaceHostInner = (
       .catch(() => [] as string[]);
     const entries: WorkspaceEntryMeta[] = [];
     for (const name of names.sort()) {
-      if (dir === '' && name === META_DIR) continue;
+      if ([META_DIR, '.verdboard'].includes(name)) continue;
       const relativePath = dir ? `${dir}/${name}` : name;
       const stat = await fs
         .stat(absolute(root, relativePath))
@@ -1244,8 +1409,25 @@ const createFsWorkspaceHostInner = (
 
   return {
     workspaces,
-    recoverWorkspace: (root) =>
-      withWorkspaceLock(root, () => recoverWorkspace(root)),
+    suspendWorkspaceWatch(handle) {
+      const workspace = workspaces.get(handle.key);
+      if (!workspace) throw new Error('Unknown workspace');
+      workspace.watcher?.close();
+      workspace.watcher = null;
+      return () => {
+        if (workspaces.has(handle.key)) beginWatch(workspace);
+      };
+    },
+    recoverWorkspace: (root, expectedGeneration) =>
+      withWorkspaceLock(root, async () => {
+        if (
+          expectedGeneration !== undefined &&
+          expectedGeneration !== (await readWorkspaceGeneration(root))
+        )
+          throw new Error('WORKSPACE_REPLACED');
+        await migrateWorkspaceMetadataUnlocked(root);
+        return recoverWorkspace(root);
+      }),
     async waitIdle() {
       await Promise.all(
         [...workspaces.values()].map((workspace) =>
@@ -1386,6 +1568,16 @@ const createFsWorkspaceHostInner = (
           });
       }
       return {
+        agent: await inspectWorkspaceAgentUnlocked(workspace.root).then(
+          (status) => ({
+            ...status,
+            ready: status.ready && workspace.agentSetupDiagnostics.length === 0,
+            diagnostics: [
+              ...workspace.agentSetupDiagnostics,
+              ...status.diagnostics,
+            ],
+          }),
+        ),
         config: {
           version:
             typeof configValue?.version === 'number' ? configValue.version : 1,
@@ -1457,7 +1649,68 @@ export const createFsWorkspaceHost = (options: FsWorkspaceHostOptions) => {
   host.readSnapshot = (handle) => {
     const workspace = host.workspaces.get(handle.key);
     if (!workspace) throw new Error('Unknown workspace');
-    return withWorkspaceLock(workspace.root, () => readSnapshot(handle));
+    return withWorkspaceLock(workspace.root, async () => {
+      if (
+        workspace.closing ||
+        workspace.generation !== (await readWorkspaceGeneration(workspace.root))
+      )
+        throw new Error('WORKSPACE_REPLACED: reopen the workspace');
+      return readSnapshot(handle);
+    });
   };
-  return host;
+  const readFile = host.readFile.bind(host);
+  host.readFile = (handle, file) => {
+    const workspace = host.workspaces.get(handle.key);
+    if (!workspace) throw new Error('Unknown workspace');
+    return withWorkspaceLock(workspace.root, async () => {
+      if (
+        workspace.closing ||
+        workspace.generation !== (await readWorkspaceGeneration(workspace.root))
+      )
+        throw new Error('WORKSPACE_REPLACED: reopen the workspace');
+      return readFile(handle, file);
+    });
+  };
+  return Object.assign(host, {
+    async maintainWorkspace<T>(
+      handle: WorkspaceHandle,
+      task: (root: string) => Promise<T>,
+    ): Promise<T> {
+      const workspace = host.workspaces.get(handle.key);
+      if (!workspace || workspace.closing)
+        throw new Error('Workspace unavailable');
+      workspace.closing = true;
+      try {
+        return await workspace.queue(async () => {
+          const errors = await host.recoverWorkspace(
+            workspace.root,
+            workspace.generation,
+          );
+          if (errors.length) throw new Error(errors.join('; '));
+          return withWorkspaceLock(workspace.root, async () => {
+            if (
+              workspace.generation !==
+              (await readWorkspaceGeneration(workspace.root))
+            )
+              throw new Error('WORKSPACE_REPLACED');
+            const resumeWatch = host.suspendWorkspaceWatch(handle);
+            try {
+              const result = await task(workspace.root);
+              await host.closeWorkspace(handle);
+              return result;
+            } finally {
+              if (
+                workspace.generation !==
+                (await readWorkspaceGeneration(workspace.root))
+              )
+                await host.closeWorkspace(handle);
+              else resumeWatch();
+            }
+          });
+        });
+      } finally {
+        workspace.closing = false;
+      }
+    },
+  });
 };

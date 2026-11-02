@@ -21,7 +21,7 @@ test('native project navigation includes both the canvas and document embeds wit
         !path
           .relative(path.join(root, 'workspace'), file)
           .split(path.sep)
-          .includes('.verdboard'),
+          .includes('.verdscrolls'),
     });
     const chartPath = path.join(
       workspace,

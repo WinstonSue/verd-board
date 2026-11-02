@@ -380,16 +380,15 @@
     "project:topic/01/document": {
       "id": "project:topic/01/document",
       "cellType": "node",
-      "kind": "document-reference",
+      "kind": "geometry",
       "geometry": {
         "x": 0,
-        "y": 980,
+        "y": 840,
         "width": 1000,
-        "height": 600
+        "height": 100,
+        "outline": "text"
       },
-      "data": {
-        "targetDocumentId": "project-doc:packages/README"
-      },
+      "data": {},
       "content": {
         "text": {
           "schemaVersion": 1,
@@ -399,6 +398,23 @@
           "content": {
             "type": "doc",
             "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "相关文档：包索引",
+                    "marks": [
+                      {
+                        "type": "link",
+                        "attrs": {
+                          "href": "verd://file/project-doc%3Apackages%2FREADME"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
               {
                 "type": "paragraph",
                 "content": [
@@ -418,8 +434,12 @@
               }
             ]
           },
-          "plainText": "系统架构 · 包职责与公共接入"
+          "plainText": "相关文档：包索引\n系统架构 · 包职责与公共接入"
         }
+      },
+      "appearance": {
+        "fill": "none",
+        "strokeColor": "none"
       }
     },
     "project:overview/01/relation/0": {

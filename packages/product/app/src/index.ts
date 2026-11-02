@@ -17,3 +17,5 @@ export {
   parseLegacyFrameDocument,
 } from './migration/cell-workspace';
 export { WorkspaceApp, type WorkspaceAppProps } from './workspace-app';
+
+export * from './documents/knowledge-index';

@@ -5,11 +5,11 @@ alwaysApply: true
 
 # 原生文档引导
 
-项目知识的唯一正文位于根 `workspace/文档/`，架构图保存在同一工作区的 `.verd.json` 文件。根 README 和包 README 只保留工程入口，不另建 Markdown 正文或导出兼容树。
+中英文导航文档位于根 `workspace/`，分类正文位于 `workspace/文档/`，图解位于 `workspace/架构图/`。导航组织阅读、正文维护说明、图解表达关系；说明图使用文档和章节链接，不贴嵌整份正文。根 README 和包 README 只保留工程入口，不另建 Markdown 正文或导出兼容树。
 
 ## 阅读入口
 
-- 总览：`workspace/文档/文档导航.verd-doc.json`
+- 总览：`workspace/文档导航.verd-doc.json`
 - 架构：`workspace/文档/架构/系统架构.verd-doc.json`
 - 开发：`workspace/文档/开发/开发指南.verd-doc.json`
 - 维护：`workspace/文档/开发/文档维护指南.verd-doc.json`

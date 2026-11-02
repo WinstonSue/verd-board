@@ -46,20 +46,60 @@ window.renderAgentPreview = async (files, fileId, format) => {
       <DocumentPreview
         value={doc.text}
         renderFrameReference={({ targetFrameId }) =>
-          next.includes(targetFrameId) ? (
-            <div>Referenced canvas: {targetFrameId}</div>
-          ) : (
-            <div style={{ width: '100%', height: 480 }}>
-              <CanvasPreview
-                value={snapshot}
-                frameId={targetFrameId}
-                documentReferences={makeReferences([...next, targetFrameId])}
-                exporting
-              />
-            </div>
-          )
+          renderReference(targetFrameId, next)
         }
       />
+    );
+  };
+  const renderReference = (
+    targetFrameId: string,
+    seen: string[],
+  ): React.ReactNode => {
+    if (targetFrameId.startsWith('excerpt:')) {
+      const [, encodedId, encodedBlock] = targetFrameId.split(':');
+      const id = decodeURIComponent(encodedId ?? ''),
+        blockId = decodeURIComponent(encodedBlock ?? '');
+      const token = id + '#' + blockId;
+      const source = documents.get(id);
+      let block: import('@sue/board-common').BoardTextNode | undefined;
+      const find = (node: import('@sue/board-common').BoardTextNode) => {
+        if (node.attrs?.['blockId'] === blockId) block = node;
+        else node.content?.forEach(find);
+      };
+      if (source) find(source.text.content);
+      if (!source || !block)
+        return (
+          <div>
+            Missing excerpt: {id} / {blockId}
+          </div>
+        );
+      if (seen.includes(token))
+        return <div>Referenced excerpt: {source.title}</div>;
+      return (
+        <blockquote>
+          <DocumentPreview
+            value={{
+              ...source.text,
+              content: { type: 'doc', content: [block] },
+            }}
+            renderFrameReference={(props) =>
+              renderReference(props.targetFrameId, [...seen, token])
+            }
+          />
+        </blockquote>
+      );
+    }
+    return seen.includes(targetFrameId) ? (
+      <div>Referenced canvas: {targetFrameId}</div>
+    ) : (
+      <div style={{ width: '100%', height: 480 }}>
+        <CanvasPreview
+          value={snapshot}
+          frameId={targetFrameId}
+          documentReferences={makeReferences([...seen, targetFrameId])}
+          exporting
+        />
+      </div>
     );
   };
   const makeReferences = (seen: string[]): FrameDocumentReferences => ({

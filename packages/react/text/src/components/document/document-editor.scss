@@ -21,6 +21,10 @@
     font-size: 16px;
     line-height: 1.75;
     outline: none;
+    &:focus,
+    &:focus-visible {
+      outline: none;
+    }
 
     .document-frame-reference {
       margin: 1em 0;
@@ -184,5 +188,38 @@
 
   &:focus-visible {
     outline: none;
+    &:focus,
+    &:focus-visible {
+      outline: none;
+    }
+  }
+}
+
+.document-block-menu {
+  font: 12px system-ui;
+  margin-bottom: 8px;
+  button {
+    margin: 4px;
+  }
+}
+.document-slash-menu {
+  position: absolute;
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  max-height: 320px;
+  overflow: auto;
+  padding: 8px;
+  border: 1px solid var(--board-border);
+  border-radius: 6px;
+  background: var(--board-surface);
+  color: var(--board-text);
+  button,
+  input {
+    font: inherit;
+    color: inherit;
+    background: transparent;
+    padding: 6px;
+    text-align: start;
   }
 }

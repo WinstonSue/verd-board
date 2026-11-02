@@ -130,7 +130,12 @@ export const LineText = React.forwardRef<LineTextRef, LineTextProps>(
     useEffect(() => {
       if (!readonly && autoFocus) {
         const timer = setTimeout(() => {
-          if (editor) {
+          if (
+            editor &&
+            !editor.isDestroyed &&
+            !editor.isFocused &&
+            editor.state.selection.empty
+          ) {
             safeFocus(editor);
           }
         }, 120);

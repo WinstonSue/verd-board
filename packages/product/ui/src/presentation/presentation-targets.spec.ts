@@ -7,7 +7,7 @@ import {
   type NodeCell,
 } from '@sue/board-core';
 import { MindKind } from '@sue/board-mind';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import {
   clampPresentationIndex,
   hasVisibleContent,
@@ -256,4 +256,25 @@ describe('presentation targets', () => {
     expect(clampPresentationIndex(4, 3)).toBe(3);
     expect(clampPresentationIndex(1, 0)).toBe(0);
   });
+});
+
+it('computes large-frame presentation availability with bounded store scans', () => {
+  const cells = Array.from({ length: 10000 }, (_, i) =>
+    node(`n${i}`, 'geometry'),
+  );
+  const store = storeOf(...cells),
+    values = Object.values;
+  let scans = 0;
+  const spy = vi.spyOn(Object, 'values').mockImplementation((value) => {
+    if (value === store.cells) scans++;
+    return values(value);
+  });
+  try {
+    expect(hasVisibleContent(store)).toBe(true);
+    expect(presentationSteps(store, 'frame', 'whiteboard')).toEqual([]);
+    expect(presentationTargetIds(store, 'frame', 'n9999')).toEqual(['n9999']);
+    expect(scans).toBeLessThanOrEqual(2);
+  } finally {
+    spy.mockRestore();
+  }
 });

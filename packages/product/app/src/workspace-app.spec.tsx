@@ -473,7 +473,18 @@ describe('workspace shell navigation', () => {
     const { host, path } = await hostWith('ws-library');
     await render(<WorkspaceApp host={host} workspace={{ path }} />);
     await act(async () => {
-      container.querySelector<HTMLButtonElement>('.file-tree-nav')!.click();
+      [
+        ...container.querySelectorAll<HTMLButtonElement>(
+          '.management-navigation nav button',
+        ),
+      ]
+        .find((b) => b.textContent?.includes('所有内容'))!
+        .click();
+    });
+    await act(async () => {
+      [...container.querySelectorAll<HTMLButtonElement>('.content-tabs button')]
+        .find((b) => b.textContent === '图表')!
+        .click();
     });
     expect(container.querySelector('.chart-library')).toBeTruthy();
     const frameId = container
@@ -518,6 +529,9 @@ describe('workspace shell navigation', () => {
       )!.set!.call(input, '新的工作区');
       input.dispatchEvent(new Event('input', { bubbles: true }));
     });
+    await act(async () =>
+      input.dispatchEvent(new FocusEvent('focusout', { bubbles: true })),
+    );
     expect(input.value).toBe('新的工作区');
     expect(container.querySelector('.workspace-menu-name')?.textContent).toBe(
       '新的工作区',
@@ -656,13 +670,61 @@ describe('workspace shell navigation', () => {
     expect(container.querySelector('[data-testid="verd-frame"]')).toBeTruthy();
   });
 
-  it('opens the built-in entry only when navigation has never been saved', async () => {
-    const { host, handle, path } = await hostWith('builtin-entry');
+  it.each([
+    {
+      name: 'opens document navigation for a legacy built-in workspace without reading entries',
+      readingEntries: undefined,
+      savedSession: undefined,
+      expected: 'project-doc:README',
+    },
+    {
+      name: 'opens the first available configured reading entry and reveals its directory',
+      readingEntries: ['missing-entry', 'welcome', 'project-doc:README'],
+      savedSession: undefined,
+      expected: 'welcome',
+    },
+    {
+      name: 'restores a saved canvas tab instead of replacing it with the entry document',
+      readingEntries: ['project-doc:README'],
+      savedSession: {
+        tabs: [{ fileId: 'board-root' }],
+        activeTabId: 'board-root',
+        expandedDirs: [],
+      },
+      expected: 'board-root',
+    },
+    {
+      name: 'preserves intentionally closed built-in tabs on restart',
+      readingEntries: ['project-doc:README'],
+      savedSession: { tabs: [], activeTabId: null, expandedDirs: [] },
+      expected: null,
+    },
+    {
+      name: 'restores a saved management view instead of opening the reading entry',
+      readingEntries: ['project-doc:README'],
+      savedSession: {
+        activeView: 'home' as const,
+        tabs: [{ fileId: 'project-doc:README' }],
+        activeTabId: 'project-doc:README',
+        expandedDirs: [],
+      },
+      expected: 'project-doc:README',
+    },
+  ])('$name', async ({ readingEntries, savedSession, expected }) => {
+    const { host, handle, path } = await hostWith(
+      'builtin-entry-' + (expected ?? 'empty').replaceAll(':', '-'),
+    );
+    let shutdown = async () => {};
+    host.onShutdown = (flush) => {
+      shutdown = flush;
+      return () => {};
+    };
+    const config = (await host.readSnapshot(handle)).config;
     await host.commit(handle, {
       transactionId: 'builtin-content',
       writes: [
         {
-          path: 'entry.verd.json',
+          path: '项目导览.verd.json',
           expectedVersion: null,
           content: JSON.stringify({
             format: 'verd-frame',
@@ -678,7 +740,29 @@ describe('workspace shell navigation', () => {
             cells: {},
           }),
         },
+        {
+          path: '文档导航.verd-doc.json',
+          expectedVersion: null,
+          content: JSON.stringify(
+            createDocumentFile('project-doc:README', '文档导航'),
+          ),
+        },
+        {
+          path: 'reading/intro/welcome.verd-doc.json',
+          expectedVersion: null,
+          content: JSON.stringify(createDocumentFile('welcome', '阅读起点')),
+        },
       ],
+      config: readingEntries
+        ? {
+            expectedVersion: config.version,
+            value: {
+              ...config.value,
+              project: { entryDocumentIds: readingEntries },
+            },
+          }
+        : undefined,
+      session: savedSession,
     });
     const originalOpen = host.openWorkspace.bind(host);
     host.openWorkspace = async (request) => ({
@@ -688,44 +772,34 @@ describe('workspace shell navigation', () => {
     await render(<WorkspaceApp host={host} workspace={{ path }} />);
     expect(
       container
-        .querySelector('[data-testid="verd-frame"]')
-        ?.getAttribute('data-frame'),
-    ).toBe('board-root');
-  });
-
-  it('preserves intentionally closed built-in tabs on restart', async () => {
-    const { host, handle, path } = await hostWith('builtin-closed-tabs');
-    await host.commit(handle, {
-      transactionId: 'builtin-closed-content',
-      writes: [
-        {
-          path: 'entry.verd.json',
-          expectedVersion: null,
-          content: JSON.stringify({
-            format: 'verd-frame',
-            version: 2,
-            frame: {
-              id: 'board-root',
-              kind: 'frame',
-              cellType: 'frame',
-              geometry: { x: 0, y: 0, width: 960, height: 640 },
-              children: [],
-              groups: [],
-            },
-            cells: {},
-          }),
-        },
-      ],
-      session: { tabs: [], activeTabId: null, expandedDirs: [] },
+        .querySelector('.workspace-content')
+        ?.getAttribute('data-management-view'),
+    ).toBe(savedSession?.activeView ?? 'file');
+    if (expected === 'board-root') {
+      expect(
+        container
+          .querySelector('[data-testid="verd-frame"]')
+          ?.getAttribute('data-frame'),
+      ).toBe('board-root');
+    } else if (expected) {
+      expect(
+        container.querySelector<HTMLInputElement>('.document-page__title')
+          ?.value,
+      ).toBe(expected === 'welcome' ? '阅读起点' : '文档导航');
+      expect(container.querySelector('[data-testid="verd-frame"]')).toBeNull();
+    } else {
+      expect(container.querySelector('.workspace-pane.is-active')).toBeNull();
+      expect(container.querySelector('.workspace-empty')).toBeTruthy();
+    }
+    await act(async () => {
+      await shutdown();
     });
-    const originalOpen = host.openWorkspace.bind(host);
-    host.openWorkspace = async (request) => ({
-      ...(await originalOpen(request))!,
-      isDefault: true,
-    });
-    await render(<WorkspaceApp host={host} workspace={{ path }} />);
-    expect(container.querySelector('[data-testid="verd-frame"]')).toBeNull();
-    expect(container.querySelector('.workspace-empty')).toBeTruthy();
+    const navigation = (await host.readSnapshot(handle)).session!;
+    expect(navigation.activeTabId).toBe(expected);
+    if (!savedSession)
+      expect(navigation.expandedDirs).toEqual(
+        expected === 'welcome' ? ['reading', 'reading/intro'] : [],
+      );
   });
 
   it('preserves an intentionally empty workspace that already has a saved session', async () => {
@@ -890,7 +964,10 @@ it('reopens history through the workspace lifecycle and disables the active stab
     workspaceAction('workspace-history-other').click();
     await new Promise((resolve) => setTimeout(resolve, 15));
   });
-  expect(host.openWorkspace).toHaveBeenLastCalledWith({ historyId: 'other' });
+  expect(host.openWorkspace).toHaveBeenLastCalledWith({
+    historyId: 'other',
+    create: false,
+  });
   expect(host.activateWorkspace).toHaveBeenLastCalledWith({
     ...other,
     historyId: 'other',

@@ -343,6 +343,8 @@ test('new document Frame placement creates its source atomically and cancellatio
 }) => {
   await page.goto('/');
   await setAppLanguage(page, 'zh');
+  await page.locator('.file-tree-name').first().click();
+  await expect(canvas(page)).toBeVisible();
   const initial = await page.locator('.file-tree-name').count();
   await selectAppAction(page, '文档 Frame…');
   await page

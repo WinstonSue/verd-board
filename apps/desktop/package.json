@@ -12,28 +12,30 @@
     "test": "vitest run --passWithNoTests"
   },
   "dependencies": {
-    "@sue/verd-board-app": "workspace:*",
-    "@sue/verd-board-ui": "workspace:*",
     "@sue/board-react": "workspace:*",
     "@sue/board-react-text": "workspace:*",
     "@sue/board-react-workflow": "workspace:*",
     "@sue/board-workflow": "workspace:*",
+    "@sue/verd-board-agent": "workspace:*",
+    "@sue/verd-board-app": "workspace:*",
+    "@sue/verd-board-ui": "workspace:*",
     "react": "19.2.0",
     "react-dom": "19.2.0",
-    "@sue/verd-board-agent": "workspace:*"
+    "tar": "7.5.22"
   },
   "devDependencies": {
+    "@sue/verd-board-docs": "workspace:*",
+    "@types/react": "19.2.2",
+    "@types/react-dom": "19.2.2",
     "@vitejs/plugin-react": "^4.2.0",
+    "electron": "^28.0.0",
+    "electron-builder": "^24.9.1",
     "eslint": "^9.22.0",
+    "typescript": "^6.0.3",
     "vite": "^6.2.2",
     "vite-plugin-electron": "^0.28.0",
     "vite-plugin-electron-renderer": "^0.14.0",
-    "vitest": "^3.0.8",
-    "@types/react": "19.2.2",
-    "@types/react-dom": "19.2.2",
-    "typescript": "^6.0.3",
-    "electron": "^28.0.0",
-    "electron-builder": "^24.9.1"
+    "vitest": "^3.0.8"
   },
   "build": {
     "appId": "com.verdboard.desktop",
@@ -70,29 +72,31 @@
     },
     "extraResources": [
       {
-        "from": "../../workspace",
+        "from": "build/builtin-workspaces/workspace",
         "to": "workspace",
         "filter": [
-          "**/*",
-          "!.verdboard{,/**}",
-          "!**/.DS_Store",
-          "!**/*.tmp"
+          "**/*"
         ]
       },
       {
-        "from": "../../packages/product/agent-patterns/workspace",
+        "from": "build/builtin-workspaces/agent-patterns",
         "to": "agent-patterns",
         "filter": [
-          "**/*",
-          "!.verdboard{,/**}",
-          "!**/.DS_Store",
-          "!**/*.tmp"
+          "**/*"
+        ]
+      },
+      {
+        "from": "build/agent-resources/${os}-${arch}",
+        "to": "agent-tools",
+        "filter": [
+          "**/*"
         ]
       }
     ],
     "dmg": {
       "icon": "build/icon.icns"
-    }
+    },
+    "beforePack": "./electron-builder-hooks.cjs"
   },
   "productName": "VerdBoard"
 }

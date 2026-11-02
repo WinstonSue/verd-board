@@ -1354,16 +1354,15 @@
     "project:detail/04/02/document": {
       "id": "project:detail/04/02/document",
       "cellType": "node",
-      "kind": "document-reference",
+      "kind": "geometry",
       "geometry": {
         "x": 0,
         "y": 700,
         "width": 1000,
-        "height": 620
+        "height": 220,
+        "outline": "text"
       },
-      "data": {
-        "targetDocumentId": "project-doc:architecture/ARCHITECTURE"
-      },
+      "data": {},
       "content": {
         "text": {
           "schemaVersion": 1,
@@ -1373,6 +1372,23 @@
           "content": {
             "type": "doc",
             "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "相关文档：系统架构",
+                    "marks": [
+                      {
+                        "type": "link",
+                        "attrs": {
+                          "href": "verd://file/project-doc%3Aarchitecture%2FARCHITECTURE"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
               {
                 "type": "paragraph",
                 "content": [
@@ -1444,8 +1460,12 @@
               }
             ]
           },
-          "plainText": "读图：迁移前保留备份；区分单文件不可用与宿主读取失败。\n返回专题总览\n相关细节：启动与工作区选择\n桌面安装与使用 · 工作区目录\n源码入口：packages/product/app/src/session/workspace-session.ts；packages/product/app/src/frames/frame-files.ts；apps/desktop/electron/workspace-startup.ts。"
+          "plainText": "相关文档：系统架构\n读图：迁移前保留备份；区分单文件不可用与宿主读取失败。\n返回专题总览\n相关细节：启动与工作区选择\n桌面安装与使用 · 工作区目录\n源码入口：packages/product/app/src/session/workspace-session.ts；packages/product/app/src/frames/frame-files.ts；apps/desktop/electron/workspace-startup.ts。"
         }
+      },
+      "appearance": {
+        "fill": "none",
+        "strokeColor": "none"
       }
     },
     "project:detail/04/02/handoff/26": {

@@ -360,6 +360,8 @@ const parity = async (
     name: 'Text formatting',
     exact: true,
   });
+  await expect(toolbar).toHaveCount(0);
+  await editor.press('ControlOrMeta+a');
   await expect(toolbar).toBeVisible();
   expect(
     await toolbar.evaluate((element) => element.closest('svg')),
@@ -600,16 +602,32 @@ test('Mind defaults align left and notes align at the top, preserving explicit b
     .filter({ has: page.locator('[data-frame-rich-text]') })
     .last()
     .dblclick();
+  await target.locator('.ProseMirror').press('ControlOrMeta+a');
+  await page
+    .getByRole('button', { name: /^(更多文字格式|More text formatting)$/ })
+    .click();
   await alignment().selectOption('center');
   await expect(alignment()).toHaveValue('center');
   await target.locator('[data-frame-text-editor] .ProseMirror').press('Escape');
+  if (await target.locator('[data-frame-text-editor] .ProseMirror').isVisible())
+    await target
+      .locator('[data-frame-text-editor] .ProseMirror')
+      .press('Escape');
   await target
     .locator('foreignObject')
     .filter({ has: page.locator('[data-frame-rich-text]') })
     .last()
     .dblclick();
+  await target.locator('.ProseMirror').press('ControlOrMeta+a');
+  await page
+    .getByRole('button', { name: /^(更多文字格式|More text formatting)$/ })
+    .click();
   await expect(alignment()).toHaveValue('center');
   await target.locator('[data-frame-text-editor] .ProseMirror').press('Escape');
+  if (await target.locator('[data-frame-text-editor] .ProseMirror').isVisible())
+    await target
+      .locator('[data-frame-text-editor] .ProseMirror')
+      .press('Escape');
   await page
     .getByRole('button', { name: '撤销', exact: true })
     .locator('visible=true')
@@ -691,10 +709,16 @@ test('portal formatting retains selection and input, tracks zoom, survives IME E
     name: 'Text formatting',
     exact: true,
   });
-  const bold = toolbar.getByRole('button', { name: 'Bold', exact: true });
+  const bold = toolbar.getByRole('button', {
+    name: /^(Bold|加粗)$/,
+    exact: true,
+  });
   await bold.focus();
   await bold.press('Enter');
   await expect(editor.locator('strong')).toHaveText('纯文本 Plain label');
+  await toolbar
+    .getByRole('button', { name: /^(Link|链接)$/, exact: true })
+    .click();
   await toolbar
     .getByLabel('Link URL', { exact: true })
     .fill('https://example.com');
@@ -750,12 +774,24 @@ test('portal formatting retains selection and input, tracks zoom, survives IME E
       }),
     );
   });
-  const body = target.locator('[data-frame-text-editor]');
+  await editor.press('ControlOrMeta+a');
   await expect
     .poll(async () => {
-      const a = (await body.boundingBox())!,
+      const a = await editor.evaluate(() => {
+          const rect = window
+            .getSelection()!
+            .getRangeAt(0)
+            .getBoundingClientRect();
+          return { x: rect.x, width: rect.width };
+        }),
         b = (await toolbar.boundingBox())!;
-      return Math.abs(b.x - Math.max(8, Math.min(a.x, 1440 - b.width - 8)));
+      return Math.abs(
+        b.x -
+          Math.max(
+            8,
+            Math.min(a.x + (a.width - b.width) / 2, 1440 - b.width - 8),
+          ),
+      );
     })
     .toBeLessThanOrEqual(1);
 });
@@ -856,7 +892,7 @@ test('Frame names share glyph metrics, truncation and placeholder geometry at fr
       } else sameMetrics(before, await metrics(editor));
       await expect(
         page.getByRole('toolbar', { name: 'Text formatting', exact: true }),
-      ).toBeInViewport({ ratio: 1 });
+      ).toHaveCount(0);
       await editor.press('Escape');
       await expect(editorBox).toHaveCount(0);
       sameMetrics(before, await metrics(preview));

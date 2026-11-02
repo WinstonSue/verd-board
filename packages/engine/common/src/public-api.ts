@@ -14,3 +14,5 @@ export * from './text/default-alignment';
 export * from './workspace-links';
 export * from './text/map-links';
 export * from './actions';
+
+export * from './asset-links';

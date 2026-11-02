@@ -1,3 +1,4 @@
+import { stageBuiltinWorkspace } from './builtin-workspace';
 import * as fs from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -31,20 +32,10 @@ export async function initializePatternWorkspace(
     await fs.mkdir(path.dirname(target), { recursive: true });
     const staging = await fs.mkdtemp(target + '.seed-');
     try {
-      await fs.cp(
+      await stageBuiltinWorkspace(
         options.source ?? fileURLToPath(patternWorkspaceUrl),
         staging,
-        {
-          recursive: true,
-          filter: async (entry) => {
-            const stat = await fs.lstat(entry);
-            return (
-              !stat.isSymbolicLink() &&
-              ((stat.isDirectory() && path.basename(entry) !== '.verdboard') ||
-                (stat.isFile() && /\.verd(?:-doc)?\.json$/.test(entry)))
-            );
-          },
-        },
+        'agent-patterns',
       );
       const snapshot = await readNativeSnapshotUnlocked(staging);
       const errors = [

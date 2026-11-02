@@ -810,16 +810,15 @@
     "project:detail/05/01/document": {
       "id": "project:detail/05/01/document",
       "cellType": "node",
-      "kind": "document-reference",
+      "kind": "geometry",
       "geometry": {
         "x": 0,
         "y": 520,
         "width": 1000,
-        "height": 620
+        "height": 288,
+        "outline": "text"
       },
-      "data": {
-        "targetDocumentId": "project-doc:packages/react/README"
-      },
+      "data": {},
       "content": {
         "text": {
           "schemaVersion": 1,
@@ -829,6 +828,23 @@
           "content": {
             "type": "doc",
             "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "相关文档：React接入",
+                    "marks": [
+                      {
+                        "type": "link",
+                        "attrs": {
+                          "href": "verd://file/project-doc%3Apackages%2Freact%2FREADME"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
               {
                 "type": "paragraph",
                 "content": [
@@ -934,8 +950,12 @@
               }
             ]
           },
-          "plainText": "读图：先结束当前编辑再执行动作；画布与文档共享提交和权限边界。\n返回专题总览\n相关细节：宿主意图与外部历史\n相关细节：Cell 事务与统一历史\n系统架构 · 模型和事务\n布局、路由与保存边界\n源码入口：packages/react/actions/src；packages/react/board/src/frame-canvas.tsx；packages/product/app/src/workspace-document-page.tsx。"
+          "plainText": "相关文档：React接入\n读图：先结束当前编辑再执行动作；画布与文档共享提交和权限边界。\n返回专题总览\n相关细节：宿主意图与外部历史\n相关细节：Cell 事务与统一历史\n系统架构 · 模型和事务\n布局、路由与保存边界\n源码入口：packages/react/actions/src；packages/react/board/src/frame-canvas.tsx；packages/product/app/src/workspace-document-page.tsx。"
         }
+      },
+      "appearance": {
+        "fill": "none",
+        "strokeColor": "none"
       }
     }
   },

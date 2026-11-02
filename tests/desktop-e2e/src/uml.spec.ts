@@ -13,8 +13,8 @@ import {
   importUmlText,
   umlCanvas,
 } from '../../web-e2e/src/uml-actions';
-import { setAppLanguage } from '../../web-e2e/src/app-actions';
-import { committedCells } from './workspace-disk';
+import { openActiveFile, setAppLanguage } from '../../web-e2e/src/app-actions';
+import { committedCells, seedEmptyCanvas } from './workspace-disk';
 test('Desktop UML domains persist editable class members and structured sequence events across restart', async () => {
   const directory = await mkdtemp(path.join(tmpdir(), 'verd-uml-e2e-')),
     userData = path.join(directory, 'user-data');
@@ -24,17 +24,24 @@ test('Desktop UML domains persist editable class members and structured sequence
   const env = { ...process.env };
 
   env.VERDBOARD_WORKSPACE_PATH = path.join(userData, 'workspaces', 'default');
+  await seedEmptyCanvas(env.VERDBOARD_WORKSPACE_PATH);
   let desktop = await electron.launch({ args: [launcher], env });
   const close = async (app: ElectronApplication, page: Page) => {
     const closed = page.waitForEvent('close');
-    await app.evaluate(({ BrowserWindow }) =>
-      BrowserWindow.getAllWindows()[0].close(),
-    );
+    await app
+      .evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].close())
+      .catch((error: unknown) => {
+        // A completed close may dispose the context before its reply arrives.
+        if (!String(error).includes('Execution context was destroyed'))
+          throw error;
+      });
     await closed;
     await app.close();
   };
   try {
     let page = await desktop.firstWindow();
+    await expect(page.locator('.workspace-shell')).toBeVisible();
+    await openActiveFile(page);
     await desktop.evaluate(({ BrowserWindow }) =>
       BrowserWindow.getAllWindows()[0].setSize(1440, 900),
     );

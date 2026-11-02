@@ -150,7 +150,7 @@ describe('native architecture rules', () => {
     r.undo();
     expect(r.store).toEqual(before);
     r.redo();
-    expect(r.index.membersOf.get('module')).toBe('other');
+    expect(r.index.domainOwnerOf.get('module')).toBe('other');
     expect(() =>
       reorderArchitectureLayers(r.store, 'frame', ['other', 'other']),
     ).toThrow('exactly once');

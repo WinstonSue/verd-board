@@ -1,3 +1,4 @@
+import { nearestOperableDepth } from './document-rich-content';
 import type { Editor } from '@tiptap/react';
 import {
   Alignment,
@@ -24,7 +25,16 @@ import {
 import { findInDocument } from './document-search';
 import { createDocumentHeadingSlugger } from '../../utils/heading-slug';
 
+function containsFormula(editor: Editor, from: number, to: number) {
+  let found = false;
+  editor.state.doc.nodesBetween(from, to, (node) => {
+    if (['inlineMath', 'blockMath'].includes(node.type.name)) found = true;
+  });
+  return found;
+}
+
 interface ControllerOptions {
+  onMathInsert?(block: boolean): void;
   /** Tags the next emitted change (format/insert/replace) for history. */
   withSource(source: DocumentChangeSource, run: () => void): void;
   /** Latest document — commits must not spread stale doc-level fields. */
@@ -167,6 +177,13 @@ export function createDocumentController(
     if (editable()) withSource('format', run);
   };
 
+  const revealAt = (pos: number) => {
+    editor.view.dispatch(
+      editor.state.tr
+        .setMeta('document-reveal', pos)
+        .setMeta('addToHistory', false),
+    );
+  };
   const commands: DocumentCommands = {
     focus(position = 'end') {
       if (!editor.isDestroyed) {
@@ -456,6 +473,7 @@ export function createDocumentController(
     },
     locateHeading(pos) {
       if (editor.isDestroyed) return;
+      revealAt(pos);
       editor
         .chain()
         .focus()
@@ -475,8 +493,10 @@ export function createDocumentController(
       editor.state.doc.descendants((node, pos) => {
         if (position !== undefined) return false;
         if (
-          node.type.name === 'frameReference' &&
-          node.attrs['targetFrameId'] === targetFrameId
+          (node.type.name === 'frameReference' &&
+            node.attrs['targetFrameId'] === targetFrameId) ||
+          (node.type.name === 'documentExcerpt' &&
+            node.attrs['targetDocumentId'] === targetFrameId)
         ) {
           if (remaining-- === 0) position = pos;
           return false;
@@ -498,15 +518,29 @@ export function createDocumentController(
     },
     selectMatch(match: DocumentSearchMatch) {
       if (editor.isDestroyed) return;
+      revealAt(match.from);
+      if (containsFormula(editor, match.from, match.to)) {
+        editor
+          .chain()
+          .focus()
+          .setNodeSelection(match.from)
+          .scrollIntoView()
+          .run();
+        return;
+      }
       editor
         .chain()
         .focus()
         .setTextSelection({ from: match.from, to: match.to })
         .scrollIntoView()
         .run();
+      if (!editor.isEditable) {
+        const target = editor.view.domAtPos(match.from).node;
+        scrollTo(target instanceof HTMLElement ? target : target.parentElement);
+      }
     },
     replace(match, text) {
-      if (!editable()) return;
+      if (!editable() || containsFormula(editor, match.from, match.to)) return;
       withSource('replace', () => {
         editor.view.dispatch(
           editor.state.tr.insertText(text, match.from, match.to),
@@ -519,7 +553,7 @@ export function createDocumentController(
         editor.state.doc,
         query,
         options.caseSensitive,
-      );
+      ).filter((match) => !containsFormula(editor, match.from, match.to));
       if (!matches.length) return 0;
       withSource('replace', () => {
         const tr = editor.state.tr;
@@ -674,6 +708,174 @@ export function createDocumentController(
     (value: string | null) => commands.setLink(value),
     { validate: stringOrNull, palette: false },
   );
+  register<{ href: string; label: string }>(
+    'insert-link',
+    '插入链接',
+    undefined,
+    ({ href, label }) => {
+      if (editor.state.selection.empty && !editor.isActive('link')) {
+        withSource('insert', () => {
+          editor
+            .chain()
+            .focus()
+            .insertContent({
+              type: 'text',
+              text: label,
+              marks: [{ type: 'link', attrs: { href } }],
+            })
+            .unsetMark('link')
+            .run();
+        });
+      } else commands.setLink(href);
+    },
+    {
+      validate: (value) =>
+        isObject(value) &&
+        typeof value['href'] === 'string' &&
+        !!value['href'].trim() &&
+        typeof value['label'] === 'string' &&
+        !!value['label'],
+      palette: false,
+    },
+  );
+  for (const direction of ['up', 'down', 'duplicate', 'delete'] as const)
+    register(`block-${direction}`, `段落 ${direction}`, undefined, () => {
+      const { $from } = editor.state.selection;
+      const depth = nearestOperableDepth($from);
+      const pos = $from.before(depth);
+      const node = $from.node(depth);
+      withSource('insert', () => {
+        if (direction === 'delete')
+          editor
+            .chain()
+            .focus()
+            .deleteRange({ from: pos, to: pos + node.nodeSize })
+            .run();
+        else if (direction === 'duplicate')
+          editor
+            .chain()
+            .focus()
+            .insertContentAt(pos + node.nodeSize, node.toJSON())
+            .run();
+        else {
+          const index = $from.index(depth - 1),
+            otherIndex = direction === 'up' ? index - 1 : index + 1;
+          if (otherIndex < 0 || otherIndex >= $from.node(depth - 1).childCount)
+            return;
+          const other = $from.node(depth - 1).child(otherIndex);
+          const from = direction === 'up' ? pos - other.nodeSize : pos;
+          const to =
+            direction === 'up'
+              ? pos + node.nodeSize
+              : pos + node.nodeSize + other.nodeSize;
+          const content =
+            direction === 'up'
+              ? [node.toJSON(), other.toJSON()]
+              : [other.toJSON(), node.toJSON()];
+          editor
+            .chain()
+            .focus()
+            .insertContentAt({ from, to }, content)
+            .setTextSelection(
+              direction === 'up' ? from + 1 : from + other.nodeSize + 1,
+            )
+            .run();
+        }
+      });
+    });
+  registry.register({
+    id: 'document.anchor-block',
+    label: { zh: '复制此段链接', en: 'Copy block link' },
+    category: 'document',
+    effect: 'external',
+    getState: () => ({
+      visible: true,
+      enabled:
+        editable() || !!editor.state.selection.$from.node(1).attrs['blockId'],
+    }),
+    execute: async (context) => {
+      if (context.selection) restoreSelection(context.selection);
+      const { $from } = editor.state.selection;
+      const pos = $from.before(1),
+        node = $from.node(1);
+      const id = node.attrs['blockId'] || crypto.randomUUID();
+      if (!node.attrs['blockId']) {
+        if (!editable()) return { status: 'rejected', code: 'readonly' };
+        withSource('format', () => {
+          editor.view.dispatch(
+            editor.state.tr.setNodeMarkup(pos, undefined, {
+              ...node.attrs,
+              blockId: id,
+            }),
+          );
+        });
+        const receipt = await flushEditing();
+        if (receipt.status !== 'completed' && receipt.status !== 'noop')
+          return receipt;
+      }
+      if (!navigator.clipboard)
+        return { status: 'rejected', code: 'clipboard-unavailable' };
+      try {
+        await navigator.clipboard.writeText(
+          `verd://file/${encodeURIComponent(options.getBaseDocument().id)}#${encodeURIComponent('block:' + id)}`,
+        );
+        return { status: 'completed' };
+      } catch {
+        return { status: 'rejected', code: 'clipboard-denied' };
+      }
+    },
+  });
+  registry.register<string>({
+    id: 'document.locate-block',
+    label: { zh: '定位段落', en: 'Locate block' },
+    category: 'document',
+    effect: 'view',
+    palette: false,
+    execute: (_context, id) => {
+      let found = false;
+      editor.state.doc.descendants((node, pos) => {
+        if (node.attrs['blockId'] === id) {
+          found = true;
+          commands.locateHeading(pos);
+          return false;
+        }
+        return !found;
+      });
+      return {
+        status: found ? 'completed' : 'rejected',
+        code: 'missing-block',
+      } as ActionResult;
+    },
+  });
+  register<{ targetDocumentId: string; blockId: string }>(
+    'insert-excerpt',
+    '插入只读摘录',
+    undefined,
+    (args) => {
+      withSource('insert', () => {
+        editor
+          .chain()
+          .focus()
+          .insertContent({
+            type: 'documentExcerpt',
+            attrs: {
+              targetDocumentId: args.targetDocumentId,
+              targetBlockId: args.blockId,
+            },
+          })
+          .run();
+      });
+    },
+    {
+      validate: (args) =>
+        isObject(args) &&
+        typeof args['targetDocumentId'] === 'string' &&
+        !!args['targetDocumentId'] &&
+        typeof args['blockId'] === 'string' &&
+        !!args['blockId'],
+      palette: false,
+    },
+  );
   register('clear-formatting', '清除格式', 'clearFormatting', () =>
     commands.clearFormatting(),
   );
@@ -755,6 +957,32 @@ export function createDocumentController(
     register(id, label, 'setTextAlign', () => commands.setTextAlign(align), {
       checked: () => commands.getToolbarState().align === align,
     });
+  register('wrap-details', '折叠块', undefined, () => {
+    if (!editor.chain().focus().setDetails().run()) return;
+    const resolved = editor.state.selection.$from;
+    for (let depth = resolved.depth; depth > 0; depth--) {
+      if (resolved.node(depth).type.name !== 'details') continue;
+      const element = editor.view.nodeDOM(
+        resolved.before(depth),
+      ) as HTMLElement | null;
+      if (!element?.classList.contains('is-open'))
+        element?.querySelector<HTMLButtonElement>(':scope > button')?.click();
+      break;
+    }
+  });
+  register('unwrap-details', '取消折叠块', undefined, () =>
+    editor.chain().focus().unsetDetails().run(),
+  );
+  register('insert-inline-math', '行内公式', undefined, () =>
+    options.onMathInsert
+      ? options.onMathInsert(false)
+      : editor.chain().focus().insertInlineMath({ latex: 'x' }).run(),
+  );
+  register('insert-block-math', '公式块', undefined, () =>
+    options.onMathInsert
+      ? options.onMathInsert(true)
+      : editor.chain().focus().insertBlockMath({ latex: 'x' }).run(),
+  );
   register('insert-horizontal-rule', '插入分隔线', 'insertHorizontalRule', () =>
     commands.insertHorizontalRule(),
   );
@@ -966,6 +1194,13 @@ export function createDocumentController(
     flushEditing,
     getToolbarState: commands.getToolbarState,
     getHeadings: commands.getHeadings,
+    clearReveal: () => {
+      editor.view.dispatch(
+        editor.state.tr
+          .setMeta('document-clear-reveal', true)
+          .setMeta('addToHistory', false),
+      );
+    },
     locateHeading: commands.locateHeading,
     locateFrameReference: commands.locateFrameReference,
     find: commands.find,

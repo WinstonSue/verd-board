@@ -101,7 +101,10 @@ test('Desktop previews documents in every canvas, adopts external edits and pres
     await desktop.evaluate(({ BrowserWindow }) =>
       BrowserWindow.getAllWindows()[0].setContentSize(1600, 1000),
     );
-    await expect(page.locator('.workspace-shell')).toBeVisible();
+    // Source-mode startup also loads the workspace and its preview modules.
+    await expect(page.locator('.workspace-shell')).toBeVisible({
+      timeout: 30_000,
+    });
     const active = page.locator('.workspace-pane.is-active');
     for (const [index, frame] of frames.entries()) {
       await page

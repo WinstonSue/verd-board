@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import React, { StrictMode, act } from 'react';
+import { StrictMode, act } from 'react';
 import { createRoot } from 'react-dom/client';
 import { describe, expect, it, vi } from 'vitest';
 import { createInlineText, type BoardTextController } from '@sue/board-common';

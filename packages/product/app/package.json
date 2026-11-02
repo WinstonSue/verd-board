@@ -18,14 +18,17 @@
     "@sue/board-layouts": "workspace:*",
     "@sue/board-markdown-to-text": "workspace:*",
     "@sue/board-mind": "workspace:*",
+    "@sue/board-react-actions": "workspace:*",
+    "@sue/board-react-text": "workspace:*",
+    "@sue/board-react-uml": "workspace:*",
+    "@sue/board-uml": "workspace:*",
     "@sue/board-workflow": "workspace:*",
+    "@sue/verd-board-agent-patterns": "workspace:*",
     "@sue/verd-board-ui": "workspace:*",
+    "fflate": "0.8.3",
     "localforage": "^1.10.0",
     "lucide-react": "^1.47.0",
-    "@sue/board-uml": "workspace:*",
-    "@sue/board-react-uml": "workspace:*",
-    "@sue/board-react-actions": "workspace:*",
-    "@sue/board-react-text": "workspace:*"
+    "pdfjs-dist": "5.7.284"
   },
   "peerDependencies": {
     "react": ">=18",

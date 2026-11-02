@@ -912,10 +912,10 @@ test('resizes, rotates and formats a native shape with undo and durable rich tex
     .toBe('Formatted cell');
   await page
     .getByRole('toolbar', { name: 'Text formatting' })
-    .getByRole('button', { name: 'Bold', exact: true })
+    .getByRole('button', { name: /^(Bold|加粗)$/, exact: true })
     .click();
   await expect(
-    page.getByRole('button', { name: 'Bold', exact: true }),
+    page.getByRole('button', { name: /^(Bold|加粗)$/, exact: true }),
   ).toHaveAttribute('aria-pressed', 'true');
   await editor.press('Enter');
   await expect(node.locator('strong')).toHaveText('Formatted cell');
@@ -1412,7 +1412,7 @@ test('image exports preserve rich text, selection scope, transparency and real J
   await editor.press('ControlOrMeta+a');
   await page
     .getByRole('toolbar', { name: 'Text formatting', exact: true })
-    .getByRole('button', { name: 'Bold', exact: true })
+    .getByRole('button', { name: /^(Bold|加粗)$/, exact: true })
     .click();
   await editor.press('Escape');
   const selected = await downloadImage(page, 'svg', 'selection');

@@ -98,6 +98,9 @@ export async function withWorkspaceRuntime(task) {
       documentSchema,
       references,
       validation,
+      builtin: await load(
+        'packages/product/agent/src/node/builtin-workspace.ts',
+      ),
     });
   } finally {
     await server.close();
@@ -111,7 +114,11 @@ export async function readWorkspace(root = PROJECT_WORKSPACE) {
     for (const entry of (await readdir(dir, { withFileTypes: true })).sort(
       (a, b) => a.name.localeCompare(b.name),
     )) {
-      if (entry.name === '.verdboard' || entry.name.startsWith('.')) continue;
+      if (
+        entry.name.startsWith('.') ||
+        (dir === root && entry.name === 'AGENTS.md')
+      )
+        continue;
       const absolute = path.join(dir, entry.name);
       if (entry.isSymbolicLink())
         throw new Error(
@@ -471,6 +478,9 @@ export async function runWorkspace(
   }
   const errors = await withWorkspaceRuntime((r) =>
     validateWorkspace(entries, r),
+  );
+  await withWorkspaceRuntime((r) =>
+    r.builtin.readBuiltinRelease(root, 'project'),
   );
   if (command !== 'validate' && packageDrift(entry.file, model))
     errors.push('Package dependencies changed; run pnpm workspace:refresh');

@@ -1,5 +1,5 @@
 import { createActionRegistry } from '@sue/board-common';
-import React, { act } from 'react';
+import { act } from 'react';
 import { createRoot } from 'react-dom/client';
 import { describe, expect, it, vi } from 'vitest';
 import { ChartLibrary, OrganizePreview } from './chart-library';

@@ -1,0 +1,101 @@
+.management-navigation {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  flex-direction: column;
+  color: var(--vm-foreground);
+}
+.management-sidebar-body {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  flex-direction: column;
+  overflow: auto;
+}
+.management-sidebar-body > nav {
+  display: grid;
+  padding: 8px;
+  gap: 2px;
+}
+.management-sidebar-body .file-tree-nav {
+  margin: 0;
+  height: var(--vm-sidebar-row);
+  padding: 0 8px;
+}
+.management-sidebar-body .file-tree-nav[aria-current='page'] {
+  background: var(--vm-fill-active);
+  color: var(--vm-foreground);
+  font-weight: 500;
+}
+.management-tree {
+  position: relative;
+  flex: 1;
+  min-height: 100px;
+  display: flex;
+  flex-direction: column;
+}
+.management-shortcut {
+  margin: 0 8px;
+  padding: 0 8px;
+  gap: 4px;
+  &:hover {
+    background: var(--vm-fill-hover);
+  }
+}
+.management-shortcut-main {
+  display: flex;
+  align-items: center;
+  flex: 1;
+  min-width: 0;
+  gap: 8px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.management-shortcut-main > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.management-shortcut .vm-icon-btn,
+.management-shortcut > .frame-tooltip-control {
+  opacity: 0;
+}
+.management-shortcut:hover .vm-icon-btn,
+.management-shortcut:focus-within .vm-icon-btn,
+.management-shortcut:hover > .frame-tooltip-control,
+.management-shortcut:focus-within > .frame-tooltip-control {
+  opacity: 1;
+}
+.management-favorites-empty {
+  margin: 0 8px;
+  padding: 8px;
+}
+.management-collapsed {
+  .workspace-menu-trigger,
+  .workspace-sidebar-footer,
+  .management-sidebar-body,
+  .workspace-resize-handle {
+    display: none;
+  }
+  .workspace-sidebar-header {
+    padding-inline: 8px;
+  }
+}
+.workspace-resize-handle {
+  position: absolute;
+  right: -3px;
+  top: 0;
+  width: 6px;
+  height: 100%;
+  cursor: col-resize;
+  z-index: 20;
+  &:hover,
+  &:focus-visible {
+    background: var(--vm-primary);
+  }
+}

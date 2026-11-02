@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "value": {
+    "identity": "builtin:agent-patterns",
+    "name": "Agent 范式库",
+    "project": {
+      "description": "用于原生图文编写的规则说明、模板与可编辑示例。",
+      "entryDocumentIds": [
+        "pattern-library:index"
+      ]
+    }
+  }
+}

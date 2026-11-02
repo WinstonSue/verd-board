@@ -4,6 +4,7 @@ import type { FrameFileV2 } from '../frames/frame-files';
 import type { BoardTextSelection as DocumentSelection } from '@sue/board-common';
 
 export interface WorkspaceNavigationRequest {
+  searchMatch?: { revision: string; term: string; text: string; from?: number };
   requestId: number;
   target: WorkspaceTarget;
   origin?: NavigationOrigin;

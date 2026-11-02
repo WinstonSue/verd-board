@@ -1,3 +1,4 @@
+import { pdfAssets } from '../../scripts/pdf-assets';
 /// <reference types='vitest' />
 import { defineConfig } from 'vitest/config';
 import react from '@vitejs/plugin-react';
@@ -53,6 +54,7 @@ export default defineConfig(({ command, mode }) => {
       ? [react()]
       : [
           react(),
+          pdfAssets(),
           {
             name: 'desktop-e2e-ready',
             configureServer(server) {
@@ -76,6 +78,7 @@ export default defineConfig(({ command, mode }) => {
               },
               vite: {
                 plugins: [watchReady('main')],
+                resolve: { conditions: ['development', 'module', 'node'] },
                 build: {
                   outDir: electronOutput,
                   rollupOptions: {

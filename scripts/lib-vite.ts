@@ -23,7 +23,9 @@ const DEFAULT_EXTERNALS: (string | RegExp)[] = [
   'react-dom',
   'react-dom/client',
   'react/jsx-runtime',
-  /^@sue\//,
+  // Runtime packages stay external; their public styles must be included in
+  // the consumer's stylesheet rather than disappearing as external imports.
+  /^@sue\/(?!.*\.(?:css|scss)$)/,
 ];
 
 export function createLibViteConfig(options: LibViteOptions): UserConfig {
@@ -82,7 +84,9 @@ export function createLibViteConfig(options: LibViteOptions): UserConfig {
     build: {
       outDir: './dist',
       emptyOutDir: true,
-      cssCodeSplit: true,
+      // Every public stylesheet is named style.css. Aggregate entry styles so
+      // separate entry chunks cannot overwrite one another at that path.
+      cssCodeSplit: false,
       lib: {
         entry: libEntry,
         name: options.name,

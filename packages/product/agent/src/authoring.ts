@@ -188,6 +188,7 @@ export async function prepareAuthoringBatch(
     version: 1,
     transactionId: randomUUID(),
     workspaceVersion: snapshot.version,
+    resourceId: snapshot.resourceId ?? null,
     files,
     removeIds,
     idMap: result.idMap,

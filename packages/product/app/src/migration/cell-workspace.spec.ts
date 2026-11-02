@@ -557,7 +557,7 @@ describe('legacy cell workspace migration', () => {
   });
   it('upgrades a valid v1 workspace once and can reset when a record is gone', async () => {
     const adapter = memory({ main_board_content: { children: [] } });
-    const first = await migrateLegacyCellWorkspace(adapter);
+    await migrateLegacyCellWorkspace(adapter);
     const manifest = adapter.values.get('main_board_content') as {
       version: number;
       frames: Record<string, string>;

@@ -3,6 +3,7 @@ import path from 'node:path';
 import { readFileSync } from 'node:fs';
 import {
   openWorkspaceMenu,
+  openActiveFile,
   selectAppAction,
   setAppLanguage,
 } from './app-actions';
@@ -289,6 +290,7 @@ for (const [width, appearance] of [
       appearance,
     );
     await page.goto('/');
+    await openActiveFile(page);
     await expect(page.getByTestId('workspace-commands')).toHaveCount(0);
     const toolbar = pane(page).getByRole('toolbar', { name: 'App actions' });
     const trigger = toolbar.getByTestId('canvas-command-palette');
@@ -300,8 +302,12 @@ for (const [width, appearance] of [
       'canvas-command-palette',
     );
     const menu = await openWorkspaceMenu(page);
-    await expect(menu.getByRole('menuitem').nth(0)).toHaveText('工作区设置');
-    await menu.getByRole('menuitem', { name: '命令面板', exact: true }).click();
+    await expect(menu.getByTestId('workspace-open-settings')).toHaveText(
+      '工作区设置',
+    );
+    await page.keyboard.press('Escape');
+    await page.getByTestId('workspace-menu-trigger').focus();
+    await page.keyboard.press('ControlOrMeta+Shift+p');
     await expect(palette(page)).toHaveCount(1);
     await palette(page).getByRole('combobox').fill('新建画布');
     await expect(

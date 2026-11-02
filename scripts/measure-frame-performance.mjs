@@ -26,8 +26,12 @@ const output = path.resolve(
 const fixtureDir = path.resolve(
   option('--fixture-dir', path.join(root, 'workspace')),
 );
+const nodeCount = Number(option('--nodes', '0'));
+if (![0, 1000, 5000, 10000].includes(nodeCount))
+  throw new Error('Invalid node count');
 const tracing = args.includes('--trace');
-const runs = Number(option('--runs', tracing ? '1' : '5'));
+const profiling = args.includes('--cpu-profile');
+const runs = Number(option('--runs', tracing || profiling ? '1' : '5'));
 const counts = option('--counts', '1,9,36').split(',').map(Number);
 const headed = args.includes('--headed');
 const dpr = Number(option('--dpr', '1'));
@@ -64,17 +68,23 @@ async function visit(directory) {
     if (entry.name.startsWith('.')) continue;
     const filename = path.join(directory, entry.name);
     if (entry.isDirectory()) await visit(filename);
-    else if (/\.verd(?:-doc)?\.json$/.test(entry.name))
-      files.push(JSON.parse(await readFile(filename, 'utf8')));
+    else if (/\.verd(?:-doc)?\.json$/.test(entry.name)) {
+      const file = JSON.parse(await readFile(filename, 'utf8'));
+      files.push(file);
+      if (file.frame?.id === 'board-root')
+        homePath = path.relative(fixtureDir, filename);
+    }
   }
 }
+let homePath;
 await visit(fixtureDir);
 await mkdir(path.dirname(output), { recursive: true });
 const results = {
   platform,
-  mode: tracing ? 'trace' : 'benchmark',
+  mode: tracing ? 'trace' : profiling ? 'cpu-profile' : 'benchmark',
   headed,
   runs,
+  nodeCount,
   requestedViewport: { width, height },
   fixtureSha256: createHash('sha256')
     .update(JSON.stringify(files))
@@ -164,6 +174,22 @@ for (let run = 0; run < runs; run++)
           if (index >= 9) home.frame.children.push(id);
         }
       }
+      for (let i = 0; i < nodeCount; i++) {
+        const id = `perf:node:${i}`;
+        home.frame.children.push(id);
+        home.cells[id] = {
+          id,
+          kind: 'geometry',
+          cellType: 'node',
+          geometry: {
+            x: (i % 100) * 160,
+            y: 2000 + Math.floor(i / 100) * 100,
+            width: 100,
+            height: 50,
+          },
+          content: { label: `Node ${i}` },
+        };
+      }
       let browser, desktop, directory, page;
       let desktopOutput = '';
       const stem =
@@ -178,12 +204,9 @@ for (let run = 0; run < runs; run++)
               !path
                 .relative(fixtureDir, filename)
                 .split(path.sep)
-                .includes('.verdboard'),
+                .some((part) => ['.verdboard', '.verdscrolls'].includes(part)),
           });
-          await writeFile(
-            path.join(workspace, '项目导览.verd.json'),
-            JSON.stringify(home),
-          );
+          await writeFile(path.join(workspace, homePath), JSON.stringify(home));
           const launcher = path.join(directory, 'launch.cjs');
           await writeFile(
             launcher,
@@ -259,7 +282,9 @@ for (let run = 0; run < runs; run++)
           await page.bringToFront();
         }
         const errors = [];
-        page.on('pageerror', (error) => errors.push(error.message));
+        page.on('pageerror', (error) =>
+          errors.push(error.stack ?? error.message),
+        );
         await page.locator('.workspace-shell').waitFor();
         const skip = page.getByRole('button', { name: '跳过', exact: true });
         if (await skip.isVisible()) await skip.click();
@@ -439,6 +464,11 @@ for (let run = 0; run < runs; run++)
           samples: [],
           errors,
         };
+        if (profiling) {
+          await cdp.send('Profiler.enable');
+          await cdp.send('Profiler.setSamplingInterval', { interval: 1000 });
+          await cdp.send('Profiler.start');
+        }
         for (const phase of ['zoom', 'pan', 'drag']) {
           await mark(page, `verd-perf:${phase}:settle`);
           await page
@@ -608,6 +638,11 @@ for (let run = 0; run < runs; run++)
             }),
           );
         }
+        if (profiling) {
+          const { profile } = await cdp.send('Profiler.stop');
+          scenario.cpuProfile = stem + '.cpuprofile';
+          await writeFile(scenario.cpuProfile, JSON.stringify(profile));
+        }
         if (tracing) {
           const completed = new Promise((resolve) =>
             cdp.once('Tracing.tracingComplete', resolve),
@@ -625,10 +660,10 @@ for (let run = 0; run < runs; run++)
           scenario.trace = stem + '.trace.json';
           scenario.traceDataLossOccurred = dataLossOccurred ?? false;
         }
-        if (errors.length) throw new Error(errors.join('\n'));
         results.scenarios.push(scenario);
         summarize();
         await writeFile(output, JSON.stringify(results, null, 2) + '\n');
+        if (errors.length) throw new Error(errors.join('\n'));
       } catch (error) {
         if (desktopOutput)
           await writeFile(stem + '-failure.log', desktopOutput);

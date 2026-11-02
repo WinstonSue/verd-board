@@ -1,13 +1,14 @@
 import {
-  resolveCellAppearance,
+  isNodeCell,
   resolveBoardTheme,
   readableThemeText,
+  type CellRegistry,
+  type NodeCell,
 } from '@sue/board-core';
-import { isNodeCell, type CellRegistry, type NodeCell } from '@sue/board-core';
-import type {
-  FrameRenderContext,
-  FrameRenderExtension,
-  FrameThemeAppearanceContext,
+import {
+  resolveFrameAppearance,
+  type FrameRenderContext,
+  type FrameRenderExtension,
 } from '@sue/board-react';
 import {
   layoutUmlCells,
@@ -21,42 +22,39 @@ import {
   type UmlParticipantData,
 } from '@sue/board-uml';
 import { useEffect, useRef } from 'react';
-
-const umlThemeAppearance = ({ cell, theme }: FrameThemeAppearanceContext) => ({
-  fill:
-    cell.kind === 'uml-note'
-      ? theme.note
-      : cell.kind === 'uml-fragment' ||
-          (cell.kind === 'uml-participant' &&
-            (cell as NodeCell<UmlParticipantData>).data?.actorType === 'actor')
-        ? 'none'
-        : theme.surface,
-});
+import {
+  resolveUmlPartAppearance,
+  umlThemeAppearance,
+} from './theme-appearance';
 
 function UmlShape(context: FrameRenderContext) {
   const { cell, geometry: b, store, frameId } = context;
   if (!isNodeCell(cell) || !b) return null;
   const theme = context.theme ?? resolveBoardTheme();
-  const visual = resolveCellAppearance(
-    cell,
-    theme,
-    theme.adaptive
-      ? umlThemeAppearance({ cell, store, frameId, theme })
-      : undefined,
-  );
+  const appearanceContext = { cell, store, frameId, theme };
+  const visual =
+    context.resolvedAppearance ??
+    resolveFrameAppearance(
+      appearanceContext,
+      umlThemeAppearance(appearanceContext),
+    );
   const stroke = theme.adaptive
       ? visual.strokeColor
       : (cell.appearance?.strokeColor ?? '#475569'),
     fill = theme.adaptive ? visual.fill : (cell.appearance?.fill ?? '#ffffff');
   const textColor = theme.adaptive
-    ? readableThemeText(
+    ? (visual.textColor ??
+      readableThemeText(
         fill === 'none' || fill === 'transparent'
           ? theme.background
           : (fill ?? theme.background),
         theme.text,
-      )
+      ))
     : stroke;
   if (cell.kind === 'uml-class') {
+    const title = theme.adaptive
+      ? resolveUmlPartAppearance(appearanceContext, 'title')
+      : visual;
     const data = cell.data as UmlClassData,
       metrics = umlClassMetrics({
         ...cell,
@@ -66,10 +64,22 @@ function UmlShape(context: FrameRenderContext) {
     return (
       <g data-uml-class>
         <rect
+          data-uml-class-body
           {...{ x: b.x, y: b.y, width: b.width, height: b.height }}
           fill={fill}
           stroke={stroke}
         />
+        {theme.adaptive && (
+          <rect
+            data-uml-class-header
+            x={b.x}
+            y={b.y}
+            width={b.width}
+            height={54}
+            fill={title.fill}
+            stroke={title.strokeColor}
+          />
+        )}
         <path
           data-frame-interaction-ignore
           d={`M ${b.x} ${b.y + 54} H ${b.x + b.width} M ${b.x} ${divider} H ${b.x + b.width}`}
@@ -82,7 +92,7 @@ function UmlShape(context: FrameRenderContext) {
             fontSize={12}
             textAnchor="middle"
             stroke="none"
-            fill={textColor}
+            fill={theme.adaptive ? title.textColor : textColor}
           >{`«${data.classifier}»`}</text>
         )}
         {[...metrics.attributes, ...metrics.methods].map((row, i) => (
@@ -114,6 +124,13 @@ function UmlShape(context: FrameRenderContext) {
     const actor = (cell.data as UmlParticipantData).actorType === 'actor',
       cx = b.x + b.width / 2;
     const layout = layoutUmlSequence(store, frameId);
+    const lifeline = theme.adaptive
+      ? resolveUmlPartAppearance(appearanceContext, 'lifeline')
+      : visual;
+    const activation = resolveUmlPartAppearance(
+      appearanceContext,
+      'activation',
+    );
     return (
       <g data-uml-lifeline>
         <line
@@ -121,7 +138,7 @@ function UmlShape(context: FrameRenderContext) {
           x2={cx}
           y1={b.y + (actor ? 84 : 65)}
           y2={b.y + b.height}
-          stroke={stroke}
+          stroke={theme.adaptive ? lifeline.strokeColor : stroke}
           strokeDasharray="6 5"
         />
         {actor ? (
@@ -151,8 +168,8 @@ function UmlShape(context: FrameRenderContext) {
               y={a.y}
               width={a.width}
               height={a.height}
-              fill={resolveCellAppearance(cell, theme).fill}
-              stroke={stroke}
+              fill={activation.fill}
+              stroke={theme.adaptive ? activation.strokeColor : stroke}
               onPointerDown={(e) => {
                 e.stopPropagation();
                 context.select();
@@ -167,6 +184,9 @@ function UmlShape(context: FrameRenderContext) {
   if (cell.kind === 'uml-fragment') {
     const data = cell.data as UmlFragmentData,
       layout = layoutUmlSequence(store, frameId);
+    const label = theme.adaptive
+      ? resolveUmlPartAppearance(appearanceContext, 'fragment-label')
+      : visual;
     return (
       <g
         data-uml-fragment
@@ -175,11 +195,17 @@ function UmlShape(context: FrameRenderContext) {
         pointerEvents="visiblePainted"
       >
         <rect x={b.x} y={b.y} width={b.width} height={b.height} />
-        <path d={`M ${b.x} ${b.y + 28} h 65 l 12 -12 v -16`} />
+        <path
+          data-uml-fragment-label
+          data-uml-fragment-tab
+          d={`M ${b.x} ${b.y + 28} h 65 l 12 -12 v -16${theme.adaptive ? ' h -77 Z' : ''}`}
+          fill={theme.adaptive ? label.fill : undefined}
+          stroke={theme.adaptive ? label.strokeColor : stroke}
+        />
         <text
           x={b.x + 8}
           y={b.y + 20}
-          fill={textColor}
+          fill={theme.adaptive ? label.textColor : textColor}
           stroke="none"
           fontSize={14}
         >
@@ -330,6 +356,19 @@ export function createUmlFrameExtensions(
       (kind) => ({
         kind,
         themeAppearance: umlThemeAppearance,
+        presentation:
+          kind === 'uml-class'
+            ? (context: FrameRenderContext) => {
+                const theme = context.theme ?? resolveBoardTheme();
+                if (!theme.adaptive) return undefined;
+                return {
+                  color: resolveUmlPartAppearance(
+                    { ...context, theme },
+                    'title',
+                  ).textColor,
+                };
+              }
+            : undefined,
         renderShape: (context: FrameRenderContext) => <UmlShape {...context} />,
         textBounds: ({ cell, geometry }: FrameRenderContext) => {
           const b = geometry ?? (cell as NodeCell).geometry;
@@ -363,7 +402,12 @@ export function createUmlFrameExtensions(
       }),
     ),
     {
+      kind: 'uml-relation',
+      themeAppearance: umlThemeAppearance,
+    },
+    {
       kind: 'uml-message',
+      themeAppearance: umlThemeAppearance,
       renderControls: (context) => <MessageDrag {...context} />,
     },
   ];

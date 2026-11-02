@@ -1,7 +1,6 @@
 import { createBlockText } from '@sue/board-common';
 import {
   resolveBoardTheme,
-  resolveCellAppearance,
   resolveThemeColor,
   readableThemeText,
   isNodeCell,
@@ -32,6 +31,7 @@ import {
   useFrameI18n,
   FrameRichText,
   FrameTextEditor,
+  resolveFrameAppearance,
   type FrameRenderContext,
 } from '@sue/board-react';
 import {
@@ -42,10 +42,17 @@ import {
   useState,
   type PointerEvent,
 } from 'react';
+import {
+  drawThemeAppearance,
+  resolveTableEntryAppearance,
+} from './frame-draw-theme';
 const allocate = () => crypto.randomUUID();
 type FrameTableProps = Pick<
   FrameRenderContext,
   | 'theme'
+  | 'resolvedAppearance'
+  | 'store'
+  | 'frameId'
   | 'cell'
   | 'geometry'
   | 'selected'
@@ -61,6 +68,9 @@ export function FrameTable(context: FrameRenderContext) {
   return (
     <FrameTableBody
       theme={context.theme}
+      resolvedAppearance={context.resolvedAppearance}
+      store={context.store}
+      frameId={context.frameId}
       cell={context.cell}
       geometry={context.geometry}
       selected={context.selected}
@@ -78,7 +88,15 @@ const FrameTableBody = memo(function FrameTableBody(context: FrameTableProps) {
   const { cell, geometry, selected, readonly, pending, dispatch } = context;
   const { language } = useFrameI18n();
   const theme = context.theme ?? resolveBoardTheme();
-  const visual = resolveCellAppearance(cell, theme);
+  const themeContext = {
+    cell,
+    store: context.store,
+    frameId: context.frameId,
+    theme,
+  };
+  const visual =
+    context.resolvedAppearance ??
+    resolveFrameAppearance(themeContext, drawThemeAppearance(themeContext));
   const [anchor, setAnchor] = useState<string>();
   const [focus, setFocus] = useState<string>();
   const [editing, setEditing] = useState<string>();
@@ -150,6 +168,14 @@ const FrameTableBody = memo(function FrameTableBody(context: FrameTableProps) {
   );
   const ids = entriesInRange(data, range).map((entry) => entry.id);
   const writable = !readonly && !pending && !cell.locked;
+  const activeFill = theme.adaptive
+    ? resolveTableEntryAppearance({ ...themeContext, cell: table }, active).fill
+    : resolveThemeColor(
+        active.fill,
+        active.fillSource,
+        visual.fill ?? '#fff',
+        theme,
+      );
   const authored = (next: NodeCell<TableCellData> | undefined) => {
     if (
       !next ||
@@ -366,16 +392,23 @@ const FrameTableBody = memo(function FrameTableBody(context: FrameTableProps) {
           edit = editing === entry.id && writable;
         const textWidth = Math.max(1, (vertical ? height : width) - 8),
           textHeight = Math.max(1, (vertical ? width : height) - 8);
-        const fill = resolveThemeColor(
-          entry.fill,
-          entry.fillSource,
-          theme.adaptive && entry.role && entry.role !== 'body'
-            ? theme.header
-            : (visual.fill ?? '#fff'),
-          theme,
-        );
+        const entryVisual = theme.adaptive
+          ? resolveTableEntryAppearance({ ...themeContext, cell: table }, entry)
+          : undefined;
+        const fill =
+          entryVisual?.fill ??
+          resolveThemeColor(
+            entry.fill,
+            entry.fillSource,
+            visual.fill ?? '#fff',
+            theme,
+          );
         const textBackground =
           fill === 'none' || fill === 'transparent' ? theme.background : fill;
+        const textColor = theme.adaptive
+          ? (entryVisual?.textColor ??
+            readableThemeText(textBackground, theme.text))
+          : '#0f172a';
         return (
           <g
             key={entry.id}
@@ -411,6 +444,7 @@ const FrameTableBody = memo(function FrameTableBody(context: FrameTableProps) {
               width={width}
               height={height}
               fill={fill}
+              stroke={entryVisual?.strokeColor}
             />
             {entry.text && (
               <g
@@ -434,18 +468,14 @@ const FrameTableBody = memo(function FrameTableBody(context: FrameTableProps) {
                   <div
                     style={{
                       height: '100%',
-                      color: theme.adaptive
-                        ? readableThemeText(textBackground, theme.text)
-                        : '#0f172a',
+                      color: textColor,
                       overflow: edit ? 'visible' : 'hidden',
                     }}
                   >
                     {edit ? (
                       <FrameTextEditor
                         style={{
-                          color: theme.adaptive
-                            ? readableThemeText(textBackground, theme.text)
-                            : '#0f172a',
+                          color: textColor,
                         }}
                         text={entry.text}
                         mode="block"
@@ -481,9 +511,7 @@ const FrameTableBody = memo(function FrameTableBody(context: FrameTableProps) {
                       <FrameRichText
                         text={entry.text}
                         style={{
-                          color: theme.adaptive
-                            ? readableThemeText(textBackground, theme.text)
-                            : '#0f172a',
+                          color: textColor,
                         }}
                       />
                     )}
@@ -632,12 +660,11 @@ const FrameTableBody = memo(function FrameTableBody(context: FrameTableProps) {
               <input
                 type="color"
                 aria-label="Cell fill"
-                value={resolveThemeColor(
-                  active.fill,
-                  active.fillSource,
-                  visual.fill ?? theme.surface,
-                  theme,
-                )}
+                value={
+                  activeFill && /^#[\da-f]{6}$/i.test(activeFill)
+                    ? activeFill
+                    : '#ffffff'
+                }
                 onChange={(event) =>
                   commit(
                     updateTableEntries(table, ids, {

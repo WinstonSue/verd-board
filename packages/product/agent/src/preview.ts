@@ -8,7 +8,44 @@ export async function previewAuthoring(
   files: WorkspaceFile[],
   fileId: string,
   output: string,
+  options: { workspaceRoot?: string } = {},
 ) {
+  files = structuredClone(files);
+  const assetCache = new Map<string, string>();
+  const workspaceRoot = options.workspaceRoot
+    ? await fs.realpath(options.workspaceRoot)
+    : undefined;
+  const inline = async (value: unknown): Promise<void> => {
+    if (!value || typeof value !== 'object') return;
+    const obj = value as Record<string, unknown>;
+    if (
+      typeof obj['src'] === 'string' &&
+      obj['src'].startsWith('verd-asset:')
+    ) {
+      const asset = obj['src'].slice(11);
+      if (
+        !workspaceRoot ||
+        !/^\.verd-resources\/assets\/[a-z0-9]+\.[a-z0-9]+$/.test(asset)
+      )
+        throw new Error(
+          'Managed image preview requires a workspace root and a valid asset address',
+        );
+      let source = assetCache.get(asset);
+      if (!source) {
+        const resolved = await fs.realpath(path.join(workspaceRoot, asset));
+        if (!resolved.startsWith(workspaceRoot + path.sep))
+          throw new Error('Asset escapes workspace');
+        const bytes = await fs.readFile(resolved);
+        const extension = path.extname(asset).slice(1);
+        source = `data:image/${extension === 'jpg' ? 'jpeg' : extension};base64,${bytes.toString('base64')}`;
+        assetCache.set(asset, source);
+      }
+      obj['src'] = source;
+    }
+    await Promise.all(Object.values(obj).map(inline));
+  };
+  await inline(files);
+
   const format = path.extname(output).slice(1);
   if (format !== 'svg' && format !== 'png')
     throw new Error('Preview output must end in .svg or .png');

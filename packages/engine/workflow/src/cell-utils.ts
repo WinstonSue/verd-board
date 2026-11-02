@@ -3,6 +3,7 @@ import {
   EdgeUtil,
   groupLeafMembers,
   indexCells,
+  memoizeCellValidationRead,
   isEdgeCell,
   isNodeCell,
   NodeUtil,
@@ -49,19 +50,30 @@ export const workflowStartData = (
     memberIds: [...record.memberIds],
   };
 };
+const workflowOwnersRead = Symbol('workflow-owners');
+const workflowOwners = (store: CellStore) =>
+  memoizeCellValidationRead(store, workflowOwnersRead, () => {
+    const owners = new Map<string, NodeCell<WorkflowStartData>[]>();
+    for (const cell of Object.values(store.cells)) {
+      const data = workflowStartData(cell);
+      if (!data) continue;
+      for (const id of new Set(data.memberIds)) {
+        const list = owners.get(id) ?? [];
+        list.push(cell as NodeCell<WorkflowStartData>);
+        owners.set(id, list);
+      }
+    }
+    return owners;
+  });
 export const workflowStartOf = (
   store: CellStore,
   memberId: string,
 ): NodeCell<WorkflowStartData> | undefined =>
-  Object.values(store.cells).find((cell) =>
-    workflowStartData(cell)?.memberIds.includes(memberId),
-  ) as NodeCell<WorkflowStartData> | undefined;
+  workflowOwners(store).get(memberId)?.[0];
 
 export abstract class WorkflowNodeUtil extends NodeUtil {
   override validate(store: CellStore, cell: Cell): string | undefined {
-    const owners = Object.values(store.cells).filter((candidate) =>
-      workflowStartData(candidate)?.memberIds.includes(cell.id),
-    );
+    const owners = workflowOwners(store).get(cell.id) ?? [];
     if (owners.length !== 1)
       return 'Workflow nodes must belong to exactly one start';
     const index = indexCells(store);
@@ -317,6 +329,14 @@ const rejectWorkflowCycle = (
     ? 'Cycle in DAG workflow'
     : undefined;
 };
+const workflowEdgesRead = Symbol('workflow-edges');
+const workflowEdges = (store: CellStore) =>
+  memoizeCellValidationRead(store, workflowEdgesRead, () =>
+    Object.values(store.cells).filter(
+      (cell): cell is EdgeCell =>
+        isEdgeCell(cell) && cell.kind === WorkflowKind.workflowEdge,
+    ),
+  );
 export class WorkflowEdgeUtil extends EdgeUtil {
   readonly kind = WorkflowKind.workflowEdge;
   rejectPaste = rejectWorkflowCycle;
@@ -350,12 +370,7 @@ export class WorkflowEdgeUtil extends EdgeUtil {
       targetPort.direction === 'output'
     )
       return 'Incompatible workflow ports';
-    const edges = Object.values(store.cells).filter(
-      (cell): cell is EdgeCell =>
-        isEdgeCell(cell) &&
-        cell.kind === WorkflowKind.workflowEdge &&
-        cell.id !== edge.id,
-    );
+    const edges = workflowEdges(store).filter((cell) => cell.id !== edge.id);
     if (
       edges.some(
         (cell) =>

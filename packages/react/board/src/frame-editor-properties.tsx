@@ -9,7 +9,6 @@ import {
   isFrameCell,
   isNodeCell,
   type Cell,
-  type NodeCell,
   type NodeGeometry,
 } from '@sue/board-core';
 import type { FramePluginContext } from './frame-plugins';
@@ -19,7 +18,12 @@ import {
   existingTextDocument,
 } from './frame-rich-text-field';
 /** Common properties do not interpret domain payloads. All writes use the canvas transaction path. */
-export function FrameEditorProperties(context: FramePluginContext) {
+export function FrameEditorProperties(
+  context: FramePluginContext & {
+    onOpenLink?(href: string): void;
+    linkActivation?: import('@sue/board-react-text').RichTextLinkActivation;
+  },
+) {
   const { cell, disabled, language, controller } = context;
   if (!cell) return null;
   const zh = language === 'zh';
@@ -100,6 +104,9 @@ export function FrameEditorProperties(context: FramePluginContext) {
             </label>
           )}
           <FrameRichTextField
+            onOpenLink={context.onOpenLink}
+            linkActivation={context.linkActivation}
+            locale={context.language}
             label={zh ? '文本' : 'Text'}
             readonly={disabled}
             text={
