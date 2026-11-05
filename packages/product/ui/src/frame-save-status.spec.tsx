@@ -60,7 +60,7 @@ describe('save status presentation', () => {
     expect(test.status().textContent).toBe('尚未保存');
     for (const lastSavedAt of [undefined, NaN, Infinity, -1, 9e20]) {
       await test.render({ status: 'saved', lastSavedAt });
-      expect(test.status().textContent).toBe('已保存 · 保存时间未知');
+      expect(test.status().textContent).toBe('已保存');
       expect(test.status().hasAttribute('title')).toBe(false);
     }
   });

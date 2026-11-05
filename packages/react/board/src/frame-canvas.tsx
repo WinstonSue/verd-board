@@ -97,6 +97,7 @@ import {
   moveEdgeRoutePoint,
   moveEdgeSegment,
   moveGroup,
+  planLaneDrop,
   moveWhiteboardCells,
   nodeContentName,
   nodeShapeGeometry,
@@ -115,6 +116,7 @@ import {
   selectionAllows,
   selectionObjectAtFocus,
   setCellsLocked,
+  availableEdgePorts,
   snapEdgeTerminal,
   stripFrameViewports,
   translateCellSelection,
@@ -1154,6 +1156,10 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
   }, [editing, editable, runtime, revision, setEditing]);
   const operationFailureMessage = (error: unknown): string => {
     const message = error instanceof Error ? error.message : String(error);
+    if (message.includes('Swimlane has insufficient space'))
+      return propsRef.current.actionHost?.language === 'en'
+        ? 'The swimlane has insufficient space. Resize it and try again.'
+        : '泳道空间不足，请调整泳道尺寸后重试。';
     if (message !== 'layout-overlap') return message;
     return propsRef.current.actionHost?.language === 'en'
       ? 'Layout would overlap an outside or locked node. Nothing was changed; adjust the scope or positions and retry.'
@@ -1430,10 +1436,17 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
       const cell = runtime.store.cells[id];
       return isGroupCell(cell) && groupHasLockedLeaf(runtime.store, cell.id);
     });
+  const clipboardMessage = (error: unknown) => {
+    const message = operationFailureMessage(error);
+    return message === 'Select a workflow start before pasting' &&
+      propsRef.current.actionHost?.language !== 'en'
+      ? '请先选择要粘贴到的流程起点'
+      : message;
+  };
   const clipboardFailure = (error: unknown): FrameIntentResult => {
     const result = {
       status: 'rejected' as const,
-      message: operationFailureMessage(error),
+      message: clipboardMessage(error),
     };
     propsRef.current.onReject?.(result);
     setFailure(result.message);
@@ -1524,13 +1537,7 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
         return result;
       });
     } catch (error) {
-      const result = {
-        status: 'rejected' as const,
-        message: error instanceof Error ? error.message : String(error),
-      };
-      setFailure(result.message);
-      propsRef.current.onReject?.(result);
-      return Promise.resolve(result);
+      return Promise.resolve(clipboardFailure(error));
     }
   };
   const viewportCenter = (): Point => {
@@ -1600,6 +1607,7 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
         store: runtime.store,
         frameId: focusFrameId(),
         hit,
+        selectionIds: runtime.selection.ids,
         at,
         text: source.text,
         allocateId: transactionId,
@@ -1614,16 +1622,49 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
       message: 'No installed plugin accepts text here',
     };
   };
-  const readClipboardText = (raw: string): CellFragment => {
-    const payload = JSON.parse(raw);
-    if (
-      payload?.format !== 'verd-cells' ||
-      payload.version !== 1 ||
-      !payload.cells ||
-      !Array.isArray(payload.ids)
-    )
-      throw new Error('Clipboard does not contain Verd cells');
-    return payload;
+  const pasteClipboard = async ({
+    custom,
+    text,
+    image,
+  }: {
+    custom?: string;
+    text?: string;
+    image?: File | null;
+  }) => {
+    try {
+      if (
+        custom ||
+        (text && /^\s*\{[\s\S]*?"format"\s*:\s*"verd-cells"/.test(text))
+      ) {
+        let payload: CellFragment & { format?: string; version?: number };
+        try {
+          payload = JSON.parse(custom || text!);
+          const legacy =
+            custom &&
+            payload?.format === undefined &&
+            payload?.version === undefined;
+          if (
+            !payload ||
+            (!legacy &&
+              (payload.format !== 'verd-cells' || payload.version !== 1)) ||
+            !payload.cells ||
+            typeof payload.cells !== 'object' ||
+            Array.isArray(payload.cells) ||
+            !Array.isArray(payload.ids)
+          )
+            throw new Error();
+        } catch {
+          throw new Error('Clipboard does not contain valid Verd cells');
+        }
+        return await pasteFragment(payload);
+      }
+      return await insertExternal(
+        image ? { image } : { text },
+        viewportCenter(),
+      );
+    } catch (error) {
+      return clipboardFailure(error);
+    }
   };
   const prepareClipboard = (
     action: 'copy' | 'cut' | 'paste',
@@ -1634,7 +1675,10 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
       !propsRef.current.suspended &&
       JSON.stringify(runtime.selection) === selection;
     if (action === 'paste') {
-      const receipt = navigator.clipboard.readText().then(
+      const receipt = (
+        navigator.clipboard?.readText() ??
+        Promise.reject(new Error('Clipboard is unavailable'))
+      ).then(
         (value) => ({ value }),
         (error) => ({ error }),
       );
@@ -1644,7 +1688,7 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
           if ('error' in result) throw result.error;
           if (!valid())
             return { status: 'rejected', message: 'Clipboard target changed' };
-          return await pasteFragment(readClipboardText(result.value));
+          return await pasteClipboard({ text: result.value });
         } catch (error) {
           return clipboardFailure(error);
         }
@@ -3371,6 +3415,28 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
       setMoveGhost(null);
     }
   };
+  const commitLaneDrop = (
+    ids: readonly string[],
+    frameId: string,
+    operations: CellOperation[],
+  ) => {
+    try {
+      void dispatch({
+        id: transactionId(),
+        operations: planLaneDrop(
+          runtime.store,
+          frameId,
+          ids,
+          operations,
+          runtime.registry,
+        ),
+      });
+    } catch (error) {
+      const message = operationFailureMessage(error);
+      props.onReject?.({ status: 'rejected', message });
+      setFailure(message);
+    }
+  };
   const resolveMovePreview = (
     drag: NonNullable<typeof dragRef.current>,
     geometry: NodeGeometry,
@@ -4039,6 +4105,11 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
           next.kind,
           12 / (zoom * edgeDrag.scale),
           runtime.registry,
+          undefined,
+          {
+            terminal: edgeDrag.mode === 'source' ? next.target : next.source,
+            edgeId: next.id,
+          },
         ),
       );
     else if (edgeDrag.mode === 'point')
@@ -4229,6 +4300,7 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
           height: 2 * radius,
         });
       })(),
+      { terminal: { cellId: connection.cellId, portId: connection.portId } },
     );
     if (!('cellId' in target) || !target.portId) target = { point };
     if ('cellId' in target) {
@@ -4789,6 +4861,7 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
           mode: 'resize' | 'rotate',
           handle?: ResizeHandle,
         ) => {
+          if (event.button !== 0) return;
           event.stopPropagation();
           event.preventDefault();
           if (
@@ -5777,6 +5850,7 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
             localStart: Point,
             index = 0,
           ) => {
+            if (event.button !== 0) return;
             event.stopPropagation();
             event.preventDefault();
             if (
@@ -6038,6 +6112,15 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
                                     style={{ overflow: 'visible' }}
                                   >
                                     <FrameTextEditor
+                                      sourceFileId={frameId}
+                                      linkEditable={
+                                        !(
+                                          frameCellUI(
+                                            props.extensions,
+                                            cell.kind,
+                                          ).editableMarker && at > 0
+                                        )
+                                      }
                                       text={
                                         isBoardTextDocument(label.richText)
                                           ? label.richText
@@ -6202,6 +6285,7 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
                             <circle
                               key={end}
                               data-edge-endpoint={end}
+                              style={{ cursor: 'move' }}
                               cx={point[0]}
                               cy={point[1]}
                               r={
@@ -6222,6 +6306,7 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
                           <circle
                             key={at}
                             data-edge-route-point={at + 1}
+                            style={{ cursor: 'move' }}
                             cx={point[0]}
                             cy={point[1]}
                             r={
@@ -6249,10 +6334,21 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
                                 0.02,
                                 zoom * parentScale * placement.scale,
                               );
+                          let cursor = 'move';
+                          if (
+                            cell.route.mode === 'auto' ||
+                            cell.route.mode === 'orthogonal'
+                          ) {
+                            cursor =
+                              previous[1] === point[1]
+                                ? 'ns-resize'
+                                : 'ew-resize';
+                          }
                           return (
                             <rect
                               key={at}
                               data-edge-segment={at}
+                              style={{ cursor }}
                               x={middle[0] - size / 2}
                               y={middle[1] - size / 2}
                               width={size}
@@ -6716,7 +6812,14 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
                                   if (pendingRef.current) return;
                                   const start = connectingRef.current;
                                   if (!start) {
-                                    if (port.direction === 'input') return;
+                                    if (
+                                      !availableEdgePorts(
+                                        store,
+                                        cell,
+                                        'source',
+                                      ).includes(port)
+                                    )
+                                      return;
                                     const source = portAnchor(
                                       bounds,
                                       port,
@@ -6739,7 +6842,11 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
                                   }
                                   if (
                                     id !== start.frameId ||
-                                    port.direction === 'output' ||
+                                    !availableEdgePorts(
+                                      store,
+                                      cell,
+                                      'target',
+                                    ).includes(port) ||
                                     (cell.id === start.cellId &&
                                       port.id === start.portId)
                                   )
@@ -6805,6 +6912,7 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
                   opacity={cell.appearance?.opacity}
                 >
                   <FrameTextEditor
+                    sourceFileId={frameId}
                     text={text}
                     defaultAlign={
                       frameCellUI(props.extensions, cell.kind)
@@ -7094,7 +7202,22 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
           <FrameVirtualLayer
             camera={cameraStore}
             svg={svgRef}
-            ids={scene?.children ?? frame.children}
+            ids={(() => {
+              const children = scene?.children ?? frame.children;
+              const background = children.filter((id) => {
+                const child = laidOut.cells[id];
+                return (
+                  child &&
+                  runtime.registry.get(child.kind)?.lanes?.(child)?.length
+                );
+              });
+              return background.length
+                ? [
+                    ...background,
+                    ...children.filter((id) => !background.includes(id)),
+                  ]
+                : children;
+            })()}
             query={base.query}
             pinned={[
               editing ?? '',
@@ -8479,9 +8602,10 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
                           });
                       }
                     } else if (drag.ids) {
-                      void dispatch({
-                        id: transactionId(),
-                        operations: translateCellSelection(
+                      commitLaneDrop(
+                        drag.ids,
+                        drag.frameId ?? frameId,
+                        translateCellSelection(
                           runtime.store,
                           drag.ids,
                           [
@@ -8490,11 +8614,12 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
                           ],
                           runtime.registry,
                         ),
-                      });
+                      );
                     } else if (isGroupCell(cell)) {
-                      void dispatch({
-                        id: transactionId(),
-                        operations: moveGroup(
+                      commitLaneDrop(
+                        [cell.id],
+                        drag.frameId ?? frameId,
+                        moveGroup(
                           runtime.store,
                           cell.id,
                           [
@@ -8503,7 +8628,7 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
                           ],
                           runtime.registry,
                         ),
-                      });
+                      );
                     } else if (isNodeCell(cell)) {
                       const util = runtime.registry.get(cell.kind);
                       try {
@@ -8591,8 +8716,16 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
                                   },
                                 },
                               ];
-                        if (operations.length)
-                          void dispatch({ id: transactionId(), operations });
+                        if (operations.length) {
+                          if (drag.mode === 'resize' || drag.mode === 'rotate')
+                            void dispatch({ id: transactionId(), operations });
+                          else
+                            commitLaneDrop(
+                              [cell.id],
+                              drag.frameId ?? frameId,
+                              operations,
+                            );
+                        }
                       } catch (error) {
                         const result = {
                           status: 'rejected' as const,
@@ -8896,7 +9029,7 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
                   );
                   event.clipboardData.setData(
                     'application/x-verd-cells',
-                    JSON.stringify(fragment),
+                    clipboardText(fragment),
                   );
                   event.clipboardData.setData(
                     'text/plain',
@@ -8923,7 +9056,7 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
                     if (!cut.ids.length) return;
                     event.clipboardData.setData(
                       'application/x-verd-cells',
-                      JSON.stringify(cut.fragment),
+                      clipboardText(cut.fragment),
                     );
                     event.clipboardData.setData(
                       'text/plain',
@@ -8974,36 +9107,24 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
                   if (!custom && !plain && !image) return;
                   event.preventDefault();
                   const source = runtime.store;
+                  const selection = runtime.selection;
                   void actionRuntime.executeAction(
                     'canvas.clipboard.paste',
                     {
                       performNative: async () => {
-                        if (runtime.store !== source)
+                        if (
+                          runtime.store !== source ||
+                          runtime.selection !== selection
+                        )
                           return {
                             status: 'rejected',
                             message: 'Clipboard target changed',
                           };
-                        try {
-                          if (custom)
-                            return await pasteFragment(JSON.parse(custom));
-                          if (image)
-                            return await insertExternal(
-                              { image },
-                              viewportCenter(),
-                            );
-                          let fragment: CellFragment;
-                          try {
-                            fragment = readClipboardText(plain);
-                          } catch {
-                            return await insertExternal(
-                              { text: plain },
-                              viewportCenter(),
-                            );
-                          }
-                          return await pasteFragment(fragment);
-                        } catch (error) {
-                          return clipboardFailure(error);
-                        }
+                        return await pasteClipboard({
+                          custom,
+                          text: plain,
+                          image,
+                        });
                       },
                     },
                     { source: 'native' },

@@ -1,5 +1,6 @@
 import { withCellValidationReads } from './validation-read-context';
-import { groupLeafMembers } from './group';
+import { laneContains } from './lanes';
+import { geometryBounds, groupLeafMembers, isGroupableCell } from './group';
 import { createCellRegistry, type CellRegistry } from './registry';
 import {
   isDocumentCell,
@@ -33,6 +34,7 @@ function validateStoreContents(
   const report = (cellId: string, message: string) =>
     issues.push({ cellId, message });
   const parents = new Map<string, string>();
+  const laneByMember = new Map<string, string>();
   const root = store.cells[store.rootId];
   if (!root || !isFrameCell(root)) report(store.rootId, 'Root must be a frame');
   Object.entries(store.cells).forEach(([id, cell]) => {
@@ -75,8 +77,38 @@ function validateStoreContents(
         const childScene = registry.scenes.find((candidate) =>
           candidate.kinds.includes(child.kind),
         );
-        if (scene ? !scene.kinds.includes(child.kind) : !!childScene)
+        if (
+          scene
+            ? !scene.kinds.includes(child.kind) &&
+              !scene.sharedKinds?.includes(child.kind)
+            : !!childScene
+        )
           report(child.id, 'Cell does not belong to the frame scene');
+      }
+      for (const child of children) {
+        const lanes = registry.get(child.kind)?.lanes?.(child) ?? [];
+        if (lanes.length && !scene?.laneMemberKinds?.length)
+          report(child.id, 'Semantic swimlanes require a supported diagram');
+        for (const lane of lanes)
+          for (const memberId of lane.members) {
+            const member = store.cells[memberId];
+            if (laneByMember.has(memberId))
+              report(child.id, 'Cell belongs to multiple swimlanes');
+            laneByMember.set(memberId, JSON.stringify([child.id, lane.id]));
+            if (
+              !isNodeCell(member) ||
+              !cell.children.includes(memberId) ||
+              !scene?.laneMemberKinds?.includes(member.kind)
+            )
+              report(child.id, 'Invalid swimlane member');
+            else if (
+              !laneContains(lane.bounds, geometryBounds(member.geometry))
+            )
+              report(
+                child.id,
+                `Swimlane has insufficient space: ${lane.label || lane.id}`,
+              );
+          }
       }
       if (scene?.allowGroups === false && cell.groups.length)
         report(id, 'Groups are not allowed in this scene');
@@ -199,12 +231,8 @@ function validateStoreContents(
           report(cell.id, `Missing group member ${id}`);
           return;
         }
-        const allowed =
-          isGroupCell(member) ||
-          (isNodeCell(member) &&
-            registry.get(member.kind)?.groupable !== false) ||
-          (isEdgeCell(member) && registry.get(member.kind)?.groupable === true);
-        if (!allowed) report(cell.id, 'Invalid group member');
+        if (!isGroupableCell(store, id, registry))
+          report(cell.id, 'Invalid group member');
         if (parents.get(id) !== parents.get(cell.id))
           report(cell.id, 'Group crosses frame');
         walk(id, new Set([cell.id]));
@@ -241,5 +269,15 @@ function validateStoreContents(
       }
     }
   });
+  if (laneByMember.size)
+    for (const cell of Object.values(store.cells)) {
+      if (!isGroupCell(cell)) continue;
+      const memberLanes = new Set(
+        groupLeafMembers(store, cell.id)
+          .filter((id) => isNodeCell(store.cells[id]))
+          .map((id) => laneByMember.get(id)),
+      );
+      if (memberLanes.size > 1) report(cell.id, 'Group crosses swimlanes');
+    }
   return issues;
 }

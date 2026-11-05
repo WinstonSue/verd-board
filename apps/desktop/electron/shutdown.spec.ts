@@ -38,4 +38,27 @@ describe('desktop workspace shutdown', () => {
     const state = createShutdownCoordinator(vi.fn(), vi.fn(), vi.fn());
     expect(state.shouldPreventClose()).toBe(false);
   });
+
+  it('keeps DEV open and allows retry if the save acknowledgement never arrives', () => {
+    vi.useFakeTimers();
+    try {
+      const request = vi.fn();
+      const close = vi.fn();
+      const error = vi.fn();
+      const state = createShutdownCoordinator(request, close, error, 15_000);
+      state.setReady(true);
+      expect(state.shouldPreventClose()).toBe(true);
+      vi.advanceTimersByTime(15_000);
+      expect(error).toHaveBeenCalledOnce();
+      expect(close).not.toHaveBeenCalled();
+      expect(state.shouldPreventClose()).toBe(true);
+      expect(request).toHaveBeenLastCalledWith(2);
+      state.complete(1, true);
+      expect(close).not.toHaveBeenCalled();
+      state.complete(2, true);
+      expect(close).toHaveBeenCalledOnce();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
 });

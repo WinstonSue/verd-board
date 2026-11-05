@@ -861,7 +861,7 @@
           "content": [
             {
               "type": "text",
-              "text": "工作区界面：侧栏“所有内容”统一浏览文件与图表；Cmd/Ctrl+P 快速打开，搜索入口查找正文。底部“设置”管理个人偏好和当前项目，工作区名称打开切换器。"
+              "text": "工作区界面：侧栏「所有内容」下的「全部内容」和「图表」页签用于浏览文件。Cmd/Ctrl+P 快速打开文件，「搜索」可查找文件名、路径和正文。底部“设置”管理个人偏好和当前项目，工作区名称打开切换器。"
             }
           ]
         },
@@ -915,7 +915,7 @@
           "content": [
             {
               "type": "text",
-              "text": "独立内容更新与 AI 接入"
+              "text": "系统内置内容与 AI 接入"
             }
           ]
         },
@@ -924,13 +924,13 @@
           "content": [
             {
               "type": "text",
-              "text": "工作区通过 AGENTS.md、.verdscrolls/config.json 与共享 CLI 自动接入 AI。内置项目文档可以独立通过 npm 更新；使用与维护流程见开发指南、桌面安装与使用。"
+              "text": "工作区通过 AGENTS.md、.verdscrolls/config.json 与共享 CLI 接入 AI。在 Desktop 工作区切换器中选择「打开系统介绍」。系统介绍和范式库随应用内置，版本与产品一致，更新时可选择备份。使用与维护流程见开发指南和桌面安装与使用。"
             }
           ]
         }
       ]
     },
-    "plainText": "青编（VerdBoard）文档导航\n从这里开始阅读青编项目。正文按主题分类维护，画布用于图解；所有文件都可以直接编辑。\nEnglish\n从哪里开始\n了解产品：产品概览\n理解实现：系统架构\n参与开发：开发指南\n产品与架构\n产品概览：用户、能力、工作区和交付边界。\n系统架构：文件工作区、会话、画布、文档与宿主的数据流。\n包索引：产品、引擎、React 适配和三个转换器包。\nReact 接入：FrameCanvas、DocumentEditor、控制器与宿主 API。\n开发与维护\n开发指南：安装、构建、测试、提交和 Changesets 发布。\n文档维护指南：原生文件真源、链接、样例和更新约定。\n配置与源码索引：按功能定位具体源码。\n桌面安装与使用：开发和打包运行、目录选择、保存与故障排查。\n使用与规范\nAI 画布数据规范：完整字段、元素、格式约束及 11 个真实导入样例。\n体验回归验收：带日期的历史验收记录；不作为当前提交自动通过的证明。\n画布模式：白板、领域图、嵌入、演示与持久化。\n格式转换器：FrameSnapshot 与独立文档的 Markdown/Mermaid 边界。\n排列与组合：对齐、分布、Group、锁定与布局。\nMind 特性、节点宽度规范：树关系、配色、笔记和内容适配。\nMind 引擎概览 / English、Board 变更说明。\n图解入口\n项目导览（画布）：九张专题总览与二十一张机制细节图，按需查看关系、流程与保存边界。\nAgent 编写与工作区\nAgent 工具与范式库 · 工作区使用与手动更新\n快速开始\n要求 Node.js >= 22、pnpm >= 11.18.0；具体版本与命令以根 package.json 和 pnpm-lock.yaml 为准。\npnpm install\npnpm dev:desktop\n# Web 开发\npnpm dev:web\n# 公开包和 Web（根 build 排除 Desktop）\npnpm build\n# Desktop 前端、主进程与 preload\npnpm build:desktop\n# 正式安装包（macOS 默认 DMG）\npnpm package:desktop\n# 类型检查与单测\npnpm typecheck\npnpm test\n工作区界面：侧栏“所有内容”统一浏览文件与图表；Cmd/Ctrl+P 快速打开，搜索入口查找正文。底部“设置”管理个人偏好和当前项目，工作区名称打开切换器。\n知识工作区能力\n文档支持斜杠菜单、段落操作、稳定段落链接与只读摘录。首页可从原生模板创建技术方案、ADR、系统设计和需求梳理；内容管理提供属性、版本、冲突与附件，首页支持文件夹和 ZIP 迁入。能力与数据边界见产品概览及系统架构。\n文档与资料阅读\n文档新增折叠、LaTeX、通用附件、PDF 页码引用与 HTTPS 页面嵌入，使用与边界见产品概览和系统架构。待办、数据库与剪藏后置。\n独立内容更新与 AI 接入\n工作区通过 AGENTS.md、.verdscrolls/config.json 与共享 CLI 自动接入 AI。内置项目文档可以独立通过 npm 更新；使用与维护流程见开发指南、桌面安装与使用。",
+    "plainText": "青编（VerdBoard）文档导航\n从这里开始阅读青编项目。正文按主题分类维护，画布用于图解；所有文件都可以直接编辑。\nEnglish\n从哪里开始\n了解产品：产品概览\n理解实现：系统架构\n参与开发：开发指南\n产品与架构\n产品概览：用户、能力、工作区和交付边界。\n系统架构：文件工作区、会话、画布、文档与宿主的数据流。\n包索引：产品、引擎、React 适配和三个转换器包。\nReact 接入：FrameCanvas、DocumentEditor、控制器与宿主 API。\n开发与维护\n开发指南：安装、构建、测试、提交和 Changesets 发布。\n文档维护指南：原生文件真源、链接、样例和更新约定。\n配置与源码索引：按功能定位具体源码。\n桌面安装与使用：开发和打包运行、目录选择、保存与故障排查。\n使用与规范\nAI 画布数据规范：完整字段、元素、格式约束及 11 个真实导入样例。\n体验回归验收：带日期的历史验收记录；不作为当前提交自动通过的证明。\n画布模式：白板、领域图、嵌入、演示与持久化。\n格式转换器：FrameSnapshot 与独立文档的 Markdown/Mermaid 边界。\n排列与组合：对齐、分布、Group、锁定与布局。\nMind 特性、节点宽度规范：树关系、配色、笔记和内容适配。\nMind 引擎概览 / English、Board 变更说明。\n图解入口\n项目导览（画布）：九张专题总览与二十一张机制细节图，按需查看关系、流程与保存边界。\nAgent 编写与工作区\nAgent 工具与范式库 · 工作区使用与手动更新\n快速开始\n要求 Node.js >= 22、pnpm >= 11.18.0；具体版本与命令以根 package.json 和 pnpm-lock.yaml 为准。\npnpm install\npnpm dev:desktop\n# Web 开发\npnpm dev:web\n# 公开包和 Web（根 build 排除 Desktop）\npnpm build\n# Desktop 前端、主进程与 preload\npnpm build:desktop\n# 正式安装包（macOS 默认 DMG）\npnpm package:desktop\n# 类型检查与单测\npnpm typecheck\npnpm test\n工作区界面：侧栏「所有内容」下的「全部内容」和「图表」页签用于浏览文件。Cmd/Ctrl+P 快速打开文件，「搜索」可查找文件名、路径和正文。底部“设置”管理个人偏好和当前项目，工作区名称打开切换器。\n知识工作区能力\n文档支持斜杠菜单、段落操作、稳定段落链接与只读摘录。首页可从原生模板创建技术方案、ADR、系统设计和需求梳理；内容管理提供属性、版本、冲突与附件，首页支持文件夹和 ZIP 迁入。能力与数据边界见产品概览及系统架构。\n文档与资料阅读\n文档新增折叠、LaTeX、通用附件、PDF 页码引用与 HTTPS 页面嵌入，使用与边界见产品概览和系统架构。待办、数据库与剪藏后置。\n系统内置内容与 AI 接入\n工作区通过 AGENTS.md、.verdscrolls/config.json 与共享 CLI 接入 AI。在 Desktop 工作区切换器中选择「打开系统介绍」。系统介绍和范式库随应用内置，版本与产品一致，更新时可选择备份。使用与维护流程见开发指南和桌面安装与使用。",
     "align": "left"
   }
 }

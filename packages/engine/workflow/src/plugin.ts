@@ -14,6 +14,8 @@ export const createWorkflowPlugin = (): CellPlugin => ({
       layouts: [{ id: 'flow', edgeKind: 'workflow-edge', rows: flowRows }],
       preserveAllAnchors: true,
       id: 'workflow',
+      sharedKinds: ['swimlane'],
+      laneMemberKinds: ['workflow-task', 'workflow-decision'],
       anchorKinds: ['workflow-start'],
       kinds: Object.values(WorkflowKind),
       allowGroups: true,

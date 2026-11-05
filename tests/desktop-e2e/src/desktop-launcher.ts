@@ -4,7 +4,8 @@ import path from 'node:path';
 
 export const desktopMode =
   process.env['VERDBOARD_E2E_MODE'] === 'prod' ? 'prod' : 'dev';
-export const desktopDevUrl = 'http://127.0.0.1:7310';
+export const desktopDevUrl =
+  process.env['VERDBOARD_E2E_URL'] ?? 'http://127.0.0.1:7310';
 const root = path.resolve(__dirname, '../../..');
 type DesktopLaunchOptions = Omit<
   NonNullable<Parameters<typeof _electron.launch>[0]>,

@@ -1581,12 +1581,12 @@
         "outline": "roundRectangle"
       },
       "content": {
-        "label": "内容包：build:content → tarball 校验",
+        "label": "pnpm build:content\n校验摘要与产品版本",
         "text": {
           "schemaVersion": 1,
           "id": "project:content-release/node/4-4/text",
           "kind": "inline",
-          "plainText": "内容包：build:content → tarball 校验",
+          "plainText": "pnpm build:content\n校验摘要与产品版本",
           "content": {
             "type": "doc",
             "content": [
@@ -1595,7 +1595,14 @@
                 "content": [
                   {
                     "type": "text",
-                    "text": "内容包：build:content → tarball 校验"
+                    "text": "pnpm build:content"
+                  },
+                  {
+                    "type": "hardBreak"
+                  },
+                  {
+                    "type": "text",
+                    "text": "校验摘要与产品版本"
                   }
                 ]
               }
@@ -1615,7 +1622,7 @@
           "strokeWidth": 2
         }
       },
-      "name": "内容包：build:content → tarball 校验"
+      "name": "构建并校验内置资源"
     },
     "project:content-release/branch/4-4": {
       "id": "project:content-release/branch/4-4",
@@ -1651,12 +1658,12 @@
         "outline": "roundRectangle"
       },
       "content": {
-        "label": "内容发布：publish:content（维护者执行）",
+        "label": "内置图文随 Desktop 打包交付",
         "text": {
           "schemaVersion": 1,
           "id": "project:content-release/node/4-5/text",
           "kind": "inline",
-          "plainText": "内容发布：publish:content（维护者执行）",
+          "plainText": "内置图文随 Desktop 打包交付",
           "content": {
             "type": "doc",
             "content": [
@@ -1665,7 +1672,7 @@
                 "content": [
                   {
                     "type": "text",
-                    "text": "内容发布：publish:content（维护者执行）"
+                    "text": "内置图文随 Desktop 打包交付"
                   }
                 ]
               }
@@ -1685,7 +1692,7 @@
           "strokeWidth": 2
         }
       },
-      "name": "内容发布：publish:content（维护者执行）"
+      "name": "随 Desktop 打包交付"
     },
     "project:content-release/branch/4-5": {
       "id": "project:content-release/branch/4-5",

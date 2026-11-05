@@ -1,3 +1,4 @@
+import { selectHistoryAction } from './app-actions';
 import { expect, test, type Locator, type Page } from '@playwright/test';
 import {
   createBlockText,
@@ -145,9 +146,9 @@ test('Mind width inherits settings, supports a saved map override and keeps long
   await page.getByTestId('mind-max-width').press('Enter');
   await expect.poll(() => width(topic)).toBe(160);
   await fits(topic);
-  await page.getByRole('button', { name: '撤销', exact: true }).click();
+  await selectHistoryAction(page, '撤销');
   await expect.poll(() => width(topic)).toBe(320);
-  await page.getByRole('button', { name: '重做', exact: true }).click();
+  await selectHistoryAction(page, '重做');
   await expect.poll(() => width(topic)).toBe(160);
   await openSettings(page);
   await page.getByTestId('settings-nav-personal.editor').click();
@@ -215,7 +216,7 @@ test('selected shapes fit content with their current width as a cap and undo res
       .locator('[data-frame-rich-text]')
       .evaluate((element) => element.clientHeight);
   await expect.poll(height).toBeGreaterThan(100);
-  await page.getByRole('button', { name: '撤销', exact: true }).click();
+  await selectHistoryAction(page, '撤销');
   await expect.poll(height).toBeLessThan(100);
   await node(page, 'short').click();
   await panel.getByRole('button', { name: '根据内容调整大小' }).click();

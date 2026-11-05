@@ -1,5 +1,6 @@
+import { selectHistoryAction } from './app-actions';
 import { expect, test, type Page } from '@playwright/test';
-import { openSettings } from './app-actions';
+import { openActiveFile, openSettings } from './app-actions';
 import { expandPropertyGroup } from './property-group';
 import { persistedWorkspace } from './workspace-nav';
 
@@ -63,6 +64,7 @@ const fixture = () => {
 
 async function openFixture(page: Page, snapshot = fixture()) {
   await page.goto('/');
+  await openActiveFile(page);
   await page
     .locator('input[type="file"][accept^="application/json"]')
     .nth(1)
@@ -254,7 +256,7 @@ test('keyboard groups remain rigid in layouts, allow drill-down and independentl
         ).length,
     )
     .toBe(0);
-  await page.getByRole('button', { name: '撤销', exact: true }).click();
+  await selectHistoryAction(page, '撤销');
   await expect
     .poll(
       async () =>
@@ -299,11 +301,12 @@ test('real drag guides snap the final position and the local setting disables th
     .poll(async () => byLabel(await saved(page), 'A').geometry.y)
     .toBe(180);
   await expect(canvas(page).locator('[data-alignment-guides]')).toHaveCount(0);
-  await page.getByRole('button', { name: '撤销', exact: true }).click();
+  await selectHistoryAction(page, '撤销');
   await expect
     .poll(async () => byLabel(await saved(page), 'A').geometry.x)
     .toBe(0);
   const settings = await openSettings(page);
+  await settings.getByRole('menuitem', { name: '编辑', exact: true }).click();
   await settings.getByTestId('settings-smart-guides').uncheck();
 
   await page.getByTestId('my-back').click();
@@ -314,8 +317,13 @@ test('real drag guides snap the final position and the local setting disables th
     .poll(async () => byLabel(await saved(page), 'A').geometry.x)
     .toBe(178);
   await page.reload();
-  await openSettings(page);
-  await expect(page.getByTestId('settings-smart-guides')).not.toBeChecked();
+  const reopenedSettings = await openSettings(page);
+  await reopenedSettings
+    .getByRole('menuitem', { name: '编辑', exact: true })
+    .click();
+  await expect(
+    reopenedSettings.getByTestId('settings-smart-guides'),
+  ).not.toBeChecked();
 });
 
 test('the context menu shares grouping and arrangement availability', async ({

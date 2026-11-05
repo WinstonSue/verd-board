@@ -1,11 +1,12 @@
 import { act } from 'react';
 import { createRoot } from 'react-dom/client';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ContentTools } from './content-tools';
 import { createDocumentFile } from './document-files';
 import type { WorkspaceSession } from '../session/workspace-session';
 
-vi.mock('@sue/verd-board-ui', () => ({
+vi.mock(import('@sue/verd-board-ui'), async (importOriginal) => ({
+  ...(await importOriginal()),
   VmDialog: ({ children }: { children: React.ReactNode }) => (
     <section role="dialog">{children}</section>
   ),
@@ -19,6 +20,18 @@ vi.mock('@sue/verd-board-ui', () => ({
 ).IS_REACT_ACT_ENVIRONMENT = true;
 
 describe('content conflict action delegation', () => {
+  beforeEach(() => {
+    vi.stubGlobal(
+      'ResizeObserver',
+      class {
+        observe() {}
+        unobserve() {}
+        disconnect() {}
+      },
+    );
+  });
+  afterEach(() => vi.unstubAllGlobals());
+
   it.each(['success', 'failure', 'readonly'] as const)(
     '%s keeps the action and dialog state consistent',
     async (scenario) => {

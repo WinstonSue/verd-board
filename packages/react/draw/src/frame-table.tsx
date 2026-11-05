@@ -1,3 +1,4 @@
+import { RotateCw, Rows3, Columns3, Plus, Trash2 } from 'lucide-react';
 import { createBlockText } from '@sue/board-common';
 import {
   resolveBoardTheme,
@@ -416,6 +417,9 @@ const FrameTableBody = memo(function FrameTableBody(context: FrameTableProps) {
             aria-selected={selected && ids.includes(entry.id)}
             data-table-entry={entry.id}
             data-table-role={entry.role}
+            pointerEvents={
+              data.laneMembers && entry.role === 'body' ? 'none' : undefined
+            }
             onPointerDown={(event) => {
               if (event.button !== 0 || editing === entry.id) return;
               event.stopPropagation();
@@ -699,7 +703,8 @@ const FrameTableBody = memo(function FrameTableBody(context: FrameTableProps) {
                 }
                 aria-label="Cell text direction"
               >
-                ↻ 文本
+                <RotateCw size={16} strokeWidth={1.75} aria-hidden="true" />{' '}
+                文本
               </button>
               {cell.kind === 'swimlane' ? (
                 <>
@@ -770,7 +775,8 @@ const FrameTableBody = memo(function FrameTableBody(context: FrameTableProps) {
                       )
                     }
                   >
-                    + 行
+                    <Rows3 strokeWidth={1.75} size={16} aria-hidden="true" />
+                    <Plus strokeWidth={1.75} size={14} aria-hidden="true" /> 行
                   </button>
                   <button
                     aria-label="Delete row"
@@ -778,7 +784,13 @@ const FrameTableBody = memo(function FrameTableBody(context: FrameTableProps) {
                       commit(removeTableTrack(table, 'row', range.top))
                     }
                   >
-                    − 行
+                    <Rows3 strokeWidth={1.75} size={16} aria-hidden="true" />
+                    <Trash2
+                      strokeWidth={1.75}
+                      size={14}
+                      aria-hidden="true"
+                    />{' '}
+                    行
                   </button>
                   <button
                     aria-label="Insert column"
@@ -793,7 +805,8 @@ const FrameTableBody = memo(function FrameTableBody(context: FrameTableProps) {
                       )
                     }
                   >
-                    + 列
+                    <Columns3 strokeWidth={1.75} size={16} aria-hidden="true" />
+                    <Plus strokeWidth={1.75} size={14} aria-hidden="true" /> 列
                   </button>
                   <button
                     aria-label="Delete column"
@@ -801,7 +814,13 @@ const FrameTableBody = memo(function FrameTableBody(context: FrameTableProps) {
                       commit(removeTableTrack(table, 'column', range.left))
                     }
                   >
-                    − 列
+                    <Columns3 strokeWidth={1.75} size={16} aria-hidden="true" />
+                    <Trash2
+                      strokeWidth={1.75}
+                      size={14}
+                      aria-hidden="true"
+                    />{' '}
+                    列
                   </button>
                   <button
                     aria-label="Merge cells"

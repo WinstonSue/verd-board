@@ -1,3 +1,4 @@
+import { selectHistoryAction } from './app-actions';
 import { expect, test, type Page, type Locator } from '@playwright/test';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
@@ -215,9 +216,9 @@ test('one-shot edge optimization saves editable paths and shares the routing cho
   await panel.locator('.frame-routing-button').screenshot({
     path: test.info().outputPath('routing-disabled-joined.png'),
   });
-  await page.getByRole('button', { name: '撤销', exact: true }).click();
+  await selectHistoryAction(page, '撤销');
   await expect.poll(() => savedCells(page)).toEqual(optimized);
-  await page.getByRole('button', { name: '重做', exact: true }).click();
+  await selectHistoryAction(page, '重做');
   await expect.poll(() => savedCells(page)).toEqual(reset);
   const firstNode = Object.values(snapshot.store.cells).find(
     (cell) => cell.kind === 'architecture-module',
@@ -271,9 +272,9 @@ test('one-shot edge optimization saves editable paths and shares the routing cho
   await page.keyboard.press('Escape');
   await expect(menu).toHaveCount(0);
   await expect(main).toHaveText('优化全部连线');
-  await page.getByRole('button', { name: '撤销', exact: true }).click();
+  await selectHistoryAction(page, '撤销');
   await expect.poll(() => savedCells(page)).toEqual(reset);
-  await page.getByRole('button', { name: '重做', exact: true }).click();
+  await selectHistoryAction(page, '重做');
   await expect.poll(() => savedCells(page)).toEqual(optimizedSelection);
   const paths = await routes(page);
   await page.reload();
@@ -421,11 +422,11 @@ test('group node layout and edge rerouting are independent, undoable and survive
     expect(rerouted[id]).toEqual(arranged[id]);
   expect(rerouted.inside.source).toEqual(arranged.inside.source);
   expect(rerouted.inside.target).toEqual(arranged.inside.target);
-  await page.getByRole('button', { name: '撤销', exact: true }).click();
+  await selectHistoryAction(page, '撤销');
   await expect
     .poll(async () => (await savedCells(page)).inside?.route)
     .toEqual(arranged.inside.route);
-  await page.getByRole('button', { name: '重做', exact: true }).click();
+  await selectHistoryAction(page, '重做');
   await expect
     .poll(async () => (await savedCells(page)).inside?.route)
     .toEqual({ mode: 'orthogonal' });
@@ -479,11 +480,11 @@ for (const name of ['layered', 'data-flow', 'packages']) {
     // Repeated layout must not drift, and a single undo restores all nodes.
     await panel.getByTestId('frame-auto-layout').click();
     expect(await routes(page)).toEqual(arrangedRoutes);
-    await page.getByRole('button', { name: '撤销', exact: true }).click();
+    await selectHistoryAction(page, '撤销');
     await expect
       .poll(async () => moduleGeometry(await savedCells(page)))
       .toEqual(moduleGeometry(before));
-    await page.getByRole('button', { name: '重做', exact: true }).click();
+    await selectHistoryAction(page, '重做');
     await expect
       .poll(async () => moduleGeometry(await savedCells(page)))
       .toEqual(moduleGeometry(after));
@@ -613,11 +614,11 @@ test('embedded root moves only its own visible tree, stays in bounds and survive
   ))
     expect(after[id]).toEqual(node);
   expect(await routes(page)).toEqual(previewRoutes);
-  await page.getByRole('button', { name: '撤销', exact: true }).click();
+  await selectHistoryAction(page, '撤销');
   await expect
     .poll(async () => (await savedCells(page))['frame-ref:mind'])
     .toEqual(before['frame-ref:mind']);
-  await page.getByRole('button', { name: '重做', exact: true }).click();
+  await selectHistoryAction(page, '重做');
   await expect
     .poll(async () => (await savedCells(page))['frame-ref:mind'])
     .toEqual(after['frame-ref:mind']);

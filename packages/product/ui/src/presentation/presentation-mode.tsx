@@ -50,6 +50,17 @@ export interface PresentationModeProps {
     PresentationScene | 'mind-root' | 'workflow-start' | 'architecture-layer';
   /** The owner requests fullscreen before mounting; null supports a CSS fallback. */
   fullscreenRoot: HTMLElement | null | RefObject<HTMLElement | null>;
+  ownsFullscreen?: boolean;
+  navigation?: {
+    requestId: number;
+    target: import('@sue/board-common').WorkspaceFileTarget;
+    signal?: AbortSignal;
+  };
+  onNavigationResult?(
+    id: number,
+    result: { status: 'revealed' | 'unavailable' | 'cancelled'; code?: string },
+  ): void;
+  onBack?(): void;
   onExit(): void;
 }
 
@@ -58,7 +69,13 @@ const insets = { top: 48, right: 48, bottom: 48, left: 48 };
 const HUD_DELAY = 2500;
 
 export function PresentationMode(props: PresentationModeProps) {
-  const { value, instanceHost, interactionSettings } = props;
+  const {
+    value,
+    instanceHost,
+    interactionSettings,
+    navigation: requestNavigation,
+    onNavigationResult,
+  } = props;
   const defaultPlugins = useMemo(() => createVerdFramePluginSet(), []);
   const registry =
     props.pluginSet?.registry ?? props.registry ?? defaultPlugins.registry;
@@ -87,6 +104,8 @@ export function PresentationMode(props: PresentationModeProps) {
                 : 'whiteboard';
   const { t, language } = useI18n();
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
+  const navigationRequest = useRef(requestNavigation);
+  navigationRequest.current = requestNavigation;
   const shortcutsButton = useRef<HTMLButtonElement>(null);
   const shortcutsVisible = useRef(false);
   shortcutsVisible.current = shortcutsOpen;
@@ -145,7 +164,11 @@ export function PresentationMode(props: PresentationModeProps) {
     if (fitFrame.current !== undefined) cancelAnimationFrame(fitFrame.current);
     fitFrame.current = requestAnimationFrame(() => {
       fitFrame.current = undefined;
-      refit();
+      if (
+        !navigationRequest.current ||
+        navigationRequest.current.target.kind !== 'cell'
+      )
+        refit();
     });
   }, [refit]);
 
@@ -354,6 +377,7 @@ export function PresentationMode(props: PresentationModeProps) {
     active: boolean;
   } | null>(null);
   useEffect(() => {
+    if (props.ownsFullscreen === false) return;
     const owner = props.fullscreenRoot;
     const root = owner && 'current' in owner ? owner.current : owner;
     const lease = { root, active: true };
@@ -374,7 +398,7 @@ export function PresentationMode(props: PresentationModeProps) {
         exitPresentationFullscreen(root);
       });
     };
-  }, [props.fullscreenRoot, exit]);
+  }, [props.fullscreenRoot, props.ownsFullscreen, exit]);
 
   useEffect(() => {
     surface.current?.focus({ preventScroll: true });
@@ -431,6 +455,32 @@ export function PresentationMode(props: PresentationModeProps) {
     }
   };
 
+  useEffect(() => {
+    const request = requestNavigation;
+    if (!request) return;
+    let cancelled = false;
+    const frame = requestAnimationFrame(() => {
+      if (request.target.kind === 'cell') {
+        void canvas.current
+          ?.revealTarget({
+            cellId: request.target.cellId,
+            requestId: request.requestId,
+            signal: request.signal,
+          })
+          .then((result) => {
+            if (!cancelled) onNavigationResult?.(request.requestId, result);
+          });
+      } else
+        onNavigationResult?.(request.requestId, {
+          status: request.target.kind === 'file' ? 'revealed' : 'unavailable',
+        });
+    });
+    return () => {
+      cancelled = true;
+      cancelAnimationFrame(frame);
+    };
+  }, [requestNavigation, onNavigationResult]);
+
   const overviewLabel = t('presentation.overview');
   const previousLabel = t('presentation.previous');
   const nextLabel = t('presentation.next');
@@ -447,16 +497,6 @@ export function PresentationMode(props: PresentationModeProps) {
       aria-modal="true"
       aria-label={overviewLabel}
       tabIndex={-1}
-      onClickCapture={(event) => {
-        const target = event.target as Element;
-        if (!target.closest?.('[data-document-preview-body]')) return;
-        const link = target.closest('a[href]');
-        if (
-          target.closest('button') ||
-          (link && !link.getAttribute('href')?.startsWith('#'))
-        )
-          exit();
-      }}
       onKeyDownCapture={onKeyDownCapture}
       onKeyDown={(event) => event.stopPropagation()}
       onKeyUpCapture={(event) => {
@@ -469,17 +509,7 @@ export function PresentationMode(props: PresentationModeProps) {
       onPointerDown={showHud}
     >
       <FrameCanvas
-        linkHost={
-          props.linkHost
-            ? {
-                createLink: props.linkHost.createLink,
-                openLink: (href) => {
-                  exit();
-                  return props.linkHost!.openLink(href);
-                },
-              }
-            : undefined
-        }
+        linkHost={props.linkHost}
         documentReferences={props.documentReferences}
         ref={canvas}
         value={value}
@@ -512,6 +542,15 @@ export function PresentationMode(props: PresentationModeProps) {
         onFocus={showHud}
         onBlur={showHud}
       >
+        {props.onBack && (
+          <button
+            type="button"
+            aria-label={language === 'zh' ? '返回来源' : 'Back to source'}
+            onClick={props.onBack}
+          >
+            <ChevronLeft strokeWidth={1.75} size={18} />
+          </button>
+        )}
         <button
           type="button"
           title={`${overviewLabel} (0 / Home)`}
@@ -519,7 +558,7 @@ export function PresentationMode(props: PresentationModeProps) {
           aria-pressed={focusedTarget === null}
           onClick={() => void actions.executeAction('presentation.overview')}
         >
-          <Expand size={18} aria-hidden="true" />
+          <Expand strokeWidth={1.75} size={18} aria-hidden="true" />
         </button>
         {steps.length > 0 && (
           <>
@@ -532,7 +571,7 @@ export function PresentationMode(props: PresentationModeProps) {
                 void actions.executeAction('presentation.previous')
               }
             >
-              <ChevronLeft size={18} aria-hidden="true" />
+              <ChevronLeft strokeWidth={1.75} size={18} aria-hidden="true" />
             </button>
             <span
               className="presentation-step"
@@ -549,7 +588,7 @@ export function PresentationMode(props: PresentationModeProps) {
               disabled={index >= steps.length}
               onClick={() => void actions.executeAction('presentation.next')}
             >
-              <ChevronRight size={18} aria-hidden="true" />
+              <ChevronRight strokeWidth={1.75} size={18} aria-hidden="true" />
             </button>
           </>
         )}
@@ -561,7 +600,7 @@ export function PresentationMode(props: PresentationModeProps) {
           aria-pressed={laser}
           onClick={() => void actions.executeAction('presentation.laser')}
         >
-          <Pointer size={18} aria-hidden="true" />
+          <Pointer strokeWidth={1.75} size={18} aria-hidden="true" />
         </button>
         <button
           ref={shortcutsButton}
@@ -570,7 +609,7 @@ export function PresentationMode(props: PresentationModeProps) {
           aria-label={shortcutLabels[language].title}
           onClick={() => void actions.executeAction('presentation.help')}
         >
-          <Keyboard size={18} aria-hidden />
+          <Keyboard strokeWidth={1.75} size={18} aria-hidden />
         </button>
         <button
           type="button"
@@ -578,7 +617,7 @@ export function PresentationMode(props: PresentationModeProps) {
           aria-label={exitLabel}
           onClick={() => void actions.executeAction('presentation.exit')}
         >
-          <LogOut size={18} aria-hidden="true" />
+          <LogOut strokeWidth={1.75} size={18} aria-hidden="true" />
         </button>
       </div>
       {shortcutsOpen && (

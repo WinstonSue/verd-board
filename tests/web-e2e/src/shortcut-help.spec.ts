@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { selectAppAction, setAppLanguage } from './app-actions';
+import { openActiveFile, selectAppAction, setAppLanguage } from './app-actions';
 import { selectDrawingTool } from './drawing-tools';
 
 test.use({ actionTimeout: 6000 });
@@ -14,6 +14,7 @@ const world = (page: Page) => canvas(page).locator('> [data-frame-world]');
 
 test.beforeEach(async ({ page }) => {
   await page.goto('/');
+  await openActiveFile(page);
   await expect(canvas(page)).toBeVisible();
   const skip = page.getByRole('button', { name: '跳过', exact: true });
   if (await skip.isVisible()) await skip.click();
@@ -98,20 +99,19 @@ for (const [tool, category, identity] of [
 test('document help keeps editor selection and history, without triggering find', async ({
   page,
 }) => {
-  await page
-    .locator('.file-tree-header')
-    .getByRole('button', { name: '新建文档', exact: true })
-    .click();
+  await page.getByTestId('file-tree-new').click();
+  await page.getByRole('menuitem', { name: '新建文档', exact: true }).click();
   const editor = pane(page).locator('.tiptap');
   await editor.click();
   await page.keyboard.type('Keep this selection');
   await page.keyboard.press('ControlOrMeta+a');
   const original = await editor.elementHandle();
-  const opener = pane(page).getByRole('button', {
-    name: '快捷键',
-    exact: true,
-  });
+  const opener = pane(page).getByRole('button', { name: '文档', exact: true });
   await opener.click();
+  await page
+    .getByRole('dialog', { name: '文档', exact: true })
+    .getByRole('button', { name: '快捷键', exact: true })
+    .click();
   await expect(
     help(page).locator('[data-action-id="document.toggle-bold"]'),
   ).toBeVisible();
@@ -128,7 +128,11 @@ test('document help keeps editor selection and history, without triggering find'
   await expect(pane(page).locator('.doc-findbar')).toHaveCount(0);
   expect(await original!.evaluate((element) => element.isConnected)).toBe(true);
   await expect(editor).toHaveText('Keep this selection');
-  await pane(page).getByRole('button', { name: '加粗', exact: true }).click();
+  await editor.focus();
+  await pane(page)
+    .getByRole('toolbar', { name: '文字格式' })
+    .getByRole('button', { name: '加粗', exact: true })
+    .click();
   await expect(editor.locator('strong')).toHaveText('Keep this selection');
   await expect(editor).toBeFocused();
   await page.keyboard.press('ControlOrMeta+z');

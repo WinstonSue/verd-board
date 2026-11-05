@@ -13,6 +13,7 @@ export type {
 } from './types';
 export { ParagraphText } from './components/paragraph/paragraph-text';
 export { LineText } from './components/line/line-text';
+export { documentInsertActions } from './components/document/document-insert-actions';
 export { DocumentEditor } from './components/document/document-editor';
 export { DocumentPreview } from './components/document/document-preview';
 export type {
@@ -25,6 +26,7 @@ export type {
 } from './components/document/document-frame-reference';
 export type {
   DocumentEditorProps,
+  DocumentReferenceChoice,
   DocumentEditorChange,
   DocumentChangeReceipt,
   DocumentEditorController,
@@ -52,6 +54,11 @@ export {
 } from './constants/editor-config';
 
 export { measureBoardText, type TextMeasurement } from './measure-text';
+export {
+  LinkEditorHost,
+  requestDocumentLink,
+  type LinkEditRequest,
+} from './link-editor-host';
 
 export {
   DocumentAssetContext,

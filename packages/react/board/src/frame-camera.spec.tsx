@@ -1484,6 +1484,47 @@ describe('memory-only canvas camera', () => {
     expect(test.transform()).toBe('scale(2) translate(140 115)');
     expect(test.onChange).not.toHaveBeenCalled();
   });
+  it.each([
+    { mode: 'orthogonal', segmentCursors: ['ns-resize', 'ew-resize'] },
+    { mode: 'fixed', segmentCursors: ['move', 'move'] },
+  ] as const)(
+    'shows drag cursors for $mode edge handles',
+    async ({ mode, segmentCursors }) => {
+      const value = sample();
+      const root = value.store.cells.root as ReturnType<typeof createFrameCell>;
+      value.store.cells.edge = {
+        id: 'edge',
+        cellType: 'edge',
+        kind: 'arrow',
+        source: { point: [150, 100] },
+        target: { point: [250, 180] },
+        route: {
+          mode,
+          points: [
+            [150, 100],
+            [250, 100],
+            [250, 180],
+          ],
+        },
+      };
+      root.children.push('edge');
+      const test = await mount(value);
+      await act(async () =>
+        test.controller.current!.runtime.select({
+          focus: ['root'],
+          ids: ['edge'],
+        }),
+      );
+      const cursors = (selector: string) =>
+        Array.from(
+          test.svg.querySelectorAll<SVGElement>(selector),
+          (handle) => handle.style.cursor,
+        );
+      expect(cursors('[data-edge-endpoint]')).toEqual(['move', 'move']);
+      expect(cursors('[data-edge-route-point]')).toEqual(['move']);
+      expect(cursors('[data-edge-segment]')).toEqual(segmentCursors);
+    },
+  );
   it('publishes edge-handle dragging and clears it on cancellation for mixed selection', async () => {
     const value = sample(),
       root = value.store.cells.root as ReturnType<typeof createFrameCell>;

@@ -1,3 +1,4 @@
+import type { WorkspaceEntryMeta } from '../host/workspace-host';
 import {
   createWorkspaceLink,
   parseWorkspaceLink,
@@ -5,6 +6,7 @@ import {
   type WorkspaceTarget,
 } from '@sue/board-common';
 import { createDocumentHeadingSlugger } from '@sue/board-react-text';
+import { isEdgeCell, isNodeCell, nodeContentName } from '@sue/board-core';
 import { workspaceFileId, type WorkspaceFile } from './document-files';
 import {
   buildReferenceLocations,
@@ -16,6 +18,8 @@ export interface KnowledgeTarget {
   title: string;
   detail: string;
   target: WorkspaceTarget;
+  kind: 'folder' | 'document' | 'canvas' | 'heading' | 'block' | 'cell';
+  legacyHref?: string;
 }
 export interface KnowledgeRelation {
   sourceFileId: string;
@@ -35,7 +39,10 @@ export function createKnowledgeIndexer() {
     WorkspaceFile,
     { targets: KnowledgeTarget[]; relations: KnowledgeRelation[] }
   >();
-  return (files: readonly WorkspaceFile[]) => {
+  return (
+    files: readonly WorkspaceFile[],
+    entries: readonly WorkspaceEntryMeta[] = [],
+  ) => {
     const targets: KnowledgeTarget[] = [],
       relations: KnowledgeRelation[] = [];
     for (const file of files) {
@@ -47,7 +54,12 @@ export function createKnowledgeIndexer() {
           file.format === 'verd-document'
             ? file.title
             : (file.frame.name ?? id);
-        const add = (target: WorkspaceTarget, name: string) => {
+        const add = (
+          target: WorkspaceTarget,
+          name: string,
+          kind: KnowledgeTarget['kind'],
+          legacySlug?: string,
+        ) => {
           // Empty headings and malformed legacy identities are not navigable targets.
           try {
             record!.targets.push({
@@ -55,12 +67,25 @@ export function createKnowledgeIndexer() {
               href: createWorkspaceLink(target),
               title: name || title,
               detail: title,
+              kind,
+              ...(target.kind === 'heading' && legacySlug
+                ? {
+                    legacyHref: createWorkspaceLink({
+                      ...target,
+                      slug: legacySlug,
+                    }),
+                  }
+                : {}),
             });
           } catch {
             /* Keep the rest of the workspace searchable. */
           }
         };
-        add({ kind: 'file', fileId: id }, title);
+        add(
+          { kind: 'file', fileId: id },
+          title,
+          file.format === 'verd-document' ? 'document' : 'canvas',
+        );
         const slug = createDocumentHeadingSlugger();
         const visitText = (
           node: BoardTextNode,
@@ -68,17 +93,20 @@ export function createKnowledgeIndexer() {
           context: string,
           position = -1,
         ) => {
+          const blockId = node.attrs?.['blockId'];
           if (
-            typeof node.attrs?.['blockId'] === 'string' &&
+            typeof blockId === 'string' &&
+            node.type !== 'heading' &&
             source.kind !== 'cell'
           )
             add(
               {
                 kind: 'heading',
                 fileId: id,
-                slug: 'block:' + node.attrs['blockId'],
+                slug: 'block:' + blockId,
               },
               textOf(node).slice(0, 80) || '段落',
+              'block',
             );
           if (node.type === 'codeBlock') return;
           if (node.type === 'heading' && source.kind !== 'cell') {
@@ -86,11 +114,14 @@ export function createKnowledgeIndexer() {
             source = {
               kind: 'heading',
               fileId: id,
-              slug: node.attrs?.['blockId']
-                ? 'block:' + node.attrs['blockId']
-                : legacy,
+              slug: typeof blockId === 'string' ? 'block:' + blockId : legacy,
             };
-            if (!node.attrs?.['blockId']) add(source, textOf(node));
+            add(
+              source,
+              textOf(node),
+              'heading',
+              typeof blockId === 'string' ? legacy : undefined,
+            );
           }
           if (['paragraph', 'heading', 'listItem'].includes(node.type))
             context = textOf(node).slice(0, 240);
@@ -143,7 +174,16 @@ export function createKnowledgeIndexer() {
               fileId: id,
               cellId: cell.id,
             };
-            add(source, ('name' in cell && cell.name) || cell.id);
+            const label = isNodeCell(cell)
+              ? nodeContentName(cell)
+              : isEdgeCell(cell)
+                ? cell.labels?.[0]?.text
+                : undefined;
+            add(
+              source,
+              ('name' in cell && cell.name) || label || cell.id,
+              'cell',
+            );
             scan(cell, source);
           }
         }
@@ -176,6 +216,22 @@ export function createKnowledgeIndexer() {
       }
       targets.push(...record.targets);
       relations.push(...record.relations);
+    }
+    const folders = new Map<string, WorkspaceEntryMeta | null>();
+    for (const entry of entries) {
+      if (entry.kind === 'directory' && entry.folderId)
+        folders.set(entry.folderId, folders.has(entry.folderId) ? null : entry);
+    }
+    for (const [folderId, entry] of folders) {
+      if (!entry) continue;
+      const target = { kind: 'folder' as const, folderId };
+      targets.push({
+        target,
+        href: createWorkspaceLink(target),
+        title: entry.path.split('/').at(-1) ?? entry.path,
+        detail: entry.path,
+        kind: 'folder',
+      });
     }
     const cellOwners = new Map(
       targets.flatMap((item) =>

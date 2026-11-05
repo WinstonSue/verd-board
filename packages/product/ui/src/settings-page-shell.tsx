@@ -2,6 +2,7 @@ import { useCallback, useEffect, useId, useRef, type ReactNode } from 'react';
 import { X } from 'lucide-react';
 import { PortalRootContext } from './components/portal-root';
 import { useState } from 'react';
+import { WorkspaceButton } from './workspace-design';
 
 export function SettingsPageShell({
   title,
@@ -54,15 +55,16 @@ export function SettingsPageShell({
     >
       <PortalRootContext.Provider value={portalRoot}>
         <header className="settings-shell-header">
-          <button
+          <WorkspaceButton
+            intent="ghost"
+            size="small"
+            icon={<X strokeWidth={1.75} size={18} aria-hidden />}
             type="button"
             aria-label={backLabel}
             onClick={onBack}
             data-testid={backTestId}
             disabled={backDisabled}
-          >
-            <X size={18} aria-hidden />
-          </button>
+          />
           <h1 id={titleId}>{title}</h1>
         </header>
         <div

@@ -24,7 +24,8 @@ import {
 } from '@sue/board-core';
 import { isMindNodeKind } from '@sue/board-mind';
 import { Bold, Italic, Strikethrough, Underline } from 'lucide-react';
-import { useState } from 'react';
+import { useContext, useRef, useState } from 'react';
+import { LinkEditorHost } from '@sue/board-react-text';
 import { useI18n } from './i18n';
 
 export interface SelectionTextStyle {
@@ -145,14 +146,19 @@ export function FrameSelectionText({
 }: {
   store: CellStore;
   ids: readonly string[];
-  dispatch(operations: CellOperation[]): void;
+  dispatch(
+    operations: CellOperation[],
+  ): void | Promise<{ status: string; message?: string } | undefined>;
   getStore?(): CellStore | undefined;
   disabled?: boolean;
   controller?: FrameCanvasController | null;
 }) {
   const { language } = useI18n();
   const theme = useFrameTheme();
+  const linkEditor = useContext(LinkEditorHost);
   const [link, setLink] = useState('');
+  const latest = useRef({ ids, getStore, store, disabled, controller });
+  latest.current = { ids, getStore, store, disabled, controller };
   const texts = documents(store, ids);
   const owners = textCells(store, ids).flatMap<
     ReturnType<typeof textCells>[number]
@@ -167,6 +173,70 @@ export function FrameSelectionText({
   const all = (mark: string) =>
     nodes.length > 0 &&
     nodes.every((node) => node.marks?.some((entry) => entry.type === mark));
+  const editLink = (trigger: HTMLButtonElement) => {
+    if (!linkEditor || disabled) return;
+    const captured = [...ids];
+    const initial = getStore ? getStore() : store;
+    if (!initial) return;
+    const signature = (current: CellStore) =>
+      JSON.stringify(
+        textCells(current, captured).map((cell) => [
+          cell.id,
+          isNodeCell(cell) ? cell.content : cell.labels,
+        ]),
+      );
+    const original = signature(initial);
+    const hrefs = new Set(
+      nodes.map((node) => {
+        const href = node.marks?.find((mark) => mark.type === 'link')?.attrs?.[
+          'href'
+        ];
+        return typeof href === 'string' ? href : undefined;
+      }),
+    );
+    const currentStore = () => {
+      const live = latest.current;
+      if (
+        !trigger.isConnected ||
+        live.disabled ||
+        live.controller?.runtime !== controller?.runtime ||
+        live.ids.length !== captured.length ||
+        !captured.every((id) => live.ids.includes(id))
+      )
+        return;
+      const next = live.getStore ? live.getStore() : live.store;
+      return next &&
+        next.rootId === initial.rootId &&
+        signature(next) === original
+        ? next
+        : undefined;
+    };
+    linkEditor({
+      sourceFileId: controller?.runtime.mountedRootId ?? store.rootId,
+      href: hrefs.size === 1 ? hrefs.values().next().value : undefined,
+      mixed: hrefs.size > 1,
+      canRemove: [...hrefs].some(Boolean),
+      isCurrent: () => !!currentStore(),
+      finish: (reason) => {
+        if (reason !== 'invalidated' && trigger.isConnected) trigger.focus();
+      },
+      async commit(href, _label, signal) {
+        const next = currentStore();
+        if (signal?.aborted || !next)
+          return { status: 'cancelled', code: 'stale-context' };
+        const receipt = await dispatch(
+          updateSelectionText(next, captured, { href }),
+        );
+        return receipt?.status === 'rejected'
+          ? {
+              status: 'rejected',
+              code: 'edit-rejected',
+              message: receipt.message,
+            }
+          : { status: 'completed' };
+      },
+    });
+  };
   const common = (key: 'fontSize' | 'color') => {
     if (!nodes.length) return key === 'fontSize' ? '16px' : '#0f172a';
     const values = texts.flatMap((text, at) => {
@@ -316,32 +386,45 @@ export function FrameSelectionText({
           onCommit={(value) => change({ align: value as Alignment })}
         />
       </label>
-      <label>
-        {language === 'zh' ? '链接' : 'Link'}
-        <FrameSettingsControl
-          field={{
-            key: 'Selection link URL',
-            editor: 'input',
-            props: { 'aria-label': 'Selection link URL', type: 'url' },
-          }}
-          value={link}
-          onCommit={(value) => setLink(value)}
-        />
-      </label>
-      <div>
+      {linkEditor ? (
         <button
-          aria-label="Apply selection link"
-          onClick={() => change({ href: link || null })}
+          type="button"
+          aria-haspopup="dialog"
+          disabled={disabled}
+          onClick={(event) => editLink(event.currentTarget)}
         >
-          {language === 'zh' ? '设置链接' : 'Apply link'}
+          {language === 'zh' ? '编辑链接' : 'Edit link'}
         </button>
-        <button
-          aria-label="Remove selection link"
-          onClick={() => change({ href: null })}
-        >
-          {language === 'zh' ? '移除链接' : 'Remove link'}
-        </button>
-      </div>
+      ) : (
+        <>
+          <label>
+            {language === 'zh' ? '链接' : 'Link'}
+            <FrameSettingsControl
+              field={{
+                key: 'Selection link URL',
+                editor: 'input',
+                props: { 'aria-label': 'Selection link URL', type: 'url' },
+              }}
+              value={link}
+              onCommit={(value) => setLink(value)}
+            />
+          </label>
+          <div>
+            <button
+              aria-label="Apply selection link"
+              onClick={() => change({ href: link || null })}
+            >
+              {language === 'zh' ? '设置链接' : 'Apply link'}
+            </button>
+            <button
+              aria-label="Remove selection link"
+              onClick={() => change({ href: null })}
+            >
+              {language === 'zh' ? '移除链接' : 'Remove link'}
+            </button>
+          </div>
+        </>
+      )}
     </>
   );
 }

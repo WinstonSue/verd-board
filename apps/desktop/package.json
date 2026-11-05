@@ -1,6 +1,6 @@
 {
   "name": "desktop",
-  "version": "0.0.1",
+  "version": "2.0.1",
   "private": true,
   "main": "dist-electron/main.js",
   "scripts": {
@@ -20,11 +20,9 @@
     "@sue/verd-board-app": "workspace:*",
     "@sue/verd-board-ui": "workspace:*",
     "react": "19.2.0",
-    "react-dom": "19.2.0",
-    "tar": "7.5.22"
+    "react-dom": "19.2.0"
   },
   "devDependencies": {
-    "@sue/verd-board-docs": "workspace:*",
     "@types/react": "19.2.2",
     "@types/react-dom": "19.2.2",
     "@vitejs/plugin-react": "^4.2.0",

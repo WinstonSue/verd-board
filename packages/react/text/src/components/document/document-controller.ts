@@ -1,5 +1,13 @@
-import { nearestOperableDepth } from './document-rich-content';
+import {
+  blockAtBoundary,
+  blockOrderMapping,
+  mappedBlockOrderPosition,
+  operableBlock,
+  planBlockOrder,
+} from './document-block-order';
+import { closeHistory } from '@tiptap/pm/history';
 import type { Editor } from '@tiptap/react';
+import { NodeSelection, Selection, TextSelection } from '@tiptap/pm/state';
 import {
   Alignment,
   createActionRegistry,
@@ -23,6 +31,7 @@ import {
   documentFromEditor,
 } from '../../utils/controller';
 import { findInDocument } from './document-search';
+import { documentSearchHighlightKey } from './document-search-highlight';
 import { createDocumentHeadingSlugger } from '../../utils/heading-slug';
 
 function containsFormula(editor: Editor, from: number, to: number) {
@@ -35,8 +44,11 @@ function containsFormula(editor: Editor, from: number, to: number) {
 
 interface ControllerOptions {
   onMathInsert?(block: boolean): void;
+  canOpenInsert?(kind: 'image' | 'attachment' | 'web' | 'frame'): boolean;
+  openInsert?(kind: 'image' | 'attachment' | 'web' | 'frame'): void;
   /** Tags the next emitted change (format/insert/replace) for history. */
   withSource(source: DocumentChangeSource, run: () => void): void;
+  withHistoryGroup?(run: () => void): void;
   /** Latest document — commits must not spread stale doc-level fields. */
   getBaseDocument(): BoardTextDocument;
   undo(): void | Promise<unknown>;
@@ -45,6 +57,21 @@ interface ControllerOptions {
   canRedo(): boolean;
   flushEditing?(): Promise<ActionResult>;
 }
+
+type SlashRange = {
+  from: number;
+  to: number;
+  text: string;
+  isCurrent(): boolean;
+};
+
+type DocumentController = DocumentEditorController & {
+  executeSlashAction(
+    id: string,
+    args: unknown,
+    range: SlashRange,
+  ): Promise<ActionResult>;
+};
 
 type DocumentCommandName =
   | 'toggleBold'
@@ -133,7 +160,7 @@ interface DocumentCommands {
   locateFrameReference(targetFrameId: string, occurrence: number): boolean;
 
   find(query: string, options?: DocumentSearchOptions): DocumentSearchMatch[];
-  selectMatch(match: DocumentSearchMatch): void;
+  selectMatch(match: DocumentSearchMatch, options?: { focus?: boolean }): void;
   replace(match: DocumentSearchMatch, text: string): void;
   /** One transaction = one undo step. Returns the match count. */
   replaceAll(
@@ -163,7 +190,7 @@ const HEADER_COMMANDS = {
 export function createDocumentController(
   editor: Editor,
   options: ControllerOptions,
-): DocumentEditorController {
+): DocumentController {
   const { withSource } = options;
   const editable = () => !editor.isDestroyed && editor.isEditable;
   const scrollTo = (element: Node | null) => {
@@ -187,7 +214,8 @@ export function createDocumentController(
   const commands: DocumentCommands = {
     focus(position = 'end') {
       if (!editor.isDestroyed) {
-        editor.commands.focus(position === 'preserve' ? undefined : position);
+        if (position === 'preserve') editor.view.focus();
+        else editor.commands.focus(position);
         if (!editor.isEditable && position === 'start')
           scrollTo(editor.view.dom);
       }
@@ -244,12 +272,15 @@ export function createDocumentController(
     },
     setHighlight(color) {
       format(() => {
-        editor.chain().focus().setMark('highlight', { color }).run();
+        const chain = editor.chain().focus();
+        if (color) chain.setMark('highlight', { color }).run();
+        else chain.unsetMark('highlight').run();
       });
     },
     setLink(href) {
       format(() => {
-        const chain = editor.chain().focus().extendMarkRange('link');
+        const chain = editor.chain().focus();
+        if (editor.state.selection.empty) chain.extendMarkRange('link');
         if (href) chain.setLink({ href }).run();
         else chain.unsetLink().run();
       });
@@ -516,25 +547,33 @@ export function createDocumentController(
         (match, index) => ({ ...match, index }),
       );
     },
-    selectMatch(match: DocumentSearchMatch) {
+    selectMatch(match: DocumentSearchMatch, options: { focus?: boolean } = {}) {
       if (editor.isDestroyed) return;
-      revealAt(match.from);
+      if (match.from < 0 || match.to > editor.state.doc.content.size) return;
+      const chain = editor.chain();
+      if (options.focus !== false) {
+        revealAt(match.from);
+        chain.focus();
+      } else {
+        chain.command(({ tr }) => {
+          tr.setMeta('document-reveal', match.from)
+            .setMeta(documentSearchHighlightKey, {
+              from: match.from,
+              to: match.to,
+              node: match.replaceable === false,
+            })
+            .setMeta('addToHistory', false);
+          return true;
+        });
+      }
       if (containsFormula(editor, match.from, match.to)) {
-        editor
-          .chain()
-          .focus()
-          .setNodeSelection(match.from)
+        chain.setNodeSelection(match.from).scrollIntoView().run();
+      } else
+        chain
+          .setTextSelection({ from: match.from, to: match.to })
           .scrollIntoView()
           .run();
-        return;
-      }
-      editor
-        .chain()
-        .focus()
-        .setTextSelection({ from: match.from, to: match.to })
-        .scrollIntoView()
-        .run();
-      if (!editor.isEditable) {
+      if (!editor.isEditable || options.focus === false) {
         const target = editor.view.domAtPos(match.from).node;
         scrollTo(target instanceof HTMLElement ? target : target.parentElement);
       }
@@ -592,20 +631,60 @@ export function createDocumentController(
   const flushEditing = () =>
     options.flushEditing?.() ??
     Promise.resolve<ActionResult>({ status: 'completed' });
+  let slashToCapture: SlashRange | undefined;
+  const getContext = () => ({
+    id: options.getBaseDocument().id,
+    document: editor.state.doc,
+    selection: editor.state.selection,
+    slash: slashToCapture,
+  });
   const registry = createActionRegistry({
-    getContext: () => ({
-      id: options.getBaseDocument().id,
-      document: editor.state.doc,
-      selection: commands.getSelection(),
-    }),
+    getContext,
     refresh: (captured) =>
       !editor.isDestroyed &&
       captured.id === options.getBaseDocument().id &&
-      captured.document === editor.state.doc
+      captured.document === editor.state.doc &&
+      (!captured.slash ||
+        (editor.view.hasFocus() &&
+          captured.slash.isCurrent() &&
+          captured.selection.eq(editor.state.selection)))
         ? captured
         : null,
     beforeExecute: () => flushEditing(),
   });
+  const runAtTarget = (
+    context: ReturnType<typeof getContext>,
+    run: () => void,
+  ) => {
+    if (!context.slash) {
+      if (!editor.state.selection.eq(context.selection))
+        editor.view.dispatch(editor.state.tr.setSelection(context.selection));
+      run();
+      return true;
+    }
+    const { from, to, text } = context.slash;
+    const { state, view } = editor;
+    if (
+      !state.selection.empty ||
+      state.selection.from !== to ||
+      from < 0 ||
+      from >= to ||
+      state.doc.textBetween(from, to, '\n', '\n') !== text
+    )
+      return false;
+    const replaceQuery = () => {
+      withSource('insert', () =>
+        view.dispatch(closeHistory(state.tr.delete(from, to))),
+      );
+      try {
+        run();
+      } finally {
+        if (!view.isDestroyed) view.dispatch(closeHistory(view.state.tr));
+      }
+    };
+    (options.withHistoryGroup ?? ((run) => run()))(replaceQuery);
+    return true;
+  };
   const commandShortcuts: Record<string, readonly ActionShortcut[]> = {
     'toggle-strike': [{ key: 'x', mod: true, shift: true }],
     'toggle-code': [{ key: 'e', mod: true }],
@@ -629,6 +708,7 @@ export function createDocumentController(
       checked?: () => boolean;
       validate?: (args: unknown) => boolean;
       palette?: boolean;
+      available?: () => boolean;
     } = {},
   ) =>
     registry.register<A>({
@@ -643,20 +723,44 @@ export function createDocumentController(
         : undefined,
       getState: () => ({
         visible: true,
-        enabled: editable() && (!command || commands.can(command)),
+        enabled:
+          editable() &&
+          (!command || commands.can(command)) &&
+          (extra.available?.() ?? true),
         reason: !editable() ? 'readonly' : undefined,
         checked: extra.checked?.(),
       }),
       execute: async (context, args) => {
-        if (context.selection) restoreSelection(context.selection);
         const before = editor.state.doc;
-        run(args);
+        if (!runAtTarget(context, () => run(args)))
+          return { status: 'cancelled', code: 'stale-context' };
         const receipt = await flushEditing();
         return receipt.status !== 'completed' && receipt.status !== 'noop'
           ? receipt
           : { status: before === editor.state.doc ? 'noop' : 'completed' };
       },
     });
+  for (const [kind, zh, en] of [
+    ['image', '插入图片', 'Insert image'],
+    ['attachment', '插入附件', 'Insert attachment'],
+    ['web', '插入网页', 'Insert web page'],
+    ['frame', '插入图表', 'Insert canvas'],
+  ] as const) {
+    registry.register({
+      id: `document.${kind}-dialog`,
+      label: { zh, en },
+      category: 'document',
+      effect: 'dialog',
+      getState: () => ({
+        visible: !!options.canOpenInsert?.(kind),
+        enabled: editable() && !!options.canOpenInsert?.(kind),
+      }),
+      execute: (context) =>
+        runAtTarget(context, () => options.openInsert?.(kind))
+          ? { status: 'completed' }
+          : { status: 'cancelled', code: 'stale-context' },
+    });
+  }
   const stringOrNull = (value: unknown) =>
     value === null || typeof value === 'string';
   const isObject = (value: unknown): value is Record<string, unknown> =>
@@ -708,23 +812,47 @@ export function createDocumentController(
     (value: string | null) => commands.setLink(value),
     { validate: stringOrNull, palette: false },
   );
-  register<{ href: string; label: string }>(
+  register<{
+    href: string;
+    label: string;
+    replace?: { from: number; to: number; text: string; isCurrent(): boolean };
+  }>(
     'insert-link',
     '插入链接',
     undefined,
-    ({ href, label }) => {
-      if (editor.state.selection.empty && !editor.isActive('link')) {
+    ({ href, label, replace }) => {
+      const content = {
+        type: 'text',
+        text: label,
+        marks: [{ type: 'link', attrs: { href } }],
+      };
+      if (replace) {
+        const { from, to, text, isCurrent } = replace;
+        const { doc, selection } = editor.state;
+        if (
+          !isCurrent() ||
+          !selection.empty ||
+          selection.from !== to ||
+          from < 0 ||
+          from >= to ||
+          doc.textBetween(from, to, '\n') !== text
+        )
+          return;
         withSource('insert', () => {
           editor
             .chain()
-            .focus()
-            .insertContent({
-              type: 'text',
-              text: label,
-              marks: [{ type: 'link', attrs: { href } }],
+            .command(({ tr }) => {
+              closeHistory(tr);
+              return true;
             })
+            .insertContentAt({ from, to }, content)
             .unsetMark('link')
             .run();
+          editor.view.dispatch(closeHistory(editor.state.tr));
+        });
+      } else if (editor.state.selection.empty && !editor.isActive('link')) {
+        withSource('insert', () => {
+          editor.chain().focus().insertContent(content).unsetMark('link').run();
         });
       } else commands.setLink(href);
     },
@@ -734,70 +862,155 @@ export function createDocumentController(
         typeof value['href'] === 'string' &&
         !!value['href'].trim() &&
         typeof value['label'] === 'string' &&
-        !!value['label'],
+        !!value['label'] &&
+        (value['replace'] === undefined ||
+          (isObject(value['replace']) &&
+            Number.isInteger(value['replace']['from']) &&
+            Number.isInteger(value['replace']['to']) &&
+            typeof value['replace']['text'] === 'string' &&
+            typeof value['replace']['isCurrent'] === 'function')),
       palette: false,
     },
   );
-  for (const direction of ['up', 'down', 'duplicate', 'delete'] as const)
-    register(`block-${direction}`, `段落 ${direction}`, undefined, () => {
-      const { $from } = editor.state.selection;
-      const depth = nearestOperableDepth($from);
-      const pos = $from.before(depth);
-      const node = $from.node(depth);
-      withSource('insert', () => {
-        if (direction === 'delete')
-          editor
-            .chain()
-            .focus()
-            .deleteRange({ from: pos, to: pos + node.nodeSize })
-            .run();
-        else if (direction === 'duplicate')
-          editor
-            .chain()
-            .focus()
-            .insertContentAt(pos + node.nodeSize, node.toJSON())
-            .run();
-        else {
-          const index = $from.index(depth - 1),
-            otherIndex = direction === 'up' ? index - 1 : index + 1;
-          if (otherIndex < 0 || otherIndex >= $from.node(depth - 1).childCount)
-            return;
-          const other = $from.node(depth - 1).child(otherIndex);
-          const from = direction === 'up' ? pos - other.nodeSize : pos;
-          const to =
-            direction === 'up'
-              ? pos + node.nodeSize
-              : pos + node.nodeSize + other.nodeSize;
-          const content =
-            direction === 'up'
-              ? [node.toJSON(), other.toJSON()]
-              : [other.toJSON(), node.toJSON()];
-          editor
-            .chain()
-            .focus()
-            .insertContentAt({ from, to }, content)
-            .setTextSelection(
-              direction === 'up' ? from + 1 : from + other.nodeSize + 1,
-            )
-            .run();
-        }
-      });
+  const selectedBlock = () => {
+    const selection = editor.state.selection;
+    return selection instanceof NodeSelection
+      ? blockAtBoundary(editor.state.doc, selection.from)
+      : operableBlock(selection.$from);
+  };
+  const moveBlock = (source: number, toIndex: number) => {
+    const { state, view } = editor;
+    const plan = planBlockOrder(state.doc, source, toIndex);
+    if (!plan) return;
+    withSource('drop', () => {
+      const tr = state.tr.replaceWith(plan.from, plan.to, plan.content);
+      const selection = state.selection;
+      const sourceNode = state.doc.nodeAt(source)!;
+      const inside =
+        selection.from >= source && selection.to < source + sourceNode.nodeSize;
+      if (selection instanceof NodeSelection && selection.from === source)
+        tr.setSelection(NodeSelection.create(tr.doc, plan.movedTo));
+      else if (inside && selection instanceof TextSelection)
+        tr.setSelection(
+          TextSelection.create(
+            tr.doc,
+            mappedBlockOrderPosition(plan.positionsAfter, selection.anchor),
+            mappedBlockOrderPosition(plan.positionsAfter, selection.head),
+          ),
+        );
+      else tr.setSelection(Selection.near(tr.doc.resolve(plan.movedTo + 1)));
+      view.dispatch(
+        closeHistory(
+          tr.setMeta(blockOrderMapping, plan.positionsAfter),
+        ).scrollIntoView(),
+      );
+      // Keep subsequent typing out of the reorder's local history event.
+      if (!view.isDestroyed) view.dispatch(closeHistory(view.state.tr));
     });
+    editor.view.focus();
+  };
+  registry.register<{ source: number; toIndex: number }>({
+    id: 'document.block-move',
+    label: { zh: '移动区块', en: 'Move block' },
+    category: 'document',
+    effect: 'content',
+    palette: false,
+    validateArgs: (args): args is { source: number; toIndex: number } =>
+      isObject(args) &&
+      Number.isInteger(args['source']) &&
+      Number.isInteger(args['toIndex']),
+    getState: (_context, args) => ({
+      enabled:
+        editable() &&
+        !!args &&
+        !!planBlockOrder(editor.state.doc, args.source, args.toIndex),
+    }),
+    execute: async (_context, args) => {
+      moveBlock(args.source, args.toIndex);
+      return flushEditing();
+    },
+  });
+  for (const direction of ['up', 'down', 'duplicate', 'delete'] as const)
+    register(
+      `block-${direction}`,
+      {
+        up: '上移区块',
+        down: '下移区块',
+        duplicate: '复制区块',
+        delete: '删除区块',
+      }[direction],
+      undefined,
+      () => {
+        const block = selectedBlock();
+        if (!block) return;
+        const { node, start } = block;
+        if (direction === 'up' || direction === 'down') {
+          moveBlock(start, block.index + (direction === 'up' ? -1 : 1));
+          return;
+        }
+        withSource('insert', () => {
+          if (direction === 'delete')
+            editor
+              .chain()
+              .focus()
+              .deleteRange({ from: start, to: start + node.nodeSize })
+              .run();
+          else
+            editor
+              .chain()
+              .focus()
+              .insertContentAt(start + node.nodeSize, node.toJSON())
+              .run();
+        });
+      },
+      {
+        available: () => {
+          const block = selectedBlock();
+          if (!block) return false;
+          const { parent, index, node, start } = block;
+          if (direction === 'up' || direction === 'down')
+            return !!planBlockOrder(
+              editor.state.doc,
+              start,
+              index + (direction === 'up' ? -1 : 1),
+            );
+          if (direction === 'duplicate')
+            return parent.canReplaceWith(index + 1, index + 1, node.type);
+          return (
+            parent.type.name === 'doc' || parent.canReplace(index, index + 1)
+          );
+        },
+      },
+    );
+  const anchorBlock = () => {
+    const selection = editor.state.selection;
+    if (selection instanceof NodeSelection && 'blockId' in selection.node.attrs)
+      return { node: selection.node, pos: selection.from };
+    const { $from } = selection;
+    for (let depth = $from.depth; depth > 0; depth--) {
+      const node = $from.node(depth);
+      if ('blockId' in node.attrs) return { node, pos: $from.before(depth) };
+    }
+    return null;
+  };
   registry.register({
     id: 'document.anchor-block',
     label: { zh: '复制此段链接', en: 'Copy block link' },
     category: 'document',
     effect: 'external',
-    getState: () => ({
-      visible: true,
-      enabled:
-        editable() || !!editor.state.selection.$from.node(1).attrs['blockId'],
-    }),
+    getState: () => {
+      const block = anchorBlock();
+      return {
+        visible: true,
+        enabled: !!block && (editable() || !!block.node.attrs['blockId']),
+      };
+    },
     execute: async (context) => {
-      if (context.selection) restoreSelection(context.selection);
-      const { $from } = editor.state.selection;
-      const pos = $from.before(1),
-        node = $from.node(1);
+      if (!editor.state.selection.eq(context.selection))
+        editor.view.dispatch(editor.state.tr.setSelection(context.selection));
+      const block = anchorBlock();
+      if (!block) return { status: 'rejected', code: 'missing-block' };
+      const { pos, node } = block;
       const id = node.attrs['blockId'] || crypto.randomUUID();
       if (!node.attrs['blockId']) {
         if (!editable()) return { status: 'rejected', code: 'readonly' };
@@ -809,6 +1022,8 @@ export function createDocumentController(
             }),
           );
         });
+      }
+      if (editable()) {
         const receipt = await flushEditing();
         if (receipt.status !== 'completed' && receipt.status !== 'noop')
           return receipt;
@@ -836,7 +1051,11 @@ export function createDocumentController(
       editor.state.doc.descendants((node, pos) => {
         if (node.attrs['blockId'] === id) {
           found = true;
-          commands.locateHeading(pos);
+          if (node.isTextblock) commands.locateHeading(pos);
+          else {
+            revealAt(pos);
+            scrollTo(editor.view.nodeDOM(pos));
+          }
           return false;
         }
         return !found;
@@ -1185,7 +1404,7 @@ export function createDocumentController(
     editor.off('transaction', changed);
     registry.dispose();
   });
-  const controller: DocumentEditorController = {
+  const controller: DocumentController = {
     focus: commands.focus,
     commit: commands.commit,
     getDocument: commands.getDocument,
@@ -1212,6 +1431,20 @@ export function createDocumentController(
     subscribe: registry.subscribe,
     get revision() {
       return registry.revision;
+    },
+    async executeSlashAction(id, args, range) {
+      const action = registry
+        .actions()
+        .find((candidate) => candidate.id === id);
+      if (!action) return { status: 'rejected', code: 'unknown-action' };
+      slashToCapture = range;
+      let captured;
+      try {
+        captured = action.capture();
+      } finally {
+        slashToCapture = undefined;
+      }
+      return captured.execute(args, { source: 'menu' });
     },
   };
   return controller;

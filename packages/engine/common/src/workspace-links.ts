@@ -1,8 +1,11 @@
 /** Workspace identities are opaque; links never contain filesystem paths. */
-export type WorkspaceTarget =
+export type WorkspaceFileTarget =
   | { kind: 'file'; fileId: string }
   | { kind: 'heading'; fileId: string; slug: string }
   | { kind: 'cell'; fileId: string; cellId: string };
+
+export type WorkspaceTarget =
+  WorkspaceFileTarget | { kind: 'folder'; folderId: string };
 
 const valid = (value: string) =>
   !!value &&
@@ -17,6 +20,11 @@ const decode = (value: string): string | null => {
 };
 
 export function createWorkspaceLink(target: WorkspaceTarget): string {
+  if (target.kind === 'folder') {
+    if (!valid(target.folderId))
+      throw new Error('Invalid workspace folder identity');
+    return `verd://folder/${encodeURIComponent(target.folderId)}`;
+  }
   if (!valid(target.fileId)) throw new Error('Invalid workspace file identity');
   const anchor =
     target.kind === 'cell'
@@ -37,6 +45,11 @@ export function parseWorkspaceLink(
   sourceFileId?: string,
 ): WorkspaceTarget | null {
   if (!href || href.trim() !== href || !valid(href)) return null;
+  const folder = /^verd:\/\/folder\/([^/?#]+)$/i.exec(href);
+  if (folder) {
+    const folderId = decode(folder[1]);
+    return folderId ? { kind: 'folder', folderId } : null;
+  }
   let fileId: string | null, fragment: string | null;
   if (href.startsWith('#')) {
     fileId = sourceFileId && valid(sourceFileId) ? sourceFileId : null;
@@ -67,8 +80,8 @@ export function remapWorkspaceLink(
   context: WorkspaceLinkRemapContext,
 ): string {
   const target = parseWorkspaceLink(href, context.sourceFileId);
-  if (!target) return href;
-  let next: WorkspaceTarget;
+  if (!target || target.kind === 'folder') return href;
+  let next: WorkspaceFileTarget;
   if (target.kind === 'cell') {
     // A copied link to a target outside the copied fragment still points at
     // the original target, even when its containing file was duplicated.

@@ -38,7 +38,7 @@ pnpm workspace:check
 
 旧开发目录 `apps/desktop/workspace/` 中的个人文件和运行记录保留在原处，可通过「打开工作区文件夹」访问。
 
-侧栏提供「打开工作区文件夹」和「回到内置工作区」。成功切换后记住选择；切换先提交当前编辑并等待保存，保存失败会保留当前工作区。已选择的目录不可用时，可重新选择或回到内置工作区。自选空目录保持独立，不复制项目内容或导入其它目录的旧资料。
+侧栏提供「打开工作区文件夹」和「打开系统介绍」。成功切换后记住选择；切换先提交当前编辑并等待保存，保存失败会保留当前工作区。已选择的目录不可用时，可重新选择或打开系统介绍。自选空目录保持独立，不复制项目内容或导入其它目录的旧资料。
 
 测试和自动化可用 `VERDBOARD_USER_DATA_PATH` 覆盖数据目录；只有正式包执行旧区恢复，且仅检查该数据目录旁的 `desktop`，避免访问真实用户资料。
 
@@ -60,10 +60,12 @@ pnpm workspace:refresh
 
 手动开发使用端口 7300、`dist-electron-dev`；dev E2E 使用独占端口 7310、`dist-electron-e2e` 和独立 Vite 缓存，生产构建仍用 `dist-electron`。测试不复用或关闭手动 Dev，日常开发和验证不调用打包、安装或 LaunchServices 注册。安装包测试使用独立 `playwright.packaged.config.ts`，仅在显式打包时执行。
 
-自测不得堆积 Dev 应用或 Dock 图标。Desktop dev/prod E2E 统一使用 `tests/desktop-e2e/src/desktop-launcher.ts`，单 worker 串行执行，关闭前一个测试进程后才可重启；macOS 测试窗口以 accessory 模式运行，不占 Dock。用例必须在 `finally` / teardown 中关闭实例；公共启动器在关闭超过 10 秒时回收自己启动的子进程，worker 退出或消失时也自动回收。手动自测优先复用已运行的 Dev，主进程或 preload 变更需要重启时先正常保存退出，再启动一个实例。测试清理只针对本轮启动且使用临时数据的进程。
+手动开发时，Vite 在主进程和 preload 首次构建完成后启动一个 DEV 实例，同一开发数据目录只允许一个实例。页面和样式支持热更新。主进程或 preload 重新构建后，按终端提示正常退出 DEV（macOS 上用 ⌘Q），再重新运行开发命令。退出 DEV 会结束本次开发命令。停止 Vite 时，DEV 会尝试保存并退出，保存失败时保留窗口。
+
+Desktop dev/prod E2E 统一使用 `tests/desktop-e2e/src/desktop-launcher.ts`，单 worker 串行执行，关闭前一个测试进程后才可重启。macOS 测试窗口以 accessory 模式运行，不占 Dock。用例必须在 `finally` / teardown 中关闭实例。公共启动器在关闭超过 10 秒时回收自己启动的子进程，worker 退出或消失时也自动回收。测试清理只针对本轮启动且使用临时数据的进程。
 
 新建或打开文件夹自动维护根 `AGENTS.md` 的专属受管块，并将 `.verdscrolls/shared` 链接到 userData 中按版本保留的工具资源。工作区设置显示 AI 就绪状态，可维护简介和入口文档 ID。打包钩子按目标平台准备经官方 SHA-256 校验的 Node 24.18.1 与完整 CLI；旧资源版本保留。开发时先运行 `pnpm exec turbo run build --filter=@sue/verd-board-agent` 和 `pnpm prepare:agent-resources apps/desktop/build/agent-resources/mac-arm64`，目标平台/CPU 按本机调整；也可用 `VERD_AGENT_RESOURCES` 指向临时准备目录。资源未准备时工作区仍可使用，并显示 AI 接入未就绪。
 
-内置图文独立更新：项目资源来自 `@sue/verd-board-docs`，范式资源来自 `@sue/verd-board-agent-patterns`。启动和应用资源变化触发后台检查，通常间隔 24 小时。主进程复用本机用户/系统 npm 配置的匹配凭证，不要求系统安装 npm，也不把凭证打包。用户确认后才下载并校验精确版本，再完整备份和替换托管工作区；自选目录不会被替换。断网、认证失败和资源包尚未发布时继续使用本地内容。
+系统介绍与 Agent 范式库随应用内置，版本与产品版本一致，不通过 npm 检查或下载。安装新应用不会自动替换已有副本。仅进入对应工作区时，名称旁的小标记提示可用更新；点击进入“设置 → 数据与维护”，确认后更新为当前应用附带内容。更新默认不备份；勾选备份后选择父目录，完整副本保存到独立子目录并加入普通工作区列表。取消目录选择不更新。更新先保存当前会话，保留项目身份和终态事务回执，重新打开新版导航文档。
 
-`pnpm build:content` 构建两种发布描述；`node --test scripts/builtin-package.test.mjs` 验证真实 npm tarball；`pnpm publish:content` 是单独的显式发布命令。正式 Desktop 打包消费这些相同产物。先发布资源包，再交付启用在线检查的应用；开发/测试不自动发布。
+`pnpm build:content` 从仓库原生内容直接准备内置资源；`node --test scripts/builtin-package.test.mjs` 校验摘要和产品版本。内置内容不单独通过 npm 发布。

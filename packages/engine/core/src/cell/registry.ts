@@ -19,6 +19,8 @@ export interface CellScene {
   anchorKinds: readonly string[];
   kinds: readonly string[];
   allowGroups?: boolean;
+  sharedKinds?: readonly string[];
+  laneMemberKinds?: readonly string[];
   consecutiveGroups?: boolean;
   preserveAnchor?: boolean;
   preserveAllAnchors?: boolean;

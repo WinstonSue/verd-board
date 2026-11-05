@@ -1,5 +1,8 @@
 import { expect, type Page } from '@playwright/test';
 const strip = (page: Page) => page.locator('ylib-tabs');
+export const activeTabTitle = (page: Page) =>
+  strip(page).getByRole('tab', { selected: true }).locator('[part="title"]');
+
 export const openGroups = async (page: Page) => {
   const toggle = strip(page).getByLabel('选择分组', { exact: true });
   if (

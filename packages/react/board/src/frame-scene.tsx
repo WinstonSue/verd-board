@@ -292,7 +292,7 @@ export function FrameDetailsButton({
         onOpen();
       }}
     >
-      <ExternalLink size={16} aria-hidden />
+      <ExternalLink strokeWidth={1.75} size={16} aria-hidden />
     </button>
   );
 }

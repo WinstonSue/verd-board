@@ -1,3 +1,4 @@
+import { selectSetting } from '../../helpers/settings-controls';
 import {
   _electron as electron,
   expect,
@@ -16,6 +17,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import type { WorkspaceHistoryEntry } from '../../../packages/product/app/src/host/workspace-host';
 import { openWorkspaceMenu } from '../../web-e2e/src/app-actions';
+import { activeTabTitle } from '../../web-e2e/src/tab-actions';
 
 const appBundle = process.env.VERDBOARD_PACKAGED_APP;
 const root = path.resolve(__dirname, '../../..');
@@ -104,13 +106,11 @@ test('real installed identity seeds architecture, recovers old folders and prese
   try {
     let page = await launch();
     await page.getByTestId('workspace-my').click();
-    await page.getByTestId('settings-language').selectOption('zh');
+    await selectSetting(page.getByTestId('settings-language'), 'zh');
     await page.getByTestId('my-back').click();
     const skip = page.getByRole('button', { name: '跳过', exact: true });
     if (await skip.isVisible().catch(() => false)) await skip.click();
-    await expect(
-      page.locator('.workspace-pane.is-active .document-page__title'),
-    ).toHaveValue('文档导航');
+    await expect(activeTabTitle(page)).toHaveText('文档导航');
     const expected = await nativeFiles(path.join(root, 'workspace'));
     expect(await nativeFiles(workspace)).toEqual(expected);
     const documents = page
@@ -128,9 +128,7 @@ test('real installed identity seeds architecture, recovers old folders and prese
       .getByText('系统架构', { exact: true })
       .click();
     const active = () => page.locator('.workspace-pane.is-active');
-    await expect(active().locator('.document-page__title')).toHaveValue(
-      '系统架构',
-    );
+    await expect(activeTabTitle(page)).toHaveText('系统架构');
     const editor = active().locator('.board-document-content');
     await editor.click();
     await editor.press('ControlOrMeta+End');
@@ -146,9 +144,7 @@ test('real installed identity seeds architecture, recovers old folders and prese
     });
     await close();
     page = await launch();
-    await expect(active().locator('.document-page__title')).toHaveValue(
-      '系统架构',
-    );
+    await expect(activeTabTitle(page)).toHaveText('系统架构');
     await expect(active().locator('.board-document-content')).toContainText(
       'Packaged application edit survives restart.',
     );
@@ -173,9 +169,7 @@ test('real installed identity seeds architecture, recovers old folders and prese
     ).toBeVisible();
     await openWorkspaceMenu(page);
     await page.getByTestId('workspace-open-builtin').click();
-    await expect(active().locator('.document-page__title')).toHaveValue(
-      '系统架构',
-    );
+    await expect(activeTabTitle(page)).toHaveText('系统架构');
     await close();
     expect(
       await readFile(path.join(oldDefault, '旧画布.verd.json'), 'utf8'),

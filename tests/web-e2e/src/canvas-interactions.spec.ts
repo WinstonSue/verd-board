@@ -1,3 +1,5 @@
+import { openHistoryAction } from './app-actions';
+import { selectHistoryAction } from './app-actions';
 import { editBody } from './body-editor';
 import { selectAppAction, setAppLanguage } from './app-actions';
 import { readFileSync } from 'node:fs';
@@ -168,7 +170,6 @@ test('every toolbar creation selects its outer cell and stops after one gesture'
     ['文本', 'geometry'],
     ['画笔', 'freehand'],
     ['表格', 'table'],
-    ['泳道', 'swimlane'],
     ['容器', 'frame-reference'],
     ['思维导图', 'frame-reference'],
     ['流程图', 'frame-reference'],
@@ -190,7 +191,7 @@ test('every toolbar creation selects its outer cell and stops after one gesture'
     const box = (await canvas(page).boundingBox())!;
     await page.mouse.click(box.x + 780, box.y + 580);
     await expect(created).toHaveCount(1);
-    await page.getByRole('button', { name: '撤销', exact: true }).click();
+    await selectHistoryAction(page, '撤销');
     await expect(created).toHaveCount(0);
   }
 });
@@ -818,9 +819,8 @@ test('Frame shells and titles move in local integer pixels, keep descendants unc
   await page.keyboard.press('Escape');
   await page.mouse.up();
   expect(await savedCells(page)).toEqual(persisted);
-  await expect(
-    page.getByRole('button', { name: '撤销', exact: true }),
-  ).toBeDisabled();
+  await expect(await openHistoryAction(page, '撤销')).toBeDisabled();
+  await page.keyboard.press('Escape');
   await namedTitle('Outer drag').click();
   await expandPropertyGroup(page);
   await page.getByRole('checkbox', { name: '锁定', exact: true }).check();

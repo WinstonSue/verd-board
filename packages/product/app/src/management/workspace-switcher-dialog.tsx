@@ -60,6 +60,7 @@ export function WorkspaceSwitcherDialog(p: WorkspaceSwitcherDialogProps) {
       className="workspace-switcher-dialog"
       data-testid="workspace-switcher-dialog"
       onKeyDown={(event) => {
+        if (event.nativeEvent.isComposing) return;
         if (!['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(event.key))
           return;
         if (
@@ -80,13 +81,19 @@ export function WorkspaceSwitcherDialog(p: WorkspaceSwitcherDialogProps) {
             ? 0
             : event.key === 'End'
               ? buttons.length - 1
-              : (at + (event.key === 'ArrowDown' ? 1 : -1) + buttons.length) %
-                buttons.length;
+              : event.key === 'ArrowDown'
+                ? (at + 1) % buttons.length
+                : (Math.max(at, 0) + buttons.length - 1) % buttons.length;
         buttons[next]?.focus();
       }}
     >
-      <label className="vm-search">
-        <Search className="vm-search__icon" size={16} aria-hidden />
+      <label className="vm-search workspace-switcher-search">
+        <Search
+          strokeWidth={1.75}
+          className="vm-search__icon"
+          size={16}
+          aria-hidden
+        />
         <input
           className="vm-input vm-input--search"
           type="search"
@@ -96,66 +103,78 @@ export function WorkspaceSwitcherDialog(p: WorkspaceSwitcherDialogProps) {
           onChange={(e) => setQuery(e.target.value)}
         />
       </label>
-      <h3 className="vm-section-label workspace-switcher-label">
-        {t('最近打开', 'Recently opened')}
-      </h3>
-      {rows.map((h, index) => {
-        const currentRow = index === 0;
-        const entry = p.history.find((e) => e.id === h.id);
-        const unavailable =
-          entry?.availability && entry.availability !== 'available';
-        return (
-          <div
-            className="vm-list-row workspace-switcher-row"
-            key={h.id}
-            aria-current={currentRow ? 'true' : undefined}
-          >
-            <FolderOpen size={16} aria-hidden />
-            <button
-              type="button"
-              className="workspace-switcher-name"
-              data-testid={`workspace-history-${h.id}`}
-              disabled={p.busy || currentRow}
-              onClick={() => p.onHistory(h.id)}
-              title={h.name}
+      <div className="workspace-switcher-section">
+        <h3 className="vm-section-label workspace-switcher-label">
+          {t('最近打开', 'Recently opened')}
+        </h3>
+        {rows.map((h, index) => {
+          const currentRow = index === 0;
+          const entry = p.history.find((e) => e.id === h.id);
+          const unavailable =
+            entry?.availability && entry.availability !== 'available';
+          return (
+            <div
+              className="workspace-switcher-item workspace-switcher-row"
+              key={h.id}
+              aria-current={currentRow ? 'true' : undefined}
             >
-              <span>{h.name}</span>
-              {entry?.description && <small>{entry.description}</small>}
-            </button>
-            {currentRow && (
-              <span className="vm-badge">{t('当前', 'Current')}</span>
-            )}
-            {unavailable && (
-              <span className="vm-badge">{t('不可用', 'Unavailable')}</span>
-            )}
+              <button
+                type="button"
+                className="workspace-switcher-name"
+                data-testid={`workspace-history-${h.id}`}
+                disabled={p.busy || currentRow}
+                onClick={() => p.onHistory(h.id)}
+              >
+                <FolderOpen strokeWidth={1.75} size={16} aria-hidden />
+                <span className="workspace-switcher-copy">
+                  <span className="workspace-switcher-title">
+                    <span className="workspace-switcher-text" title={h.name}>
+                      {h.name}
+                    </span>
+                    {currentRow && (
+                      <span className="vm-badge">{t('当前', 'Current')}</span>
+                    )}
+                    {unavailable && (
+                      <span className="vm-badge">
+                        {t('不可用', 'Unavailable')}
+                      </span>
+                    )}
+                  </span>
+                  {entry?.description && <small>{entry.description}</small>}
+                </span>
+              </button>
 
-            {p.onUpdateHistory && entry && (
-              <span className="workspace-switcher-actions">
-                <IconButton
-                  icon={Star}
-                  aria-label={
-                    entry.pinned
-                      ? t('取消置顶', 'Unpin workspace')
-                      : t('置顶', 'Pin workspace')
-                  }
-                  aria-pressed={!!entry.pinned}
-                  disabled={p.busy}
-                  onClick={() =>
-                    p.onUpdateHistory?.(h.id, { pinned: !entry.pinned })
-                  }
-                />
-                <IconButton
-                  icon={X}
-                  aria-label={t('移除记录', 'Remove record')}
-                  disabled={p.busy || currentRow}
-                  onClick={() => p.onUpdateHistory?.(h.id, { remove: true })}
-                />
-              </span>
-            )}
-          </div>
-        );
-      })}
-      <div className="workspace-switcher-operations">
+              {p.onUpdateHistory && entry && (
+                <span className="workspace-switcher-actions">
+                  <IconButton
+                    icon={Star}
+                    aria-label={
+                      entry.pinned
+                        ? t('取消置顶', 'Unpin workspace')
+                        : t('置顶', 'Pin workspace')
+                    }
+                    aria-pressed={!!entry.pinned}
+                    disabled={p.busy}
+                    onClick={() =>
+                      p.onUpdateHistory?.(h.id, { pinned: !entry.pinned })
+                    }
+                  />
+                  <IconButton
+                    icon={X}
+                    aria-label={t('移除记录', 'Remove record')}
+                    disabled={p.busy || currentRow}
+                    onClick={() => p.onUpdateHistory?.(h.id, { remove: true })}
+                  />
+                </span>
+              )}
+            </div>
+          );
+        })}
+      </div>
+      <div className="workspace-switcher-section">
+        <h3 className="vm-section-label workspace-switcher-label">
+          {t('工作区操作', 'Workspace actions')}
+        </h3>
         {[
           {
             icon: Plus,
@@ -170,7 +189,7 @@ export function WorkspaceSwitcherDialog(p: WorkspaceSwitcherDialogProps) {
           },
           {
             icon: House,
-            label: t('打开内置工作区', 'Open built-in workspace'),
+            label: t('打开系统介绍', 'Open system introduction'),
             run: p.onOpenBuiltin,
             disabled: p.isDefault,
             testId: 'workspace-open-builtin',
@@ -192,14 +211,14 @@ export function WorkspaceSwitcherDialog(p: WorkspaceSwitcherDialogProps) {
           .map((a) => (
             <button
               type="button"
-              className="vm-btn vm-btn--ghost workspace-switcher-operation"
+              className="workspace-switcher-item workspace-switcher-operation"
               key={a.label}
               data-testid={a.testId}
               disabled={p.busy || a.disabled}
               onClick={a.run}
             >
               <a.icon size={16} aria-hidden />
-              {a.label}
+              <span className="workspace-switcher-text">{a.label}</span>
             </button>
           ))}
       </div>

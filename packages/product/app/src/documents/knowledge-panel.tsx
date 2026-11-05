@@ -1,10 +1,18 @@
+import { ArrowLeft, ArrowRight } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import {
   createWorkspaceLink,
   parseWorkspaceLink,
   type WorkspaceTarget,
 } from '@sue/board-common';
-import { DocumentPreview, VmDialog } from '@sue/verd-board-ui';
+import {
+  DocumentPreview,
+  VmDialog,
+  WorkspaceAlert,
+  WorkspaceButton,
+  WorkspaceEmptyState,
+  WorkspaceInput,
+} from '@sue/verd-board-ui';
 import {
   queryKnowledgeTargets,
   type KnowledgeRelation,
@@ -59,23 +67,42 @@ export function KnowledgePanel({
       ? target.cellId
       : target.kind === 'heading'
         ? target.slug
-        : titleFor(target.fileId));
+        : target.kind === 'folder'
+          ? target.folderId
+          : titleFor(target.fileId));
   const selected =
-    requestedTarget?.kind === 'cell'
+    requestedTarget?.kind === 'heading'
       ? (targets.find(
-          (item) =>
-            item.target.kind === 'cell' &&
-            item.target.cellId === requestedTarget.cellId,
+          (item) => item.legacyHref === createWorkspaceLink(requestedTarget),
         )?.target ?? requestedTarget)
-      : requestedTarget;
+      : requestedTarget?.kind === 'cell'
+        ? (targets.find(
+            (item) =>
+              item.target.kind === 'cell' &&
+              item.target.cellId === requestedTarget.cellId,
+          )?.target ?? requestedTarget)
+        : requestedTarget;
   const previewDoc =
-    selected && preview.snapshot.documents.get(selected.fileId)?.file;
+    selected &&
+    selected.kind !== 'folder' &&
+    preview.snapshot.documents.get(selected.fileId)?.file;
   const exists =
     selected && targets.some((t) => t.href === createWorkspaceLink(selected));
+  const results = query.trim()
+    ? queryKnowledgeTargets(targets, query.trim())
+    : [];
+  const sourceExists =
+    !!previewDoc ||
+    !!(
+      selected &&
+      (selected.kind === 'folder'
+        ? exists
+        : preview.snapshot.files.has(selected.fileId))
+    );
   return (
     <>
-      <button
-        className="vm-btn vm-btn--ghost vm-btn--sm"
+      <WorkspaceButton
+        intent="ghost"
         ref={trigger}
         type="button"
         onClick={() => {
@@ -84,7 +111,7 @@ export function KnowledgePanel({
         }}
       >
         {zh ? '关联内容' : 'Related content'}
-      </button>
+      </WorkspaceButton>
       {shown && (
         <VmDialog
           className="workspace-knowledge-dialog"
@@ -93,37 +120,53 @@ export function KnowledgePanel({
           onClose={() => setShown(false)}
         >
           <div className="workspace-knowledge-columns">
-            <section>
-              <input
+            <section className="workspace-knowledge-list">
+              <WorkspaceInput
                 aria-label={zh ? '搜索链接目标' : 'Search link targets'}
                 placeholder={
                   zh
-                    ? '搜索文档、章节或图元'
-                    : 'Find a document, heading or cell'
+                    ? '搜索文件夹、文档、章节、段落或图元'
+                    : 'Find a folder, document, heading, block or cell'
                 }
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
               />
-              {query &&
-                queryKnowledgeTargets(targets, query).map((item) => (
-                  <button
-                    className="workspace-knowledge-result"
-                    type="button"
-                    key={item.href}
-                    onClick={() => {
-                      setCopied('');
-                      setSelected(item.target);
-                    }}
-                  >
-                    {item.title}
-                    <small>{item.detail}</small>
-                  </button>
-                ))}
+              {query.trim() && !results.length && (
+                <WorkspaceEmptyState
+                  description={
+                    zh ? '没有匹配的链接目标' : 'No matching link targets'
+                  }
+                />
+              )}
+              {results.map((item) => (
+                <WorkspaceButton
+                  className="workspace-knowledge-result"
+                  type="button"
+                  key={item.href}
+                  onClick={() => {
+                    setCopied('');
+                    setSelected(item.target);
+                  }}
+                >
+                  <strong>{item.title}</strong>
+                  <small>
+                    {item.target.kind === 'heading' &&
+                    item.target.slug.startsWith('block:')
+                      ? zh
+                        ? '段落 · '
+                        : 'Block · '
+                      : ''}
+                    {item.detail}
+                  </small>
+                </WorkspaceButton>
+              ))}
               {(['text', 'cell', 'embed'] as const).map((kind) => {
                 const items = relations.filter(
                   (r) =>
                     r.kind === kind &&
-                    (r.target.fileId === fileId || r.sourceFileId === fileId),
+                    ((r.target.kind !== 'folder' &&
+                      r.target.fileId === fileId) ||
+                      r.sourceFileId === fileId),
                 );
                 return (
                   <section key={kind}>
@@ -139,8 +182,7 @@ export function KnowledgePanel({
                     </h3>
                     {items.map((relation, i) => (
                       <div key={i} className="workspace-knowledge-relation">
-                        <button
-                          className="vm-btn vm-btn--secondary"
+                        <WorkspaceButton
                           type="button"
                           onClick={() =>
                             setSelected(
@@ -150,13 +192,30 @@ export function KnowledgePanel({
                             )
                           }
                         >
-                          {relation.sourceFileId === fileId
-                            ? '→ ' + targetLabel(relation.target)
-                            : '← ' + titleFor(relation.sourceFileId)}
+                          <strong>
+                            {relation.sourceFileId === fileId ? (
+                              <>
+                                <ArrowRight
+                                  strokeWidth={1.75}
+                                  size={14}
+                                  aria-hidden="true"
+                                />{' '}
+                                {targetLabel(relation.target)}
+                              </>
+                            ) : (
+                              <>
+                                <ArrowLeft
+                                  strokeWidth={1.75}
+                                  size={14}
+                                  aria-hidden="true"
+                                />{' '}
+                                {titleFor(relation.sourceFileId)}
+                              </>
+                            )}
+                          </strong>
                           <small>{relation.context}</small>
-                        </button>
-                        <button
-                          className="vm-btn vm-btn--secondary"
+                        </WorkspaceButton>
+                        <WorkspaceButton
                           type="button"
                           onClick={() => {
                             locate(relation);
@@ -164,7 +223,7 @@ export function KnowledgePanel({
                           }}
                         >
                           {zh ? '定位来源' : 'Locate source'}
-                        </button>
+                        </WorkspaceButton>
                       </div>
                     ))}
                   </section>
@@ -183,7 +242,9 @@ export function KnowledgePanel({
                 event.stopPropagation();
                 const target = parseWorkspaceLink(
                   anchor.getAttribute('href') ?? '',
-                  selected?.fileId,
+                  selected && selected.kind !== 'folder'
+                    ? selected.fileId
+                    : undefined,
                 );
                 if (target) setSelected(target);
               }}
@@ -191,44 +252,60 @@ export function KnowledgePanel({
               {selected ? (
                 <>
                   <h3>{targetLabel(selected)}</h3>
-                  <button
-                    className="vm-btn vm-btn--secondary"
-                    type="button"
-                    disabled={!exists}
-                    onClick={() => {
-                      open(selected);
-                      setShown(false);
-                    }}
-                  >
-                    {zh ? '打开原内容' : 'Open source'}
-                  </button>
-                  <button
-                    className="vm-btn vm-btn--secondary"
-                    type="button"
-                    disabled={!exists}
-                    onClick={() => {
-                      if (!navigator.clipboard) {
-                        setCopied(
-                          zh
-                            ? '复制不可用，请使用安全连接'
-                            : 'Clipboard unavailable',
-                        );
-                        return;
-                      }
-                      void navigator.clipboard
-                        .writeText(createWorkspaceLink(selected))
-                        .then(
-                          () => setCopied(zh ? '链接已复制' : 'Link copied'),
-                          () =>
-                            setCopied(zh ? '复制失败，请重试' : 'Copy failed'),
-                        );
-                    }}
-                  >
-                    {zh ? '复制链接' : 'Copy link'}
-                  </button>
-                  <span role="status">{copied}</span>
+                  <div className="workspace-knowledge-actions">
+                    <WorkspaceButton
+                      type="button"
+                      disabled={!sourceExists}
+                      onClick={() => {
+                        open(selected);
+                        setShown(false);
+                      }}
+                    >
+                      {zh ? '打开原内容' : 'Open source'}
+                    </WorkspaceButton>
+                    <WorkspaceButton
+                      type="button"
+                      disabled={!exists}
+                      onClick={() => {
+                        if (!navigator.clipboard) {
+                          setCopied(
+                            zh
+                              ? '复制不可用，请使用安全连接'
+                              : 'Clipboard unavailable',
+                          );
+                          return;
+                        }
+                        void navigator.clipboard
+                          .writeText(createWorkspaceLink(selected))
+                          .then(
+                            () => setCopied(zh ? '链接已复制' : 'Link copied'),
+                            () =>
+                              setCopied(
+                                zh ? '复制失败，请重试' : 'Copy failed',
+                              ),
+                          );
+                      }}
+                    >
+                      {zh ? '复制链接' : 'Copy link'}
+                    </WorkspaceButton>
+                    <span role="status">{copied}</span>
+                  </div>
                   {!exists ? (
-                    <p>{zh ? '目标已删除或不可用' : 'Target is unavailable'}</p>
+                    <WorkspaceAlert
+                      type="warning"
+                      title={
+                        zh ? '目标已删除或不可用' : 'Target is unavailable'
+                      }
+                      showIcon
+                    />
+                  ) : selected.kind === 'folder' ? (
+                    <p>
+                      {
+                        targets.find(
+                          (item) => item.href === createWorkspaceLink(selected),
+                        )?.detail
+                      }
+                    </p>
                   ) : previewDoc ? (
                     <DocumentPreview
                       key={createWorkspaceLink(selected)}
@@ -248,20 +325,7 @@ export function KnowledgePanel({
                       onReady={(controller) => {
                         if (controller && selected.kind === 'heading') {
                           if (selected.slug.startsWith('block:')) {
-                            const block = [
-                              ...(document
-                                .querySelector<HTMLDialogElement>(
-                                  'dialog.workspace-knowledge-dialog',
-                                )
-                                ?.querySelectorAll<HTMLElement>(
-                                  '[data-block-id]',
-                                ) ?? []),
-                            ].find(
-                              (node) =>
-                                node.dataset['blockId'] ===
-                                selected.slug.slice(6),
-                            );
-                            block?.scrollIntoView({ block: 'nearest' });
+                            controller.locateBlock(selected.slug.slice(6));
                             return;
                           }
                           const heading = controller
@@ -298,11 +362,13 @@ export function KnowledgePanel({
                   )}
                 </>
               ) : (
-                <p>
-                  {zh
-                    ? '选择关联内容预览，或搜索并复制内部链接。也可 Alt + 单击正文中的内部链接进行预览。'
-                    : 'Select related content to preview, or find and copy a link.'}
-                </p>
+                <WorkspaceEmptyState
+                  description={
+                    zh
+                      ? '选择关联内容预览，或搜索并复制内部链接。'
+                      : 'Select related content to preview, or find and copy a link.'
+                  }
+                />
               )}
             </section>
           </div>

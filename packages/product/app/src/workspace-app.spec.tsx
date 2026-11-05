@@ -783,8 +783,9 @@ describe('workspace shell navigation', () => {
       ).toBe('board-root');
     } else if (expected) {
       expect(
-        container.querySelector<HTMLInputElement>('.document-page__title')
-          ?.value,
+        container
+          .querySelector('.workspace-pane.is-active .document-page__content')
+          ?.getAttribute('aria-label'),
       ).toBe(expected === 'welcome' ? '阅读起点' : '文档导航');
       expect(container.querySelector('[data-testid="verd-frame"]')).toBeNull();
     } else {
@@ -886,7 +887,7 @@ describe('workspace shell navigation', () => {
       'unavailable',
     );
     expect(container.textContent).toContain('打开工作区文件夹');
-    expect(container.textContent).toContain('回到内置工作区');
+    expect(container.textContent).toContain('打开系统介绍');
   });
 
   it('does not import device legacy records into explicitly selected folders', async () => {

@@ -293,7 +293,10 @@ export const isGroupableCell = (
   if (!cell) return false;
   if (isGroupCell(cell)) return true;
   if (isEdgeCell(cell)) return registry.get(cell.kind)?.groupable === true;
-  return isNodeCell(cell) && registry.get(cell.kind)?.groupable !== false;
+  const util = registry.get(cell.kind);
+  return (
+    isNodeCell(cell) && util?.groupable !== false && !util?.lanes?.(cell).length
+  );
 };
 
 /** Resolve a leaf to the direct object in the current group/Frame focus. */

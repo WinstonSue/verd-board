@@ -9,6 +9,7 @@ import {
 import { createDocumentController } from './document-controller';
 import { DocumentGroupTracker, INPUT_GROUP_MS } from './document-groups';
 import { findInDocument } from './document-search';
+import { selectionColor } from './document-format-options';
 import type { DocumentChangeSource } from '../../types/document';
 
 HTMLElement.prototype.scrollIntoView ??= () => {};
@@ -60,6 +61,41 @@ const heading = (level: number, t: string) => ({
 });
 
 describe('createDocumentExtensions', () => {
+  it.each([
+    ['set-heading', 2, 'heading'],
+    ['insert-table', undefined, 'table'],
+    ['insert-horizontal-rule', undefined, 'horizontalRule'],
+  ] as const)(
+    'undoes the / query replacement and %s together in local history',
+    async (action, args, type) => {
+      const editor = makeEditor(doc(paragraph(text('Previous')), paragraph()));
+      const { controller } = makeController(editor);
+      vi.spyOn(editor.view, 'hasFocus').mockReturnValue(true);
+      editor.commands.setTextSelection(editor.state.doc.content.size - 1);
+      const from = editor.state.selection.from;
+      editor.commands.insertContent('/query');
+      const to = editor.state.selection.from;
+      const result = await controller.executeSlashAction(
+        `document.${action}`,
+        args,
+        {
+          from,
+          to,
+          text: '/query',
+          isCurrent: () => true,
+        },
+      );
+      expect(result.status).toBe('completed');
+      expect(editor.getJSON().content?.some((node) => node.type === type)).toBe(
+        true,
+      );
+      expect(editor.state.doc.textContent).toBe('Previous');
+      expect(editor.commands.undo()).toBe(true);
+      expect(editor.state.doc.lastChild?.textContent).toBe('/query');
+      expect(editor.state.doc.lastChild?.type.name).toBe('paragraph');
+    },
+  );
+
   it('inserts native canvas references, keeps their identity through HTML, and undoes insertion', async () => {
     const editor = makeEditor();
     const { controller, sources } = makeController(editor);
@@ -309,6 +345,31 @@ describe('createDocumentController', () => {
     expect(state.marks.bold).toBe(true);
   });
 
+  it('distinguishes theme colors and mixed selections, and removes highlight on reset', async () => {
+    const editor = makeEditor(doc(paragraph(text('red'), text('plain'))));
+    const { controller } = makeController(editor);
+    editor.commands.setTextSelection({ from: 1, to: 4 });
+    expect(selectionColor(editor)).toBeNull();
+    await controller.executeAction('document.set-text-color', '#d44c47');
+    expect(selectionColor(editor)).toBe('#d44c47');
+    editor.commands.setTextSelection({ from: 1, to: 9 });
+    expect(selectionColor(editor)).toBe('mixed');
+    editor.commands.setTextSelection({ from: 1, to: 4 });
+    await controller.executeAction('document.set-highlight', '#fef0b3');
+    expect(editor.getHTML()).toContain('<mark');
+    expect(selectionColor(editor, true)).toBe('#fef0b3');
+    await controller.executeAction('document.set-highlight', null);
+    expect(editor.getHTML()).not.toContain('<mark');
+    expect(selectionColor(editor, true)).toBeNull();
+    await controller.executeAction('document.set-text-color', null);
+    expect(selectionColor(editor)).toBeNull();
+    editor.commands.setMark('textStyle', {
+      color: '#112233',
+      colorSource: 'theme',
+    });
+    expect(selectionColor(editor)).toBeNull();
+  });
+
   it('lists headings for the table of contents and locates them', async () => {
     const editor = makeEditor(
       doc(
@@ -408,6 +469,50 @@ describe('createDocumentController', () => {
     expect(editor.getText()).toContain('dog sat cat');
   });
 
+  it('highlights the current search match without taking focus or changing content/history', () => {
+    const editor = makeEditor(doc(paragraph(text('cat sat cat'))));
+    document.body.append(editor.view.dom);
+    const input = document.createElement('input');
+    document.body.append(input);
+    input.focus();
+    const { controller, sources } = makeController(editor);
+    const before = editor.getJSON();
+    controller.selectMatch(controller.find('cat')[0], { focus: false });
+    expect(document.activeElement).toBe(input);
+    expect(
+      editor.view.dom.querySelector('[data-document-search-match]')
+        ?.textContent,
+    ).toBe('cat');
+    expect(editor.getJSON()).toEqual(before);
+    expect(editor.can().undo()).toBe(false);
+    expect(sources).toEqual([]);
+    controller.clearReveal?.();
+    expect(
+      editor.view.dom.querySelector('[data-document-search-match]'),
+    ).toBeNull();
+    controller.selectMatch(controller.find('cat')[1], { focus: false });
+    editor.commands.insertContent('dog');
+    expect(
+      editor.view.dom.querySelector('[data-document-search-match]'),
+    ).toBeNull();
+    input.remove();
+    editor.view.dom.remove();
+  });
+
+  it('highlights formula nodes without serializing the search state', () => {
+    const editor = makeEditor(
+      doc(paragraph({ type: 'inlineMath', attrs: { latex: 'x^2' } })),
+    );
+    const { controller } = makeController(editor);
+    const before = editor.getJSON();
+    controller.selectMatch(controller.find('x')[0], { focus: false });
+    expect(
+      editor.view.dom.querySelector('[data-document-search-match]'),
+    ).toBeTruthy();
+    expect(editor.getJSON()).toEqual(before);
+    expect(editor.can().undo()).toBe(false);
+  });
+
   it('finds formula sources and protects their nodes from ordinary replacements', async () => {
     const editor = makeEditor(
       doc(
@@ -485,6 +590,38 @@ describe('createDocumentController', () => {
 });
 
 describe('internal link insertion', () => {
+  it('changes only the selected part of an existing link, then extends a caret edit within its link', async () => {
+    const before = 'https://example.com/old';
+    const next = 'https://example.com/new';
+    const editor = makeEditor(
+      doc(
+        paragraph(text('abcdef', [{ type: 'link', attrs: { href: before } }])),
+      ),
+    );
+    const { controller } = makeController(editor);
+    editor.commands.setTextSelection({ from: 3, to: 5 });
+    await controller.executeAction('document.set-link', next);
+    const parts = () =>
+      editor
+        .getJSON()
+        .content?.[0]?.content?.map((node) => [
+          node.text,
+          node.marks?.[0]?.attrs?.['href'],
+        ]);
+    expect(parts()).toEqual([
+      ['ab', before],
+      ['cd', next],
+      ['ef', before],
+    ]);
+    editor.commands.setTextSelection(4);
+    await controller.executeAction('document.set-link', null);
+    expect(parts()).toEqual([
+      ['ab', before],
+      ['cd', undefined],
+      ['ef', before],
+    ]);
+  });
+
   it('inserts a labeled link at a caret as one undo step, and preserves selected text', async () => {
     const editor = makeEditor();
     const { controller } = makeController(editor);
@@ -521,6 +658,37 @@ describe('internal link insertion', () => {
 });
 
 describe('stable paragraph operations', () => {
+  it('copies the innermost paragraph address in a legacy list', async () => {
+    const editor = makeEditor(
+      doc({
+        type: 'bulletList',
+        content: [{ type: 'listItem', content: [paragraph(text('Nested'))] }],
+      }),
+    );
+    const { controller } = makeController(editor);
+    editor.commands.setTextSelection(4);
+    const writeText = vi.fn(async () => {});
+    const descriptor = Object.getOwnPropertyDescriptor(navigator, 'clipboard');
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: { writeText },
+    });
+    try {
+      expect(await controller.executeAction('document.anchor-block')).toEqual({
+        status: 'completed',
+      });
+      const nested = editor.state.doc.firstChild!.firstChild!.firstChild!;
+      expect(nested.attrs['blockId']).toBeTruthy();
+      expect(writeText).toHaveBeenCalledWith(
+        expect.stringMatching(
+          new RegExp('block%3A' + nested.attrs['blockId'] + '$'),
+        ),
+      );
+    } finally {
+      if (descriptor) Object.defineProperty(navigator, 'clipboard', descriptor);
+      else Reflect.deleteProperty(navigator, 'clipboard');
+    }
+  });
   it('keeps the original address when pasting before it and gives copies unique identities', async () => {
     const editor = makeEditor(doc(paragraph(text('Original'))));
     const { controller } = makeController(editor);
@@ -569,5 +737,86 @@ describe('stable paragraph operations', () => {
         ),
     ).toBe(true);
     expect(editor.getText()).not.toContain('copied source');
+  });
+});
+
+describe('document block ordering', () => {
+  it('moves original nodes as one history entry and rejects a stale drop', async () => {
+    const editor = makeEditor(
+      doc(
+        { ...paragraph(text('A')), attrs: { blockId: 'id-a' } },
+        { ...paragraph(text('B')), attrs: { blockId: 'id-b' } },
+        { ...paragraph(text('C')), attrs: { blockId: 'id-c' } },
+      ),
+    );
+    const { controller, sources } = makeController(editor);
+    const before = editor.state.doc;
+    const stale = controller
+      .actions()
+      .find((action) => action.id === 'document.block-move')!
+      .capture();
+    await controller.executeAction('document.block-move', {
+      source: 0,
+      toIndex: 2,
+    });
+    const identities = () =>
+      editor.getJSON().content?.map((block) => block.attrs?.['blockId']);
+    expect(identities()).toEqual(['id-b', 'id-c', 'id-a']);
+    expect(editor.state.doc.lastChild).toBe(before.firstChild);
+    expect(sources).toContain('drop');
+    expect(await stale.execute({ source: 0, toIndex: 2 })).toMatchObject({
+      code: 'stale-context',
+    });
+    editor.commands.undo();
+    expect(identities()).toEqual(['id-a', 'id-b', 'id-c']);
+    editor.commands.redo();
+    expect(identities()).toEqual(['id-b', 'id-c', 'id-a']);
+  });
+
+  it('keeps a collapsed list subtree with its reordered item through undo', async () => {
+    const editor = makeEditor(
+      doc({
+        type: 'bulletList',
+        content: [
+          {
+            type: 'listItem',
+            attrs: { blockId: 'first' },
+            content: [
+              paragraph(text('Parent')),
+              {
+                type: 'bulletList',
+                content: [
+                  { type: 'listItem', content: [paragraph(text('Child'))] },
+                ],
+              },
+            ],
+          },
+          {
+            type: 'listItem',
+            attrs: { blockId: 'second' },
+            content: [paragraph(text('Sibling'))],
+          },
+        ],
+      }),
+    );
+    const { controller } = makeController(editor);
+    const parent = () =>
+      editor.view.dom.querySelector('[data-block-id="first"]')!;
+    parent()
+      .querySelector<HTMLButtonElement>('button.document-list-fold')!
+      .click();
+    await controller.executeAction('document.block-move', {
+      source: 1,
+      toIndex: 1,
+    });
+    expect(editor.state.doc.firstChild?.lastChild?.attrs['blockId']).toBe(
+      'first',
+    );
+    expect(parent().querySelector('ul')?.style.display).toBe('none');
+    editor.commands.undo();
+    expect(editor.state.doc.firstChild?.firstChild?.attrs['blockId']).toBe(
+      'first',
+    );
+    expect(parent().querySelector('ul')?.style.display).toBe('none');
   });
 });

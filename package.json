@@ -25,7 +25,7 @@
     "test:consumer": "pnpm --filter consumer-vite build && node scripts/test-consumer.mjs",
     "pack:dry": "node scripts/pack-public.mjs --dry-run",
     "format": "prettier --write .",
-    "release": "pnpm changeset version",
+    "release": "pnpm changeset version && node scripts/sync-product-version.mjs",
     "pub": "pnpm run build && pnpm changeset publish",
     "postinstall": "node scripts/sync-skills.mjs",
     "skills:sync": "node scripts/sync-skills.mjs",
@@ -41,8 +41,7 @@
     "test:agent-consumer": "node scripts/test-agent-consumer.mjs",
     "agent": "node packages/product/agent/dist/cli.js",
     "prepare:agent-resources": "node scripts/prepare-agent-resources.mjs",
-    "build:content": "pnpm --filter @sue/verd-board-docs --filter @sue/verd-board-agent-patterns build",
-    "publish:content": "pnpm build:content && pnpm --filter @sue/verd-board-docs --filter @sue/verd-board-agent-patterns publish"
+    "build:content": "node scripts/prepare-builtin-workspaces.mjs"
   },
   "devDependencies": {
     "@eslint/js": "^9.22.0",

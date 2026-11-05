@@ -8,12 +8,38 @@ import { simplifyOrthogonal } from '../geometry/route';
 import type { Point } from '../interfaces/point';
 import { createCellRegistry, type CellRegistry } from './registry';
 import {
+  isEdgeCell,
   isFrameCell,
   isNodeCell,
   type CellStore,
   type EdgeCell,
   type EdgeTerminal,
+  type NodeCell,
 } from './types';
+
+export const availableEdgePorts = (
+  store: CellStore,
+  node: NodeCell,
+  end: 'source' | 'target',
+  excludingEdgeId?: string,
+) =>
+  (node.ports ?? []).filter((port) => {
+    if (port.direction === (end === 'source' ? 'input' : 'output'))
+      return false;
+    if (port.maxConnections === undefined) return true;
+    const count = Object.values(store.cells).filter(
+      (edge) =>
+        isEdgeCell(edge) &&
+        edge.id !== excludingEdgeId &&
+        [edge.source, edge.target].some(
+          (terminal) =>
+            'cellId' in terminal &&
+            terminal.cellId === node.id &&
+            terminal.portId === port.id,
+        ),
+    ).length;
+    return count < port.maxConnections;
+  });
 
 /** Only direct siblings are eligible: snapping can never create a cross-Frame edge. */
 export const snapEdgeTerminal = (
@@ -25,6 +51,7 @@ export const snapEdgeTerminal = (
   tolerance = 12,
   registry: CellRegistry = createCellRegistry(),
   candidates?: readonly string[],
+  opposite?: { terminal: EdgeTerminal; edgeId?: string },
 ): EdgeTerminal => {
   const frame = store.cells[frameId];
   if (!isFrameCell(frame)) throw new Error('Missing edge frame');
@@ -33,29 +60,34 @@ export const snapEdgeTerminal = (
     if (!isNodeCell(node) || isFrameCell(node) || node.hidden || node.locked)
       continue;
     if (registry.get(kind)?.canConnect?.(node) === false) continue;
-    const ports =
-      node.ports?.filter((port) =>
-        end === 'source'
-          ? port.direction !== 'input'
-          : port.direction !== 'output',
-      ) ?? [];
-    const nearestPort = ports
-      .map((port) => ({ port, point: portAnchor(node.geometry, port).point }))
-      .sort(
-        (a, b) =>
-          Math.hypot(a.point[0] - point[0], a.point[1] - point[1]) -
-          Math.hypot(b.point[0] - point[0], b.point[1] - point[1]),
-      )[0];
+    const ports = availableEdgePorts(store, node, end, opposite?.edgeId);
+    const nearest = ports
+      .map((port) => {
+        const [x, y] = portAnchor(node.geometry, port).point;
+        return { port, distance: Math.hypot(x - point[0], y - point[1]) };
+      })
+      .sort((a, b) => a.distance - b.distance);
     const inside = hitNodeShape(node, point, tolerance);
+    if (nearest[0]?.distance <= tolerance)
+      return { cellId: node.id, portId: nearest[0].port.id };
     if (
-      nearestPort &&
-      (Math.hypot(
-        nearestPort.point[0] - point[0],
-        nearestPort.point[1] - point[1],
-      ) <= tolerance ||
-        (registry.get(kind)?.freeTerminals !== true && inside))
-    )
-      return { cellId: node.id, portId: nearestPort.port.id };
+      nearest.length &&
+      registry.get(kind)?.freeTerminals !== true &&
+      inside
+    ) {
+      const other =
+        opposite && 'cellId' in opposite.terminal
+          ? store.cells[opposite.terminal.cellId]
+          : undefined;
+      const preferred = isNodeCell(other)
+        ? registry
+            .get(kind)
+            ?.preferredPortSide?.(node.geometry, other.geometry, end)
+        : undefined;
+      const candidate =
+        nearest.find(({ port }) => port.side === preferred) ?? nearest[0];
+      return { cellId: node.id, portId: candidate.port.id };
+    }
     if (registry.get(kind)?.freeTerminals !== true || !inside) continue;
     const g = node.geometry,
       local = unrotateNodePoint(g, point);
@@ -77,7 +109,11 @@ export const replaceEdgeTerminal = (
   terminal: EdgeTerminal,
 ): EdgeCell => {
   const next = { ...edge, [end]: terminal };
-  if ('points' in next.route && next.route.points) {
+  if (
+    next.route.mode !== 'orthogonal' &&
+    'points' in next.route &&
+    next.route.points
+  ) {
     const points = next.route.points.map((p) => [...p] as Point);
     points[end === 'source' ? 0 : points.length - 1] = edgeTerminalPosition(
       store,

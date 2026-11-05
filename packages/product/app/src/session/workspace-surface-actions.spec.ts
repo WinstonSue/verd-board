@@ -463,3 +463,41 @@ it('merges queued project field patches against the latest configuration', async
   });
   registry.dispose();
 });
+
+it('queues favorite changes against live config and preserves manual ordering', async () => {
+  const session = await open();
+  session.setWorkspaceConfig({
+    navigation: { favorites: [], sort: 'manual', order: { '': ['b', 'a'] } },
+  });
+  await session.flush();
+  let readonly = false;
+  const registry = createWorkspaceActionRegistry({
+    getContext: () => ({ session, readonly }),
+    dialogs: createWorkspaceSurfaceActions({ getState: ui, invoke: () => {} }),
+  });
+  const favorite = 'workspace.file.favorite';
+  const unfavorite = 'workspace.file.unfavorite';
+  expect(registry.getActionState(favorite, { fileId: 'a' }).visible).toBe(true);
+  expect(registry.getActionState(unfavorite, { fileId: 'a' }).visible).toBe(
+    false,
+  );
+  const result = await Promise.all([
+    registry.executeAction(favorite, { fileId: 'a' }),
+    registry.executeAction(favorite, { fileId: 'b' }),
+  ]);
+  expect(result.map((item) => item.status)).toEqual(['completed', 'completed']);
+  expect(registry.getActionState(unfavorite, { fileId: 'a' }).visible).toBe(
+    true,
+  );
+  await registry.executeAction(unfavorite, { fileId: 'a' });
+  expect(session.getState().config.value['navigation']).toEqual({
+    favorites: ['b'],
+    sort: 'manual',
+    order: { '': ['b', 'a'] },
+  });
+  readonly = true;
+  expect(registry.getActionState(unfavorite, { fileId: 'b' }).visible).toBe(
+    false,
+  );
+  registry.dispose();
+});

@@ -46,6 +46,8 @@ export const createArchitecturePlugin = (): CellPlugin => ({
           : { source: 'top', target: 'bottom' };
       },
       id: 'architecture',
+      sharedKinds: ['swimlane'],
+      laneMemberKinds: ['architecture-module'],
       anchorKinds: ['architecture-layer'],
       kinds: Object.values(ArchitectureKind),
       allowGroups: true,

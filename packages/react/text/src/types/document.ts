@@ -56,7 +56,22 @@ export interface DocumentHistoryAdapter {
   redo(): void | Promise<unknown>;
 }
 
+export interface DocumentReferenceChoice {
+  href: string;
+  title: string;
+  path?: string;
+  kind: 'document' | 'canvas';
+}
+
 export interface DocumentEditorProps {
+  locale?: 'zh' | 'en';
+  referenceChoices?: readonly DocumentReferenceChoice[];
+  onEditSelectionLink?(): void;
+  selectionLinkOpen?: boolean;
+  captureInsertionScope?(): () => boolean;
+  onInsertionError?(message: string): void;
+  /** Opens the host's canvas picker with a command bound to this insertion point. */
+  onPickFrame?(insert: import('@sue/board-common').BoundAction): void;
   folding?: import('../components/document/folding-store').DocumentFoldingAdapter;
   foldingKey?: string;
   onAttachmentFile?: import('../components/document/document-resources').DocumentResourceHost['store'];
@@ -161,6 +176,6 @@ export interface DocumentEditorController {
   /** Reveals the zero-based direct embed occurrence in the current body. */
   locateFrameReference(targetFrameId: string, occurrence: number): boolean;
   find(query: string, options?: DocumentSearchOptions): DocumentSearchMatch[];
-  selectMatch(match: DocumentSearchMatch): void;
+  selectMatch(match: DocumentSearchMatch, options?: { focus?: boolean }): void;
   getCharacterCount(): number;
 }

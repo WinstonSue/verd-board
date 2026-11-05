@@ -7,6 +7,12 @@ import {
   type WorkspaceActionBinding,
 } from './workspace-action-bindings';
 import { WorkspaceActionConfirmation } from './workspace-action-confirmation';
+import {
+  WorkspaceAlert,
+  WorkspaceButton,
+  WorkspaceEmptyState,
+  WorkspaceTag,
+} from './workspace-design';
 
 export interface WorkspaceTrashEntry {
   entryId: string;
@@ -59,9 +65,11 @@ export function WorkspaceTrash({
   const visible = (id: string, args?: unknown) =>
     actionSource ? !!binding(id, args)?.getState().visible : !readonly;
   const disabled = (id: string, args?: unknown) =>
-    actionSource
+    busy ||
+    readonly ||
+    (actionSource
       ? !binding(id, args)?.getState().enabled
-      : busy || (id !== 'workspace.trash.retry' && unconfirmed);
+      : id !== 'workspace.trash.retry' && unconfirmed);
   const label = (id: string, fallback: string) =>
     binding(id)?.label(locale) ?? fallback;
   const zh = locale === 'zh';
@@ -153,12 +161,9 @@ export function WorkspaceTrash({
         <div>
           <h2 id={titleId}>
             {t.title}{' '}
-            <span
-              className="workspace-trash-count"
-              data-testid="workspace-trash-count"
-            >
+            <WorkspaceTag data-testid="workspace-trash-count">
               {entries.length}
-            </span>
+            </WorkspaceTag>
           </h2>
           <p className="workspace-trash-scope">
             {t.scope}
@@ -169,9 +174,10 @@ export function WorkspaceTrash({
         {visible('workspace.trash.confirm-clear', {
           entryIds: entries.map((entry) => entry.entryId),
         }) && (
-          <button
+          <WorkspaceButton
             type="button"
-            className="workspace-trash-clear"
+            danger
+            icon={<Trash2 strokeWidth={1.75} size={16} aria-hidden />}
             data-action-id="workspace.trash.confirm-clear"
             disabled={
               disabled('workspace.trash.confirm-clear', {
@@ -197,9 +203,8 @@ export function WorkspaceTrash({
               )
             }
           >
-            <Trash2 size={16} aria-hidden />
             {label('workspace.trash.confirm-clear', t.clear)}
-          </button>
+          </WorkspaceButton>
         )}
       </div>
       {(actionSource
@@ -208,28 +213,35 @@ export function WorkspaceTrash({
           })?.getState().reason === 'readonly'
         : readonly) && <p>{t.readonly}</p>}
       {unconfirmed && (
-        <div className="workspace-trash-error" role="alert">
-          <p>{t.unconfirmed}</p>
-          {visible('workspace.trash.retry') && onRetry && (
-            <button
-              type="button"
-              data-action-id="workspace.trash.retry"
-              disabled={disabled('workspace.trash.retry')}
-              onClick={() =>
-                void perform(() =>
-                  call('workspace.trash.retry', undefined, onRetry),
-                )
-              }
-            >
-              {label('workspace.trash.retry', t.retry)}
-            </button>
-          )}
-        </div>
+        <WorkspaceAlert
+          type="warning"
+          role="alert"
+          title={t.unconfirmed}
+          action={
+            visible('workspace.trash.retry') &&
+            onRetry && (
+              <WorkspaceButton
+                type="button"
+                data-action-id="workspace.trash.retry"
+                disabled={disabled('workspace.trash.retry')}
+                onClick={() =>
+                  void perform(() =>
+                    call('workspace.trash.retry', undefined, onRetry),
+                  )
+                }
+              >
+                {label('workspace.trash.retry', t.retry)}
+              </WorkspaceButton>
+            )
+          }
+        />
       )}
       {!entries.length ? (
         <div className="workspace-trash-empty">
-          <Trash2 size={32} aria-hidden />
-          <p>{t.empty}</p>
+          <WorkspaceEmptyState
+            image={WorkspaceEmptyState.PRESENTED_IMAGE_SIMPLE}
+            description={t.empty}
+          />
         </div>
       ) : (
         <ul className="workspace-trash-list">
@@ -241,7 +253,7 @@ export function WorkspaceTrash({
               return (
                 <li key={entry.entryId} className="workspace-trash-row">
                   <div className="workspace-trash-file">
-                    <FileArchive size={18} aria-hidden />
+                    <FileArchive strokeWidth={1.75} size={18} aria-hidden />
                     <div>
                       <strong title={name}>{name}</strong>
                       <span title={entry.originalPath}>
@@ -264,8 +276,11 @@ export function WorkspaceTrash({
                     entryId: entry.entryId,
                   }) && (
                     <div className="workspace-trash-actions">
-                      <button
+                      <WorkspaceButton
                         type="button"
+                        icon={
+                          <RotateCcw strokeWidth={1.75} size={15} aria-hidden />
+                        }
                         data-action-id="workspace.trash.restore"
                         disabled={disabled('workspace.trash.restore', {
                           entryId: entry.entryId,
@@ -281,12 +296,14 @@ export function WorkspaceTrash({
                           )
                         }
                       >
-                        <RotateCcw size={15} aria-hidden />
                         {label('workspace.trash.restore', t.restore)}
-                      </button>
-                      <button
+                      </WorkspaceButton>
+                      <WorkspaceButton
                         type="button"
-                        className="workspace-trash-purge"
+                        danger
+                        icon={
+                          <Trash2 strokeWidth={1.75} size={15} aria-hidden />
+                        }
                         data-action-id="workspace.trash.confirm-purge"
                         disabled={disabled('workspace.trash.confirm-purge', {
                           entryIds: [entry.entryId],
@@ -311,9 +328,8 @@ export function WorkspaceTrash({
                           )
                         }
                       >
-                        <Trash2 size={15} aria-hidden />
                         {label('workspace.trash.confirm-purge', t.purge)}
-                      </button>
+                      </WorkspaceButton>
                     </div>
                   )}
                 </li>
@@ -322,9 +338,7 @@ export function WorkspaceTrash({
         </ul>
       )}
       {error && !confirmation && (
-        <p className="workspace-trash-error" role="alert">
-          {error}
-        </p>
+        <WorkspaceAlert type="error" role="alert" title={error} />
       )}
       {confirmation && (
         <WorkspaceActionConfirmation

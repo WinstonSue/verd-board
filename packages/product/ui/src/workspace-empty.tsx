@@ -35,7 +35,7 @@ export function WorkspaceEmpty({
     <div className="workspace-empty">
       <div className="workspace-empty-card">
         <div className="workspace-empty-icon">
-          <FolderOpen size={24} aria-hidden />
+          <FolderOpen strokeWidth={1.75} size={24} aria-hidden />
         </div>
         <div className="workspace-empty-title">{t.title}</div>
         <div className="workspace-empty-body">{t.body}</div>
@@ -45,7 +45,7 @@ export function WorkspaceEmpty({
             type="button"
             onClick={onCreate}
           >
-            <FilePlus2 size={15} />
+            <FilePlus2 strokeWidth={1.75} size={15} />
             {t.create}
           </button>
           {onCreateDocument ? (
@@ -54,7 +54,7 @@ export function WorkspaceEmpty({
               type="button"
               onClick={onCreateDocument}
             >
-              <FileText size={15} />
+              <FileText strokeWidth={1.75} size={15} />
               {t.createDocument}
             </button>
           ) : null}
@@ -64,7 +64,7 @@ export function WorkspaceEmpty({
               type="button"
               onClick={onBrowse}
             >
-              <FolderOpen size={15} />
+              <FolderOpen strokeWidth={1.75} size={15} />
               {t.browse}
             </button>
           ) : null}

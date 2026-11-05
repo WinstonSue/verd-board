@@ -1,4 +1,4 @@
-import { useRef, useState, type RefObject } from 'react';
+import { useRef, useState, type RefObject, type MouseEvent } from 'react';
 import { flushSync } from 'react-dom';
 import { MoreHorizontal, type LucideIcon } from 'lucide-react';
 import {
@@ -76,7 +76,7 @@ export function FrameAppMenu({
       }
       setOpen(next);
     },
-    placement: 'bottom-start',
+    placement: 'bottom-end',
     strategy: 'fixed',
     middleware: [
       offset(8),
@@ -120,7 +120,9 @@ export function FrameAppMenu({
           buttonRef.current = node;
           refs.setReference(node);
         }}
-        buttonProps={getReferenceProps()}
+        buttonProps={getReferenceProps({
+          onMouseDown: (event: MouseEvent) => event.preventDefault(),
+        })}
       />
       {open && (
         <FloatingPortal>

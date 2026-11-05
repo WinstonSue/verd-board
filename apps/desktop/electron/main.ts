@@ -1,5 +1,4 @@
 import { readFileSync } from 'node:fs';
-import { createBuiltinPackageService } from './builtin-package-service';
 import { createBuiltinWorkspaceUpdater } from './builtin-workspace-update';
 import { app, BrowserWindow, dialog, ipcMain, session, shell } from 'electron';
 import * as path from 'path';
@@ -28,6 +27,18 @@ import {
 import { createDesktopWorkspaceManager } from './workspace-startup';
 
 const { legacyUserDataRoot } = configureApplicationIdentity(app);
+const interactiveDev =
+  !app.isPackaged && process.env['VERDBOARD_INTERACTIVE_DEV'] === '1';
+if (interactiveDev) {
+  if (!app.requestSingleInstanceLock()) {
+    console.error('[VerdBoard Dev] 该开发数据目录已有实例，请先退出原实例。');
+    process.exit(0);
+  }
+
+  // A stopped or crashed Vite owner closes the inherited IPC channel.
+  // Use the regular quit path so the renderer can flush pending edits.
+  if (process.connected) process.once('disconnect', () => app.quit());
+}
 const applicationIcon = path.join(
   __dirname,
   app.isPackaged ? '../build/icon.png' : '../build/icon-dev.png',
@@ -92,6 +103,9 @@ const workspaceManager = createDesktopWorkspaceManager({
         : path.resolve(__dirname, '../../../workspace'),
   legacyStorage: () => storagePath,
   legacyUserDataRoot,
+  appVersion: () =>
+    JSON.parse(readFileSync(path.resolve(__dirname, '../package.json'), 'utf8'))
+      .version,
   explicitRoot: process.env['VERDBOARD_WORKSPACE_PATH'],
   pickDirectory: pickWorkspaceDirectory,
 });
@@ -112,40 +126,15 @@ const contentSource = (kind: 'project' | 'agent-patterns') =>
             ? '../../../workspace'
             : '../../../packages/product/agent-patterns/workspace',
         );
-const packageService = createBuiltinPackageService({
-  userData: () => app.getPath('userData'),
-  appVersion: () =>
-    app.isPackaged
-      ? app.getVersion()
-      : (JSON.parse(
-          readFileSync(path.resolve(__dirname, '../package.json'), 'utf8'),
-        ).version as string),
-  source: contentSource,
-  ...(!app.isPackaged && process.env['VERDBOARD_CONTENT_REGISTRY']
-    ? { registry: process.env['VERDBOARD_CONTENT_REGISTRY'] }
-    : {}),
-});
-packageService.subscribe(() => {
-  for (const window of BrowserWindow.getAllWindows())
-    window.webContents.send('workspace-host:builtin-changed');
-});
+const productVersion = JSON.parse(
+  readFileSync(path.resolve(__dirname, '../package.json'), 'utf8'),
+).version as string;
 const builtinUpdater = createBuiltinWorkspaceUpdater({
-  resolveCandidate: (id, kind) => packageService.resolve(id, kind),
   host: workspaceHost,
   userData: () => app.getPath('userData'),
-  source: (kind) =>
-    kind === 'project'
-      ? !app.isPackaged && process.env['VERDBOARD_BUILTIN_WORKSPACE_PATH']
-        ? path.resolve(process.env['VERDBOARD_BUILTIN_WORKSPACE_PATH'])
-        : app.isPackaged
-          ? path.join(process.resourcesPath, 'workspace')
-          : path.resolve(__dirname, '../../../workspace')
-      : app.isPackaged
-        ? path.join(process.resourcesPath, 'agent-patterns')
-        : path.resolve(
-            __dirname,
-            '../../../packages/product/agent-patterns/workspace',
-          ),
+  appVersion: () => productVersion,
+  source: contentSource,
+  registerBackup: (root) => workspaceManager.rememberBackup(root),
 });
 
 function trustedSender(
@@ -203,25 +192,28 @@ function registerWorkspaceHostIpc() {
         : folders[kind];
     return new Uint8Array(readFileSync(path.join(root, folder, filename)));
   });
-  handleTrusted('workspace-host:builtin-check', (_, force) =>
-    packageService.check(force === true),
-  );
-  handleTrusted('workspace-host:builtin-prepare', (_, id) =>
-    packageService.prepare(id),
-  );
-  handleTrusted('workspace-host:builtin-snooze', (_, id) =>
-    packageService.snooze(id),
-  );
-  handleTrusted('workspace-host:builtin-info', async (_, h) => {
-    const info = await builtinUpdater.info(h);
-    return info ? { ...info, update: packageService.status(info.kind) } : null;
+  const workspaceRoot = (handle: { key: string }) => {
+    const workspace = workspaceHost.workspaces.get(handle.key);
+    if (!workspace) throw new Error('Workspace unavailable');
+    return workspace.root;
+  };
+  handleTrusted('workspace-host:location', (_, h) => workspaceRoot(h));
+  handleTrusted('workspace-host:reveal-location', async (_, h) => {
+    const error = await shell.openPath(workspaceRoot(h));
+    if (error) throw new Error(error);
   });
-  handleTrusted('workspace-host:builtin-update', async (_, h, id) => {
-    const next = await builtinUpdater.update(h, id);
-    void packageService.check(true).catch(() => {});
-    return workspaceManager.open({
-      path: workspaceHost.workspaces.get(next.key)!.root,
-    });
+  handleTrusted('workspace-host:builtin-info', (_, h) =>
+    builtinUpdater.info(h),
+  );
+  handleTrusted('workspace-host:builtin-update', async (_, h, id, options) => {
+    let backupParent: string | undefined;
+    if (options?.backup === true) {
+      const picked = await pickWorkspaceDirectory();
+      if (!picked) return null;
+      backupParent = picked;
+    }
+    const next = await builtinUpdater.update(h, id, { backupParent });
+    return workspaceManager.open({ path: workspaceRoot(next) });
   });
   handleTrusted('workspace-host:builtin-backups', async (_, h) => {
     const error = await shell.openPath(await builtinUpdater.backups(h));
@@ -242,6 +234,7 @@ function registerWorkspaceHostIpc() {
           path.join(app.getPath('userData'), 'workspaces', 'agent-patterns'),
           {
             preserveExisting: true,
+            appVersion: productVersion,
             source: app.isPackaged
               ? path.join(process.resourcesPath, 'agent-patterns')
               : path.resolve(
@@ -469,7 +462,9 @@ function createWindow() {
       else window.close();
     },
     (message) => {
+      const retryQuit = interactiveDev && quitting;
       quitting = false;
+      if (window.isDestroyed()) return;
       void dialog
         .showMessageBox(window, {
           type: 'error',
@@ -481,9 +476,13 @@ function createWindow() {
           cancelId: 1,
         })
         .then((result) => {
-          if (result.response === 0 && !window.isDestroyed()) window.close();
+          if (result.response !== 0 || window.isDestroyed()) return;
+          if (retryQuit) app.quit();
+          else window.close();
         });
     },
+    // A Vite reload can replace the renderer before it acknowledges the save.
+    interactiveDev ? 15_000 : undefined,
   );
   const ready = (event: Electron.IpcMainEvent, value: boolean) => {
     if (event.sender === window.webContents) shutdown.setReady(value === true);

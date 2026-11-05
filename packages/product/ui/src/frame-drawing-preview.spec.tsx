@@ -170,7 +170,7 @@ const paths = (element: Element) =>
     .filter(
       (path) =>
         !path.closest(
-          '[data-selection-handles], [data-vector-controls], [data-edge-hit], [data-vector-hit], [data-port-id], [data-node-highlight], [data-edge-highlight], [data-frame-export-exclude="interaction-stroke"]',
+          'foreignObject, [data-selection-handles], [data-vector-controls], [data-edge-hit], [data-vector-hit], [data-port-id], [data-node-highlight], [data-edge-highlight], [data-frame-export-exclude="interaction-stroke"]',
         ),
     )
     .map((path) => ({

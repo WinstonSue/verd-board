@@ -1,3 +1,4 @@
+import { selectHistoryAction } from './app-actions';
 import { expect, test, type Locator, type Page } from '@playwright/test';
 import { readFileSync } from 'node:fs';
 import { writeFile } from 'node:fs/promises';
@@ -33,8 +34,11 @@ const action = (page: Page, name: string) =>
 async function ready(page: Page) {
   if (!(await editorCanvas(page).isVisible())) {
     // Home is a workspace view independent of the retained selected tab.
-    const tab = page.getByRole('tab', { selected: true }).first();
-    await expect(tab).toBeVisible();
+    await expect(page.getByRole('tab').first()).toBeVisible();
+    const selected = page.getByRole('tab', { selected: true });
+    const tab = (await selected.count())
+      ? selected.first()
+      : page.getByRole('tab').first();
     const id = await tab.getAttribute('data-tab-id');
     if (!id) throw new Error('Missing retained canvas tab identity');
     await page
@@ -193,7 +197,7 @@ test('refused fullscreen still lectures read-only, focuses on click and restores
   }
   await expect(geometries(editorCanvas(page))).toHaveCount(3);
   // Leave both undo and redo populated before entering the lecture.
-  await action(page, '撤销').click();
+  await selectHistoryAction(page, '撤销');
   await expect(geometries(editorCanvas(page))).toHaveCount(2);
   await selectDrawingTool(page, '选择');
   const selectedId = (await geometries(editorCanvas(page))
@@ -241,7 +245,7 @@ test('refused fullscreen still lectures read-only, focuses on click and restores
   );
   const fallbackBounds = await mode(page).evaluate((element) => {
     const box = element.getBoundingClientRect();
-    const pane = element.closest('.verd-frame')!.getBoundingClientRect();
+    const pane = element.closest('.workspace-shell')!.getBoundingClientRect();
     return [
       box.left - pane.left,
       box.top - pane.top,
@@ -339,13 +343,13 @@ test('refused fullscreen still lectures read-only, focuses on click and restores
   ).toHaveAttribute('data-save-state', 'saved');
   expect((await persistedWorkspace(page))?.records).toEqual(before?.records);
   // Redo still inserts the third shape; undo then reaches the original edits.
-  await action(page, '重做').click();
+  await selectHistoryAction(page, '重做');
   await expect(geometries(editorCanvas(page))).toHaveCount(3);
-  await action(page, '撤销').click();
+  await selectHistoryAction(page, '撤销');
   await expect(geometries(editorCanvas(page))).toHaveCount(2);
-  await action(page, '撤销').click();
+  await selectHistoryAction(page, '撤销');
   await expect(geometries(editorCanvas(page))).toHaveCount(1);
-  expect(fallbackBounds, 'CSS fallback covers the current pane').toEqual(
+  expect(fallbackBounds, 'CSS fallback covers the workspace').toEqual(
     [0, 0, 0, 0].map((value) => expect.closeTo(value, 0)),
   );
 });

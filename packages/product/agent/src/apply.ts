@@ -89,11 +89,13 @@ export async function applyPreparedBatch(root: string, plan: PreparedBatch) {
   for (const e of plan.files)
     final.set(workspaceFileId(e.file), { ...e, source: '', version: '' });
   const baseline = new Set(
-    validateNativeWorkspace(snapshot.entries).map((d) => JSON.stringify(d)),
+    validateNativeWorkspace(snapshot.entries, {
+      folderIds: snapshot.folderIds,
+    }).map((d) => JSON.stringify(d)),
   );
-  const errors = validateNativeWorkspace([...final.values()]).filter(
-    (d) => d.severity === 'error' && !baseline.has(JSON.stringify(d)),
-  );
+  const errors = validateNativeWorkspace([...final.values()], {
+    folderIds: snapshot.folderIds,
+  }).filter((d) => d.severity === 'error' && !baseline.has(JSON.stringify(d)));
   if (errors.length)
     throw new Error('VALIDATION_FAILED: ' + JSON.stringify(errors));
   const host = createFsWorkspaceHost({

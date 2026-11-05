@@ -1,3 +1,8 @@
+import {
+  FOLDER_ID_FILE,
+  isFolderIdentityPath,
+  readFolderIdentity,
+} from '@sue/verd-board-app/headless';
 import { readWorkspaceGeneration } from './workspace-lock';
 import * as crypto from 'crypto';
 import { watch, type FSWatcher } from 'fs';
@@ -96,8 +101,12 @@ const fsyncDir = async (target: string) => {
 };
 
 /** Publishes bytes atomically: same-directory temp file plus rename. */
-const publishFile = async (target: string, content: Uint8Array) => {
-  await fs.mkdir(path.dirname(target), { recursive: true });
+const publishFile = async (
+  target: string,
+  content: Uint8Array,
+  createParents = true,
+) => {
+  if (createParents) await fs.mkdir(path.dirname(target), { recursive: true });
   const tmp = `${target}.${process.pid}.${crypto.randomUUID()}.tmp`;
   await fs.writeFile(tmp, content);
   const handle = await fs.open(tmp, 'r');
@@ -423,7 +432,11 @@ const createFsWorkspaceHostInner = (
   const applyJournalOp = async (root: string, op: JournalOp) => {
     if (op.kind === 'write') {
       const content = await fs.readFile(metaPath(root, op.staged));
-      await publishFile(absolute(root, op.path), content);
+      await publishFile(
+        absolute(root, op.path),
+        content,
+        !isFolderIdentityPath(op.path),
+      );
       return;
     }
     if (op.kind === 'move') {
@@ -1030,6 +1043,16 @@ const createFsWorkspaceHostInner = (
       }
       for (const [index, op] of (request.writes ?? []).entries()) {
         const relativePath = normalizeWorkspacePath(op.path);
+        if (
+          isFolderIdentityPath(relativePath) &&
+          (await virtualStat(parentWorkspacePath(relativePath) ?? '')) !==
+            'directory'
+        )
+          return fail(
+            reject(request.transactionId, 'source-missing', {
+              path: relativePath,
+            }),
+          );
         if (op.expectedVersion === null) {
           const stat = await virtualStat(relativePath);
           if (stat !== 'absent')
@@ -1369,7 +1392,7 @@ const createFsWorkspaceHostInner = (
       .catch(() => [] as string[]);
     const entries: WorkspaceEntryMeta[] = [];
     for (const name of names.sort()) {
-      if ([META_DIR, '.verdboard'].includes(name)) continue;
+      if ([META_DIR, '.verdboard', FOLDER_ID_FILE].includes(name)) continue;
       const relativePath = dir ? `${dir}/${name}` : name;
       const stat = await fs
         .stat(absolute(root, relativePath))
@@ -1380,6 +1403,14 @@ const createFsWorkspaceHostInner = (
           path: relativePath,
           kind: 'directory',
           canvas: false,
+          folderId: readFolderIdentity(
+            await fs
+              .readFile(
+                absolute(root, `${relativePath}/${FOLDER_ID_FILE}`),
+                'utf8',
+              )
+              .catch(() => ''),
+          ),
         });
         entries.push(...(await readDirTree(root, relativePath)));
       } else if (stat.isFile()) {

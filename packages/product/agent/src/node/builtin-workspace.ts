@@ -19,6 +19,7 @@ export const isBuiltinAsset = (relative: string) =>
 export async function readBuiltinRelease(
   source: string,
   kind: BuiltinWorkspaceKind,
+  appVersion?: string,
 ) {
   const files: Record<string, string> = {};
   async function walk(dir = '') {
@@ -55,7 +56,9 @@ export async function readBuiltinRelease(
   const snapshot = await readNativeSnapshotUnlocked(source);
   const errors = [
     ...snapshot.diagnostics,
-    ...validateNativeWorkspace(snapshot.entries),
+    ...validateNativeWorkspace(snapshot.entries, {
+      folderIds: snapshot.folderIds,
+    }),
   ].filter((d) => d.severity === 'error');
   const ids = new Set(
     snapshot.entries.map((e) => workspaceFileId(e.file as never)),
@@ -94,7 +97,8 @@ export async function readBuiltinRelease(
           minimumAppVersion: stored.minimumAppVersion as string,
         }
       : {}),
-    source: stored?.source === 'npm' ? ('npm' as const) : ('bundled' as const),
+    appVersion: stored?.appVersion ?? appVersion,
+    source: 'bundled' as const,
     format: 'verd-builtin-workspace' as const,
     version: 1,
     kind,
@@ -108,8 +112,9 @@ export async function stageBuiltinWorkspace(
   source: string,
   target: string,
   kind: BuiltinWorkspaceKind,
+  appVersion?: string,
 ) {
-  const release = await readBuiltinRelease(source, kind);
+  const release = await readBuiltinRelease(source, kind, appVersion);
   for (const [relative, hash] of Object.entries(release.files)) {
     const bytes = await fs.readFile(path.join(source, relative));
     if (digest(bytes) !== hash)
@@ -128,6 +133,7 @@ export async function stageBuiltinWorkspace(
   await fs.writeFile(
     path.join(target, '.verdscrolls/instance.json'),
     JSON.stringify({
+      appVersion: release.appVersion,
       source: release.source,
       packageName: release.packageName,
       packageVersion: release.packageVersion,

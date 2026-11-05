@@ -3,8 +3,8 @@
   inset: auto;
   display: flex;
   flex-direction: column;
-  flex: 0 0 300px;
-  width: 300px;
+  flex: 0 0 var(--frame-inspector-width, 300px);
+  width: var(--frame-inspector-width, 300px);
   height: 100%;
   max-height: none;
   box-sizing: border-box;
@@ -119,6 +119,9 @@
   }
 }
 .frame-inspector__header {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
   flex: 0 0 auto;
   padding: 16px;
   border-bottom: 1px solid var(--vm-border);
@@ -131,6 +134,24 @@
     width: 100%;
     margin-top: 6px;
     font-weight: 600;
+  }
+}
+.frame-inspector__title {
+  flex: 1;
+  min-width: 0;
+}
+.frame-inspector__actions {
+  flex: none;
+}
+.verd-frame .frame-inspector .frame-inspector__actions .frame-tool-button {
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--vm-foreground-secondary);
+  &:hover {
+    background: var(--vm-fill-hover);
   }
 }
 .frame-inspector__type {

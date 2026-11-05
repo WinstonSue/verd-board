@@ -1,3 +1,8 @@
+import {
+  FOLDER_ID_FILE,
+  isFolderIdentityPath,
+  readFolderIdentity,
+} from './folder-identity';
 import { isFrameFileV2 } from '../frames/frame-files';
 import { isDocumentFileV1 } from '../documents/document-files';
 import {
@@ -281,6 +286,13 @@ export const createMemoryWorkspaceHost = (
       for (const op of request.writes ?? []) {
         const path = normalizeWorkspacePath(op.path);
         const node = nodes.get(path);
+        if (
+          isFolderIdentityPath(path) &&
+          nodes.get(parentWorkspacePath(path) ?? '')?.kind !== 'directory'
+        )
+          return fail(
+            reject(request.transactionId, 'source-missing', { path }),
+          );
         if (op.expectedVersion === null) {
           if (node !== undefined)
             return fail(
@@ -384,10 +396,20 @@ export const createMemoryWorkspaceHost = (
     },
     async readSnapshot(handle) {
       const workspace = workspaceOf(handle);
+      const folderId = (path: string) => {
+        const marker = workspace.nodes.get(`${path}/${FOLDER_ID_FILE}`);
+        return marker?.kind === 'file'
+          ? readFolderIdentity(decode(marker.content))
+          : undefined;
+      };
       const entries: WorkspaceEntryMeta[] = [...workspace.nodes.entries()]
+        .filter(
+          ([path, node]) => node.kind !== 'file' || !isFolderIdentityPath(path),
+        )
         .map(([path, node]) => ({
           path,
           kind: node.kind,
+          ...(node.kind === 'directory' ? { folderId: folderId(path) } : {}),
           canvas: node.kind === 'file' && isCanvasPath(path),
           document: (node.kind === 'file' && isDocumentPath(path)) || undefined,
           version: node.kind === 'file' ? node.version : undefined,

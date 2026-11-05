@@ -295,6 +295,9 @@ class UmlNodeUtil extends NodeUtil {
   }
 }
 class UmlEdgeUtil extends EdgeUtil {
+  get orthogonalRoute() {
+    return this.kind === 'uml-relation';
+  }
   constructor(readonly kind: string) {
     super();
   }

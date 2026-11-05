@@ -196,11 +196,13 @@ export function FrameEditorProperties(
                   'aria-label': 'Edge route',
                   children: (
                     <>
-                      {['auto', 'straight', 'orthogonal', 'curve'].map(
-                        (mode) => (
-                          <option key={mode}>{mode}</option>
-                        ),
-                      )}
+                      {(controller?.runtime.registry.get(cell.kind)
+                        ?.orthogonalRoute
+                        ? ['auto', 'orthogonal']
+                        : ['auto', 'straight', 'orthogonal', 'curve']
+                      ).map((mode) => (
+                        <option key={mode}>{mode}</option>
+                      ))}
                     </>
                   ),
                 },

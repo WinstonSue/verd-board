@@ -1,4 +1,5 @@
 import { test, expect, type Page } from '@playwright/test';
+import { activeTabTitle } from './tab-actions';
 
 const paragraph = (value: string) => ({
   type: 'paragraph',
@@ -72,9 +73,7 @@ const openSource = async (page: Page) => {
     .locator('.file-tree-name')
     .filter({ hasText: /^Navigation source$/ })
     .click();
-  await expect(activePane(page).locator('.document-page__title')).toHaveValue(
-    'Navigation source',
-  );
+  await expect(activeTabTitle(page)).toHaveText('Navigation source');
 };
 const selectedHeadingIndex = (page: Page) =>
   activePane(page)
@@ -119,13 +118,9 @@ test('native documents navigate to unmounted files, duplicate sections and canva
   });
   await expect(link).toHaveAttribute('href', /^verd:\/\/file\/e2e-target#/);
   await link.click();
-  await expect(activePane(page).locator('.document-page__title')).toHaveValue(
-    'Navigation source',
-  );
+  await expect(activeTabTitle(page)).toHaveText('Navigation source');
   await link.click({ modifiers: ['ControlOrMeta'] });
-  await expect(activePane(page).locator('.document-page__title')).toHaveValue(
-    'Navigation target',
-  );
+  await expect(activeTabTitle(page)).toHaveText('Navigation target');
   await expect.poll(() => selectedHeadingIndex(page)).toBe(1);
   await expect(
     activePane(page)
@@ -196,9 +191,7 @@ test('native documents navigate to unmounted files, duplicate sections and canva
   await activePane(page)
     .getByRole('link', { name: 'Open second target section', exact: true })
     .click();
-  await expect(activePane(page).locator('.document-page__title')).toHaveValue(
-    'Navigation target',
-  );
+  await expect(activeTabTitle(page)).toHaveText('Navigation target');
   // Readonly editors need no DOM caret; the target section must still scroll.
   await expect(
     activePane(page)

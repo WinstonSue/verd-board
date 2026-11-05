@@ -12,6 +12,7 @@ import {
   planCellLayout,
   type Cell,
   type CellOperation,
+  frameLaneScene,
   type CellStore,
   type NodeCell,
   type FrameCell,
@@ -323,6 +324,12 @@ export function runOperations(
         };
       if (op.geometry)
         node.geometry = { ...node.geometry, ...op.geometry, derived: false };
+      if (
+        !old &&
+        op.kind === 'swimlane' &&
+        frameLaneScene(store, op.parentId ?? store.rootId, registry())
+      )
+        node.data = { ...(node.data as object), laneMembers: {} };
       if (op.data) node.data = { ...(node.data as object), ...op.data };
       if (op.appearance)
         node.appearance = { ...node.appearance, ...op.appearance };
@@ -391,9 +398,28 @@ export function runOperations(
                 cellType: 'edge',
                 source: {
                   cellId: source.id,
-                  portId: op.sourcePort ?? 'bottom',
+                  portId:
+                    op.sourcePort ??
+                    workflow.defaultWorkflowPort(
+                      store,
+                      source,
+                      target,
+                      'source',
+                      id,
+                    ),
                 },
-                target: { cellId: target.id, portId: op.targetPort ?? 'top' },
+                target: {
+                  cellId: target.id,
+                  portId:
+                    op.targetPort ??
+                    workflow.defaultWorkflowPort(
+                      store,
+                      target,
+                      source,
+                      'target',
+                      id,
+                    ),
+                },
                 route: { mode: 'orthogonal' },
                 labels: [],
               };
@@ -403,8 +429,14 @@ export function runOperations(
           throw new Error('Edge kind cannot change');
         edge = {
           ...previous,
-          source: edge.source,
-          target: edge.target,
+          source:
+            'cellId' in previous.source && previous.source.cellId === source.id
+              ? previous.source
+              : edge.source,
+          target:
+            'cellId' in previous.target && previous.target.cellId === target.id
+              ? previous.target
+              : edge.target,
           ...(op.relation || op.messageKind
             ? {
                 data: {

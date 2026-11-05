@@ -55,7 +55,7 @@ export function FrameShapePicker({
           className="frame-shape-path"
           onClick={onSelectPath}
         >
-          <Waypoints size={16} aria-hidden />
+          <Waypoints strokeWidth={1.75} size={16} aria-hidden />
           {pathLabel}
         </button>
       )}

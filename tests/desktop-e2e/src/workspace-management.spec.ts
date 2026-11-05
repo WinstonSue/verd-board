@@ -50,11 +50,49 @@ test('Desktop creates an empty workspace and keeps removed history data on disk'
         .getByRole('heading', { name: '搜索', exact: true }),
     ).toBeVisible();
     await page.getByTestId('workspace-menu-trigger').click();
-    await modal
-      .locator('.workspace-switcher-row')
-      .filter({ hasText: 'initial' })
-      .getByRole('button', { name: '移除记录', exact: true })
-      .click();
+    const recent = modal.locator('.workspace-switcher-row').filter({
+      hasText: 'initial',
+    });
+    const search = modal.getByRole('searchbox', { name: '查找工作区' });
+    const current = modal.locator('.workspace-switcher-row[aria-current]');
+    const currentName = current.locator('.workspace-switcher-text');
+    const badge = current.getByText('当前', { exact: true });
+    const nameBox = (await currentName.boundingBox())!;
+    const badgeBox = (await badge.boundingBox())!;
+    expect(badgeBox.x - nameBox.x - nameBox.width).toBeCloseTo(8, 0);
+    await expect(search).toBeFocused();
+    await expect(search).toHaveCSS('outline-style', 'none');
+    const focusedBorder = await search.evaluate(
+      (input) => getComputedStyle(input).borderColor,
+    );
+    const settings = modal.getByRole('button', {
+      name: '工作区设置',
+      exact: true,
+    });
+    await settings.hover();
+    await expect(settings).not.toHaveCSS(
+      'background-color',
+      'rgba(0, 0, 0, 0)',
+    );
+    const hoverBackground = await settings.evaluate(
+      (item) => getComputedStyle(item).backgroundColor,
+    );
+    await recent.hover();
+    await expect(recent).toHaveCSS('background-color', hoverBackground);
+    await expect(search).toBeFocused();
+    await expect(search).toHaveCSS('border-color', focusedBorder);
+    await page.keyboard.press('ArrowDown');
+    const recentName = recent.getByRole('button', {
+      name: 'initial',
+      exact: true,
+    });
+    await expect(recentName).toBeFocused();
+    await expect(search).not.toHaveCSS('border-color', focusedBorder);
+    await expect(recent).not.toHaveCSS('background-color', hoverBackground);
+    await expect(recentName).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)');
+    await expect(badge).toBeVisible();
+    expect((await badge.boundingBox())?.x).toBe(badgeBox.x);
+    await recent.getByRole('button', { name: '移除记录', exact: true }).click();
     expect((await stat(path.join(directory, 'initial'))).isDirectory()).toBe(
       true,
     );

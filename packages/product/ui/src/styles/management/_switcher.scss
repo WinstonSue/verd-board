@@ -1,60 +1,149 @@
-.workspace-switcher-label {
-  padding: 16px 8px 8px;
-}
-.workspace-switcher-row {
-  gap: 8px;
-  min-height: var(--vm-list-row-detail);
-  &:hover,
-  &:focus-within {
-    background: var(--vm-fill-hover);
+.workspace-switcher-dialog {
+  --workspace-switcher-row-height: 36px;
+
+  .workspace-switcher-search > .vm-input {
+    height: var(--workspace-switcher-row-height);
+    padding-inline-start: 35px;
+    border-radius: var(--vm-radius-sm);
+    background: var(--vm-background-subtle);
+
+    &:focus {
+      border-color: var(--vm-focus);
+      outline: none;
+    }
+  }
+
+  .workspace-switcher-section {
+    margin-block-start: 12px;
+  }
+
+  .workspace-switcher-label {
+    margin-block-end: 4px;
+    padding: 3px 8px;
+  }
+
+  .workspace-switcher-item,
+  .workspace-switcher-name {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    box-sizing: border-box;
+    min-width: 0;
+    min-height: var(--workspace-switcher-row-height);
+    border: 0;
+    border-radius: var(--vm-radius-sm);
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    text-align: start;
+
+    > svg {
+      flex: none;
+      color: var(--vm-foreground-secondary);
+    }
+  }
+
+  .workspace-switcher-item {
+    width: 100%;
+    padding: 0 8px;
+  }
+
+  .workspace-switcher-name {
+    flex: 1;
+    padding: 3px 0;
+  }
+
+  .workspace-switcher-operation,
+  .workspace-switcher-name {
+    cursor: pointer;
+
+    &:disabled {
+      cursor: default;
+    }
+
+    &:focus {
+      outline: none;
+    }
+  }
+
+  .workspace-switcher-operation:disabled,
+  .workspace-switcher-row:not([aria-current])
+    .workspace-switcher-name:disabled {
+    opacity: 0.5;
+  }
+
+  .workspace-switcher-copy {
+    display: grid;
+    gap: 2px;
+    min-width: 0;
+  }
+
+  .workspace-switcher-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+
+    .vm-badge {
+      padding: 1px 5px;
+    }
+  }
+
+  .workspace-switcher-text,
+  .workspace-switcher-copy > small {
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .workspace-switcher-copy > small {
+    font-size: var(--vm-text-xs);
+    color: var(--vm-foreground-secondary);
+  }
+
+  .workspace-switcher-row:has(.workspace-switcher-name:focus),
+  .workspace-switcher-operation:focus {
+    background: var(--vm-fill-active);
+  }
+
+  @media (hover: hover) {
+    .workspace-switcher-row:has(.workspace-switcher-name:enabled):hover:not(
+        :focus-within
+      ),
+    .workspace-switcher-operation:enabled:hover:not(:focus) {
+      background: var(--vm-fill-hover);
+    }
+  }
+
+  .workspace-switcher-actions {
+    display: flex;
+    flex: none;
+    gap: 2px;
+    opacity: 0;
+  }
+
+  .workspace-switcher-row:is(:hover, :focus-within)
+    .workspace-switcher-actions {
+    opacity: 1;
+  }
+
+  @media (hover: none) {
+    .workspace-switcher-actions {
+      opacity: 1;
+    }
+  }
+
+  @media (forced-colors: active) {
+    .workspace-switcher-search > .vm-input:focus,
+    .workspace-switcher-row:has(.workspace-switcher-name:focus-visible),
+    .workspace-switcher-operation:focus-visible {
+      outline: 1px solid Highlight;
+      outline-offset: -1px;
+    }
   }
 }
-.workspace-switcher-name {
-  flex: 1;
-  min-width: 0;
-  padding: 0;
-  border: 0;
-  background: transparent;
-  color: inherit;
-  font: inherit;
-  text-align: left;
-  cursor: pointer;
-  &:disabled {
-    cursor: default;
-  }
-}
-.workspace-switcher-name > span,
-.workspace-switcher-name > small {
-  display: block;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.workspace-switcher-name > small {
-  font-size: var(--vm-text-xs);
-  color: var(--vm-foreground-secondary);
-}
-.workspace-switcher-actions {
-  display: flex;
-  flex: none;
-  gap: 2px;
-  opacity: 0;
-}
-.workspace-switcher-row:hover .workspace-switcher-actions,
-.workspace-switcher-row:focus-within .workspace-switcher-actions {
-  opacity: 1;
-}
-.workspace-switcher-operations {
-  display: grid;
-  gap: 2px;
-  margin-top: 12px;
-  padding-top: 12px;
-  border-top: 1px solid var(--vm-border);
-}
-.workspace-switcher-operation {
-  justify-content: flex-start;
-  padding-inline: 8px;
-}
+
 .management-modal form {
   display: grid;
   gap: 16px;

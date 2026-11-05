@@ -1,3 +1,5 @@
+import { openHistoryAction } from './app-actions';
+import { selectHistoryAction } from './app-actions';
 import { expect, test, type Locator } from '@playwright/test';
 import { activateBoardTab, backToPreviousCanvas } from './workspace-nav';
 import { expandPropertyGroup } from './property-group';
@@ -300,7 +302,10 @@ for (const width of [1280, 800])
     if (width === 390) {
       await page.getByTestId('canvas-status-fit').click();
       await nodes.first().click();
-      await page.getByRole('button', { name: '属性', exact: true }).click();
+      const expandProperties = page
+        .getByTestId('inspector-expand')
+        .locator('visible=true');
+      if (await expandProperties.isVisible()) await expandProperties.click();
       const inspector = page.locator('.frame-inspector.is-open');
       await expect(inspector).toBeVisible();
       await expect
@@ -349,10 +354,8 @@ test('camera navigation never saves, left tooltips sit beside icons, and selecti
   await page.goto('/');
   const skip = page.getByRole('button', { name: '跳过', exact: true });
   if (await skip.isVisible().catch(() => false)) await skip.click();
-  const undo = page.getByRole('button', { name: '撤销', exact: true });
+  const undo = await openHistoryAction(page, '撤销');
   await expect(undo).toBeDisabled();
-  await undo.locator('..').hover();
-  await expect(page.getByRole('tooltip')).toContainText('撤销');
   await page.keyboard.press('Escape');
   const hand = page.getByRole('button', { name: '手型', exact: true });
   await hand.hover();
@@ -403,7 +406,7 @@ test('camera navigation never saves, left tooltips sit beside icons, and selecti
     'data-save-state',
     'saved',
   );
-  await page.getByRole('button', { name: '撤销', exact: true }).click();
+  await selectHistoryAction(page, '撤销');
   await expect(canvas(page).locator('[data-cell-kind="geometry"]')).toHaveCount(
     0,
   );
@@ -673,9 +676,8 @@ for (const modifier of ['ctrlKey', 'metaKey'] as const)
     }
     await page.waitForTimeout(550);
     expect(await writes()).toBe(beforeWrites);
-    await expect(
-      page.getByRole('button', { name: '撤销', exact: true }),
-    ).toBeDisabled();
+    await expect(await openHistoryAction(page, '撤销')).toBeDisabled();
+    await page.keyboard.press('Escape');
     await expect(page.getByTestId('save-status')).toHaveAttribute(
       'data-save-state',
       'saved',

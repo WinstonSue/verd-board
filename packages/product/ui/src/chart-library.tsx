@@ -56,7 +56,7 @@ export interface ChartLibraryProps {
     fileId: string,
     organization: ChartOrganization,
   ): void | Promise<void>;
-  onBack(): void;
+  onBack?(): void;
   query?: string;
   diagram?: 'all' | ChartLibraryRow['diagram'];
   owner?: string;
@@ -199,16 +199,18 @@ export function ChartLibrary({
       aria-label={locale === 'zh' ? '图表库' : 'Chart library'}
     >
       <header className="chart-library-header">
-        <button
-          type="button"
-          className="workspace-button-ghost"
-          disabled={!available(back).enabled}
-          onClick={() => run(back, onBack)}
-        >
-          <ArrowLeft size={16} aria-hidden />
-          {back?.label(locale) ??
-            (locale === 'zh' ? '返回编辑' : 'Back to editor')}
-        </button>
+        {onBack && (
+          <button
+            type="button"
+            className="workspace-button-ghost"
+            disabled={!available(back).enabled}
+            onClick={() => run(back, onBack)}
+          >
+            <ArrowLeft strokeWidth={1.75} size={16} aria-hidden />
+            {back?.label(locale) ??
+              (locale === 'zh' ? '返回编辑' : 'Back to editor')}
+          </button>
+        )}
         <h2>
           {picker
             ? locale === 'zh'
@@ -259,7 +261,7 @@ export function ChartLibrary({
       </header>
       <div className="chart-library-filters">
         <label className="chart-library-search">
-          <Search size={16} aria-hidden />
+          <Search strokeWidth={1.75} size={16} aria-hidden />
           <input
             type="search"
             aria-label={locale === 'zh' ? '搜索名称' : 'Search name'}
@@ -342,6 +344,7 @@ export function ChartLibrary({
                 const Icon = diagramIcons[row.diagram];
                 const open = bind(picker ? 'library.pick' : 'file.open', {
                   fileId: row.frameId,
+                  origin: picker ? undefined : 'library',
                   ...(picker ? { present: () => onPick?.(row.frameId) } : {}),
                 });
                 const ownership = bind('library.organization-dialog', {
@@ -364,6 +367,7 @@ export function ChartLibrary({
                         <span>{row.name}</span>
                         {row.conflicted ? (
                           <TriangleAlert
+                            strokeWidth={1.75}
                             size={13}
                             className="file-tree-conflict"
                             aria-label={

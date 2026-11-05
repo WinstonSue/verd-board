@@ -391,9 +391,17 @@ describe('tool shortcuts and real focus', () => {
       );
     }
     await act(async () => root.render(<Harness />));
+    const menu = () =>
+      container.querySelector<HTMLButtonElement>(
+        '[data-testid="app-menu-trigger"]',
+      )!;
     const undo = () =>
-      container.querySelector('[aria-label="撤销"]') as HTMLButtonElement;
+      document.querySelector(
+        '[role="menuitem"][aria-label="撤销"]',
+      ) as HTMLButtonElement;
+    await act(async () => menu().click());
     expect(undo().disabled).toBe(true);
+    await act(async () => menu().click());
     const topic = container.querySelector('[data-cell-id="topic"]')!;
     await act(async () => {
       topic.dispatchEvent(
@@ -415,6 +423,7 @@ describe('tool shortcuts and real focus', () => {
         }),
       );
     });
+    await act(async () => menu().click());
     expect(undo().disabled).toBe(false);
     await act(async () => {
       (

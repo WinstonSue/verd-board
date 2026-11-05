@@ -1,3 +1,4 @@
+import { selectHistoryAction } from './app-actions';
 import { expect, test, type Page } from '@playwright/test';
 import { readFileSync } from 'node:fs';
 import { createInlineText } from '../../../packages/engine/common/src/public-api';
@@ -162,9 +163,9 @@ test('an unrelated obstacle keeps a lightweight preview and reroutes on commit, 
   await expect(path).toHaveAttribute('d', original);
   await page.mouse.up();
   await expect(path).toHaveAttribute('d', 'M50 50 L50 300');
-  await page.getByRole('button', { name: '撤销', exact: true }).click();
+  await selectHistoryAction(page, '撤销');
   await expect(path).toHaveAttribute('d', original);
-  await page.getByRole('button', { name: '重做', exact: true }).click();
+  await selectHistoryAction(page, '重做');
   await expect(path).toHaveAttribute('d', 'M50 50 L50 300');
   await expect
     .poll(async () => (await savedCells(page)).obstacle?.geometry?.x)

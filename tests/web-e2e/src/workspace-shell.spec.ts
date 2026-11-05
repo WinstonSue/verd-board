@@ -1,3 +1,4 @@
+import { selectSetting } from '../../helpers/settings-controls';
 import { test, expect, type Page } from '@playwright/test';
 import { selectDrawingTool } from './drawing-tools';
 import {
@@ -162,16 +163,18 @@ test('workspace settings use a centered dialog, retain names, restore focus and 
   await expect(dialog).toBeVisible();
   expect((await dialog.boundingBox())!.width).toBeLessThanOrEqual(1040);
   await page.getByTestId('settings-nav-workspace.project').click();
-  await dialog
-    .getByRole('combobox', { name: '宽度来源' })
-    .selectOption('custom');
+  await selectSetting(
+    dialog.getByRole('combobox', { name: '宽度来源' }),
+    'custom',
+  );
   const width = page.getByTestId('workspace-settings-mind-width');
   await width.fill('320');
   await expect(width).toHaveValue('320');
   await width.press('Tab');
-  await dialog
-    .getByRole('combobox', { name: '宽度来源' })
-    .selectOption('inherit');
+  await selectSetting(
+    dialog.getByRole('combobox', { name: '宽度来源' }),
+    'inherit',
+  );
   await expect(width).toHaveCount(0);
   await page.getByTestId('settings-nav-workspace.project').click();
   const input = page.getByTestId('workspace-settings-name');
@@ -286,12 +289,14 @@ test('workspace settings own trash while My contains personal preferences', asyn
     exact: true,
   });
   await expect(
-    navigation.getByRole('button', { name: '常规', exact: true }),
+    navigation.getByRole('menuitem', { name: '常规', exact: true }),
   ).toHaveAttribute('aria-current', 'page');
-  await navigation.getByRole('button', { name: '回收站', exact: true }).click();
+  await navigation
+    .getByRole('menuitem', { name: '回收站', exact: true })
+    .click();
   await expect(page.getByTestId('workspace-trash')).toContainText('回收站为空');
   await expect(page.getByTestId('workspace-trash')).toContainText('当前工作区');
-  await navigation.getByRole('button', { name: '常规', exact: true }).click();
+  await navigation.getByRole('menuitem', { name: '常规', exact: true }).click();
   await expect(page.getByTestId('workspace-settings-name')).toBeVisible();
   expect((await navigation.boundingBox())!.x).toBeLessThan(
     (await page.locator('.settings-sections-main').boundingBox())!.x,
@@ -303,4 +308,31 @@ test('workspace settings own trash while My contains personal preferences', asyn
   await expect(page.getByTestId('settings-nav-workspace.trash')).toHaveCount(1);
   await page.getByTestId('my-back').click();
   await expect(page.getByTestId('workspace-my')).toBeFocused();
+});
+
+test('file tree favorite menu stays in sync across the sidebar, all content and reload', async ({
+  page,
+}) => {
+  const file = rows(page).first();
+  await file.hover();
+  await file.locator('.file-tree-more').click();
+  await menu(page).getByRole('menuitem', { name: '收藏', exact: true }).click();
+  const shortcut = page.locator(
+    '.management-sidebar-body .management-shortcut',
+  );
+  await expect(shortcut).toHaveCount(1);
+  await page.getByRole('button', { name: '所有内容', exact: true }).click();
+  await expect(
+    page
+      .getByTestId('workspace-management-page')
+      .getByRole('button', { name: '取消收藏', exact: true }),
+  ).toBeVisible();
+  await page.reload();
+  await expect(shortcut).toHaveCount(1);
+  await file.hover();
+  await file.locator('.file-tree-more').click();
+  await menu(page)
+    .getByRole('menuitem', { name: '取消收藏', exact: true })
+    .click();
+  await expect(shortcut).toHaveCount(0);
 });

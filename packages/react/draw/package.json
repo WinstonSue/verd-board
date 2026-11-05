@@ -20,7 +20,8 @@
     "@sue/board-core": "workspace:*",
     "@sue/board-react": "workspace:*",
     "@sue/board-draw": "workspace:*",
-    "@sue/board-common": "workspace:*"
+    "@sue/board-common": "workspace:*",
+    "lucide-react": "1.47.0"
   },
   "peerDependencies": {
     "react": ">=18",

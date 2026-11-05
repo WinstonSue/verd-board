@@ -1,5 +1,5 @@
 import type { CellChange, FrameSnapshot } from '@sue/board-core';
-import type { WorkspaceTarget } from '@sue/board-common';
+import type { WorkspaceFileTarget } from '@sue/board-common';
 import {
   measureBoardText,
   type FrameHistoryAdapter,
@@ -8,11 +8,20 @@ import {
   type FrameCanvasController,
   type FrameLinkHost,
 } from '@sue/board-react';
-import { useEffect, useMemo, useState } from 'react';
+import { useContext, useEffect, useMemo, useState } from 'react';
+import { LinkEditorHost } from '@sue/board-react-text';
+import { useI18n } from './i18n';
+import { WorkspaceLinkEditor } from './workspace-link-editor';
 import { createVerdFramePluginSet } from './frame-plugins';
 import { FrameProductShell } from './frame-product-shell';
 import { useMindMaxWidth } from './mind-preferences';
 export interface VerdFrameProps {
+  presentation?: {
+    active: boolean;
+    fullscreenRoot: import('react').RefObject<HTMLElement | null>;
+    onChange(active: boolean): void;
+    onBack?(): void;
+  };
   documentReferences?: import('@sue/board-react').FrameDocumentReferences;
   onReferenceDocument?(): void;
   onCreateDocumentFrame?(): void;
@@ -31,7 +40,7 @@ export interface VerdFrameProps {
   onReferenceExisting?(): void;
   navigation?: {
     requestId: number;
-    target: WorkspaceTarget;
+    target: WorkspaceFileTarget;
     signal?: AbortSignal;
   };
   onNavigationResult?(
@@ -41,6 +50,7 @@ export interface VerdFrameProps {
   onReady?(controller: FrameCanvasController | null): void;
   linkHost?: FrameLinkHost;
   saveStatus?: 'idle' | 'saving' | 'saved' | 'error';
+  showSaveStatus?: boolean;
   lastSavedAt?: number;
   onRetrySave?(): void;
   detachedFrameIds?: string[];
@@ -64,6 +74,8 @@ export interface VerdFrameProps {
 
 /** Full-product preset. Minimal embedding uses FrameEditor from board-react. */
 export function VerdFrame(props: VerdFrameProps) {
+  const host = useContext(LinkEditorHost);
+  const { language } = useI18n();
   const preference = useMindMaxWidth();
   const mindMaxWidth = props.mindDefaultWidth ?? preference;
   const [fontRevision, setFontRevision] = useState(0);
@@ -83,12 +95,22 @@ export function VerdFrame(props: VerdFrameProps) {
       },
     });
   }, [mindMaxWidth, fontRevision]);
-  return (
+  const content = (
     <FrameProductShell
       {...props}
       mindMaxWidth={mindMaxWidth}
       pluginSet={pluginSet}
     />
+  );
+  return host ? (
+    content
+  ) : (
+    <WorkspaceLinkEditor
+      locale={language}
+      scope={props.readonly || props.suspended ? null : props.frameId}
+    >
+      {content}
+    </WorkspaceLinkEditor>
   );
 }
 export type { FrameInstanceHost, FrameOpenSource } from '@sue/board-react';

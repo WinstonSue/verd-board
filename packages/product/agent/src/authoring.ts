@@ -170,9 +170,15 @@ export async function prepareAuthoringBatch(
   );
   const key = (d: import('./types').AuthoringDiagnostic) =>
     JSON.stringify([d.code, d.fileId, d.cellId, d.path, d.pointer, d.message]);
-  const baseline = new Set(validateNativeWorkspace(original).map(key));
+  const baseline = new Set(
+    validateNativeWorkspace(original, { folderIds: snapshot.folderIds }).map(
+      key,
+    ),
+  );
   const affected = new Set(changes.map((c) => c.fileId));
-  const diagnostics = validateNativeWorkspace(result.entries).map((d) =>
+  const diagnostics = validateNativeWorkspace(result.entries, {
+    folderIds: snapshot.folderIds,
+  }).map((d) =>
     baseline.has(key(d)) && !affected.has(d.fileId ?? '')
       ? { ...d, severity: 'warning' as const }
       : d,

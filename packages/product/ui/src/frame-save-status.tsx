@@ -46,11 +46,7 @@ export function FrameSaveStatus({
         }
       >
         {label}
-        {time
-          ? ` · ${time}`
-          : status === 'saved'
-            ? ` · ${t('save.unknownTime')}`
-            : ''}
+        {time ? ` · ${time}` : ''}
       </span>
       {status === 'error' && onRetrySave && (
         <button onClick={onRetrySave}>{t('save.retry')}</button>

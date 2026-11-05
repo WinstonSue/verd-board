@@ -4,6 +4,7 @@ import { test, expect, type ElectronApplication } from '@playwright/test';
 import { cp, mkdir, mkdtemp, readdir, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
+import { activeTabTitle } from '../../web-e2e/src/tab-actions';
 
 const root = path.resolve(__dirname, '../../..');
 
@@ -166,9 +167,7 @@ test('Desktop remembers a selected folder, recovers a missing folder and returns
     await expect(page.getByTestId('workspace-open-folder')).toBeFocused();
     await page.keyboard.press('Escape');
     await expect(page.getByTestId('workspace-menu-trigger')).toBeFocused();
-    await expect(
-      page.locator('.workspace-pane.is-active .document-page__title'),
-    ).toHaveValue('文档导航');
+    await expect(activeTabTitle(page)).toHaveText('文档导航');
     await expect(page.getByRole('tab', { selected: true })).toHaveAttribute(
       'data-tab-id',
       'project-doc:README',

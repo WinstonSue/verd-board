@@ -3,6 +3,7 @@ import path from 'node:path';
 import { readFileSync } from 'node:fs';
 import {
   openWorkspaceMenu,
+  openHistoryAction,
   openActiveFile,
   selectAppAction,
   setAppLanguage,
@@ -21,9 +22,10 @@ for (const modifier of ['Control', 'Meta']) {
     page,
   }) => {
     await page.goto('/');
+    await openActiveFile(page);
     await expect(canvas(page)).toBeVisible();
     await page.reload();
-    await expect(canvas(page)).toBeVisible();
+    await expect(page.locator('.workspace-shell')).toBeVisible();
     await expect(page.locator('body')).toBeFocused();
     const camera = await canvas(page)
       .locator('> [data-frame-world]')
@@ -59,6 +61,10 @@ test('palette shortcut reaches canvas text editing without changing content or h
     ),
   );
   await page.locator('[data-file-id="canvas-basic"] .file-tree-name').click();
+  const undoDisabled = await (
+    await openHistoryAction(page, '撤销')
+  ).isDisabled();
+  await page.keyboard.press('Escape');
   const target = canvas(page).locator('[data-cell-id="shape-request"]');
   await target.dblclick();
   const editor = pane(page).locator('[data-frame-text-editor] .ProseMirror');
@@ -68,8 +74,6 @@ test('palette shortcut reaches canvas text editing without changing content or h
     window.getSelection()?.toString(),
   );
   const text = await editor.textContent();
-  const undo = pane(page).getByRole('button', { name: '撤销', exact: true });
-  const undoDisabled = await undo.isDisabled();
   await page.keyboard.press('ControlOrMeta+Shift+p');
   await expect(palette(page)).toHaveCount(1);
   await expect(
@@ -82,7 +86,10 @@ test('palette shortcut reaches canvas text editing without changing content or h
     .poll(() => page.evaluate(() => window.getSelection()?.toString()))
     .toBe(selection);
   await expect(target).toContainText(text!);
-  await expect(undo).toHaveJSProperty('disabled', undoDisabled);
+  await expect(await openHistoryAction(page, '撤销')).toHaveJSProperty(
+    'disabled',
+    undoDisabled,
+  );
 });
 
 for (const [fixture, action, kind] of [
@@ -107,12 +114,12 @@ for (const [fixture, action, kind] of [
     await expect(
       canvas(page).locator(`[data-cell-kind="${kind}"]`).first(),
     ).toBeVisible();
-    const trigger = pane(page).getByTestId('canvas-command-palette');
+    const trigger = pane(page).getByTestId('app-menu-trigger');
     const camera = await canvas(page)
       .locator('> [data-frame-world]')
       .getAttribute('transform');
     const count = await canvas(page).locator('[data-cell-id]').count();
-    await trigger.click();
+    await selectAppAction(page, '命令面板');
     await expect(palette(page)).toHaveCount(1);
     await expect(palette(page).getByRole('combobox')).toBeFocused();
     await palette(page).getByRole('combobox').fill(action.split('.')[0]);
@@ -155,6 +162,7 @@ test('toolbar palette binds the active embedded canvas rather than its outer boa
     .locator('[data-file-id="canvas-overview"] .file-tree-name')
     .click();
   const reference = canvas(page).locator('[data-cell-id="ov-ref"]');
+  await reference.dblclick({ position: { x: 24, y: 48 } });
   const nested = reference.locator('svg[data-surface="nested"]');
   const target = nested.locator('[data-cell-id="d-create"]');
   await target.click({ position: { x: 12, y: 12 } });
@@ -163,13 +171,13 @@ test('toolbar palette binds the active embedded canvas rather than its outer boa
   await expect(palette(page)).toHaveCount(1);
   await expect(
     palette(page).locator('[data-action-id="canvas.selection.delete"]'),
-  ).toHaveAttribute('title', 'readonly');
+  ).toHaveAttribute('aria-disabled', 'false');
   await page.keyboard.press('Escape');
   await expect(nested).toBeFocused();
-  await pane(page).getByTestId('canvas-command-palette').click();
+  await selectAppAction(page, '命令面板');
   await expect(
     palette(page).locator('[data-action-id="canvas.selection.delete"]'),
-  ).toHaveAttribute('title', 'readonly');
+  ).toHaveAttribute('aria-disabled', 'false');
   await palette(page).getByRole('combobox').fill('链接');
   const copy = palette(page).locator('[data-action-id="canvas.link.copy"]');
   await expect(copy).toHaveAttribute('aria-disabled', 'false');
@@ -235,9 +243,12 @@ for (const [locale, readonly] of [
       await page.goto('/?readonly=1');
       await documentRow.click();
     }
-    const trigger = pane(page).locator(
-      '[data-action-id="document.command-palette"]',
-    );
+    const trigger = pane(page)
+      .getByRole('toolbar', { name: 'document', exact: true })
+      .getByRole('button', {
+        name: locale === 'zh' ? '文档' : 'Document',
+        exact: true,
+      });
     const editor = pane(page).locator('.tiptap');
     if (!readonly) {
       await editor.click();
@@ -247,6 +258,16 @@ for (const [locale, readonly] of [
         .toBe('Preserve this text.');
     }
     await trigger.click();
+    await page
+      .getByRole('dialog', {
+        name: locale === 'zh' ? '文档' : 'Document',
+        exact: true,
+      })
+      .getByRole('button', {
+        name: locale === 'zh' ? '命令面板' : 'Command palette',
+        exact: true,
+      })
+      .click();
     await expect(palette(page)).toHaveCount(1);
     await palette(page)
       .getByRole('combobox')
@@ -260,8 +281,14 @@ for (const [locale, readonly] of [
     await page.keyboard.press('Escape');
     await expect(trigger).toBeFocused();
     if (!readonly) {
-      await pane(page)
-        .getByRole('button', { name: '加粗', exact: true })
+      await trigger.click();
+      await page
+        .getByRole('dialog', { name: '文档', exact: true })
+        .getByRole('button', { name: '命令面板', exact: true })
+        .click();
+      await palette(page).getByRole('combobox').fill('加粗');
+      await palette(page)
+        .locator('[data-action-id="document.toggle-bold"]')
         .click();
       await expect(editor.locator('strong')).toHaveText('Preserve this text.');
       await page.keyboard.press('ControlOrMeta+z');
@@ -293,14 +320,13 @@ for (const [width, appearance] of [
     await openActiveFile(page);
     await expect(page.getByTestId('workspace-commands')).toHaveCount(0);
     const toolbar = pane(page).getByRole('toolbar', { name: 'App actions' });
-    const trigger = toolbar.getByTestId('canvas-command-palette');
+    const trigger = toolbar.getByTestId('app-menu-trigger');
+    await expect(toolbar.getByTestId('canvas-command-palette')).toHaveCount(0);
     await expect(trigger).toBeInViewport();
-    await expect(trigger).toHaveAttribute('aria-label', '命令面板');
+    await expect(trigger).toHaveAttribute('aria-label', '更多');
     const buttons = toolbar.locator('> .frame-tool-control > button, > button');
-    await expect(buttons.nth(1)).toHaveAttribute(
-      'data-testid',
-      'canvas-command-palette',
-    );
+    await expect(buttons.nth(0)).toHaveAttribute('aria-label', '查找');
+    await expect(buttons.nth(1)).toHaveAttribute('aria-label', '演示');
     const menu = await openWorkspaceMenu(page);
     await expect(menu.getByTestId('workspace-open-settings')).toHaveText(
       '工作区设置',

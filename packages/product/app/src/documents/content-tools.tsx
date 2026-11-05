@@ -1,10 +1,15 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   DocumentPreview,
   VmDialog,
   CanvasPreview,
   ContentPropertiesPanel,
   ContentImageProperties,
+  WorkspaceAlert,
+  WorkspaceButton,
+  WorkspaceEmptyState,
+  WorkspaceInput,
+  WorkspaceDialogTabs,
 } from '@sue/verd-board-ui';
 import type { BoardTextNode } from '@sue/board-common';
 import { assembleWorkspaceStore } from '../frames/frame-files';
@@ -51,8 +56,15 @@ export function ContentTools({
   const [error, setError] = useState(''),
     [busy, setBusy] = useState(false),
     [revisions, setRevisions] = useState<Revision[]>([]),
+    [loadingRevisions, setLoadingRevisions] = useState(false),
     [name, setName] = useState('');
   const [comparison, setComparison] = useState<WorkspaceFile | null>(null);
+  const lastInteraction = useRef<'pointer' | 'keyboard'>('keyboard');
+  const [pointerFocus, setPointerFocus] = useState(false);
+  const closeTools = () => {
+    setPointerFocus(lastInteraction.current === 'pointer');
+    setShown(false);
+  };
   const zh = locale === 'zh';
   const t = (a: string, b: string) => (zh ? a : b);
   useEffect(() => {
@@ -66,13 +78,26 @@ export function ContentTools({
   const file = entry?.file;
   useEffect(() => {
     if (!shown) return;
-    void readRevisions(session).then(
-      (value) =>
-        setRevisions(
-          value.manifest.revisions.filter((item) => item.fileId === fileId),
-        ),
-      (cause) => setError(String(cause)),
-    );
+    let current = true;
+    setLoadingRevisions(true);
+    void readRevisions(session)
+      .then(
+        (value) => {
+          if (current)
+            setRevisions(
+              value.manifest.revisions.filter((item) => item.fileId === fileId),
+            );
+        },
+        (cause) => {
+          if (current) setError(String(cause));
+        },
+      )
+      .finally(() => {
+        if (current) setLoadingRevisions(false);
+      });
+    return () => {
+      current = false;
+    };
   }, [shown, session, fileId]);
   const perform = async (action: () => Promise<unknown>) => {
     setBusy(true);
@@ -143,100 +168,82 @@ export function ContentTools({
         />
       </div>
     );
-  return (
+  const panel = (
     <>
-      <button
-        className="vm-btn vm-btn--ghost vm-btn--sm"
-        type="button"
-        onClick={() => setShown(true)}
-      >
-        {t('内容管理', 'Content management')}
-      </button>
-      {shown && (
-        <VmDialog
-          className="workspace-knowledge-dialog"
-          title={t('内容管理', 'Content management')}
-          closeLabel={t('关闭', 'Close')}
-          busy={busy}
-          onClose={() => setShown(false)}
-        >
-          <nav className="workspace-content-segments">
-            {[
-              ['properties', t('内容属性', 'Properties')],
-              ['history', t('版本历史', 'Version history')],
-              ['attachments', t('附件', 'Attachments')],
-              ['conflict', t('冲突比较', 'Compare conflict')],
-            ]
-              .filter(([id]) => id !== 'conflict' || entry.conflicted)
-              .map(([id, label]) => (
-                <button
-                  className="vm-btn vm-btn--secondary"
-                  key={id}
-                  onClick={() => {
-                    setTab(id);
-                    setComparison(null);
-                  }}
-                  aria-pressed={tab === id}
-                >
-                  {label}
-                </button>
-              ))}
-          </nav>
-          {error && <p role="alert">{error}</p>}
-          {tab === 'properties' && (
-            <ContentPropertiesPanel
-              locale={locale}
-              identity={fileId}
-              value={{ tags: [], ...file.properties }}
-              disabled={readonly || busy}
-              onChange={async (properties) => {
-                const live =
-                  session.getState().documents.get(fileId)?.file ??
-                  session.getState().files.get(fileId)?.file;
-                if (!live) throw new Error('Content removed');
-                await patch({ ...live, properties });
-              }}
+      {tab === 'properties' && (
+        <ContentPropertiesPanel
+          locale={locale}
+          identity={fileId}
+          value={{ tags: [], ...file.properties }}
+          disabled={readonly || busy}
+          onChange={async (properties) => {
+            const live =
+              session.getState().documents.get(fileId)?.file ??
+              session.getState().files.get(fileId)?.file;
+            if (!live) throw new Error('Content removed');
+            await patch({ ...live, properties });
+          }}
+        />
+      )}
+      {tab === 'history' && (
+        <>
+          <p>
+            {t(
+              '版本保存在当前工作区，重启后仍可查看。恢复前会自动保存当前版本。',
+              'Versions remain in this workspace across restarts. The current version is saved before restoring.',
+            )}
+          </p>
+          <div className="workspace-revision-toolbar">
+            <WorkspaceInput
+              aria-label={t('版本名称', 'Version name')}
+              placeholder={t('版本名称（可选）', 'Version name (optional)')}
+              value={name}
+              onChange={(event) => setName(event.target.value)}
             />
-          )}
-          {tab === 'history' && (
-            <>
-              <p>
-                {t(
-                  '版本保存在当前工作区，重启后仍可查看。恢复前会自动保存当前版本。',
-                  'Versions remain in this workspace across restarts. The current version is saved before restoring.',
-                )}
-              </p>
-              <input
-                aria-label={t('版本名称', 'Version name')}
-                value={name}
-                onChange={(event) => setName(event.target.value)}
+            <WorkspaceButton
+              intent="primary"
+              busy={busy}
+
+              disabled={readonly || busy}
+              onClick={() =>
+                void perform(async () => {
+                  await saveRevision(
+                    session,
+                    file,
+                    name.trim() || t('手动版本', 'Manual version'),
+                  );
+                  setRevisions(
+                    (await readRevisions(session)).manifest.revisions.filter(
+                      (item) => item.fileId === fileId,
+                    ),
+                  );
+                })
+              }
+            >
+              {t('保存版本', 'Save version')}
+            </WorkspaceButton>
+          </div>
+          <div className="workspace-revision-list" aria-busy={loadingRevisions}>
+            {loadingRevisions && (
+              <p role="status">{t('正在加载版本…', 'Loading versions…')}</p>
+            )}
+            {!loadingRevisions && !revisions.length && (
+              <WorkspaceEmptyState
+                description={t('暂无版本', 'No versions yet')}
               />
-              <button
-                className="vm-btn vm-btn--secondary"
-                disabled={readonly || busy}
-                onClick={() =>
-                  void perform(async () => {
-                    await saveRevision(
-                      session,
-                      file,
-                      name.trim() || t('手动版本', 'Manual version'),
-                    );
-                    setRevisions(
-                      (await readRevisions(session)).manifest.revisions.filter(
-                        (item) => item.fileId === fileId,
-                      ),
-                    );
-                  })
-                }
-              >
-                {t('保存版本', 'Save version')}
-              </button>
-              {revisions.map((revision) => (
-                <div key={revision.id}>
-                  {revision.name} ·{' '}
-                  {new Date(revision.at).toLocaleString(zh ? 'zh-CN' : 'en-US')}
-                  <button
-                    className="vm-btn vm-btn--secondary"
+            )}
+            {revisions.map((revision) => (
+              <div key={revision.id} className="workspace-revision-row">
+                <div className="workspace-revision-title">
+                  <strong>{revision.name}</strong>
+                  <time dateTime={new Date(revision.at).toISOString()}>
+                    {new Date(revision.at).toLocaleString(
+                      zh ? 'zh-CN' : 'en-US',
+                    )}
+                  </time>
+                </div>
+                <div className="workspace-revision-actions">
+                  <WorkspaceButton
                     disabled={busy}
                     onClick={() =>
                       void perform(async () =>
@@ -245,9 +252,8 @@ export function ContentTools({
                     }
                   >
                     {t('预览', 'Preview')}
-                  </button>
-                  <button
-                    className="vm-btn vm-btn--secondary"
+                  </WorkspaceButton>
+                  <WorkspaceButton
                     disabled={readonly || busy}
                     onClick={() =>
                       void perform(async () => {
@@ -264,149 +270,201 @@ export function ContentTools({
                     }
                   >
                     {t('恢复此版本', 'Restore version')}
-                  </button>
+                  </WorkspaceButton>
                 </div>
-              ))}
-            </>
-          )}
-          {tab === 'attachments' && (
-            <>
-              <p>
-                {t(
-                  `图片 ${images.length} 张。资源与历史版本一同保留。`,
-                  `${images.length} images. Resources are kept with version history.`,
-                )}
-              </p>
-              {images.map(({ node, index }) => (
-                <fieldset key={index} disabled={readonly || busy}>
-                  <legend>
-                    {String(
-                      node.attrs?.['alt'] ?? t('图片 ', 'Image ') + (index + 1),
-                    )}
-                  </legend>
-                  <ContentImageProperties
-                    locale={locale}
-                    identity={fileId + ':image:' + index}
-                    index={index}
-                    width={Number(node.attrs?.['width']) || undefined}
-                    caption={String(node.attrs?.['caption'] ?? '')}
-                    disabled={readonly || busy}
-                    onChange={(patch) => imagePatch(index, patch)}
-                  />
-                  <button
-                    className="vm-btn vm-btn--secondary"
-                    disabled={
-                      !String(node.attrs?.['src'] ?? '').startsWith(
-                        'data:image/',
-                      )
-                    }
-                    onClick={() =>
-                      void perform(async () => {
-                        const src = String(node.attrs?.['src'] ?? '');
-                        if (!src.startsWith('data:image/'))
-                          throw new Error(
-                            t(
-                              '仅支持提取已内嵌图片',
-                              'Only embedded images can be extracted',
-                            ),
-                          );
-                        const blob = await (await fetch(src)).blob();
-                        const managed = await storeAttachment(
-                          session,
-                          new File([blob], `image-${index}`, {
-                            type: blob.type,
-                          }),
-                        );
-                        await imagePatch(index, { src: managed.src });
-                      })
-                    }
-                  >
-                    {t('保存至资源目录', 'Save to resources')}
-                  </button>
-                </fieldset>
-              ))}
-              <button
-                className="vm-btn vm-btn--secondary"
-                disabled={busy}
-                onClick={() =>
-                  void perform(async () => {
-                    const files = session.exportWorkspaceFiles(fileId);
-                    const paths = new Map(
-                      [
-                        ...state.files.values(),
-                        ...state.documents.values(),
-                      ].map((item) => [workspaceFileId(item.file), item.path]),
-                    );
-                    const result = await portableArchiveWithAssets(
-                      files,
-                      paths,
-                      async (path) => (await session.readRawFile(path)).content,
-                    );
-                    download('workspace-export.zip', result.bytes);
-                    if (result.warnings.length)
-                      setError(result.warnings.join('; '));
-                  })
-                }
-              >
-                {t(
-                  '导出便携 ZIP（含原生文件、Markdown 与附件）',
-                  'Export portable ZIP (native files, Markdown and attachments)',
-                )}
-              </button>
-            </>
-          )}
-          {tab === 'conflict' && (
-            <>
-              <div className="workspace-knowledge-columns">
-                <section>
-                  <h3>本地版本</h3>
-                  {preview(file)}
-                </section>
-                <section>
-                  <h3>磁盘版本</h3>
-                  {comparison ? (
-                    preview(comparison)
-                  ) : (
-                    <button
-                      className="vm-btn vm-btn--secondary"
-                      disabled={busy}
-                      onClick={() =>
-                        void perform(async () => {
-                          const raw = await session.readRawFile(entry.path);
-                          const parsed: unknown = JSON.parse(
-                            new TextDecoder().decode(raw.content),
-                          );
-                          if (!isWorkspaceFile(parsed))
-                            throw new Error(
-                              t(
-                                '磁盘文件无法解析',
-                                'Unable to parse the disk file',
-                              ),
-                            );
-                          setComparison(parsed);
-                        })
-                      }
-                    >
-                      {t('读取磁盘版本', 'Read disk version')}
-                    </button>
-                  )}
-                </section>
               </div>
-              <button
-                className="vm-btn vm-btn--secondary"
+            ))}
+          </div>
+        </>
+      )}
+      {tab === 'attachments' && (
+        <>
+          <p>
+            {t(
+              `图片 ${images.length} 张。资源与历史版本一同保留。`,
+              `${images.length} images. Resources are kept with version history.`,
+            )}
+          </p>
+          {images.map(({ node, index }) => (
+            <fieldset key={index} disabled={readonly || busy}>
+              <legend>
+                {String(
+                  node.attrs?.['alt'] ?? t('图片 ', 'Image ') + (index + 1),
+                )}
+              </legend>
+              <ContentImageProperties
+                locale={locale}
+                identity={fileId + ':image:' + index}
+                index={index}
+                width={Number(node.attrs?.['width']) || undefined}
+                caption={String(node.attrs?.['caption'] ?? '')}
                 disabled={readonly || busy}
+                onChange={(patch) => imagePatch(index, patch)}
+              />
+              <WorkspaceButton
+                disabled={
+                  !String(node.attrs?.['src'] ?? '').startsWith('data:image/')
+                }
                 onClick={() =>
                   void perform(async () => {
-                    await onKeepBoth();
-                    setShown(false);
+                    const src = String(node.attrs?.['src'] ?? '');
+                    if (!src.startsWith('data:image/'))
+                      throw new Error(
+                        t(
+                          '仅支持提取已内嵌图片',
+                          'Only embedded images can be extracted',
+                        ),
+                      );
+                    const blob = await (await fetch(src)).blob();
+                    const managed = await storeAttachment(
+                      session,
+                      new File([blob], `image-${index}`, {
+                        type: blob.type,
+                      }),
+                    );
+                    await imagePatch(index, { src: managed.src });
                   })
                 }
               >
-                {t('保留两份', 'Keep both')}
-              </button>
-            </>
-          )}
-          {comparison && tab === 'history' && preview(comparison)}
+                {t('保存至资源目录', 'Save to resources')}
+              </WorkspaceButton>
+            </fieldset>
+          ))}
+          <WorkspaceButton
+            disabled={busy}
+            onClick={() =>
+              void perform(async () => {
+                const files = session.exportWorkspaceFiles(fileId);
+                const paths = new Map(
+                  [...state.files.values(), ...state.documents.values()].map(
+                    (item) => [workspaceFileId(item.file), item.path],
+                  ),
+                );
+                const result = await portableArchiveWithAssets(
+                  files,
+                  paths,
+                  async (path) => (await session.readRawFile(path)).content,
+                );
+                download('workspace-export.zip', result.bytes);
+                if (result.warnings.length)
+                  setError(result.warnings.join('; '));
+              })
+            }
+          >
+            {t(
+              '导出便携 ZIP（含原生文件、Markdown 与附件）',
+              'Export portable ZIP (native files, Markdown and attachments)',
+            )}
+          </WorkspaceButton>
+        </>
+      )}
+      {tab === 'conflict' && (
+        <>
+          <div className="workspace-knowledge-columns">
+            <section>
+              <h3>本地版本</h3>
+              {preview(file)}
+            </section>
+            <section>
+              <h3>磁盘版本</h3>
+              {comparison ? (
+                preview(comparison)
+              ) : (
+                <WorkspaceButton
+                  disabled={busy}
+                  onClick={() =>
+                    void perform(async () => {
+                      const raw = await session.readRawFile(entry.path);
+                      const parsed: unknown = JSON.parse(
+                        new TextDecoder().decode(raw.content),
+                      );
+                      if (!isWorkspaceFile(parsed))
+                        throw new Error(
+                          t(
+                            '磁盘文件无法解析',
+                            'Unable to parse the disk file',
+                          ),
+                        );
+                      setComparison(parsed);
+                    })
+                  }
+                >
+                  {t('读取磁盘版本', 'Read disk version')}
+                </WorkspaceButton>
+              )}
+            </section>
+          </div>
+          <WorkspaceButton
+            disabled={readonly || busy}
+            onClick={() =>
+              void perform(async () => {
+                await onKeepBoth();
+                closeTools();
+              })
+            }
+          >
+            {t('保留两份', 'Keep both')}
+          </WorkspaceButton>
+        </>
+      )}
+      {comparison && tab === 'history' && preview(comparison)}
+    </>
+  );
+  return (
+    <>
+      <WorkspaceButton
+        className="workspace-content-tools-trigger"
+        data-pointer-focus={pointerFocus ? 'true' : undefined}
+        aria-haspopup="dialog"
+        aria-expanded={shown}
+        intent="ghost"
+        type="button"
+        onPointerDownCapture={() => {
+          lastInteraction.current = 'pointer';
+        }}
+        onKeyDownCapture={() => {
+          lastInteraction.current = 'keyboard';
+          setPointerFocus(false);
+        }}
+        onBlur={() => setPointerFocus(false)}
+        onClick={() => setShown(true)}
+      >
+        {t('内容管理', 'Content management')}
+      </WorkspaceButton>
+      {shown && (
+        <VmDialog
+          className="workspace-knowledge-dialog workspace-content-dialog"
+          title={t('内容管理', 'Content management')}
+          closeLabel={t('关闭', 'Close')}
+          busy={busy}
+          onPointerDownCapture={() => {
+            lastInteraction.current = 'pointer';
+          }}
+          onKeyDownCapture={() => {
+            lastInteraction.current = 'keyboard';
+          }}
+          onClose={closeTools}
+        >
+          <WorkspaceDialogTabs
+            activeKey={tab}
+            onChange={(next) => {
+              setTab(next);
+              setComparison(null);
+            }}
+            items={[
+              ['properties', t('内容属性', 'Properties')],
+              ['history', t('版本历史', 'Version history')],
+              ['attachments', t('附件', 'Attachments')],
+              ['conflict', t('冲突比较', 'Compare conflict')],
+            ]
+              .filter(([id]) => id !== 'conflict' || entry.conflicted)
+              .map(([key, label]) => ({
+                key,
+                label,
+                children: key === tab ? panel : undefined,
+              }))}
+          />
+          {error && <WorkspaceAlert type="error" title={error} showIcon />}
         </VmDialog>
       )}
     </>

@@ -70,9 +70,12 @@ export const createUmlPlugin = (): CellPlugin => ({
   scenes: [
     {
       id: 'uml-class',
+      sharedKinds: ['swimlane'],
+      laneMemberKinds: ['uml-class'],
       anchorKinds: ['uml-class-root'],
       kinds: ['uml-class-root', 'uml-class', 'uml-relation'],
       allowGroups: true,
+      consecutiveGroups: false,
       preserveAnchor: true,
     },
     {

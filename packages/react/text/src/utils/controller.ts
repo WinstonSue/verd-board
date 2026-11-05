@@ -153,15 +153,21 @@ export function createBoardTextController(
       MARK_COMMANDS[mark]?.(editor);
     },
     setLink(link) {
-      if (!link) {
-        editor.chain().focus().extendMarkRange('link').unsetLink().run();
-        return;
-      }
+      const chain = editor.chain().focus();
+      if (editor.state.selection.empty) chain.extendMarkRange('link');
+      if (link) chain.setLink({ href: link.href }).run();
+      else chain.unsetLink().run();
+    },
+    insertLink(href, label) {
       editor
         .chain()
         .focus()
-        .extendMarkRange('link')
-        .setLink({ href: link.href })
+        .insertContent({
+          type: 'text',
+          text: label,
+          marks: [{ type: 'link', attrs: { href } }],
+        })
+        .unsetMark('link')
         .run();
     },
     setAlign(align: Alignment) {

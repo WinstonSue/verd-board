@@ -13,11 +13,9 @@ import type {
 } from './workspace-host';
 
 interface DesktopBridge {
-  checkBuiltinUpdates: NonNullable<WorkspaceHost['checkBuiltinUpdates']>;
-  prepareBuiltinUpdate: NonNullable<WorkspaceHost['prepareBuiltinUpdate']>;
-  snoozeBuiltinUpdate: NonNullable<WorkspaceHost['snoozeBuiltinUpdate']>;
-  subscribeBuiltinUpdates: NonNullable<
-    WorkspaceHost['subscribeBuiltinUpdates']
+  readWorkspaceLocation: NonNullable<WorkspaceHost['readWorkspaceLocation']>;
+  revealWorkspaceLocation: NonNullable<
+    WorkspaceHost['revealWorkspaceLocation']
   >;
   createWorkspace: NonNullable<WorkspaceHost['createWorkspace']>;
   updateWorkspaceHistory: NonNullable<WorkspaceHost['updateWorkspaceHistory']>;
@@ -61,8 +59,8 @@ const electronApi = (): DesktopElectronApi | undefined =>
 
 /**
  * Renderer-side WorkspaceHost for the desktop app. Every call is a thin IPC
- * hop into the main process' fs-backed host; the renderer never sees real
- * filesystem paths, only opaque workspace handle keys.
+ * hop into the main process' fs-backed host; filesystem mutations resolve opaque workspace handle keys in the main process.
+ * Absolute paths are exposed only for the storage location display.
  */
 export const createDesktopWorkspaceHost = (): WorkspaceHost => {
   const bridge = () => {
@@ -74,13 +72,11 @@ export const createDesktopWorkspaceHost = (): WorkspaceHost => {
     return api;
   };
   return {
-    checkBuiltinUpdates: (force) => bridge().checkBuiltinUpdates(force),
-    prepareBuiltinUpdate: (id) => bridge().prepareBuiltinUpdate(id),
-    snoozeBuiltinUpdate: (id) => bridge().snoozeBuiltinUpdate(id),
-    subscribeBuiltinUpdates: (listener) =>
-      bridge().subscribeBuiltinUpdates(listener),
+    readWorkspaceLocation: (h) => bridge().readWorkspaceLocation(h),
+    revealWorkspaceLocation: (h) => bridge().revealWorkspaceLocation(h),
     readBuiltinUpdate: (h) => bridge().readBuiltinUpdate(h),
-    updateBuiltinWorkspace: (h, id) => bridge().updateBuiltinWorkspace(h, id),
+    updateBuiltinWorkspace: (h, id, options) =>
+      bridge().updateBuiltinWorkspace(h, id, options),
     revealBuiltinBackups: (h) => bridge().revealBuiltinBackups(h),
     createWorkspace: (request) => bridge().createWorkspace(request),
     updateWorkspaceHistory: (request) =>

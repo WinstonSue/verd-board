@@ -1,10 +1,27 @@
-import { isNodeCell, type Cell, type CellPlugin } from '@sue/board-core';
+import {
+  groupAncestors,
+  isNodeCell,
+  type Cell,
+  type CellPlugin,
+} from '@sue/board-core';
 import { mapBoardTextLinks, type BoardTextDocument } from '@sue/board-common';
 import type { TableCellData } from './cell-commands';
 import { registerDrawCells } from './cell-utils';
+import {
+  normalizeSwimlaneMembers,
+  remapSwimlaneMembers,
+  swimlaneTracks,
+} from './swimlane-members';
+
 export const createDrawPlugin = (): CellPlugin => ({
   id: 'draw',
   scenes: [],
+  normalize: normalizeSwimlaneMembers,
+  remap: remapSwimlaneMembers,
+  copyReferences: (store, cell) =>
+    swimlaneTracks(cell).flatMap((track) =>
+      track.members.flatMap((id) => [id, ...groupAncestors(store, id)]),
+    ),
   mapLinks(cell, rewriteHref) {
     if (!isNodeCell(cell) || !['table', 'swimlane'].includes(cell.kind))
       return cell;

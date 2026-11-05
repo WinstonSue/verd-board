@@ -1,4 +1,4 @@
-import type { WorkspaceTarget } from '@sue/board-common';
+import type { WorkspaceFileTarget } from '@sue/board-common';
 import type { CellSelection, Point } from '@sue/board-core';
 import type { FrameFileV2 } from '../frames/frame-files';
 import type { BoardTextSelection as DocumentSelection } from '@sue/board-common';
@@ -6,7 +6,7 @@ import type { BoardTextSelection as DocumentSelection } from '@sue/board-common'
 export interface WorkspaceNavigationRequest {
   searchMatch?: { revision: string; term: string; text: string; from?: number };
   requestId: number;
-  target: WorkspaceTarget;
+  target: WorkspaceFileTarget;
   origin?: NavigationOrigin;
   signal?: AbortSignal;
   frameReference?: {
@@ -48,12 +48,12 @@ export function cellOwnerIndex(
   return owners;
 }
 export function resolveWorkspaceTarget(
-  target: WorkspaceTarget,
+  target: WorkspaceFileTarget,
   files: ReadonlyMap<string, { file: FrameFileV2 }>,
   documents: ReadonlyMap<string, unknown>,
 ):
-  | { status: 'resolved'; target: WorkspaceTarget }
-  | { status: 'unavailable'; code: string; fallback?: WorkspaceTarget } {
+  | { status: 'resolved'; target: WorkspaceFileTarget }
+  | { status: 'unavailable'; code: string; fallback?: WorkspaceFileTarget } {
   if (target.kind === 'cell') {
     const owner = cellOwnerIndex(
       [...files.values()].map((entry) => entry.file),

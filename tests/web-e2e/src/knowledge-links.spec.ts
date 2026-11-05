@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test';
 import path from 'node:path';
+import { activeTabTitle } from './tab-actions';
 const doc = (id: string, title: string, content: object[]) => ({
   format: 'verd-document',
   version: 1,
@@ -27,7 +28,9 @@ const paragraph = (text: string, href?: string) => ({
 
 test('internal link search, backlinks and static preview preserve the editing page', async ({
   page,
+  context,
 }, info) => {
+  await context.grantPermissions(['clipboard-read', 'clipboard-write']);
   await page.setViewportSize({ width: 1440, height: 900 });
   page.on('pageerror', (error) => console.log('Page error:', error.stack));
   page.on('console', (message) => {
@@ -43,7 +46,7 @@ test('internal link search, backlinks and static preview preserve the editing pa
   const destination = doc('knowledge-destination', 'Destination', [
     {
       type: 'heading',
-      attrs: { level: 2 },
+      attrs: { level: 2, blockId: 'decision-block' },
       content: [{ type: 'text', text: 'Decision' }],
     },
     paragraph('The architectural decision.'),
@@ -68,57 +71,70 @@ test('internal link search, backlinks and static preview preserve the editing pa
     .filter({ hasText: /^Source$/ })
     .click();
   const pane = page.locator('.workspace-pane.is-active');
-  await expect(pane.locator('.document-page__title')).toHaveValue('Source');
+  await expect(activeTabTitle(page)).toHaveText('Source');
   await pane.locator('.tiptap a').click({ modifiers: ['Alt'] });
-  const dialog = page.getByRole('dialog', { name: '关联内容', exact: true });
+  const dialog = page.getByRole('dialog', { name: /^关联内容(?: · |$)/ });
   await expect(dialog).toBeVisible();
   await expect(dialog.locator('.workspace-knowledge-preview')).toContainText(
     'The architectural decision.',
   );
   await expect(dialog.locator('[contenteditable="true"]')).toHaveCount(0);
-  await expect(pane.locator('.document-page__title')).toHaveValue('Source');
+  await expect(activeTabTitle(page)).toHaveText('Source');
   await page.screenshot({ path: info.outputPath('knowledge-preview.png') });
   await page.keyboard.press('Escape');
   await expect(dialog).toHaveCount(0);
-  await pane.getByTitle('链接', { exact: true }).click();
-  const query = pane.getByRole('textbox', { name: '搜索内部链接' });
-  await query.pressSequentially('Destination Decision');
-  await expect(query).toBeFocused();
-  const choices = pane.locator('.doc-link-choices');
-  await expect(
-    choices.getByRole('button', {
-      name: 'Decision · Destination',
-      exact: true,
-    }),
-  ).toBeVisible();
-  await choices
-    .getByRole('button', { name: '预览 Decision', exact: true })
+  await pane.locator('.tiptap').press('ControlOrMeta+a');
+  await pane
+    .getByRole('toolbar', { name: '文字格式' })
+    .getByRole('button', { name: '链接', exact: true })
     .click();
+  const editLink = page.getByRole('dialog', { name: '编辑链接', exact: true });
+  await expect(editLink.getByRole('combobox')).toHaveValue('Decision');
+  await expect(
+    editLink.getByText('标题 · Destination.verd-doc.json'),
+  ).toBeVisible();
+  await expect(editLink).not.toContainText('verd://');
+  await editLink.getByRole('button', { name: '复制', exact: true }).click();
+  await expect
+    .poll(() => page.evaluate(() => navigator.clipboard.readText()))
+    .toBe('verd://file/knowledge-destination#decision');
+  await page.setViewportSize({ width: 540, height: 680 });
+  const query = editLink.getByRole('combobox', {
+    name: '搜索工作区或输入网址',
+  });
+  await query.click();
+  await query.fill('Destination Decision');
+  const option = editLink
+    .getByRole('option', { name: /^Decision.*Destination/ })
+    .first();
+  await expect(option).toBeVisible();
+  const bounds = (await option.boundingBox())!;
+  expect(bounds.x).toBeGreaterThanOrEqual(0);
+  expect(bounds.x + bounds.width).toBeLessThanOrEqual(540);
+  await query.press('Enter');
+  await expect(editLink).toBeVisible();
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await editLink.getByRole('button', { name: '预览', exact: true }).click();
   await expect(dialog).toBeVisible();
   await page.keyboard.press('Escape');
-  await choices
-    .getByRole('button', { name: 'Decision · Destination', exact: true })
-    .click();
-  await expect(pane.locator('.doc-linkbar')).toHaveCount(0);
+  await expect(editLink.getByRole('combobox')).toHaveValue('Decision');
+  await editLink.getByRole('button', { name: '保存', exact: true }).click();
+  await expect(editLink).toBeHidden();
   await page
     .locator('.file-tree-name')
     .filter({ hasText: /^Destination$/ })
     .click();
-  await expect(
-    page.locator('.workspace-pane.is-active .document-page__title'),
-  ).toHaveValue('Destination');
+  await expect(activeTabTitle(page)).toHaveText('Destination');
   await page
     .locator('.workspace-pane.is-active')
-    .getByRole('button', { name: '关联内容', exact: true })
+    .getByRole('button', { name: /^关联内容(?: · |$)/ })
     .click();
   await expect(dialog).toContainText('← Source');
   await dialog
     .getByRole('button', { name: '定位来源', exact: true })
     .first()
     .click();
-  await expect(
-    page.locator('.workspace-pane.is-active .document-page__title'),
-  ).toHaveValue('Source');
+  await expect(activeTabTitle(page)).toHaveText('Source');
 });
 
 test('Cell links preview a real canvas without mounting an editable occurrence', async ({
@@ -155,7 +171,7 @@ test('Cell links preview a real canvas without mounting an editable occurrence',
     .click();
   const pane = page.locator('.workspace-pane.is-active');
   await pane.locator('.tiptap a').click({ modifiers: ['Alt'] });
-  const dialog = page.getByRole('dialog', { name: '关联内容', exact: true });
+  const dialog = page.getByRole('dialog', { name: /^关联内容(?: · |$)/ });
   await expect(dialog).toBeVisible();
   await expect(
     dialog.locator('.workspace-canvas-reference svg').first(),
@@ -163,7 +179,5 @@ test('Cell links preview a real canvas without mounting an editable occurrence',
   await expect(dialog.locator('[contenteditable="true"]')).toHaveCount(0);
   await expect(dialog).toContainText('图元链接 · 1');
   await dialog.getByRole('button', { name: '关闭', exact: true }).click();
-  await expect(pane.locator('.document-page__title')).toHaveValue(
-    'Canvas source',
-  );
+  await expect(activeTabTitle(page)).toHaveText('Canvas source');
 });

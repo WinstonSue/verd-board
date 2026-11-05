@@ -1,3 +1,8 @@
+import {
+  findFoldersById,
+  folderIdentityWrite,
+  isFolderIdentityPath,
+} from '../host/folder-identity';
 import { pruneWorkspaceTabs } from './workspace-navigation';
 import {
   topLevelPaths,
@@ -362,6 +367,7 @@ export interface WorkspaceSession {
   setWorkspaceConfig(value: Record<string, unknown>): void;
   /** Creates an empty directory; lightweight, not part of undo history. */
   mkdir(path: string): CommandResult;
+  ensureFolderId(path: string): Promise<string>;
   /**
    * Resolves a diverged file explicitly: `keep-local` trashes the disk
    * version and publishes local content; `load-disk` adopts the disk
@@ -824,6 +830,8 @@ export const createWorkspaceSession = (options: {
     };
     const byPath = fileIdByPath();
     Object.entries(receipt.versions ?? {}).forEach(([path, version]) => {
+      // Folder identity writes belong to their directory and never enter file history.
+      if (isFolderIdentityPath(path)) return;
       const frameId = byPath.get(path);
       const entry = frameId ? files.get(frameId) : undefined;
       if (entry && frameId && entry.path === path) {
@@ -923,6 +931,13 @@ export const createWorkspaceSession = (options: {
         (op) => op.from !== receipt.path && op.to !== receipt.path,
       );
       pending.trash = pending.trash.filter((op) => op.path !== receipt.path);
+      const failedDir = isFolderIdentityPath(receipt.path)
+        ? parentWorkspacePath(receipt.path)
+        : receipt.path;
+      if (failedDir && pending.mkdirs.includes(failedDir)) {
+        pending.mkdirs = pending.mkdirs.filter((dir) => dir !== failedDir);
+        pending.writes.delete(folderIdentityWrite(failedDir, '').path);
+      }
       pending.restore = pending.restore.filter(
         (op) => op.toPath !== receipt.path,
       );
@@ -2973,14 +2988,56 @@ export const createWorkspaceSession = (options: {
       const normalized = path.replace(/\/+$/, '');
       if (!normalized || entries.some((entry) => entry.path === normalized))
         return invalid(`Path is occupied or invalid: ${normalized}`);
+      const folderId = crypto.randomUUID();
+      const marker = folderIdentityWrite(normalized, folderId);
       pending.mkdirs.push(normalized);
+      pending.writes.set(marker.path, marker);
       entries = [
         ...entries,
-        { path: normalized, kind: 'directory', canvas: false },
+        { path: normalized, kind: 'directory', canvas: false, folderId },
       ];
       schedule();
       emit();
       return { ok: true, diagnostics: [] };
+    },
+    async ensureFolderId(path) {
+      const normalized = normalizeWorkspacePath(path);
+      const writable = () =>
+        !workspaceReadonly &&
+        !mutationsPaused &&
+        !frozen &&
+        !storageRetry &&
+        !disposed;
+      if (writable() && !(await flush()))
+        throw new Error('Save the workspace before creating a folder link');
+      const readDirectory = async () => {
+        const current = (await host.readSnapshot(handle)).entries;
+        const folder = current.find(
+          (entry) => entry.kind === 'directory' && entry.path === normalized,
+        );
+        if (!folder) throw new Error('The folder no longer exists');
+        if (
+          folder.folderId &&
+          findFoldersById(current, folder.folderId).length !== 1
+        )
+          throw new Error('The folder identity is ambiguous');
+        return folder;
+      };
+      const existing = await readDirectory();
+      if (existing.folderId) return existing.folderId;
+      if (!writable())
+        throw new Error('A folder link requires a writable workspace');
+      const receipt = await host.commit(handle, {
+        transactionId: createId(),
+        writes: [folderIdentityWrite(normalized, crypto.randomUUID())],
+      });
+      if (receipt.outcome !== 'applied' && receipt.reason !== 'target-exists')
+        throw new Error('Could not save the folder link');
+      await syncFromHost();
+      const current = await readDirectory();
+      if (!current.folderId)
+        throw new Error('The folder identity could not be read');
+      return current.folderId;
     },
     readRawFile: (path) => host.readFile(handle, normalizeWorkspacePath(path)),
     async commitResources(writes, liveFileIds = []) {

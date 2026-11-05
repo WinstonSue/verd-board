@@ -14,7 +14,7 @@
     "@sue/board-common": "workspace:*",
     "@sue/board-core": "workspace:*",
     "@sue/board-react-text": "workspace:*",
-    "lucide-react": "^0.468.0",
+    "lucide-react": "1.47.0",
     "@sue/schema-settings-react": "0.0.1",
     "@sue/board-react-actions": "workspace:*"
   },

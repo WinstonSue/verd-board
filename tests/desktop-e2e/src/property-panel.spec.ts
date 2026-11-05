@@ -1,3 +1,4 @@
+import { selectHistoryAction } from '../../web-e2e/src/app-actions';
 import { electron, writeDesktopLauncher } from './desktop-launcher';
 import {
   test,
@@ -72,9 +73,9 @@ test('Desktop numeric inspector commits one history step, cancels locked drafts 
       .toBe(Number(original));
     await x(page).press('Enter');
     await panel(page).getByTestId('inspector-name').focus();
-    await pane(page).getByRole('button', { name: '撤销', exact: true }).click();
+    await selectHistoryAction(page, '撤销');
     await expect(x(page)).toHaveValue(original);
-    await pane(page).getByRole('button', { name: '重做', exact: true }).click();
+    await selectHistoryAction(page, '重做');
     await expect(x(page)).toHaveValue('123');
     await panel(page)
       .locator('[data-property-group="arrangement"] > button')

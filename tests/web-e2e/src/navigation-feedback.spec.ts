@@ -1,4 +1,5 @@
 import { test, expect, type Page } from '@playwright/test';
+import { activeTabTitle } from './tab-actions';
 
 const active = (page: Page) => page.locator('.workspace-pane.is-active');
 const tab = (page: Page, id: string) =>
@@ -82,9 +83,7 @@ async function seed(page: Page) {
       .locator('.file-tree-name')
       .getByText(`Feedback ${letter}`, { exact: true })
       .click();
-    await expect(active(page).locator('.document-page__title')).toHaveValue(
-      `Feedback ${letter}`,
-    );
+    await expect(activeTabTitle(page)).toHaveText(`Feedback ${letter}`);
     await expect(busy(page)).toHaveAttribute('aria-busy', 'false');
   }
 }
@@ -175,9 +174,7 @@ test('warm switches fade once and retain the editor and scroll through input and
     });
   });
   await tab(page, 'feedback-b').click();
-  await expect(active(page).locator('.document-page__title')).toHaveValue(
-    'Feedback B',
-  );
+  await expect(activeTabTitle(page)).toHaveText('Feedback B');
   await expect(busy(page)).toHaveAttribute('aria-busy', 'false');
   await expect(strip(page)).toHaveAttribute('data-loading', 'false');
   await expect
@@ -249,9 +246,7 @@ test('slow flushes show a thin strip and only the latest requested target activa
   await holdFlush(page);
   await tab(page, 'feedback-b').click();
   await expect(busy(page)).toHaveAttribute('aria-busy', 'true');
-  await expect(active(page).locator('.document-page__title')).toHaveValue(
-    'Feedback A',
-  );
+  await expect(activeTabTitle(page)).toHaveText('Feedback A');
   await expect(strip(page)).toHaveAttribute('data-loading', 'true');
   await expect
     .poll(() => strip(page).evaluate((node) => getComputedStyle(node).opacity))
@@ -265,9 +260,7 @@ test('slow flushes show a thin strip and only the latest requested target activa
     await strip(page).evaluate((node) => getComputedStyle(node).opacity),
   ).toBe('0');
   await releaseFlush(page);
-  await expect(active(page).locator('.document-page__title')).toHaveValue(
-    'Feedback C',
-  );
+  await expect(activeTabTitle(page)).toHaveText('Feedback C');
   await expect(busy(page)).toHaveAttribute('aria-busy', 'false');
   await expect(strip(page)).toHaveAttribute('aria-hidden', 'true');
   await expect(tab(page, 'feedback-b')).toHaveAttribute(
@@ -285,9 +278,7 @@ test('failed flushes and closed pending targets clear loading and preserve the s
   await expect(strip(page)).toHaveAttribute('data-loading', 'true');
   await releaseFlush(page, true);
   await expect(busy(page)).toHaveAttribute('aria-busy', 'false');
-  await expect(active(page).locator('.document-page__title')).toHaveValue(
-    'Feedback A',
-  );
+  await expect(activeTabTitle(page)).toHaveText('Feedback A');
   await holdFlush(page);
   await tab(page, 'feedback-b').click();
   await expect(busy(page)).toHaveAttribute('aria-busy', 'true');
@@ -295,9 +286,7 @@ test('failed flushes and closed pending targets clear loading and preserve the s
   await expect(busy(page)).toHaveAttribute('aria-busy', 'false');
   await releaseFlush(page);
   await expect(tab(page, 'feedback-b')).toHaveCount(0);
-  await expect(active(page).locator('.document-page__title')).toHaveValue(
-    'Feedback A',
-  );
+  await expect(activeTabTitle(page)).toHaveText('Feedback A');
 });
 
 test('reduced motion keeps delayed loading static and disables the pane fade', async ({
@@ -405,8 +394,6 @@ test('a renderer error completes feedback without an editor and leaves other tab
   await expect(active(page).getByTestId('workspace-file-error')).toBeVisible();
   await expect(busy(page)).toHaveAttribute('aria-busy', 'false');
   await tab(page, 'feedback-a').click();
-  await expect(active(page).locator('.document-page__title')).toHaveValue(
-    'Feedback A',
-  );
+  await expect(activeTabTitle(page)).toHaveText('Feedback A');
   await expect(busy(page)).toHaveAttribute('aria-busy', 'false');
 });

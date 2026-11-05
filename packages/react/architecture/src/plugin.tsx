@@ -66,7 +66,7 @@ export const createArchitectureUIPlugin = (): FrameUIPlugin => ({
           : layers.length === 1
             ? layers[0].id
             : undefined;
-    return layerId
+    return layerId && c.store.cells[layerId]?.kind === 'architecture-layer'
       ? addArchitectureModule(c.store, layerId, {
           ...createArchitectureModuleCell(c.allocateId()),
           content: { label: c.text },

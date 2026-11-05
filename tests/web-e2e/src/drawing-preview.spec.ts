@@ -1,3 +1,4 @@
+import { selectHistoryAction } from './app-actions';
 import { setAppLanguage } from './app-actions';
 import { expect, test, type Locator, type Page } from '@playwright/test';
 import { selectDrawingTool } from './drawing-tools';
@@ -86,7 +87,7 @@ test('every shape has a real pre-release contour matching the final renderer', a
     );
     await expect(committed).toBeVisible();
     expect(await contour(committed)).toEqual(paths);
-    await page.getByRole('button', { name: '撤销', exact: true }).click();
+    await selectHistoryAction(page, '撤销');
     await expect(cells(page, 'geometry')).toHaveCount(0);
   }
   expect(errors).toEqual([]);
@@ -98,7 +99,6 @@ test('text grids container content and pen styles preview their final appearance
   for (const label of [
     '文本',
     '表格',
-    '泳道',
     '容器',
     '思维导图',
     '流程图',
@@ -109,7 +109,7 @@ test('text grids container content and pen styles preview their final appearance
     await expect(draft(page)).toBeVisible();
     await expect(draft(page)).toContainText(label === '文本' ? 'Text' : '');
     expect((await draft(page).locator('[data-table-entry]').count()) > 1).toBe(
-      ['表格', '泳道'].includes(label),
+      label === '表格',
     );
     expect(
       (await draft(page).locator('[data-draft-cell-id]').count()) > 1,
@@ -135,7 +135,7 @@ test('text grids container content and pen styles preview their final appearance
     }
     // Reference shells mount before their staged preview content.
     await expect.poll(() => contour(committed)).toEqual(paths);
-    await page.getByRole('button', { name: '撤销', exact: true }).click();
+    await selectHistoryAction(page, '撤销');
   }
   await selectDrawingTool(page, '画笔');
   for (const [pen, width, opacity] of [
@@ -159,7 +159,7 @@ test('text grids container content and pen styles preview their final appearance
     const paths = await contour(preview);
     await page.mouse.up();
     expect(await contour(cells(page, 'freehand'))).toEqual(paths);
-    await page.getByRole('button', { name: '撤销', exact: true }).click();
+    await selectHistoryAction(page, '撤销');
   }
 });
 
@@ -282,8 +282,7 @@ test('long freehand paths survive continuous zoom and remain movable without cam
   expect(moved.geometry.x).toBeGreaterThan(original.geometry.x);
   expect(moved.geometry.y).toBeGreaterThan(original.geometry.y);
   expect(moved.data.points).toEqual(original.data.points);
-  const undo = page.getByRole('button', { name: '撤销', exact: true });
-  await undo.click();
+  await selectHistoryAction(page, '撤销');
   await expect(path).toHaveAttribute('d', d);
   await expect.poll(savedStroke).toEqual(original);
   await expect(page.getByTestId('save-status')).toHaveAttribute(
@@ -428,6 +427,6 @@ test('pending port connections and eraser candidates show feedback and can be ca
   await page.mouse.move(box.x + 410, box.y + 250);
   await page.mouse.up();
   await expect(cells(page, 'geometry')).toHaveCount(1);
-  await page.getByRole('button', { name: '撤销', exact: true }).click();
+  await selectHistoryAction(page, '撤销');
   await expect(cells(page, 'geometry')).toHaveCount(2);
 });

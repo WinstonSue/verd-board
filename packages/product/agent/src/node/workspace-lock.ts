@@ -2,9 +2,11 @@ import * as fs from 'node:fs/promises';
 import path from 'node:path';
 import os from 'node:os';
 import { createHash, randomUUID } from 'node:crypto';
-import type {
-  NativeWorkspaceEntry,
-  AuthoringDiagnostic,
+import {
+  FOLDER_ID_FILE,
+  readFolderIdentity,
+  type NativeWorkspaceEntry,
+  type AuthoringDiagnostic,
 } from '@sue/verd-board-app/headless';
 
 export const digest = (content: string | Uint8Array) =>
@@ -150,6 +152,7 @@ export interface NativeSnapshot {
   entries: (NativeWorkspaceEntry & { source: string; version: string })[];
   diagnostics: AuthoringDiagnostic[];
   resourceId?: string | null;
+  folderIds?: string[];
 }
 /** Caller must hold the common workspace lock. Does not create metadata or recover. */
 export async function readNativeSnapshotUnlocked(
@@ -159,6 +162,7 @@ export async function readNativeSnapshotUnlocked(
   const entries: NativeSnapshot['entries'] = [],
     diagnostics: AuthoringDiagnostic[] = [];
   const manifest: [string, string][] = [];
+  const folderIds: string[] = [];
   async function walk(dir: string) {
     const children = await fs
       .readdir(path.join(root, dir), { withFileTypes: true })
@@ -166,6 +170,14 @@ export async function readNativeSnapshotUnlocked(
         if (error.code === 'ENOENT' && !dir) return [];
         throw error;
       });
+    const marker = children.find((child) => child.name === FOLDER_ID_FILE);
+    if (dir && marker?.isFile()) {
+      const relative = `${dir}/${FOLDER_ID_FILE}`;
+      const bytes = await fs.readFile(path.join(root, relative), 'utf8');
+      const folderId = readFolderIdentity(bytes);
+      if (folderId) folderIds.push(folderId);
+      manifest.push([relative, digest(bytes)]);
+    }
     for (const child of children.sort((a, b) =>
       a.name < b.name ? -1 : a.name > b.name ? 1 : 0,
     )) {
@@ -218,6 +230,7 @@ export async function readNativeSnapshotUnlocked(
     ),
     entries,
     diagnostics,
+    folderIds,
     resourceId: await readWorkspaceResourceId(root),
   };
 }

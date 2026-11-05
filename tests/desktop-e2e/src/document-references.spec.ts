@@ -4,6 +4,7 @@ import { mkdir, mkdtemp, readFile, writeFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { setAppLanguage } from '../../web-e2e/src/app-actions';
+import { activeTabTitle } from '../../web-e2e/src/tab-actions';
 
 const root = path.resolve(__dirname, '../../..');
 test('Desktop previews documents in every canvas, adopts external edits and preserves source bytes while reading', async ({
@@ -141,9 +142,7 @@ test('Desktop previews documents in every canvas, adopts external edits and pres
       .getByRole('button', { name: '打开详情', exact: true })
       .first()
       .click();
-    await expect(active.locator('.document-page__title')).toHaveValue(
-      doc.title,
-    );
+    await expect(activeTabTitle(page)).toHaveText(doc.title);
     await expect(
       active.locator('.board-document-content').first(),
     ).toContainText('External source update');

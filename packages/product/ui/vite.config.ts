@@ -6,5 +6,5 @@ export default createLibViteConfig({
   entry: 'src/index.ts',
   react: true,
   cacheDir: '../../../node_modules/.vite/packages/product-ui',
-  externals: ['@floating-ui/react', 'lucide-react'],
+  externals: ['@floating-ui/react', 'lucide-react', 'lucide'],
 });

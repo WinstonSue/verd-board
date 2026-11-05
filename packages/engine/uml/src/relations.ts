@@ -1,5 +1,7 @@
 import {
   isFrameCell,
+  isGroupCell,
+  type CellRegistry,
   isNodeCell,
   type Cell,
   type CellStore,
@@ -256,6 +258,7 @@ export function planUmlPaste(request: {
   };
   allocateId: (id: string) => string;
   offset?: readonly number[];
+  registry?: CellRegistry;
   intent?: string;
 }):
   | {
@@ -285,7 +288,10 @@ export function planUmlPaste(request: {
     incoming.some((cell) =>
       sequence
         ? !isUmlSequenceCell(cell.kind)
-        : !['uml-class-root', 'uml-class', 'uml-relation'].includes(cell.kind),
+        : !isGroupCell(cell) &&
+          !['uml-class-root', 'uml-class', 'uml-relation', 'swimlane'].includes(
+            cell.kind,
+          ),
     )
   )
     throw new Error('Cannot mix UML scenes');
@@ -311,8 +317,13 @@ export function planUmlPaste(request: {
   const operations: import('@sue/board-core').CellOperation[] = [];
   for (const original of incoming) {
     if (isUmlRoot(original) || reused.has(original.id)) continue;
-    let cell = remapUmlCell(structuredClone(original), remap);
+    let cell = structuredClone(original);
+    if (request.registry) {
+      for (const plugin of request.registry.plugins)
+        cell = plugin.remap?.(cell, remap) ?? cell;
+    } else cell = remapUmlCell(cell, remap);
     cell.id = remap(original.id);
+    if (isGroupCell(cell)) cell.members = cell.members.map(remap);
     if (isNodeCell(cell) && !sequence)
       cell.geometry = {
         ...cell.geometry,
@@ -320,6 +331,11 @@ export function planUmlPaste(request: {
         y: cell.geometry.y + (request.offset?.[1] ?? 20),
       };
     if (cell.cellType === 'edge') {
+      if (!sequence && 'points' in cell.route && cell.route.points)
+        cell.route.points = cell.route.points.map(([x, y]) => [
+          x + (request.offset?.[0] ?? 20),
+          y + (request.offset?.[1] ?? 20),
+        ]);
       cell.source =
         'cellId' in cell.source
           ? { ...cell.source, cellId: remap(cell.source.cellId) }
@@ -331,6 +347,13 @@ export function planUmlPaste(request: {
     }
     operations.push({ type: 'insert_cell', parentId: frame.id, cell });
   }
+  const grouped = new Set(
+    operations.flatMap((operation) =>
+      operation.type === 'insert_cell' && isGroupCell(operation.cell)
+        ? operation.cell.members
+        : [],
+    ),
+  );
   if (sequence) {
     const source = sourceRoot?.data ?? metadata;
     if (!source)
@@ -370,7 +393,9 @@ export function planUmlPaste(request: {
     selection: {
       focus: [frame.id],
       ids: operations.flatMap((operation) =>
-        operation.type === 'insert_cell' && !operation.cell.hidden
+        operation.type === 'insert_cell' &&
+        !operation.cell.hidden &&
+        !grouped.has(operation.cell.id)
           ? [operation.cell.id]
           : [],
       ),

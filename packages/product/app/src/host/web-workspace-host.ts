@@ -1,3 +1,4 @@
+import { isFolderIdentityPath, readFolderIdentity } from './folder-identity';
 import { isFrameFileV2 } from '../frames/frame-files';
 import { isDocumentFileV1 } from '../documents/document-files';
 import { digestBytes } from './memory-workspace-host';
@@ -454,6 +455,13 @@ export const createWebWorkspaceHost = (
       }
       for (const op of writes) {
         const node = await get(op.path);
+        if (
+          isFolderIdentityPath(op.path) &&
+          (await get(parentWorkspacePath(op.path) ?? ''))?.kind !== 'directory'
+        )
+          return reject(request_.transactionId, 'source-missing', {
+            path: op.path,
+          });
         if (op.expectedVersion === null) {
           if (node !== undefined)
             return reject(request_.transactionId, 'target-exists', {
@@ -744,10 +752,25 @@ export const createWebWorkspaceHost = (
         allFiles(wsKey),
         trashList(),
       ]);
+      const folderIds = new Map<string, string>();
+      for (const node of stored) {
+        if (node.kind !== 'file' || !isFolderIdentityPath(node.path)) continue;
+        const id = readFolderIdentity(
+          new TextDecoder().decode(await decode(node.content)),
+        );
+        const parent = parentWorkspacePath(node.path);
+        if (id && parent) folderIds.set(parent, id);
+      }
       const entries: WorkspaceEntryMeta[] = stored
+        .filter(
+          (node) => node.kind !== 'file' || !isFolderIdentityPath(node.path),
+        )
         .map((node) => ({
           path: node.path,
           kind: node.kind,
+          ...(node.kind === 'directory'
+            ? { folderId: folderIds.get(node.path) }
+            : {}),
           canvas: node.kind === 'file' && isCanvasPath(node.path),
           document:
             (node.kind === 'file' && isDocumentPath(node.path)) || undefined,

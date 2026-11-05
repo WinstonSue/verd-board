@@ -24,8 +24,8 @@ export function WorkspaceFileError({
       className="workspace-error-card"
     >
       <h3>{en ? 'Unable to display this file' : '此文件暂时无法显示'}</h3>
-      {path && <p>{path}</p>}
-      <p>{message.split(/[\n;]/, 1)[0]}</p>
+      {path && <p data-selectable-text>{path}</p>}
+      <p data-selectable-text>{message.split(/[\n;]/, 1)[0]}</p>
       <p>
         {en
           ? 'Other workspace files remain available. Retry after fixing the source file.'

@@ -1,3 +1,4 @@
+import { selectHistoryAction } from './app-actions';
 import { expect, test, type Page } from '@playwright/test';
 import { createArchitectureFrameSnapshot } from '../../../packages/engine/architecture/src/cell-commands';
 import {
@@ -73,7 +74,7 @@ for (const [appearance, language] of [
       await page.setViewportSize({ width: 1440, height: 900 });
       await page.goto('/');
       await page
-        .locator('.file-tree-header')
+        .locator('ylib-tabs')
         .getByRole('button', {
           name: language === 'zh' ? '新建画布' : 'New canvas',
           exact: true,
@@ -117,12 +118,7 @@ for (const [appearance, language] of [
         await expect(create).not.toHaveAttribute('aria-pressed');
         await create.click();
         await expect(cells).toHaveCount(before + 1);
-        await page
-          .getByRole('button', {
-            name: language === 'zh' ? '撤销' : 'Undo',
-            exact: true,
-          })
-          .click();
+        await canvas(page).press('ControlOrMeta+z');
         await expect(cells).toHaveCount(before);
       }
       await page.screenshot({
@@ -248,7 +244,7 @@ test('UML parameter popovers preserve self calls, branch drafts and one-step und
   await expect(
     canvas(page).locator('[data-cell-kind="uml-message"]'),
   ).toHaveCount(1);
-  await page.getByRole('button', { name: '撤销', exact: true }).click();
+  await selectHistoryAction(page, '撤销');
   await expect(
     canvas(page).locator('[data-cell-kind="uml-message"]'),
   ).toHaveCount(0);

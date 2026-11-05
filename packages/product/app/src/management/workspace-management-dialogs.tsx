@@ -1,4 +1,4 @@
-import { VmDialog } from '@sue/verd-board-ui';
+import { WorkspaceButton, WorkspaceInput, VmDialog } from '@sue/verd-board-ui';
 import { useState, useRef, useEffect } from 'react';
 import { FileText } from 'lucide-react';
 export function QuickOpen({
@@ -60,7 +60,7 @@ export function QuickOpen({
         }
       }}
     >
-      <input
+      <WorkspaceInput
         ref={(el) => el?.focus()}
         type="search"
         placeholder={zh ? '搜索文件名或路径…' : 'Search files…'}
@@ -73,19 +73,19 @@ export function QuickOpen({
       />
       <div role="listbox">
         {rows.map((f, i) => (
-          <button
+          <WorkspaceButton
             type="button"
             role="option"
             aria-selected={i === active}
             key={f.id}
             onClick={() => onOpen(f.id)}
           >
-            <FileText size={16} />
+            <FileText strokeWidth={1.75} size={16} />
             <span>
               {f.title}
               <small>{f.path}</small>
             </span>
-          </button>
+          </WorkspaceButton>
         ))}
         {!rows.length && (
           <p>{zh ? '没有可打开的匹配文件' : 'No matching files'}</p>

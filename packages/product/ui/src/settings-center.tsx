@@ -1,4 +1,11 @@
+import {
+  WorkspaceAlert,
+  WorkspaceButton,
+  WorkspaceInput,
+  WorkspaceTag,
+} from './workspace-design';
 import { Search } from 'lucide-react';
+import { ConfigProvider, Menu, theme } from '@sue/design-web-react';
 import {
   SettingsPage,
   SettingsSection,
@@ -44,6 +51,7 @@ function SettingsCenterContent({
   drafts,
 }: SettingsCenterProps & { drafts: Map<string, () => Promise<boolean>> }) {
   const { language, definition: personal } = useApplicationSettingsModel();
+  const { token } = theme.useToken();
   const zh = (workspace?.locale ?? language) === 'zh';
   const width = useMindMaxWidth();
   const project = useWorkspaceSettingsDefinition(
@@ -95,6 +103,7 @@ function SettingsCenterContent({
   const selected = sections.some((s) => s.id === normalized)
     ? normalized
     : 'personal.general';
+  const [storageError, setStorageError] = useState('');
   const [mobileContent, setMobileContent] = useState(false);
   const navigate = async (target: string) => {
     for (const save of drafts.values()) if (!(await save())) return;
@@ -149,8 +158,9 @@ function SettingsCenterContent({
     ].find((e) => e.dataset['settingKey'] === focusTarget);
     if (!field && focusTarget !== 'section') return;
     const target =
-      field?.querySelector<HTMLElement>('input, select, textarea, button') ??
-      content.current;
+      field?.querySelector<HTMLElement>(
+        'input, select, textarea, button, [role="slider"]',
+      ) ?? content.current;
     target?.focus();
     field?.scrollIntoView?.({ block: 'nearest' });
     setFocusTarget(undefined);
@@ -172,11 +182,10 @@ function SettingsCenterContent({
         aria-label={zh ? '设置栏目' : 'Settings sections'}
       >
         <div className="settings-search-anchor">
-          <label className="settings-search vm-search">
-            <Search size={16} aria-hidden className="vm-search__icon" />
-            <input
+          <div className="settings-search">
+            <WorkspaceInput
               type="search"
-              className="vm-input vm-input--search"
+              prefix={<Search strokeWidth={1.75} size={16} aria-hidden />}
               placeholder={zh ? '搜索设置' : 'Search settings'}
               aria-label={zh ? '搜索设置' : 'Search settings'}
               data-testid="settings-search"
@@ -185,6 +194,7 @@ function SettingsCenterContent({
               onChange={(e) => setQuery(e.target.value)}
               onKeyDown={(e) => {
                 if (e.key === 'Escape' && query) {
+                  e.preventDefault();
                   e.stopPropagation();
                   setQuery('');
                 }
@@ -196,14 +206,15 @@ function SettingsCenterContent({
                 }
               }}
             />
-          </label>
+          </div>
           {term && (
             <div
               className="settings-search-results"
               aria-label={zh ? '设置搜索结果' : 'Settings search results'}
             >
               {results.map((f) => (
-                <button
+                <WorkspaceButton
+                  intent="ghost"
                   className="settings-search-result"
                   onKeyDown={(e) => {
                     if (e.key === 'Escape') {
@@ -239,11 +250,14 @@ function SettingsCenterContent({
                     }
                   }}
                 >
-                  {f.label}
-                  <small>
-                    {sections.find((s) => s.id === f.section)?.group} / {f.path}
-                  </small>
-                </button>
+                  <span className="settings-result-content">
+                    <span>{f.label}</span>
+                    <small>
+                      {sections.find((s) => s.id === f.section)?.group} /{' '}
+                      {f.path}
+                    </small>
+                  </span>
+                </WorkspaceButton>
               ))}
               {!results.length && (
                 <p>{zh ? '没有匹配的设置' : 'No matching settings'}</p>
@@ -251,37 +265,62 @@ function SettingsCenterContent({
             </div>
           )}
         </div>
-        {sections.map((s, i) => (
-          <div key={s.id}>
-            {(i === 0 || sections[i - 1]?.group !== s.group) && (
-              <h2 className="settings-scope-heading vm-section-label">
-                {s.group}
-              </h2>
+        <ConfigProvider
+          theme={{
+            components: {
+              Menu: {
+                itemHeight: token.controlHeight,
+                itemMarginInline: 0,
+                itemMarginBlock: 0,
+                groupTitleFontSize: token.fontSizeSM,
+              },
+            },
+          }}
+        >
+          <Menu
+            mode="inline"
+            inlineIndent={token.paddingXS}
+            aria-label={zh ? '设置栏目' : 'Settings sections'}
+            selectedKeys={[selected]}
+            disabled={busy}
+            styles={{ root: { borderInlineEnd: 0, background: 'transparent' } }}
+            items={['personal', ...(workspace ? ['workspace'] : [])].map(
+              (scope) => {
+                const entries = sections.filter((s) =>
+                  s.id.startsWith(`${scope}.`),
+                );
+                return {
+                  type: 'group',
+                  key: scope,
+                  label: entries[0]!.group,
+                  children: entries.map((s) => ({
+                    key: s.id,
+                    label: s.label,
+                    disabled: busy,
+                    'data-testid': `settings-nav-${s.id}`,
+                    'aria-current':
+                      selected === s.id ? ('page' as const) : undefined,
+                  })),
+                };
+              },
             )}
-            <button
-              type="button"
-              className="vm-nav-row"
-              data-testid={`settings-nav-${s.id}`}
-              aria-current={selected === s.id ? 'page' : undefined}
-              disabled={busy}
-              onClick={() => {
-                setQuery('');
-                void navigate(s.id);
-              }}
-            >
-              <span className="settings-nav-label">{s.label}</span>
-            </button>
-          </div>
-        ))}
+            onClick={({ key }) => {
+              if (busy) return;
+              setQuery('');
+              void navigate(key);
+            }}
+          />
+        </ConfigProvider>
       </nav>
       <main className="settings-sections-main">
-        <button
+        <WorkspaceButton
           type="button"
+          intent="ghost"
           className="settings-mobile-back"
           onClick={() => setMobileContent(false)}
         >
           {zh ? '返回设置栏目' : 'All settings'}
-        </button>
+        </WorkspaceButton>
 
         <div
           ref={content}
@@ -306,7 +345,11 @@ function SettingsCenterContent({
                   role={w.persistence.status === 'error' ? 'alert' : 'status'}
                   data-testid="settings-workspace-save"
                 >
-                  <span className="vm-badge">
+                  <WorkspaceTag
+                    color={
+                      w.persistence.status === 'error' ? 'error' : undefined
+                    }
+                  >
                     {(
                       {
                         saved: zh ? '已保存' : 'Saved',
@@ -315,16 +358,19 @@ function SettingsCenterContent({
                         error: zh ? '保存失败' : 'Save failed',
                       } as Record<string, string>
                     )[w.persistence.status] ?? w.persistence.status}
-                  </span>
-                  {w.persistence.error && <p>{w.persistence.error}</p>}
+                  </WorkspaceTag>
+                  {w.persistence.error && (
+                    <WorkspaceAlert type="error" title={w.persistence.error} />
+                  )}
                   {w.persistence.status === 'error' && (
-                    <button
-                      className="vm-btn vm-btn--ghost vm-btn--sm"
+                    <WorkspaceButton
+                      intent="ghost"
+                      size="small"
                       type="button"
                       onClick={w.persistence.onRetry}
                     >
                       {zh ? '重试保存' : 'Retry save'}
-                    </button>
+                    </WorkspaceButton>
                   )}
                 </div>
               )
@@ -344,6 +390,7 @@ function SettingsCenterContent({
                 >
                   <WorkspaceGeneralSettings
                     {...w}
+                    disabled={!!disabled || busy}
                     globalWidth={width}
                     zh={zh}
                   />
@@ -354,15 +401,34 @@ function SettingsCenterContent({
                   {w.storage && (
                     <SettingsSection title={zh ? '存储位置' : 'Storage'}>
                       <SettingsRow label={zh ? '工作区资料' : 'Workspace data'}>
-                        <span>
-                          {w.storage === 'desktop'
-                            ? zh
-                              ? '本地工作区文件夹'
-                              : 'Local workspace folder'
-                            : zh
-                              ? '当前浏览器'
-                              : 'This browser'}
-                        </span>
+                        {w.storage === 'desktop' && w.storageLocation ? (
+                          <WorkspaceButton
+                            type="button"
+                            intent="ghost"
+                            data-testid="workspace-storage-location"
+                            title={w.storageLocation}
+                            onClick={() =>
+                              void w
+                                .onOpenStorage?.()
+                                .catch((e) => setStorageError(String(e)))
+                            }
+                          >
+                            {w.storageLocation}
+                          </WorkspaceButton>
+                        ) : (
+                          <span>
+                            {w.storage === 'browser'
+                              ? zh
+                                ? '当前浏览器 · IndexedDB'
+                                : 'This browser · IndexedDB'
+                              : zh
+                                ? '正在读取位置…'
+                                : 'Reading location…'}
+                          </span>
+                        )}
+                        {storageError && (
+                          <WorkspaceAlert type="error" title={storageError} />
+                        )}
                       </SettingsRow>
                     </SettingsSection>
                   )}
@@ -371,7 +437,7 @@ function SettingsCenterContent({
                       title={zh ? 'AI 接入' : 'AI connection'}
                       data-testid="workspace-agent-status"
                     >
-                      <span className="vm-badge">
+                      <WorkspaceTag>
                         {w.agent.ready
                           ? zh
                             ? '已就绪'
@@ -379,7 +445,7 @@ function SettingsCenterContent({
                           : zh
                             ? '暂不可用，重新打开工作区后可重试。'
                             : 'Not ready · reopen workspace or run verd doctor --repair'}
-                      </span>
+                      </WorkspaceTag>
                       <Disclosure label={zh ? '诊断详情' : 'Diagnostics'}>
                         <div className="vm-diagnostics">
                           {w.agent.diagnostics.map((d, i) => (

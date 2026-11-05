@@ -1,3 +1,5 @@
+import { openHistoryAction } from './app-actions';
+import { selectHistoryAction } from './app-actions';
 import { openTrash, setAppLanguage } from './app-actions';
 import { test, expect } from '@playwright/test';
 import {
@@ -9,6 +11,15 @@ import {
 
 test.beforeEach(async ({ page }) => {
   await page.goto('/');
+  if (
+    !(await page
+      .locator('.workspace-pane.is-active svg[aria-label="Frame canvas"]')
+      .isVisible())
+  )
+    await page
+      .locator('.file-tree-row[data-entry-kind="file"]')
+      .first()
+      .click();
   await expect(
     page.locator('.workspace-pane.is-active svg[aria-label="Frame canvas"]'),
   ).toBeVisible();
@@ -41,9 +52,9 @@ test('folders with nested documents, canvases and empty directories trash and re
   await openTrash(page);
   await expect(page.getByTestId('workspace-trash-count')).toHaveText('1');
   await page.getByTestId('workspace-settings-back').click();
-  await page.getByRole('button', { name: '撤销', exact: true }).click();
+  await selectHistoryAction(page, '撤销');
   await expect(directoryRow(page, '归档')).toBeVisible();
-  await page.getByRole('button', { name: '重做', exact: true }).click();
+  await selectHistoryAction(page, '重做');
   await expect(directoryRow(page, '归档')).toHaveCount(0);
   await openTrash(page);
   await page.getByRole('button', { name: '还原 归档', exact: true }).click();
@@ -109,9 +120,8 @@ test('permanent deletion and empty trash require confirmation and persist after 
     .click();
   await expect(page.getByTestId('workspace-trash')).toContainText('回收站为空');
   await page.getByTestId('workspace-settings-back').click();
-  await expect(
-    page.getByRole('button', { name: '撤销', exact: true }),
-  ).toBeDisabled();
+  await expect(await openHistoryAction(page, '撤销')).toBeDisabled();
+  await page.keyboard.press('Escape');
   await page.reload();
   await openTrash(page);
   await expect(page.getByTestId('workspace-trash')).toContainText('回收站为空');
@@ -141,22 +151,25 @@ test('readonly workspace trash remains visible and its menu works in narrow Engl
   );
   for (const width of [1280, 800, 390]) {
     await page.setViewportSize({ width, height: 844 });
-    const navigation = page.getByRole('navigation', {
-      name: 'Workspace settings menu',
+    const settings = page.getByTestId('workspace-settings-page');
+    if (width < 760) await settings.locator('.settings-mobile-back').click();
+    const navigation = settings.getByRole('navigation', {
+      name: 'Settings sections',
       exact: true,
     });
     await expect(navigation).toBeVisible();
-    const main = page.locator('.workspace-settings .settings-sections-main');
-    expect((await navigation.boundingBox())!.x).toBeLessThan(
-      (await main.boundingBox())!.x,
-    );
+    const main = settings.locator('.settings-sections-main');
+    if (width >= 760)
+      expect((await navigation.boundingBox())!.x).toBeLessThan(
+        (await main.boundingBox())!.x,
+      );
     expect(
       await main.evaluate(
         (element) => element.scrollWidth > element.clientWidth,
       ),
     ).toBe(false);
     await navigation
-      .getByRole('button', { name: 'General', exact: true })
+      .getByRole('menuitem', { name: 'General', exact: true })
       .click();
     await expect(page.getByTestId('workspace-settings-name')).toBeVisible();
     expect(
@@ -167,8 +180,9 @@ test('readonly workspace trash remains visible and its menu works in narrow Engl
     await page.screenshot({
       path: test.info().outputPath(`settings-general-${width}.png`),
     });
+    if (width < 760) await settings.locator('.settings-mobile-back').click();
     await navigation
-      .getByRole('button', { name: 'Trash', exact: true })
+      .getByRole('menuitem', { name: 'Trash', exact: true })
       .click();
     await page.screenshot({
       path: test.info().outputPath(`settings-trash-${width}.png`),

@@ -1,3 +1,4 @@
+import { selectHistoryAction } from './app-actions';
 import { expect, test, type Locator, type Page } from '@playwright/test';
 import { createArchitectureFrameSnapshot } from '../../../packages/engine/architecture/src/cell-commands';
 import { applyCellOperations } from '../../../packages/engine/core/src/cell/index';
@@ -175,19 +176,9 @@ for (const viewport of [
       expect(await node(page, 'a').boundingBox()).toEqual(before);
       await x(page).press('Enter');
       await panel(page).getByTestId('inspector-name').focus();
-      await pane(page)
-        .getByRole('button', {
-          name: language === 'zh' ? '撤销' : 'Undo',
-          exact: true,
-        })
-        .click();
+      await selectHistoryAction(page, language === 'zh' ? '撤销' : 'Undo');
       await expect(x(page)).toHaveValue('100');
-      await pane(page)
-        .getByRole('button', {
-          name: language === 'zh' ? '重做' : 'Redo',
-          exact: true,
-        })
-        .click();
+      await selectHistoryAction(page, language === 'zh' ? '重做' : 'Redo');
       await expect(x(page)).toHaveValue('240');
       await x(page).fill('');
       await x(page).press('Enter');

@@ -10,6 +10,7 @@ import {
   DocumentPreview,
   type DocumentPreviewController,
 } from './document-preview';
+import { createDocumentFoldingStore } from './folding-store';
 
 (
   globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }
@@ -98,6 +99,70 @@ describe('DocumentPreview', () => {
           .querySelector('.board-document-content')
           ?.getAttribute('contenteditable'),
       ).toBe('false');
+    } finally {
+      await act(async () => root.unmount());
+    }
+  });
+
+  it('reveals the stable paragraph inside a folded list and updates the fold control', async () => {
+    const container = document.createElement('div');
+    const root = createRoot(container);
+    const folding = createDocumentFoldingStore();
+    folding.setCollapsed('outer', true);
+    let controller: DocumentPreviewController | null = null;
+    try {
+      await act(async () =>
+        root.render(
+          <DocumentPreview
+            folding={folding}
+            value={documentWith({
+              type: 'bulletList',
+              content: [
+                {
+                  type: 'listItem',
+                  attrs: { blockId: 'outer' },
+                  content: [
+                    paragraph('Parent'),
+                    {
+                      type: 'bulletList',
+                      content: [
+                        {
+                          type: 'listItem',
+                          content: [
+                            {
+                              ...paragraph('Target'),
+                              attrs: { blockId: 'target' },
+                            },
+                          ],
+                        },
+                      ],
+                    },
+                  ],
+                },
+              ],
+            })}
+            onReady={(value) => {
+              controller = value;
+            }}
+          />,
+        ),
+      );
+      const target = container.querySelector<HTMLElement>(
+        '[data-block-id="target"]',
+      )!;
+      const toggle = container.querySelector<HTMLButtonElement>(
+        '.document-list-fold',
+      )!;
+      const scroll = vi.fn();
+      target.scrollIntoView = scroll;
+      expect(toggle.getAttribute('aria-expanded')).toBe('false');
+      await act(async () => {
+        expect(controller!.locateBlock('target')).toBe(true);
+      });
+      expect(toggle.getAttribute('aria-expanded')).toBe('true');
+      expect(folding.getSnapshot().get('outer')).toBe(false);
+      expect(scroll).toHaveBeenCalledOnce();
+      expect(controller!.locateBlock('absent')).toBe(false);
     } finally {
       await act(async () => root.unmount());
     }

@@ -10,12 +10,14 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { setAppLanguage } from '../../web-e2e/src/app-actions';
 import {
+  activeTabTitle,
   createGroup,
   switchGroup,
   deleteGroup,
 } from '../../web-e2e/src/tab-actions';
+import { renameFile } from '../../web-e2e/src/workspace-file-actions';
 
-test('Desktop restores tab groups and shared documents and saves focused edits when a group closes', async () => {
+test('Desktop restores tab groups, renamed files and shared document edits', async () => {
   test.setTimeout(120_000);
   const directory = await mkdtemp(path.join(tmpdir(), 'verd-tab-groups-'));
   const workspace = path.join(directory, 'workspace');
@@ -103,9 +105,7 @@ test('Desktop restores tab groups and shared documents and saves focused edits w
     await active(page)
       .getByRole('button', { name: '打开详情', exact: true })
       .click();
-    await expect(active(page).locator('.document-page__title')).toHaveValue(
-      'Shared desktop source',
-    );
+    await expect(activeTabTitle(page)).toHaveText('Shared desktop source');
     const editor = active(page).locator('.ProseMirror[contenteditable="true"]');
     await editor.click();
     await editor.press('ControlOrMeta+End');
@@ -119,13 +119,9 @@ test('Desktop restores tab groups and shared documents and saves focused edits w
     await expect(active(page).locator('.board-document-content')).toContainText(
       'shared edit',
     );
-    await active(page)
-      .locator('.document-page__title')
-      .fill('Saved group title');
+    await renameFile(page, 'desktop-tabs-doc', 'Saved group title');
     await deleteGroup(page, 'Writing');
-    await expect(active(page).locator('.document-page__title')).toHaveValue(
-      'Saved group title',
-    );
+    await expect(activeTabTitle(page)).toHaveText('Saved group title');
     await createGroup(page, 'Restored group');
     await page
       .locator('.file-tree-name')
@@ -134,9 +130,7 @@ test('Desktop restores tab groups and shared documents and saves focused edits w
     await close(page);
     page = await launch();
     await expect(page.locator('ylib-tabs').getByRole('tab')).toHaveCount(1);
-    await expect(active(page).locator('.document-page__title')).toHaveValue(
-      'Saved group title',
-    );
+    await expect(activeTabTitle(page)).toHaveText('Saved group title');
     await expect(active(page).locator('.board-document-content')).toContainText(
       'shared edit',
     );

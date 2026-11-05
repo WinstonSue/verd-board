@@ -123,3 +123,45 @@
     transition: none;
   }
 }
+
+.workspace-shell.is-presenting {
+  .workspace-pane.is-active .presentation-mode,
+  .workspace-document-presentation {
+    position: fixed;
+    inset: 0;
+    z-index: 1000;
+    background: var(--vm-background);
+  }
+  .workspace-document-presentation {
+    display: flex;
+    flex-direction: column;
+    .document-page {
+      flex: 1;
+      min-height: 0;
+    }
+    .document-page__header,
+    .document-page__status {
+      display: none;
+    }
+  }
+  .workspace-presentation-controls {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    padding: 12px 24px;
+    button {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+  }
+}
+
+.workspace-presentation-notice {
+  position: fixed;
+  z-index: 1100;
+  top: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  max-width: min(640px, calc(100vw - 32px));
+}

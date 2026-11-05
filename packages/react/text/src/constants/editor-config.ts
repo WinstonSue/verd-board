@@ -9,6 +9,7 @@ import {
 } from '@tiptap/extension-details';
 import { InlineMath, BlockMath } from '@tiptap/extension-mathematics';
 import { DocumentFolding } from '../components/document/document-rich-content';
+import { DocumentSearchHighlight } from '../components/document/document-search-highlight';
 import { StableBlocks } from './stable-blocks';
 import { StarterKit } from '@tiptap/starter-kit';
 import { Heading } from '@tiptap/extension-heading';
@@ -110,12 +111,18 @@ export interface DocumentExtensionOptions {
   folding?: import('../components/document/folding-store').DocumentFoldingAdapter;
   history?: boolean;
   placeholder?: string;
+  placeholderContext?(): {
+    locale: 'zh' | 'en';
+    references: boolean;
+    paragraph?: string;
+  };
   onMathEdit?(latex: string, pos: number, block: boolean): void;
 }
 
 export const createDocumentExtensions = ({
   history = true,
   placeholder,
+  placeholderContext,
   onMathEdit,
   folding,
 }: DocumentExtensionOptions = {}) => [
@@ -126,7 +133,29 @@ export const createDocumentExtensions = ({
     ...(history ? {} : { undoRedo: false as const }),
   }),
   ...blockContentExtensions,
-  Details.configure({ persist: false }),
+  Details.extend({
+    addNodeView() {
+      const render = this.parent?.();
+      if (!render) return null;
+      return (props) => {
+        const view = render(props);
+        const ignore = view.ignoreMutation;
+        // The disclosure button belongs to the node view, never its content.
+        // SVG updates must not trigger DOM parsing and recreate the node view.
+        view.ignoreMutation = (mutation) => {
+          const button = (view.dom as HTMLElement).querySelector(
+            ':scope > button',
+          );
+          return (
+            button?.contains(mutation.target) ||
+            ignore?.call(view, mutation) ||
+            false
+          );
+        };
+        return view;
+      };
+    },
+  }).configure({ persist: false }),
   DetailsSummary,
   DetailsContent,
   InlineMath.extend({ addInputRules: () => [] }).configure({
@@ -138,18 +167,37 @@ export const createDocumentExtensions = ({
     onClick: (node, pos) => onMathEdit?.(node.attrs['latex'], pos, true),
   }),
   DocumentFolding.configure({ folding }),
+  DocumentSearchHighlight,
   Attachment,
   WebEmbed,
   DocumentFrameReference,
   DocumentExcerpt,
   StableBlocks,
   Placeholder.configure({
-    placeholder: placeholder ?? DEFAULT_PLACEHOLDERS.document,
+    includeChildren: true,
+    placeholder: ({ node }) => {
+      const context = placeholderContext?.();
+      const english = context?.locale === 'en';
+      if (node.type.name === 'heading')
+        return `${english ? 'Heading' : '标题'} ${node.attrs['level']}`;
+      if (node.type.name !== 'paragraph') return '';
+      return (
+        context?.paragraph ??
+        placeholder ??
+        (english
+          ? context?.references
+            ? 'Type / to insert content or @ to reference a document or canvas'
+            : 'Type / to insert content'
+          : context?.references
+            ? '输入 / 插入内容，输入 @ 引用文档或画布'
+            : DEFAULT_PLACEHOLDERS.document)
+      );
+    },
   }),
 ];
 
 export const DEFAULT_PLACEHOLDERS = {
   paragraph: '输入内容...',
   line: '输入主题',
-  document: '输入正文...',
+  document: '输入 / 插入内容',
 } as const;

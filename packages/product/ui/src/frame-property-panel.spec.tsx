@@ -81,6 +81,52 @@ async function mount(defaultCollapsed = true) {
 }
 
 describe('FramePropertyGroup deferred fields', () => {
+  it('keeps header actions outside the heading and retains fields while the panel is hidden', async () => {
+    const container = document.createElement('div');
+    const root = createRoot(container);
+    cleanups.push(async () => {
+      await act(async () => root.unmount());
+    });
+    function Harness() {
+      const [open, setOpen] = useState(true);
+      return (
+        <>
+          <button data-expand onClick={() => setOpen(true)}>
+            Expand
+          </button>
+          <FramePropertyPanel
+            title="Properties"
+            open={open}
+            identity="selection"
+            disabled={false}
+            headerActions={
+              <button data-collapse onClick={() => setOpen(false)}>
+                Collapse
+              </button>
+            }
+          >
+            <input aria-label="Draft" defaultValue="retained draft" />
+          </FramePropertyPanel>
+        </>
+      );
+    }
+    await act(async () => root.render(<Harness />));
+    const panel = container.querySelector('aside')!;
+    const field = container.querySelector('input')!;
+    const collapse =
+      container.querySelector<HTMLButtonElement>('[data-collapse]')!;
+    expect(collapse.closest('[role="heading"]')).toBeNull();
+    await act(async () => collapse.click());
+    expect(panel.hidden).toBe(true);
+    expect(container.querySelector('input')).toBe(field);
+    await act(async () =>
+      container.querySelector<HTMLButtonElement>('[data-expand]')!.click(),
+    );
+    expect(panel.hidden).toBe(false);
+    expect(container.querySelector('input')).toBe(field);
+    expect(field.value).toBe('retained draft');
+  });
+
   it('keeps its accessible collapsed shell without rendering fields, then mounts them on expansion', async () => {
     const test = await mount();
     expect(

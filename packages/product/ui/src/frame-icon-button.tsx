@@ -56,7 +56,12 @@ export function FrameIconButton({
       >
         <Icon size={18} strokeWidth={1.75} aria-hidden />
         {hasPopup && (
-          <ChevronDown className="frame-tool-menu-caret" size={8} aria-hidden />
+          <ChevronDown
+            strokeWidth={1.75}
+            className="frame-tool-menu-caret"
+            size={8}
+            aria-hidden
+          />
         )}
       </button>
     </FrameTooltip>

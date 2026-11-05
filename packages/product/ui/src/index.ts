@@ -18,6 +18,7 @@ export { CanvasPreview } from './canvas-preview';
 export * from './chart-library';
 export * from './components/workspace-switcher';
 export * from './document-page';
+export { FrameSaveStatus } from './frame-save-status';
 export * from './file-tree';
 export * from './frame-settings-page';
 export * from './i18n';
@@ -55,3 +56,19 @@ export * from './components/sidebar-section';
 export * from './components/settings-layout';
 export * from './components/portal-root';
 export * from './file-tree-menu';
+
+export {
+  requestPresentationFullscreen,
+  exitPresentationFullscreen,
+} from './presentation/fullscreen-owner';
+
+export {
+  WorkspaceAlert,
+  WorkspaceEmptyState,
+  WorkspaceDialogTabs,
+  WorkspaceDesignProvider,
+  useWorkspaceDesignVariables,
+  WorkspaceButton,
+  WorkspaceInput,
+} from './workspace-design';
+export { WorkspaceLinkEditor } from './workspace-link-editor';

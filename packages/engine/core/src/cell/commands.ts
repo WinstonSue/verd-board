@@ -15,6 +15,7 @@ import {
   type CellOperation,
   type CellRegistry,
 } from './index';
+import { frameLanes } from './lanes';
 import { normalizeCellPositionOperations } from './position';
 import { createCellRegistry } from './registry';
 import {
@@ -63,6 +64,19 @@ export const groupCells = (
   const leaves = members.flatMap((id) =>
     isGroupCell(store.cells[id]) ? groupLeafMembers(store, id) : [id],
   );
+  const laneByMember = new Map(
+    frameLanes(store, frameId, registry).flatMap((lane) =>
+      lane.members.map((member) => [member, lane] as const),
+    ),
+  );
+  if (
+    new Set(
+      leaves
+        .filter((id) => isNodeCell(store.cells[id]))
+        .map((id) => laneByMember.get(id)),
+    ).size > 1
+  )
+    throw new Error('Group crosses swimlanes');
   const drawn = frame.children.filter((id) => leaves.includes(id));
   const first = Math.min(...drawn.map((id) => frame.children.indexOf(id)));
   const order = frame.children.filter((id) => !drawn.includes(id));

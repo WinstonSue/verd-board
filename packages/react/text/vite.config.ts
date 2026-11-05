@@ -7,5 +7,5 @@ export default createLibViteConfig({
   extraEntries: { schema: 'src/schema.ts' },
   react: true,
   cacheDir: '../../../node_modules/.vite/packages/react-text',
-  externals: [/^@tiptap\//],
+  externals: [/^@tiptap\//, 'lucide-react', 'lucide'],
 });

@@ -1,3 +1,4 @@
+import { frameLaneScene, frameLanes, planLaneDrop } from '@sue/board-core';
 import { createInlineText } from '@sue/board-common';
 import {
   createDefaultShapeGeometryRegistry,
@@ -132,6 +133,38 @@ export const createDrawUIPlugin = (): FrameUIPlugin => ({
         ],
   Toolbar: DrawToolbar,
   actions: [
+    {
+      id: 'draw.assign-swimlane',
+      label: { zh: '分配泳道', en: 'Assign swimlane' },
+      category: 'draw',
+      effect: 'content',
+      palette: false,
+      validateArgs: (
+        args,
+      ): args is { containerId: string; laneId: string } | null =>
+        args === null ||
+        (!!args &&
+          typeof args === 'object' &&
+          'containerId' in args &&
+          typeof args.containerId === 'string' &&
+          'laneId' in args &&
+          typeof args.laneId === 'string'),
+      getState: (c) => ({
+        visible: frameLanes(c.store, c.frameId, c.registry).length > 0,
+        enabled: !c.disabled && c.selectionIds.length > 0,
+      }),
+      execute: (c, assignment) =>
+        c.runOperations(
+          planLaneDrop(
+            c.store,
+            c.frameId,
+            c.selectionIds,
+            [],
+            c.registry,
+            assignment,
+          ),
+        ),
+    },
     ...drawTools.map((definition) => {
       const { id, label, pointer } = definition;
       const shortcut =
@@ -163,7 +196,10 @@ export const createDrawUIPlugin = (): FrameUIPlugin => ({
                 'markerHighlight',
               ].includes(String((args as { pen?: unknown }).pen)))),
         getState: (c: FrameActionContext) => ({
-          visible: !frameScene(c.store, c.frameId, c.registry),
+          visible:
+            id === 'swimlane'
+              ? !!frameLaneScene(c.store, c.frameId, c.registry)
+              : !frameScene(c.store, c.frameId, c.registry),
           enabled: !c.disabled && !!c.setTool,
           checked: (c.tool?.key?.split(':')[0] ?? c.tool?.mode) === pointer,
         }),
@@ -177,6 +213,7 @@ export const createDrawUIPlugin = (): FrameUIPlugin => ({
           c.setTool?.(
             createFrameDrawingTool({
               pointer,
+              semanticSwimlane: id === 'swimlane',
               shape:
                 args?.shape ?? (id === 'ellipse' ? 'ellipse' : 'rectangle'),
               pen: args?.pen ?? 'nibPen',

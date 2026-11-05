@@ -1,3 +1,4 @@
+import { openHistoryAction } from '../../web-e2e/src/app-actions';
 import { electron, writeDesktopLauncher } from './desktop-launcher';
 import {
   createFolder,
@@ -90,6 +91,36 @@ const closeWindow = async (page: Page) => {
   await desktop!.close();
   desktop = undefined;
 };
+
+test('Desktop keeps a folder link after a filesystem rename and reopen', async () => {
+  let page = await launch();
+  await createFolder(page, 'Link target');
+  await folderAction(page, 'Link target', '复制链接');
+  const copy = () => desktop!.evaluate(({ clipboard }) => clipboard.readText());
+  await expect.poll(copy).toMatch(/^verd:\/\/folder\//);
+  const href = await copy();
+  await closeWindow(page);
+  const { rename } = await import('node:fs/promises');
+  await rename(
+    path.join(workspaceDir(), 'Link target'),
+    path.join(workspaceDir(), 'New target'),
+  );
+  page = await launch();
+  await expect
+    .poll(async () => {
+      try {
+        await desktop!.evaluate(({ clipboard }) =>
+          clipboard.writeText('folder-link-test'),
+        );
+        return true;
+      } catch {
+        return false;
+      }
+    })
+    .toBe(true);
+  await folderAction(page, 'New target', '复制链接');
+  await expect.poll(copy).toBe(href);
+});
 
 test('Desktop trashes complete folders, restores on disk and permanently deletes across restart', async () => {
   let page = await launch();
@@ -236,12 +267,20 @@ test('Desktop preserves device interaction preferences across a restart without 
   const before = await workspaceDigest();
   await openSettings(page);
   await page.getByTestId('settings-nav-personal.editor').click();
-  await page.getByTestId('settings-zoomSensitivity').press('Home');
-  await page.getByTestId('settings-dragPanSpeed').press('End');
-  await expect(page.getByTestId('settings-zoomSensitivity')).toHaveValue(
-    '0.25',
-  );
-  await expect(page.getByTestId('settings-dragPanSpeed')).toHaveValue('3');
+  await page
+    .getByTestId('settings-zoomSensitivity')
+    .getByRole('slider')
+    .press('Home');
+  await page
+    .getByTestId('settings-dragPanSpeed')
+    .getByRole('slider')
+    .press('End');
+  await expect(
+    page.getByTestId('settings-zoomSensitivity').getByRole('slider'),
+  ).toHaveAttribute('aria-valuenow', '0.25');
+  await expect(
+    page.getByTestId('settings-dragPanSpeed').getByRole('slider'),
+  ).toHaveAttribute('aria-valuenow', '3');
 
   await page.getByTestId('my-back').click();
   await closeWindow(page);
@@ -249,10 +288,12 @@ test('Desktop preserves device interaction preferences across a restart without 
   page = await launch();
   await openSettings(page);
   await page.getByTestId('settings-nav-personal.editor').click();
-  await expect(page.getByTestId('settings-zoomSensitivity')).toHaveValue(
-    '0.25',
-  );
-  await expect(page.getByTestId('settings-dragPanSpeed')).toHaveValue('3');
+  await expect(
+    page.getByTestId('settings-zoomSensitivity').getByRole('slider'),
+  ).toHaveAttribute('aria-valuenow', '0.25');
+  await expect(
+    page.getByTestId('settings-dragPanSpeed').getByRole('slider'),
+  ).toHaveAttribute('aria-valuenow', '3');
 });
 
 test.beforeEach(async () => {
@@ -510,9 +551,10 @@ test('Desktop camera navigation leaves a 156-cell workspace untouched and reopen
     .poll(async () => Object.keys(await canvasFiles()).length)
     .toBe(6);
   const before = await workspaceDigest();
-  const undoWasDisabled = await page
-    .getByRole('button', { name: '撤销', exact: true })
-    .isDisabled();
+  const undoWasDisabled = await (
+    await openHistoryAction(page, '撤销')
+  ).isDisabled();
+  await page.keyboard.press('Escape');
   const tasks: number[] = [];
   await page.evaluate(() => {
     (window as any).cameraLongTasks = [];
@@ -535,9 +577,10 @@ test('Desktop camera navigation leaves a 156-cell workspace untouched and reopen
   await page.mouse.up();
   const elapsed = Date.now() - start;
   tasks.push(...(await page.evaluate(() => (window as any).cameraLongTasks)));
-  expect(
-    await page.getByRole('button', { name: '撤销', exact: true }).isDisabled(),
-  ).toBe(undoWasDisabled);
+  expect(await (await openHistoryAction(page, '撤销')).isDisabled()).toBe(
+    undoWasDisabled,
+  );
+  await page.keyboard.press('Escape');
   await expect.poll(async () => await workspaceDigest()).toBe(before);
   console.log(
     JSON.stringify({

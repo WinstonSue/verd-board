@@ -19,7 +19,8 @@
   "dependencies": {
     "@sue/board-uml": "workspace:*",
     "@sue/board-core": "workspace:*",
-    "@sue/board-react": "workspace:*"
+    "@sue/board-react": "workspace:*",
+    "lucide-react": "1.47.0"
   },
   "peerDependencies": {
     "react": ">=18",

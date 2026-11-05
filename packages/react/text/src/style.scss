@@ -22,11 +22,24 @@
 [data-type='details'] > button {
   cursor: pointer;
 }
-[data-type='details'] > button::before {
-  content: '▸';
+.document-fold-icon {
+  display: block;
+  flex: none;
+  pointer-events: none;
 }
-[data-type='details'].is-open > button::before {
-  content: '▾';
+.document-summary-fold {
+  display: inline-block;
+  vertical-align: middle;
+  margin-inline-end: 4px;
+}
+.document-lucide-details > summary {
+  list-style: none;
+  &::-webkit-details-marker {
+    display: none;
+  }
+}
+.lucide {
+  stroke-width: 1.75;
 }
 .document-math-dialog {
   position: fixed;

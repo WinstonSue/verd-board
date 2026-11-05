@@ -1,3 +1,4 @@
+import { cellSearchTexts } from '@sue/board-core';
 import type { WorkspaceFile } from '../documents/document-files';
 export interface SearchFragment {
   text: string;
@@ -14,6 +15,7 @@ export interface SearchRecord {
   fragments: SearchFragment[];
 }
 export interface SearchHit {
+  source: 'metadata' | 'content';
   id: string;
   title: string;
   path: string;
@@ -21,20 +23,6 @@ export interface SearchHit {
   fragment: SearchFragment;
   term: string;
   rank: number;
-}
-function strings(value: unknown): string[] {
-  if (!value || typeof value !== 'object') return [];
-  const v = value as Record<string, unknown>;
-  if (v['type'] === 'frameReference' || v['hidden'] === true) return [];
-  if (v['type'] === 'text')
-    return typeof v['text'] === 'string' ? [v['text']] : [];
-  if (Array.isArray(v['content'])) {
-    const parts = v['content'].flatMap(strings);
-    return ['paragraph', 'heading', 'codeBlock'].includes(String(v['type']))
-      ? [parts.join('')]
-      : parts;
-  }
-  return [];
 }
 export function searchRevision(file: WorkspaceFile) {
   const value = JSON.stringify(file);
@@ -102,59 +90,8 @@ export function extractSearchRecord(
       fragments,
     };
   }
-  const walk = (value: unknown, cellId: string, key = '') => {
-    if (typeof value === 'string') {
-      if (
-        [
-          'name',
-          'label',
-          'text',
-          'guard',
-          'signature',
-          'description',
-          'value',
-          'type',
-          'returnType',
-        ].includes(key) &&
-        value &&
-        !value.startsWith('verd://')
-      )
-        fragments.push({ text: value, cellId });
-      return;
-    }
-    if (!value || typeof value !== 'object') return;
-    if (Array.isArray(value)) {
-      value.forEach((item) => walk(item, cellId, key));
-      return;
-    }
-    const v = value as Record<string, unknown>;
-    if (v['type'] === 'frameReference') return;
-    if (
-      v['content'] &&
-      Array.isArray(v['content']) &&
-      typeof v['type'] === 'string'
-    ) {
-      for (const text of strings(v)) if (text) fragments.push({ text, cellId });
-      return;
-    }
-    for (const [k, item] of Object.entries(v))
-      if (
-        ![
-          'id',
-          'plainText',
-          'targetFrameId',
-          'targetDocumentId',
-          'link',
-          'href',
-          'organization',
-        ].includes(k)
-      )
-        walk(item, cellId, k);
-  };
-  for (const [id, cell] of Object.entries(file.cells)) {
-    if ((cell as unknown as { hidden?: boolean }).hidden) continue;
-    walk(cell, id);
-  }
+  for (const [cellId, cell] of Object.entries(file.cells))
+    for (const text of cellSearchTexts(cell)) fragments.push({ text, cellId });
   for (const fragment of fragments)
     fragment.normalized = fragment.text.toLowerCase();
   return {
@@ -201,6 +138,7 @@ export function searchRecords(
     if (!terms.length || terms.some((t) => meta.includes(t)))
       hits.push({
         ...base,
+        source: 'metadata',
         fragment: { text: record.path },
         term: terms.find((t) => meta.includes(t)) ?? '',
       });
@@ -218,7 +156,7 @@ export function searchRecords(
           text: fragment.text.slice(start, at + term.length + 100),
           from: fragment.from === undefined ? undefined : fragment.from + start,
         };
-        hits.push({ ...base, fragment: snippet, term });
+        hits.push({ ...base, source: 'content', fragment: snippet, term });
       }
     });
   }

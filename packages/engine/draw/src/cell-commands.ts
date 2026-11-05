@@ -34,6 +34,7 @@ export interface TableCellData {
   cells: TableEntry[];
   direction?: 'horizontal' | 'vertical';
   header?: boolean;
+  laneMembers?: Record<string, string[]>;
 }
 export const drawCellPorts = (): PortSpec[] =>
   ['top', 'right', 'bottom', 'left'].map((side) => ({

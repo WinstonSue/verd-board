@@ -1,3 +1,4 @@
+import { Minus, Plus } from 'lucide-react';
 import { useActionSource } from '@sue/board-react-actions';
 import { actionLabel } from '@sue/board-common';
 import { useSyncExternalStore, type RefObject } from 'react';
@@ -78,6 +79,7 @@ export function FrameZoomControls({
     <>
       <button
         data-testid="canvas-zoom-out"
+        aria-label="Zoom out"
         disabled={
           !controller.current?.getActionState('canvas.view.zoom-out').enabled
         }
@@ -85,17 +87,18 @@ export function FrameZoomControls({
           controller.current?.executeAction('canvas.view.zoom-out')
         }
       >
-        −
+        <Minus strokeWidth={1.75} size={16} aria-hidden="true" />
       </button>
       <span data-testid="canvas-zoom-label">{Math.round(zoom * 100)}%</span>
       <button
         data-testid="canvas-zoom-in"
+        aria-label="Zoom in"
         disabled={
           !controller.current?.getActionState('canvas.view.zoom-in').enabled
         }
         onClick={() => controller.current?.executeAction('canvas.view.zoom-in')}
       >
-        +
+        <Plus strokeWidth={1.75} size={16} aria-hidden="true" />
       </button>
     </>
   );

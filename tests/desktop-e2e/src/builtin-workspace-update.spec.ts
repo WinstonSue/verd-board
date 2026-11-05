@@ -13,6 +13,7 @@ import {
 import path from 'node:path';
 import { tmpdir } from 'node:os';
 import { openWorkspaceMenu } from '../../web-e2e/src/app-actions';
+import { activeTabTitle } from '../../web-e2e/src/tab-actions';
 
 for (const kind of ['project', 'agent-patterns'] as const) {
   test(`${kind} update is opt-in and replaces everything after backing up`, async () => {
@@ -53,13 +54,11 @@ for (const kind of ['project', 'agent-patterns'] as const) {
       const entryId =
         kind === 'project' ? 'project-doc:README' : 'pattern-library:index';
       const entryTitle = kind === 'project' ? '文档导航' : 'Agent 范式库';
-      const activeDocument = () =>
-        page.locator('.workspace-pane.is-active .document-page__title');
       await expect(page.getByRole('tab', { selected: true })).toHaveAttribute(
         'data-tab-id',
         entryId,
       );
-      await expect(activeDocument()).toHaveValue(entryTitle);
+      await expect(activeTabTitle(page)).toHaveText(entryTitle);
       expect(before.value.project.entryDocumentIds[0]).toBe(entryId);
       if (kind === 'project') {
         await expect(
@@ -118,7 +117,7 @@ for (const kind of ['project', 'agent-patterns'] as const) {
             exact: true,
           })
           .click({ modifiers: ['ControlOrMeta'] });
-        await expect(activeDocument()).toHaveValue('系统架构');
+        await expect(activeTabTitle(page)).toHaveText('系统架构');
         await expect(
           page
             .locator('.workspace-pane.is-active')
@@ -132,7 +131,7 @@ for (const kind of ['project', 'agent-patterns'] as const) {
           .locator('.file-tree-name[title="文档导航.verd-doc.json"]')
           .click();
 
-        await expect(activeDocument()).toHaveValue(entryTitle);
+        await expect(activeTabTitle(page)).toHaveText(entryTitle);
       }
       await writeFile(path.join(root, 'added.txt'), 'my addition');
       await openWorkspaceMenu(page);
@@ -141,13 +140,45 @@ for (const kind of ['project', 'agent-patterns'] as const) {
       await expect(
         page.getByTestId('builtin-workspace-settings'),
       ).toBeVisible();
-      await page.getByRole('button', { name: '替换为内置内容…' }).click();
+      await page
+        .getByRole('button', { name: /(?:更新为|恢复)系统内置内容…/ })
+        .click();
       await page.getByRole('button', { name: '取消', exact: true }).click();
       expect(await readFile(path.join(root, 'added.txt'), 'utf8')).toBe(
         'my addition',
       );
-      await page.getByRole('button', { name: '替换为内置内容…' }).click();
-      await page.getByRole('button', { name: '备份并全部更新' }).click();
+      await page
+        .getByRole('button', { name: /(?:更新为|恢复)系统内置内容…/ })
+        .click();
+      const backupParent = path.join(directory, 'chosen-backups');
+      await mkdir(backupParent, { recursive: true });
+      await desktop.evaluate(({ dialog }, parent) => {
+        dialog.showOpenDialog = async () => ({
+          canceled: false,
+          filePaths: [parent],
+        });
+      }, backupParent);
+      await expect(
+        page.getByRole('checkbox', { name: '备份当前工作区' }),
+      ).not.toBeChecked();
+      await page.getByRole('checkbox', { name: '备份当前工作区' }).check();
+      await desktop.evaluate(({ dialog }) => {
+        dialog.showOpenDialog = async () => ({ canceled: true, filePaths: [] });
+      });
+      await page.getByRole('button', { name: '选择目录并备份更新' }).click();
+      await expect(
+        page.getByTestId('workspace-action-confirmation'),
+      ).toBeVisible();
+      expect(await readFile(path.join(root, 'added.txt'), 'utf8')).toBe(
+        'my addition',
+      );
+      await desktop.evaluate(({ dialog }, parent) => {
+        dialog.showOpenDialog = async () => ({
+          canceled: false,
+          filePaths: [parent],
+        });
+      }, backupParent);
+      await page.getByRole('button', { name: '选择目录并备份更新' }).click();
       await expect(page.getByTestId('workspace-settings-page')).not.toBeVisible(
         {
           timeout: 60000,
@@ -173,13 +204,33 @@ for (const kind of ['project', 'agent-patterns'] as const) {
         'data-tab-id',
         entryId,
       );
-      await expect(activeDocument()).toHaveValue(entryTitle);
+      await expect(activeTabTitle(page)).toHaveText(entryTitle);
       await expect(page.getByRole('tab')).toHaveCount(1);
-      const backups = path.join(userData, 'workspace-backups', kind);
+      const backups = path.join(directory, 'chosen-backups');
       const entries = await readdir(backups);
       expect(
         await readFile(path.join(backups, entries[0], 'added.txt'), 'utf8'),
       ).toBe('my addition');
+      const history: { id: string; name: string }[] = await page.evaluate(() =>
+        (window as any).electronAPI.workspaceHost.listWorkspaceHistory(),
+      );
+      const copy = history.find((entry) => entry.name.includes('-备份-'))!;
+      expect(copy).toBeTruthy();
+      await page.getByTestId('workspace-menu-trigger').click();
+      await page
+        .getByTestId('workspace-switcher-dialog')
+        .getByRole('button', { name: copy.name, exact: true })
+        .click();
+      await expect(
+        page.getByTestId('workspace-switcher-dialog'),
+      ).not.toBeVisible();
+      await expect(page.getByTestId('workspace-menu-trigger')).toBeEnabled();
+      await openWorkspaceMenu(page);
+      await page.getByTestId('workspace-open-settings').click();
+      await page.getByTestId('settings-nav-workspace.data').click();
+      await expect(page.getByTestId('builtin-workspace-settings')).toHaveCount(
+        0,
+      );
     } finally {
       await desktop.close();
       await rm(directory, { recursive: true, force: true });
@@ -277,18 +328,34 @@ test('a legacy canvas-first copy changes only after confirmed replacement', asyn
     await page.getByTestId('workspace-open-settings').click();
     await page.getByTestId('settings-nav-workspace.data').click();
     await expect(page.getByTestId('builtin-workspace-settings')).toContainText(
-      '当前副本尚未采用应用附带版本',
+      '旧版 / 未知',
     );
-    await page.getByRole('button', { name: '替换为内置内容…' }).click();
+    await page
+      .getByRole('button', { name: /(?:更新为|恢复)系统内置内容…/ })
+      .click();
     await page.getByRole('button', { name: '取消', exact: true }).click();
     expect(await readFile(path.join(root, '项目导览.verd.json'), 'utf8')).toBe(
       legacyCanvas,
     );
-    await page.getByRole('button', { name: '替换为内置内容…' }).click();
-    await page.getByRole('button', { name: '备份并全部更新' }).click();
+    await page
+      .getByRole('button', { name: /(?:更新为|恢复)系统内置内容…/ })
+      .click();
+    const backupParent = path.join(directory, 'chosen-backups');
+    await mkdir(backupParent, { recursive: true });
+    await desktop.evaluate(({ dialog }, parent) => {
+      dialog.showOpenDialog = async () => ({
+        canceled: false,
+        filePaths: [parent],
+      });
+    }, backupParent);
     await expect(
-      page.locator('.workspace-pane.is-active .document-page__title'),
-    ).toHaveValue('文档导航', { timeout: 60000 });
+      page.getByRole('checkbox', { name: '备份当前工作区' }),
+    ).not.toBeChecked();
+    await page.getByRole('checkbox', { name: '备份当前工作区' }).check();
+    await page.getByRole('button', { name: '选择目录并备份更新' }).click();
+    await expect(activeTabTitle(page)).toHaveText('文档导航', {
+      timeout: 60000,
+    });
     await expect(page.getByRole('tab', { selected: true })).toHaveAttribute(
       'data-tab-id',
       'project-doc:README',
@@ -318,7 +385,7 @@ test('a legacy canvas-first copy changes only after confirmed replacement', asyn
           cell.kind === 'document-frame' || cell.kind === 'document-reference',
       ),
     ).toBe(false);
-    const backups = path.join(userData, 'workspace-backups/project');
+    const backups = path.join(directory, 'chosen-backups');
     const copies = await readdir(backups);
     expect(copies).toHaveLength(1);
     expect(

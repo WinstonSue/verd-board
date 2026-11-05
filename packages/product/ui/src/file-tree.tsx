@@ -28,6 +28,8 @@ import {
   LibraryBig,
   Network,
   Pencil,
+  Star,
+  StarOff,
   Trash2,
   TriangleAlert,
   Upload,
@@ -45,6 +47,7 @@ import { FileTreeMenu, type FileTreeMenuItem } from './file-tree-menu';
 export interface FileTreeEntry {
   path: string;
   kind: 'file' | 'directory';
+  folderId?: string;
   canvas?: boolean;
   /** `*.verd-doc.json` payload files. */
   document?: boolean;
@@ -144,6 +147,7 @@ export interface FileTreeProps {
   /** Reveal the canonical row after the host expands its ancestor directories. */
   revealFile?: { fileId: string; nonce: number };
   onRevealFile?(fileId: string): void;
+  revealDirectory?: { path: string; nonce: number };
 }
 
 interface TreeDir {
@@ -395,6 +399,7 @@ export function FileTree({
   selectedPaths = [],
   dropTarget,
   revealFile,
+  revealDirectory,
   onRevealFile,
 }: FileTreeProps) {
   useActionSource(actionSource);
@@ -522,6 +527,16 @@ export function FileTree({
     });
     return () => cancelAnimationFrame(frame);
   }, [revealFile, expandedDirs, tree]);
+  const directoryButtons = useRef(new Map<string, HTMLButtonElement>());
+  useEffect(() => {
+    if (!revealDirectory) return;
+    const frame = requestAnimationFrame(() => {
+      const button = directoryButtons.current.get(revealDirectory.path);
+      button?.scrollIntoView?.({ block: 'nearest' });
+      button?.focus({ preventScroll: true });
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [revealDirectory?.path, revealDirectory?.nonce]);
   const expanded = new Set(expandedDirs);
   const item = (
     id: string,
@@ -604,8 +619,30 @@ export function FileTree({
             ),
           ]
         : [];
+    const favoriteItems =
+      actionSource && !readonly
+        ? [
+            actionItem(
+              'favorite',
+              'workspace.file.favorite',
+              { fileId: id },
+              '',
+              Star,
+              () => {},
+            ),
+            actionItem(
+              'unfavorite',
+              'workspace.file.unfavorite',
+              { fileId: id },
+              '',
+              StarOff,
+              () => {},
+            ),
+          ]
+        : [];
     if (shortcut)
       return [
+        ...favoriteItems,
         ...copyItems,
         actionItem(
           'open',
@@ -664,7 +701,7 @@ export function FileTree({
           ),
         );
     }
-    result.push(...copyItems);
+    result.push(...favoriteItems, ...copyItems);
     if (onExport)
       result.push(
         actionItem(
@@ -706,7 +743,7 @@ export function FileTree({
         aria-expanded={menu?.key === key}
         onClick={(event) => openMenu(event, key, name, visible)}
       >
-        <Ellipsis size={14} aria-hidden />
+        <Ellipsis strokeWidth={1.75} size={14} aria-hidden />
       </button>
     ) : null;
   };
@@ -756,7 +793,11 @@ export function FileTree({
               aria-label={open ? t.collapseSubgraphs : t.expandSubgraphs}
               onClick={() => onToggleOwner?.(file.fileId)}
             >
-              {open ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+              {open ? (
+                <ChevronDown strokeWidth={1.75} size={14} />
+              ) : (
+                <ChevronRight strokeWidth={1.75} size={14} />
+              )}
             </button>
           ) : (
             <span className="file-tree-twisty" aria-hidden />
@@ -781,9 +822,10 @@ export function FileTree({
               )
             }
           >
-            <Icon className="file-tree-icon" size={15} aria-hidden />
+            <Icon className="file-tree-icon" size={16} aria-hidden />
             {subgraph && (
               <ExternalLink
+                strokeWidth={1.75}
                 className="file-tree-shortcut-icon"
                 size={11}
                 aria-hidden
@@ -792,6 +834,7 @@ export function FileTree({
             <span className="file-tree-label">{file.name}</span>
             {file.conflicted ? (
               <TriangleAlert
+                strokeWidth={1.75}
                 className="file-tree-conflict"
                 size={13}
                 role="img"
@@ -907,6 +950,24 @@ export function FileTree({
                 ]
               : []),
           ];
+    if (dir.path && actionSource)
+      items.unshift(
+        actionItem(
+          'copy-directory-link',
+          'workspace.directory.copy-link',
+          { path: dir.path },
+          readonly &&
+            !entries.find((entry) => entry.path === dir.path)?.folderId
+            ? locale === 'zh'
+              ? '复制链接（需先在可编辑工作区生成）'
+              : 'Copy link (generate it in an editable workspace first)'
+            : locale === 'zh'
+              ? '复制链接'
+              : 'Copy link',
+          LinkIcon,
+          () => {},
+        ),
+      );
     if (onOrganize && dir.path && !readonly)
       items.push(
         actionItem(
@@ -926,22 +987,28 @@ export function FileTree({
           () => onOrganize(dir.path, 'move'),
         ),
       );
+    const selected =
+      selectedPaths.includes(dir.path) || revealDirectory?.path === dir.path;
     return (
       <div key={dir.path || '__root'}>
         {dir.path ? (
           <div
             draggable={!readonly}
             data-entry-path={dir.path}
-            aria-selected={selectedPaths.includes(dir.path) || undefined}
+            aria-selected={selected || undefined}
             data-drop-side={
               dropTarget?.path === dir.path ? dropTarget.side : undefined
             }
-            className={`file-tree-row file-tree-dir${selectedPaths.includes(dir.path) ? ' is-selected' : ''}${menu?.key === dirKey ? ' is-menu-open' : ''}`}
+            className={`file-tree-row file-tree-dir${selected ? ' is-selected' : ''}${menu?.key === dirKey ? ' is-menu-open' : ''}`}
             style={{ '--depth': depth } as CSSProperties}
             onContextMenu={(event) => openMenu(event, dirKey, dir.name, items)}
           >
             <button
               type="button"
+              ref={(node) => {
+                if (node) directoryButtons.current.set(dir.path, node);
+                else directoryButtons.current.delete(dir.path);
+              }}
               className="file-tree-main file-tree-dir-toggle"
               aria-expanded={open}
               onClick={() =>
@@ -951,12 +1018,16 @@ export function FileTree({
               }
             >
               <span className="file-tree-twisty" aria-hidden>
-                {open ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+                {open ? (
+                  <ChevronDown strokeWidth={1.75} size={14} />
+                ) : (
+                  <ChevronRight strokeWidth={1.75} size={14} />
+                )}
               </span>
               {open ? (
-                <FolderOpen size={15} aria-hidden />
+                <FolderOpen strokeWidth={1.75} size={16} aria-hidden />
               ) : (
-                <Folder size={15} aria-hidden />
+                <Folder strokeWidth={1.75} size={16} aria-hidden />
               )}
               <span className="file-tree-label">{dir.name}</span>
             </button>
@@ -1012,7 +1083,8 @@ export function FileTree({
                   onClick={() => onOpenFailedFile?.(failure.path)}
                 >
                   <TriangleAlert
-                    size={15}
+                    strokeWidth={1.75}
+                    size={16}
                     aria-label={locale === 'zh' ? '加载失败' : 'Unable to load'}
                   />
                   <span className="file-tree-label">
@@ -1101,7 +1173,7 @@ export function FileTree({
             execute('workspace.library', undefined, () => onOpenLibrary?.())
           }
         >
-          <LibraryBig size={16} aria-hidden />
+          <LibraryBig strokeWidth={1.75} size={16} aria-hidden />
           {bindWorkspaceAction(actionSource, 'workspace.library')?.label(
             locale,
           ) ?? t.library}

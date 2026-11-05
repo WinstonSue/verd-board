@@ -11,9 +11,11 @@
     "test": "vitest run --passWithNoTests"
   },
   "dependencies": {
+    "@floating-ui/dom": "^1.7.5",
     "@sue/board-common": "workspace:*",
     "@sue/board-react-actions": "workspace:*",
     "@tiptap/core": "^3.16.0",
+    "@tiptap/extension-bubble-menu": "3.20.0",
     "@tiptap/extension-bullet-list": "^3.16.0",
     "@tiptap/extension-color": "^3.16.0",
     "@tiptap/extension-details": "3.20.0",
@@ -33,7 +35,9 @@
     "@tiptap/react": "^3.16.0",
     "@tiptap/starter-kit": "^3.16.0",
     "github-slugger": "^2.0.0",
-    "katex": "0.16.47"
+    "katex": "0.16.47",
+    "lucide-react": "1.47.0",
+    "lucide": "1.47.0"
   },
   "peerDependencies": {
     "react": ">=18",

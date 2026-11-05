@@ -19,6 +19,7 @@
 }
 .management-sidebar-body .file-tree-nav {
   margin: 0;
+  justify-content: flex-start;
   height: var(--vm-sidebar-row);
   padding: 0 8px;
 }
@@ -42,9 +43,10 @@
     background: var(--vm-fill-hover);
   }
 }
-.management-shortcut-main {
+.management-shortcut > .management-shortcut-main {
   display: flex;
   align-items: center;
+  justify-content: flex-start;
   flex: 1;
   min-width: 0;
   gap: 8px;

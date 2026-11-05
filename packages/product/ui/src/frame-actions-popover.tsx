@@ -74,12 +74,15 @@ export function FrameActionsPopover({
     const element = elements.floating;
     if (!element) return;
     element.querySelector<HTMLButtonElement>('button')?.focus();
+    const editingLink = () =>
+      !!document.querySelector('dialog[data-link-editor][open]');
     const dismiss = (event: PointerEvent) => {
-      if (!element.contains(event.target as Node)) closeRef.current();
+      if (!editingLink() && !element.contains(event.target as Node))
+        closeRef.current();
     };
     document.addEventListener('pointerdown', dismiss, true);
     const escape = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
+      if (event.key === 'Escape' && !editingLink()) {
         event.preventDefault();
         event.stopPropagation();
         closeRef.current();
@@ -116,11 +119,14 @@ export function FrameActionsPopover({
   };
   const dispatch = (operations: CellOperation[]) => {
     if (!valid()) return;
-    void controller
+    return controller
       .executeAction('canvas.apply-operations', { operations })
       .then((result) => {
-        if (result.status === 'rejected' || result.status === 'failed')
+        if ('code' in result) {
           onFailure(result.message ?? result.code);
+          return { status: 'rejected', message: result.message ?? result.code };
+        }
+        return { status: 'accepted' };
       });
   };
   const run = async (action: () => void | Promise<unknown>) => {

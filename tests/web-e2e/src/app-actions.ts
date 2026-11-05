@@ -1,4 +1,23 @@
+import { selectSetting } from '../../helpers/settings-controls';
 import { type Page } from '@playwright/test';
+
+export async function openDocumentInsert(
+  page: Page,
+  locale: 'zh' | 'en' = 'zh',
+) {
+  const document = locale === 'zh' ? '文档' : 'Document';
+  const insert = locale === 'zh' ? '插入' : 'Insert';
+  await page
+    .locator('.workspace-pane.is-active')
+    .getByRole('toolbar', { name: 'document', exact: true })
+    .getByRole('button', { name: document, exact: true })
+    .click();
+  await page
+    .getByRole('dialog', { name: document, exact: true })
+    .getByRole('button', { name: insert, exact: true })
+    .click();
+  return page.getByRole('dialog', { name: insert, exact: true });
+}
 
 export async function openActiveFile(page: Page) {
   const active = page
@@ -36,7 +55,7 @@ export async function openSettings(page: Page) {
 
 export async function setAppLanguage(page: Page, language: 'zh' | 'en') {
   const settings = await openSettings(page);
-  await settings.getByTestId('settings-language').selectOption(language);
+  await selectSetting(settings.getByTestId('settings-language'), language);
   await page.getByTestId('my-back').click();
 }
 
@@ -61,4 +80,26 @@ export async function openTrash(page: Page) {
   }
   await page.getByTestId('settings-nav-workspace.trash').click();
   return page.getByTestId('workspace-trash');
+}
+
+/** History moved into the active file's overflow menu. */
+export async function openHistoryAction(page: Page, label: string) {
+  const pane = page.locator('.workspace-pane.is-active');
+  const document = pane.locator('.document-page');
+  if (await document.count()) {
+    await document
+      .getByRole('toolbar', { name: 'document', exact: true })
+      .getByRole('button', { name: /^(文档|Document)$/, exact: true })
+      .click();
+    return page
+      .getByRole('dialog', { name: /^(文档|Document)$/, exact: true })
+      .getByRole('button', { name: label, exact: true });
+  }
+  return (await openAppMenu(page)).getByRole('menuitem', {
+    name: label,
+    exact: true,
+  });
+}
+export async function selectHistoryAction(page: Page, label: string) {
+  await (await openHistoryAction(page, label)).click();
 }

@@ -1,3 +1,4 @@
+import { selectHistoryAction } from './app-actions';
 import { expect, test, type Page } from '@playwright/test';
 import { selectDrawingTool } from './drawing-tools';
 import { openTrash } from './app-actions';
@@ -153,13 +154,13 @@ test('library ownership changes move shortcuts, preserve file paths and undo wit
   await expect(page.getByRole('tab')).toHaveCount(3);
   await change('standalone');
   await expect(shortcut(page, id)).toHaveCount(0);
-  await page.getByRole('button', { name: '撤销', exact: true }).click();
+  await selectHistoryAction(page, '撤销');
   await expect(shortcut(page, id)).toBeVisible();
   await expect(newOwner.locator('[data-entry-kind="shortcut"]')).toHaveCount(1);
   await change('unorganized');
   await expect(shortcut(page, id)).toHaveCount(0);
   await expect(source(page, id)).toBeVisible();
-  await page.getByRole('button', { name: '撤销', exact: true }).click();
+  await selectHistoryAction(page, '撤销');
   await expect(shortcut(page, id)).toBeVisible();
   await action(page, source(page, ownerId), '移入回收站');
   await expect(shortcut(page, id)).toHaveCount(0);

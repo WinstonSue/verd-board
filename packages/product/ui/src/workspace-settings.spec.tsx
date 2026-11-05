@@ -2,6 +2,7 @@ import React, { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, expect, it, vi } from 'vitest';
 import { I18nProvider } from './i18n';
+import { WorkspaceDesignProvider } from './workspace-design';
 import {
   WorkspaceSettings,
   type WorkspaceSettingsProps,
@@ -23,7 +24,9 @@ const render = async (props: WorkspaceSettingsProps) =>
     root.render(
       <React.StrictMode>
         <I18nProvider defaultLanguage="zh" persistLanguage={false}>
-          <WorkspaceSettings {...props} />
+          <WorkspaceDesignProvider>
+            <WorkspaceSettings {...props} />
+          </WorkspaceDesignProvider>
         </I18nProvider>
       </React.StrictMode>,
     ),
@@ -77,6 +80,10 @@ it('shows a left menu, defaults to settings and keeps an empty workspace trash a
       onPurge: vi.fn(async () => {}),
     },
   });
+  const menu = container.querySelector('[role="menu"]')!;
+  expect(menu.getAttribute('aria-label')).toBe('设置栏目');
+  expect(menu.querySelectorAll('[role="menuitem"]')).toHaveLength(5);
+  expect(menu.querySelector('button')).toBeNull();
   expect(
     testId('settings-nav-workspace.project').getAttribute('aria-current'),
   ).toBe('page');
@@ -92,6 +99,48 @@ it('shows a left menu, defaults to settings and keeps an empty workspace trash a
   expect(testId('workspace-settings-name')).toBeTruthy();
   await click(testId('workspace-settings-back'));
   expect(props.onBack).toHaveBeenCalledOnce();
+});
+
+it('keeps the selected menu item until the draft is accepted and stays on rejection', async () => {
+  let finish!: (result: { status: 'rejected'; message: string }) => void;
+  const props = await setup({
+    onConfig: vi.fn(
+      () =>
+        new Promise<{ status: 'rejected'; message: string }>((resolve) => {
+          finish = resolve;
+        }),
+    ),
+  });
+  await act(async () => {
+    const input = testId<HTMLInputElement>('workspace-settings-name');
+    Object.getOwnPropertyDescriptor(
+      HTMLInputElement.prototype,
+      'value',
+    )!.set!.call(input, 'Draft');
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+  });
+  await click(testId('settings-nav-personal.editor'));
+  expect(
+    testId('settings-nav-workspace.project').getAttribute('aria-current'),
+  ).toBe('page');
+  expect(
+    testId('settings-nav-personal.editor').getAttribute('aria-current'),
+  ).toBeNull();
+  await act(async () =>
+    finish({ status: 'rejected', message: 'Write failed' }),
+  );
+  expect(
+    testId('settings-nav-workspace.project').getAttribute('aria-current'),
+  ).toBe('page');
+  expect(testId<HTMLInputElement>('workspace-settings-name').value).toBe(
+    'Draft',
+  );
+  props.onConfig = vi.fn(async () => ({ status: 'accepted' }));
+  await render(props);
+  await click(testId('settings-nav-personal.editor'));
+  expect(
+    testId('settings-nav-personal.editor').getAttribute('aria-current'),
+  ).toBe('page');
 });
 
 it('restores entries while preventing duplicate operations or leaving during submission', async () => {
@@ -111,8 +160,8 @@ it('restores entries while preventing duplicate operations or leaving during sub
     true,
   );
   expect(
-    testId<HTMLButtonElement>('settings-nav-workspace.project').disabled,
-  ).toBe(true);
+    testId('settings-nav-workspace.project').getAttribute('aria-disabled'),
+  ).toBe('true');
   await click(button('还原 gone.verd.json'));
   expect(onRestore).toHaveBeenCalledTimes(1);
   await act(async () =>
@@ -298,6 +347,12 @@ it('keeps personal preferences editable in readonly workspaces and exposes save 
   expect(
     testId<HTMLInputElement>('workspace-settings-name').matches(':disabled'),
   ).toBe(true);
+  expect(
+    container.querySelector<HTMLInputElement>(
+      '[role="combobox"][aria-label="宽度来源"]',
+    )!.disabled,
+  ).toBe(true);
+  expect(button('添加入口…').disabled).toBe(true);
   expect(testId('settings-workspace-save').textContent).toContain(
     'Disk unavailable',
   );
@@ -338,13 +393,16 @@ it('orders selected entry documents, preserves missing IDs and commits only chan
 it('shows inherited workspace defaults and supports reset without changing personal preferences', async () => {
   const props = await setup({ config: { mindDefaultWidth: 320 } });
   await click(testId('settings-nav-workspace.project'));
-  await act(async () => {
-    const select = container.querySelector<HTMLSelectElement>(
-      'select[aria-label=宽度来源]',
-    )!;
-    select.value = 'inherit';
-    select.dispatchEvent(new Event('change', { bubbles: true }));
-  });
+  const select = container.querySelector<HTMLElement>(
+    '[role="combobox"][aria-label="宽度来源"]',
+  )!;
+  await act(async () =>
+    select.dispatchEvent(new MouseEvent('mousedown', { bubbles: true })),
+  );
+  const option = [
+    ...container.querySelectorAll<HTMLElement>('[role="option"]'),
+  ].find((element) => element.textContent?.includes('跟随个人默认值'))!;
+  await click(option);
   expect(props.onConfig).toHaveBeenCalledWith({ mindDefaultWidth: undefined });
 });
 
@@ -381,17 +439,11 @@ it('uses a page heading, flat sections and localized built-in version metadata',
         currentReleaseId: 'content-current',
         releaseId: 'content-bundled',
         hasBackups: false,
-        update: {
-          currentVersion: null,
-          bundledVersion: null,
-          availableVersion: '3.0.0',
-          checkedAt: Date.UTC(2026, 10, 1, 8),
-          status: 'current',
-        },
+        currentVersion: '1.0.0',
+        version: '2.0.0',
       }),
       update: vi.fn(),
       backups: vi.fn(),
-      check: vi.fn(),
     },
   });
   await click(testId('settings-nav-workspace.data'));
@@ -402,13 +454,43 @@ it('uses a page heading, flat sections and localized built-in version metadata',
     container.querySelector('.settings-sections-panel section section'),
   ).toBeNull();
   expect(testId('builtin-workspace-settings').querySelector('dl')).toBeTruthy();
-  expect(testId('builtin-workspace-settings').textContent).toContain(
-    new Intl.DateTimeFormat('en-US', {
-      dateStyle: 'medium',
-      timeStyle: 'short',
-    }).format(new Date(Date.UTC(2026, 10, 1, 8))),
-  );
+  expect(testId('builtin-workspace-settings').textContent).toContain('2.0.0');
   expect(testId('builtin-workspace-settings').textContent).not.toMatch(
     /[\u4e00-\u9fff]/,
   );
+});
+
+it('opens the actual storage path and defaults bundled replacement to no backup', async () => {
+  const update = vi.fn(async () => {}),
+    openStorage = vi.fn(async () => {});
+  await setup({
+    storage: 'desktop',
+    storageLocation: '/Users/test/My workspace',
+    onOpenStorage: openStorage,
+    builtin: {
+      read: async () => ({
+        kind: 'project',
+        currentReleaseId: 'old',
+        releaseId: 'new',
+        currentVersion: '1.0.0',
+        version: '2.0.0',
+        hasBackups: false,
+      }),
+      update,
+      backups: vi.fn(),
+    },
+  });
+  await click(testId('settings-nav-workspace.data'));
+  expect(testId('workspace-storage-location').textContent).toBe(
+    '/Users/test/My workspace',
+  );
+  await click(testId('workspace-storage-location'));
+  expect(openStorage).toHaveBeenCalledOnce();
+  await click(button('更新为系统内置内容…'));
+  const checkbox = container.querySelector<HTMLInputElement>(
+    'input[type="checkbox"]',
+  )!;
+  expect(checkbox.checked).toBe(false);
+  await click(button('不备份，全部更新'));
+  expect(update).toHaveBeenCalledWith('new', false);
 });

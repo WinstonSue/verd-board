@@ -11,6 +11,7 @@ import {
   type Point,
 } from '@sue/board-core';
 import type { TableCellData } from './cell-commands';
+import { swimlaneTracks, withSwimlaneMembers } from './swimlane-members';
 import { validateTableData } from './cell-table';
 import { hitVectorLine, type VectorLineData } from './path';
 import { DrawKind } from './public-api';
@@ -61,6 +62,40 @@ export class TableNodeUtil extends NodeUtil {
 export class SwimlaneNodeUtil extends TableNodeUtil {
   override readonly kind: typeof DrawKind.table | typeof DrawKind.swimlane =
     DrawKind.swimlane;
+  readonly lanes = swimlaneTracks;
+  readonly withLaneMembers = withSwimlaneMembers;
+  readonly routingObstacle = false;
+
+  override validate(store: CellStore, cell: Cell) {
+    const issue = super.validate(store, cell);
+    if (issue || cell.cellType !== 'node') return issue;
+    const members = (cell.data as TableCellData).laneMembers;
+    if (members === undefined) return;
+    if (!members || typeof members !== 'object' || Array.isArray(members))
+      return 'Invalid swimlane members';
+    if (cell.geometry.rotation) return 'Semantic swimlanes cannot rotate';
+    const tracks = new Set(swimlaneTracks(cell).map((track) => track.id));
+    if (
+      Object.entries(members).some(
+        ([id, ids]) =>
+          !tracks.has(id) ||
+          !Array.isArray(ids) ||
+          ids.some((member) => typeof member !== 'string'),
+      )
+    )
+      return 'Invalid swimlane members';
+    return undefined;
+  }
+  override capabilities(
+    store: CellStore,
+    cell: Cell,
+    mount: import('@sue/board-core').FrameMount,
+  ) {
+    const base = super.capabilities(store, cell, mount);
+    return swimlaneTracks(cell).length
+      ? { ...base, rotate: false, connect: false }
+      : base;
+  }
 }
 export class FreehandNodeUtil extends NodeUtil {
   readonly kind: string = DrawKind.freehand;

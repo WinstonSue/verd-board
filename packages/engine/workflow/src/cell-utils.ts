@@ -1,10 +1,13 @@
 import {
   assertWholeGroupsMoved,
+  availableEdgePorts,
   EdgeUtil,
   groupLeafMembers,
   indexCells,
   memoizeCellValidationRead,
   isEdgeCell,
+  isFrameCell,
+  lockedByAncestor,
   isNodeCell,
   NodeUtil,
   type Cell,
@@ -28,6 +31,34 @@ export const workflowCellPorts = (start = false): PortSpec[] =>
     direction: start ? 'output' : 'both',
     offset: 0.5,
   }));
+const preferredWorkflowPortSide = (
+  node: NodeGeometry,
+  other: NodeGeometry,
+  end: 'source' | 'target',
+) => {
+  const dx = Math.abs(node.x + node.width / 2 - other.x - other.width / 2);
+  const dy = Math.abs(node.y + node.height / 2 - other.y - other.height / 2);
+  return dx >= dy
+    ? end === 'source'
+      ? 'right'
+      : 'left'
+    : end === 'source'
+      ? 'bottom'
+      : 'top';
+};
+
+export function defaultWorkflowPort(
+  store: CellStore,
+  node: NodeCell,
+  other: NodeCell,
+  end: 'source' | 'target',
+  edgeId?: string,
+) {
+  const side = preferredWorkflowPortSide(node.geometry, other.geometry, end);
+  const ports = availableEdgePorts(store, node, end, edgeId);
+  return (ports.find((port) => port.side === side) ?? ports[0])?.id;
+}
+
 const isFinitePoint = (value: unknown): value is [number, number] =>
   Array.isArray(value) &&
   value.length === 2 &&
@@ -193,24 +224,44 @@ const fragmentOwnsWorkflowCell = (
   Object.values(fragment.cells).some((candidate) =>
     workflowStartData(candidate)?.memberIds.includes(cell.id),
   );
-const workflowPasteOwner = (
+export const workflowPasteOwner = (
   store: CellStore,
-  _frameId: string,
+  frameId: string,
   selectionIds: readonly string[],
 ) => {
-  if (!selectionIds.length) return undefined;
+  const frame = store.cells[frameId];
+  if (!isFrameCell(frame)) return undefined;
   const owners = new Set<string>();
-  for (const id of selectionIds.flatMap((id) => groupLeafMembers(store, id))) {
-    const cell = store.cells[id];
-    if (!cell) return undefined;
-    if (cell.kind === WorkflowKind.workflowStart) owners.add(cell.id);
-    else {
-      const start = workflowStartOf(store, id);
-      if (!start) return undefined;
-      owners.add(start.id);
+  if (!selectionIds.length) {
+    for (const id of frame.children) {
+      if (
+        workflowStartData(store.cells[id]) &&
+        !store.cells[id].locked &&
+        !lockedByAncestor(store, id)
+      )
+        owners.add(id);
+    }
+  } else {
+    for (const id of selectionIds.flatMap((id) =>
+      groupLeafMembers(store, id),
+    )) {
+      const cell = store.cells[id];
+      if (!cell || !frame.children.includes(id)) return undefined;
+      const owner = workflowStartData(cell)
+        ? cell.id
+        : workflowStartOf(store, id)?.id;
+      if (!owner || !frame.children.includes(owner)) return undefined;
+      owners.add(owner);
     }
   }
   return owners.size === 1 ? [...owners][0] : undefined;
+};
+const requireWorkflowPasteOwner = (
+  ...args: Parameters<typeof workflowPasteOwner>
+) => {
+  const owner = workflowPasteOwner(...args);
+  if (!owner) throw new Error('Select a workflow start before pasting');
+  return owner;
 };
 const workflowPasteExtras = (
   store: CellStore,
@@ -270,7 +321,8 @@ export class WorkflowTaskNodeUtil extends WorkflowNodeUtil {
   requiresPasteOwner(cell: Cell, fragment: { cells: Record<string, Cell> }) {
     return !fragmentOwnsWorkflowCell(cell, fragment);
   }
-  pasteOwner = workflowPasteOwner;
+  preferSelectedPasteOwner = true;
+  pasteOwner = requireWorkflowPasteOwner;
   adjustPastedCell = placeDerivedWorkflowNode;
   completePaste = workflowPasteExtras;
 }
@@ -279,7 +331,8 @@ export class WorkflowDecisionNodeUtil extends WorkflowNodeUtil {
   requiresPasteOwner(cell: Cell, fragment: { cells: Record<string, Cell> }) {
     return !fragmentOwnsWorkflowCell(cell, fragment);
   }
-  pasteOwner = workflowPasteOwner;
+  preferSelectedPasteOwner = true;
+  pasteOwner = requireWorkflowPasteOwner;
   adjustPastedCell = placeDerivedWorkflowNode;
   completePaste = workflowPasteExtras;
 }
@@ -339,6 +392,8 @@ const workflowEdges = (store: CellStore) =>
   );
 export class WorkflowEdgeUtil extends EdgeUtil {
   readonly kind = WorkflowKind.workflowEdge;
+  readonly orthogonalRoute = true;
+  readonly preferredPortSide = preferredWorkflowPortSide;
   rejectPaste = rejectWorkflowCycle;
   override validateEdge(store: CellStore, edge: EdgeCell): string | undefined {
     if (!('cellId' in edge.source) || !('cellId' in edge.target))

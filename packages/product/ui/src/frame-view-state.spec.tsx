@@ -18,6 +18,10 @@ import { createTestCellRegistry as createFixtureRegistry } from '../../../../tes
 import { createFrameViewStateStore } from './frame-view-state';
 import { I18nProvider } from './i18n';
 import { VerdFrame } from './verd-frame';
+vi.mock('@floating-ui/react', async (original) => ({
+  ...(await original<typeof import('@floating-ui/react')>()),
+  autoUpdate: () => () => {},
+}));
 const testCellRegistry = createFixtureRegistry();
 
 const renders = vi.hoisted(() => ({ canvas: vi.fn(), field: vi.fn() }));
@@ -404,7 +408,7 @@ describe('local canvas view subscriptions', () => {
       function (this: HTMLElement) {
         const height = this.classList.contains('frame-bottom-controls')
           ? bottomHeight
-          : this.classList.contains('frame-app-toolbar')
+          : this.classList.contains('frame-top-actions')
             ? toolbarHeight
             : this.classList.contains('frame-inspector')
               ? 220
@@ -431,7 +435,7 @@ describe('local canvas view subscriptions', () => {
     ).toBe('90px');
     await act(async () =>
       test.container
-        .querySelector<HTMLButtonElement>('[aria-label="属性"]')!
+        .querySelector<HTMLButtonElement>('[data-testid="inspector-collapse"]')!
         .click(),
     );
     expect(test.props().viewportInsets?.bottom).toBe(122);
@@ -464,19 +468,27 @@ describe('local canvas view subscriptions', () => {
       }),
     );
     expect(renders.canvas.mock.calls.length).toBeGreaterThan(before);
+    await act(async () =>
+      test.container
+        .querySelector<HTMLButtonElement>('[data-testid="app-menu-trigger"]')!
+        .click(),
+    );
     // Publishing a camera/view projection cannot grant history permission.
     expect(
-      test.container.querySelector<HTMLButtonElement>('[aria-label="撤销"]')
-        ?.disabled,
+      document.querySelector<HTMLButtonElement>(
+        '[role="menuitem"][aria-label="撤销"]',
+      )?.disabled,
     ).toBe(true);
     expect(
-      test.container.querySelector<HTMLButtonElement>('[aria-label="重做"]')
-        ?.disabled,
+      document.querySelector<HTMLButtonElement>(
+        '[role="menuitem"][aria-label="重做"]',
+      )?.disabled,
     ).toBe(true);
     await test.publish(view({ readonly: true }));
     expect(
-      test.container.querySelector<HTMLButtonElement>('[aria-label="撤销"]')
-        ?.disabled,
+      document.querySelector<HTMLButtonElement>(
+        '[role="menuitem"][aria-label="撤销"]',
+      )?.disabled,
     ).toBe(true);
     expect(
       test.container.querySelector<HTMLInputElement>(

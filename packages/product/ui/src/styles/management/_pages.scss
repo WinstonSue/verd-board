@@ -92,8 +92,11 @@
 .management-result > button:first-of-type {
   display: flex;
   align-items: center;
+  justify-content: flex-start;
   flex: 1;
   min-width: 0;
+  min-height: var(--vm-control-height);
+  height: auto;
   gap: 12px;
   text-align: left;
 }
@@ -130,6 +133,8 @@ button.management-result {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   gap: 4px;
+  height: auto;
+  text-align: start;
 }
 button.management-result > span:last-child {
   display: -webkit-box;
@@ -178,6 +183,8 @@ button.management-result > span:last-child {
   display: flex;
   flex-direction: column;
   > .chart-library {
+    position: relative;
+    inset: auto;
     flex: 1;
     min-height: 0;
   }

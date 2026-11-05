@@ -443,7 +443,15 @@ export const planCellPaste = (request: CellPasteRequest): CellPastePlan => {
   );
   for (const cell of needsOwner) {
     let owner: string | undefined;
-    if (sameFrame) {
+    const util = registry.get(cell.kind);
+    if (
+      sameFrame &&
+      !(
+        util?.preferSelectedPasteOwner &&
+        selectionIds.length &&
+        request.intent === 'paste'
+      )
+    ) {
       owner = source.ownerById?.[cell.id];
       const target = owner ? request.store.cells[owner] : undefined;
       const index = indexCells(request.store, registry);
@@ -455,9 +463,7 @@ export const planCellPaste = (request: CellPasteRequest): CellPastePlan => {
       )
         throw new Error('Original paste owner is no longer available');
     } else
-      owner = request.registry
-        ?.get(cell.kind)
-        ?.pasteOwner?.(request.store, request.frameId, selectionIds);
+      owner = util?.pasteOwner?.(request.store, request.frameId, selectionIds);
     if (!owner)
       throw new Error('Select a target first (target must be unambiguous)');
     if (

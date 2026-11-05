@@ -11,7 +11,7 @@ import { useFrameTheme, frameThemeStyle } from './frame-theme';
 import { useFrameI18n } from './frame-i18n';
 import './frame-text-editor.scss';
 import { useContext } from 'react';
-import { useRichTextLinks } from '@sue/board-react-text';
+import { LinkEditorHost, useRichTextLinks } from '@sue/board-react-text';
 import {
   FrameRichTextLinkContext,
   FrameRichTextLinkPolicyContext,
@@ -46,6 +46,8 @@ export function FrameTextEditor({
   style,
   defaultAlign,
   readonly,
+  sourceFileId,
+  linkEditable = true,
   onChange,
   onClose,
   onExitKey,
@@ -58,9 +60,11 @@ export function FrameTextEditor({
   style?: CSSProperties;
   defaultAlign?: Alignment;
   readonly: boolean;
+  sourceFileId?: string;
+  linkEditable?: boolean;
   onChange(
     change: TextChangeData,
-  ): void | Promise<{ status?: string } | undefined>;
+  ): void | Promise<{ status?: string; message?: string } | undefined>;
   onClose(): void;
   /** Keyboard exit returns focus to the canvas. Blur keeps the control just clicked. */
   onExitKey?(): void;
@@ -68,6 +72,7 @@ export function FrameTextEditor({
   onHistory(action: 'undo' | 'redo'): void;
 }) {
   const host = useContext(FrameRichTextLinkContext);
+  const linkEditor = useContext(LinkEditorHost);
   const policy = useContext(FrameRichTextLinkPolicyContext);
   const linkEvents = useRichTextLinks({
     ...policy,
@@ -137,12 +142,17 @@ export function FrameTextEditor({
   );
   const [epoch, setEpoch] = useState(0);
   const restoringRef = useRef(false);
+  const editingLink = useRef(false);
+  const commitReceipt = useRef<
+    Promise<void | { status?: string; message?: string }> | undefined
+  >(undefined);
+  const readCommitReceipt = () => commitReceipt.current;
   useEffect(() => {
     restoringRef.current = false;
   });
   const commit = (change: TextChangeData) => {
     refresh((value) => value + 1);
-    void Promise.resolve(
+    commitReceipt.current = Promise.resolve(
       onChange(
         defaultAlign
           ? {
@@ -156,7 +166,8 @@ export function FrameTextEditor({
             }
           : change,
       ),
-    ).then((result) => {
+    );
+    void commitReceipt.current.then((result) => {
       if (result?.status !== 'rejected') return;
       restoringRef.current = true;
       setEpoch((value) => value + 1);
@@ -172,6 +183,67 @@ export function FrameTextEditor({
   const restoreSelection = () => {
     const selection = selectionRef.current;
     if (selection) controller?.selectRange(selection.from, selection.to);
+  };
+  const latest = useRef({ controller, readonly, effectiveText, epoch });
+  latest.current = { controller, readonly, effectiveText, epoch };
+  const openLinkEditor = () => {
+    if (!controller || !linkEditable || readonly || composing.current) return;
+    if (!linkEditor) {
+      setLink(controller.getActiveLink()?.href ?? '');
+      setPanel(panel === 'link' ? null : 'link');
+      return;
+    }
+    const selection = toolbarRef.current?.contains(document.activeElement)
+      ? (selectionRef.current ?? controller.getSelection())
+      : controller.getSelection();
+    if (!selection) return;
+    const href = controller.getActiveLink()?.href;
+    const original = JSON.stringify(controller.document.content);
+    const originalText = JSON.stringify(effectiveText.content);
+    const isCurrent = () =>
+      !!bodyRef.current?.isConnected &&
+      latest.current.controller === controller &&
+      latest.current.epoch === epoch &&
+      !latest.current.readonly &&
+      JSON.stringify(latest.current.effectiveText.content) === originalText &&
+      JSON.stringify(controller.document.content) === original;
+    editingLink.current = true;
+    setPanel(null);
+    linkEditor({
+      sourceFileId,
+      href,
+      canRemove: !!href,
+      canInsertText: selection.collapsed && !href && !!controller.insertLink,
+      isCurrent,
+      async commit(href, label, signal) {
+        if (signal?.aborted || !isCurrent())
+          return { status: 'cancelled', code: 'stale-context' };
+        controller.selectRange(selection.from, selection.to);
+        commitReceipt.current = undefined;
+        if (href && label) controller.insertLink?.(href, label);
+        else controller.setLink(href ? { href } : null);
+        const result = await readCommitReceipt();
+        return result?.status === 'rejected'
+          ? {
+              status: 'rejected',
+              code: 'edit-rejected',
+              message: result.message,
+            }
+          : { status: 'completed' };
+      },
+      finish(reason) {
+        editingLink.current = false;
+        if (
+          reason === 'invalidated' ||
+          (reason === 'cancelled' && !isCurrent())
+        )
+          return;
+        if (reason === 'cancelled')
+          controller.selectRange(selection.from, selection.to);
+        bodyRef.current?.querySelector<HTMLElement>('.ProseMirror')?.focus();
+        document.dispatchEvent(new Event('selectionchange'));
+      },
+    });
   };
   useEffect(() => {
     let pending = 0;
@@ -244,6 +316,20 @@ export function FrameTextEditor({
       onContextMenu={(event) => event.stopPropagation()}
       onKeyDownCapture={(event) => {
         if (event.nativeEvent.isComposing || event.keyCode === 229) return;
+        if (
+          linkEditor &&
+          !readonly &&
+          linkEditable &&
+          (event.metaKey || event.ctrlKey) &&
+          !event.altKey &&
+          !event.shiftKey &&
+          event.key.toLowerCase() === 'k'
+        ) {
+          event.preventDefault();
+          event.stopPropagation();
+          openLinkEditor();
+          return;
+        }
         if (event.altKey && event.key === 'F10' && selectionVisible) {
           event.preventDefault();
           toolbarRef.current
@@ -306,7 +392,7 @@ export function FrameTextEditor({
       onMouseUp={() => refresh((value) => value + 1)}
       onKeyUp={() => refresh((value) => value + 1)}
       onBlur={(event) => {
-        if (restoringRef.current) return;
+        if (restoringRef.current || editingLink.current) return;
         const next = event.relatedTarget as Node | null;
         const scope = event.currentTarget.closest('[data-action-scope]');
         if (
@@ -413,24 +499,24 @@ export function FrameTextEditor({
                   })()}
                 </button>
               ))}
-              <button
-                type="button"
-                aria-label={zh ? '链接' : 'Link'}
-                aria-expanded={panel === 'link'}
-                onClick={() => {
-                  setLink(controller?.getActiveLink()?.href ?? '');
-                  setPanel(panel === 'link' ? null : 'link');
-                }}
-              >
-                <LinkIcon size={16} />
-              </button>
+              {linkEditable && (
+                <button
+                  type="button"
+                  aria-label={zh ? '链接' : 'Link'}
+                  aria-haspopup={linkEditor ? 'dialog' : undefined}
+                  aria-expanded={linkEditor ? undefined : panel === 'link'}
+                  onClick={openLinkEditor}
+                >
+                  <LinkIcon strokeWidth={1.75} size={16} />
+                </button>
+              )}
               <button
                 type="button"
                 aria-label={zh ? '更多文字格式' : 'More text formatting'}
                 aria-expanded={panel === 'more'}
                 onClick={() => setPanel(panel === 'more' ? null : 'more')}
               >
-                <MoreHorizontal size={16} />
+                <MoreHorizontal strokeWidth={1.75} size={16} />
               </button>
             </div>
             {panel === 'more' && (
@@ -448,7 +534,7 @@ export function FrameTextEditor({
                       apply(() => controller?.toggleMark('strike'))
                     }
                   >
-                    <Strikethrough size={16} />
+                    <Strikethrough strokeWidth={1.75} size={16} />
                   </button>
                   <button
                     type="button"
@@ -456,7 +542,7 @@ export function FrameTextEditor({
                     aria-pressed={!!controller?.getActiveMarks().code}
                     onClick={() => apply(() => controller?.toggleMark('code'))}
                   >
-                    <Code size={16} />
+                    <Code strokeWidth={1.75} size={16} />
                   </button>
                 </div>
                 <label>

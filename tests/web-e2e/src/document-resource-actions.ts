@@ -1,3 +1,4 @@
+import { openDocumentInsert } from './app-actions';
 import { expect, type Page } from '@playwright/test';
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
@@ -48,6 +49,7 @@ export async function exerciseDocumentResources(page: Page) {
             content: [
               {
                 type: 'listItem',
+                attrs: { blockId: 'rich-parent' },
                 content: [
                   {
                     type: 'paragraph',
@@ -113,13 +115,19 @@ export async function exerciseDocumentResources(page: Page) {
   );
   await pane.locator('.document-list-fold').first().click();
   await expect(pane.locator('.tiptap ul ul')).toBeHidden();
-  await pane
-    .locator('.document-resource-tools input[type=file]')
-    .setInputFiles({
-      name: 'Local.pdf',
-      mimeType: 'application/pdf',
-      buffer: pdf(),
-    });
+  await openDocumentInsert(page);
+  const paneFile = page.waitForEvent('filechooser');
+  await page
+    .getByRole('dialog', { name: '插入', exact: true })
+    .getByRole('button', { name: '附件', exact: true })
+    .click();
+  await (
+    await paneFile
+  ).setFiles({
+    name: 'Local.pdf',
+    mimeType: 'application/pdf',
+    buffer: pdf(),
+  });
   await expect(pane.getByText('Local.pdf', { exact: true })).toBeVisible();
   await pane.getByRole('button', { name: '打开资料' }).click();
   const reader = page.getByRole('dialog', { name: 'Local.pdf', exact: true });
@@ -138,15 +146,27 @@ export async function exerciseDocumentResources(page: Page) {
       .getByText('Local.pdf', { exact: true }),
   ).toBeVisible();
   const restored = page.locator('.workspace-pane.is-active');
-  await restored
-    .locator('.document-resource-tools input[type=file]')
-    .setInputFiles({
-      name: 'Protected.pdf',
-      mimeType: 'application/pdf',
-      buffer: await readFile(
-        path.resolve(__dirname, '../../fixtures/documents/password.pdf'),
-      ),
-    });
+  await expect(
+    restored.locator('[data-block-id="rich-parent"] > ul'),
+  ).toBeHidden();
+  await expect(
+    restored.locator('[data-block-id="rich-parent"] > .document-list-fold'),
+  ).toHaveAttribute('aria-expanded', 'false');
+  await openDocumentInsert(page);
+  const restoredFile = page.waitForEvent('filechooser');
+  await page
+    .getByRole('dialog', { name: '插入', exact: true })
+    .getByRole('button', { name: '附件', exact: true })
+    .click();
+  await (
+    await restoredFile
+  ).setFiles({
+    name: 'Protected.pdf',
+    mimeType: 'application/pdf',
+    buffer: await readFile(
+      path.resolve(__dirname, '../../fixtures/documents/password.pdf'),
+    ),
+  });
   await restored
     .locator('.workspace-resource-card')
     .filter({ hasText: 'Protected.pdf' })

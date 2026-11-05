@@ -1,9 +1,10 @@
 import { expect, type Page } from '@playwright/test';
 import { selectDrawingTool } from './drawing-tools';
-import { selectAppAction } from './app-actions';
+import { openActiveFile, selectAppAction } from './app-actions';
 export const umlCanvas = (page: Page) =>
   page.locator('svg[aria-label="Frame canvas"][data-surface="root"]:visible');
 export async function createUmlDiagram(page: Page, type: 'class' | 'sequence') {
+  if (!(await umlCanvas(page).isVisible())) await openActiveFile(page);
   const skip = page.getByRole('button', { name: '跳过', exact: true });
   if (await skip.isVisible()) await skip.click();
   await selectDrawingTool(page, type === 'class' ? 'UML 类图' : 'UML 时序图');

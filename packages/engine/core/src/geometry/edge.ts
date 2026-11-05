@@ -1,5 +1,9 @@
 import { createSpatialIndex } from './spatial-index';
 import type { RectangleClient } from '../interfaces/rectangle-client';
+import {
+  isOrthogonalPolyline,
+  normalizeEdgeRoute,
+} from '../cell/edge-route-policy';
 import type { CellRegistry } from '../cell/registry';
 import {
   isEdgeCell,
@@ -794,7 +798,9 @@ function followOrthogonalEnds(
       ? [points[at][0], target.point[1]]
       : [target.point[0], points[at][1]];
   }
-  return simplifyOrthogonal(points);
+  return isOrthogonalPolyline(points)
+    ? simplifyOrthogonal(points)
+    : routeOrthogonal(source.point, source.side, target.point, target.side);
 }
 
 export const edgeRoutePoints = (
@@ -803,6 +809,7 @@ export const edgeRoutePoints = (
   target: { point: Point; side: GeometrySide },
   routing?: EdgeRoutingContext,
 ): Point[] => {
+  edge = normalizeEdgeRoute(edge, routing?.registry);
   if (routing?.preview && automaticRoute(edge, routing.registry)) {
     const settled = routing.preview;
     const prior = settled.routes.get(edge.id);
@@ -848,9 +855,11 @@ export const edgeRoutePoints = (
     const moved = (point: Point, next: Point) =>
       point[0] !== next[0] || point[1] !== next[1];
     const sourceMoved =
-      'cellId' in edge.source && moved(points[0], source.point);
+      ('cellId' in edge.source || edge.route.mode === 'orthogonal') &&
+      moved(points[0], source.point);
     const targetMoved =
-      'cellId' in edge.target && moved(points.at(-1)!, target.point);
+      ('cellId' in edge.target || edge.route.mode === 'orthogonal') &&
+      moved(points.at(-1)!, target.point);
     if (edge.route.mode === 'orthogonal' && (sourceMoved || targetMoved))
       return followOrthogonalEnds(
         points,

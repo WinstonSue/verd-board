@@ -22,6 +22,7 @@ const GroupContext = createContext<{
 /** Lives for one canvas session; group state is never written into the document. */
 export function FramePropertyPanel({
   title,
+  headerActions,
   children,
   open,
   cellId,
@@ -29,6 +30,7 @@ export function FramePropertyPanel({
   disabled,
 }: {
   title: ReactNode;
+  headerActions?: ReactNode;
   children: ReactNode;
   open: boolean;
   cellId?: string;
@@ -50,8 +52,13 @@ export function FramePropertyPanel({
       hidden={!open}
       className={`frame-inspector right-panel${open ? ' is-open' : ''}`}
     >
-      <div className="frame-inspector__header" role="heading" aria-level={3}>
-        {title}
+      <div className="frame-inspector__header">
+        <div className="frame-inspector__title" role="heading" aria-level={3}>
+          {title}
+        </div>
+        {headerActions && (
+          <div className="frame-inspector__actions">{headerActions}</div>
+        )}
       </div>
       <GroupContext.Provider
         value={{
@@ -109,7 +116,7 @@ export function FramePropertyGroup({
         onClick={() => groups.toggle(id, collapsed)}
       >
         {title}
-        <ChevronDown size={14} aria-hidden="true" />
+        <ChevronDown strokeWidth={1.75} size={14} aria-hidden="true" />
       </button>
       <div
         id={contentId}

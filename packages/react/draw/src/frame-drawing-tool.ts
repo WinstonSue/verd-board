@@ -30,6 +30,7 @@ export function createFrameDrawingTool({
   shape,
   pen,
   onComplete,
+  semanticSwimlane = false,
   frameFactories = {},
 }: {
   pointer: string;
@@ -43,6 +44,7 @@ export function createFrameDrawingTool({
     ) => import('@sue/board-core').FrameSnapshot
   >;
   onComplete?(): void;
+  semanticSwimlane?: boolean;
 }): FrameCanvasTool {
   const key = `${pointer}:${pointer === 'shape' ? shape : pointer === 'pen' ? pen : ''}`;
   if (pointer === 'select' || pointer === 'hand' || pointer === 'erase')
@@ -169,6 +171,19 @@ export function createFrameDrawingTool({
                 pointer === 'text' ? 'text' : shape,
                 points,
               );
+    if (
+      semanticSwimlane &&
+      pointer === 'swimlane' &&
+      cell.kind === 'swimlane' &&
+      cell.data
+    )
+      return [
+        {
+          type: 'insert_cell',
+          parentId,
+          cell: { ...cell, data: { ...cell.data, laneMembers: {} } },
+        },
+      ];
     return [{ type: 'insert_cell', parentId, cell }];
   };
   return {

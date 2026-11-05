@@ -49,7 +49,7 @@ it('groups desktop actions and never invokes a disabled built-in action', async 
     [...document.querySelectorAll('[role="menuitem"]')].map(
       (element) => element.textContent,
     ),
-  ).toEqual(['工作区设置', '打开工作区文件夹', '回到内置工作区']);
+  ).toEqual(['工作区设置', '打开工作区文件夹', '打开系统介绍']);
   expect(item('workspace-open-folder').hasAttribute('data-group-start')).toBe(
     true,
   );
@@ -105,7 +105,7 @@ it('puts the registered palette after settings and executes its captured action'
     [...document.querySelectorAll('[role="menuitem"]')].map(
       (element) => element.textContent,
     ),
-  ).toEqual(['工作区设置', '命令面板', '打开工作区文件夹', '回到内置工作区']);
+  ).toEqual(['工作区设置', '命令面板', '打开工作区文件夹', '打开系统介绍']);
   await act(async () => item('workspace-command-palette').click());
   expect(execute).toHaveBeenCalledOnce();
   expect(props.onSettings).not.toHaveBeenCalled();

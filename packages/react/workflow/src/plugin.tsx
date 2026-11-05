@@ -1,5 +1,11 @@
 import { WorkflowModeSettings } from './mode-settings';
-import { isFrameCell, isNodeCell, type NodeCell } from '@sue/board-core';
+import {
+  frameScene,
+  lockedByAncestor,
+  isFrameCell,
+  isNodeCell,
+  type NodeCell,
+} from '@sue/board-core';
 import { type FrameUIPlugin } from '@sue/board-react';
 import {
   addWorkflowTask,
@@ -9,6 +15,7 @@ import {
   createWorkflowStartCell,
   createWorkflowTaskCell,
   workflowStartOf,
+  workflowPasteOwner,
   type WorkflowStartData,
 } from '@sue/board-workflow';
 import { createWorkflowFrameExtensions } from './frame-extension';
@@ -39,20 +46,20 @@ export const createWorkflowUIPlugin = (): FrameUIPlugin => ({
     ]),
   ),
   pasteText(c) {
-    const frame = c.store.cells[c.frameId];
-    if (!isFrameCell(frame)) return undefined;
-    const starts = frame.children
-      .map((id) => c.store.cells[id])
-      .filter((cell) => cell?.kind === 'workflow-start');
-    const start =
-      (c.hit && workflowStartOf(c.store, c.hit.id)) ||
-      (starts.length === 1 ? starts[0] : undefined);
-    if (!start) return undefined;
+    if (frameScene(c.store, c.frameId, c.registry) !== 'workflow-start') return;
+    const start = workflowPasteOwner(
+      c.store,
+      c.frameId,
+      c.hit ? [c.hit.id] : (c.selectionIds ?? []),
+    );
+    if (!start) throw new Error('Select a workflow start before pasting');
+    if (c.store.cells[start].locked || lockedByAncestor(c.store, start))
+      throw new Error('Cannot paste into a locked owner');
     const node = {
       ...createWorkflowTaskCell(c.allocateId()),
       content: { label: c.text },
     };
-    return addWorkflowTask(c.store, start.id, node);
+    return addWorkflowTask(c.store, start, node);
   },
   actions: [
     {

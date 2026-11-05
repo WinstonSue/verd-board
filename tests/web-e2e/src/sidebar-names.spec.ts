@@ -1,3 +1,5 @@
+import { openHistoryAction } from './app-actions';
+import { selectHistoryAction } from './app-actions';
 import { test, expect, type Page } from '@playwright/test';
 import { readFileSync } from 'node:fs';
 import { selectDrawingTool } from './drawing-tools';
@@ -35,7 +37,6 @@ for (const width of [800, 1440])
     await page.setViewportSize({ width, height: 900 });
     await create(page, 180, 220);
     await expect(nodes(page)).toHaveCount(1);
-    const undo = page.getByRole('button', { name: '撤销', exact: true });
     const world = canvas(page).locator('[data-frame-world]');
     const initial = await world.getAttribute('transform');
     const sidebar = (await page.locator('.frame-inspector').boundingBox())!;
@@ -49,18 +50,22 @@ for (const width of [800, 1440])
       .locator('.frame-bottom-controls')
       .boundingBox())!;
     expect(controls.x + controls.width).toBeLessThanOrEqual(sidebar.x);
-    await page.getByRole('button', { name: '属性', exact: true }).click();
+    await page
+      .getByTestId('inspector-collapse')
+      .locator('visible=true')
+      .click();
     await expect(page.locator('.frame-inspector')).toBeHidden();
     // The file tree stays on the left; with the inspector hidden the canvas
     // must now reach the viewport's right edge.
     const expanded = (await canvas(page).boundingBox())!;
     expect(expanded.x + expanded.width).toBe(width);
     await expect(world).toHaveAttribute('transform', initial!);
-    await page.getByRole('button', { name: '属性', exact: true }).click();
+    await page.getByTestId('inspector-expand').locator('visible=true').click();
     await expect(world).toHaveAttribute('transform', initial!);
-    await undo.click();
+    await selectHistoryAction(page, '撤销');
     await expect(nodes(page)).toHaveCount(0);
-    await expect(undo).toBeDisabled();
+    await expect(await openHistoryAction(page, '撤销')).toBeDisabled();
+    await page.keyboard.press('Escape');
   });
 
 test('first complete body session supplies a plain name, then body and explicit empty name stay independent through save and history', async ({
@@ -83,12 +88,12 @@ test('first complete body session supplies a plain name, then body and explicit 
   await name.fill('');
   await editBody(page, 'Third body');
   await expect(name).toHaveValue('');
-  await page.getByRole('button', { name: '撤销', exact: true }).click();
+  await selectHistoryAction(page, '撤销');
   await expect(nodes(page)).toContainText('Later body');
   await expect(name).toHaveValue('');
-  await page.getByRole('button', { name: '撤销', exact: true }).click();
+  await selectHistoryAction(page, '撤销');
   await expect(name).toHaveValue('Complete first session');
-  await page.getByRole('button', { name: '重做', exact: true }).click();
+  await selectHistoryAction(page, '重做');
   await expect(name).toHaveValue('');
   await expect
     .poll(async () => Object.values(await saved(page)).map((c: any) => c.name))
@@ -137,9 +142,9 @@ test('shape dismissal leaves selection and bidirectional arrows persist both mar
       route: { mode: 'straight' },
       data: { sourceMarker: 'arrow', targetMarker: 'arrow' },
     });
-  await page.getByRole('button', { name: '撤销', exact: true }).click();
+  await selectHistoryAction(page, '撤销');
   await expect(edge).toHaveCount(0);
-  await page.getByRole('button', { name: '重做', exact: true }).click();
+  await selectHistoryAction(page, '重做');
   await page.reload();
   await expect(edge.locator('[data-arrow-marker]')).toHaveCount(2);
 });

@@ -2,6 +2,7 @@ import {
   copyCellFragment,
   createCellRuntime,
   planCellPaste,
+  snapEdgeTerminal,
   type EdgeCell,
   type NodeCell,
 } from '@sue/board-core';
@@ -19,7 +20,7 @@ import {
   createWorkflowTaskCell,
   layoutWorkflowCells,
 } from './cell-commands';
-import { type WorkflowStartData } from './public-api';
+import { defaultWorkflowPort, type WorkflowStartData } from './public-api';
 const testCellRegistry = createFixtureRegistry();
 const runtime = () => {
   const registry = createTestCellRegistry();
@@ -48,6 +49,52 @@ const edge = (id: string, source: string, target: string): EdgeCell => ({
   route: { mode: 'auto' },
 });
 describe('native workflow rules', () => {
+  it('prefers right to left or bottom to top and preserves a directly hit port', () => {
+    const r = runtime();
+    const source = {
+      ...(r.store.cells.a as NodeCell),
+      geometry: { x: 0, y: 0, width: 120, height: 80 },
+    };
+    const target = {
+      ...(r.store.cells.b as NodeCell),
+      geometry: { x: 300, y: 20, width: 120, height: 80 },
+    };
+    const store = {
+      ...r.store,
+      cells: { ...r.store.cells, a: source, b: target },
+    };
+    expect(defaultWorkflowPort(store, source, target, 'source')).toBe('right');
+    expect(defaultWorkflowPort(store, target, source, 'target')).toBe('left');
+    expect(
+      defaultWorkflowPort(
+        store,
+        source,
+        { ...target, geometry: { ...target.geometry, x: 10, y: 320 } },
+        'source',
+      ),
+    ).toBe('bottom');
+    const snap = (point: [number, number]) =>
+      snapEdgeTerminal(
+        store,
+        'frame',
+        point,
+        'target',
+        'workflow-edge',
+        12,
+        r.registry,
+        ['b'],
+        { terminal: { cellId: 'a' } },
+      );
+    expect(snap([360, 60])).toEqual({ cellId: 'b', portId: 'left' });
+    expect(snap([420, 60])).toEqual({ cellId: 'b', portId: 'right' });
+    target.ports = target.ports?.map((port) =>
+      port.id === 'left' ? { ...port, maxConnections: 0 } : port,
+    );
+    expect(defaultWorkflowPort(store, target, source, 'target')).not.toBe(
+      'left',
+    );
+  });
+
   it('anchors disconnected DAG components to the fixed start regardless of id sorting', () => {
     const registry = createTestCellRegistry();
 
@@ -320,7 +367,7 @@ describe('native workflow rules', () => {
     };
     expect(registry.validate(zero, zero.cells.start)).toBeUndefined();
   });
-  it('pastes a standalone task only into an explicit start and offsets a complete graph together', () => {
+  it('pastes into a sole or selected start and offsets a complete graph together', () => {
     const registry = createTestCellRegistry();
 
     const runtime = createCellRuntime(
@@ -332,22 +379,10 @@ describe('native workflow rules', () => {
       cells: { task },
       ids: ['task'],
     };
-    expect(() =>
-      planCellPaste({
-        store: runtime.store,
-        frameId: 'frame',
-        selectionIds: [],
-        fragment: alone,
-        allocateId: (id) => `n-${id}`,
-        registry,
-        intent: 'paste',
-      }),
-    ).toThrow('Select a target first');
-    expect(runtime.store.cells.task).toBeUndefined();
     const planned = planCellPaste({
       store: runtime.store,
       frameId: 'frame',
-      selectionIds: ['start'],
+      selectionIds: [],
       fragment: alone,
       allocateId: (id) => `n-${id}`,
       offset: [12, 4],
@@ -375,7 +410,7 @@ describe('native workflow rules', () => {
               mode: 'fixed',
               points: [
                 [1, 2],
-                [3, 4],
+                [3, 2],
               ],
             },
           },
@@ -406,13 +441,32 @@ describe('native workflow rules', () => {
     ]);
     expect(runtime.store.cells['g-link']).toMatchObject({
       route: {
-        mode: 'fixed',
+        mode: 'orthogonal',
         points: [
           [31, 12],
-          [33, 14],
+          [33, 12],
         ],
       },
     });
+    const request = {
+      store: runtime.store,
+      frameId: 'frame',
+      selectionIds: [],
+      fragment: alone,
+      allocateId: (id: string) => `next-${id}`,
+      registry,
+      intent: 'paste' as const,
+    };
+    expect(() => planCellPaste(request)).toThrow('Select a workflow start');
+    const intoCopy = planCellPaste({ ...request, selectionIds: ['g-start'] });
+    runtime.transact({
+      id: 'paste-into-second',
+      operations: intoCopy.operations,
+    });
+    expect(
+      (runtime.store.cells['g-start'] as NodeCell<WorkflowStartData>).data
+        ?.memberIds,
+    ).toContain('next-task');
     const snapshot = runtime.store;
     expect(() =>
       planCellPaste({

@@ -7,6 +7,7 @@ import {
 } from '../../constants/editor-config';
 import { deriveBoardTextPlainText, isBoardTextNode } from '@sue/board-common';
 import { prepareListFolding } from './document-rich-content';
+import { setFoldIcon } from '../../utils/fold-icon';
 describe('document-only rich content', () => {
   it('preserves formulas and foldable structure without enabling canvas labels', () => {
     const content = {
@@ -54,6 +55,30 @@ describe('document-only rich content', () => {
     ).toContain('display: none');
     expect(editor.view.dom.textContent).toContain('Explanation');
     editor.destroy();
+  });
+  it('keeps disclosure SVG mutations outside the editable document', async () => {
+    const editor = new Editor({
+      extensions: createDocumentExtensions(),
+      content:
+        '<div data-type="details"><summary>Summary</summary><div data-type="detailsContent"><p>Body</p></div></div>',
+    });
+    document.body.append(editor.view.dom);
+    try {
+      const before = editor.state.doc;
+      const details = editor.view.dom.querySelector('[data-type="details"]')!;
+      const button =
+        details.querySelector<HTMLButtonElement>(':scope > button')!;
+      setFoldIcon(button, true);
+      await new Promise((resolve) => setTimeout(resolve, 20));
+      expect(editor.state.doc).toBe(before);
+      expect(editor.view.dom.querySelector('[data-type="details"]')).toBe(
+        details,
+      );
+      expect(editor.getText()).toContain('Body');
+      expect(editor.getHTML()).not.toContain('<svg');
+    } finally {
+      editor.destroy();
+    }
   });
   it('readonly folding hides only nested lists', () => {
     const body = document.createElement('div');

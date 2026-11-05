@@ -1,5 +1,6 @@
 import { useId, useState, type ReactNode, type ComponentProps } from 'react';
 import { ChevronDown, ChevronRight } from 'lucide-react';
+import { WorkspaceButton } from '../workspace-design';
 export function SettingsPage({
   title,
   description,
@@ -85,16 +86,17 @@ export function Disclosure({
   const Icon = open ? ChevronDown : ChevronRight;
   return (
     <div className="vm-disclosure">
-      <button
-        className="vm-btn vm-btn--ghost vm-disclosure__toggle"
+      <WorkspaceButton
+        intent="ghost"
+        size="small"
+        icon={<Icon size={14} aria-hidden />}
         type="button"
         aria-expanded={open}
         aria-controls={id}
         onClick={() => setOpen(!open)}
       >
-        <Icon size={14} aria-hidden />
         {label}
-      </button>
+      </WorkspaceButton>
       {open && (
         <div className="vm-disclosure__body" id={id}>
           {children}

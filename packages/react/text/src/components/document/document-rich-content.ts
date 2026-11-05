@@ -1,9 +1,17 @@
 import { isBoardTextNode } from '@sue/board-common';
-import type { DocumentFoldingAdapter } from './folding-store';
+import { setFoldIcon } from '../../utils/fold-icon';
+import {
+  blockOrderMapping,
+  mappedBlockOrderPosition,
+  type BlockOrderMapping,
+} from './document-block-order';
+import {
+  createDocumentFoldingStore,
+  type DocumentFoldingAdapter,
+} from './folding-store';
 import { Extension } from '@tiptap/core';
 import { Plugin, PluginKey, TextSelection } from '@tiptap/pm/state';
 import { Decoration, DecorationSet } from '@tiptap/pm/view';
-import type { Node as ProseMirrorNode } from '@tiptap/pm/model';
 
 const key = new PluginKey<ReadonlySet<number>>('document-folding');
 const lists = new Set(['bulletList', 'orderedList']);
@@ -15,8 +23,9 @@ export const DocumentFolding = Extension.create({
     folding: undefined as DocumentFoldingAdapter | undefined,
   }),
   addProseMirrorPlugins() {
-    const folding = this.options.folding;
+    const folding = this.options.folding ?? createDocumentFoldingStore();
     let base = new Set<number>();
+    const detailBase = new Map<string, boolean>();
     let temporary: number | undefined;
     return [
       new Plugin<ReadonlySet<number>>({
@@ -34,13 +43,60 @@ export const DocumentFolding = Extension.create({
             base = closed;
             return closed;
           },
-          apply(tr) {
+          apply(tr, _value, old) {
+            const order = tr.getMeta(blockOrderMapping) as
+              BlockOrderMapping | undefined;
             const next = new Set<number>();
+            const displaced = new Set<string>();
+            let remapped = false;
             for (const pos of base) {
-              const mapped = tr.mapping.mapResult(pos);
-              if (!mapped.deleted) next.add(mapped.pos);
+              if (order) next.add(mappedBlockOrderPosition(order, pos));
+              else {
+                const mapped = tr.mapping.mapResult(pos);
+                if (!mapped.deleted) next.add(mapped.pos);
+                else {
+                  remapped = true;
+                  const id = old.doc.nodeAt(pos)?.attrs['blockId'];
+                  if (id) displaced.add(id);
+                }
+              }
             }
-            if (temporary !== undefined) temporary = tr.mapping.map(temporary);
+            if (
+              remapped ||
+              (tr.docChanged && tr.getMeta('addToHistory') === false)
+            )
+              tr.doc.descendants((node, pos) => {
+                if (
+                  node.type.name === 'listItem' &&
+                  (displaced.has(node.attrs['blockId']) ||
+                    folding
+                      .getSnapshot()
+                      .get(node.attrs['blockId'] || `@${pos}`))
+                )
+                  next.add(pos);
+              });
+            if (temporary !== undefined)
+              temporary = order
+                ? mappedBlockOrderPosition(order, temporary)
+                : tr.mapping.map(temporary);
+            if (tr.docChanged) {
+              const legacy = [...detailBase].filter(([id]) =>
+                id.startsWith('@'),
+              );
+              for (const [id] of legacy) detailBase.delete(id);
+              for (const [id, collapsed] of legacy) {
+                const from = Number(id.slice(1));
+                const to = order
+                  ? mappedBlockOrderPosition(order, from)
+                  : tr.mapping.map(from);
+                const node = tr.doc.nodeAt(to);
+                if (node?.type.name !== 'details') continue;
+                const nextId = node.attrs['blockId'] || `@${to}`;
+                detailBase.set(nextId, collapsed);
+                if (node.attrs['blockId'])
+                  folding?.setCollapsed(nextId, collapsed);
+              }
+            }
             if (tr.getMeta('document-clear-reveal')) temporary = undefined;
             const reveal = tr.getMeta('document-reveal') as number | undefined;
             if (reveal !== undefined) temporary = reveal;
@@ -67,7 +123,6 @@ export const DocumentFolding = Extension.create({
         },
         view(view) {
           let applying = false;
-          const detailBase = new Map<string, boolean>();
           const restore = () => {
             for (const element of view.dom.querySelectorAll<HTMLElement>(
               '[data-type=details]',
@@ -90,6 +145,9 @@ export const DocumentFolding = Extension.create({
               )
                 collapsed = false;
               const open = element.classList.contains('is-open');
+              const toggleButton =
+                element.querySelector<HTMLButtonElement>(':scope > button');
+              if (toggleButton) setFoldIcon(toggleButton, collapsed);
               if (open === collapsed) {
                 applying = true;
                 element
@@ -125,6 +183,7 @@ export const DocumentFolding = Extension.create({
             detailBase.set(id, collapsed);
             folding?.setCollapsed(id, collapsed);
             button?.setAttribute('aria-expanded', String(!collapsed));
+            if (button) setFoldIcon(button, collapsed);
             button?.setAttribute(
               'aria-label',
               collapsed ? '展开内容' : '收起内容',
@@ -167,7 +226,7 @@ export const DocumentFolding = Extension.create({
                     button.type = 'button';
                     button.className = 'document-list-fold';
                     button.contentEditable = 'false';
-                    button.textContent = closed.has(pos) ? '▸' : '▾';
+                    setFoldIcon(button, closed.has(pos));
                     button.setAttribute(
                       'aria-label',
                       closed.has(pos) ? '展开子列表' : '收起子列表',
@@ -229,7 +288,7 @@ export function prepareListFolding(
     const button = document.createElement('button');
     button.type = 'button';
     button.className = 'document-list-fold';
-    button.textContent = '▾';
+    setFoldIcon(button, false);
     button.setAttribute('aria-label', '收起子列表');
     button.setAttribute('aria-expanded', 'true');
     button.onclick = (event) => {
@@ -239,7 +298,7 @@ export function prepareListFolding(
         child.hidden = collapse;
       });
       button.setAttribute('aria-expanded', String(!collapse));
-      button.textContent = collapse ? '▸' : '▾';
+      setFoldIcon(button, collapse);
     };
     const id =
       item.getAttribute('data-block-id') ||
@@ -254,7 +313,7 @@ export function prepareListFolding(
         child.hidden = true;
       });
       button.setAttribute('aria-expanded', 'false');
-      button.textContent = '▸';
+      setFoldIcon(button, true);
     }
     item.prepend(button);
   }
@@ -280,35 +339,12 @@ export function revealPreviewTarget(element: HTMLElement | undefined) {
     parent = parent.parentElement
   ) {
     if (parent instanceof HTMLDetailsElement) parent.open = true;
-    if (parent.matches('ul,ol')) parent.hidden = false;
+    if (parent.hidden && parent.matches('ul,ol')) {
+      const toggle = parent.parentElement?.querySelector<HTMLButtonElement>(
+        ':scope > .document-list-fold[aria-expanded="false"]',
+      );
+      if (toggle) toggle.click();
+      else parent.hidden = false;
+    }
   }
-}
-
-export function nearestOperableDepth($from: {
-  depth: number;
-  node(depth: number): ProseMirrorNode;
-}) {
-  for (let depth = $from.depth; depth > 0; depth--) {
-    const name = $from.node(depth).type.name;
-    if (name === 'detailsSummary') return Math.max(1, depth - 1);
-    if (
-      name === 'paragraph' &&
-      depth > 1 &&
-      $from.node(depth - 1).type.name === 'listItem'
-    )
-      return depth - 1;
-    if (
-      [
-        'paragraph',
-        'heading',
-        'codeBlock',
-        'blockMath',
-        'attachment',
-        'webEmbed',
-        'table',
-      ].includes(name)
-    )
-      return depth;
-  }
-  return 1;
 }

@@ -30,7 +30,7 @@ it('shows personal preferences without workspace trash and returns to the caller
     container.querySelector('[data-testid="settings-language"]'),
   ).toBeTruthy();
   expect(container.querySelector('[data-testid="workspace-trash"]')).toBeNull();
-  expect(container.querySelectorAll('nav button')).toHaveLength(2);
+  expect(container.querySelectorAll('nav [role="menuitem"]')).toHaveLength(2);
   await act(async () =>
     container
       .querySelector<HTMLButtonElement>('[data-testid="my-back"]')!

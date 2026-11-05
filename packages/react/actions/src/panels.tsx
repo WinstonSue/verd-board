@@ -171,7 +171,7 @@ function ModalFrame({
         <header>
           <h2 id={labelId}>{title}</h2>
           <button type="button" onClick={onClose} aria-label={closeLabel}>
-            <X size={16} aria-hidden />
+            <X strokeWidth={1.75} size={16} aria-hidden />
           </button>
         </header>
         {children}

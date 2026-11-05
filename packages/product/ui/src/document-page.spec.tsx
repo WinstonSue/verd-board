@@ -1,12 +1,14 @@
-import { act, StrictMode, useEffect } from 'react';
+import { act, StrictMode, useContext, useEffect } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createBlockText } from '@sue/board-common';
+import { createActionRegistry } from '@sue/board-common';
 import type {
   DocumentEditorController,
   DocumentEditorProps,
 } from '@sue/board-react-text';
 import { DocumentPage, type DocumentPageProps } from './document-page';
+import { I18nProvider } from './i18n';
 
 // jsdom has no geometry; browser tests cover floating placement.
 vi.mock('@floating-ui/react', async (importOriginal) => ({
@@ -41,24 +43,47 @@ const { controller } = vi.hoisted(() => ({
   },
 }));
 
-vi.mock('@sue/board-react-text', async () => ({
-  useRichTextLinks: (await import('../../../react/text/src/rich-text-links'))
-    .useRichTextLinks,
-  DocumentEditor: ({ onReady }: DocumentEditorProps) => {
-    useEffect(() => {
-      onReady?.(controller as unknown as DocumentEditorController);
-      return () => onReady?.(null);
-    }, [onReady]);
-    return (
-      <div className="board-document-editor">
-        <a href="verd://file/guide#章节">
-          <span>Open guide</span>
-        </a>
-        <a href="https://example.com/">Website</a>
-      </div>
-    );
-  },
-}));
+vi.mock('@sue/board-react-text', async (original) => {
+  const real = await original<typeof import('@sue/board-react-text')>();
+  return {
+    ...real,
+    DocumentEditor: ({ onReady }: DocumentEditorProps) => {
+      const editLink = useContext(real.LinkEditorHost);
+      useEffect(() => {
+        onReady?.(controller as unknown as DocumentEditorController);
+        return () => onReady?.(null);
+      }, [onReady]);
+      return (
+        <div className="board-document-editor">
+          <a href="verd://file/guide#章节">
+            <span>Open guide</span>
+          </a>
+          <a href="https://example.com/">Website</a>
+          <button
+            type="button"
+            title="链接"
+            onClick={() =>
+              editLink?.({
+                href: 'verd://file/guide#章节',
+                isCurrent: () => true,
+                commit: async () => ({ status: 'completed' }),
+              })
+            }
+          >
+            编辑链接
+          </button>
+        </div>
+      );
+    },
+  };
+});
+
+HTMLDialogElement.prototype.showModal ??= function () {
+  this.open = true;
+};
+HTMLDialogElement.prototype.close ??= function () {
+  this.open = false;
+};
 
 (
   globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }
@@ -73,13 +98,14 @@ const value = createBlockText('Body');
 const render = async (props: Partial<DocumentPageProps> = {}) => {
   await act(async () =>
     root.render(
-      <DocumentPage
-        value={value}
-        title="Guide"
-        onChange={() => {}}
-        onTitleCommit={() => {}}
-        {...props}
-      />,
+      <I18nProvider language={props.locale ?? 'zh'} persistLanguage={false}>
+        <DocumentPage
+          value={value}
+          title="Guide"
+          onChange={() => {}}
+          {...props}
+        />
+      </I18nProvider>,
     ),
   );
 };
@@ -122,6 +148,91 @@ afterEach(async () => {
 });
 
 describe('document navigation', () => {
+  it('shows presentation and save feedback in the header and keeps history in the menu', async () => {
+    const history = createActionRegistry({ getContext: () => ({}) });
+    const undo = vi.fn(() => ({ status: 'completed' as const }));
+    history.register({
+      id: 'document.undo',
+      label: '撤销',
+      category: 'document',
+      effect: 'history',
+      shortcuts: [{ key: 'z', mod: true }],
+      execute: undo,
+    });
+    history.register({
+      id: 'document.redo',
+      label: '重做',
+      category: 'document',
+      effect: 'history',
+      getState: () => ({ enabled: false }),
+      execute: undo,
+    });
+    controller.actions.mockReturnValue(history.actions() as never[]);
+    let gesture = false;
+    const onPresent = vi.fn(async () => {
+      expect(gesture).toBe(true);
+      return { status: 'completed' as const };
+    });
+    try {
+      await render({ onPresent });
+      expect(
+        [...container.querySelectorAll('.doc-toolbar__actions button')].map(
+          (button) => button.getAttribute('aria-label'),
+        ),
+      ).toEqual(['查找', '演示', '文档']);
+      expect(
+        container.querySelector(
+          '.document-page__header [data-testid="save-status"]',
+        )?.textContent,
+      ).toBe('已保存');
+      expect(
+        container.querySelector(
+          '.document-page__status [data-testid="save-status"]',
+        ),
+      ).toBeNull();
+      expect(
+        container.querySelector(
+          '.doc-toolbar [data-action-id="document.undo"]',
+        ),
+      ).toBeNull();
+      await act(async () => {
+        gesture = true;
+        container
+          .querySelector<HTMLButtonElement>(
+            '[data-action-id="document.presentation"]',
+          )!
+          .click();
+        gesture = false;
+      });
+      expect(onPresent).toHaveBeenCalledOnce();
+      await click(container.querySelector('[aria-label="文档"]')!);
+      expect(
+        document.querySelector('[data-action-id="document.undo"] svg'),
+      ).toBeTruthy();
+      expect(
+        document.querySelector('[data-action-id="document.undo"] kbd')
+          ?.textContent,
+      ).toMatch(/Z/i);
+      expect(
+        document
+          .querySelector('[data-action-id="document.command-palette"]')
+          ?.hasAttribute('data-group-start'),
+      ).toBe(true);
+      expect(
+        document.querySelector<HTMLButtonElement>(
+          '[data-action-id="document.redo"]',
+        )!.disabled,
+      ).toBe(true);
+      await click(document.querySelector('[data-action-id="document.undo"]')!);
+      expect(undo).toHaveBeenCalledOnce();
+      await render({ showSaveStatus: false });
+      expect(container.querySelector('[data-testid="save-status"]')).toBeNull();
+    } finally {
+      controller.actions.mockReturnValue([]);
+      history.dispose();
+    }
+  });
+
   it('locates an exact embedded occurrence and rejects a changed body before touching selection', async () => {
     const onNavigationResult = vi.fn();
     const reference = {
@@ -164,15 +275,16 @@ describe('document navigation', () => {
     const onExport = vi.fn();
     await act(async () =>
       root.render(
-        <StrictMode>
-          <DocumentPage
-            value={value}
-            title="Guide"
-            onChange={() => {}}
-            onTitleCommit={() => {}}
-            onExport={onExport}
-          />
-        </StrictMode>,
+        <I18nProvider language="zh" persistLanguage={false}>
+          <StrictMode>
+            <DocumentPage
+              value={value}
+              title="Guide"
+              onChange={() => {}}
+              onExport={onExport}
+            />
+          </StrictMode>
+        </I18nProvider>,
       ),
     );
     const button =
@@ -205,6 +317,11 @@ describe('document navigation', () => {
       const button =
         container.querySelector<HTMLButtonElement>('[aria-label="文档"]')!;
       await click(button);
+      expect(
+        !!document.querySelector(
+          '[role="dialog"][aria-label="文档"] button[aria-haspopup="dialog"]',
+        ),
+      ).toBe(!readonly);
       await click(
         document.querySelector('[data-action-id="document.command-palette"]')!,
       );
@@ -267,15 +384,29 @@ describe('document navigation', () => {
     );
   });
 
-  it('provides an explicit open action for the current link', async () => {
-    const onOpenLink = vi.fn();
-    await render({ onOpenLink });
+  it('previews the selected workspace target from the editor dialog', async () => {
+    const onPreviewLink = vi.fn();
+    const href = 'verd://file/guide#章节';
+    await render({
+      onPreviewLink,
+      linkChoices: [
+        {
+          href: 'verd://file/guide#%E7%AB%A0%E8%8A%82',
+          title: '章节',
+          detail: '指南',
+        },
+      ],
+    });
     await click(container.querySelector('button[title="链接"]')!);
-    const button = [...container.querySelectorAll('button')].find(
-      (item) => item.textContent === '打开链接',
+    const dialog = container.querySelector('dialog')!;
+    expect(
+      dialog.querySelector<HTMLInputElement>('[role="combobox"]')?.value,
+    ).toBe('章节');
+    const preview = [...dialog.querySelectorAll('button')].find(
+      (button) => button.textContent === '预览',
     )!;
-    await click(button);
-    expect(onOpenLink).toHaveBeenCalledWith('verd://file/guide#章节');
+    await click(preview);
+    expect(onPreviewLink).toHaveBeenCalledWith(encodeURI(href), undefined);
   });
 
   it('waits for the editor and applies each navigation request once', async () => {
@@ -320,8 +451,8 @@ describe('document navigation', () => {
     });
     await flushFrames();
     expect(controller.focus).not.toHaveBeenCalled();
-    expect(container.querySelector('[role="status"]')?.textContent).toContain(
-      '未找到目标章节',
-    );
+    expect(
+      container.querySelector('.document-page__notice')?.textContent,
+    ).toContain('未找到目标章节');
   });
 });

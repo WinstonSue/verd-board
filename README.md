@@ -6,7 +6,7 @@
 
 ## 📖 文档
 
-内置项目工作区以“文档导航”为主入口，首次打开或手动全量更新后从文档开始阅读，已有会话继续恢复。项目文档和架构图直接保存在仓库根 [`workspace/`](workspace/)；桌面端开发默认使用该目录的独立副本，维护文档需主动打开原目录。文档正文使用 `.verd-doc.json`，画布使用 `.verd.json`，两者均可在产品中直接编辑。
+在 Desktop 工作区切换器中选择「打开系统介绍」。首次打开或手动全量更新后从「文档导航」开始阅读，已有会话继续恢复。项目文档和架构图直接保存在仓库根 [`workspace/`](workspace/)。桌面端开发默认使用该目录的独立副本，维护文档需主动打开原目录。文档正文使用 `.verd-doc.json`，画布使用 `.verd.json`，两者均可在产品中直接编辑。
 
 - **[文档导航](workspace/文档导航.verd-doc.json)** / **[English](workspace/Documentation.verd-doc.json)**
 - **[产品概览](workspace/文档/产品/产品概览.verd-doc.json)** / **[系统架构](workspace/文档/架构/系统架构.verd-doc.json)**
@@ -227,11 +227,9 @@ Slash insertion, paragraph actions and live read-only excerpts support reusable 
 
 使用桌面端打开仓库的 `workspace/`，从文档导航阅读产品与架构说明，再按需打开项目导览画布，进入九张专题总览，再打开二十一张机制细节图，查看主要流程、失败分支、保存边界和源码入口。细节按专题收在 `workspace/架构图/细节/`，复用现有原生文档；逐层返回恢复阅读位置。完整包依赖图位于“01.1 完整包分层与依赖”，继续通过 `pnpm workspace:refresh` 更新。
 
-内置项目工作区与 Agent 范式库遵循统一项目规范。已有副本不自动更新；在工作区设置中可手动备份并完整替换为当前应用附带的最新内容，保留项目身份与历史事务回执。
+系统介绍与 Agent 范式库随 Desktop 交付，版本与产品一致。仅在对应工作区显示更新提示。用户可在「设置 → 数据与维护」确认全量替换，并选择是否备份。替换保留项目身份和已终结事务的回执。使用 `pnpm build:content` 准备资源，使用 `node --test scripts/builtin-package.test.mjs` 验证。完整说明见原生桌面安装与开发指南。
 
-Built-in project and Agent pattern workspaces use portable project context. Existing copies update only on request: Workspace settings can back up and fully replace a copy with the bundled version while retaining project identity and transaction receipts.
-
-内置项目图文与 Agent 范式库支持独立 npm 版本及确认后的备份更新，无需随 Desktop 重装。资源构建与检查：`pnpm build:content`、`node --test scripts/builtin-package.test.mjs`。完整说明见原生桌面安装与开发指南。
+System introduction and the Agent pattern library ship with Desktop and share the product version. Confirm a bundled-content update under Settings → Data and maintenance. Backups are optional, and the replacement preserves project identity and finalized transaction receipts.
 
 ### 文档折叠、公式与资料阅读（源码）
 

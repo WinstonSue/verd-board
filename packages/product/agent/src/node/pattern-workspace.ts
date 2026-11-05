@@ -12,7 +12,11 @@ import {
 /** Existing Desktop copies win. Explicit CLI destinations never get overwritten. */
 export async function initializePatternWorkspace(
   target: string,
-  options: { preserveExisting?: boolean; source?: string } = {},
+  options: {
+    preserveExisting?: boolean;
+    source?: string;
+    appVersion?: string;
+  } = {},
 ): Promise<{ path: string; created: boolean }> {
   target = path.resolve(target);
   return withWorkspaceLock(target, async () => {
@@ -36,11 +40,14 @@ export async function initializePatternWorkspace(
         options.source ?? fileURLToPath(patternWorkspaceUrl),
         staging,
         'agent-patterns',
+        options.appVersion,
       );
       const snapshot = await readNativeSnapshotUnlocked(staging);
       const errors = [
         ...snapshot.diagnostics,
-        ...validateNativeWorkspace(snapshot.entries),
+        ...validateNativeWorkspace(snapshot.entries, {
+          folderIds: snapshot.folderIds,
+        }),
       ].filter((d) => d.severity === 'error');
       if (errors.length)
         throw new Error(

@@ -1,3 +1,5 @@
+import { openHistoryAction } from './app-actions';
+import { selectHistoryAction } from './app-actions';
 import { expect, test, type Locator, type Page } from '@playwright/test';
 import {
   addArchitectureModule,
@@ -35,6 +37,7 @@ import {
 } from '../../../packages/engine/workflow/src/cell-commands';
 import { createTestCellRegistry as createFixtureRegistry } from '../../fixtures/plugins/registry';
 import {
+  activateBoardTab,
   clearWorkspaceStorage,
   persistedWorkspace,
   waitForWorkspacePersisted,
@@ -207,6 +210,7 @@ const drawingFixture = (): FrameSnapshot => {
 const open = async (page: Page, snapshot: FrameSnapshot) => {
   await page.setViewportSize({ width: 1440, height: 1000 });
   await page.goto('/');
+  if (!(await canvas(page).isVisible())) await activateBoardTab(page);
   await expect(canvas(page)).toBeVisible();
   await waitForWorkspacePersisted(page);
   await page.evaluate(async (snapshot) => {
@@ -248,6 +252,7 @@ const open = async (page: Page, snapshot: FrameSnapshot) => {
   }, snapshot);
   await clearWorkspaceStorage(page);
   await page.reload();
+  if (!(await canvas(page).isVisible())) await activateBoardTab(page);
   await expect(canvas(page)).toBeVisible();
   // Startup imports the legacy fixture as an undoable command (also in HEAD).
   // Reopen the saved workspace so editor-entry checks start with empty history.
@@ -259,12 +264,10 @@ const open = async (page: Page, snapshot: FrameSnapshot) => {
     )
     .toBe(snapshot.store.rootId);
   await page.reload();
+  if (!(await canvas(page).isVisible())) await activateBoardTab(page);
   await expect(canvas(page)).toBeVisible();
-  await expect(
-    page
-      .getByRole('button', { name: '撤销', exact: true })
-      .locator('visible=true'),
-  ).toBeDisabled();
+  await expect(await openHistoryAction(page, '撤销')).toBeDisabled();
+  await page.keyboard.press('Escape');
   const skip = page.getByRole('button', { name: '跳过', exact: true });
   if (await skip.isVisible()) await skip.click();
   await page.getByRole('button', { name: '适配画布', exact: true }).click();
@@ -390,9 +393,8 @@ test('all drawing text, block content, labels and rotated table titles keep iden
   const edge = cell(page, 'edge');
   await edge.locator('[data-edge-label]').click();
   await parity(page, edge, () => edge.locator('[data-edge-label]').dblclick());
-  await expect(
-    page.getByRole('button', { name: '撤销', exact: true }),
-  ).toBeDisabled();
+  await expect(await openHistoryAction(page, '撤销')).toBeDisabled();
+  await page.keyboard.press('Escape');
 });
 
 test('Mind root, child and note keep their font, color and media text regions in embedded and detail views', async ({
@@ -583,11 +585,8 @@ test('Mind defaults align left and notes align at the top, preserving explicit b
       ).toHaveValue(item.expected);
       await parity(page, note, () => note.dblclick());
     }
-    await expect(
-      page
-        .getByRole('button', { name: '撤销', exact: true })
-        .locator('visible=true'),
-    ).toBeDisabled();
+    await expect(await openHistoryAction(page, '撤销')).toBeDisabled();
+    await page.keyboard.press('Escape');
   }
   const target = cell(page, 'default');
   // While editing, both the floating toolbar and the inspector expose a
@@ -628,17 +627,11 @@ test('Mind defaults align left and notes align at the top, preserving explicit b
     await target
       .locator('[data-frame-text-editor] .ProseMirror')
       .press('Escape');
-  await page
-    .getByRole('button', { name: '撤销', exact: true })
-    .locator('visible=true')
-    .click();
+  await selectHistoryAction(page, '撤销');
   await expect(
     page.getByLabel('Selection text alignment').locator('visible=true'),
   ).toHaveValue('left');
-  await page
-    .getByRole('button', { name: '重做', exact: true })
-    .locator('visible=true')
-    .click();
+  await selectHistoryAction(page, '重做');
   // `saved` can precede the redo's write; wait for it to reach storage.
   // Alignment persists as per-block textAlign on the document's paragraphs.
   await expect
@@ -719,12 +712,14 @@ test('portal formatting retains selection and input, tracks zoom, survives IME E
   await toolbar
     .getByRole('button', { name: /^(Link|链接)$/, exact: true })
     .click();
-  await toolbar
-    .getByLabel('Link URL', { exact: true })
+  const linkDialog = page.getByRole('dialog', {
+    name: /^(编辑链接|Edit link)$/,
+  });
+  await linkDialog
+    .getByLabel(/^(搜索工作区或输入网址|Search workspace or enter a URL)$/)
     .fill('https://example.com');
-  await toolbar
-    .getByRole('button', { name: 'Apply link', exact: true })
-    .click();
+  await linkDialog.getByRole('button', { name: /^(保存|Save)$/ }).click();
+  await expect(linkDialog).toBeHidden();
   await expect(editor.locator('a')).toHaveText('纯文本 Plain label');
   // TipTap restores DOM focus in rAF after a toolbar command. Wait for it
   // before sending a key that changes the selection.
@@ -743,12 +738,9 @@ test('portal formatting retains selection and input, tracks zoom, survives IME E
   await expect(editor).toBeVisible();
   await editor.press('Escape');
   await expect(target).toContainText('labelZ');
-  await page.getByRole('button', { name: '撤销', exact: true }).click();
+  await selectHistoryAction(page, '撤销');
   await expect(target).toContainText('Plain label');
-  await page
-    .getByRole('button', { name: '重做', exact: true })
-    .locator('visible=true')
-    .click();
+  await selectHistoryAction(page, '重做');
   await expect(target).toContainText('labelZ');
   // `saved` was already reported for the earlier commit; wait for the redo's
   // write to actually reach storage before reloading.

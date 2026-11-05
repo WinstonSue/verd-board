@@ -1,3 +1,4 @@
+import { selectHistoryAction } from './app-actions';
 import { expect, test, type Page } from '@playwright/test';
 import { selectDrawingTool } from './drawing-tools';
 import {
@@ -153,7 +154,7 @@ test('restores editing, gestures, summaries, and file open', async ({
             return root?.frame?.view?.theme?.themeColorMode;
           })
           .toBe('dark');
-        await page.getByRole('button', { name: '撤销', exact: true }).click();
+        await selectHistoryAction(page, '撤销');
         await expect.poll(async () => theme.inputValue()).not.toBe('dark');
       }
     }
@@ -171,12 +172,16 @@ test('restores editing, gestures, summaries, and file open', async ({
   await page
     .getByLabel('Selection text color', { exact: true })
     .fill('#ff0000');
-  await page
-    .getByLabel('Selection link URL', { exact: true })
+  await page.getByRole('button', { name: '编辑链接', exact: true }).click();
+  const linkDialog = page.getByRole('dialog', {
+    name: '编辑链接',
+    exact: true,
+  });
+  await linkDialog
+    .getByLabel('搜索工作区或输入网址')
     .fill('https://example.com');
-  await page
-    .getByRole('button', { name: 'Apply selection link', exact: true })
-    .click();
+  await linkDialog.getByRole('button', { name: '保存', exact: true }).click();
+  await expect(linkDialog).toBeHidden();
   const formatted = async () => findCell(page, 'mind-root');
   await expect
     .poll(async () => JSON.stringify((await formatted())?.content?.text ?? {}))
@@ -202,7 +207,7 @@ test('restores editing, gestures, summaries, and file open', async ({
   expect(JSON.stringify(edited.content.text)).toContain('bold');
   expect(JSON.stringify(edited.content.text)).toContain('#ff0000');
   expect(JSON.stringify(edited.content.text)).toContain('https://example.com');
-  await page.getByRole('button', { name: '撤销', exact: true }).click();
+  await selectHistoryAction(page, '撤销');
   await expect
     .poll(async () => (await formatted())?.content?.label)
     .toBe(beforeEdit.content.label);
@@ -239,7 +244,7 @@ test('restores editing, gestures, summaries, and file open', async ({
       return [nodes.length, nodes.some((cell) => cell.data?.collapsed)];
     })
     .toEqual([3, false]);
-  await page.getByRole('button', { name: '撤销', exact: true }).click();
+  await selectHistoryAction(page, '撤销');
   await expect
     .poll(async () => {
       const nodes = (await allCells(page)).filter(
@@ -286,7 +291,7 @@ test('restores editing, gestures, summaries, and file open', async ({
     .click({ modifiers: ['Shift'], position: { x: 6, y: 10 } });
   await page.getByRole('button', { name: '概要', exact: true }).click();
   await expect(cells(page, 'mind-summary-edge')).toHaveCount(2);
-  await page.getByRole('button', { name: '撤销', exact: true }).click();
+  await selectHistoryAction(page, '撤销');
   await expect(cells(page, 'mind-summary-edge')).toHaveCount(0);
 
   await activateBoardTab(page);
@@ -385,7 +390,7 @@ test('restores editing, gestures, summaries, and file open', async ({
     );
   });
   await expect(cells(page, 'geometry')).toHaveCount(beforePaste + 1);
-  await page.getByRole('button', { name: '撤销', exact: true }).click();
+  await selectHistoryAction(page, '撤销');
   await expect(cells(page, 'geometry')).toHaveCount(beforePaste);
 
   const png = Buffer.from(
@@ -422,7 +427,7 @@ test('restores editing, gestures, summaries, and file open', async ({
     [...png],
   );
   await expect(cells(page, 'image')).toHaveCount(1);
-  await page.getByRole('button', { name: '撤销', exact: true }).click();
+  await selectHistoryAction(page, '撤销');
   await expect(cells(page, 'image')).toHaveCount(0);
 
   const themeBeforeOpen = await page
@@ -442,7 +447,7 @@ test('restores editing, gestures, summaries, and file open', async ({
     .poll(async () => world(page).getAttribute('transform'))
     .toContain('scale(1)');
   const fittedOpenView = await world(page).getAttribute('transform');
-  await page.getByRole('button', { name: '撤销', exact: true }).click();
+  await selectHistoryAction(page, '撤销');
   await expect(page.getByLabel('Theme', { exact: true })).toHaveValue(
     themeBeforeOpen,
   );

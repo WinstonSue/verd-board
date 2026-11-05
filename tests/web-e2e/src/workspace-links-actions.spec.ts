@@ -5,7 +5,13 @@ import type {
   Cell,
   FrameCell,
 } from '../../../packages/engine/core/src/cell/types';
+import {
+  createFolder,
+  directoryRow,
+  folderAction,
+} from './workspace-file-actions';
 import { persistedWorkspace } from './workspace-nav';
+import { activeTabTitle } from './tab-actions';
 
 test.use({ actionTimeout: 10_000 });
 
@@ -99,7 +105,7 @@ async function paletteAction(page: Page, id: string, query: string) {
 }
 async function openDocumentLink(page: Page, title: string) {
   await fileRow(page, title).click();
-  await expect(pane(page).locator('.document-page__title')).toHaveValue(title);
+  await expect(activeTabTitle(page)).toHaveText(title);
   const link = pane(page).getByRole('link', { name: 'Open linked element' });
   await link.scrollIntoViewIfNeeded();
   await link.click({ modifiers: ['ControlOrMeta'] });
@@ -119,6 +125,91 @@ async function exportScene(
   const downloaded = await downloading;
   return JSON.parse(readFileSync((await downloaded.path())!, 'utf8'));
 }
+
+test('a copied folder link reveals the folder after rename and reload', async ({
+  page,
+  context,
+}) => {
+  await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+  await page.goto('/');
+  await createFolder(page, 'Link Parent');
+  await createFolder(page, 'Empty Target', 'Link Parent');
+  await folderAction(page, 'Empty Target', '复制链接');
+  await expect
+    .poll(() => page.evaluate(() => navigator.clipboard.readText()))
+    .toMatch(/^verd:\/\/folder\//);
+  const href = await page.evaluate(() => navigator.clipboard.readText());
+  await importJson(
+    page,
+    'Folder Links.verd-doc.json',
+    documentWithLink('folder-links', 'Folder Links', href),
+  );
+  await folderAction(page, 'Link Parent', '重命名');
+  const dialog = page.getByRole('dialog');
+  await dialog.getByRole('textbox').fill('Moved Parent');
+  await dialog.getByRole('button', { name: '确定', exact: true }).click();
+  await expect(directoryRow(page, 'Moved Parent')).toBeVisible();
+  await page.reload();
+  const parent = directoryRow(page, 'Moved Parent').getByRole('button', {
+    name: 'Moved Parent',
+    exact: true,
+  });
+  if ((await parent.getAttribute('aria-expanded')) === 'true')
+    await parent.click();
+  await fileRow(page, 'Folder Links').click();
+  await page.getByRole('button', { name: '收起侧栏', exact: true }).click();
+  await pane(page)
+    .getByRole('link', { name: 'Open linked element' })
+    .click({ modifiers: ['ControlOrMeta'] });
+  await expect(parent).toHaveAttribute('aria-expanded', 'true');
+  await expect(directoryRow(page, 'Empty Target')).toHaveAttribute(
+    'aria-selected',
+    'true',
+  );
+  await expect(activeTabTitle(page)).toHaveText('Folder Links');
+});
+
+test('workflow paste routes menu and native text and rejects damaged Verd fragments', async ({
+  page,
+  context,
+}) => {
+  await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+  await page.goto('/');
+  await importJson(page, 'Flow.verd.json', fixture('workflow-dag.verd.json'));
+  await fileRow(page, 'DAG 流程').click();
+  const start = cell(page, 'flow-start');
+  await expect(start).toBeVisible();
+  await page.evaluate(() => navigator.clipboard.writeText('Menu task'));
+  await start.click({ button: 'right' });
+  await page
+    .getByRole('dialog', { name: 'Selection actions' })
+    .getByRole('button', { name: '粘贴', exact: true })
+    .click();
+  await expect(
+    canvas(page).getByText('Menu task', { exact: true }),
+  ).toBeVisible();
+  await start.click();
+  await page.evaluate(() => navigator.clipboard.writeText('Keyboard task'));
+  await page.keyboard.press('ControlOrMeta+v');
+  await expect(
+    canvas(page).getByText('Keyboard task', { exact: true }),
+  ).toBeVisible();
+  const count = await canvas(page)
+    .locator('[data-cell-kind="workflow-task"]')
+    .count();
+  await page.evaluate(() =>
+    navigator.clipboard.writeText('{"format":"verd-cells","version":1,broken}'),
+  );
+  await page.keyboard.press('ControlOrMeta+v');
+  await expect(
+    page
+      .getByText('Clipboard does not contain valid Verd cells', { exact: true })
+      .first(),
+  ).toBeVisible();
+  await expect(
+    canvas(page).locator('[data-cell-kind="workflow-task"]'),
+  ).toHaveCount(count);
+});
 
 test('an imported module link copied through the palette opens from a document and returns to its reading position', async ({
   page,
@@ -159,9 +250,7 @@ test('an imported module link copied through the palette opens from a document a
     cell(page, 'mod-order').locator('[data-interaction-stroke="selected"]'),
   ).toHaveAttribute('stroke', '#6366f1');
   await page.getByTestId('navigation-return').click();
-  await expect(pane(page).locator('.document-page__title')).toHaveValue(
-    source.title,
-  );
+  await expect(activeTabTitle(page)).toHaveText(source.title);
   await expect
     .poll(async () =>
       Math.abs(
@@ -428,9 +517,7 @@ test('canvas text opens with click preference and presentation overrides modifie
   await link.hover();
   await expect(link).toHaveAttribute('title', '单击打开链接');
   await link.click();
-  await expect(pane(page).locator('.document-page__title')).toHaveValue(
-    'Canvas link target',
-  );
+  await expect(activeTabTitle(page)).toHaveText('Canvas link target');
   await fileRow(page, scene.frame.name!).click();
   await page.evaluate(() => {
     const key = 'verdboard.interaction-settings';
@@ -441,8 +528,6 @@ test('canvas text opens with click preference and presentation overrides modifie
   const presentation = page.getByTestId('presentation-mode');
   await expect(presentation).toBeVisible();
   await presentation.getByRole('link', { name: label, exact: true }).click();
-  await expect(presentation).toHaveCount(0);
-  await expect(pane(page).locator('.document-page__title')).toHaveValue(
-    'Canvas link target',
-  );
+  await expect(activeTabTitle(page)).toHaveText('Canvas link target');
+  await expect(presentation).toBeVisible();
 });

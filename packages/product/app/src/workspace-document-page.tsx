@@ -54,8 +54,11 @@ export function WorkspaceDocumentPage({
   canRedo,
 }: WorkspaceDocumentPageProps) {
   const latest = useRef({ page, preview });
+  const activation = useRef(0);
+  if (latest.current.preview.active !== preview.active) activation.current++;
   latest.current = { page, preview };
   const hasExport = !!page.onExport;
+  const hasPresent = !!page.onPresent;
   const hasInsertImage = !!page.onInsertImage;
   const hasReady = !!page.onReady;
   const hasOpenLink = !!page.onOpenLink;
@@ -64,8 +67,14 @@ export function WorkspaceDocumentPage({
     () => ({
       onChange: ((...args) =>
         latest.current.page.onChange(...args)) as DocumentPageProps['onChange'],
-      onTitleCommit: (title: string) =>
-        latest.current.page.onTitleCommit(title),
+      captureInsertionScope: () => {
+        const atOpen = activation.current;
+        return () =>
+          activation.current === atOpen && latest.current.preview.active;
+      },
+      onPresent: hasPresent
+        ? () => latest.current.page.onPresent?.()
+        : undefined,
       onExport: hasExport
         ? (format: 'json' | 'markdown') =>
             latest.current.page.onExport?.(format)
@@ -90,7 +99,14 @@ export function WorkspaceDocumentPage({
             )) as DocumentPageProps['onNavigationResult'])
         : undefined,
     }),
-    [hasExport, hasInsertImage, hasReady, hasOpenLink, hasNavigationResult],
+    [
+      hasExport,
+      hasPresent,
+      hasInsertImage,
+      hasReady,
+      hasOpenLink,
+      hasNavigationResult,
+    ],
   );
   const hasRetry = !!preview.retry;
   const hasEdit = !!preview.edit;

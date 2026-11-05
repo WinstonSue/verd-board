@@ -1,6 +1,7 @@
 export * from './cell-commands';
 export * from './cell-shape';
 export * from './cell-table';
+export { remapSwimlaneMembers } from './swimlane-members';
 export {
   ArrowEdgeUtil,
   FreehandNodeUtil,

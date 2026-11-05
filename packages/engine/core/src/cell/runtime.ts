@@ -13,6 +13,7 @@ import {
   type CellRegistry,
   type CellSelection,
 } from './index';
+import { normalizeCellRoutes } from './edge-route-policy';
 import { assertRegisteredCellKinds } from './registry';
 import {
   isFrameCell,
@@ -91,7 +92,10 @@ export const createCellRuntime = (
   if (issues.length)
     throw new Error(issues.map((issue) => issue.message).join('; '));
   registry.seal();
-  let store: CellStore = stripFrameViewports(snapshot.store);
+  let store: CellStore = normalizeCellRoutes(
+    stripFrameViewports(snapshot.store),
+    registry,
+  );
   let indexedStore = store;
   let cachedIndex = indexCells(store, registry);
   let history = emptyCellHistory();
@@ -222,7 +226,7 @@ export const createCellRuntime = (
       const errors = validateCellStore(next.store, registry);
       if (errors.length)
         throw new Error(errors.map((error) => error.message).join('; '));
-      store = stripFrameViewports(next.store);
+      store = normalizeCellRoutes(stripFrameViewports(next.store), registry);
       if (!store.cells[mountedRootId]) mountedRootId = store.rootId;
       history = emptyCellHistory();
       reconcileSelection();

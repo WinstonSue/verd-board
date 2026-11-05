@@ -1,3 +1,4 @@
+import { WorkspaceButton } from './workspace-design';
 import { useEffect, useRef, useState, type Ref, type ReactNode } from 'react';
 import {
   ChevronDown,
@@ -13,6 +14,7 @@ import { FileTreeMenu, type FileTreeMenuItem } from './file-tree-menu';
 
 export interface WorkspaceMenuProps {
   updatesAvailable?: boolean;
+  onUpdate?(): void;
   trailing?: ReactNode;
   switcherOpen?: boolean;
   actionSource?: ActionSource;
@@ -34,6 +36,7 @@ export interface WorkspaceMenuProps {
 
 export function WorkspaceMenu({
   updatesAvailable,
+  onUpdate,
   trailing,
   switcherOpen = false,
   actionSource,
@@ -96,7 +99,7 @@ export function WorkspaceMenu({
     items.push({
       id: 'open-builtin',
       action: bindWorkspaceAction(actionSource, 'workspace.open-builtin'),
-      label: zh ? '回到内置工作区' : 'Open built-in workspace',
+      label: zh ? '打开系统介绍' : 'Open system introduction',
       icon: House,
       testId: 'workspace-open-builtin',
       disabled: actionSource ? undefined : isDefault,
@@ -131,7 +134,8 @@ export function WorkspaceMenu({
   }
   return (
     <div className="workspace-sidebar-header">
-      <button
+      <WorkspaceButton
+        intent="ghost"
         type="button"
         className="workspace-menu-trigger"
         data-testid="workspace-menu-trigger"
@@ -167,7 +171,7 @@ export function WorkspaceMenu({
       >
         <span className="workspace-menu-name">
           {name}
-          {updatesAvailable && (
+          {updatesAvailable && !onUpdate && (
             <span
               className="vm-dot"
               title={
@@ -177,8 +181,20 @@ export function WorkspaceMenu({
             />
           )}
         </span>
-        <ChevronDown size={14} aria-hidden />
-      </button>
+        <ChevronDown strokeWidth={1.75} size={14} aria-hidden />
+      </WorkspaceButton>
+      {updatesAvailable && onUpdate && (
+        <WorkspaceButton
+          type="button"
+          className="workspace-button-ghost"
+          data-testid="workspace-content-update"
+          title={zh ? '系统内置内容有更新' : 'Bundled content update available'}
+          aria-label={zh ? '查看内置内容更新' : 'View bundled content update'}
+          onClick={onUpdate}
+        >
+          <span className="vm-dot" aria-hidden />
+        </WorkspaceButton>
+      )}
       {trailing}
       {open && button.current && (
         <FileTreeMenu

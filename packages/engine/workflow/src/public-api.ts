@@ -5,9 +5,11 @@ export {
   WorkflowNodeUtil,
   WorkflowStartNodeUtil,
   WorkflowTaskNodeUtil,
+  defaultWorkflowPort,
   workflowCellPorts,
   workflowStartData,
   workflowStartOf,
+  workflowPasteOwner,
 } from './cell-utils';
 
 export * from './kinds';

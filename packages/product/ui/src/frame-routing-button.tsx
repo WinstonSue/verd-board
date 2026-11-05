@@ -172,7 +172,7 @@ export function FrameRoutingButton({
           }
         }}
       >
-        <ChevronDown size={16} aria-hidden />
+        <ChevronDown strokeWidth={1.75} size={16} aria-hidden />
       </button>
       {open && (
         <FloatingPortal

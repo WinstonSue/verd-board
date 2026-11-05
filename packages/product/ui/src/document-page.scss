@@ -1,63 +1,81 @@
+@use './styles/app-menu' as *;
 @use './styles/surface' as *;
 .document-page {
+  --document-header-height: 40px;
+  --document-toolbar-inset: 8px;
+
   display: flex;
   flex-direction: column;
   height: 100%;
   min-height: 0;
   background: var(--board-bg, var(--vm-background));
   color: var(--board-text, var(--vm-foreground));
+  user-select: none;
 
   &__header {
-    position: sticky;
-    top: 0;
+    position: relative;
     z-index: 5;
-    border-bottom: 1px solid var(--board-border, var(--vm-border));
+    display: flex;
+    align-items: center;
+    min-height: var(--document-header-height);
     background: var(--board-bg, var(--vm-background));
-    padding: 10px 16px 8px;
-  }
-
-  &__title {
-    width: 100%;
-    max-width: 800px;
-    margin: 0 auto 8px;
-    display: block;
-    border: none;
-    outline: none;
-    background: transparent;
-    font-size: var(--vm-text-2xl);
-    font-weight: 700;
-    line-height: 1.4;
-    color: inherit;
-    border-bottom: 1px solid transparent;
-
-    &:focus {
-      border-bottom-color: var(--board-border, var(--vm-border));
-    }
-
-    &::placeholder {
-      color: var(--board-text-placeholder, var(--vm-foreground-tertiary));
-    }
+    // Keep the query container out of the editor's fixed positioning ancestry.
+    container: document-toolbar / inline-size;
   }
 
   &__body {
+    position: relative;
     flex: 1;
     display: flex;
     min-height: 0;
   }
 
-  &__toc {
-    width: 220px;
-    flex-shrink: 0;
-    overflow-y: auto;
-    border-right: 1px solid var(--board-border, var(--vm-border));
-    padding: 12px 8px;
-    font-size: var(--vm-text-md);
+  &__main {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    min-width: 0;
   }
 
-  &__toc-title {
+  &__toc {
+    display: flex;
+    flex-direction: column;
+    width: min(220px, 30%);
+    flex-shrink: 0;
+    background: var(--vm-background-subtle, var(--board-surface));
+    font-size: var(--vm-text-md);
+
+    &.is-collapsed {
+      position: absolute;
+      inset-block-start: 0;
+      inset-inline-start: var(--document-toolbar-inset);
+      z-index: 6;
+      width: auto;
+      background: transparent;
+
+      .document-page__toc-header {
+        padding-inline: 0;
+      }
+
+      + .document-page__main .doc-toolbar {
+        padding-inline-start: calc(var(--document-toolbar-inset) + 32px);
+      }
+    }
+  }
+
+  &__toc-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    min-height: var(--document-header-height);
+    padding-inline: 12px 6px;
     font-weight: 600;
-    padding: 0 8px 8px;
     color: var(--board-text-secondary, var(--vm-foreground-secondary));
+  }
+
+  &__toc-list {
+    overflow-y: auto;
+    padding: 8px;
   }
 
   &__toc-empty {
@@ -86,6 +104,7 @@
   }
 
   &__content {
+    margin-block-start: var(--document-find-space, 0px);
     flex: 1;
     overflow-y: auto;
     min-width: 0;
@@ -93,14 +112,21 @@
 
   &__status {
     display: flex;
+    flex: none;
     justify-content: space-between;
     align-items: center;
-    border-top: 1px solid var(--board-border, var(--vm-border));
+    box-sizing: border-box;
+    min-height: var(--workspace-footer-height, var(--vm-control-height));
     padding: 4px 16px;
     font-size: var(--vm-text-xs);
     color: var(--board-text-secondary, var(--vm-foreground-secondary));
   }
 
+  &__save {
+    color: var(--vm-foreground-secondary);
+    font-size: var(--vm-text-xs);
+    white-space: nowrap;
+  }
   &__save.is-error,
   &__save.is-conflicted {
     color: var(--board-danger, var(--vm-danger));
@@ -132,32 +158,31 @@
       display: flex;
     }
   }
-
-  @media (max-width: 720px) {
-    &__toc {
-      display: none;
-    }
-  }
 }
 
 .doc-toolbar,
-.doc-findbar,
-.doc-linkbar,
-.doc-tablebar {
+.doc-toolbar__edit,
+.doc-toolbar__actions {
   display: flex;
   align-items: center;
-  flex-wrap: wrap;
-  gap: 2px;
-  max-width: 800px;
-  margin: 0 auto;
+  gap: 4px;
 }
 
-.doc-findbar,
-.doc-linkbar,
-.doc-tablebar {
-  margin-top: 6px;
-  padding-top: 6px;
-  border-top: 1px dashed var(--board-border, var(--vm-border));
+.doc-toolbar {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  padding-inline: var(--document-toolbar-inset);
+}
+
+.doc-toolbar__edit {
+  min-width: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.doc-toolbar__actions {
+  margin-inline-start: auto;
 }
 
 .doc-toolbar__btn {
@@ -188,6 +213,18 @@
 
   flex: none;
   padding: 0;
+}
+
+.document-page .document-page__toc-toggle:focus-visible {
+  outline: none;
+  background: var(--board-active, var(--vm-fill-active));
+  color: var(--board-text, var(--vm-foreground));
+
+  @media (forced-colors: active) {
+    forced-color-adjust: none;
+    background: Highlight;
+    color: HighlightText;
+  }
 }
 
 .doc-toolbar__color {
@@ -239,13 +276,6 @@
   }
 }
 
-.doc-toolbar__sep {
-  width: 1px;
-  height: 18px;
-  margin: 0 4px;
-  background: var(--board-border, var(--vm-border));
-}
-
 .doc-toolbar__select {
   height: 28px;
   border: 1px solid var(--board-border, var(--vm-border));
@@ -260,47 +290,28 @@
   }
 }
 
-.doc-findbar input[type='text'],
-.doc-findbar input:not([type]),
-.doc-linkbar input {
-  height: 28px;
-  border: 1px solid var(--board-border, var(--vm-border));
-  border-radius: 6px;
-  background: transparent;
-  color: inherit;
-  font-size: var(--vm-text-md);
-  padding: 0 8px;
-  min-width: 160px;
+.doc-findbar {
+  width: 420px;
+  max-width: 100%;
 }
-
-.doc-findbar__case {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  cursor: pointer;
-  padding: 4px;
-}
-
-.doc-findbar__count {
-  min-width: 40px;
-  text-align: center;
-  font-size: var(--vm-text-xs);
-  color: var(--board-text-secondary, var(--vm-foreground-secondary));
-}
-
-.doc-findbar__mode,
-.doc-linkbar button {
-  height: 28px;
-  border: 1px solid var(--board-border, var(--vm-border));
-  border-radius: 6px;
-  background: transparent;
-  color: inherit;
-  font-size: var(--vm-text-md);
-  padding: 0 10px;
-  cursor: pointer;
-
-  &:hover {
-    background: var(--board-hover, var(--vm-fill-hover));
+@container document-toolbar (max-width: 640px) {
+  .document-page__header .doc-findbar {
+    position: absolute;
+    inset: calc(100% + 4px) 8px auto auto;
+    width: min(420px, calc(100% - 16px));
+    max-width: calc(100% - 16px);
+    padding: var(--find-gap);
+    border: 1px solid var(--find-border);
+    border-radius: var(--find-radius);
+    background: var(--find-background);
+    box-shadow: var(--find-shadow);
+    .find-bar__replacement {
+      position: static;
+      padding: 0;
+      border: 0;
+      background: transparent;
+      box-shadow: none;
+    }
   }
 }
 .doc-frame-picker {
@@ -326,55 +337,17 @@
 }
 
 .document-page--compact {
-  .document-page__header {
-    padding: 4px;
-  }
-  .document-page__title {
-    display: none;
-  }
-  .doc-toolbar {
-    flex-wrap: nowrap;
-    overflow-x: auto;
-    justify-content: flex-start;
-  }
+  --document-toolbar-inset: 4px;
   .document-page__status {
+    min-height: 0;
     padding: 2px 8px;
   }
   .board-document-editor {
     padding: 12px;
     min-height: 100%;
   }
-  .document-page__toc {
-    width: 140px;
-  }
-}
-
-.document-page__title-row {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  max-width: 800px;
-  margin: 0 auto 8px;
-  .document-page__title {
-    min-width: 0;
-    flex: 1;
-    margin: 0;
-    font-size: var(--vm-text-xl);
-  }
-}
-.document-page__actions {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  flex: none;
-}
-.document-page .doc-toolbar {
-  flex-wrap: nowrap;
-  gap: 4px;
-  min-height: 32px;
-  overflow-x: auto;
-  > * {
-    flex-shrink: 0;
+  .document-page__toc:not(.is-collapsed) {
+    width: min(140px, 30%);
   }
 }
 
@@ -398,71 +371,14 @@
   }
 }
 .doc-toolbar-menu {
-  @include surface;
+  @include app-menu-surface;
+  @include app-menu-items;
+  user-select: none;
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  min-width: 170px;
-  max-width: calc(100vw - 16px);
   max-height: min(70vh, 520px);
-  overflow-y: auto;
   z-index: 100;
-  padding: 6px;
-  border: 1px solid var(--board-border, var(--vm-border));
-  border-radius: 8px;
-  background: var(--vm-background);
-  color: var(--vm-foreground);
-  box-shadow: 0 8px 24px var(--vm-shadow-tint, rgba(0, 0, 0, 0.15));
-  button,
-  label {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-    min-height: 30px;
-    padding: 4px 8px;
-    white-space: nowrap;
-    font-size: var(--vm-text-md);
-  }
-  button {
-    border: 0;
-    border-radius: 4px;
-    background: transparent;
-    color: inherit;
-    text-align: left;
-    cursor: pointer;
-  }
-  button:hover,
-  button[aria-pressed='true'] {
-    background: var(--vm-fill-hover);
-  }
-  button:disabled {
-    opacity: 0.4;
-    cursor: default;
-  }
-  input[type='color'] {
-    width: 32px;
-    height: 26px;
-    padding: 0;
-  }
-  :focus-visible {
-    outline: 2px solid var(--vm-focus);
-    outline-offset: -2px;
-  }
 }
-.document-page--compact .document-page__title-row {
-  justify-content: flex-end;
-  margin-bottom: 4px;
-}
-
-.doc-link-choices {
-  flex-basis: 100%;
-  min-width: 240px;
-  input {
-    width: 100%;
-    box-sizing: border-box;
-  }
-}
-.doc-linkbar:has(.doc-link-choices) {
-  flex-wrap: wrap;
+.doc-toolbar-submenu {
+  @include app-menu-surface(200px);
 }

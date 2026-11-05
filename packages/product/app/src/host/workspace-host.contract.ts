@@ -1,3 +1,4 @@
+import { folderIdentityWrite, isFolderIdentityPath } from './folder-identity';
 import { describe, expect, it } from 'vitest';
 import type {
   CommitReceipt,
@@ -54,6 +55,79 @@ export const describeWorkspaceHostContract = (
   createContext: () => Promise<WorkspaceHostContractContext>,
 ) => {
   describe(`${name} contract`, () => {
+    it('keeps one folder identity through concurrent issuance, moves and restore', async () => {
+      const { host, open } = await createContext();
+      const handle = await open();
+      const ids = [crypto.randomUUID(), crypto.randomUUID()];
+      const directory = async (path: string) =>
+        (await host.readSnapshot(handle)).entries.find(
+          (entry) => entry.path === path,
+        );
+      await host.commit(handle, {
+        transactionId: tx(),
+        mkdirs: ['parent/empty'],
+      });
+      const receipts = await Promise.all(
+        ids.map((id) =>
+          host.commit(handle, {
+            transactionId: tx(),
+            writes: [folderIdentityWrite('parent/empty', id)],
+          }),
+        ),
+      );
+      expect(receipts.map((receipt) => receipt.outcome).sort()).toEqual([
+        'applied',
+        'rejected',
+      ]);
+      const folderId =
+        ids[receipts.findIndex((receipt) => receipt.outcome === 'applied')];
+      expect((await directory('parent/empty'))?.folderId).toBe(folderId);
+      expect(
+        (await host.readSnapshot(handle)).entries.some((entry) =>
+          isFolderIdentityPath(entry.path),
+        ),
+      ).toBe(false);
+      applied(
+        await host.commit(handle, {
+          transactionId: tx(),
+          moves: [{ from: 'parent', to: 'renamed' }],
+        }),
+      );
+      expect((await directory('renamed/empty'))?.folderId).toBe(folderId);
+      const removed = applied(
+        await host.commit(handle, {
+          transactionId: tx(),
+          trash: [{ path: 'renamed' }],
+        }),
+      );
+      expect(await directory('renamed/empty')).toBeUndefined();
+      const stale = await host.commit(handle, {
+        transactionId: tx(),
+        writes: [folderIdentityWrite('renamed/empty', crypto.randomUUID())],
+      });
+      expect(stale).toMatchObject({
+        outcome: 'rejected',
+        reason: 'source-missing',
+      });
+      applied(
+        await host.commit(handle, {
+          transactionId: tx(),
+          restore: [
+            { entryId: removed.trashEntries![0].entryId, toPath: 'restored' },
+          ],
+        }),
+      );
+      expect((await directory('restored/empty'))?.folderId).toBe(folderId);
+      applied(
+        await host.commit(handle, {
+          transactionId: tx(),
+          mkdirs: ['renamed/empty'],
+        }),
+      );
+      expect((await directory('renamed/empty'))?.folderId).toBeUndefined();
+      await host.closeWorkspace(handle);
+    });
+
     it('purges only captured trash entries, replays receipts and notifies subscribers', async () => {
       const { host, open } = await createContext();
       const handle = await open();

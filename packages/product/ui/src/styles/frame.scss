@@ -1,3 +1,4 @@
+@use './app-menu' as *;
 @use './surface' as *;
 @use './appearance.scss';
 @use './primitives.scss';
@@ -13,6 +14,8 @@
 @import '@sue/board-react-uml/style.css';
 
 .verd-frame {
+  --frame-inspector-width: 300px;
+  container: verd-editor / inline-size;
   position: relative;
   height: 100%;
   width: 100%;
@@ -22,7 +25,6 @@
 
   display: flex;
 }
-.frame-app-toolbar,
 .frame-tools,
 .frame-recenter-control,
 .frame-status-bar {
@@ -34,16 +36,32 @@
   box-shadow: var(--vm-shadow-card);
   padding: 4px;
 }
-.frame-app-toolbar {
-  font: var(--vm-text-md)/var(--vm-leading) var(--vm-font);
-  left: 8px;
+.frame-top-actions {
+  position: absolute;
   top: 8px;
+  right: 8px;
+  z-index: 5;
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  width: fit-content;
+  max-width: calc(100% - 16px);
+}
+.frame-app-toolbar {
   display: flex;
   align-items: center;
-  flex-wrap: wrap;
+  flex: none;
   gap: 6px;
   padding: 4px;
-  max-width: calc(100% - 16px);
+  background: var(--vm-background);
+  border: 1px solid var(--vm-border);
+  border-radius: 12px;
+  box-shadow: var(--vm-shadow-card);
+  font: var(--vm-text-md)/var(--vm-leading) var(--vm-font);
+}
+.verd-frame:not(.sidebar-open) .frame-top-actions {
+  right: 64px;
+  max-width: calc(100% - 72px);
 }
 .frame-tools {
   font: var(--vm-text-md)/var(--vm-leading) var(--vm-font);
@@ -182,9 +200,15 @@
   }
 }
 .frame-save-status {
+  color: var(--vm-foreground-secondary);
   font-size: var(--vm-text-xs);
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
+}
+.frame-findbar {
+  width: 360px;
+  min-width: 0;
+  flex: 1 1 360px;
 }
 .frame-status-bar {
   font: var(--vm-text-xs)/var(--vm-leading) var(--vm-font);
@@ -218,12 +242,12 @@
     justify-self: end;
   }
 }
-.verd-frame button,
-.verd-frame select,
-.verd-frame input,
-.frame-actions-popover button,
-.frame-actions-popover select,
-.frame-actions-popover input {
+.verd-frame button:not(:where(.find-bar *)),
+.verd-frame select:not(:where(.find-bar *)),
+.verd-frame input:not(:where(.find-bar *)),
+.frame-actions-popover button:not(:where(.find-bar *)),
+.frame-actions-popover select:not(:where(.find-bar *)),
+.frame-actions-popover input:not(:where(.find-bar *)) {
   font: inherit;
   border: 1px solid var(--vm-border);
   border-radius: 6px;
@@ -231,16 +255,16 @@
   background: var(--vm-background);
   color: inherit;
 }
-.verd-frame button,
-.frame-actions-popover button {
+.verd-frame button:not(:where(.find-bar *)),
+.frame-actions-popover button:not(:where(.find-bar *)) {
   cursor: pointer;
 }
-.verd-frame button:hover,
-.frame-actions-popover button:hover {
+.verd-frame button:not(:where(.find-bar *)):hover,
+.frame-actions-popover button:not(:where(.find-bar *)):hover {
   background: var(--vm-fill-hover);
 }
-.verd-frame button[aria-pressed='true'],
-.frame-actions-popover button[aria-pressed='true'] {
+.verd-frame button:not(:where(.find-bar *))[aria-pressed='true'],
+.frame-actions-popover button:not(:where(.find-bar *))[aria-pressed='true'] {
   color: var(--vm-primary);
   border-color: var(--vm-focus);
   background: var(--vm-fill-active);
@@ -388,7 +412,7 @@
 
 .frame-actions-popover {
   position: fixed;
-  z-index: 40;
+  z-index: 1100;
   box-sizing: border-box;
   width: 306px;
   max-width: calc(100vw - 16px);
@@ -674,50 +698,20 @@
 }
 
 .frame-app-menu {
+  @include app-menu-surface;
+  @include app-menu-items;
   z-index: 30;
-  box-sizing: border-box;
-  width: min(248px, calc(100vw - 16px));
-  overflow-y: auto;
-  padding: 6px;
-  color: var(--vm-foreground);
+}
+.frame-inspector-reopen {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 4;
+  padding: 4px;
   background: var(--vm-background);
   border: 1px solid var(--vm-border);
   border-radius: 12px;
-  box-shadow: var(--vm-shadow-menu);
-  font: var(--vm-text-md)/var(--vm-leading) var(--vm-font);
-  button {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    width: 100%;
-    min-height: 38px;
-    padding: 8px 10px;
-    border: 0;
-    border-radius: 6px;
-    color: inherit;
-    background: transparent;
-    font: inherit;
-    text-align: left;
-    cursor: pointer;
-    &[data-group-start] {
-      border-top: 1px solid var(--vm-border);
-      margin-top: 5px;
-      padding-top: 12px;
-    }
-    &:hover:not(:disabled),
-    &:focus-visible {
-      background: var(--vm-fill-hover);
-    }
-    &:disabled {
-      opacity: 0.45;
-      cursor: default;
-    }
-  }
-  kbd {
-    margin-left: auto;
-    font: inherit;
-    color: var(--vm-foreground-secondary);
-  }
+  box-shadow: var(--vm-shadow-card);
 }
 .frame-settings-page {
   @include surface;
@@ -752,44 +746,6 @@
     margin: 0;
     font-size: var(--vm-text-lg);
   }
-  .settings-shell-header > button,
-  .frame-settings-actions > button,
-  .settings-workspace-fields button,
-  .vm-settings-section > button,
-  .workspace-trash-actions > button,
-  .workspace-trash-heading button {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    min-height: var(--vm-control-height);
-    padding: 0 12px;
-    border: 1px solid var(--vm-border);
-    border-radius: var(--vm-radius-sm);
-    color: inherit;
-    background: var(--vm-background);
-    font: inherit;
-    cursor: pointer;
-    &:hover:not(:disabled) {
-      background: var(--vm-fill-hover);
-    }
-  }
-  .settings-shell-header > button {
-    min-height: 28px;
-    padding: 4px;
-    border: 0;
-  }
-  :focus-visible {
-    outline: 2px solid var(--vm-focus);
-    outline-offset: 2px;
-  }
-
-  input[aria-invalid='true'] {
-    border-color: var(--vm-danger);
-  }
-  button:disabled {
-    opacity: 0.5;
-    cursor: default;
-  }
 }
 .frame-settings-content {
   width: min(640px, calc(100% - 32px));
@@ -815,15 +771,6 @@
     color: var(--vm-primary);
     font-variant-numeric: tabular-nums;
   }
-  input[type='range'] {
-    display: block;
-    box-sizing: border-box;
-    width: 100%;
-    margin: 8px 0;
-    padding: 0;
-    accent-color: var(--vm-primary);
-    cursor: pointer;
-  }
 }
 .frame-settings-range {
   display: flex;
@@ -847,6 +794,26 @@
   min-width: 0;
   height: 100%;
   container-type: inline-size;
+}
+@container verd-editor (max-width: 600px) {
+  .frame-canvas-area--finding {
+    z-index: 1;
+  }
+  .frame-top-actions--finding {
+    width: calc(100% - 16px);
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    .frame-findbar {
+      width: 100%;
+      flex: 1 1 100%;
+      order: 1;
+    }
+  }
+  .verd-frame.sidebar-open .frame-top-actions--finding {
+    right: calc(8px - var(--frame-inspector-width));
+    width: calc(100% + var(--frame-inspector-width) - 16px);
+    max-width: calc(100% + var(--frame-inspector-width) - 16px);
+  }
 }
 /* Below ~420px the centred re-centre control would overlap the status bar's
    right column, so the floating controls stack instead of sharing a row. */

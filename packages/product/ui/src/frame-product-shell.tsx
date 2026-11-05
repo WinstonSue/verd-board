@@ -1,4 +1,8 @@
-import { resolveBoardTheme, type ResolvedBoardTheme } from '@sue/board-core';
+import {
+  frameLanes,
+  resolveBoardTheme,
+  type ResolvedBoardTheme,
+} from '@sue/board-core';
 import { FrameThemeContext } from '@sue/board-react';
 import { frameSelectionActionId } from '@sue/board-react';
 import {
@@ -78,7 +82,7 @@ import {
   Brush,
   CircleDot,
   Columns3,
-  Command,
+  Search,
   Database,
   Diamond,
   Download,
@@ -96,7 +100,8 @@ import {
   Minus,
   MousePointer2,
   Network,
-  PanelRight,
+  PanelRightOpen,
+  PanelRightClose,
   Pencil,
   Presentation,
   Redo2,
@@ -137,6 +142,7 @@ import { isFrameSnapshot, openFrameOperations } from './frame-open';
 import { FramePropertyNumber } from './frame-property-number';
 import { FramePropertyGroup, FramePropertyPanel } from './frame-property-panel';
 import { FrameSaveStatus } from './frame-save-status';
+import { FrameFindBar } from './frame-find-bar';
 import { FrameSelectionAppearance } from './frame-selection-appearance';
 import { FrameSelectionText, hasSelectionText } from './frame-selection-text';
 import { FrameShapePicker } from './frame-shape-picker';
@@ -276,6 +282,7 @@ function ThemedActionScope({
 
 export function FrameProductShell({
   pluginSet,
+  presentation,
   mindMaxWidth,
   value,
   frameId,
@@ -283,6 +290,7 @@ export function FrameProductShell({
   onChange,
   onOpenFrame,
   saveStatus,
+  showSaveStatus = true,
   lastSavedAt,
   onRetrySave,
   detachedFrameIds = [],
@@ -324,7 +332,11 @@ export function FrameProductShell({
   const interactionSettings = useInteractionPreferences();
   const [myOpen, setMyOpen] = useState(false);
   const menuButton = useRef<HTMLButtonElement>(null);
-  const commandButton = useRef<HTMLButtonElement>(null);
+  const findInput = useRef<HTMLInputElement>(null);
+  const [findOpen, setFindOpen] = useState(false);
+  useEffect(() => {
+    if (suspended) setFindOpen(false);
+  }, [suspended, frameId]);
   const [selection, setSelection] = useState<CellSelection>({
     focus: [frameId],
     ids: [],
@@ -447,34 +459,55 @@ export function FrameProductShell({
     if (readonly) setShapePickerOpen(false);
   }, [pointer, readonly]);
   const [inspectorOpen, setInspectorOpen] = useState(true);
+  const inspectorCollapse = useRef<HTMLButtonElement>(null);
+  const inspectorExpand = useRef<HTMLButtonElement>(null);
+  const inspectorFocusRequested = useRef(false);
+  useLayoutEffect(() => {
+    if (!inspectorFocusRequested.current) return;
+    inspectorFocusRequested.current = false;
+    (inspectorOpen
+      ? inspectorCollapse.current
+      : inspectorExpand.current
+    )?.focus();
+  }, [inspectorOpen]);
   const rootRef = useRef<HTMLDivElement>(null);
-  const [presenting, setPresenting] = useState(false);
+  const [localPresenting, setLocalPresenting] = useState(false);
+  const presenting = presentation?.active ?? localPresenting;
   const previousFocus = useRef<HTMLElement | null>(null);
   const exitPresentation = useCallback(() => {
-    setPresenting(false);
+    if (presentation) {
+      presentation.onChange(false);
+      return;
+    }
+    setLocalPresenting(false);
     exitPresentationFullscreen(rootRef.current);
     const focus = previousFocus.current;
     requestAnimationFrame(() => {
       if (focus?.isConnected) focus.focus();
     });
-  }, []);
+  }, [presentation]);
   const startPresentation = () => {
     controller.current?.flushEditing();
     previousFocus.current = document.activeElement as HTMLElement | null;
-    setPresenting(true);
+    if (presentation) {
+      presentation.onChange(true);
+      return;
+    }
+    setLocalPresenting(true);
     const root = rootRef.current;
     // Keep the fullscreen request inside the original user gesture.
     if (root) requestPresentationFullscreen(root);
   };
   useEffect(() => {
-    if (suspended) exitPresentation();
-  }, [suspended, exitPresentation]);
+    if (suspended && !presentation) exitPresentation();
+  }, [suspended, exitPresentation, presentation]);
+  const ownsFullscreen = !presentation;
   useEffect(() => {
     const root = rootRef.current;
     return () => {
-      exitPresentationFullscreen(root);
+      if (ownsFullscreen) exitPresentationFullscreen(root);
     };
-  }, []);
+  }, [ownsFullscreen]);
   const bottomControls = useRef<HTMLDivElement>(null);
   const appToolbar = useRef<HTMLDivElement>(null);
   const [chromeHeight, setChromeHeight] = useState({
@@ -557,7 +590,7 @@ export function FrameProductShell({
       setTutorialSkipped(true);
   }, [frame, frameId, store.rootId]);
   useEffect(() => {
-    if (!navigation || suspended || !controller.current) return;
+    if (!navigation || suspended || presenting || !controller.current) return;
     const request = navigation;
     let cancelled = false;
     if (request.target.kind === 'cell')
@@ -578,7 +611,7 @@ export function FrameProductShell({
     return () => {
       cancelled = true;
     };
-  }, [navigation, suspended, onNavigationResult]);
+  }, [navigation, suspended, presenting, onNavigationResult]);
 
   const scene = frameScene(store, frameId, registry);
   const selectionFrameId =
@@ -1459,10 +1492,7 @@ export function FrameProductShell({
             invocation.source === 'shortcut'
               ? undefined
               : {
-                  returnFocus: () =>
-                    invocation.source === 'toolbar'
-                      ? commandButton.current
-                      : menuButton.current,
+                  returnFocus: () => menuButton.current,
                 },
           );
           return { status: 'completed' };
@@ -1509,6 +1539,20 @@ export function FrameProductShell({
     });
   productDefinitions.push(
     {
+      id: 'product.find',
+      label: { zh: '查找', en: 'Find' },
+      category: 'product',
+      effect: 'view',
+      flushEditing: true,
+      shortcuts: [{ key: 'f', mod: true }],
+      execute: () => {
+        setFindOpen(true);
+        findInput.current?.focus();
+        findInput.current?.select();
+        return { status: 'completed' };
+      },
+    },
+    {
       id: 'product.choose-shape',
       label: { zh: '选择形状', en: 'Choose shape' },
       category: 'draw',
@@ -1533,7 +1577,8 @@ export function FrameProductShell({
       category: 'product',
       effect: 'view',
       getState: () => ({ checked: inspectorOpen }),
-      execute: () => {
+      execute: (_context, _args, invocation) => {
+        inspectorFocusRequested.current = invocation.source === 'toolbar';
         setInspectorOpen((open) => !open);
         return { status: 'completed' };
       },
@@ -1696,13 +1741,31 @@ export function FrameProductShell({
       return { status: 'completed' };
     },
   });
-  const routedMenu = appMenuItems.map((item) => ({
-    ...item,
-    actionId: `product.${item.id}`,
-    onSelect: () => {
-      void controller.current?.executeAction(`product.${item.id}`);
-    },
-  }));
+  const routedMenu: FrameAppMenuItem[] = [
+    ...(['undo', 'redo'] as const).map((direction) => ({
+      id: direction,
+      actionId: `canvas.history.${direction}`,
+      label: labelFor(`canvas.history.${direction}`),
+      icon: direction === 'undo' ? Undo2 : Redo2,
+      group: 'history',
+      disabled: !stateFor(`canvas.history.${direction}`).enabled,
+      shortcut: shortcutFor(`canvas.history.${direction}`),
+      onSelect: () => {
+        void controller.current?.executeAction(
+          `canvas.history.${direction}`,
+          undefined,
+          { source: 'menu' },
+        );
+      },
+    })),
+    ...appMenuItems.map((item) => ({
+      ...item,
+      actionId: `product.${item.id}`,
+      onSelect: () => {
+        void controller.current?.executeAction(`product.${item.id}`);
+      },
+    })),
+  ];
   return (
     <ThemedActionScope
       theme={theme}
@@ -1766,7 +1829,22 @@ export function FrameProductShell({
             event.preventDefault();
         }}
       >
-        <div className="frame-canvas-area">
+        <div
+          className={`frame-canvas-area${findOpen ? ' frame-canvas-area--finding' : ''}`}
+        >
+          {!inspectorOpen && (
+            <div className="frame-inspector-reopen">
+              <FrameIconButton
+                label={language === 'zh' ? '展开属性面板' : 'Expand properties'}
+                icon={PanelRightOpen}
+                actionId="product.inspector.toggle"
+                testId="inspector-expand"
+                buttonRef={inspectorExpand}
+                buttonProps={{ 'aria-expanded': false }}
+                onClick={() => runAction('product.inspector.toggle')}
+              />
+            </div>
+          )}
           <div className="frame-canvas-fill">
             <FrameCanvas
               appearance={appearance}
@@ -1865,75 +1943,70 @@ export function FrameProductShell({
             />
           )}
           <div
-            className="frame-app-toolbar"
+            className={`frame-top-actions${findOpen ? ' frame-top-actions--finding' : ''}`}
             ref={appToolbar}
-            role="toolbar"
-            aria-label="App actions"
           >
-            <FrameAppMenu
-              items={routedMenu}
-              source={controller.current?.actionSource}
-              buttonRef={menuButton}
-              onOpen={() => {
-                setShapePickerOpen(false);
-                setActionsPoint(null);
-              }}
-            />
-            <FrameIconButton
-              label={labelFor('product.command-palette')}
-              title={actionTitle('product.command-palette')}
-              icon={Command}
-              buttonRef={commandButton}
-              testId="canvas-command-palette"
-              buttonProps={{
-                onMouseDown: (event) => event.preventDefault(),
-              }}
-              disabled={!stateFor('product.command-palette').enabled}
-              onClick={() => runAction('product.command-palette')}
-            />
-            <FrameIconButton
-              label={labelFor('canvas.history.undo', labels.undo)}
-              title={actionTitle('canvas.history.undo')}
-              icon={Undo2}
-              disabled={!stateFor('canvas.history.undo').enabled}
-              onClick={() =>
-                controller.current?.executeAction('canvas.history.undo')
-              }
-            />
-            <FrameIconButton
-              label={labelFor('canvas.history.redo', labels.redo)}
-              title={actionTitle('canvas.history.redo')}
-              icon={Redo2}
-              disabled={!stateFor('canvas.history.redo').enabled}
-              onClick={() =>
-                controller.current?.executeAction('canvas.history.redo')
-              }
-            />
-            {stylusMode && (
-              <button
-                aria-label="Exit stylus mode"
-                onClick={() => runAction('product.stylus.exit')}
-              >
-                退出手写模式
-              </button>
+            {controller.current && (
+              <FrameFindBar
+                key={frameId}
+                store={value.store}
+                frameId={frameId}
+                controller={controller.current}
+                inputRef={findInput}
+                open={findOpen && !presenting && !suspended}
+                onClose={() => {
+                  setFindOpen(false);
+                  rootRef.current
+                    ?.querySelector<SVGSVGElement>(
+                      'svg[aria-label="Frame canvas"]',
+                    )
+                    ?.focus();
+                }}
+              />
             )}
-            <FrameIconButton
-              label={labelFor('product.presentation')}
-              icon={Presentation}
-              disabled={!stateFor('product.presentation').enabled}
-              onClick={() => runAction('product.presentation')}
-            />
-            <FrameIconButton
-              label={labelFor('product.inspector.toggle')}
-              icon={PanelRight}
-              pressed={!!stateFor('product.inspector.toggle').checked}
-              onClick={() => runAction('product.inspector.toggle')}
-            />
-            <FrameSaveStatus
-              status={saveStatus}
-              lastSavedAt={lastSavedAt}
-              onRetrySave={onRetrySave}
-            />
+            <div
+              className="frame-app-toolbar"
+              role="toolbar"
+              aria-label="App actions"
+            >
+              {showSaveStatus && (
+                <FrameSaveStatus
+                  status={saveStatus}
+                  lastSavedAt={lastSavedAt}
+                  onRetrySave={onRetrySave}
+                />
+              )}
+              {stylusMode && (
+                <button
+                  aria-label="Exit stylus mode"
+                  onClick={() => runAction('product.stylus.exit')}
+                >
+                  退出手写模式
+                </button>
+              )}
+              <FrameIconButton
+                label={labelFor('product.find')}
+                title={actionTitle('product.find')}
+                icon={Search}
+                disabled={!stateFor('product.find').enabled}
+                onClick={() => runAction('product.find')}
+              />
+              <FrameIconButton
+                label={labelFor('product.presentation')}
+                icon={Presentation}
+                disabled={!stateFor('product.presentation').enabled}
+                onClick={() => runAction('product.presentation')}
+              />
+              <FrameAppMenu
+                items={routedMenu}
+                source={controller.current?.actionSource}
+                buttonRef={menuButton}
+                onOpen={() => {
+                  setShapePickerOpen(false);
+                  setActionsPoint(null);
+                }}
+              />
+            </div>
           </div>
           <div
             className="frame-tools"
@@ -1973,7 +2046,6 @@ export function FrameProductShell({
                       ['pen', Pencil],
                       ['erase', Eraser],
                       ['table', Table2],
-                      ['swimlane', Columns3],
                       ['frame', Frame],
                     ] as const
                   ).map(([tool, icon]) => (
@@ -2201,6 +2273,11 @@ export function FrameProductShell({
                 {domainButton('mind.root', CircleDot)}
               </div>
             )}
+            {stateFor('draw.swimlane').visible && (
+              <div className="frame-tool-group">
+                {domainButton('draw.swimlane', Columns3)}
+              </div>
+            )}
             {stateFor('mind.summary').visible && (
               <div className="frame-tool-group">
                 {domainButton('mind.summary', Braces)}
@@ -2267,6 +2344,17 @@ export function FrameProductShell({
           cellId={cell?.id}
           identity={inspectorIdentity}
           disabled={inspectorDisabled}
+          headerActions={
+            <FrameIconButton
+              label={language === 'zh' ? '收起属性面板' : 'Collapse properties'}
+              icon={PanelRightClose}
+              actionId="product.inspector.toggle"
+              testId="inspector-collapse"
+              buttonRef={inspectorCollapse}
+              buttonProps={{ 'aria-expanded': true }}
+              onClick={() => runAction('product.inspector.toggle')}
+            />
+          }
           title={
             <>
               {cell && isNodeCell(cell) ? (
@@ -2751,19 +2839,25 @@ export function FrameProductShell({
                                       <option value="auto">
                                         {language === 'zh' ? '自动' : 'Auto'}
                                       </option>
-                                      <option value="straight">
-                                        {language === 'zh'
-                                          ? '直线'
-                                          : 'Straight'}
-                                      </option>
+                                      {!registry.get(cell.kind)
+                                        ?.orthogonalRoute && (
+                                        <option value="straight">
+                                          {language === 'zh'
+                                            ? '直线'
+                                            : 'Straight'}
+                                        </option>
+                                      )}
                                       <option value="orthogonal">
                                         {language === 'zh'
                                           ? '正交'
                                           : 'Orthogonal'}
                                       </option>
-                                      <option value="curve">
-                                        {language === 'zh' ? '曲线' : 'Curve'}
-                                      </option>
+                                      {!registry.get(cell.kind)
+                                        ?.orthogonalRoute && (
+                                        <option value="curve">
+                                          {language === 'zh' ? '曲线' : 'Curve'}
+                                        </option>
+                                      )}
                                       {cell.route.mode === 'fixed' && (
                                         <option value="fixed">
                                           {language === 'zh'
@@ -3099,6 +3193,51 @@ export function FrameProductShell({
                   selection={selection}
                   controller={controller.current}
                 />
+                {selection.ids.length > 0 &&
+                  (() => {
+                    const lanes = frameLanes(store, selectionFrameId, registry);
+                    if (!lanes.length) return null;
+                    const label =
+                      language === 'zh' ? '分配泳道' : 'Assign swimlane';
+                    return (
+                      <label>
+                        {label}
+                        <select
+                          aria-label={label}
+                          value=""
+                          onChange={(event) => {
+                            const value = event.target.value;
+                            const lane = lanes[Number(value)];
+                            if (value === 'remove')
+                              runAction('draw.assign-swimlane', null);
+                            else if (value && lane)
+                              runAction('draw.assign-swimlane', {
+                                containerId: lane.containerId,
+                                laneId: lane.id,
+                              });
+                          }}
+                        >
+                          <option value="" disabled>
+                            {label}
+                          </option>
+                          <option value="remove">
+                            {language === 'zh'
+                              ? '移出泳道'
+                              : 'Remove from swimlane'}
+                          </option>
+                          {lanes.map((lane, index) => (
+                            <option
+                              key={JSON.stringify([lane.containerId, lane.id])}
+                              value={index}
+                            >
+                              {lane.label ||
+                                `${language === 'zh' ? '泳道' : 'Lane'} ${index + 1}`}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                    );
+                  })()}
                 {cell?.kind === 'architecture-layer' && (
                   <div className="frame-property-icons">
                     {([-1, 1] as const).map((direction) => {
@@ -3115,9 +3254,17 @@ export function FrameProductShell({
                           onClick={() => runAction(id)}
                         >
                           {direction < 0 ? (
-                            <ArrowUp size={16} aria-hidden="true" />
+                            <ArrowUp
+                              strokeWidth={1.75}
+                              size={16}
+                              aria-hidden="true"
+                            />
                           ) : (
-                            <ArrowDown size={16} aria-hidden="true" />
+                            <ArrowDown
+                              strokeWidth={1.75}
+                              size={16}
+                              aria-hidden="true"
+                            />
                           )}
                         </button>
                       );
@@ -3422,7 +3569,11 @@ export function FrameProductShell({
             extensions={extensions}
             instanceHost={instanceHost}
             interactionSettings={interactionSettings}
-            fullscreenRoot={rootRef.current}
+            fullscreenRoot={presentation?.fullscreenRoot ?? rootRef.current}
+            ownsFullscreen={!presentation}
+            navigation={navigation}
+            onNavigationResult={onNavigationResult}
+            onBack={presentation?.onBack}
             onExit={exitPresentation}
           />
         )}

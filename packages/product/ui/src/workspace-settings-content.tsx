@@ -1,13 +1,18 @@
+import {
+  WorkspaceAlert,
+  WorkspaceButton,
+  WorkspaceInput,
+} from './workspace-design';
+import {
+  settingsDesignComponents,
+  SettingsSelect,
+} from './settings-design-editors';
 import { SettingsSection } from './components/settings-layout';
 import { validMindMaxWidth } from '@sue/board-mind';
 import { SettingsDraftInput } from './settings-draft';
 import { ArrowUp, ArrowDown, X, Plus } from 'lucide-react';
 import { type ActionSource } from '@sue/board-react-actions';
-import {
-  ConfigPanel,
-  defineSettings,
-  type SettingEditorProps,
-} from '@sue/board-react';
+import { ConfigPanel, defineSettings } from '@sue/board-react';
 import './settings-sections.scss';
 import { useState } from 'react';
 import { type BuiltinWorkspaceSettingsProps } from './builtin-workspace-settings';
@@ -23,8 +28,6 @@ export interface WorkspaceSettingsConfig {
 }
 
 import { type WorkspaceTrashProps } from './workspace-trash';
-
-import { FrameMindWidthInput } from './frame-mind-width-input';
 
 export interface WorkspaceSettingsProps {
   initialSection?: 'general' | 'trash';
@@ -43,6 +46,8 @@ export interface WorkspaceSettingsProps {
     | Promise<import('@sue/schema-settings-react').CommitResult>;
   readonly?: boolean;
   storage?: 'desktop' | 'browser';
+  storageLocation?: string;
+  onOpenStorage?(): Promise<void>;
   persistence?: { status: string; error?: string; onRetry(): void };
   trash?: Omit<WorkspaceTrashProps, 'locale' | 'onBusyChange'>;
   onBack(): void;
@@ -59,76 +64,13 @@ type WorkspaceValues = {
   entryDocumentIds: string;
   mindDefaultWidth: number | undefined;
 };
-interface WorkspaceControls {
-  name: { placeholder: string };
-  projectText: { label: string; testId: string };
-  width: {
-    placeholder: string;
-    label: string;
-    inherited: boolean;
-    resetLabel: string;
-  };
-}
-const workspaceComponents = {
-  projectText: ({
-    value,
-    props,
-    onCommit,
-  }: SettingEditorProps<unknown, WorkspaceControls['projectText']>) => (
-    <textarea
-      aria-label={props.label}
-      data-testid={props.testId}
-      rows={3}
-      value={value as string}
-      onChange={(event) => onCommit(event.target.value)}
-    />
-  ),
-  name: ({
-    value,
-    props,
-    onCommit,
-  }: SettingEditorProps<unknown, WorkspaceControls['name']>) => (
-    <input
-      data-testid="workspace-settings-name"
-      maxLength={80}
-      placeholder={props.placeholder}
-      value={value as string}
-      onChange={(event) => onCommit(event.target.value)}
-    />
-  ),
-  width: ({
-    value,
-    props,
-    onCommit,
-    onReset,
-  }: SettingEditorProps<unknown, WorkspaceControls['width']>) => (
-    <div className="frame-settings-actions">
-      <FrameMindWidthInput
-        value={value as number | undefined}
-        testId="workspace-settings-mind-width"
-        label={props.label}
-        placeholder={props.placeholder}
-        onChange={onCommit}
-        onClear={onReset}
-      />
-      <button
-        type="button"
-        data-testid="workspace-settings-mind-width-reset"
-        disabled={props.inherited}
-        onClick={onReset}
-      >
-        {props.resetLabel}
-      </button>
-    </div>
-  ),
-};
 export function useWorkspaceSettingsDefinition(
   zh: boolean,
-  globalWidth: number,
-  config: WorkspaceSettingsConfig,
+  _globalWidth: number,
+  _config: WorkspaceSettingsConfig,
   defaultName: string,
 ) {
-  const definition = defineSettings<WorkspaceValues, void, WorkspaceControls>({
+  const definition = defineSettings<WorkspaceValues>({
     groups: [
       { id: 'general', label: zh ? '基本信息' : 'General' },
       { id: 'mind', label: zh ? '思维导图' : 'Mind maps' },
@@ -136,58 +78,50 @@ export function useWorkspaceSettingsDefinition(
     fields: [
       {
         key: 'name',
-        editor: 'name',
+        editor: 'text',
         group: 'general',
         label: zh ? '名称' : 'Name',
         description: zh ? '显示在侧栏顶部' : 'Shown at the top of the sidebar',
-        props: { placeholder: defaultName },
+        props: { placeholder: defaultName, maxLength: 80 },
         commit: 'change',
       },
       {
         key: 'description',
-        editor: 'projectText',
+        editor: 'text',
         group: 'general',
         label: zh ? '项目简介' : 'Project description',
         description: zh
           ? '介绍项目内容，也用于 AI 项目上下文'
           : 'Included in AI project context; empty until provided',
         props: {
-          label: zh ? '项目简介' : 'Project description',
-          testId: 'workspace-settings-description',
+          multiline: true,
+          attributes: { 'data-testid': 'workspace-settings-description' },
         },
         commit: 'change',
       },
       {
         key: 'entryDocumentIds',
-        editor: 'projectText',
+        editor: 'text',
         group: 'general',
         label: zh ? '入口文档' : 'Entry documents',
         description: zh
           ? '按顺序选择阅读入口；没有已保存会话时打开首个可用入口'
           : 'Choose ordered reading entries; the first available entry opens without a saved session',
         props: {
-          label: zh ? '入口文档' : 'Entry documents',
-          testId: 'workspace-settings-entries',
+          multiline: true,
+          attributes: { 'data-testid': 'workspace-settings-entries' },
         },
         commit: 'change',
       },
       {
         key: 'mindDefaultWidth',
-        editor: 'width',
+        editor: 'number',
         group: 'mind',
         label: zh ? '默认最大宽度' : 'Default maximum width',
         description: zh
           ? '只作用于没有单独设置宽度的主题，优先于个人默认值'
           : 'Applies to topics without an explicit width and overrides the global default',
         commit: 'change',
-        props: {
-          placeholder: zh
-            ? `跟随个人默认值（${globalWidth}）`
-            : `Use global (${globalWidth})`,
-          label: zh ? '默认最大宽度' : 'Default maximum width',
-          inherited: config.mindDefaultWidth === undefined,
-          resetLabel: zh ? '跟随个人默认值' : 'Use personal default',
-        },
       },
     ],
   });
@@ -201,6 +135,7 @@ export function WorkspaceGeneralSettings({
   globalWidth,
   zh,
   section,
+  disabled = false,
 }: Pick<
   WorkspaceSettingsProps,
   'config' | 'defaultName' | 'onConfig' | 'fileChoices'
@@ -208,6 +143,7 @@ export function WorkspaceGeneralSettings({
   globalWidth: number;
   zh: boolean;
   section?: string;
+  disabled?: boolean;
 }) {
   const definition = useWorkspaceSettingsDefinition(
     zh,
@@ -233,13 +169,14 @@ export function WorkspaceGeneralSettings({
         mindDefaultWidth: config.mindDefaultWidth,
       }}
       identity={`workspace-settings:${defaultName}`}
+      disabled={disabled}
       fieldStates={{
         mindDefaultWidth: {
           inherited: config.mindDefaultWidth === undefined,
           source: 'application',
         },
       }}
-      components={workspaceComponents}
+      components={settingsDesignComponents}
       onCommit={async ({ changes }) => {
         for (const change of changes) {
           if (
@@ -274,28 +211,33 @@ export function WorkspaceGeneralSettings({
           {key === 'mindDefaultWidth' ? (
             <div className="settings-form-row">
               <span>{label}</span>
-              <select
+              <SettingsSelect
+                className="settings-select"
                 aria-label={zh ? '宽度来源' : 'Width source'}
+                disabled={disabled}
                 value={
                   config.mindDefaultWidth === undefined ? 'inherit' : 'custom'
                 }
-                onChange={(e) =>
+                onChange={(next) =>
                   void onConfig({
                     mindDefaultWidth:
-                      e.target.value === 'inherit' ? undefined : globalWidth,
+                      next === 'inherit' ? undefined : globalWidth,
                   })
                 }
-              >
-                <option value="inherit">
-                  {zh
-                    ? `跟随个人默认值（${globalWidth}）`
-                    : 'Use personal default'}
-                </option>
-                <option value="custom">{zh ? '自定义' : 'Custom'}</option>
-              </select>
+                options={[
+                  {
+                    value: 'inherit',
+                    label: zh
+                      ? `跟随个人默认值（${globalWidth}）`
+                      : 'Use personal default',
+                  },
+                  { value: 'custom', label: zh ? '自定义' : 'Custom' },
+                ]}
+              />
               {config.mindDefaultWidth !== undefined && (
                 <SettingsDraftInput
                   numeric
+                  disabled={disabled}
                   value={config.mindDefaultWidth}
                   label={String(label)}
                   testId="workspace-settings-mind-width"
@@ -315,6 +257,7 @@ export function WorkspaceGeneralSettings({
             >
               <span>{label}</span>
               <SettingsDraftInput
+                disabled={disabled}
                 value={
                   key === 'name'
                     ? (config.name ?? '')
@@ -338,6 +281,7 @@ export function WorkspaceGeneralSettings({
             </label>
           ) : key === 'entryDocumentIds' ? (
             <EntryDocuments
+              disabled={disabled}
               choices={fileChoices ?? []}
               ids={config.project?.entryDocumentIds ?? []}
               zh={zh}
@@ -371,10 +315,12 @@ function EntryDocuments({
   ids,
   zh,
   onChange,
+  disabled = false,
 }: {
   choices: NonNullable<WorkspaceSettingsProps['fileChoices']>;
   ids: string[];
   zh: boolean;
+  disabled?: boolean;
   onChange(
     ids: string[],
   ):
@@ -387,6 +333,7 @@ function EntryDocuments({
   const [error, setError] = useState('');
   const [pending, setPending] = useState(false);
   const commit = async (next: string[]) => {
+    if (disabled || pending) return;
     setPending(true);
     try {
       const result = await onChange(next);
@@ -403,16 +350,20 @@ function EntryDocuments({
   };
   return (
     <fieldset
-      disabled={pending}
+      disabled={disabled || pending}
       className="settings-workspace-fields"
       data-testid="workspace-entry-documents"
     >
       <div className="settings-entry-heading">
         <span>{zh ? '阅读入口' : 'Reading entries'}</span>
-        <button type="button" onClick={() => setPicker(true)}>
-          <Plus size={16} />
+        <WorkspaceButton
+          type="button"
+          icon={<Plus strokeWidth={1.75} size={16} aria-hidden />}
+          disabled={disabled || pending}
+          onClick={() => setPicker(true)}
+        >
           {zh ? '添加入口…' : 'Add entry…'}
-        </button>
+        </WorkspaceButton>
       </div>
       {!ids.length && (
         <p>
@@ -435,12 +386,12 @@ function EntryDocuments({
           return (
             <li
               key={id}
-              draggable
+              draggable={!disabled && !pending}
               onDragStart={() => setDrag(id)}
               onDragOver={(e) => e.preventDefault()}
               onDrop={(e) => {
                 e.preventDefault();
-                if (drag && drag !== id) {
+                if (!disabled && !pending && drag && drag !== id) {
                   const next = ids.filter((x) => x !== drag);
                   next.splice(next.indexOf(id), 0, drag);
                   void commit(next);
@@ -452,29 +403,33 @@ function EntryDocuments({
                 {file?.title ?? (zh ? '文件不存在' : 'Missing file')}{' '}
                 <small>{file?.path ?? id}</small>
               </span>
-              <button
+              <WorkspaceButton
                 type="button"
                 aria-label={`${zh ? '上移' : 'Move up'} ${file?.title ?? id}`}
-                disabled={index === 0}
+                intent="ghost"
+                size="small"
+                icon={<ArrowUp strokeWidth={1.75} size={14} aria-hidden />}
+                disabled={disabled || pending || index === 0}
                 onClick={() => move(-1)}
-              >
-                <ArrowUp size={14} />
-              </button>
-              <button
+              />
+              <WorkspaceButton
                 type="button"
                 aria-label={`${zh ? '下移' : 'Move down'} ${file?.title ?? id}`}
-                disabled={index === ids.length - 1}
+                intent="ghost"
+                size="small"
+                icon={<ArrowDown strokeWidth={1.75} size={14} aria-hidden />}
+                disabled={disabled || pending || index === ids.length - 1}
                 onClick={() => move(1)}
-              >
-                <ArrowDown size={14} />
-              </button>
-              <button
+              />
+              <WorkspaceButton
                 type="button"
                 aria-label={`${zh ? '移除' : 'Remove'} ${file?.title ?? id}`}
+                intent="ghost"
+                size="small"
+                icon={<X strokeWidth={1.75} size={14} aria-hidden />}
+                disabled={disabled || pending}
                 onClick={() => void commit(ids.filter((_, i) => i !== index))}
-              >
-                <X size={14} />
-              </button>
+              />
             </li>
           );
         })}
@@ -495,16 +450,21 @@ function EntryDocuments({
           aria-label={zh ? '添加阅读入口' : 'Add reading entries'}
         >
           <header>
-            <input
+            <WorkspaceInput
+              disabled={disabled || pending}
               ref={(element) => element?.focus()}
               type="search"
               aria-label={zh ? '搜索文件' : 'Find files'}
               value={query}
               onChange={(e) => setQuery(e.target.value)}
             />
-            <button type="button" onClick={() => setPicker(false)}>
-              <X size={16} />
-            </button>
+            <WorkspaceButton
+              type="button"
+              intent="ghost"
+              icon={<X strokeWidth={1.75} size={16} aria-hidden />}
+              aria-label={zh ? '关闭' : 'Close'}
+              onClick={() => setPicker(false)}
+            />
           </header>
           <div className="settings-entry-choices">
             {choices
@@ -517,18 +477,20 @@ function EntryDocuments({
               )
               .slice(0, 50)
               .map((f) => (
-                <button
+                <WorkspaceButton
                   key={f.id}
                   type="button"
+                  intent="ghost"
+                  disabled={disabled || pending}
                   onClick={() => void commit([...ids, f.id])}
                 >
                   {zh ? '添加' : 'Add'} {f.title} <small>{f.path}</small>
-                </button>
+                </WorkspaceButton>
               ))}
           </div>
         </div>
       )}
-      {error && <p role="alert">{error}</p>}
+      {error && <WorkspaceAlert type="error" title={error} />}
     </fieldset>
   );
 }

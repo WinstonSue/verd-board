@@ -8,6 +8,8 @@ export default defineConfig({
   testIgnore: ['**/packaged.spec.ts', '**/dev-runtime.spec.ts'],
   workers: 1,
   timeout: 60_000,
+  // Fresh profiles install and verify bundled agent tools before showing UI.
+  expect: { timeout: 30_000 },
   outputDir: '../../test-results/desktop-prod',
   use: { trace: 'retain-on-failure' },
 });

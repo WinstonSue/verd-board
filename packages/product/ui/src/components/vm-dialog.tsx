@@ -7,8 +7,11 @@ import {
   type ComponentProps,
   type ReactNode,
 } from 'react';
+import {
+  useWorkspaceDesignVariables,
+  WorkspaceButton,
+} from '../workspace-design';
 import { X } from 'lucide-react';
-import { IconButton } from './icon-button';
 import { PortalRootContext } from './portal-root';
 export function VmDialog({
   title,
@@ -17,6 +20,7 @@ export function VmDialog({
   onClose,
   closeLabel = 'Close',
   busy = false,
+  restoreFocus = true,
   className = '',
   ...props
 }: Omit<ComponentProps<'dialog'>, 'title' | 'onClose'> & {
@@ -25,8 +29,10 @@ export function VmDialog({
   onClose(): void;
   closeLabel?: string;
   busy?: boolean;
+  restoreFocus?: boolean;
 }) {
   const ref = useRef<HTMLDialogElement>(null);
+  const designVariables = useWorkspaceDesignVariables();
   const openerRef = useRef(
     typeof document !== 'undefined' &&
       document.activeElement instanceof HTMLElement
@@ -50,13 +56,14 @@ export function VmDialog({
       ?.focus();
     return () => {
       dialog.close();
-      if (opener?.isConnected) opener.focus();
+      if (restoreFocus && opener?.isConnected) opener.focus();
     };
   }, []);
   return (
     <dialog
       {...props}
       ref={setDialogRef}
+      style={{ ...designVariables, ...props.style }}
       className={`vm-dialog ${className}`}
       aria-labelledby={title ? id : props['aria-labelledby']}
       onCancel={(e) => {
@@ -71,9 +78,10 @@ export function VmDialog({
             <h2 id={id} className="vm-dialog__title">
               {title}
             </h2>
-            <IconButton
-              icon={X}
-              tooltip={false}
+            <WorkspaceButton
+              intent="ghost"
+              size="small"
+              icon={<X size={16} strokeWidth={1.75} aria-hidden />}
               aria-label={closeLabel}
               disabled={busy}
               onClick={onClose}

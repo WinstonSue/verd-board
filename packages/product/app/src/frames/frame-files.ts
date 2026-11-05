@@ -1,3 +1,4 @@
+import { remapSwimlaneMembers } from '@sue/board-draw';
 import { isContentProperties } from '../documents/content-properties';
 import { type MindRootData } from '@sue/board-mind';
 import { remapUmlCell } from '@sue/board-uml';
@@ -12,6 +13,7 @@ import {
   isGroupCell,
   stripFrameViewports,
   validateCellStore,
+  normalizeCellRoutes,
   type Cell,
   type CellId,
   type CellRegistry,
@@ -441,7 +443,7 @@ export const assembleWorkspaceStore = (
   validateCellStore(store, registry).forEach((issue) =>
     diagnostics.push({ cellId: issue.cellId, message: issue.message }),
   );
-  return { store, diagnostics };
+  return { store: normalizeCellRoutes(store, registry), diagnostics };
 };
 
 export interface FrameReferenceInstance {
@@ -588,7 +590,7 @@ export const remapFrameFileIds = (
   const cells: Record<CellId, Cell> = {};
   Object.values(file.cells).forEach((original) => {
     let cell = {
-      ...remapUmlCell(original, remap),
+      ...remapSwimlaneMembers(remapUmlCell(original, remap), remap),
       id: remap(original.id),
     } as Cell;
     if (isFrameCell(cell)) {

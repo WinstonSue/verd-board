@@ -134,6 +134,7 @@ export interface FrameUIPlugin {
     store: CellStore;
     frameId: string;
     hit?: Cell;
+    selectionIds?: readonly string[];
     at: Point;
     text: string;
     allocateId(): string;

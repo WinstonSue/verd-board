@@ -262,6 +262,7 @@ export class ArchitectureModuleNodeUtil extends ArchitectureNodeUtil {
   }
 }
 export class ArchitectureEdgeUtil extends EdgeUtil {
+  readonly orthogonalRoute = true;
   readonly kind = ArchitectureKind.architectureEdge;
   override validateEdge(store: CellStore, edge: EdgeCell): string | undefined {
     if (

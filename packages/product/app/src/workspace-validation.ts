@@ -53,6 +53,8 @@ export const WORKSPACE_RULES = {
   'link.invalid': 'Use supported external URLs or stable verd workspace links.',
   'link.file':
     'Create the linked file in the same workspace or correct its ID.',
+  'link.folder':
+    'Use a stable link to a uniquely identified folder in this workspace.',
   'link.cell': 'Use a globally unique existing cell ID.',
   'link.heading':
     'Use the current GitHub heading slug including duplicate suffixes.',
@@ -61,7 +63,12 @@ export const WORKSPACE_RULES = {
 /** Shared by external authoring and repository checks; never changes the inputs. */
 export function validateNativeWorkspace(
   entries: readonly NativeWorkspaceEntry[],
-  options: { profile?: 'runtime' | 'authoring'; registry?: CellRegistry } = {},
+  options: {
+    profile?: 'runtime' | 'authoring';
+    registry?: CellRegistry;
+    /** Omit when validating a file-only bundle without directory metadata. */
+    folderIds?: readonly string[];
+  } = {},
 ): AuthoringDiagnostic[] {
   const registry = options.registry ?? createWorkspaceCellRegistry();
   const strict = options.profile !== 'runtime';
@@ -209,11 +216,21 @@ export function validateNativeWorkspace(
       for (const cellId of [id, ...Object.keys(file.cells)])
         owners.set(cellId, id);
   }
+  const folderCounts = new Map<string, number>();
+  for (const id of options.folderIds ?? [])
+    folderCounts.set(id, (folderCounts.get(id) ?? 0) + 1);
   for (const [id, file] of files) {
     const visitHref = (href: string) => {
       const link = parseWorkspaceLink(href, id);
       const extra = { fileId: id, path: paths.get(id) };
-      if (link?.kind === 'cell') {
+      if (link?.kind === 'folder') {
+        if (options.folderIds && folderCounts.get(link.folderId) !== 1)
+          report(
+            'link.folder',
+            `Missing or ambiguous linked folder: ${link.folderId}`,
+            extra,
+          );
+      } else if (link?.kind === 'cell') {
         if (!owners.has(link.cellId))
           report('link.cell', `Missing linked cell: ${link.cellId}`, extra);
       } else if (link) {

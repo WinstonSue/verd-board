@@ -10,6 +10,8 @@ import { ActionScope } from '@sue/board-react-actions';
 import type { TextChangeData } from '@sue/board-react-text';
 
 vi.mock('@sue/board-react-text', async () => ({
+  LinkEditorHost: (await import('../../text/src/link-editor-host'))
+    .LinkEditorHost,
   useRichTextLinks: (await import('../../text/src/rich-text-links'))
     .useRichTextLinks,
   LineText: ({

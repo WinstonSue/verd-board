@@ -6,6 +6,7 @@ import {
   type ArrangementLink,
 } from './arrangement-graph';
 import { translateCellSelection } from './commands';
+import { frameLanes } from './lanes';
 import { frameScene } from './frame';
 import {
   cellArrangementBounds,
@@ -82,7 +83,8 @@ export function collectArrangementBlocks(
       !cell ||
       cell.hidden ||
       (!isNodeCell(cell) && !isGroupCell(cell)) ||
-      registry.get(cell.kind)?.arrangeable === false
+      registry.get(cell.kind)?.arrangeable === false ||
+      registry.get(cell.kind)?.lanes?.(cell).length
     )
       return [];
     if (hierarchy.groupAncestors(id).some((owner) => selected.has(owner)))
@@ -249,10 +251,64 @@ export function arrangeCells(
                 .outline === 'text'),
         )),
   );
+  return [...partitionArrangement(store, frameId, blocks, registry)].flatMap(
+    ([lane, partition]) =>
+      arrangePartition(
+        store,
+        partition,
+        style,
+        gap,
+        registry,
+        layout,
+        lane?.bounds,
+      ),
+  );
+}
+
+function partitionArrangement(
+  store: CellStore,
+  frameId: CellId,
+  blocks: ArrangementBlock[],
+  registry: CellRegistry,
+) {
+  const lanes = frameLanes(store, frameId, registry);
+  const laneOf = new Map(
+    lanes.flatMap((lane) => lane.members.map((id) => [id, lane] as const)),
+  );
+  const partitions = new Map<
+    (typeof lanes)[number] | undefined,
+    ArrangementBlock[]
+  >();
+  for (const block of blocks) {
+    const memberships = new Set(
+      block.members
+        .filter((id) => isNodeCell(store.cells[id]))
+        .map((id) => laneOf.get(id)),
+    );
+    if (memberships.size > 1) throw new Error('Group crosses swimlanes');
+    const lane = [...memberships][0];
+    const partition = partitions.get(lane) ?? [];
+    partition.push(block);
+    partitions.set(lane, partition);
+  }
+  return partitions;
+}
+
+function arrangePartition(
+  store: CellStore,
+  blocks: ArrangementBlock[],
+  style: CellLayoutStyle,
+  gap: number,
+  registry: CellRegistry,
+  layout?: NonNullable<import('./registry').CellScene['layouts']>[number],
+  laneBounds?: RectangleClient,
+): CellOperation[] {
   if (layout) blocks.sort((a, b) => a.id.localeCompare(b.id));
   else stableBlocks(blocks);
   if (blocks.length < 2) return [];
-  const bounds = unionCellBounds(blocks.map((block) => block.bounds))!;
+  const bounds = laneBounds
+    ? { ...laneBounds, x: Math.ceil(laneBounds.x), y: Math.ceil(laneBounds.y) }
+    : unionCellBounds(blocks.map((block) => block.bounds))!;
   if (style === 'relationships') {
     const positions = relationshipArrangementPositions(
       blocks,
@@ -378,7 +434,14 @@ export function arrangementAvailability(
       };
     const movable = blocks.filter((block) => !block.locked);
     if (movable.length < 2) return { enabled: false };
-    layout?.rows(store, movable, registry);
+    if (layout)
+      for (const partition of partitionArrangement(
+        store,
+        frameId,
+        movable,
+        registry,
+      ).values())
+        layout.rows(store, partition, registry);
     return { enabled: true };
   } catch (error) {
     return {

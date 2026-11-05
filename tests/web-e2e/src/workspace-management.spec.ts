@@ -37,6 +37,7 @@ test('home, content, favorites, search and restoration share the workspace', asy
   await home.locator('.management-result').first().click();
   await expect(home).toHaveCount(0);
 });
+
 test('creates a separate web workspace and switches back without deleting data', async ({
   page,
 }) => {
@@ -136,4 +137,45 @@ test('manual sorting mixes files and folders without changing their paths', asyn
     page.locator('.management-tree [data-entry-path]').first(),
   ).toHaveAttribute('data-entry-path', '未命名文档.verd-doc.json');
   await expect(folder).toBeVisible();
+});
+
+test('chart tabs remain siblings and empty search does not repeat paths', async ({
+  page,
+}) => {
+  await page.goto('/');
+  await page.getByTestId('management-new').click();
+  await page.getByRole('menuitem', { name: '新建画布', exact: true }).click();
+  await page
+    .locator('.management-navigation nav')
+    .getByRole('button', { name: '所有内容', exact: true })
+    .click();
+  const tabs = page.locator('.content-tabs');
+  await tabs.getByRole('button', { name: '图表', exact: true }).click();
+  await expect(
+    tabs.getByRole('button', { name: '全部内容', exact: true }),
+  ).toBeVisible();
+  await expect(
+    page
+      .locator('.chart-library')
+      .getByRole('button', { name: '返回编辑', exact: true }),
+  ).toHaveCount(0);
+  const chart = page.locator('.chart-library tbody tr').first();
+  await chart.getByRole('button').first().click();
+  await expect(page.getByTestId('content-list-return')).toBeVisible({
+    timeout: 10000,
+  });
+  await page.getByTestId('content-list-return').click();
+  await expect(
+    tabs.getByRole('button', { name: '图表', exact: true }),
+  ).toHaveAttribute('aria-current', 'page');
+  await tabs.getByRole('button', { name: '全部内容', exact: true }).click();
+  await expect(page.getByTestId('workspace-management-page')).toBeVisible();
+  await page.keyboard.press('ControlOrMeta+Shift+f');
+  const result = page
+    .getByTestId('workspace-management-page')
+    .locator('.management-result')
+    .first();
+  await expect(result).toBeVisible();
+  const filePath = await result.locator('small').textContent();
+  expect((await result.textContent())?.split(filePath!).length).toBe(2);
 });

@@ -1,7 +1,9 @@
+import { openDocumentInsert } from './app-actions';
 import { test, expect, type Page } from '@playwright/test';
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { selectAppAction, setAppLanguage } from './app-actions';
+import { activeTabTitle } from './tab-actions';
 
 const fixtures = path.resolve(__dirname, '../../fixtures/ai-canvas');
 const active = (page: Page) => page.locator('.workspace-pane.is-active');
@@ -234,9 +236,7 @@ for (const scene of [
       expect(svg).not.toContain('data-document-header-actions');
     }
     await cardNode.getByRole('button', { name: '打开详情' }).first().click();
-    await expect(active(page).locator('.document-page__title')).toHaveValue(
-      doc.title,
-    );
+    await expect(activeTabTitle(page)).toHaveText(doc.title);
     await expect(
       active(page).locator('.board-document-content').first(),
     ).toContainText('Scrollable document line 44');
@@ -288,7 +288,7 @@ test('inserts both directions through the UI, updates source previews and preser
   await editor.click();
   await page.keyboard.press('ControlOrMeta+End');
   await page.keyboard.type(' Updated source');
-  await active(page).getByRole('button', { name: '插入', exact: true }).click();
+  await openDocumentInsert(page);
   await page
     .getByRole('dialog', { name: '插入', exact: true })
     .getByRole('button', { name: '图表', exact: true })

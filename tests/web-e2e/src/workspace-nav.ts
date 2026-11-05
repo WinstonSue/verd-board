@@ -89,7 +89,14 @@ export const persistedWorkspace = async (page: Page) =>
       for (const cell of Object.values<any>(record.cells))
         if (cell.data?.targetFrameId) referenced.add(cell.data.targetFrameId);
     const detached = ids.filter((id) => !referenced.has(id));
-    const active = (meta as any)?.session?.activeTabId as string | undefined;
+    const session = (
+      meta as
+        | {
+            session?: { activeTabId?: string; tabs?: { fileId: string }[] };
+          }
+        | undefined
+    )?.session;
+    const active = session?.activeTabId;
     const rootId =
       (active && detached.includes(active) && active) ||
       detached.sort()[0] ||
@@ -102,7 +109,12 @@ export const persistedWorkspace = async (page: Page) =>
         (id) => id !== rootId && !referenced.has(id),
       ),
     };
-    return { manifest, records, paths };
+    return {
+      manifest,
+      records,
+      paths,
+      tabs: session?.tabs?.map(({ fileId }) => fileId) ?? [],
+    };
   });
 
 /** Waits until the app has finished its initial workspace save. */

@@ -1,3 +1,7 @@
+import {
+  expectSettingValue,
+  selectSetting,
+} from '../../helpers/settings-controls';
 import { roleTone } from './theme-role-values';
 import { readable } from './text-color-checks';
 import { persistedWorkspace } from './workspace-nav';
@@ -159,7 +163,7 @@ async function seed(page: Page) {
 async function appearance(page: Page, value: string) {
   // This entry also works while a standalone document is active.
   await page.locator('.workspace-sidebar-footer button').click();
-  await page.getByTestId('settings-appearance').selectOption(value);
+  await selectSetting(page.getByTestId('settings-appearance'), value);
   await page.getByTestId('my-back').click();
 }
 const colors = (locator: Locator) =>
@@ -205,8 +209,8 @@ test('system appearance, manual overrides, reload, and other windows stay synchr
     'dark',
   );
   await openSettings(page);
-  await expect(page.getByTestId('settings-appearance')).toHaveValue('system');
-  await page.getByTestId('settings-appearance').selectOption('light');
+  await expectSettingValue(page.getByTestId('settings-appearance'), 'system');
+  await selectSetting(page.getByTestId('settings-appearance'), 'light');
   await page.emulateMedia({ colorScheme: 'light' });
   await page.emulateMedia({ colorScheme: 'dark' });
   await expect(page.locator('html')).toHaveAttribute(
@@ -215,19 +219,19 @@ test('system appearance, manual overrides, reload, and other windows stay synchr
   );
   await page.reload();
   await openSettings(page);
-  await expect(page.getByTestId('settings-appearance')).toHaveValue('light');
+  await expectSettingValue(page.getByTestId('settings-appearance'), 'light');
   const other = await context.newPage();
   await other.goto('/');
   await expect(other.locator('html')).toHaveAttribute(
     'data-verd-appearance',
     'light',
   );
-  await page.getByTestId('settings-appearance').selectOption('dark');
+  await selectSetting(page.getByTestId('settings-appearance'), 'dark');
   await expect(other.locator('html')).toHaveAttribute(
     'data-verd-appearance',
     'dark',
   );
-  await page.getByTestId('settings-appearance').selectOption('system');
+  await selectSetting(page.getByTestId('settings-appearance'), 'system');
   await page.emulateMedia({ colorScheme: 'light' });
   await expect(page.locator('html')).toHaveAttribute(
     'data-verd-appearance',
@@ -254,7 +258,7 @@ test('dark interface covers settings, portaled menus, help, and readonly at wide
     await page.setViewportSize({ width, height: 900 });
     await openSettings(page);
     await page.getByTestId('settings-nav-personal.general').click();
-    await page.getByTestId('settings-language').selectOption(language);
+    await selectSetting(page.getByTestId('settings-language'), language);
     await expect(page.getByTestId('settings-appearance')).toBeInViewport();
     expect((await colors(page.getByTestId('my-page'))).background).toBe(
       'rgb(30, 30, 30)',
@@ -301,7 +305,7 @@ test('dark interface covers settings, portaled menus, help, and readonly at wide
   await page.goto('/?readonly=1');
   await page.locator('.workspace-sidebar-footer button').click();
   await page.getByTestId('settings-nav-personal.general').click();
-  await page.getByTestId('settings-appearance').selectOption('light');
+  await selectSetting(page.getByTestId('settings-appearance'), 'light');
   await expect(page.locator('html')).toHaveAttribute(
     'data-verd-appearance',
     'light',

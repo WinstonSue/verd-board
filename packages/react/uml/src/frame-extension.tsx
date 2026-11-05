@@ -1,3 +1,4 @@
+import { ArrowUp } from 'lucide-react';
 import {
   isNodeCell,
   resolveBoardTheme,
@@ -332,13 +333,17 @@ function MessageDrag(context: FrameRenderContext) {
         cx={x}
         cy={y}
         r={9 / context.scale}
-        fill="#fff"
-        stroke="#6366f1"
+        fill="var(--board-surface, #fff)"
+        stroke="var(--board-primary, #6366f1)"
       />
-      <path
-        d={`M ${x} ${y - 5 / context.scale} v ${10 / context.scale} m ${-3 / context.scale} ${-7 / context.scale} l ${3 / context.scale} ${-3 / context.scale} l ${3 / context.scale} ${3 / context.scale}`}
-        stroke="#6366f1"
-        fill="none"
+      <ArrowUp
+        x={x - 7 / context.scale}
+        y={y - 7 / context.scale}
+        width={14 / context.scale}
+        height={14 / context.scale}
+        strokeWidth={1.75}
+        color="var(--board-primary, #6366f1)"
+        aria-hidden="true"
       />
     </g>
   );

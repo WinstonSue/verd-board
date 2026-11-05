@@ -71,7 +71,33 @@ export function WorkspaceAssetScope({
     },
     [cache, session],
   );
-  const foldingFor = useMemo(createDocumentFoldingRegistry, [session]);
+  const foldingFor = useMemo(() => {
+    const pending = new Map<string, ReadonlyMap<string, boolean>>();
+    return createDocumentFoldingRegistry({
+      read(key) {
+        const folds = session.getState().session.documentFolds;
+        return Object.entries(
+          folds && Object.hasOwn(folds, key) ? folds[key] : {},
+        );
+      },
+      write(key, values) {
+        const first = !pending.size;
+        pending.set(key, values);
+        if (!first) return;
+        queueMicrotask(() => {
+          const state = session.getState().session;
+          const documentFolds = {
+            ...state.documentFolds,
+            ...Object.fromEntries(
+              [...pending].map(([id, view]) => [id, Object.fromEntries(view)]),
+            ),
+          };
+          pending.clear();
+          session.setSessionState({ ...state, documentFolds });
+        });
+      },
+    });
+  }, [session]);
   const resourceHost = useMemo(
     () => ({
       foldingFor,

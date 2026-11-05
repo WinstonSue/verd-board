@@ -1,11 +1,14 @@
 import { test, expect, type Page } from '@playwright/test';
 import { setAppLanguage } from './app-actions';
+import { persistedWorkspace } from './workspace-nav';
 import {
+  activeTabTitle,
   openGroups,
   createGroup,
   switchGroup,
   deleteGroup,
 } from './tab-actions';
+import { renameFile } from './workspace-file-actions';
 
 const strip = (page: Page) => page.locator('ylib-tabs');
 const tab = (page: Page, id: string) =>
@@ -92,8 +95,7 @@ test('real tab menus close left, right and others after dragging, preserving the
   page,
 }) => {
   await seed(page);
-  const title = active(page).locator('.document-page__title');
-  await title.fill('Renamed before closing');
+  await renameFile(page, 'doc', 'Renamed before closing');
   await tab(page, 'doc').dragTo(tab(page, 'b'), {
     targetPosition: { x: 2, y: 15 },
   });
@@ -115,15 +117,16 @@ test('real tab menus close left, right and others after dragging, preserving the
     'data-save-state',
     'saved',
   );
+  await expect
+    .poll(async () => (await persistedWorkspace(page))?.tabs)
+    .toEqual(['b']);
   await page.reload();
   await expect.poll(() => ids(page)).toEqual(['b']);
   await page
     .locator('.file-tree-name')
     .getByText('Renamed before closing', { exact: true })
     .click();
-  await expect(active(page).locator('.document-page__title')).toHaveValue(
-    'Renamed before closing',
-  );
+  await expect(activeTabTitle(page)).toHaveText('Renamed before closing');
   await tab(page, 'doc').hover();
   await tab(page, 'doc')
     .getByRole('button', { name: '关闭 Renamed before closing', exact: true })
@@ -160,7 +163,7 @@ test('groups retain independent tab sets, share one editor, rename, delete and r
   await expect(
     page
       .locator('.workspace-panes > .workspace-pane')
-      .filter({ has: page.locator('.document-page__title') }),
+      .filter({ has: page.locator('.document-page') }),
   ).toHaveCount(1);
   await page
     .locator('.file-tree-name')
@@ -195,9 +198,7 @@ test('groups retain independent tab sets, share one editor, rename, delete and r
     .locator('.file-tree-name')
     .getByText('Tab document', { exact: true })
     .click();
-  await active(page)
-    .locator('.document-page__title')
-    .fill('Group source title');
+  await renameFile(page, 'doc', 'Group source title');
   await deleteGroup(page, 'Writing');
   await expect.poll(() => ids(page)).toEqual(['a', 'b', 'c', 'doc']);
   await expect(active(page).locator('.board-document-content')).toContainText(

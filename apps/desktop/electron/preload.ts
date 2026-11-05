@@ -45,23 +45,17 @@ if (process.isMainFrame)
         ipcRenderer.invoke('storage:reset', record),
     },
     workspaceHost: {
-      checkBuiltinUpdates: (force?: boolean) =>
-        ipcRenderer.invoke('workspace-host:builtin-check', force),
-      prepareBuiltinUpdate: (id: string) =>
-        ipcRenderer.invoke('workspace-host:builtin-prepare', id),
-      snoozeBuiltinUpdate: (id: string) =>
-        ipcRenderer.invoke('workspace-host:builtin-snooze', id),
-      subscribeBuiltinUpdates: (listener: () => void) => {
-        const wrapped = () => listener();
-        ipcRenderer.on('workspace-host:builtin-changed', wrapped);
-        return () => {
-          ipcRenderer.removeListener('workspace-host:builtin-changed', wrapped);
-        };
-      },
+      readWorkspaceLocation: (h: unknown) =>
+        ipcRenderer.invoke('workspace-host:location', h),
+      revealWorkspaceLocation: (h: unknown) =>
+        ipcRenderer.invoke('workspace-host:reveal-location', h),
       readBuiltinUpdate: (h: unknown) =>
         ipcRenderer.invoke('workspace-host:builtin-info', h),
-      updateBuiltinWorkspace: (h: unknown, id: string) =>
-        ipcRenderer.invoke('workspace-host:builtin-update', h, id),
+      updateBuiltinWorkspace: (
+        h: unknown,
+        id: string,
+        options?: { backup: boolean },
+      ) => ipcRenderer.invoke('workspace-host:builtin-update', h, id, options),
       revealBuiltinBackups: (h: unknown) =>
         ipcRenderer.invoke('workspace-host:builtin-backups', h),
       readGlobalConfig: () =>

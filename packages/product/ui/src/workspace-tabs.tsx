@@ -1,4 +1,5 @@
 import '@ylib/tabs';
+import { applyWorkspaceTabIcons } from './workspace-tab-icons';
 import { useEffect, useId, useRef, useState } from 'react';
 import { useActionSource, type ActionSource } from '@sue/board-react-actions';
 import {
@@ -404,6 +405,7 @@ export function WorkspaceTabs({
   applyShadowActions.current = () => {
     const node = element.current;
     const shadow = node?.shadowRoot;
+    if (shadow) applyWorkspaceTabIcons(shadow);
     if (!node || !shadow || !actionSource) return;
     const bind = (id: string, args?: unknown) =>
       bindWorkspaceAction(actionSource, `workspace.${id}`, args);

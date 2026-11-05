@@ -9,6 +9,8 @@ import { createRequire } from 'node:module';
 import { patterns, patternRules } from '@sue/verd-board-agent-patterns';
 import {
   isWorkspaceFile,
+  isFrameFileV2,
+  cellOwnerIndex,
   storeAttachment,
   openWorkspaceSession,
   workspaceFileId,
@@ -26,7 +28,10 @@ import {
 } from './node/workspace-project';
 import { initializeWorkspaceProject } from './node/workspace-init';
 import type { PreparedBatch } from './types';
-import { deriveBoardTextPlainText } from '@sue/board-common';
+import {
+  deriveBoardTextPlainText,
+  parseWorkspaceLink,
+} from '@sue/board-common';
 
 async function readJson(input: string) {
   if (input !== '-') return JSON.parse(await fs.readFile(input, 'utf8'));
@@ -89,7 +94,7 @@ export async function runCli(
           'rules',
           'patterns [id]',
           'patterns workspace --dest PATH',
-          'inspect [fileId]',
+          'inspect [fileId|path|nodeLink]',
           'plan --input OPS.json [--out PLAN.json]',
           'validate [--plan PLAN.json]',
           'preview FILE_ID --out IMAGE.png [--plan PLAN.json]',
@@ -216,15 +221,51 @@ export async function runCli(
     throw new Error('Unknown command: ' + command);
   const snapshot = await readNativeSnapshot(root);
   if (command === 'inspect') {
-    const entries = positional[0]
+    const link = positional[0] ? parseWorkspaceLink(positional[0]) : null;
+    if (link?.kind === 'cell') {
+      const frames = snapshot.entries.flatMap((entry) =>
+        isFrameFileV2(entry.file) ? [{ ...entry, file: entry.file }] : [],
+      );
+      const owner = cellOwnerIndex(frames.map((entry) => entry.file)).get(
+        link.cellId,
+      );
+      const matching = frames.filter((entry) => entry.file.frame.id === owner);
+      if (!owner || matching.length !== 1) {
+        const ambiguous = owner === null || matching.length > 1;
+        return {
+          exitCode: 2,
+          result: {
+            code: ambiguous ? 'ambiguous-cell' : 'missing-cell',
+            cellId: link.cellId,
+            error: ambiguous
+              ? 'The node identity is ambiguous'
+              : 'The node does not exist',
+          },
+        };
+      }
+      const entry = matching[0];
+      const isRoot = entry.file.frame.id === link.cellId;
+      return {
+        result: {
+          fileId: owner,
+          path: entry.path,
+          fileVersion: entry.version,
+          pointer: isRoot
+            ? '/frame'
+            : '/cells/' + link.cellId.replace(/~/g, '~0').replace(/\//g, '~1'),
+          node: isRoot ? entry.file.frame : entry.file.cells[link.cellId],
+        },
+      };
+    }
+    const query = link?.kind === 'file' ? link.fileId : positional[0];
+    const entries = query
       ? snapshot.entries.filter(
           (e) =>
-            (isWorkspaceFile(e.file) &&
-              workspaceFileId(e.file) === positional[0]) ||
-            e.path === positional[0],
+            (isWorkspaceFile(e.file) && workspaceFileId(e.file) === query) ||
+            e.path === query,
         )
       : snapshot.entries;
-    if (positional[0] && !entries.length) throw new Error('Unknown file');
+    if (query && !entries.length) throw new Error('Unknown file');
     return {
       result: {
         root: snapshot.root,
@@ -241,7 +282,7 @@ export async function runCli(
             title:
               file.format === 'verd-document' ? file.title : file.frame.name,
           };
-          return positional[0]
+          return query
             ? {
                 ...metadata,
                 file,
@@ -259,7 +300,9 @@ export async function runCli(
         }),
         diagnostics: [
           ...snapshot.diagnostics,
-          ...validateNativeWorkspace(snapshot.entries),
+          ...validateNativeWorkspace(snapshot.entries, {
+            folderIds: snapshot.folderIds,
+          }),
         ],
       },
     };
@@ -317,7 +360,10 @@ export async function runCli(
       throw new Error('Unknown validation profile');
     const diagnostics = [
       ...snapshot.diagnostics,
-      ...validateNativeWorkspace(entries, { profile }),
+      ...validateNativeWorkspace(entries, {
+        profile,
+        folderIds: snapshot.folderIds,
+      }),
     ];
     return {
       result: {

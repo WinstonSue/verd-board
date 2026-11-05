@@ -15,6 +15,19 @@ export async function folderAction(page: Page, name: string, action: string) {
     .click();
 }
 
+export async function renameFile(page: Page, id: string, name: string) {
+  await page
+    .locator(`[data-entry-kind="file"][data-file-id="${id}"] .file-tree-more`)
+    .click();
+  await page
+    .getByRole('menuitem', { name: '重命名/移动', exact: true })
+    .click();
+  const dialog = page.getByRole('dialog', { name: '重命名', exact: true });
+  await dialog.getByRole('textbox').fill(name);
+  await dialog.getByRole('button', { name: '确定', exact: true }).click();
+  await expect(dialog).toHaveCount(0);
+}
+
 export async function createFolder(page: Page, name: string, parent?: string) {
   if (parent) await folderAction(page, parent, '在此新建文件夹…');
   else {

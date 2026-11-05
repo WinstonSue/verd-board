@@ -16,6 +16,7 @@ import {
   setAppLanguage,
 } from '../../web-e2e/src/app-actions';
 import { canvasFiles } from './workspace-disk';
+import { activeTabTitle } from '../../web-e2e/src/tab-actions';
 
 const root = path.resolve(__dirname, '../../..');
 const nativeFiles = async (
@@ -100,9 +101,7 @@ test('built-in native workspace opens its diagrams and documents, follows links 
       active()
         .locator('svg[aria-label="Frame canvas"][data-surface="root"]')
         .first();
-    await expect(active().locator('.document-page__title')).toHaveValue(
-      '文档导航',
-    );
+    await expect(activeTabTitle(page)).toHaveText('文档导航');
     await active()
       .getByRole('link', { name: '项目导览（画布）', exact: true })
       .click({ modifiers: ['ControlOrMeta'] });
@@ -194,9 +193,7 @@ test('built-in native workspace opens its diagrams and documents, follows links 
             .getByRole('link', { name: '连线路由算法', exact: true })
             .first()
             .click({ modifiers: ['ControlOrMeta'] });
-          await expect(active().locator('.document-page__title')).toHaveValue(
-            '排列与组合',
-          );
+          await expect(activeTabTitle(page)).toHaveText('排列与组合');
           await expect(
             active().getByRole('heading', {
               name: '连线路由算法',
@@ -221,18 +218,14 @@ test('built-in native workspace opens its diagrams and documents, follows links 
       .locator('.file-tree-name')
       .getByText('文档导航', { exact: true })
       .click();
-    await expect(active().locator('.document-page__title')).toHaveValue(
-      '文档导航',
-    );
+    await expect(activeTabTitle(page)).toHaveText('文档导航');
     await page.screenshot({
       path: info.outputPath(`builtin-${browserName}-documents.png`),
     });
     await active()
       .getByRole('link', { name: '系统架构', exact: true })
       .click({ modifiers: ['ControlOrMeta'] });
-    await expect(active().locator('.document-page__title')).toHaveValue(
-      '系统架构',
-    );
+    await expect(activeTabTitle(page)).toHaveText('系统架构');
     await expect(active().locator('.board-document-content')).toContainText(
       'WorkspaceSession',
     );
@@ -265,9 +258,7 @@ test('built-in native workspace opens its diagrams and documents, follows links 
     newer.title = 'A newer bundled title';
     await writeFile(path.join(source, docPath), JSON.stringify(newer));
     page = await launch();
-    await expect(active().locator('.document-page__title')).toHaveValue(
-      '文档导航',
-    );
+    await expect(activeTabTitle(page)).toHaveText('文档导航');
     await expect(active().locator('.board-document-content')).toContainText(
       'Builtin document edit survives upgrades.',
     );

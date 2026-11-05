@@ -11,6 +11,7 @@ import {
   type WorkspaceFile,
 } from '@sue/verd-board-app/headless';
 import { isNodeCell } from '@sue/board-core';
+import { collectTextOverflowWarnings } from './preview-diagnostics';
 import '@sue/verd-board-ui/style.css';
 
 declare global {
@@ -152,6 +153,7 @@ window.renderAgentPreview = async (files, fileId, format) => {
   const box = document.createElement('div');
   box.innerHTML = measured;
   document.body.append(box);
+  await document.fonts.ready;
   const records = Object.values(file.cells)
     .filter(isNodeCell)
     .filter(
@@ -164,23 +166,19 @@ window.renderAgentPreview = async (files, fileId, format) => {
         ...box.querySelectorAll<SVGElement>('[data-cell-id]'),
       ].find((n) => n.getAttribute('data-cell-id') === c.id);
       const rect = element?.getBoundingClientRect();
-      element
-        ?.querySelectorAll<HTMLElement>(
-          '[contenteditable], .board-text, .board-document-content',
-        )
-        .forEach((text) => {
-          if (
-            text.clientHeight > 0 &&
-            text.scrollHeight > text.clientHeight + 3
-          )
-            warnings.push({
-              code: 'visual.text-overflow',
-              cellId: c.id,
-              message: 'Rendered text may exceed its visible area',
-            });
-        });
       return { c, rect };
     });
+  warnings.push(
+    ...collectTextOverflowWarnings(
+      box,
+      new Set(
+        Object.values(store.cells)
+          .filter(isNodeCell)
+          .filter((cell) => !cell.hidden)
+          .map((cell) => cell.id),
+      ),
+    ),
+  );
   for (let i = 0; i < records.length; i++)
     for (let j = i + 1; j < records.length; j++) {
       const a = records[i],

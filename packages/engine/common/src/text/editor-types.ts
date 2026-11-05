@@ -72,6 +72,7 @@ export interface BoardTextController {
   ): void;
   toggleMark(mark: keyof BoardTextMarks): void;
   setLink(link: BoardTextLink | null): void;
+  insertLink?(href: string, label: string): void;
   setAlign(align: BoardTextAlign): void;
   commit(): BoardTextDocument;
   measure(): { width: number; height: number };

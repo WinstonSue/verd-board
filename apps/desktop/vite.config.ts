@@ -5,9 +5,16 @@ import react from '@vitejs/plugin-react';
 import electron from 'vite-plugin-electron';
 import renderer from 'vite-plugin-electron-renderer';
 import path from 'node:path';
+import { spawn } from 'node:child_process';
+import { createRequire } from 'node:module';
+
+// Vite reloads this config when it restarts its server in the same process.
+const devLaunch = Symbol.for('verdboard.desktop.devLaunch');
+const devProcess = process as NodeJS.Process & { [devLaunch]?: true };
 
 export default defineConfig(({ command, mode }) => {
   const automated = command === 'serve' && mode === 'e2e';
+  const interactive = command === 'serve' && !automated;
   const electronOutput =
     command === 'build'
       ? 'dist-electron'
@@ -15,7 +22,6 @@ export default defineConfig(({ command, mode }) => {
         ? 'dist-electron-e2e'
         : 'dist-electron-dev';
   const mainEntry = path.resolve(__dirname, electronOutput, 'main.js');
-  let started = false;
   const compiled = new Set<string>();
   const watchReady = (entry: string) => ({
     name: `desktop-ready-${entry}`,
@@ -24,6 +30,33 @@ export default defineConfig(({ command, mode }) => {
     },
     writeBundle() {
       compiled.add(entry);
+      if (!interactive) return;
+      if (devProcess[devLaunch]) {
+        console.info('[VerdBoard Dev] 退出 DEV 后重新启动以应用变更。');
+        return;
+      }
+      if (compiled.size !== 2) return;
+
+      const executable: string = createRequire(import.meta.url)('electron');
+      const env: NodeJS.ProcessEnv = {
+        ...process.env,
+        VERDBOARD_INTERACTIVE_DEV: '1',
+      };
+      delete env['ELECTRON_RUN_AS_NODE'];
+      devProcess[devLaunch] = true;
+      const child = spawn(executable, [mainEntry], {
+        cwd: __dirname,
+        env,
+        // Keep terminal interrupts on the Vite side. IPC disconnect asks
+        // Electron to quit while its renderer can still save.
+        detached: process.platform !== 'win32',
+        stdio: ['ignore', 'inherit', 'inherit', 'ipc'],
+      });
+      child.once('error', (error) => {
+        console.error('[VerdBoard Dev] Electron 启动失败。', error);
+        process.exit(1);
+      });
+      child.once('exit', (code) => process.exit(code ?? 1));
     },
   });
   return {
@@ -68,14 +101,12 @@ export default defineConfig(({ command, mode }) => {
               );
             },
           },
+          // The plugin compiles both entries. The readiness hooks above own
+          // interactive startup and Playwright owns automated startup.
           electron([
             {
               entry: 'electron/main.ts',
-              onstart(options) {
-                if (automated) return;
-                started = true;
-                void options.startup([mainEntry]);
-              },
+              onstart() {},
               vite: {
                 plugins: [watchReady('main')],
                 resolve: { conditions: ['development', 'module', 'node'] },
@@ -89,14 +120,7 @@ export default defineConfig(({ command, mode }) => {
             },
             {
               entry: 'electron/preload.ts',
-              onstart(options) {
-                if (automated) return;
-                if (started) options.reload();
-                else {
-                  started = true;
-                  void options.startup([mainEntry]);
-                }
-              },
+              onstart() {},
               vite: {
                 plugins: [watchReady('preload')],
                 build: {

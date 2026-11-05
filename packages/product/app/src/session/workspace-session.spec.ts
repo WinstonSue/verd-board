@@ -138,6 +138,30 @@ describe('WorkspaceSession', () => {
     return { session, host, commits, handle };
   };
 
+  it('saves a folder identity on creation and can copy it in a readonly session', async () => {
+    const { session, host, handle } = await directorySession();
+    expect(session.mkdir('new-folder').ok).toBe(true);
+    await session.flush();
+    const snapshot = await host.readSnapshot(handle);
+    const created = snapshot.entries.find(
+      (entry) => entry.path === 'new-folder',
+    );
+    expect(created?.folderId).toBeTruthy();
+    expect(snapshot.trash).toHaveLength(0);
+    session.setReadonly(true);
+    expect(await session.ensureFolderId('new-folder')).toBe(created!.folderId);
+    await expect(session.ensureFolderId('docs')).rejects.toThrow(
+      'writable workspace',
+    );
+    session.setReadonly(false);
+    const [left, right] = await Promise.all([
+      session.ensureFolderId('docs'),
+      session.ensureFolderId('docs'),
+    ]);
+    expect(left).toBeTruthy();
+    expect(right).toBe(left);
+  });
+
   it('trashes and restores a mixed subtree as one item, preserving identities, bytes and empty directories', async () => {
     const { session, host, handle } = await directorySession();
     const original = (await host.readSnapshot(handle)).entries;

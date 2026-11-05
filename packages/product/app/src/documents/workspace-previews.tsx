@@ -10,7 +10,7 @@ import React, {
   useState,
   useContext,
 } from 'react';
-import { Check, ExternalLink } from 'lucide-react';
+import { Check, ChevronUp, ChevronDown, ExternalLink, X } from 'lucide-react';
 import {
   CanvasPreview,
   type RichTextLinkActivation,
@@ -406,7 +406,7 @@ export function workspaceDocumentPreviews(
               aria-label={exitLabel}
               onClick={props.onExitEdit}
             >
-              <Check size={16} aria-hidden />
+              <Check strokeWidth={1.75} size={16} aria-hidden />
             </button>
           )}
           <button
@@ -423,7 +423,7 @@ export function workspaceDocumentPreviews(
                 : options.open(props.targetDocumentId)
             }
           >
-            <ExternalLink size={16} aria-hidden />
+            <ExternalLink strokeWidth={1.75} size={16} aria-hidden />
           </button>
         </>
       );
@@ -969,7 +969,7 @@ function DocumentFrameEditor({
             aria-label={english ? 'Previous' : '上一个'}
             onClick={() => stepMatch(-1)}
           >
-            ↑
+            <ChevronUp strokeWidth={1.75} size={16} aria-hidden="true" />
           </button>
           <button
             type="button"
@@ -977,7 +977,7 @@ function DocumentFrameEditor({
             aria-label={english ? 'Next' : '下一个'}
             onClick={() => stepMatch(1)}
           >
-            ↓
+            <ChevronDown strokeWidth={1.75} size={16} aria-hidden="true" />
           </button>
           {findOpen === 'replace' && (
             <>
@@ -1020,7 +1020,7 @@ function DocumentFrameEditor({
             aria-label={english ? 'Close' : '关闭'}
             onClick={closeFind}
           >
-            ×
+            <X strokeWidth={1.75} size={16} aria-hidden="true" />
           </button>
         </div>
       )}

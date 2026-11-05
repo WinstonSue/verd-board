@@ -1,6 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
+import { activeTabTitle } from './tab-actions';
 
 const pane = (page: Page) => page.locator('.workspace-pane.is-active');
 const navigation = (page: Page) =>
@@ -146,9 +147,7 @@ test('groups repeated embeds, distinguishes entry from ownership, and restores r
     .getByRole('menuitem', { name: '第二章 · 第 2 处', exact: true })
     .click();
   const second = pane(page).locator('.document-frame-reference').nth(1);
-  await expect(pane(page).locator('.document-page__title')).toHaveValue(
-    '引用说明',
-  );
+  await expect(activeTabTitle(page)).toHaveText('引用说明');
   await expect(second).toBeInViewport();
   await expect(second.locator('..')).toHaveClass(/ProseMirror-selectednode/);
   const reading = await pane(page)

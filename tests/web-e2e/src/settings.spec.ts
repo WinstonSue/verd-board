@@ -1,3 +1,9 @@
+import {
+  expectSettingValue,
+  selectSetting,
+  setSettingSlider,
+} from '../../helpers/settings-controls';
+import { selectHistoryAction } from './app-actions';
 import { expect, test, type Page } from '@playwright/test';
 import { openAppMenu, openSettings, selectAppAction } from './app-actions';
 import { selectDrawingTool } from './drawing-tools';
@@ -23,19 +29,72 @@ const skipTutorial = async (page: Page) => {
 };
 const slider = async (page: Page, name: string, value: string) => {
   await page.getByTestId('settings-nav-personal.editor').click();
-  const input = page.getByTestId(`settings-${name}`);
-  // Playwright fill() does not support range controls; use native value setter
-  // and the browser input event, which also exercises React's change handler.
-  await input.evaluate((element, next) => {
-    Object.getOwnPropertyDescriptor(
-      HTMLInputElement.prototype,
-      'value',
-    )!.set!.call(element, next);
-    element.dispatchEvent(new Event('input', { bubbles: true }));
-    element.dispatchEvent(new Event('change', { bubbles: true }));
-  }, value);
-  await expect(input).toHaveValue(value);
+  await setSettingSlider(page.getByTestId(`settings-${name}`), Number(value));
 };
+
+test('settings sections are grouped menu items with keyboard navigation', async ({
+  page,
+}) => {
+  await page.goto('/');
+  const settings = await openSettings(page);
+  const menu = settings.getByRole('menu', { name: '设置栏目' });
+  await expect(menu.getByRole('menuitem')).toHaveCount(5);
+  await expect(menu.getByRole('button')).toHaveCount(0);
+  await expect(menu.getByText('个人偏好', { exact: true })).toBeVisible();
+  const appearance = menu.getByRole('menuitem', { name: '外观', exact: true });
+  const editor = menu.getByRole('menuitem', { name: '编辑', exact: true });
+  await expect(appearance).toHaveAttribute('aria-current', 'page');
+  await appearance.focus();
+  await appearance.press('ArrowDown');
+  await expect(editor).toBeFocused();
+  await editor.press('Enter');
+  await expect(editor).toHaveAttribute('aria-current', 'page');
+  await expect(settings.getByTestId('settings-mind-max-width')).toBeVisible();
+});
+
+test('Design controls keep the existing layout and dismiss only the open select on Escape', async ({
+  page,
+}, info) => {
+  await page.goto('/');
+  await openSettings(page);
+  const settings = page.getByTestId('my-page');
+  for (const width of [1440, 390]) {
+    await page.setViewportSize({ width, height: 844 });
+    if (width === 390) {
+      await settings.locator('.settings-mobile-back').click();
+      await settings.getByTestId('settings-nav-personal.general').click();
+    }
+    await selectSetting(settings.getByTestId('settings-appearance'), 'light');
+    await page.screenshot({
+      path: info.outputPath(`settings-light-${width}.png`),
+      animations: 'disabled',
+    });
+    const bounds = (await settings.boundingBox())!;
+    expect(bounds.width).toBe(width === 390 ? 390 : 1040);
+    expect(bounds.height).toBe(width === 390 ? 844 : 760);
+    await selectSetting(settings.getByTestId('settings-appearance'), 'dark');
+    await page.screenshot({
+      path: info.outputPath(`settings-dark-${width}.png`),
+      animations: 'disabled',
+    });
+    const appearance = settings
+      .getByTestId('settings-appearance')
+      .getByRole('combobox');
+    await appearance.click();
+    await expect(appearance).toHaveAttribute('aria-expanded', 'true');
+    await page.keyboard.press('Escape');
+    await expect(appearance).toHaveAttribute('aria-expanded', 'false');
+    await expect(settings).toBeVisible();
+    expect(
+      await settings.evaluate((node) => node.scrollWidth <= node.clientWidth),
+    ).toBe(true);
+    if (width === 1440)
+      await settings.getByTestId('settings-nav-personal.general').click();
+  }
+  await page.keyboard.press('Escape');
+  await expect(settings).toHaveCount(0);
+  await expect(page.getByTestId('workspace-my')).toBeFocused();
+});
 
 test('More is the only low-frequency entry on wide and narrow screens and supports keyboard navigation', async ({
   page,
@@ -46,8 +105,8 @@ test('More is the only low-frequency entry on wide and narrow screens and suppor
     await page.setViewportSize({ width, height: 844 });
     const toolbar = page.getByRole('toolbar', { name: 'App actions' });
     await expect(toolbar.getByRole('button', { name: '更多' })).toBeVisible();
-    await expect(toolbar.getByRole('button', { name: '撤销' })).toBeVisible();
-    await expect(toolbar.getByRole('button', { name: '重做' })).toBeVisible();
+    await expect(toolbar.getByRole('button', { name: '撤销' })).toHaveCount(0);
+    await expect(toolbar.getByRole('button', { name: '重做' })).toHaveCount(0);
     await expect(toolbar.getByRole('combobox')).toHaveCount(0);
     for (const label of [
       '打开',
@@ -140,8 +199,8 @@ test('settings preserve the mounted canvas, selection, viewport, tool, and undo 
   ])
     await page.keyboard.press(key);
   await expect(page.getByRole('dialog')).toHaveCount(1);
-  await settings.getByTestId('settings-language').selectOption('en');
-  await settings.getByTestId('settings-appearance').selectOption('dark');
+  await selectSetting(settings.getByTestId('settings-language'), 'en');
+  await selectSetting(settings.getByTestId('settings-appearance'), 'dark');
   await expect(
     settings.getByRole('heading', { name: 'Settings', exact: true }),
   ).toBeVisible();
@@ -158,14 +217,14 @@ test('settings preserve the mounted canvas, selection, viewport, tool, and undo 
   await expect(
     page.getByRole('button', { name: 'Select', exact: true }),
   ).toHaveAttribute('aria-pressed', 'true');
-  await page.getByRole('button', { name: 'Undo', exact: true }).click();
+  await selectHistoryAction(page, 'Undo');
   await expect(canvas(page).locator('[data-cell-kind="geometry"]')).toHaveCount(
     0,
   );
   await page.reload();
   await openSettings(page);
   await page.getByTestId('settings-nav-personal.general').click();
-  await expect(page.getByTestId('settings-language')).toHaveValue('en');
+  await expectSettingValue(page.getByTestId('settings-language'), 'en');
 });
 
 test('interaction settings update gestures immediately, persist, and reset independently of language', async ({
@@ -248,17 +307,25 @@ test('interaction settings update gestures immediately, persist, and reset indep
   await page.reload();
   await openSettings(page);
   await page.getByTestId('settings-nav-personal.editor').click();
-  await expect(page.getByTestId('settings-zoomSensitivity')).toHaveValue('0.5');
-  await expect(page.getByTestId('settings-dragPanSpeed')).toHaveValue('2');
+  await expect(
+    page.getByTestId('settings-zoomSensitivity').getByRole('slider'),
+  ).toHaveAttribute('aria-valuenow', '0.5');
+  await expect(
+    page.getByTestId('settings-dragPanSpeed').getByRole('slider'),
+  ).toHaveAttribute('aria-valuenow', '2');
   await page.getByTestId('settings-nav-personal.general').click();
-  await page.getByTestId('settings-language').selectOption('en');
+  await selectSetting(page.getByTestId('settings-language'), 'en');
   await page.getByTestId('settings-nav-personal.editor').click();
   await page.getByRole('button', { name: 'Reset interaction speeds' }).click();
   await page.getByTestId('settings-nav-personal.editor').click();
-  await expect(page.getByTestId('settings-zoomSensitivity')).toHaveValue('1');
-  await expect(page.getByTestId('settings-dragPanSpeed')).toHaveValue('1');
+  await expect(
+    page.getByTestId('settings-zoomSensitivity').getByRole('slider'),
+  ).toHaveAttribute('aria-valuenow', '1');
+  await expect(
+    page.getByTestId('settings-dragPanSpeed').getByRole('slider'),
+  ).toHaveAttribute('aria-valuenow', '1');
   await page.getByTestId('settings-nav-personal.general').click();
-  await expect(page.getByTestId('settings-language')).toHaveValue('en');
+  await expectSettingValue(page.getByTestId('settings-language'), 'en');
   expect(
     await page.evaluate(
       (key) => JSON.parse(localStorage.getItem(key)!),
@@ -314,9 +381,9 @@ for (const [tool, workspace, exportLabel] of [
     await backToPreviousCanvas(page);
     await openSettings(page);
     await page.getByTestId('settings-nav-personal.editor').click();
-    await expect(page.getByTestId('settings-zoomSensitivity')).toHaveValue(
-      '1.5',
-    );
+    await expect(
+      page.getByTestId('settings-zoomSensitivity').getByRole('slider'),
+    ).toHaveAttribute('aria-valuenow', '1.5');
   });
 }
 
@@ -368,8 +435,12 @@ test('invalid stored preferences fall back and numeric outliers are clamped', as
   await skipTutorial(page);
   await openSettings(page);
   await page.getByTestId('settings-nav-personal.editor').click();
-  await expect(page.getByTestId('settings-zoomSensitivity')).toHaveValue('1');
-  await expect(page.getByTestId('settings-dragPanSpeed')).toHaveValue('3');
+  await expect(
+    page.getByTestId('settings-zoomSensitivity').getByRole('slider'),
+  ).toHaveAttribute('aria-valuenow', '1');
+  await expect(
+    page.getByTestId('settings-dragPanSpeed').getByRole('slider'),
+  ).toHaveAttribute('aria-valuenow', '3');
 });
 
 test('unified settings search navigates between personal and project fields in one dialog', async ({

@@ -13,28 +13,44 @@ export async function prepareBuiltinWorkspaces(
       ['workspace', 'project'],
       ['agent-patterns', 'agent-patterns'],
     ]) {
-      const packageDir = path.join(
-        REPO_ROOT,
-        'packages/product',
-        kind === 'project' ? 'docs' : 'agent-patterns',
-      );
       const source =
         sources[kind] ??
         path.join(
-          packageDir,
-          kind === 'project' ? 'dist/workspace' : 'workspace',
+          REPO_ROOT,
+          kind === 'project'
+            ? 'workspace'
+            : 'packages/product/agent-patterns/workspace',
         );
-      const descriptor = sources[kind]
-        ? null
-        : JSON.parse(
-            await fs.readFile(
-              path.join(packageDir, 'dist/builtin-release.json'),
-              'utf8',
-            ),
-          );
-      const release = await runtime.builtin.readBuiltinRelease(source, kind);
-      if (descriptor && descriptor.releaseId !== release.releaseId)
-        throw new Error('Build resource packages before packaging');
+      const product = JSON.parse(
+        await fs.readFile(
+          path.join(REPO_ROOT, 'packages/product/app/package.json'),
+          'utf8',
+        ),
+      );
+      const desktop = JSON.parse(
+        await fs.readFile(
+          path.join(REPO_ROOT, 'apps/desktop/package.json'),
+          'utf8',
+        ),
+      );
+      const patterns = JSON.parse(
+        await fs.readFile(
+          path.join(REPO_ROOT, 'packages/product/agent-patterns/package.json'),
+          'utf8',
+        ),
+      );
+      if (
+        desktop.version !== product.version ||
+        patterns.version !== product.version
+      )
+        throw new Error(
+          'Desktop and built-in content versions must match the product version',
+        );
+      const release = await runtime.builtin.readBuiltinRelease(
+        source,
+        kind,
+        product.version,
+      );
       const target = path.join(destination, name);
       await fs.rm(target, { recursive: true, force: true });
       for (const file of Object.keys(release.files)) {
@@ -48,7 +64,7 @@ export async function prepareBuiltinWorkspaces(
         throw new Error('Built-in resources changed during packaging');
       await fs.writeFile(
         path.join(target, '.verdscrolls/release.json'),
-        JSON.stringify(descriptor ?? release, null, 2) + '\n',
+        JSON.stringify(release, null, 2) + '\n',
       );
     }
   });

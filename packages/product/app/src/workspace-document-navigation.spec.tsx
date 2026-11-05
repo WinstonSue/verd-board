@@ -85,7 +85,9 @@ const waitFor = async (assertion: () => void) => {
 };
 const activePane = () => container.querySelector('.workspace-pane.is-active')!;
 const title = () =>
-  activePane()?.querySelector<HTMLInputElement>('.document-page__title')?.value;
+  activePane()
+    ?.querySelector('.document-page__content')
+    ?.getAttribute('aria-label');
 const selectedHeading = () =>
   document
     .getSelection()
@@ -156,18 +158,20 @@ describe('WorkspaceApp document navigation', () => {
     await waitFor(() => expect(title()).toBe('Source'));
     expect(container.querySelectorAll('.document-page')).toHaveLength(1);
     expect(
-      activePane().querySelector<HTMLButtonElement>('button[title="撤销"]')
-        ?.disabled,
-    ).toBe(true);
+      activePane().querySelector(
+        '.doc-toolbar [data-action-id="document.undo"]',
+      ),
+    ).toBeNull();
     await clickLink('Target');
     await waitFor(() => {
       expect(title()).toBe('Target');
       expect(selectedHeading()).toBe(activePane().querySelectorAll('h2')[1]);
     });
     expect(
-      activePane().querySelector<HTMLButtonElement>('button[title="撤销"]')
-        ?.disabled,
-    ).toBe(true);
+      activePane().querySelector(
+        '.doc-toolbar [data-action-id="document.undo"]',
+      ),
+    ).toBeNull();
     await openTreeFile('Source');
     await clickLink('Canvas');
     await waitFor(() =>

@@ -28,10 +28,6 @@
     h1 {
       font-size: var(--vm-text-lg);
     }
-    button {
-      border: 0;
-      padding: 4px;
-    }
   }
   .settings-sections-layout {
     display: flex;
@@ -48,29 +44,6 @@
     background: var(--vm-background-subtle);
     border-right: 1px solid var(--vm-border);
     box-sizing: border-box;
-    .vm-nav-row {
-      width: 100%;
-      min-height: 32px;
-      border: 0;
-      border-radius: 6px;
-      padding: 0 8px;
-      text-align: left;
-      font-weight: 400;
-      background: transparent;
-      color: var(--vm-foreground-secondary);
-      &[aria-current='page'] {
-        background: var(--vm-fill-active);
-        font-weight: 500;
-        color: var(--vm-foreground);
-      }
-    }
-  }
-  .settings-scope-heading {
-    font-size: var(--vm-text-xs);
-    color: var(--vm-foreground-secondary);
-    margin: 24px 8px 8px;
-    font-weight: 600;
-    overflow-wrap: anywhere;
   }
   .settings-sections-main {
     flex: 1;
@@ -121,24 +94,13 @@
     margin: 0;
     min-width: 0;
   }
-  input,
-  textarea,
-  select {
-    font: inherit;
-    color: inherit;
-    background: var(--vm-background-subtle);
-    border: 1px solid var(--vm-border);
-    border-radius: 6px;
-    padding: 6px 10px;
-    box-sizing: border-box;
+  .settings-select {
+    min-width: 148px;
     max-width: 100%;
-    min-width: 0;
   }
-  textarea {
-    width: 100%;
-    min-height: 96px;
-    resize: vertical;
-    margin-top: 8px;
+  .settings-draft-field {
+    min-width: 0;
+    max-width: 100%;
   }
   .settings-full-row .settings-draft-field {
     width: 100%;
@@ -147,16 +109,11 @@
     margin: 0;
     color: var(--vm-foreground-secondary);
   }
-  .settings-search input {
-    margin: 0;
-    padding-left: 32px;
-  }
   .settings-search-result {
     display: block;
     width: 100%;
     text-align: left;
     margin-bottom: 4px;
-    border: 0;
     small {
       display: block;
       color: var(--vm-foreground-secondary);
@@ -188,10 +145,6 @@
         color: var(--vm-foreground-secondary);
         overflow-wrap: anywhere;
       }
-      button {
-        border: 0;
-        padding: 4px;
-      }
     }
   }
   .settings-entry-heading {
@@ -210,8 +163,9 @@
       padding: 0;
       gap: 8px;
     }
-    input {
+    > header > :first-child {
       flex: 1;
+      min-width: 0;
     }
   }
   .settings-entry-choices {
@@ -220,7 +174,6 @@
     button {
       display: block;
       width: 100%;
-      border: 0;
       text-align: left;
     }
     small {
@@ -285,18 +238,11 @@
   max-height: 400px;
   overflow: auto;
 }
-.settings-search-result:focus {
-  outline: 2px solid var(--vm-focus);
-  outline-offset: -2px;
-}
-
-.settings-sections-nav .vm-nav-row:focus-visible {
-  outline-offset: -2px;
-}
 .settings-kv-group {
   display: contents;
 }
 
-.settings-search .vm-search__icon {
-  left: 8px;
+.settings-result-content {
+  display: block;
+  white-space: normal;
 }

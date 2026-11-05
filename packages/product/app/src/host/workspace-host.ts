@@ -65,6 +65,8 @@ export interface WorkspaceSessionState {
   tabs: WorkspaceTabRef[];
   activeTabId: CellId | null;
   expandedDirs: string[];
+  /** Personal, per-view fold state. Kept out of document content and history. */
+  documentFolds?: Record<string, Record<string, boolean>>;
   groups?: WorkspaceTabGroupState[];
   activeGroupId?: string;
 }
@@ -113,6 +115,25 @@ export const normalizeWorkspaceSessionState = (
         )
       : [],
   };
+  const folds = candidate.documentFolds;
+  if (folds && typeof folds === 'object' && !Array.isArray(folds)) {
+    state.documentFolds = Object.fromEntries(
+      Object.entries(folds).flatMap(([key, value]) =>
+        value && typeof value === 'object' && !Array.isArray(value)
+          ? [
+              [
+                key,
+                Object.fromEntries(
+                  Object.entries(value).filter(
+                    ([, flag]) => typeof flag === 'boolean',
+                  ),
+                ),
+              ],
+            ]
+          : [],
+      ),
+    );
+  }
   if (Array.isArray(candidate.groups)) {
     const groups: WorkspaceTabGroupState[] = [];
     for (const group of candidate.groups) {
@@ -152,6 +173,8 @@ export interface WorkspaceEntryMeta {
   /** Workspace-relative POSIX path. */
   path: string;
   kind: 'file' | 'directory';
+  /** Stable identity from directory metadata, when one has been assigned. */
+  folderId?: string;
   /** `*.verd.json` payload files. */
   canvas: boolean;
   /** `*.verd-doc.json` payload files; absent means "detect by suffix". */
@@ -320,39 +343,26 @@ export interface ChangeHint {
   paths?: string[];
 }
 
-export interface BuiltinUpdateStatus {
-  kind: 'project' | 'agent-patterns';
-  packageName: string;
-  currentVersion: string | null;
-  bundledVersion: string | null;
-  currentReleaseId: string | null;
-  availableVersion?: string;
-  candidateId?: string;
-  incompatibleVersion?: string;
-  checkedAt: number;
-  status: 'current' | 'available' | 'error';
-  error?: string;
-  remind?: boolean;
-}
 export interface BuiltinWorkspaceUpdateInfo {
   kind: 'project' | 'agent-patterns';
   currentReleaseId: string | null;
   releaseId: string;
+  currentVersion: string | null;
+  version: string;
   hasBackups: boolean;
-  update?: BuiltinUpdateStatus;
 }
 export interface WorkspaceHost {
-  checkBuiltinUpdates?(force?: boolean): Promise<BuiltinUpdateStatus[]>;
-  subscribeBuiltinUpdates?(listener: () => void): () => void;
-  prepareBuiltinUpdate?(candidateId: string): Promise<void>;
-  snoozeBuiltinUpdate?(candidateId: string): Promise<void>;
+  readWorkspaceLocation?(handle: WorkspaceHandle): Promise<string>;
+  revealWorkspaceLocation?(handle: WorkspaceHandle): Promise<void>;
   readBuiltinUpdate?(
     handle: WorkspaceHandle,
   ): Promise<BuiltinWorkspaceUpdateInfo | null>;
+  /** A cancelled backup folder picker returns null without replacing content. */
   updateBuiltinWorkspace?(
     handle: WorkspaceHandle,
     releaseId: string,
-  ): Promise<WorkspaceHandle>;
+    options?: { backup: boolean },
+  ): Promise<WorkspaceHandle | null>;
   revealBuiltinBackups?(handle: WorkspaceHandle): Promise<void>;
   readGlobalConfig(): Promise<GlobalConfigSnapshot>;
   /** Compare-and-swap by expected version. */

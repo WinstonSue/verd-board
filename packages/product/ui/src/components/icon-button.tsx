@@ -24,7 +24,7 @@ export function IconButton({
         aria-label={label}
         className={`vm-icon-btn ${className}`}
       >
-        <Icon size={16} aria-hidden />
+        <Icon size={16} strokeWidth={1.75} aria-hidden />
       </button>
     </FrameTooltip>
   );

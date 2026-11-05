@@ -1,5 +1,8 @@
+import type { ActionResult } from '@sue/board-common';
 import { WorkspaceSwitcherDialog } from './workspace-switcher-dialog';
 import {
+  WorkspaceButton,
+  WorkspaceInput,
   DocumentPreview,
   CanvasPreview,
   VmDialog,
@@ -85,7 +88,9 @@ type Props = {
   isDefault?: boolean;
   children: ReactNode;
   tree: ReactNode;
-  onOpen(id: string): void;
+  revealFolderNonce?: number;
+  onOpen(id: string, origin?: 'all' | 'library'): void;
+  setFavorite(id: string, favorite: boolean): Promise<ActionResult>;
   onSearchHit(hit: SearchHit): Promise<void>;
   onWorkspace(handle: WorkspaceHandle): Promise<void>;
   onHistory(id: string): Promise<void>;
@@ -328,6 +333,9 @@ export function WorkspaceManagement(p: Props) {
     return () => clearTimeout(timer);
   }, [query, quick, indexVersion, files]);
   useEffect(() => {
+    if (p.revealFolderNonce !== undefined) setCollapsed(false);
+  }, [p.revealFolderNonce]);
+  useEffect(() => {
     const element = root.current?.closest('aside');
     if (element) {
       element.style.width = collapsed ? '44px' : `${width}px`;
@@ -381,16 +389,14 @@ export function WorkspaceManagement(p: Props) {
     else setSelected([path]);
     anchor.current = path;
   };
-  const toggleFavorite = (id: string) =>
-    updateOrg({
-      ...org,
-      favorites: org.favorites.includes(id)
-        ? org.favorites.filter((f) => f !== id)
-        : [...org.favorites, id],
-    });
+  const toggleFavorite = async (id: string) => {
+    const result = await p.setFavorite(id, !org.favorites.includes(id));
+    if ('code' in result) setError(result.message ?? result.code);
+  };
+  const hasFavorites = files.some((file) => org.favorites.includes(file.id));
   const open = (id: string) => {
     changeView('file');
-    p.onOpen(id);
+    p.onOpen(id, view === 'all' ? 'all' : undefined);
   };
   const targetForDrop = (target: HTMLElement, clientY: number) => {
     const row = target.closest<HTMLElement>('[data-entry-path]');
@@ -515,18 +521,19 @@ export function WorkspaceManagement(p: Props) {
           className={`management-shortcut ${sidebarRow ? 'vm-nav-row' : 'vm-list-row'}`}
           key={f.id}
         >
-          <button
+          <WorkspaceButton
+            intent="ghost"
             className="management-shortcut-main"
             onClick={() => open(f.id)}
             title={f.path}
           >
             {f.file.format === 'verd-document' ? (
-              <FileText size={16} aria-hidden />
+              <FileText strokeWidth={1.75} size={16} aria-hidden />
             ) : (
-              <PanelsTopLeft size={16} aria-hidden />
+              <PanelsTopLeft strokeWidth={1.75} size={16} aria-hidden />
             )}
             <span>{f.title}</span>
-          </button>
+          </WorkspaceButton>
           {reorder && !p.readonly && (
             <IconButton
               icon={ArrowUp}
@@ -541,7 +548,7 @@ export function WorkspaceManagement(p: Props) {
             />
           )}
           {!p.readonly && (
-            <button
+            <WorkspaceButton
               className="vm-icon-btn"
               aria-label={
                 org.favorites.includes(f.id)
@@ -551,10 +558,11 @@ export function WorkspaceManagement(p: Props) {
               onClick={() => toggleFavorite(f.id)}
             >
               <Star
+                strokeWidth={1.75}
                 size={16}
                 fill={org.favorites.includes(f.id) ? 'currentColor' : 'none'}
               />
-            </button>
+            </WorkspaceButton>
           )}
         </div>
       ));
@@ -654,8 +662,9 @@ export function WorkspaceManagement(p: Props) {
       <div className="management-sidebar-body">
         <nav>
           {(['home', 'search', 'all'] as const).map((v, i) => (
-            <button
+            <WorkspaceButton
               key={v}
+              intent="ghost"
               className="file-tree-nav vm-nav-row"
               aria-current={view === v ? 'page' : undefined}
               onClick={() => {
@@ -666,9 +675,9 @@ export function WorkspaceManagement(p: Props) {
             >
               {
                 [
-                  <Home key="home" size={16} />,
-                  <Search key="search" size={16} />,
-                  <Files key="all" size={16} />,
+                  <Home strokeWidth={1.75} key="home" size={16} />,
+                  <Search strokeWidth={1.75} key="search" size={16} />,
+                  <Files strokeWidth={1.75} key="all" size={16} />,
                 ][i]
               }
               {
@@ -679,14 +688,14 @@ export function WorkspaceManagement(p: Props) {
                   t('图表库', 'Chart library'),
                 ][i]
               }
-            </button>
+            </WorkspaceButton>
           ))}
         </nav>
         <SidebarSection
           title={t('收藏', 'Favorites')}
           storageKey={`verd-favorites-${identity}`}
         >
-          {org.favorites.length ? (
+          {hasFavorites ? (
             fileList(org.favorites, true, true)
           ) : (
             <p className="vm-empty management-favorites-empty">
@@ -903,18 +912,18 @@ export function WorkspaceManagement(p: Props) {
       {' '}
       {(view === 'all' || view === 'library') && (
         <div className="content-tabs">
-          <button
+          <WorkspaceButton
             aria-current={view === 'all' ? 'page' : undefined}
             onClick={() => changeView('all')}
           >
             {t('全部内容', 'All content')}
-          </button>
-          <button
+          </WorkspaceButton>
+          <WorkspaceButton
             aria-current={view === 'library' ? 'page' : undefined}
             onClick={p.onLibrary}
           >
             {t('图表', 'Charts')}
-          </button>
+          </WorkspaceButton>
         </div>
       )}
       {view !== 'file' && view !== 'library' && (
@@ -939,7 +948,7 @@ export function WorkspaceManagement(p: Props) {
               {project?.description && <p>{project.description}</p>}
               <div className="management-toolbar">
                 {!p.readonly && (
-                  <button
+                  <WorkspaceButton
                     type="button"
                     className="vm-btn vm-btn--primary"
                     data-testid="management-new"
@@ -991,9 +1000,9 @@ export function WorkspaceManagement(p: Props) {
                       })
                     }
                   >
-                    <Plus size={16} aria-hidden />
+                    <Plus strokeWidth={1.75} size={16} aria-hidden />
                     {t('新建', 'New')}
-                  </button>
+                  </WorkspaceButton>
                 )}
               </div>
               {templateOpen && (
@@ -1005,14 +1014,14 @@ export function WorkspaceManagement(p: Props) {
                   busy={busy}
                   footer={
                     <>
-                      <button
+                      <WorkspaceButton
                         className="vm-btn vm-btn--secondary"
                         disabled={busy}
                         onClick={() => setTemplateOpen(false)}
                       >
                         {t('取消', 'Cancel')}
-                      </button>
-                      <button
+                      </WorkspaceButton>
+                      <WorkspaceButton
                         className="vm-btn vm-btn--primary"
                         disabled={busy || !templateSelection}
                         onClick={() =>
@@ -1033,18 +1042,18 @@ export function WorkspaceManagement(p: Props) {
                         }
                       >
                         {t('创建', 'Create')}
-                      </button>
+                      </WorkspaceButton>
                     </>
                   }
                 >
                   <div className="workspace-template-fields">
-                    <input
+                    <WorkspaceInput
                       aria-label={t('搜索模板', 'Search templates')}
                       placeholder={t('搜索模板', 'Search templates')}
                       value={templateQuery}
                       onChange={(event) => setTemplateQuery(event.target.value)}
                     />
-                    <input
+                    <WorkspaceInput
                       aria-label={t('模板标题', 'Template title')}
                       placeholder={t('标题（可选）', 'Title (optional)')}
                       value={templateTitle}
@@ -1086,7 +1095,7 @@ export function WorkspaceManagement(p: Props) {
                           >
                             <strong>{item.title}</strong>
                             <p>{item.description}</p>
-                            <button
+                            <WorkspaceButton
                               className="vm-btn vm-btn--secondary"
                               disabled={busy}
                               onClick={() =>
@@ -1102,7 +1111,7 @@ export function WorkspaceManagement(p: Props) {
                               }
                             >
                               {t('预览模板', 'Preview template')}
-                            </button>
+                            </WorkspaceButton>
                           </article>
                         ))}
                     </div>
@@ -1176,7 +1185,7 @@ export function WorkspaceManagement(p: Props) {
                 </p>
               )}
               <h2>{t('收藏', 'Favorites')}</h2>
-              {org.favorites.length ? (
+              {hasFavorites ? (
                 fileList(org.favorites, true)
               ) : (
                 <p className="vm-empty">
@@ -1189,7 +1198,7 @@ export function WorkspaceManagement(p: Props) {
             </>
           ) : (
             <>
-              <input
+              <WorkspaceInput
                 type="search"
                 placeholder={t(
                   view === 'all' ? '筛选名称或路径…' : '搜索正文…',
@@ -1228,26 +1237,26 @@ export function WorkspaceManagement(p: Props) {
                   />
                   {t('仅收藏', 'Favorites only')}
                 </label>
-                <input
+                <WorkspaceInput
                   aria-label={t('标签筛选', 'Filter tags')}
                   placeholder={t('标签', 'Tag')}
                   value={tagFilter}
                   onChange={(event) => setTagFilter(event.target.value)}
                 />
-                <input
+                <WorkspaceInput
                   aria-label={t('状态筛选', 'Filter status')}
                   placeholder={t('状态', 'Status')}
                   value={statusFilter}
                   onChange={(event) => setStatusFilter(event.target.value)}
                 />
-                <input
+                <WorkspaceInput
                   aria-label={t('目录筛选', 'Filter folders')}
                   placeholder={t('目录', 'Folder')}
                   value={directoryFilter}
                   onChange={(event) => setDirectoryFilter(event.target.value)}
                 />
                 {!p.readonly && (
-                  <input
+                  <WorkspaceInput
                     aria-label={t('视图名称', 'View name')}
                     placeholder={t('视图名称', 'View name')}
                     value={viewName}
@@ -1255,7 +1264,7 @@ export function WorkspaceManagement(p: Props) {
                   />
                 )}
                 {!p.readonly && (
-                  <button
+                  <WorkspaceButton
                     disabled={!viewName.trim()}
                     onClick={() => {
                       const label = viewName;
@@ -1280,11 +1289,11 @@ export function WorkspaceManagement(p: Props) {
                     }}
                   >
                     {t('保存筛选视图', 'Save filtered view')}
-                  </button>
+                  </WorkspaceButton>
                 )}
                 {savedViews.map((saved) => (
                   <span key={saved.name}>
-                    <button
+                    <WorkspaceButton
                       onClick={() => {
                         setQuery(saved.query);
                         setTagFilter(saved.tag);
@@ -1295,9 +1304,9 @@ export function WorkspaceManagement(p: Props) {
                       }}
                     >
                       {saved.name}
-                    </button>
+                    </WorkspaceButton>
                     {!p.readonly && (
-                      <button
+                      <WorkspaceButton
                         aria-label={t('删除视图 ', 'Delete view ') + saved.name}
                         onClick={() =>
                           p.session.setWorkspaceConfig({
@@ -1308,8 +1317,8 @@ export function WorkspaceManagement(p: Props) {
                           })
                         }
                       >
-                        <X size={16} aria-hidden />
-                      </button>
+                        <X strokeWidth={1.75} size={16} aria-hidden />
+                      </WorkspaceButton>
                     )}
                   </span>
                 ))}
@@ -1349,7 +1358,7 @@ export function WorkspaceManagement(p: Props) {
                           )
                         }
                       />
-                      <button
+                      <WorkspaceButton
                         onClick={(e) => {
                           if (e.metaKey || e.ctrlKey || e.shiftKey)
                             choose(
@@ -1361,9 +1370,13 @@ export function WorkspaceManagement(p: Props) {
                         }}
                       >
                         {f.file.format === 'verd-document' ? (
-                          <FileText size={16} aria-hidden />
+                          <FileText strokeWidth={1.75} size={16} aria-hidden />
                         ) : (
-                          <PanelsTopLeft size={16} aria-hidden />
+                          <PanelsTopLeft
+                            strokeWidth={1.75}
+                            size={16}
+                            aria-hidden
+                          />
                         )}
                         <span>
                           {f.title}
@@ -1377,8 +1390,8 @@ export function WorkspaceManagement(p: Props) {
                           </small>
                           <small>{f.path}</small>
                         </span>
-                      </button>
-                      <button
+                      </WorkspaceButton>
+                      <WorkspaceButton
                         aria-pressed={org.favorites.includes(f.id)}
                         aria-label={
                           org.favorites.includes(f.id)
@@ -1389,6 +1402,7 @@ export function WorkspaceManagement(p: Props) {
                         onClick={() => toggleFavorite(f.id)}
                       >
                         <Star
+                          strokeWidth={1.75}
                           size={16}
                           fill={
                             org.favorites.includes(f.id)
@@ -1396,7 +1410,7 @@ export function WorkspaceManagement(p: Props) {
                               : 'none'
                           }
                         />
-                      </button>
+                      </WorkspaceButton>
                       {!p.readonly && (
                         <IconButton
                           icon={Ellipsis}
@@ -1444,27 +1458,30 @@ export function WorkspaceManagement(p: Props) {
                   ))}
                   {[...p.snapshot.failedFiles.values()].map((f) => (
                     <p key={f.path}>
-                      <TriangleAlert size={16} aria-hidden /> {f.path}
+                      <TriangleAlert strokeWidth={1.75} size={16} aria-hidden />{' '}
+                      {f.path}
                     </p>
                   ))}
                 </>
               ) : (
                 filteredHits.slice(0, limit).map((hit, i) => (
-                  <button
+                  <WorkspaceButton
                     className="management-result"
                     key={i}
                     onClick={() => void perform(() => p.onSearchHit(hit))}
                   >
                     <span>{hit.title}</span>
                     <small>{hit.path}</small>
-                    <span>{highlight(hit.fragment.text, hit.term)}</span>
-                  </button>
+                    {hit.source === 'content' && (
+                      <span>{highlight(hit.fragment.text, hit.term)}</span>
+                    )}
+                  </WorkspaceButton>
                 ))
               )}
               {(view === 'all' ? rows.length : filteredHits.length) > limit && (
-                <button onClick={() => setLimit(limit + 60)}>
+                <WorkspaceButton onClick={() => setLimit(limit + 60)}>
                   {t('显示更多', 'Show more')}
-                </button>
+                </WorkspaceButton>
               )}
             </>
           )}
@@ -1599,27 +1616,28 @@ export function WorkspaceManagement(p: Props) {
               >
                 <label>
                   {t('名称', 'Name')}
-                  <input
+                  <WorkspaceInput
                     ref={(el) => el?.focus()}
                     value={name}
                     onChange={(e) => setName(e.target.value)}
                   />
                 </label>
                 <div className="vm-dialog__footer">
-                  <button
+                  <WorkspaceButton
                     className="vm-btn vm-btn--secondary"
                     type="button"
                     disabled={busy}
                     onClick={() => setDialog(null)}
                   >
                     {t('取消', 'Cancel')}
-                  </button>
-                  <button
+                  </WorkspaceButton>
+                  <WorkspaceButton
+                    type="submit"
                     className="vm-btn vm-btn--primary"
                     disabled={busy || !name.trim()}
                   >
                     {t('创建', 'Create')}
-                  </button>
+                  </WorkspaceButton>
                 </div>
               </form>
             ) : (
@@ -1692,7 +1710,7 @@ export function WorkspaceManagement(p: Props) {
                       ))}
                   </select>
                 ) : dialog === 'rename' ? (
-                  <input
+                  <WorkspaceInput
                     value={name}
                     onChange={(e) => setName(e.target.value)}
                   />
@@ -1705,20 +1723,21 @@ export function WorkspaceManagement(p: Props) {
                   </p>
                 )}
                 <div className="vm-dialog__footer">
-                  <button
+                  <WorkspaceButton
                     className="vm-btn vm-btn--secondary"
                     type="button"
                     disabled={busy}
                     onClick={() => setDialog(null)}
                   >
                     {t('取消', 'Cancel')}
-                  </button>
-                  <button
+                  </WorkspaceButton>
+                  <WorkspaceButton
+                    type="submit"
                     className={`vm-btn ${dialog === 'trash' ? 'vm-btn--danger' : 'vm-btn--primary'}`}
                     disabled={busy || (dialog === 'rename' && !name.trim())}
                   >
                     {t('确定', 'Confirm')}
-                  </button>
+                  </WorkspaceButton>
                 </div>
               </form>
             )}

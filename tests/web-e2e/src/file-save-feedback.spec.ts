@@ -159,8 +159,15 @@ test('disk files stay saved through first render, tab activation and folder navi
   page,
 }) => {
   await seed(page);
-  const initial = await status(page).textContent();
-  expect(initial).toContain('保存时间未知');
+  await expect(status(page)).toHaveText('已保存');
+  await expect(
+    active(page)
+      .locator('.workspace-file-navigation')
+      .getByTestId('save-status'),
+  ).toHaveCount(1);
+  await expect(
+    active(page).locator('.frame-app-toolbar').getByTestId('save-status'),
+  ).toHaveCount(0);
   await open(page, 'Quiet B');
   await page
     .locator('.file-tree-dir-toggle')
@@ -180,7 +187,7 @@ test('disk files stay saved through first render, tab activation and folder navi
       ),
     )
     .toBeGreaterThan(0);
-  await expect(status(page)).toHaveText(initial!);
+  await expect(status(page)).toHaveText('已保存');
   const probe = await page.evaluate(() => {
     const probe = (
       window as unknown as {
@@ -205,7 +212,7 @@ test('navigation-only failure stays at workspace level and can be retried withou
   await open(page, 'Quiet B');
   await expect(page.getByTestId('workspace-save-error')).toBeVisible();
   await expect(status(page)).toHaveAttribute('data-save-state', 'saved');
-  await expect(status(page)).toContainText('保存时间未知');
+  await expect(status(page)).toHaveText('已保存');
   await page.evaluate(() => {
     (
       window as unknown as { __saveProbe: { rejectNavigation: boolean } }
@@ -241,7 +248,7 @@ test('real source edits affect their referencing page but not an unrelated clean
   ).toBeVisible();
   await open(page, 'Quiet B');
   await expect(status(page)).toHaveAttribute('data-save-state', 'saved');
-  await expect(status(page)).toContainText('保存时间未知');
+  await expect(status(page)).toHaveText('已保存');
   await open(page, 'Quiet A');
   await expect(status(page)).toHaveAttribute('data-save-state', 'saving');
   await page.evaluate(() => {
@@ -252,5 +259,5 @@ test('real source edits affect their referencing page but not an unrelated clean
   await expect(status(page)).toHaveAttribute('data-save-state', 'saved');
   await expect(status(page)).not.toContainText('保存时间未知');
   await open(page, 'Quiet B');
-  await expect(status(page)).toContainText('保存时间未知');
+  await expect(status(page)).toHaveText('已保存');
 });

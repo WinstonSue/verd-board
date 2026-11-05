@@ -613,9 +613,6 @@ describe('Mind fold controls', () => {
         expect(button().getAttribute('aria-expanded')).toBe('true');
         await t.fire(button(), 'pointerdown', 300, 300);
         expect(button().getAttribute('aria-expanded')).toBe('false');
-        expect(button().querySelector('path')!.getAttribute('d')).toContain(
-          ' V ',
-        );
         hiddenIds.forEach((hidden) => expect(t.cell(hidden)).toBeNull());
         expect(t.cell('other')).not.toBeNull();
         expect(Object.keys(t.ref.current!.runtime.store.cells)).toEqual(ids);
@@ -636,9 +633,6 @@ describe('Mind fold controls', () => {
         expect(button()).not.toBeNull();
         await t.fire(button(), 'pointerdown', 300, 300);
         expect(button().getAttribute('aria-expanded')).toBe('true');
-        expect(button().querySelector('path')!.getAttribute('d')).not.toContain(
-          ' V ',
-        );
         hiddenIds.forEach((hidden) => expect(t.cell(hidden)).not.toBeNull());
         expect(Object.keys(t.ref.current!.runtime.store.cells)).toEqual(ids);
       }

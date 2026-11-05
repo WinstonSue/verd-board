@@ -1,3 +1,4 @@
+import { selectHistoryAction } from './app-actions';
 import { editBody } from './body-editor';
 import { test, expect, type Page } from '@playwright/test';
 import { selectDrawingTool } from './drawing-tools';
@@ -113,9 +114,9 @@ test('edits names in the header and keeps them after reload', async ({
     'title',
     /最后一次成功保存/,
   );
-  await mindPane.getByRole('button', { name: '撤销', exact: true }).click();
+  await selectHistoryAction(page, '撤销');
   await expect(label).toHaveValue(originalName!);
-  await mindPane.getByRole('button', { name: '重做', exact: true }).click();
+  await selectHistoryAction(page, '重做');
   await expect(label).toHaveValue('新的中心主题名称');
   await expect(mindPane.getByTestId('save-status')).toHaveAttribute(
     'data-save-state',
@@ -580,11 +581,11 @@ test('workflow auto layout restores manual positions and keeps another graph iso
       (cell) => cell.id === otherId,
     ),
   ).toEqual(other);
-  await workflowPane.getByRole('button', { name: '撤销', exact: true }).click();
+  await selectHistoryAction(page, '撤销');
   await expect
     .poll(async () => (await savedKind(page, 'workflow-task'))[0]?.geometry)
     .toEqual(manual);
-  await workflowPane.getByRole('button', { name: '重做', exact: true }).click();
+  await selectHistoryAction(page, '重做');
   await expect
     .poll(async () => (await savedKind(page, 'workflow-task'))[0]?.geometry)
     .toEqual(layout);
@@ -635,11 +636,11 @@ test('architecture layer sorting and module ownership changes survive undo, casc
         )?.data.memberIds,
     )
     .toEqual([moduleId]);
-  await archPane.getByRole('button', { name: '撤销', exact: true }).click();
+  await selectHistoryAction(page, '撤销');
   await expect(
     archPane.getByLabel('Architecture layer', { exact: true }),
   ).toHaveValue(firstId);
-  await archPane.getByRole('button', { name: '重做', exact: true }).click();
+  await selectHistoryAction(page, '重做');
   await expect(
     archPane.getByLabel('Architecture layer', { exact: true }),
   ).toHaveValue(secondId);
@@ -662,7 +663,7 @@ test('architecture layer sorting and module ownership changes survive undo, casc
     .getByRole('button', { name: '删除', exact: true })
     .click();
   await expect(module).toHaveCount(0);
-  await archPane.getByRole('button', { name: '撤销', exact: true }).click();
+  await selectHistoryAction(page, '撤销');
   await expect(module).toHaveCount(1);
   await expect
     .poll(async () => (await savedKind(page, 'architecture-module')).length)
@@ -702,7 +703,7 @@ test('workflow start coordinate properties move its graph origin and fixed membe
   await expect
     .poll(async () => (await savedKind(page, 'workflow-task'))[0]?.geometry)
     .toMatchObject({ x: 400, y: 200 });
-  await workflowPane.getByRole('button', { name: '撤销', exact: true }).click();
+  await selectHistoryAction(page, '撤销');
   await expect
     .poll(async () => (await savedKind(page, 'workflow-task'))[0]?.geometry)
     .toMatchObject({ x: 300, y: 200 });

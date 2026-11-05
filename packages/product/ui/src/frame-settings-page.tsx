@@ -1,17 +1,13 @@
 import { SettingsSection } from './components/settings-layout';
 import { SettingsDraftInput } from './settings-draft';
+import { settingsDesignComponents } from './settings-design-editors';
+import { WorkspaceButton } from './workspace-design';
 import { validMindMaxWidth } from '@sue/board-mind';
-import {
-  ConfigPanel,
-  defineSettings,
-  type SettingEditorProps,
-} from '@sue/board-react';
-import type { ControlProps } from '@sue/schema-settings-react';
+import { ConfigPanel, defineSettings } from '@sue/board-react';
 import { useId, useState } from 'react';
 import { SettingsCenter } from './settings-center';
 import { useI18n } from './i18n';
 import { useMindMaxWidth, setMindMaxWidth } from './mind-preferences';
-import { FrameMindWidthInput } from './frame-mind-width-input';
 import { DEFAULT_MIND_MAX_WIDTH } from '@sue/board-mind';
 import {
   useAppearancePreference,
@@ -34,23 +30,6 @@ type ApplicationValues = {
   smartGuides: boolean;
   linkActivation: import('@sue/board-react-text').RichTextLinkActivation;
 };
-type ApplicationControls = ControlProps & { mindWidth: { testId: string } };
-const applicationComponents = {
-  mindWidth: ({
-    value,
-    label,
-    props,
-    onCommit,
-  }: SettingEditorProps<unknown, { testId: string }>) => (
-    <FrameMindWidthInput
-      value={value as number}
-      label={label}
-      testId={props.testId}
-      onChange={onCommit}
-    />
-  ),
-};
-
 export function useApplicationSettingsModel() {
   const id = useId();
   const { t, language, setLanguage } = useI18n();
@@ -63,11 +42,7 @@ export function useApplicationSettingsModel() {
     language,
     mindWidth,
   };
-  const definition = defineSettings<
-    ApplicationValues,
-    void,
-    ApplicationControls
-  >({
+  const definition = defineSettings<ApplicationValues>({
     groups: [
       { id: 'general', label: t('settings.general') },
       { id: 'mind', label: t('settings.mind') },
@@ -117,12 +92,12 @@ export function useApplicationSettingsModel() {
       },
       {
         key: 'mindWidth',
-        editor: 'mindWidth',
+        editor: 'number',
         group: 'mind',
         label: t('settings.mindMaxWidth'),
         description: t('settings.mindMaxWidthDescription'),
         commit: 'change',
-        props: { testId: 'settings-mind-max-width' },
+        props: { attributes: { 'data-testid': 'settings-mind-max-width' } },
       },
       ...(['zoomSensitivity', 'dragPanSpeed'] as const).map((key) => ({
         key,
@@ -180,7 +155,7 @@ export function FrameSettingsContent({
       }}
       values={values}
       identity="application-settings"
-      components={applicationComponents}
+      components={settingsDesignComponents}
       onCommit={({ changes }) => {
         for (const change of changes) {
           if (change.kind !== 'set') continue;
@@ -228,10 +203,10 @@ export function FrameSettingsContent({
           </div>
         ) : (
           <>
-            <label className="frame-settings-row" data-setting-key={key}>
+            <div className="frame-settings-row" data-setting-key={key}>
               <span>{label}</span>
               {editor}
-            </label>
+            </div>
             {description && <p>{description}</p>}
           </>
         )
@@ -243,15 +218,15 @@ export function FrameSettingsContent({
           )}
           {children}
           {group === 'mind' && (
-            <button
+            <WorkspaceButton
               type="button"
               onClick={() => setMindMaxWidth(DEFAULT_MIND_MAX_WIDTH)}
             >
               {t('settings.resetMindWidth')}
-            </button>
+            </WorkspaceButton>
           )}
           {group === 'interaction' && (
-            <button
+            <WorkspaceButton
               type="button"
               onClick={() =>
                 setInteractionPreferences({
@@ -263,7 +238,7 @@ export function FrameSettingsContent({
               }
             >
               {t('settings.resetInteraction')}
-            </button>
+            </WorkspaceButton>
           )}
         </SettingsSection>
       )}

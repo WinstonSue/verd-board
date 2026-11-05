@@ -1,3 +1,4 @@
+import { selectSetting } from '../../helpers/settings-controls';
 import { expect, test, type Page } from '@playwright/test';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
@@ -10,7 +11,7 @@ test.use({ actionTimeout: 10_000 });
 const pane = (page: Page) => page.locator('.workspace-pane.is-active');
 async function appearance(page: Page, value: 'light' | 'dark') {
   await page.locator('.workspace-sidebar-footer button').click();
-  await page.getByTestId('settings-appearance').selectOption(value);
+  await selectSetting(page.getByTestId('settings-appearance'), value);
   await page.getByTestId('my-back').click();
 }
 async function seed(page: Page, embedded = false) {
@@ -157,7 +158,9 @@ test('real legacy text marks follow all six themes in static text, editing, refe
   ]) {
     const svg = pane(page).locator('svg[data-surface="root"]').first();
     const bounds = (await svg.boundingBox())!;
-    await svg.click({ position: { x: bounds.width - 12, y: 12 } });
+    await svg.click({
+      position: { x: bounds.width - 120, y: bounds.height - 100 },
+    });
     await selector.selectOption(theme);
     await expect
       .poll(

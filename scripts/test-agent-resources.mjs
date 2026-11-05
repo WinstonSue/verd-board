@@ -97,6 +97,22 @@ let context = run(
 assert.equal(context.agent.ready, true);
 assert.equal(context.name, 'Acceptance');
 const identity = context.identity;
+// Follow the same installed guide path an external agent receives.
+const skill = await fs.readFile(
+  path.join(deployed, 'skills/verd-authoring/SKILL.md'),
+  'utf8',
+);
+const qualityGuidePath = skill.match(
+  /shared\/patterns\/([^`]+\.verd-doc\.json)/,
+)?.[1];
+assert.ok(
+  qualityGuidePath,
+  'Installed skill must point to the native quality guide',
+);
+const qualityGuide = JSON.parse(
+  await fs.readFile(path.join(deployed, 'patterns', qualityGuidePath), 'utf8'),
+);
+assert.equal(qualityGuide.id, 'pattern-guide:diagram-quality');
 assert.ok(
   (await fs.readFile(path.join(project, 'AGENTS.md'), 'utf8')).startsWith(
     '# User rules\nKeep this text.\n',
@@ -133,6 +149,153 @@ if (!process.argv.includes('--skip-preview')) {
   const output = path.join(dir, 'preview.png');
   run(['preview', 'acceptance-doc', '--plan', plan, '--out', output]);
   assert.ok((await fs.stat(output)).size > 1000);
+  const previewOperations = path.join(dir, 'preview-operations.json');
+  const previewPlan = path.join(dir, 'preview-plan.json');
+  const create = [
+    {
+      type: 'file.create',
+      kind: 'workflow',
+      id: 'preview-flow',
+      title: '文字适配回归',
+      path: 'preview-flow.verd.json',
+    },
+    {
+      type: 'node.upsert',
+      fileId: 'preview-flow',
+      id: 'preview-decision',
+      kind: 'workflow-decision',
+      label: '交付前再次核对任务输入版本一致？',
+      geometry: { x: 300, y: 100, width: 360, height: 140 },
+      data: { fontSize: 24 },
+    },
+    {
+      type: 'file.create',
+      kind: 'document',
+      id: 'preview-document',
+      title: '滚动正文',
+      path: 'preview-document.verd-doc.json',
+    },
+    {
+      type: 'document.set',
+      fileId: 'preview-document',
+      markdown:
+        '# 滚动正文\n\n' +
+        Array.from(
+          { length: 40 },
+          (_, i) => `第 ${i + 1} 段：文档预览允许滚动，不应作为节点文字溢出。`,
+        ).join('\n\n'),
+    },
+    {
+      type: 'file.create',
+      kind: 'whiteboard',
+      id: 'preview-board',
+      title: '引用预览',
+      path: 'preview-board.verd.json',
+    },
+    {
+      type: 'reference.upsert',
+      fileId: 'preview-board',
+      id: 'preview-card',
+      targetId: 'preview-document',
+      targetKind: 'document',
+      geometry: { x: 0, y: 0, width: 400, height: 200 },
+    },
+    {
+      type: 'file.create',
+      kind: 'whiteboard',
+      id: 'preview-parent',
+      title: '缩放引用',
+      path: 'preview-parent.verd.json',
+    },
+    {
+      type: 'reference.upsert',
+      fileId: 'preview-parent',
+      id: 'preview-nested',
+      targetId: 'preview-flow',
+      targetKind: 'frame',
+      geometry: { x: 0, y: 0, width: 220, height: 140 },
+    },
+  ];
+  const makePreviewPlan = async (edit = []) => {
+    await fs.writeFile(previewOperations, JSON.stringify([...create, ...edit]));
+    run(['plan', '--input', previewOperations, '--out', previewPlan]);
+    assert.equal(run(['validate', '--plan', previewPlan]).valid, true);
+  };
+  const preview = (id, name, format) =>
+    run([
+      'preview',
+      id,
+      '--plan',
+      previewPlan,
+      '--out',
+      path.join(dir, `${name}.${format}`),
+    ]);
+  const textWarnings = (result) =>
+    result.warnings.filter(
+      (warning) => warning.code === 'visual.text-overflow',
+    );
+  await makePreviewPlan();
+  for (const format of ['png', 'svg']) {
+    const warnings = textWarnings(preview('preview-flow', 'clipped', format));
+    assert.equal(warnings.length, 1);
+    assert.equal(warnings[0].cellId, 'preview-decision');
+    assert.match(warnings[0].message, /top/);
+    assert.match(warnings[0].message, /bottom/);
+    assert.deepEqual(
+      textWarnings(preview('preview-board', 'scrollable', format)),
+      [],
+    );
+  }
+  await makePreviewPlan([
+    {
+      type: 'node.upsert',
+      fileId: 'preview-flow',
+      id: 'preview-decision',
+      kind: 'workflow-decision',
+      geometry: { rotation: Math.PI / 4 },
+    },
+  ]);
+  for (const format of ['png', 'svg']) {
+    assert.equal(
+      textWarnings(preview('preview-flow', 'rotated', format))[0]?.cellId,
+      'preview-decision',
+    );
+    // A scaled reference reports the source node, not the reference shell.
+    assert.deepEqual(
+      textWarnings(preview('preview-parent', 'scaled', format)).map(
+        (warning) => warning.cellId,
+      ),
+      ['preview-decision'],
+    );
+  }
+  await makePreviewPlan([
+    {
+      type: 'node.upsert',
+      fileId: 'preview-flow',
+      id: 'preview-decision',
+      kind: 'workflow-decision',
+      geometry: { width: 600, height: 320 },
+    },
+  ]);
+  for (const format of ['png', 'svg'])
+    assert.deepEqual(
+      textWarnings(preview('preview-flow', 'fitted', format)),
+      [],
+    );
+  await makePreviewPlan([
+    {
+      type: 'node.upsert',
+      fileId: 'preview-flow',
+      id: 'preview-decision',
+      kind: 'workflow-decision',
+      label: '一致？',
+    },
+  ]);
+  for (const format of ['png', 'svg'])
+    assert.deepEqual(
+      textWarnings(preview('preview-flow', 'short', format)),
+      [],
+    );
 }
 assert.equal(run(['apply', '--plan', plan]).outcome, 'applied');
 const original = await fs.readFile(

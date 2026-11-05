@@ -1,4 +1,5 @@
 import { VmDialog } from './components/vm-dialog';
+import { WorkspaceAlert, WorkspaceButton } from './workspace-design';
 export function WorkspaceActionConfirmation({
   title,
   message,
@@ -28,28 +29,24 @@ export function WorkspaceActionConfirmation({
       onClose={onClose}
       footer={
         <>
-          <button
-            className="vm-btn vm-btn--secondary"
-            type="button"
-            disabled={busy}
-            onClick={onClose}
-          >
+          <WorkspaceButton type="button" disabled={busy} onClick={onClose}>
             {cancel}
-          </button>
-          <button
-            className="vm-btn vm-btn--danger"
+          </WorkspaceButton>
+          <WorkspaceButton
+            danger
+            busy={busy}
             type="button"
             disabled={busy}
             data-danger="true"
             onClick={onConfirm}
           >
             {confirm}
-          </button>
+          </WorkspaceButton>
         </>
       }
     >
       <p>{message}</p>
-      {error && <p role="alert">{error}</p>}
+      {error && <WorkspaceAlert type="error" title={error} />}
     </VmDialog>
   );
 }

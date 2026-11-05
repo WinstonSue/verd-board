@@ -1,3 +1,4 @@
+import { selectHistoryAction } from './app-actions';
 import { test, expect, type Page } from '@playwright/test';
 import { readFile } from 'node:fs/promises';
 import { readFileSync } from 'node:fs';
@@ -73,6 +74,31 @@ test('UML class editing, six-way relationship settings, native save and Mermaid/
   await expect(nodes(page, 'uml-class')).toHaveCount(2);
   await expect(nodes(page, 'uml-relation')).toHaveCount(1);
   await expect(nodes(page, 'uml-class').first()).toContainText('+id: string');
+  const classNodes = nodes(page, 'uml-class');
+  await classNodes.first().click({ position: { x: 12, y: 12 } });
+  await classNodes
+    .last()
+    .click({ modifiers: ['Shift'], position: { x: 12, y: 12 } });
+  await classNodes
+    .first()
+    .click({ button: 'right', position: { x: 12, y: 12 } });
+  const selection = page.getByRole('dialog', { name: 'Selection actions' });
+  await selection.getByRole('button', { name: '分组', exact: true }).click();
+  const groupCount = async () =>
+    Object.values<any>((await saved())?.cells ?? {}).filter(
+      (cell) => cell.cellType === 'group',
+    ).length;
+  await expect.poll(groupCount).toBe(1);
+  await umlCanvas(page).press('ControlOrMeta+d');
+  await expect(classNodes).toHaveCount(4);
+  await expect(nodes(page, 'uml-relation')).toHaveCount(2);
+  await expect.poll(groupCount).toBe(2);
+  await umlCanvas(page).press('ControlOrMeta+z');
+  await expect(classNodes).toHaveCount(2);
+  await expect.poll(groupCount).toBe(1);
+  await classNodes.first().click({ position: { x: 12, y: 12 } });
+  await umlCanvas(page).press('ControlOrMeta+Shift+g');
+  await expect.poll(groupCount).toBe(0);
 });
 
 test('UML sequence native import preserves nested events, activation, self calls and message history', async ({
@@ -111,9 +137,9 @@ test('UML sequence native import preserves nested events, activation, self calls
   await label.fill('changed()');
   await label.press('Tab');
   await expect(message).toContainText('changed()');
-  await page.getByRole('button', { name: '撤销', exact: true }).click();
+  await selectHistoryAction(page, '撤销');
   await expect(message).toContainText('request()');
-  await page.getByRole('button', { name: '重做', exact: true }).click();
+  await selectHistoryAction(page, '重做');
   await expect(message).toContainText('changed()');
   await expect
     .poll(async () =>
@@ -173,7 +199,7 @@ test('UML structural drags reorder messages and participants and preserve one-st
       before.events[2].cellId,
       before.events[0].cellId,
     ]);
-  await page.getByRole('button', { name: '撤销', exact: true }).click();
+  await selectHistoryAction(page, '撤销');
   await expect
     .poll(async () => (await root()).data.events)
     .toEqual(before.events);

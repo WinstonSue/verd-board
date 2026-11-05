@@ -7,6 +7,7 @@ import { createDrawPlugin } from '@sue/board-draw';
 import { createUmlPlugin, umlRoot } from '@sue/board-uml';
 import {
   createWorkflowPlugin,
+  defaultWorkflowPort,
   WorkflowKind,
   type WorkflowStartData,
 } from '@sue/board-workflow';
@@ -391,9 +392,14 @@ const nativeSnapshot = (
     if (!source || !target)
       throw new Error('Mermaid edge references a missing node');
     const meta = model.edgeMeta[at];
-    const port = (id: string | undefined, fallback: string) =>
+    const port = (id: string | undefined, fallback: string | undefined) =>
       id === 'out' ? 'right' : id === 'in' ? 'left' : (id ?? fallback);
     const id = idFor('edge', meta?.key ?? `edge-${at + 1}`);
+    const sourceNode = cells[source],
+      targetNode = cells[target];
+    if (!isNodeCell(sourceNode) || !isNodeCell(targetNode))
+      throw new Error('Mermaid edge references a non-node');
+    const store = { rootId: frame.id, cells };
     add({
       id,
       kind:
@@ -404,13 +410,23 @@ const nativeSnapshot = (
       source: {
         cellId: source,
         ...(scene === 'workflow'
-          ? { portId: port(meta?.sourcePort, 'right') }
+          ? {
+              portId: port(
+                meta?.sourcePort,
+                defaultWorkflowPort(store, sourceNode, targetNode, 'source'),
+              ),
+            }
           : {}),
       },
       target: {
         cellId: target,
         ...(scene === 'workflow'
-          ? { portId: port(meta?.targetPort, 'left') }
+          ? {
+              portId: port(
+                meta?.targetPort,
+                defaultWorkflowPort(store, targetNode, sourceNode, 'target'),
+              ),
+            }
           : {}),
       },
       route: { mode: 'orthogonal' },

@@ -1,3 +1,4 @@
+import { readOrganization } from '../management/organization';
 import { isRegularCanvas } from '../frames/frame-organization';
 import type { FrameOrganization } from '../frames/frame-files';
 import type { ActionResult } from '@sue/board-common';
@@ -36,6 +37,8 @@ export const WORKSPACE_UI_ACTION_IDS = [
   'file.move',
   'file.duplicate',
   'file.copy-link',
+  'file.favorite',
+  'file.unfavorite',
   'file.export',
   'file.trash',
   'directory.create-canvas',
@@ -44,6 +47,7 @@ export const WORKSPACE_UI_ACTION_IDS = [
   'directory.new-here',
   'directory.confirm-trash',
   'directory.trash',
+  'directory.copy-link',
   'directory.toggle',
   'owner.toggle',
   'tab.activate',
@@ -98,6 +102,8 @@ export const WORKSPACE_ACTION_SURFACES = {
     'file.move',
     'file.duplicate',
     'file.copy-link',
+    'file.favorite',
+    'file.unfavorite',
     'file.export',
     'file.trash',
     'directory.create-canvas',
@@ -106,6 +112,7 @@ export const WORKSPACE_ACTION_SURFACES = {
     'directory.new-here',
     'directory.confirm-trash',
     'directory.trash',
+    'directory.copy-link',
     'directory.toggle',
     'owner.toggle',
     'mkdir',
@@ -354,7 +361,7 @@ export function createWorkspaceSurfaceActions(options: {
       visible: options.getState().allowWorkspaceSwitching && !c.readonly,
     }),
   });
-  add('open-builtin', '回到内置工作区', 'Open built-in workspace', {
+  add('open-builtin', '打开系统介绍', 'Open system introduction', {
     allowNoSession: true,
     getState: (c) => ({
       visible: options.getState().allowWorkspaceSwitching && !c.readonly,
@@ -399,6 +406,49 @@ export function createWorkspaceSurfaceActions(options: {
       validateArgs: (args) => stringArg(args, 'fileId'),
       getState: (c, args) => targetState(fileExists(c, args)),
     });
+  for (const [id, favorite, zh, en] of [
+    ['file.favorite', true, '收藏', 'Favorite'],
+    ['file.unfavorite', false, '取消收藏', 'Unfavorite'],
+  ] as const)
+    add(
+      id,
+      zh,
+      en,
+      write({
+        effect: 'content',
+        concurrency: 'queue',
+        palette: false,
+        validateArgs: (args) => stringArg(args, 'fileId'),
+        getState: (c, args) => {
+          const exists = fileExists(c, args);
+          const config = c.session?.getState().config.value;
+          const fileId = String(workspaceActionArgument(args, 'fileId'));
+          return {
+            ...targetState(exists),
+            visible:
+              !c.readonly &&
+              exists &&
+              !!config &&
+              readOrganization(config).favorites.includes(fileId) !== favorite,
+          };
+        },
+        execute: async (c, args) => {
+          const session = c.session!;
+          const config = session.getState().config.value;
+          const navigation = readOrganization(config);
+          const fileId = String(workspaceActionArgument(args, 'fileId'));
+          if (navigation.favorites.includes(fileId) === favorite)
+            return { status: 'noop' };
+          navigation.favorites = favorite
+            ? [...navigation.favorites, fileId]
+            : navigation.favorites.filter((id) => id !== fileId);
+          session.setWorkspaceConfig({ ...config, navigation });
+          return (await session.flush())
+            ? { status: 'completed' }
+            : { status: 'failed', code: 'workspace-config-save-failed' };
+        },
+      }),
+    );
   const present = (_c: WorkspaceActionContext, args: unknown): ActionResult => {
     const callback = workspaceActionArgument(args, 'present');
     if (typeof callback !== 'function')
@@ -560,6 +610,24 @@ export function createWorkspaceSurfaceActions(options: {
         ),
     }),
   );
+  add('directory.copy-link', '复制链接', 'Copy link', {
+    effect: 'external',
+    palette: false,
+    validateArgs: (args) => stringArg(args, 'path'),
+    getState: (c, args) => {
+      const path = workspaceActionArgument(args, 'path');
+      const entry = c.session
+        ?.getState()
+        .entries.find(
+          (item) => item.kind === 'directory' && item.path === path,
+        );
+      return {
+        ...targetState(!!entry),
+        enabled: !!entry && (!c.readonly || !!entry.folderId),
+        reason: c.readonly && !entry?.folderId ? 'readonly' : undefined,
+      };
+    },
+  });
   add('directory.toggle', '展开/收起文件夹', 'Toggle directory', {
     effect: 'view',
     palette: false,
@@ -839,7 +907,7 @@ export function createWorkspaceSurfaceActions(options: {
       execute: present,
     }),
   );
-  add('library.back', '返回画布', 'Back to canvas', {
+  add('library.back', '返回编辑', 'Back to editor', {
     effect: 'view',
     palette: false,
     execute: present,

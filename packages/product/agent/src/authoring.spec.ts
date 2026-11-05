@@ -16,11 +16,16 @@ import {
 } from '@sue/verd-board-app/headless';
 import { readNativeSnapshot } from './node/workspace-lock';
 import { initializePatternWorkspace } from './node/pattern-workspace';
+import { runCli } from './cli';
 import { prepareAuthoringBatch, describeAuthoring } from './authoring';
 import { applyPreparedBatch } from './apply';
 import { runOperations } from './operations';
 import type { AuthoringOperation } from './types';
 import { parseOperations } from './schema';
+import {
+  deriveBoardTextPlainText,
+  type BoardTextNode,
+} from '@sue/board-common';
 
 const temporary: string[] = [];
 async function workspace() {
@@ -34,6 +39,65 @@ afterEach(async () => {
   );
 });
 describe('agent patterns and real authoring contracts', () => {
+  it('inspects the exact saved node from an older owner link and rejects duplicate identities', async () => {
+    const root = await workspace();
+    const id = 'node/with~escaped';
+    const board = (frameId: string, hasNode: boolean) => ({
+      format: 'verd-frame',
+      version: 2,
+      frame: {
+        id: frameId,
+        cellType: 'frame',
+        kind: 'frame',
+        geometry: { x: 0, y: 0, width: 100, height: 100 },
+        children: hasNode ? [id] : [],
+        groups: [],
+      },
+      cells: hasNode
+        ? {
+            [id]: {
+              id,
+              kind: 'geometry',
+              cellType: 'node',
+              geometry: { x: 5, y: 10, width: 40, height: 20 },
+              content: { label: 'Saved label' },
+            },
+          }
+        : {},
+    });
+    const original = path.join(root, 'old.verd.json');
+    const current = path.join(root, 'current.verd.json');
+    await fs.writeFile(original, JSON.stringify(board('old', false)));
+    await fs.writeFile(current, JSON.stringify(board('current', true)));
+    const inspect = (target: string) =>
+      runCli(['inspect', target, '--workspace', root, '--json']);
+    const href = 'verd://file/old#' + encodeURIComponent('cell:' + id);
+    expect((await inspect(href)).result).toEqual({
+      fileId: 'current',
+      path: 'current.verd.json',
+      fileVersion: expect.stringMatching(/^sha256-/),
+      pointer: '/cells/node~1with~0escaped',
+      node: board('current', true).cells[id],
+    });
+    expect(
+      (await inspect('verd://file/current#cell%3Acurrent')).result,
+    ).toMatchObject({ pointer: '/frame', node: { id: 'current' } });
+    expect((await inspect('current.verd.json')).result).toMatchObject({
+      entries: [{ fileId: 'current' }],
+    });
+    await fs.writeFile(original, JSON.stringify(board('old', true)));
+    expect(await inspect(href)).toMatchObject({
+      exitCode: 2,
+      result: { code: 'ambiguous-cell' },
+    });
+    await fs.writeFile(original, JSON.stringify(board('old', false)));
+    await fs.unlink(current);
+    expect(await inspect(href)).toMatchObject({
+      exitCode: 2,
+      result: { code: 'missing-cell' },
+    });
+  });
+
   it('uses its published operation schema for nested input checks', () => {
     expect(() =>
       parseOperations([
@@ -360,6 +424,48 @@ describe('agent patterns and real authoring contracts', () => {
             : e.file.frame.name === 'Custom title',
         ),
       ).toBe(true);
+    }
+  });
+  it('makes the native diagram quality guide discoverable from the skill and workflow guides', async () => {
+    const skill = await fs.readFile(
+      new URL('../skills/verd-authoring/SKILL.md', import.meta.url),
+      'utf8',
+    );
+    const relative = skill.match(
+      /shared\/patterns\/([^`]+\.verd-doc\.json)/,
+    )?.[1];
+    expect(relative).toBeTruthy();
+    const guide = JSON.parse(
+      await fs.readFile(new URL(relative!, patternWorkspaceUrl), 'utf8'),
+    ) as DocumentFileV1;
+    expect(guide.id).toBe('pattern-guide:diagram-quality');
+    expect(guide.text.id).toBe(guide.id);
+    expect(guide.text.plainText).toBe(
+      deriveBoardTextPlainText(guide.text.content),
+    );
+    const snapshot = await readNativeSnapshot(
+      fileURLToPath(patternWorkspaceUrl),
+    );
+    expect(validateNativeWorkspace(snapshot.entries)).toEqual([]);
+    const linksToGuide = (node: BoardTextNode): boolean =>
+      !!node.marks?.some(
+        (mark) =>
+          mark.type === 'link' &&
+          mark.attrs?.['href'] ===
+            `verd://file/${encodeURIComponent(guide.id)}`,
+      ) || !!node.content?.some(linksToGuide);
+    for (const id of [
+      'pattern-library:index',
+      'pattern-guide:workflow-dag',
+      'pattern-guide:workflow-process',
+    ]) {
+      const source = snapshot.entries.find(
+        (entry) =>
+          entry.file.format === 'verd-document' && entry.file.id === id,
+      )?.file;
+      expect(source?.format).toBe('verd-document');
+      if (source?.format === 'verd-document')
+        expect(linksToGuide(source.text.content)).toBe(true);
     }
   });
   it('seeds once, preserves edited copies and refuses explicit replacement', async () => {

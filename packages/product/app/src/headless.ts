@@ -10,3 +10,6 @@ export * from './session/workspace-session';
 export * from './workspace-validation';
 
 export { storeAttachment } from './documents/workspace-resources';
+
+export * from './host/folder-identity';
+export { cellOwnerIndex } from './session/target-navigation';

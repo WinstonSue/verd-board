@@ -1,6 +1,6 @@
 {
   "name": "@sue/verd-board-agent-patterns",
-  "version": "0.1.0",
+  "version": "2.0.1",
   "type": "module",
   "private": false,
   "main": "./dist/index.cjs",
@@ -14,10 +14,9 @@
     "rules.json"
   ],
   "scripts": {
-    "build": "vite build && node ../../../scripts/build-builtin-package.mjs agent-patterns",
+    "build": "vite build",
     "lint": "eslint src",
-    "test": "vitest run --passWithNoTests",
-    "prepack": "node ../../../scripts/build-builtin-package.mjs agent-patterns --check"
+    "test": "vitest run --passWithNoTests"
   },
   "exports": {
     ".": {
@@ -50,9 +49,5 @@
     "vite": "^6.2.2",
     "vitest": "^3.0.8",
     "eslint": "^9.22.0"
-  },
-  "verdBuiltin": {
-    "kind": "agent-patterns",
-    "minimumAppVersion": "0.0.1"
   }
 }

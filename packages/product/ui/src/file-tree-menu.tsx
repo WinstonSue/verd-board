@@ -1,3 +1,4 @@
+import { useWorkspaceDesignVariables } from './workspace-design';
 import { usePortalRoot } from './components/portal-root';
 import { Fragment, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
@@ -61,6 +62,7 @@ export function FileTreeMenu({
   portalRoot?: HTMLElement | null;
 }) {
   const inheritedRoot = usePortalRoot();
+  const designVariables = useWorkspaceDesignVariables();
   useActionSource(actionSource);
   items = items.flatMap((item) => {
     if (!item.action) return [item];
@@ -161,7 +163,7 @@ export function FileTreeMenu({
       >
         <div
           ref={refs.setFloating}
-          style={floatingStyles}
+          style={{ ...designVariables, ...floatingStyles }}
           className={['workspace-menu', className].filter(Boolean).join(' ')}
           {...getFloatingProps({ 'aria-label': label })}
         >

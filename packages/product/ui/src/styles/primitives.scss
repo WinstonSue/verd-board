@@ -259,16 +259,11 @@
   flex-wrap: wrap;
   margin-top: 16px;
 }
-.vm-disclosure__toggle {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding-inline: 0;
-}
 .vm-disclosure__body {
   padding-block: 8px;
 }
 .vm-diagnostics {
+  user-select: text;
   font: var(--vm-text-sm)/var(--vm-leading-prose) var(--vm-font-mono);
   overflow-wrap: anywhere;
 }

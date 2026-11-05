@@ -1,3 +1,4 @@
+import { selectSetting } from '../../helpers/settings-controls';
 import { test, expect } from '@playwright/test';
 test('workspace navigation, drafts, quick open and bounded settings', async ({
   page,
@@ -64,7 +65,7 @@ test('workspace navigation, drafts, quick open and bounded settings', async ({
   }
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.getByTestId('workspace-my').click();
-  await page.getByTestId('settings-appearance').selectOption('dark');
+  await selectSetting(page.getByTestId('settings-appearance'), 'dark');
   await page.getByTestId('my-back').click();
   for (const [width, height] of [
     [1440, 900],

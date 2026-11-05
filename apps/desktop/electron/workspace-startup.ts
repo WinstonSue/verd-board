@@ -35,6 +35,7 @@ export async function seedBuiltinWorkspace(
   source: string,
   target: string,
   legacyStorage: string,
+  appVersion?: string,
 ): Promise<void> {
   if (await hasWorkspaceState(target)) return;
   // Reading corrupt legacy storage throws and preserves its backup. A template
@@ -43,7 +44,7 @@ export async function seedBuiltinWorkspace(
   await fs.mkdir(path.dirname(target), { recursive: true });
   const staging = await fs.mkdtemp(`${target}.seed-`);
   try {
-    await stageBuiltinWorkspace(source, staging, 'project');
+    await stageBuiltinWorkspace(source, staging, 'project', appVersion);
     if (await hasWorkspaceState(target)) return;
     // rmdir only succeeds for an empty target; racing user content survives.
     try {
@@ -67,6 +68,7 @@ export function createDesktopWorkspaceManager(options: {
   legacyStorage(): string;
   /** Former shared development/production data; recover as history, never select. */
   legacyUserDataRoot?: string;
+  appVersion?(): string;
   explicitRoot?: string;
   pickDirectory(): Promise<string | null>;
   now?(): number;
@@ -163,6 +165,27 @@ export function createDesktopWorkspaceManager(options: {
     await recovering;
   };
   return {
+    /** Register a backup without changing the selected workspace. */
+    async rememberBackup(root: string) {
+      root = path.resolve(root);
+      for (let attempt = 0; attempt < 5; attempt++) {
+        const config = await options.host.readGlobalConfig();
+        const history = readHistory(config.value);
+        if (history.some((entry) => entry.path === root)) return;
+        history.push({
+          id: historyIdFor(root),
+          path: root,
+          name: path.basename(root),
+          lastOpenedAt: (options.now ?? Date.now)(),
+        });
+        const result = await options.host.writeGlobalConfig(
+          { ...config.value, [historyKey]: history },
+          config.version,
+        );
+        if (result.applied) return;
+      }
+      throw new Error('Could not register workspace backup');
+    },
     async listHistory(): Promise<WorkspaceHistoryEntry[]> {
       await recoverLegacyHistory();
       const entries = readHistory(
@@ -315,6 +338,7 @@ export function createDesktopWorkspaceManager(options: {
           options.builtinSource(),
           root,
           options.legacyStorage(),
+          options.appVersion?.(),
         ).finally(() => {
           preparing = undefined;
         });

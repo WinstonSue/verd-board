@@ -16,14 +16,6 @@
     overflow-wrap: anywhere;
   }
 }
-.workspace-trash-count {
-  padding: 1px 7px;
-  border-radius: 6px;
-  background: var(--vm-fill-hover);
-  color: var(--vm-foreground-secondary);
-  font-size: var(--vm-text-xs);
-  font-weight: 400;
-}
 .workspace-trash-list {
   list-style: none;
   margin: 20px 0 0;
@@ -75,25 +67,10 @@
   flex-wrap: wrap;
   grid-column: 1 / -1;
 }
-.frame-settings-page .workspace-trash-purge,
-.frame-settings-page .workspace-trash-clear {
-  color: var(--vm-danger);
-}
 .workspace-trash-empty {
   display: grid;
   justify-items: center;
   padding: 56px 8px;
-  color: var(--vm-foreground-tertiary);
-  p {
-    margin: 16px 0 0;
-  }
-}
-.workspace-trash-error {
-  color: var(--vm-danger);
-  overflow-wrap: anywhere;
-}
-.frame-settings-page .workspace-trash-error p {
-  color: inherit;
 }
 @media (max-width: 600px) {
   .workspace-trash-row {

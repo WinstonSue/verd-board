@@ -1,5 +1,7 @@
+import { selectHistoryAction } from './app-actions';
 import { test, expect, type Page } from '@playwright/test';
 import { selectAppAction, setAppLanguage } from './app-actions';
+import { activeTabTitle } from './tab-actions';
 const active = (page: Page) => page.locator('.workspace-pane.is-active');
 const canvas = (page: Page) =>
   active(page).locator('svg[data-surface="root"]').first();
@@ -212,10 +214,8 @@ test('document Frames edit one source, restore the originating occurrence and le
   await shell(page, 'editor-b')
     .getByRole('button', { name: '打开详情', exact: true })
     .click();
-  await expect(active(page).locator('.document-page__title')).toHaveValue(
-    'Shared source',
-  );
-  await active(page).getByRole('button', { name: '撤销', exact: true }).click();
+  await expect(activeTabTitle(page)).toHaveText('Shared source');
+  await selectHistoryAction(page, '撤销');
   await expect(canvas(page)).toBeVisible();
   await expect(
     shell(page, 'editor-b').locator('[data-document-editing]'),
@@ -250,9 +250,7 @@ test('document header actions support keyboard navigation on locked and read-onl
       .getByRole('button', { name: '打开详情', exact: true });
     await action.focus();
     await action.press('Enter');
-    await expect(active(page).locator('.document-page__title')).toHaveValue(
-      'Shared source',
-    );
+    await expect(activeTabTitle(page)).toHaveText('Shared source');
     await page
       .locator('.file-tree-name')
       .getByText('Editable board', { exact: true })
@@ -366,12 +364,12 @@ test('new document Frame placement creates its source atomically and cancellatio
     active(page).locator('[data-cell-kind="document-frame"]'),
   ).toHaveCount(1);
   await expect(page.locator('.file-tree-name')).toHaveCount(initial + 1);
-  await active(page).getByRole('button', { name: '撤销', exact: true }).click();
+  await selectHistoryAction(page, '撤销');
   await expect(
     active(page).locator('[data-cell-kind="document-frame"]'),
   ).toHaveCount(0);
   await expect(page.locator('.file-tree-name')).toHaveCount(initial);
-  await active(page).getByRole('button', { name: '重做', exact: true }).click();
+  await selectHistoryAction(page, '重做');
   await expect(
     active(page).locator('[data-cell-kind="document-frame"]'),
   ).toHaveCount(1);

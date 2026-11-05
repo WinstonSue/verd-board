@@ -22,7 +22,8 @@
     "@sue/board-mind": "workspace:*",
     "@sue/board-react": "workspace:*",
     "@sue/board-layouts": "workspace:*",
-    "@sue/board-react-text": "workspace:*"
+    "@sue/board-react-text": "workspace:*",
+    "lucide-react": "1.47.0"
   },
   "peerDependencies": {
     "react": ">=18",

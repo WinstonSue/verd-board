@@ -4,6 +4,8 @@ import {
   createCellRegistry,
   createCellStore,
   createFrameCell,
+  frameLanes,
+  planCellLayout,
   groupAncestors,
   indexCells,
   isEdgeCell,
@@ -226,20 +228,20 @@ export const autoLayoutWorkflow = (
     store,
     nodes.map((node) => node.id),
   );
-  if (nodes.some((node) => groupAncestors(store, node.id).length)) {
+  const frameId = indexCells(store).parentOf.get(startId)!;
+  const laneMembers = new Set(
+    frameLanes(store, frameId, registry).flatMap((lane) => lane.members),
+  );
+  const hasLanes = nodes.some((node) => laneMembers.has(node.id));
+  if (hasLanes || nodes.some((node) => groupAncestors(store, node.id).length)) {
     const ids = [
       ...new Set(
         nodes.map((node) => groupAncestors(store, node.id).at(-1) ?? node.id),
       ),
     ];
-    return arrangeCells(
-      store,
-      indexCells(store).parentOf.get(startId)!,
-      ids,
-      'flow',
-      32,
-      registry,
-    );
+    if (hasLanes)
+      return planCellLayout(store, { focus: [frameId], ids }, 'flow', registry);
+    return arrangeCells(store, frameId, ids, 'flow', 32, registry);
   }
   const layout = layoutDag(
     nodes.map((node) => ({

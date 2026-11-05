@@ -4,6 +4,7 @@ import {
   ResourceContent,
 } from './document-resources';
 import katex from 'katex';
+import { setFoldIcon } from '../../utils/fold-icon';
 import {
   prepareListFolding,
   revealPreviewTarget,
@@ -27,7 +28,7 @@ import './document-editor.scss';
 export type DocumentPreviewController = Pick<
   DocumentEditorController,
   'getHeadings' | 'locateHeading'
->;
+> & { locateBlock(id: string): boolean };
 
 export interface DocumentPreviewProps {
   mode?: 'preview' | 'export';
@@ -60,6 +61,7 @@ const serializer = new DOMSerializer(
       'div',
       {
         class: 'document-frame-reference',
+        'data-block-id': node.attrs['blockId'] || '',
         'data-document-excerpt': node.attrs['targetDocumentId'],
       },
     ],
@@ -67,6 +69,7 @@ const serializer = new DOMSerializer(
       'div',
       {
         class: 'document-frame-reference',
+        'data-block-id': node.attrs['blockId'] || '',
         'data-frame-reference': String(node.attrs['targetFrameId'] ?? ''),
       },
     ],
@@ -97,10 +100,18 @@ function preparePreview(
         continue;
       }
       const id = element.dataset['blockId'];
-      if (id) {
-        element.open = folding?.getSnapshot().get(id) === false;
-        element.ontoggle = () => folding?.setCollapsed(id, !element.open);
-      }
+      const summary = element.querySelector('summary');
+      const icon = document.createElement('span');
+      icon.className = 'document-summary-fold';
+      icon.setAttribute('aria-hidden', 'true');
+      summary?.prepend(icon);
+      element.classList.add('document-lucide-details');
+      if (id) element.open = folding?.getSnapshot().get(id) === false;
+      setFoldIcon(icon, !element.open);
+      element.ontoggle = () => {
+        setFoldIcon(icon, !element.open);
+        if (id) folding?.setCollapsed(id, !element.open);
+      };
     }
     for (const formula of body.querySelectorAll<HTMLElement>('[data-latex]')) {
       formula.innerHTML = katex.renderToString(formula.dataset['latex'] ?? '', {
@@ -238,7 +249,7 @@ export function DocumentPreview({
         );
         if (button) {
           button.setAttribute('aria-expanded', String(!collapsed));
-          button.textContent = collapsed ? '▸' : '▾';
+          setFoldIcon(button, collapsed);
         }
       }
       for (const item of prepared.body?.querySelectorAll<HTMLDetailsElement>(
@@ -296,16 +307,29 @@ export function DocumentPreview({
   const reportError = useRef(onError);
   reportError.current = onError;
   const hasBody = Boolean(prepared.body);
+  const reveal = (element: HTMLElement | undefined) => {
+    if (!element) return false;
+    revealPreviewTarget(element);
+    element.scrollIntoView?.({ block: 'start', inline: 'nearest' });
+    return true;
+  };
   const controller = useMemo<DocumentPreviewController>(
     () => ({
       getHeadings: () =>
         current.current?.headings?.map((item) => ({ ...item })) ?? [],
       locateHeading(pos) {
-        revealPreviewTarget(current.current?.targets?.get(pos));
-        current.current?.targets?.get(pos)?.scrollIntoView?.({
-          block: 'start',
-          inline: 'nearest',
-        });
+        reveal(current.current?.targets?.get(pos));
+      },
+      locateBlock(id) {
+        const blocks =
+          current.current?.body?.querySelectorAll<HTMLElement>(
+            '[data-block-id]',
+          );
+        return reveal(
+          Array.from(blocks ?? []).find(
+            (block) => block.dataset['blockId'] === id,
+          ),
+        );
       },
     }),
     [],

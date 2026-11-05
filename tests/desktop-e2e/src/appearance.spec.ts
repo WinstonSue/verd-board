@@ -1,3 +1,7 @@
+import {
+  expectSettingValue,
+  selectSetting,
+} from '../../helpers/settings-controls';
 import { electron, writeDesktopLauncher } from './desktop-launcher';
 import {
   expect,
@@ -153,7 +157,7 @@ test('Desktop follows system, remembers manual appearance after restart, and lea
     );
     // Sidebar settings work independently of the active editor.
     await page.locator('.workspace-sidebar-footer button').click();
-    await expect(page.getByTestId('settings-appearance')).toHaveValue('system');
+    await expectSettingValue(page.getByTestId('settings-appearance'), 'system');
     expect(
       await page
         .getByTestId('my-page')
@@ -161,7 +165,7 @@ test('Desktop follows system, remembers manual appearance after restart, and lea
           (element) => getComputedStyle(element, '::backdrop').backgroundColor,
         ),
     ).toBe('rgba(0, 0, 0, 0.6)');
-    await page.getByTestId('settings-appearance').selectOption('light');
+    await selectSetting(page.getByTestId('settings-appearance'), 'light');
     expect(
       await page
         .getByTestId('my-page')
@@ -184,7 +188,7 @@ test('Desktop follows system, remembers manual appearance after restart, and lea
     const content = await readFile(docPath, 'utf8');
     const canvases = await workspaceDigest(userData);
     await page.locator('.workspace-sidebar-footer button').click();
-    await page.getByTestId('settings-appearance').selectOption('dark');
+    await selectSetting(page.getByTestId('settings-appearance'), 'dark');
     await page.getByTestId('my-back').click();
     await expect(page.getByText('Original body', { exact: true })).toHaveCSS(
       'color',
@@ -205,7 +209,7 @@ test('Desktop follows system, remembers manual appearance after restart, and lea
       'dark',
     );
     await page.locator('.workspace-sidebar-footer button').click();
-    await expect(page.getByTestId('settings-appearance')).toHaveValue('dark');
+    await expectSettingValue(page.getByTestId('settings-appearance'), 'dark');
     await page.getByTestId('my-back').click();
     await page
       .locator('.file-tree-name')
@@ -280,7 +284,7 @@ test('Desktop follows system, remembers manual appearance after restart, and lea
       .filter({ hasText: /^Desktop theme board$/ })
       .click();
     await page.locator('.workspace-sidebar-footer button').click();
-    await page.getByTestId('settings-appearance').selectOption('system');
+    await selectSetting(page.getByTestId('settings-appearance'), 'system');
     await expect(page.locator('html')).toHaveAttribute(
       'data-verd-appearance',
       'light',

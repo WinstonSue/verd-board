@@ -6,5 +6,6 @@ export default createLibViteConfig({
   entry: 'src/index.ts',
   styleEntry: 'src/style.ts',
   react: true,
+  externals: ['lucide-react'],
   cacheDir: '../../../node_modules/.vite/packages/react-mind',
 });

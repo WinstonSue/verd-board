@@ -1,3 +1,5 @@
+import { enterDocumentPresentation } from './documents/presentation-entry';
+import { findFoldersById } from './host/folder-identity';
 import {
   WorkspaceManagementMenu,
   WorkspaceManagementResize,
@@ -97,14 +99,20 @@ import { createUmlPlugin } from '@sue/board-uml';
 import { createWorkflowPlugin } from '@sue/board-workflow';
 import type { FrameInstanceHost, FrameOpenSource } from '@sue/verd-board-ui';
 import {
+  requestPresentationFullscreen,
+  exitPresentationFullscreen,
   ChartLibrary,
   FileTree,
   I18nProvider,
   OrganizePreview,
   PreviewMountProvider,
-  useAppearancePreference,
+  WorkspaceDesignProvider,
+  WorkspaceLinkEditor,
+  useWorkspaceDesignVariables,
   useI18n,
   VerdFrame,
+  FrameSaveStatus,
+  DocumentSaveStatus,
   WorkspaceEmpty,
   VmDialog,
   SettingsCenter,
@@ -117,7 +125,13 @@ import {
   type DocumentSelection,
   type OrganizePreviewRow,
 } from '@sue/verd-board-ui';
-import { LoaderCircle, TriangleAlert, Settings } from 'lucide-react';
+import {
+  LoaderCircle,
+  TriangleAlert,
+  Settings,
+  ArrowLeft,
+  LogOut,
+} from 'lucide-react';
 import {
   startTransition,
   useCallback,
@@ -238,12 +252,13 @@ const initializedWorkspaces = new Set<string>();
  * selection, tool — survives tab switches without persistence.
  */
 export function WorkspaceApp(props: WorkspaceAppProps) {
-  useAppearancePreference();
   return (
     <I18nProvider>
-      <PreviewMountProvider>
-        <WorkspaceAppShell {...props} />
-      </PreviewMountProvider>
+      <WorkspaceDesignProvider>
+        <PreviewMountProvider>
+          <WorkspaceAppShell {...props} />
+        </PreviewMountProvider>
+      </WorkspaceDesignProvider>
     </I18nProvider>
   );
 }
@@ -259,6 +274,7 @@ function WorkspaceAppShell({
   allowWorkspaceSwitching = false,
 }: WorkspaceAppProps) {
   const { language } = useI18n();
+  const workspaceDesign = useWorkspaceDesignVariables();
   const { linkActivation } = useInteractionPreferences();
   const locale = language === 'en' ? 'en' : 'zh';
   useEffect(() => {
@@ -480,26 +496,6 @@ function WorkspaceAppShell({
         if (!ids.has(fileId)) autoCalculationSession.clearFile(fileId);
     openAutoCalculationFiles.current = { owner: autoCalculationSession, ids };
   }, [autoCalculationNavigation, autoCalculationSession]);
-  const [contentUpdates, setContentUpdates] = useState<
-    import('./host/workspace-host').BuiltinUpdateStatus[]
-  >([]);
-  useEffect(() => {
-    if (!host.checkBuiltinUpdates) return;
-    const check = () => {
-      void host.checkBuiltinUpdates!()
-        .then(setContentUpdates)
-        .catch(() => {});
-    };
-    check();
-    const unsubscribe = host.subscribeBuiltinUpdates?.(check);
-    const interval = setInterval(check, 86400000);
-    window.addEventListener('focus', check);
-    return () => {
-      unsubscribe?.();
-      clearInterval(interval);
-      window.removeEventListener('focus', check);
-    };
-  }, [host]);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<{
     text: string;
@@ -581,6 +577,7 @@ function WorkspaceAppShell({
   const documentControllers = useRef(
     new Map<string, DocumentEditorController>(),
   );
+  const createdDocumentRef = useRef<CellId | null>(null);
   const frameReadyCallbacks = useRef(
     new Map<string, (controller: FrameCanvasController | null) => void>(),
   );
@@ -639,7 +636,18 @@ function WorkspaceAppShell({
         if (controller) {
           documentControllers.current.set(fileId, controller);
           navigationFeedbackRef.current.refresh();
-          queueMicrotask(() => restoreOriginHandler.current());
+          const isNewDocument = createdDocumentRef.current === fileId;
+          if (isNewDocument) createdDocumentRef.current = null;
+          queueMicrotask(() => {
+            if (
+              isNewDocument &&
+              documentControllers.current.get(fileId) === controller &&
+              workspaceActionContext.current.session?.getState().session
+                .activeTabId === fileId
+            )
+              controller.focus('start');
+            restoreOriginHandler.current();
+          });
         } else documentControllers.current.delete(fileId);
       };
       documentReadyCallbacks.current.set(fileId, callback);
@@ -653,6 +661,94 @@ function WorkspaceAppShell({
     session: WorkspaceSession;
     unsubscribe(): void;
   } | null>(null);
+  const presentationRoot = useRef<HTMLDivElement>(null);
+  const [presenting, setPresenting] = useState(false);
+  const presentationRequest = useRef(0);
+  const presentationPending = useRef(false);
+  const presentationFocus = useRef<HTMLElement | null>(null);
+  const changePresentation = useCallback((active: boolean) => {
+    presentationRequest.current++;
+    presentationPending.current = false;
+    if (active) {
+      presentationFocus.current = document.activeElement as HTMLElement | null;
+      if (presentationRoot.current)
+        requestPresentationFullscreen(presentationRoot.current);
+    } else {
+      exitPresentationFullscreen(presentationRoot.current);
+      requestAnimationFrame(() => {
+        if (presentationFocus.current?.isConnected)
+          presentationFocus.current.focus();
+      });
+    }
+    setPresenting(active);
+  }, []);
+  useEffect(() => {
+    if (!presenting) return;
+    const root = presentationRoot.current;
+    let entered = document.fullscreenElement === root;
+    const changed = () => {
+      if (document.fullscreenElement === root) entered = true;
+      else if (entered) changePresentation(false);
+    };
+    const escape = (event: KeyboardEvent) => {
+      if (
+        event.key !== 'Escape' ||
+        event.isComposing ||
+        !root?.querySelector('.workspace-document-presentation')
+      )
+        return;
+      event.preventDefault();
+      event.stopPropagation();
+      changePresentation(false);
+    };
+    document.addEventListener('fullscreenchange', changed);
+    document.addEventListener('keydown', escape, true);
+    return () => {
+      document.removeEventListener('fullscreenchange', changed);
+      document.removeEventListener('keydown', escape, true);
+    };
+  }, [presenting, changePresentation]);
+  const presentationLease = useRef({ generation: 0 });
+  useEffect(() => {
+    if (!presenting) return;
+    const owner = presentationLease.current;
+    const lease = ++owner.generation;
+    const root = presentationRoot.current;
+    return () => {
+      queueMicrotask(() => {
+        if (owner.generation === lease) exitPresentationFullscreen(root);
+      });
+    };
+  }, [presenting]);
+  const listOrigins = useRef(new Map<string, 'all' | 'library'>());
+  const [builtinInfo, setBuiltinInfo] = useState<
+    import('./host/workspace-host').BuiltinWorkspaceUpdateInfo | null
+  >(null);
+  const [workspaceLocation, setWorkspaceLocation] = useState('');
+  const handleKey = activeWorkspace.current?.handle.key;
+  useEffect(() => {
+    let alive = true;
+    setBuiltinInfo(null);
+    setWorkspaceLocation('');
+    const handle = activeWorkspace.current?.handle;
+    if (handle) {
+      void host
+        .readBuiltinUpdate?.(handle)
+        .then((value) => {
+          if (alive) setBuiltinInfo(value);
+        })
+        .catch(() => {});
+      void host
+        .readWorkspaceLocation?.(handle)
+        .then((value) => {
+          if (alive) setWorkspaceLocation(value);
+        })
+        .catch(() => {});
+    }
+    return () => {
+      alive = false;
+    };
+  }, [host, handleKey]);
   const settingsButtonRef = useRef<HTMLButtonElement>(null);
   const [menuFocusRequest, setMenuFocusRequest] = useState(0);
   const menuFocusHandled = useRef(0);
@@ -749,14 +845,39 @@ function WorkspaceAppShell({
   );
   const entryOrigins = useRef(new Map<string, NavigationOrigin>());
   const [, setSourceRev] = useState(0);
+  const [folderReveal, setFolderReveal] = useState<{
+    folderId: string;
+    nonce: number;
+  }>();
   const knowledgeIndexer = useMemo(createKnowledgeIndexer, [session]);
   const knowledge = useMemo(
     () =>
-      knowledgeIndexer([
-        ...[...(snapshot?.files.values() ?? [])].map((entry) => entry.file),
-        ...[...(snapshot?.documents.values() ?? [])].map((entry) => entry.file),
-      ]),
-    [knowledgeIndexer, snapshot?.files, snapshot?.documents],
+      knowledgeIndexer(
+        [
+          ...[...(snapshot?.files.values() ?? [])].map((entry) => entry.file),
+          ...[...(snapshot?.documents.values() ?? [])].map(
+            (entry) => entry.file,
+          ),
+        ],
+        snapshot?.entries,
+      ),
+    [knowledgeIndexer, snapshot?.files, snapshot?.documents, snapshot?.entries],
+  );
+  const documentLinkChoices = useMemo(
+    () =>
+      knowledge.targets.flatMap((choice) =>
+        choice.target.kind === 'file'
+          ? [
+              {
+                ...choice,
+                path:
+                  snapshot?.documents.get(choice.target.fileId)?.path ??
+                  snapshot?.files.get(choice.target.fileId)?.path,
+              },
+            ]
+          : [],
+      ),
+    [knowledge.targets, snapshot?.documents, snapshot?.files],
   );
   const [contentToolsRequest, setContentToolsRequest] = useState<{
     fileId: string;
@@ -860,14 +981,14 @@ function WorkspaceAppShell({
       });
   }
 
-  const preparingBuiltin = useRef(false);
   const openWorkspaceRequest = async (
     request?: OpenWorkspaceRequest,
     initial = false,
     updateReleaseId?: string,
     existingHandle?: WorkspaceHandle,
+    updateOptions?: { backup: boolean },
   ): Promise<ActionResult> => {
-    if ((switchingRef.current || preparingBuiltin.current) && !initial)
+    if (switchingRef.current && !initial)
       return { status: 'rejected', code: 'workspace-switching' };
     const sequence = ++requestSequence.current;
     const previous = activeWorkspace.current;
@@ -890,7 +1011,11 @@ function WorkspaceAppShell({
       }
       const handle =
         updateReleaseId && previous && host.updateBuiltinWorkspace
-          ? await host.updateBuiltinWorkspace(previous.handle, updateReleaseId)
+          ? await host.updateBuiltinWorkspace(
+              previous.handle,
+              updateReleaseId,
+              updateOptions,
+            )
           : (existingHandle ?? (await host.openWorkspace(request)));
       candidateHandle = handle;
       if (sequence !== requestSequence.current)
@@ -1025,15 +1150,14 @@ function WorkspaceAppShell({
             : 'Save the current workspace before switching folders.',
         );
       await host.activateWorkspace?.(handle);
-      void host
-        .checkBuiltinUpdates?.()
-        .then(setContentUpdates)
-        .catch(() => {});
+
       if (raw.session === null)
         opened.setSessionState({
           ...opened.getState().session,
           activeView: opened.getState().session.activeView ?? 'home',
         });
+      changePresentation(false);
+      listOrigins.current.clear();
       previous?.unsubscribe();
       previous?.session.dispose();
       canvasRef.current?.dispose();
@@ -1056,6 +1180,7 @@ function WorkspaceAppShell({
       frameControllers.current.clear();
       documentControllers.current.clear();
       setFileTreeReveal(undefined);
+      setFolderReveal(undefined);
       setNavigationRequest(null);
       setExpandedOwners(
         handle.isDefault &&
@@ -1173,6 +1298,21 @@ function WorkspaceAppShell({
 
   const tabs = snapshot?.session.tabs ?? [];
   const activeTabId = snapshot?.session.activeTabId ?? null;
+  useEffect(() => {
+    presentationRequest.current++;
+    if (presentationPending.current) {
+      presentationPending.current = false;
+      exitPresentationFullscreen(presentationRoot.current);
+    }
+  }, [activeTabId, session]);
+  useEffect(
+    () => () => {
+      presentationRequest.current++;
+      if (presentationPending.current)
+        exitPresentationFullscreen(presentationRoot.current);
+    },
+    [],
+  );
   const groups = snapshot ? workspaceTabGroups(snapshot.session) : [];
   const sessionNavigation = snapshot?.session;
   const mountedTabs = useMemo(
@@ -1225,7 +1365,7 @@ function WorkspaceAppShell({
         (tab) => !retained.has(tab.fileId),
       );
       if (next.activeTabId !== current.activeTabId || removed.length) {
-        // Commit focused document title drafts before hiding/unmounting panes.
+        // Release focus before hiding or unmounting its pane.
         const focused = document.activeElement;
         if (
           focused instanceof HTMLElement &&
@@ -1615,9 +1755,6 @@ function WorkspaceAppShell({
   const documentRestoreRef = useRef(
     new Map<CellId, { revision: number; selection?: DocumentSelection }>(),
   );
-  /** The document created most recently gets its title focused on open. */
-  const createdDocumentRef = useRef<CellId | null>(null);
-
   const runHistory = useCallback(
     async (direction: 'undo' | 'redo') => {
       if (!session) return;
@@ -2103,7 +2240,7 @@ function WorkspaceAppShell({
     return (
       <div className="workspace-error" role="alert">
         <div className="workspace-error-card">
-          <TriangleAlert size={32} aria-hidden />
+          <TriangleAlert strokeWidth={1.75} size={32} aria-hidden />
           <h1>
             {locale === 'zh' ? '无法打开工作区' : 'Unable to open workspace'}
           </h1>
@@ -2178,7 +2315,7 @@ function WorkspaceAppShell({
   if (!session || !snapshot)
     return (
       <div className="workspace-loading">
-        <LoaderCircle size={24} aria-hidden />
+        <LoaderCircle strokeWidth={1.75} size={24} aria-hidden />
         <span>
           {locale === 'zh' ? '正在打开工作区…' : 'Opening workspace…'}
         </span>
@@ -2283,6 +2420,40 @@ function WorkspaceAppShell({
     },
   ) => {
     if (!session) return;
+    if (target.kind === 'folder') {
+      const state = session.getState();
+      const matches = findFoldersById(state.entries, target.folderId);
+      if (matches.length !== 1) {
+        notify(
+          locale === 'zh'
+            ? matches.length
+              ? '文件夹身份存在冲突，无法定位。'
+              : '文件夹不存在。'
+            : matches.length
+              ? 'The folder identity is ambiguous.'
+              : 'The folder does not exist.',
+          'error',
+        );
+        return;
+      }
+      if (presenting) changePresentation(false);
+      const path = matches[0].path;
+      persistNav({
+        expandedDirs: [
+          ...new Set([
+            ...state.session.expandedDirs,
+            ...workspaceFileDirectories(path),
+            path,
+          ]),
+        ],
+      });
+      setFolderReveal((current) => ({
+        folderId: target.folderId,
+        nonce: (current?.nonce ?? 0) + 1,
+      }));
+      return;
+    }
+
     // Capture the source before yielding for a cold target; feedback must not
     // retarget the original caret, scroll position or editing surface.
     const origin = remember ? captureNavigationOrigin(reference) : undefined;
@@ -2714,7 +2885,7 @@ function WorkspaceAppShell({
   const previewOptions = (fileId: string): PreviewOptions => ({
     snapshot,
     locale,
-    linkActivation,
+    linkActivation: presenting ? 'click' : linkActivation,
     insertImage: async (file) => (await storeAttachment(session, file)).src,
     resolveAsset: (source) => assetResolverRef.current(source),
     retry: () => session.syncFromHost(),
@@ -2772,9 +2943,12 @@ function WorkspaceAppShell({
       ? '我的工作区'
       : 'My workspace'
     : handleName;
-  const workspaceName =
-    typeof snapshot.config.value['name'] === 'string' &&
-    snapshot.config.value['name'].trim()
+  const workspaceName = isDefaultWorkspace
+    ? locale === 'zh'
+      ? '系统介绍'
+      : 'System introduction'
+    : typeof snapshot.config.value['name'] === 'string' &&
+        snapshot.config.value['name'].trim()
       ? snapshot.config.value['name'].trim()
       : defaultName;
   const paneReady = () => {
@@ -2847,8 +3021,15 @@ function WorkspaceAppShell({
       openWorkspaceRequest({ default: true }).finally(() =>
         setMenuFocusRequest((current) => current + 1),
       ),
-    'file.open': (args) =>
-      openFile(String(workspaceActionArgument(args, 'fileId'))),
+    'file.open': (args) => {
+      const fileId = String(workspaceActionArgument(args, 'fileId'));
+      const view =
+        workspaceActionArgument(args, 'origin') ??
+        session.getState().session.activeView;
+      if ((view === 'all' || view === 'library') && !pickerFileId)
+        listOrigins.current.set(fileId, view);
+      return openFile(fileId);
+    },
     'file.return': (args) =>
       returnToFileOrigin(String(workspaceActionArgument(args, 'fileId'))),
     'reference.locate': (args) =>
@@ -2883,6 +3064,26 @@ function WorkspaceAppShell({
           ? 'markdown'
           : 'json',
       ),
+    'directory.copy-link': async (args) => {
+      try {
+        const folderId = await session.ensureFolderId(
+          String(workspaceActionArgument(args, 'path')),
+        );
+        if (workspaceActionContext.current.session !== session)
+          return { status: 'cancelled' as const, code: 'stale-context' };
+        await navigator.clipboard.writeText(
+          createWorkspaceLink({ kind: 'folder', folderId }),
+        );
+        notify(locale === 'zh' ? '已复制链接' : 'Link copied');
+        return { status: 'completed' as const };
+      } catch (error) {
+        return {
+          status: 'failed' as const,
+          code: 'folder-link-unavailable',
+          message: error instanceof Error ? error.message : String(error),
+        };
+      }
+    },
     'directory.toggle': (args) => {
       const path = String(workspaceActionArgument(args, 'path'));
       const dirs = session.getState().session.expandedDirs;
@@ -3003,6 +3204,43 @@ function WorkspaceAppShell({
     },
     return: returnToNavigationOrigin,
   };
+  const presentDocument = async (fileId: string): Promise<ActionResult> => {
+    const owner = session;
+    const controller = documentControllers.current.get(fileId);
+    const root = presentationRoot.current;
+    if (
+      !owner ||
+      !controller ||
+      owner.getState().session.activeTabId !== fileId
+    )
+      return { status: 'cancelled', code: 'stale-context' };
+    const request = ++presentationRequest.current;
+    presentationPending.current = true;
+    const focus = document.activeElement as HTMLElement | null;
+    return enterDocumentPresentation({
+      requestFullscreen: () => {
+        if (root) requestPresentationFullscreen(root);
+      },
+      flushEditing: () => controller.flushEditing(),
+      isCurrent: () =>
+        request === presentationRequest.current &&
+        activeWorkspace.current?.session === owner &&
+        owner.getState().session.activeTabId === fileId &&
+        documentControllers.current.get(fileId) === controller,
+      cancel: () => {
+        if (request === presentationRequest.current) {
+          presentationPending.current = false;
+          exitPresentationFullscreen(root);
+        }
+      },
+      enter: () => {
+        presentationPending.current = false;
+        presentationFocus.current = focus;
+        setPresenting(true);
+      },
+      onError: (message) => notify(message, 'error'),
+    });
+  };
   const fileNavigation = (fileId: string) => {
     const entry = entryForTab(fileId);
     if (!entry) return null;
@@ -3054,10 +3292,51 @@ function WorkspaceAppShell({
       });
     }
     return (
-      <div className="workspace-knowledge-navigation">
+      <div
+        className={`workspace-knowledge-navigation${entry.file.format === 'verd-document' ? ' is-document' : ''}`}
+      >
+        {!presenting && listOrigins.current.has(fileId) && (
+          <button
+            type="button"
+            className="workspace-button-ghost"
+            data-testid="content-list-return"
+            onClick={() => {
+              persistNav({ activeView: listOrigins.current.get(fileId)! });
+            }}
+          >
+            <ArrowLeft strokeWidth={1.75} size={14} />
+            {listOrigins.current.get(fileId) === 'library'
+              ? locale === 'zh'
+                ? '返回图表'
+                : 'Back to charts'
+              : locale === 'zh'
+                ? '返回全部内容'
+                : 'Back to all content'}
+          </button>
+        )}
         <WorkspaceFileNavigation
           actions={
             <>
+              {entry.file.format === 'verd-document' ? (
+                <DocumentSaveStatus
+                  state={saveStateFor(entry)}
+                  locale={locale}
+                />
+              ) : (
+                <FrameSaveStatus
+                  status={persistenceForPage(fileId).status}
+                  lastSavedAt={persistenceForPage(fileId).lastSavedAt}
+                  onRetrySave={
+                    workspaceActionState('workspace.save-retry').enabled
+                      ? () => {
+                          void workspaceActions.executeAction(
+                            'workspace.save-retry',
+                          );
+                        }
+                      : undefined
+                  }
+                />
+              )}
               <ContentTools
                 locale={locale}
                 session={session}
@@ -3160,7 +3439,7 @@ function WorkspaceAppShell({
       </div>
     );
   };
-  return (
+  const content = (
     <WorkspaceAssetScope
       session={session}
       onResolver={(resolve) => {
@@ -3171,7 +3450,7 @@ function WorkspaceAppShell({
         <ActionScope
           registry={workspaceActions}
           language={locale}
-          enabled={!switchingWorkspace}
+          enabled={!switchingWorkspace && !presenting}
           paletteFallback
           globalActionIds={['workspace.quick-open', 'workspace.search']}
           onReady={(value) => {
@@ -3179,6 +3458,7 @@ function WorkspaceAppShell({
           }}
         >
           <WorkspaceManagement
+            revealFolderNonce={folderReveal?.nonce}
             isDefault={isDefaultWorkspace}
             key={activeWorkspace.current?.handle.key}
             onOpenFolder={
@@ -3205,6 +3485,14 @@ function WorkspaceAppShell({
                 : undefined
             }
             session={session}
+            setFavorite={(fileId, favorite) =>
+              workspaceActions.executeAction(
+                favorite
+                  ? 'workspace.file.favorite'
+                  : 'workspace.file.unfavorite',
+                { fileId },
+              )
+            }
             snapshot={snapshot}
             host={host}
             content={workspaceContent}
@@ -3213,10 +3501,13 @@ function WorkspaceAppShell({
               readonly || switchingWorkspace || snapshot.mutationsPaused
             }
             currentHistoryId={currentHistoryId}
-            onOpen={openFile}
+            onOpen={(fileId, origin) => {
+              if (origin) listOrigins.current.set(fileId, origin);
+              openFile(fileId);
+            }}
             onSearchHit={async (hit: SearchHit) => {
               const entry = session.getState().documents.get(hit.id);
-              if (entry && hit.fragment.text !== hit.path) {
+              if (entry && hit.source === 'content') {
                 if (searchRevision(entry.file) !== hit.revision) {
                   notify(
                     locale === 'zh'
@@ -3237,7 +3528,7 @@ function WorkspaceAppShell({
                 true,
                 undefined,
                 undefined,
-                entry && hit.fragment.text !== hit.path
+                entry && hit.source === 'content'
                   ? {
                       revision: JSON.stringify(entry.file.text.content),
                       term: hit.term,
@@ -3378,6 +3669,16 @@ function WorkspaceAppShell({
                   setLibraryOpen(true);
                 }}
                 revealFile={fileTreeReveal}
+                revealDirectory={(() => {
+                  if (!folderReveal) return;
+                  const matches = findFoldersById(
+                    snapshot.entries,
+                    folderReveal.folderId,
+                  );
+                  if (matches.length === 1)
+                    return { path: matches[0].path, nonce: folderReveal.nonce };
+                  return undefined;
+                })()}
                 onRevealFile={revealFileInTree}
                 onToggleDir={(path) => {
                   const dirs = snapshot.session.expandedDirs;
@@ -3439,7 +3740,9 @@ function WorkspaceAppShell({
             }
           >
             <div
-              className="workspace-shell"
+              ref={presentationRoot}
+              style={workspaceDesign}
+              className={`workspace-shell${presenting ? ' is-presenting' : ''}`}
               inert={switchingWorkspace}
               aria-busy={switchingWorkspace}
             >
@@ -3504,9 +3807,12 @@ function WorkspaceAppShell({
               )}
               <aside className="workspace-sidebar">
                 <WorkspaceManagementMenu
-                  updatesAvailable={contentUpdates.some(
-                    (item) => item.status === 'available',
-                  )}
+                  updatesAvailable={
+                    !!builtinInfo &&
+                    (builtinInfo.currentReleaseId !== builtinInfo.releaseId ||
+                      builtinInfo.currentVersion !== builtinInfo.version)
+                  }
+                  onUpdate={() => openSettings('workspace.data')}
                   onSwitch={() =>
                     workspaceContent.current
                       ?.closest('.workspace-shell')
@@ -3565,7 +3871,7 @@ function WorkspaceAppShell({
                       })
                     }
                   >
-                    <Settings size={16} aria-hidden />{' '}
+                    <Settings strokeWidth={1.75} size={16} aria-hidden />{' '}
                     {workspaceActionName('workspace.my')}
                   </button>
                 </div>
@@ -3807,12 +4113,19 @@ function WorkspaceAppShell({
                               .join('; '),
                           );
                       }}
-                      onOpen={openFile}
-                      onBack={() => {
-                        setPickerFileId(null);
-                        setFailedPath(null);
-                        setLibraryOpen(false);
+                      onOpen={(fileId) => {
+                        listOrigins.current.set(fileId, 'library');
+                        openFile(fileId);
                       }}
+                      onBack={
+                        pickerFileId
+                          ? () => {
+                              setPickerFileId(null);
+                              setFailedPath(null);
+                              setLibraryOpen(false);
+                            }
+                          : undefined
+                      }
                       onOrganize={() => {
                         const frames = [...files.values()].map(
                           (entry) => entry.file,
@@ -3920,7 +4233,29 @@ function WorkspaceAppShell({
                             >
                               {fileNavigation(tab.fileId)}
                               <div
-                                className="workspace-pane-body"
+                                className={`workspace-pane-body${presenting && tab.fileId === activeTabId ? ' workspace-document-presentation' : ''}`}
+                                data-testid={
+                                  presenting && tab.fileId === activeTabId
+                                    ? 'presentation-mode'
+                                    : undefined
+                                }
+                                role={
+                                  presenting && tab.fileId === activeTabId
+                                    ? 'dialog'
+                                    : undefined
+                                }
+                                aria-label={
+                                  presenting && tab.fileId === activeTabId
+                                    ? locale === 'zh'
+                                      ? '文档演示'
+                                      : 'Document presentation'
+                                    : undefined
+                                }
+                                aria-modal={
+                                  presenting && tab.fileId === activeTabId
+                                    ? true
+                                    : undefined
+                                }
                                 onClickCapture={(event) => {
                                   const anchor =
                                     event.target instanceof Element
@@ -3942,33 +4277,74 @@ function WorkspaceAppShell({
                                   }
                                 }}
                               >
+                                {presenting && tab.fileId === activeTabId && (
+                                  <div
+                                    className="workspace-presentation-controls"
+                                    role="toolbar"
+                                    aria-label={
+                                      locale === 'zh'
+                                        ? '演示控制'
+                                        : 'Presentation controls'
+                                    }
+                                  >
+                                    {navigationOriginsRef.current.length >
+                                      0 && (
+                                      <button
+                                        type="button"
+                                        onClick={() =>
+                                          void returnToNavigationOrigin()
+                                        }
+                                      >
+                                        <ArrowLeft
+                                          strokeWidth={1.75}
+                                          size={16}
+                                        />
+                                        {locale === 'zh'
+                                          ? '返回来源'
+                                          : 'Back to source'}
+                                      </button>
+                                    )}
+                                    <button
+                                      type="button"
+                                      onClick={() => changePresentation(false)}
+                                    >
+                                      <LogOut strokeWidth={1.75} size={16} />
+                                      {locale === 'zh'
+                                        ? '退出演示'
+                                        : 'Exit presentation'}
+                                    </button>
+                                  </div>
+                                )}
                                 <WorkspaceDocumentPage
                                   preview={previewOptions(tab.fileId)}
                                   canUndo={snapshot.canUndo}
                                   canRedo={snapshot.canRedo}
                                   page={{
-                                    linkActivation,
-                                    linkChoices: knowledge.targets,
+                                    linkActivation: presenting
+                                      ? 'click'
+                                      : linkActivation,
+                                    onInsertionError: (message) =>
+                                      notify(message, 'error'),
                                     onInsertImage: async (file) =>
                                       (await storeAttachment(session, file))
                                         .src,
-                                    onPreviewLink: (href) =>
-                                      setKnowledgePreview({
-                                        fileId: tab.fileId,
-                                        href,
-                                        nonce: Date.now(),
-                                      }),
                                     frameChoices: documentFrameChoices,
+                                    linkChoices: documentLinkChoices,
                                     value: entry.file.text,
                                     title:
                                       entry.file.title ||
                                       documentDisplayName(entry.path),
                                     readonly:
+                                      presenting ||
                                       readonly ||
                                       switchingWorkspace ||
                                       snapshot.mutationsPaused,
                                     locale,
                                     saveState: saveStateFor(entry),
+                                    showSaveStatus: false,
+                                    onPresent: presenting
+                                      ? undefined
+                                      : () => presentDocument(tab.fileId),
                                     history: historyAdapter,
                                     restore: restore
                                       ? {
@@ -3976,8 +4352,6 @@ function WorkspaceAppShell({
                                           selection: restore.selection,
                                         }
                                       : undefined,
-                                    autoFocusTitle:
-                                      createdDocumentRef.current === tab.fileId,
                                     onChange: onDocumentChange(tab.fileId),
                                     onReady: documentReady(tab.fileId),
                                     navigation:
@@ -3989,13 +4363,6 @@ function WorkspaceAppShell({
                                     onNavigationResult,
                                     onOpenLink: (href) =>
                                       openPreviewLink(href, tab.fileId),
-                                    onTitleCommit: (title) =>
-                                      void applyWorkspaceAction({
-                                        type: 'rename-document',
-                                        fileId: tab.fileId,
-                                        title,
-                                        label: 'rename-document',
-                                      }),
                                     onExport: (format) =>
                                       void workspaceActions.executeAction(
                                         'workspace.file.export',
@@ -4063,6 +4430,18 @@ function WorkspaceAppShell({
                               }}
                             >
                               <VerdFrame
+                                showSaveStatus={false}
+                                presentation={{
+                                  active:
+                                    presenting && tab.fileId === activeTabId,
+                                  fullscreenRoot: presentationRoot,
+                                  onChange: changePresentation,
+                                  onBack: navigationOriginsRef.current.length
+                                    ? () => {
+                                        void returnToNavigationOrigin();
+                                      }
+                                    : undefined,
+                                }}
                                 onOpenMy={() => {
                                   openMy();
                                   myFocus.current =
@@ -4367,55 +4746,9 @@ function WorkspaceAppShell({
                       </div>
                     )}
 
-                    {contentUpdates
-                      .filter(
-                        (item) => item.status === 'available' && item.remind,
-                      )
-                      .map((item) => (
-                        <div
-                          className="workspace-notice-banner"
-                          role="status"
-                          key={item.kind}
-                        >
-                          <span>
-                            {item.kind === 'project'
-                              ? '项目文档'
-                              : 'Agent 范式库'}
-                            有可用更新 {item.availableVersion}
-                          </span>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              void openWorkspaceRequest(
-                                item.kind === 'project'
-                                  ? { default: true }
-                                  : { patterns: true },
-                              ).then((result) => {
-                                if (
-                                  result.status === 'completed' ||
-                                  result.status === 'noop'
-                                )
-                                  openSettings('workspace.data');
-                              });
-                            }}
-                          >
-                            查看
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              void host.snoozeBuiltinUpdate?.(
-                                item.candidateId!,
-                              );
-                            }}
-                          >
-                            稍后
-                          </button>
-                        </div>
-                      ))}
                     {notice ? (
                       <div
-                        className={`workspace-notice-banner${notice.tone === 'error' ? ' is-error' : ''}`}
+                        className={`workspace-notice-banner${presenting ? ' workspace-presentation-notice' : ''}${notice.tone === 'error' ? ' is-error' : ''}`}
                         role={notice.tone === 'error' ? 'alert' : 'status'}
                       >
                         <span>{notice.text}</span>
@@ -4531,28 +4864,28 @@ function WorkspaceAppShell({
                           : (e.file.frame.name ?? e.path),
                       path: e.path,
                     })),
+                    storageLocation: workspaceLocation,
+                    onOpenStorage: host.revealWorkspaceLocation
+                      ? () =>
+                          host.revealWorkspaceLocation!(
+                            activeWorkspace.current!.handle,
+                          )
+                      : undefined,
                     builtin:
-                      host.readBuiltinUpdate && activeWorkspace.current
+                      builtinInfo &&
+                      host.readBuiltinUpdate &&
+                      activeWorkspace.current
                         ? {
-                            check: async () => {
-                              await host.checkBuiltinUpdates?.(true);
-                            },
-                            read: () =>
-                              host.readBuiltinUpdate!(
-                                activeWorkspace.current!.handle,
-                              ),
-                            update: async (releaseId, kind) => {
-                              preparingBuiltin.current = true;
-                              try {
-                                await host.prepareBuiltinUpdate?.(releaseId);
-                              } finally {
-                                preparingBuiltin.current = false;
-                              }
+                            read: async () => builtinInfo,
+                            update: async (releaseId, backup) => {
                               const result = await openWorkspaceRequest(
-                                { patterns: kind === 'agent-patterns' },
+                                undefined,
                                 false,
                                 releaseId,
+                                undefined,
+                                { backup },
                               );
+                              if (result.status === 'cancelled') return;
                               if (
                                 result.status === 'failed' ||
                                 result.status === 'rejected'
@@ -4695,5 +5028,53 @@ function WorkspaceAppShell({
         </ActionScope>
       </FrameAutoCalculationProvider>
     </WorkspaceAssetScope>
+  );
+  return (
+    <WorkspaceLinkEditor
+      locale={locale}
+      workspace={session}
+      scope={
+        switchingWorkspace || readonly || snapshot.mutationsPaused || presenting
+          ? null
+          : activeTabId
+      }
+      choices={[
+        ...knowledge.targets.map((choice) => {
+          if (choice.target.kind === 'folder') return choice;
+          const id = choice.target.fileId;
+          return {
+            ...choice,
+            path:
+              snapshot.documents.get(id)?.path ?? snapshot.files.get(id)?.path,
+          };
+        }),
+        ...snapshot.entries.flatMap((entry) =>
+          entry.kind === 'directory' && !entry.folderId
+            ? [
+                {
+                  folderPath: entry.path,
+                  title: entry.path.split('/').at(-1) ?? entry.path,
+                  detail: entry.path,
+                },
+              ]
+            : [],
+        ),
+      ]}
+      createFolderLink={async (path) => {
+        const folderId = await session.ensureFolderId(path);
+        return createWorkspaceLink({ kind: 'folder', folderId });
+      }}
+      preview={(href, sourceFileId) => {
+        const target = parseWorkspaceLink(href, sourceFileId);
+        if (target && activeTabId)
+          setKnowledgePreview({
+            fileId: activeTabId,
+            href: createWorkspaceLink(target),
+            nonce: Date.now(),
+          });
+      }}
+    >
+      {content}
+    </WorkspaceLinkEditor>
   );
 }

@@ -100,7 +100,7 @@ export function WorkspaceFileNavigation({
         aria-expanded={menu === 'info'}
         onClick={() => setMenu(menu === 'info' ? null : 'info')}
       >
-        <Info size={15} aria-hidden />
+        <Info strokeWidth={1.75} size={15} aria-hidden />
       </button>
       <div className="workspace-file-navigation-actions">
         {actions}
@@ -119,7 +119,7 @@ export function WorkspaceFileNavigation({
               })
             }
           >
-            <ArrowLeft size={14} aria-hidden />
+            <ArrowLeft strokeWidth={1.75} size={14} aria-hidden />
             <span>
               {zh ? '返回' : 'Back to'} {source.title}
             </span>

@@ -1,3 +1,4 @@
+import { selectSetting } from '../../helpers/settings-controls';
 import { electron, writeDesktopLauncher } from './desktop-launcher';
 import { test, expect, type ElectronApplication } from '@playwright/test';
 import { mkdtemp, rm } from 'node:fs/promises';
@@ -46,11 +47,29 @@ test('Desktop unified settings keeps personal and project configuration in one d
     await expect(page.getByTestId('settings-workspace-save')).toContainText(
       '已保存',
     );
+    await page.getByTestId('settings-nav-workspace.data').click();
+    await expect(page.getByTestId('workspace-storage-location')).toHaveText(
+      path.join(directory, 'project'),
+    );
+    await desktop.evaluate(({ shell }) => {
+      shell.openPath = async (target) => {
+        (globalThis as any).__openedWorkspacePath = target;
+        return '';
+      };
+    });
+    await page.getByTestId('workspace-storage-location').click();
+    await expect
+      .poll(() =>
+        desktop!.evaluate(() => (globalThis as any).__openedWorkspacePath),
+      )
+      .toBe(path.join(directory, 'project'));
     await page.getByTestId('settings-search').fill('外观');
     await page.locator('.settings-search-result').first().click();
-    await expect(page.getByTestId('settings-appearance')).toBeFocused();
+    await expect(
+      page.getByTestId('settings-appearance').getByRole('combobox'),
+    ).toBeFocused();
     await expect(page.getByRole('dialog')).toHaveCount(1);
-    await page.getByTestId('settings-language').selectOption('en');
+    await selectSetting(page.getByTestId('settings-language'), 'en');
     await expect(page.locator('html')).toHaveAttribute('lang', 'en');
     await expect(page.getByTestId('my-page')).toHaveCSS('font-family', family);
     await page.getByTestId('my-back').click();

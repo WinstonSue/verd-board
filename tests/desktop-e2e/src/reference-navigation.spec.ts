@@ -3,6 +3,7 @@ import { expect, test, type ElectronApplication } from '@playwright/test';
 import { cp, mkdtemp, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
+import { activeTabTitle } from '../../web-e2e/src/tab-actions';
 
 const root = path.resolve(__dirname, '../../..');
 
@@ -81,7 +82,7 @@ test('native project navigation includes both the canvas and document embeds wit
       locations.locator('.workspace-menu-group-label').first(),
     ).toContainText('包索引');
     await locations.getByRole('menuitem').first().click();
-    await expect(pane.locator('.document-page__title')).toHaveValue('包索引');
+    await expect(activeTabTitle(page)).toHaveText('包索引');
     const embed = pane
       .locator('.document-frame-reference')
       .filter({ has: page.getByText('① 项目分层与依赖', { exact: true }) });

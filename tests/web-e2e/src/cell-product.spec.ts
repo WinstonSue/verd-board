@@ -1,6 +1,7 @@
+import { selectHistoryAction } from './app-actions';
 import { expect, test, type Page } from '@playwright/test';
 import { readFileSync } from 'node:fs';
-import { selectAppAction } from './app-actions';
+import { openActiveFile, selectAppAction } from './app-actions';
 import { bodyEditor, editBody } from './body-editor';
 import { selectDrawingTool } from './drawing-tools';
 import { expandPropertyGroup } from './property-group';
@@ -60,9 +61,9 @@ test('multi-selection drag and group alignment preserve member spacing with one-
     before[ids[0]].geometry.y + 35,
   );
   expect((await saved())!.cells[ids[2]]).toEqual(before[ids[2]]);
-  await page.getByRole('button', { name: '撤销', exact: true }).click();
+  await selectHistoryAction(page, '撤销');
   await expect.poll(async () => (await saved())?.cells).toEqual(before);
-  await page.getByRole('button', { name: '重做', exact: true }).click();
+  await selectHistoryAction(page, '重做');
   await expandPropertyGroup(page);
   await page.getByRole('button', { name: '分组', exact: true }).click();
   await nodes.nth(0).click();
@@ -184,12 +185,16 @@ test('new mind topics inherit typography and expand their layout without copying
   await page
     .getByLabel('Selection font size', { exact: true })
     .selectOption('32px');
-  await page
-    .getByLabel('Selection link URL', { exact: true })
+  await page.getByRole('button', { name: '编辑链接', exact: true }).click();
+  const linkDialog = page.getByRole('dialog', {
+    name: '编辑链接',
+    exact: true,
+  });
+  await linkDialog
+    .getByLabel('搜索工作区或输入网址')
     .fill('https://example.com');
-  await page
-    .getByRole('button', { name: 'Apply selection link', exact: true })
-    .click();
+  await linkDialog.getByRole('button', { name: '保存', exact: true }).click();
+  await expect(linkDialog).toBeHidden();
   await canvas(page).press('Tab');
   const topic = cells(page, 'mind-child').filter({ hasText: 'Topic' }).last();
   const id = await topic.getAttribute('data-cell-id');
@@ -369,10 +374,7 @@ test('mind style inheritance, branch appearance and image edits survive history,
   await a.locator('[data-mind-hit-box]').click({ position: { x: 5, y: 5 } });
   await page.getByRole('button', { name: '移除图片', exact: true }).click();
   await expect(a.locator('[data-mind-image]')).toHaveCount(0);
-  await page
-    .getByRole('button', { name: '撤销', exact: true })
-    .locator('visible=true')
-    .click();
+  await selectHistoryAction(page, '撤销');
   await expect(a.locator('[data-mind-image]')).toHaveAttribute('width', '48');
   await backToPreviousCanvas(page);
   await page.reload();
@@ -408,9 +410,9 @@ test('mind drags reorder siblings, change parents using the pointer and ignore c
   await expect
     .poll(async () => (await bounds(a)).y < (await bounds(b)).y)
     .toBe(true);
-  await page.getByRole('button', { name: '撤销', exact: true }).click();
+  await selectHistoryAction(page, '撤销');
   await expect.poll(() => summaryRange(page)).toEqual([aId, cId]);
-  await page.getByRole('button', { name: '重做', exact: true }).click();
+  await selectHistoryAction(page, '重做');
   await expect.poll(() => summaryRange(page)).toEqual([cId, bId]);
   const source = await bounds(a),
     target = await bounds(b);
@@ -442,7 +444,7 @@ test('mind drags reorder siblings, change parents using the pointer and ignore c
     page.getByRole('alert').filter({ hasText: 'cycle' }),
   ).toHaveCount(0);
   await expect.poll(() => savedMindParent(page, aId)).toBe(bId);
-  await page.getByRole('button', { name: '撤销', exact: true }).click();
+  await selectHistoryAction(page, '撤销');
   await expect.poll(() => savedMindParent(page, aId)).toBe(rootId);
   await backToPreviousCanvas(page);
   await page.reload();
@@ -506,9 +508,9 @@ for (const grip of ['left', 'right'] as const) {
     await expect(ghost).toHaveCount(0);
     await expect.poll(() => savedMindParent(page, aId)).toBe(bId);
     expect(await savedMindParent(page, childId)).toBe(aId);
-    await page.getByRole('button', { name: '撤销', exact: true }).click();
+    await selectHistoryAction(page, '撤销');
     await expect.poll(() => savedMindParent(page, aId)).toBe(rootId);
-    await page.getByRole('button', { name: '重做', exact: true }).click();
+    await selectHistoryAction(page, '重做');
     await expect.poll(() => savedMindParent(page, aId)).toBe(bId);
     await page.reload();
     await expect.poll(() => savedMindParent(page, aId)).toBe(bId);
@@ -534,9 +536,9 @@ test('summary brackets adjust sibling ids through one transaction and persist in
   await page.mouse.up();
   await expect.poll(() => summaryRange(page)).toEqual([bId, cId]);
   await expect(cells(page, 'mind-branch')).toHaveCount(3);
-  await page.getByRole('button', { name: '撤销', exact: true }).click();
+  await selectHistoryAction(page, '撤销');
   await expect.poll(() => summaryRange(page)).toEqual([aId, cId]);
-  await page.getByRole('button', { name: '重做', exact: true }).click();
+  await selectHistoryAction(page, '重做');
   await expect.poll(() => summaryRange(page)).toEqual([bId, cId]);
   await backToPreviousCanvas(page);
   await expect(canvas(page).locator('[data-mind-summary-bracket]')).toHaveCount(
@@ -588,11 +590,11 @@ test('deleting covered topics shrinks the summary and removing its last topic is
   await canvas(page).press('Delete');
   await expect(cells(page, 'mind-summary')).toHaveCount(0);
   await expect(cells(page, 'mind-summary-edge')).toHaveCount(0);
-  await page.getByRole('button', { name: '撤销', exact: true }).click();
+  await selectHistoryAction(page, '撤销');
   await expect(cells(page, 'mind-summary')).toHaveCount(1);
   await expect.poll(() => summaryRange(page)).toEqual([cId, cId]);
-  await page.getByRole('button', { name: '撤销', exact: true }).click();
-  await page.getByRole('button', { name: '撤销', exact: true }).click();
+  await selectHistoryAction(page, '撤销');
+  await selectHistoryAction(page, '撤销');
   await expect(cells(page, 'mind-child')).toHaveCount(3);
   await expect.poll(() => summaryRange(page)).toEqual([aId, cId]);
 });
@@ -660,7 +662,7 @@ test('deleting a container and undo restores its entire subtree', async ({
   await cells(page, 'frame').locator('[data-frame-title-id]').first().click();
   await canvas(page).press('Delete');
   await expect(cells(page, 'frame')).toHaveCount(0);
-  await page.getByRole('button', { name: '撤销', exact: true }).click();
+  await selectHistoryAction(page, '撤销');
   await expect(cells(page, 'frame')).toHaveCount(1);
   await expect(cells(page, 'mind-child')).toHaveCount(1);
   await expect(cells(page, 'mind-branch')).toHaveCount(1);
@@ -683,7 +685,7 @@ test('draws and erases native freehand through one transaction history', async (
   await page.mouse.move(box.x + 520, box.y + 330, { steps: 12 });
   await page.mouse.up();
   await expect(cells(page, 'freehand')).toHaveCount(0);
-  await page.getByRole('button', { name: '撤销', exact: true }).click();
+  await selectHistoryAction(page, '撤销');
   await expect(cells(page, 'freehand')).toHaveCount(1);
 });
 
@@ -747,10 +749,10 @@ test('imports Mermaid geometry and bound labeled arrows through the native conve
   await expect(cells(page, 'arrow').locator('[data-edge-label]')).toHaveText(
     'uses',
   );
-  await page.getByRole('button', { name: '撤销', exact: true }).click();
+  await selectHistoryAction(page, '撤销');
   await expect(cells(page, 'geometry')).toHaveCount(0);
   await expect(cells(page, 'arrow')).toHaveCount(0);
-  await page.getByRole('button', { name: '重做', exact: true }).click();
+  await selectHistoryAction(page, '重做');
   await expect(cells(page, 'arrow')).toHaveCount(1);
   await expect
     .poll(async () => {
@@ -823,7 +825,7 @@ test('uses shape contours for erasing, preserves boundary ports and supports nat
   await expect(cells(page, 'geometry')).toHaveCount(1);
   await page.mouse.click(box.x + 380, box.y + 270);
   await expect(cells(page, 'geometry')).toHaveCount(0);
-  await page.getByRole('button', { name: '撤销', exact: true }).click();
+  await selectHistoryAction(page, '撤销');
   await expect(cells(page, 'geometry')).toHaveCount(1);
   await page.getByRole('button', { name: '形状', exact: true }).click();
   await page.getByTestId('shape-manualInput').click();
@@ -890,11 +892,11 @@ test('resizes, rotates and formats a native shape with undo and durable rich tex
   await expect
     .poll(async () => (await savedGeometry())?.geometry.height)
     .toBe(140);
-  await page.getByRole('button', { name: '撤销', exact: true }).click();
+  await selectHistoryAction(page, '撤销');
   await expect
     .poll(async () => (await savedGeometry())?.geometry.width)
     .toBe(160);
-  await page.getByRole('button', { name: '重做', exact: true }).click();
+  await selectHistoryAction(page, '重做');
   await node.click();
   await drag(node.locator('[data-rotate-handle]'), 90, 98);
   await expect
@@ -902,7 +904,7 @@ test('resizes, rotates and formats a native shape with undo and durable rich tex
       Math.round(((await savedGeometry())?.geometry.rotation * 180) / Math.PI),
     )
     .toBe(90);
-  await page.getByRole('button', { name: '撤销', exact: true }).click();
+  await selectHistoryAction(page, '撤销');
   await node.dblclick();
   const editor = node.locator('[contenteditable="true"]');
   await editor.fill('Formatted cell');
@@ -933,6 +935,7 @@ test('edits arrow bindings, route segments and multiple labels through native tr
   page,
 }) => {
   await page.goto('/');
+  await activateBoardTab(page);
   await createAt(page, '形状', 260, 180);
   await createAt(page, '形状', 560, 340);
   await selectDrawingTool(page, '箭头');
@@ -956,6 +959,7 @@ test('edits arrow bindings, route segments and multiple labels through native tr
       return !!arrow?.source.cellId && !!arrow?.target.cellId;
     })
     .toBe(true);
+  await page.getByRole('button', { name: '添加标签', exact: true }).click();
   await page.getByLabel('Edge label 1', { exact: true }).fill('First');
   await page.getByRole('button', { name: '添加标签', exact: true }).click();
   await page.getByLabel('Edge label 2', { exact: true }).fill('Second');
@@ -993,7 +997,7 @@ test('edits arrow bindings, route segments and multiple labels through native tr
       (await savedEdge())?.labels.map((label: any) => label.text),
     )
     .toEqual(['First', 'Second']);
-  await page.getByRole('button', { name: '撤销', exact: true }).click();
+  await selectHistoryAction(page, '撤销');
   await expect
     .poll(async () => !!(await savedEdge())?.target.cellId)
     .toBe(true);
@@ -1006,6 +1010,7 @@ test('mind fold buttons toggle children and preserve nested folding after reload
   page,
 }) => {
   await page.goto('/');
+  await openActiveFile(page);
   await createAt(page, '思维导图');
   await cells(page, 'frame').locator('[data-frame-title-id]').first().click();
   await page.getByTestId('frame-open').locator('visible=true').click();
@@ -1038,9 +1043,9 @@ test('mind fold buttons toggle children and preserve nested folding after reload
   await expect(fold(parentId)).toBeVisible();
   await fold(parentId).click();
   await expect(cells(page, 'mind-child')).toHaveCount(3);
-  await page.getByRole('button', { name: '撤销', exact: true }).click();
+  await selectHistoryAction(page, '撤销');
   await expect(cells(page, 'mind-child')).toHaveCount(2);
-  await page.getByRole('button', { name: '重做', exact: true }).click();
+  await selectHistoryAction(page, '重做');
   await expect(cells(page, 'mind-child')).toHaveCount(3);
   await parent.click();
   await fold(parentId).click();
@@ -1135,6 +1140,7 @@ test('table cell editing, fill, structure and track resize survive undo and refr
   page,
 }) => {
   await page.goto('/');
+  await openActiveFile(page);
   await createAt(page, '表格', 100, 120);
   const table = cells(page, 'table');
   const entry = table.locator('[data-table-entry]').first();
@@ -1147,7 +1153,7 @@ test('table cell editing, fill, structure and track resize survive undo and refr
   await editor.fill('native table');
   await editor.press('Escape');
   await expect(entry).toContainText('native table');
-  await table.getByLabel('Cell fill').fill('#aabbcc');
+  await table.getByLabel('Cell fill', { exact: true }).fill('#aabbcc');
   await table.getByRole('button', { name: 'Insert row', exact: true }).click();
   await expect(table.locator('[data-table-entry]')).toHaveCount(12);
   const line = table.locator('[data-table-resize="column-0"]');
@@ -1193,6 +1199,13 @@ test('swimlane title, direction and lane count persist as native grid data', asy
   page,
 }) => {
   await page.goto('/');
+  await openActiveFile(page);
+  await expect(
+    page.getByRole('button', { name: '泳道', exact: true }),
+  ).toHaveCount(0);
+  await createAt(page, '流程图');
+  await cells(page, 'frame').locator('[data-frame-title-id]').first().click();
+  await page.getByTestId('frame-open').locator('visible=true').click();
   await createAt(page, '泳道', 60, 100);
   const lane = cells(page, 'swimlane');
   await lane.locator('[data-table-entry]').first().click();
@@ -1207,9 +1220,9 @@ test('swimlane title, direction and lane count persist as native grid data', asy
   await expect
     .poll(async () => {
       const data = await persisted(page);
-      const cell = Object.values(
-        data?.records[data.manifest.rootId]?.cells ?? {},
-      ).find((cell: any) => cell.kind === 'swimlane') as any;
+      const cell = Object.values(data?.records ?? {})
+        .flatMap((file: any) => Object.values(file.cells ?? {}))
+        .find((cell: any) => cell.kind === 'swimlane') as any;
       return (
         cell?.data?.direction === 'vertical' &&
         cell?.data?.columns.length === 4 &&
@@ -1227,6 +1240,36 @@ test('swimlane title, direction and lane count persist as native grid data', asy
     lane.getByLabel('Swimlane title', { exact: true }),
   ).toBeChecked();
   await expect(lane.getByLabel('Swimlane direction')).toHaveValue('vertical');
+});
+
+test('workflow swimlanes can assign and release a native task', async ({
+  page,
+}) => {
+  await page.goto('/');
+  await openActiveFile(page);
+  await createAt(page, '流程图');
+  await cells(page, 'frame').locator('[data-frame-title-id]').first().click();
+  await page.getByTestId('frame-open').locator('visible=true').click();
+  await createAt(page, '泳道', 100, 100);
+  await page.getByTestId('palette-task').click();
+  await page.getByRole('button', { name: '适配画布', exact: true }).click();
+  const task = cells(page, 'workflow-task').first();
+  await task.click();
+  const taskId = await task.getAttribute('data-cell-id');
+  await expandPropertyGroup(page);
+  const assignment = page.getByLabel('分配泳道', { exact: true });
+  await assignment.selectOption('0');
+  const members = async () => {
+    const state = await persisted(page);
+    const lane = Object.values(state?.records ?? {})
+      .flatMap((file: any) => Object.values(file.cells ?? {}))
+      .find((cell: any) => cell.kind === 'swimlane') as any;
+    return Object.values(lane?.data.laneMembers ?? {}).flat();
+  };
+  await expect.poll(members).toContain(taskId);
+  await assignment.selectOption('remove');
+  await expect.poll(members).toEqual([]);
+  await expect(task).toBeVisible();
 });
 
 test('vector line multi-click creation, closure, curve editing and vertex transactions persist', async ({
@@ -1563,7 +1606,7 @@ test('multi-selection appearance and group layer blocks survive history, shortcu
   await expect
     .poll(async () => (await saved())?.cells[ids[1]]?.appearance?.shadow)
     .toBe('md');
-  await page.getByRole('button', { name: '撤销', exact: true }).click();
+  await selectHistoryAction(page, '撤销');
   await expect
     .poll(
       async () => (await saved())?.cells[ids[0]]?.appearance?.shadow ?? 'none',
@@ -1574,7 +1617,7 @@ test('multi-selection appearance and group layer blocks survive history, shortcu
       async () => (await saved())?.cells[ids[1]]?.appearance?.shadow ?? 'none',
     )
     .toBe('none');
-  await page.getByRole('button', { name: '重做', exact: true }).click();
+  await selectHistoryAction(page, '重做');
   await expandPropertyGroup(page);
   await page.getByRole('button', { name: '分组', exact: true }).click();
   await first.click();
@@ -1587,7 +1630,7 @@ test('multi-selection appearance and group layer blocks survive history, shortcu
   await expect
     .poll(async () => (await saved())?.frame.children)
     .toEqual([ids[2], ids[0], ids[1]]);
-  await page.getByRole('button', { name: '撤销', exact: true }).click();
+  await selectHistoryAction(page, '撤销');
   await expect.poll(async () => (await saved())?.frame.children).toEqual(ids);
   await first.click();
   await expandPropertyGroup(page);
@@ -1628,9 +1671,9 @@ test('native keyboard cut and paste preserve a group closure with fresh identity
   await canvas(page).focus();
   await page.keyboard.press('ControlOrMeta+x');
   await expect(cells(page, 'geometry')).toHaveCount(0);
-  await page.getByRole('button', { name: '撤销', exact: true }).click();
+  await selectHistoryAction(page, '撤销');
   await expect(cells(page, 'geometry')).toHaveCount(2);
-  await page.getByRole('button', { name: '重做', exact: true }).click();
+  await selectHistoryAction(page, '重做');
   await expect(cells(page, 'geometry')).toHaveCount(0);
   await canvas(page).focus();
   await page.keyboard.press('ControlOrMeta+v');
@@ -1718,9 +1761,9 @@ test('context actions retain multi-selection and use system clipboard with histo
   await canvas(page).click({ button: 'right', position: { x: 100, y: 400 } });
   await actions.getByRole('button', { name: '粘贴', exact: true }).click();
   await expect(cells(page, 'geometry')).toHaveCount(2);
-  await page.getByRole('button', { name: '撤销', exact: true }).click();
+  await selectHistoryAction(page, '撤销');
   await expect(cells(page, 'geometry')).toHaveCount(0);
-  await page.getByRole('button', { name: '重做', exact: true }).click();
+  await selectHistoryAction(page, '重做');
   await expect(cells(page, 'geometry')).toHaveCount(2);
 });
 
@@ -1735,11 +1778,10 @@ for (const viewport of [
     await page.goto('/');
     await createAt(page, '形状', 280, 180);
     const inspectorToggle = page.getByRole('button', {
-      name: '属性',
+      name: '收起属性面板',
       exact: true,
     });
-    if ((await inspectorToggle.getAttribute('aria-pressed')) === 'true')
-      await inspectorToggle.click();
+    if (await inspectorToggle.isVisible()) await inspectorToggle.click();
     const box = (await canvas(page).boundingBox())!;
     const nodeBox = (await cells(page, 'geometry').first().boundingBox())!;
     const menu = page.getByRole('dialog', { name: 'Selection actions' });
@@ -1978,9 +2020,9 @@ test('all nine mind layouts keep root origins and render sibling directions thro
     ).toBe(true);
     expect((await saved())?.geometry).toEqual(originalOrigin);
   }
-  await page.getByRole('button', { name: '撤销', exact: true }).click();
+  await selectHistoryAction(page, '撤销');
   await expect(layout).toHaveValue('left-top-indented');
-  await page.getByRole('button', { name: '重做', exact: true }).click();
+  await selectHistoryAction(page, '重做');
   await expect(layout).toHaveValue('left-bottom-indented');
   await page.reload();
   await center.click();
@@ -2023,7 +2065,7 @@ test('mind paste remaps subtree identities, summary ranges and root-child roles 
     })
     .toBe(1);
   expect(await savedMindParent(page, leafId)).toBe(aId);
-  await page.getByRole('button', { name: '撤销', exact: true }).click();
+  await selectHistoryAction(page, '撤销');
   await expect(cells(page, 'mind-child')).toHaveCount(4);
   const center = cells(page, 'mind-root');
   await center.click();
@@ -2046,7 +2088,7 @@ test('mind paste remaps subtree identities, summary ranges and root-child roles 
       ).length;
     })
     .toBe(1);
-  await page.getByRole('button', { name: '撤销', exact: true }).click();
+  await selectHistoryAction(page, '撤销');
   await expect(cells(page, 'mind-child')).toHaveCount(4);
   await a.click();
   await canvas(page).press('ControlOrMeta+/');
@@ -2082,7 +2124,7 @@ test('mind typing, expand and note shortcuts retain first characters, history an
   await expect(
     cells(page, 'mind-child').filter({ hasText: 'Leaf' }),
   ).toHaveCount(0);
-  await page.getByRole('button', { name: '撤销', exact: true }).click();
+  await selectHistoryAction(page, '撤销');
   await expect(
     cells(page, 'mind-child').filter({ hasText: 'Leaf' }),
   ).toHaveCount(1);
@@ -2178,11 +2220,11 @@ test('batch text formatting preserves labels through history, duplication, clear
     .getByLabel('Selection text alignment', { exact: true })
     .selectOption('left');
   await expect(cells(page, 'geometry').locator('strong')).toHaveCount(2);
-  await page.getByRole('button', { name: '撤销', exact: true }).click();
+  await selectHistoryAction(page, '撤销');
   await expect(
     page.getByLabel('Selection text alignment', { exact: true }),
   ).toHaveValue('center');
-  await page.getByRole('button', { name: '重做', exact: true }).click();
+  await selectHistoryAction(page, '重做');
   await expect(
     page.getByLabel('Selection text alignment', { exact: true }),
   ).toHaveValue('left');
@@ -2216,7 +2258,7 @@ test('batch text formatting preserves labels through history, duplication, clear
     .getByRole('button', { name: 'Confirm clear frame', exact: true })
     .click();
   await expect(cells(page, 'geometry')).toHaveCount(0);
-  await page.getByRole('button', { name: '撤销', exact: true }).click();
+  await selectHistoryAction(page, '撤销');
   await expect(cells(page, 'geometry').locator('strong')).toHaveCount(4);
 });
 
@@ -2241,9 +2283,9 @@ for (const [tool, anchor, member, add] of [
       .click();
     await expect(cells(page, member)).toHaveCount(0);
     await expect(cells(page, anchor)).toHaveCount(1);
-    await page.getByRole('button', { name: '撤销', exact: true }).click();
+    await selectHistoryAction(page, '撤销');
     await expect(cells(page, member)).toHaveCount(1);
-    await page.getByRole('button', { name: '重做', exact: true }).click();
+    await selectHistoryAction(page, '重做');
     await expect(cells(page, member)).toHaveCount(0);
     await backToPreviousCanvas(page);
     await expect(cells(page, 'geometry')).toHaveCount(1);
@@ -2325,7 +2367,7 @@ test('moving a shape into a native frame frees boundary arrows and persists owne
       (cell: any) => cell.kind === 'arrow',
     ),
   ).toMatchObject({ source: { point: expect.any(Array) } });
-  await page.getByRole('button', { name: '撤销', exact: true }).click();
+  await selectHistoryAction(page, '撤销');
   await expect
     .poll(async () => (await saved())?.root?.cells[sourceId]?.id)
     .toBe(sourceId);
@@ -2334,7 +2376,7 @@ test('moving a shape into a native frame frees boundary arrows and persists owne
       (cell: any) => cell.kind === 'arrow',
     ),
   ).toMatchObject({ source: { cellId: sourceId } });
-  await page.getByRole('button', { name: '重做', exact: true }).click();
+  await selectHistoryAction(page, '重做');
   await expect
     .poll(async () => (await saved())?.target?.frame.children)
     .toEqual([sourceId]);

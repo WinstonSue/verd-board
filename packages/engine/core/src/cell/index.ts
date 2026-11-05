@@ -23,6 +23,7 @@ import {
   isGroupCell,
   stripFrameViewports,
 } from './types';
+import { normalizeCellRoutes } from './edge-route-policy';
 import { validateCellStore } from './validation';
 export { memoizeCellValidationRead } from './validation-read-context';
 export * from './arrangement';
@@ -30,9 +31,12 @@ export * from './layout-plan';
 export * from './clipboard';
 export * from './commands';
 export * from './edge-edit';
+export * from './edge-route-policy';
+export * from './lanes';
 export * from './frame';
 export * from './group';
 export * from './name';
+export * from './search';
 export * from './position';
 export * from './registry';
 export * from './runtime';
@@ -567,7 +571,7 @@ export const applyCellOperations = (
         throw new Error('Cannot delete the last scene anchor');
     }
   }
-  candidate = stripFrameViewports(candidate);
+  candidate = normalizeCellRoutes(stripFrameViewports(candidate), context);
   const issues = validateCellStore(candidate, context);
   if (issues.length)
     throw new Error(issues.map((issue) => issue.message).join('; '));
@@ -781,6 +785,14 @@ export interface CellUtil {
   groupable?: boolean;
   arrangeable?: boolean;
   routable?: boolean;
+  orthogonalRoute?: boolean;
+  lanes?: (cell: Cell) => readonly import('./lanes').CellLane[];
+  withLaneMembers?: (cell: Cell, tracks: ReadonlyMap<string, string[]>) => Cell;
+  preferredPortSide?: (
+    node: NodeGeometry,
+    other: NodeGeometry,
+    end: 'source' | 'target',
+  ) => import('./types').PortSide;
   freeTerminals?: boolean;
   ownerKind?: string;
   canConnect?: (node: Cell) => boolean;
@@ -796,11 +808,12 @@ export interface CellUtil {
   >;
   validate?: (store: CellStore, cell: Cell) => string | undefined;
   validateEdge?: (store: CellStore, edge: EdgeCell) => string | undefined;
-  /** Domain-owned cells such as a lone task or module need an explicit target. */
+  /** Domain-owned cells such as a lone task or module need a valid owner. */
   requiresPasteOwner?: (
     cell: Cell,
     fragment: { cells: Record<string, Cell> },
   ) => boolean;
+  preferSelectedPasteOwner?: boolean;
   pasteOwner?: (
     store: CellStore,
     frameId: string,

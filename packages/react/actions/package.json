@@ -14,7 +14,7 @@
   },
   "dependencies": {
     "@sue/board-common": "workspace:*",
-    "lucide-react": "^1.47.0"
+    "lucide-react": "1.47.0"
   },
   "peerDependencies": {
     "react": ">=18"

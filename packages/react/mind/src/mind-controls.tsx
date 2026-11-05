@@ -1,3 +1,4 @@
+import { Plus, Minus } from 'lucide-react';
 import { isNodeCell } from '@sue/board-core';
 import {
   mindChildIds,
@@ -101,14 +102,24 @@ export const renderMindControls = (context: FrameRenderContext) => {
           cx={point[0]}
           cy={point[1]}
           r={radius}
-          fill="#fff"
-          stroke="#6366f1"
+          fill="var(--board-surface, #fff)"
+          stroke="var(--board-primary, #6366f1)"
         />
-        <path
-          d={`M ${point[0] - radius / 2} ${point[1]} H ${point[0] + radius / 2}${collapsed ? ` M ${point[0]} ${point[1] - radius / 2} V ${point[1] + radius / 2}` : ''}`}
-          stroke="#6366f1"
-          strokeWidth={1.5 / Math.max(0.02, context.scale)}
-        />
+        {(() => {
+          const Icon = collapsed ? Plus : Minus;
+          const size = 14 / Math.max(0.02, context.scale);
+          return (
+            <Icon
+              x={point[0] - size / 2}
+              y={point[1] - size / 2}
+              width={size}
+              height={size}
+              strokeWidth={1.75}
+              color="var(--board-primary, #6366f1)"
+              aria-hidden="true"
+            />
+          );
+        })()}
       </g>
     </g>
   );

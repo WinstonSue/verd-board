@@ -42,6 +42,7 @@ async function setup(kind: 'project' | 'agent-patterns' = 'project') {
     host,
     userData: () => userData,
     source,
+    appVersion: () => '2.0.0',
   });
   return { userData, source, target, host, handle, updater };
 }
@@ -62,7 +63,9 @@ it.each(['project', 'agent-patterns'] as const)(
       ],
     });
     const info = (await updater.info(handle))!;
-    const next = await updater.update(handle, info.releaseId);
+    const next = await updater.update(handle, info.releaseId, {
+      backupParent: path.dirname(target),
+    });
     expect(next.key).not.toBe(handle.key);
     expect((await host.readSnapshot(next)).config.value.identity).toBe(
       before.config.value.identity,
@@ -73,14 +76,10 @@ it.each(['project', 'agent-patterns'] as const)(
     await expect(
       fs.access(path.join(target, 'user-file.txt')),
     ).rejects.toThrow();
-    const backups = await updater.backups(next),
-      directories = await fs.readdir(backups);
-    expect(
-      await fs.readFile(
-        path.join(backups, directories[0], 'user-file.txt'),
-        'utf8',
-      ),
-    ).toBe('keep in backup');
+    const backups = await updater.backups(next);
+    expect(await fs.readFile(path.join(backups, 'user-file.txt'), 'utf8')).toBe(
+      'keep in backup',
+    );
     expect(
       JSON.parse(
         await fs.readFile(
@@ -138,7 +137,7 @@ it('recovers a crash between the backup and publication before opening', async (
   );
   await fs.rename(target, backup);
   await updater.recover();
-  expect((await host.openWorkspace())?.name).toBe('青编项目工作区');
+  expect((await host.openWorkspace())?.name).toBe('系统介绍');
   await expect(fs.access(backup)).rejects.toThrow();
 });
 
@@ -158,7 +157,9 @@ it('rejects a pending authoring plan even when resetting to identical native con
     },
   ]);
   const info = (await updater.info(handle))!;
-  await updater.update(handle, info.releaseId);
+  await updater.update(handle, info.releaseId, {
+    backupParent: path.dirname(target),
+  });
   await expect(applyPreparedBatch(target, plan)).rejects.toThrow(
     'VERSION_CONFLICT',
   );
@@ -223,7 +224,9 @@ it('replaces the legacy directory layout while preserving original paths in the 
   );
   const identity = (await host.readSnapshot(handle)).config.value.identity;
   const info = (await updater.info(handle))!;
-  const next = await updater.update(handle, info.releaseId);
+  const next = await updater.update(handle, info.releaseId, {
+    backupParent: path.dirname(target),
+  });
   for (const file of ['文档/文档导航.verd-doc.json', '项目导览.verd.json'])
     await expect(fs.access(path.join(target, file))).rejects.toThrow();
   for (const file of [
@@ -233,9 +236,82 @@ it('replaces the legacy directory layout while preserving original paths in the 
   ])
     await expect(fs.access(path.join(target, file))).resolves.toBeUndefined();
   expect((await host.readSnapshot(next)).config.value.identity).toBe(identity);
-  const backups = await updater.backups(next),
-    copies = await fs.readdir(backups);
+  const backups = await updater.backups(next);
   await expect(
-    fs.access(path.join(backups, copies[0], '文档/文档导航.verd-doc.json')),
+    fs.access(path.join(backups, '文档/文档导航.verd-doc.json')),
   ).resolves.toBeUndefined();
+});
+
+it('defaults to no permanent backup and removes the rollback directory after success', async () => {
+  const { target, userData, handle, updater } = await setup();
+  await fs.writeFile(path.join(target, 'discard.txt'), 'unsaved extra');
+  const info = (await updater.info(handle))!;
+  const next = await updater.update(handle, info.releaseId);
+  expect((await updater.info(next))?.currentVersion).toBe('2.0.0');
+  expect((await updater.info(next))?.hasBackups).toBe(false);
+  expect(
+    (await fs.readdir(path.dirname(target))).filter(
+      (name) => name.includes('.previous-') || name.includes('.update-'),
+    ),
+  ).toEqual([]);
+  await expect(
+    fs.access(path.join(userData, 'workspace-backups')),
+  ).rejects.toThrow();
+});
+it('rejects a backup inside the managed workspace without replacing it', async () => {
+  const { target, handle, host, updater } = await setup();
+  const info = (await updater.info(handle))!;
+  await expect(
+    updater.update(handle, info.releaseId, { backupParent: target }),
+  ).rejects.toThrow('outside');
+  await expect(host.readSnapshot(handle)).resolves.toBeDefined();
+});
+it('recovers an interrupted update without a permanent backup', async () => {
+  const { target, userData, handle, host, updater } = await setup();
+  await host.closeWorkspace(handle);
+  const id = randomUUID();
+  await fs.mkdir(path.join(userData, 'workspace-updates'), { recursive: true });
+  await fs.writeFile(
+    path.join(userData, 'workspace-updates/project.json'),
+    JSON.stringify({ version: 2, id, generation: randomUUID() }),
+  );
+  await fs.rename(target, target + '.previous-' + id);
+  await updater.recover();
+  expect((await host.openWorkspace())?.name).toBe('系统介绍');
+});
+
+it('finishes a published v2 update by registering the chosen backup and removing only temporary rollback data', async () => {
+  const { target, userData, source, handle, host } = await setup();
+  await host.closeWorkspace(handle);
+  const id = randomUUID(),
+    staging = target + '.update-' + id,
+    rollback = target + '.previous-' + id;
+  const backup = path.join(userData, 'chosen-backup');
+  await fs.cp(target, backup, { recursive: true });
+  await fs.mkdir(staging);
+  await stageBuiltinWorkspace(source('project'), staging, 'project', '2.0.0');
+  const instance = JSON.parse(
+    await fs.readFile(path.join(staging, '.verdscrolls/instance.json'), 'utf8'),
+  );
+  await fs.mkdir(path.join(userData, 'workspace-updates'), { recursive: true });
+  await fs.writeFile(
+    path.join(userData, 'workspace-updates/project.json'),
+    JSON.stringify({ version: 2, id, generation: instance.generation, backup }),
+  );
+  await fs.rename(target, rollback);
+  await fs.rename(staging, target);
+  const registered: string[] = [];
+  const updater = createBuiltinWorkspaceUpdater({
+    host,
+    userData: () => userData,
+    source,
+    registerBackup: async (root) => {
+      registered.push(root);
+    },
+  });
+  await updater.recover();
+  await updater.recover();
+  expect(registered).toEqual([backup]);
+  await expect(fs.access(backup)).resolves.toBeUndefined();
+  await expect(fs.access(rollback)).rejects.toThrow();
 });

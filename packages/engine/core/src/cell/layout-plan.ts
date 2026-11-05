@@ -18,6 +18,7 @@ import {
   type CellOperation,
   type CellSelection,
 } from './index';
+import { frameLanes } from './lanes';
 import { createCellRegistry, type CellRegistry } from './registry';
 import {
   isDocumentCell,
@@ -276,7 +277,13 @@ export function planCellLayout(
     Math.round(origin.x) - placed.x,
     Math.round(origin.y) - placed.y,
   ];
-  if (delta[0] || delta[1]) {
+  const laneMembers = new Set(
+    frameLanes(store, scope.frameId, registry).flatMap((lane) => lane.members),
+  );
+  if (
+    (delta[0] || delta[1]) &&
+    !movable.some((block) => block.members.some((id) => laneMembers.has(id)))
+  ) {
     const shifts = movable.flatMap((block) =>
       translateCellSelection(candidate, [block.id], delta, registry),
     );

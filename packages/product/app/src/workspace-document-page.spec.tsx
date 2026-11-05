@@ -53,7 +53,6 @@ function fixture() {
     title: 'Document',
     frameChoices: [],
     onChange: vi.fn(),
-    onTitleCommit: vi.fn(),
     onOpenLink: vi.fn(),
     onReady: vi.fn(),
     onExport: vi.fn(),
@@ -112,7 +111,6 @@ describe('workspace document memo boundary', () => {
     const nextPage = {
       ...page,
       onChange: vi.fn(),
-      onTitleCommit: vi.fn(),
       onReady: vi.fn(),
       onOpenLink: vi.fn(),
       onExport: vi.fn(),
@@ -141,7 +139,6 @@ describe('workspace document memo boundary', () => {
       selectionAfter: { from: 2, to: 2, collapsed: true },
     };
     first.onChange(change);
-    first.onTitleCommit('New title');
     first.onOpenLink?.('verd://file/chart');
     first.onExport?.('markdown');
     first.onReady?.(null);
@@ -149,7 +146,6 @@ describe('workspace document memo boundary', () => {
     firstPreview.options.open('chart');
     firstPreview.options.openLink('verd://file/chart', 'doc');
     expect(nextPage.onChange).toHaveBeenCalledWith(change);
-    expect(nextPage.onTitleCommit).toHaveBeenCalledWith('New title');
     expect(nextPage.onOpenLink).toHaveBeenCalledWith('verd://file/chart');
     expect(nextPage.onExport).toHaveBeenCalledWith('markdown');
     expect(nextPage.onReady).toHaveBeenCalledWith(null);
@@ -161,7 +157,6 @@ describe('workspace document memo boundary', () => {
       'verd://file/chart',
       'doc',
     );
-    expect(page.onTitleCommit).not.toHaveBeenCalled();
     expect(page.onChange).not.toHaveBeenCalled();
     expect(preview.open).not.toHaveBeenCalled();
   });
