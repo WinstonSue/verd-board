@@ -8,7 +8,7 @@ import {
 import {
   type NodeCell,
   type Point,
-  type PortSpec,
+  type Port,
   type ColorSource,
 } from '@sue/board-core';
 import { createSwimlaneCell } from './cell-table';
@@ -36,10 +36,10 @@ export interface TableCellData {
   header?: boolean;
   laneMembers?: Record<string, string[]>;
 }
-export const drawCellPorts = (): PortSpec[] =>
+export const drawCellPorts = (): Port[] =>
   ['top', 'right', 'bottom', 'left'].map((side) => ({
     id: side,
-    side: side as PortSpec['side'],
+    side: side as Port['side'],
     direction: 'both',
   }));
 export const gestureBounds = (

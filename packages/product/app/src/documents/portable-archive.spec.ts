@@ -9,6 +9,23 @@ const file = (name: string, content: string | Uint8Array) =>
     name,
   );
 describe('portable imports and exports', () => {
+  it('keeps Skill documents out of Markdown content imports', async () => {
+    const archive = zipSync({
+      'notes/Project.md': strToU8('Project content'),
+      '.agents/skills/verd-workspace/SKILL.md': strToU8(
+        '---\nname: verd-workspace\ndescription: Writing\n---\nUse Chinese.',
+      ),
+      'project/.agents/skills/verd-pattern-architecture/SKILL.md': strToU8(
+        'Skill in a selected directory',
+      ),
+    });
+    const result = await importMarkdownCollection([
+      file('project.zip', archive),
+    ]);
+    expect(result.files.map((item) => item.path)).toEqual([
+      'notes/Project.verd-doc.json',
+    ]);
+  });
   it('preserves directories and resolves cyclic, relative, wiki links and images', async () => {
     const zip = zipSync({
       'notes/A.md': strToU8('# A\n[[B]]\n![image](pic.png)'),

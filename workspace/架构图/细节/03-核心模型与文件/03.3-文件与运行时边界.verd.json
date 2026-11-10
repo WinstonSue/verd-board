@@ -161,7 +161,9 @@
                       {
                         "type": "textStyle",
                         "attrs": {
-                          "fontSize": "24px"
+                          "fontSize": "24px",
+                          "color": "#ffffff",
+                          "colorMode": "custom"
                         }
                       }
                     ]
@@ -174,12 +176,15 @@
       },
       "appearance": {
         "fill": "#0f766e",
-        "strokeColor": "#0f766e"
+        "strokeColor": "#0f766e",
+        "textColor": "#ffffff"
       },
       "data": {
         "layout": "standard",
-        "rightNodeCount": 20
-      }
+        "rightNodeCount": 20,
+        "maxNodeWidth": 320
+      },
+      "name": "文件与运行时边界"
     },
     "demo:model/node/5-0": {
       "id": "demo:model/node/5-0",
@@ -539,12 +544,12 @@
         "outline": "roundRectangle"
       },
       "content": {
-        "label": "DocumentFileV1 · .verd-doc.json：独立 block 正文",
+        "label": "DocumentFileV1：独立文档 .verd-doc.json",
         "text": {
           "schemaVersion": 1,
           "id": "demo:model/node/5-3/text",
           "kind": "inline",
-          "plainText": "DocumentFileV1 · .verd-doc.json：独立 block 正文",
+          "plainText": "DocumentFileV1：独立文档 .verd-doc.json",
           "content": {
             "type": "doc",
             "content": [
@@ -553,7 +558,7 @@
                 "content": [
                   {
                     "type": "text",
-                    "text": "DocumentFileV1 · .verd-doc.json：独立 block 正文",
+                    "text": "DocumentFileV1：独立文档 .verd-doc.json",
                     "marks": [
                       {
                         "type": "textStyle",
@@ -581,7 +586,8 @@
           "strokeColor": "#2563eb",
           "strokeWidth": 2
         }
-      }
+      },
+      "name": "DocumentFileV1 · .verd-doc.json：独立 block 正文"
     },
     "demo:model/node/5-2": {
       "id": "demo:model/node/5-2",

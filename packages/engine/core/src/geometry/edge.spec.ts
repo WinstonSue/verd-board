@@ -1,11 +1,11 @@
+import { resolvePort } from '../port';
+import { resolveAnchor } from '../anchor';
 import { describe, expect, it } from 'vitest';
 import type { EdgeCell } from '../cell/types';
 import {
   arrowMarkerGeometry,
   curvePath,
   edgeRoutePoints,
-  portAnchor,
-  relativeAnchor,
   terminalCurvePath,
 } from './edge';
 import { polylinePointAt } from './polyline';
@@ -198,11 +198,11 @@ describe('shared edge geometry', () => {
       height: 50,
       rotation: Math.PI / 2,
     };
-    const port = portAnchor(geometry, { side: 'right', offset: 0.5 });
+    const port = resolvePort(geometry, { side: 'right', offset: 0.5 });
     expect(port.side).toBe('bottom');
     expect(port.point[0]).toBeCloseTo(50);
     expect(port.point[1]).toBeCloseTo(75);
-    const anchor = relativeAnchor(geometry, [0.25, 0]);
+    const anchor = resolveAnchor(geometry, [0.25, 0]).point;
     expect(anchor[0]).toBeCloseTo(75);
     expect(anchor[1]).toBeCloseTo(0);
   });

@@ -55,7 +55,8 @@ export function collectArrangementBlocks(
     !isFrameCell(frame) ||
     registry.scenes.some(
       (scene) =>
-        scene.arrangeable === false &&
+        (scene.arrangeable === false ||
+          scene.geometry?.nodeLayout === 'none') &&
         scene.anchorKinds.includes(frameScene(store, frameId, registry) ?? ''),
     )
   )
@@ -194,7 +195,12 @@ export function distributeCells(
 }
 
 const stableBlocks = (blocks: ArrangementBlock[]) =>
-  blocks.sort((a, b) => a.bounds.y - b.bounds.y || a.bounds.x - b.bounds.x);
+  blocks.sort(
+    (a, b) =>
+      a.bounds.y - b.bounds.y ||
+      a.bounds.x - b.bounds.x ||
+      a.id.localeCompare(b.id),
+  );
 
 function arrangementLinks(
   store: CellStore,
@@ -229,6 +235,7 @@ export function arrangeCells(
   style: CellLayoutStyle,
   gap = 32,
   registry: CellRegistry = createCellRegistry(),
+  spacing?: { rankGap?: number; laneInset?: number },
 ): CellOperation[] {
   const scene = registry.scenes.find((scene) =>
     scene.anchorKinds.includes(frameScene(store, frameId, registry) ?? ''),
@@ -260,7 +267,21 @@ export function arrangeCells(
         gap,
         registry,
         layout,
-        lane?.bounds,
+        lane
+          ? {
+              x: lane.bounds.x + (spacing?.laneInset ?? 0),
+              y: lane.bounds.y + (spacing?.laneInset ?? 0),
+              width: Math.max(
+                0,
+                lane.bounds.width - 2 * (spacing?.laneInset ?? 0),
+              ),
+              height: Math.max(
+                0,
+                lane.bounds.height - 2 * (spacing?.laneInset ?? 0),
+              ),
+            }
+          : undefined,
+        spacing?.rankGap,
       ),
   );
 }
@@ -302,6 +323,7 @@ function arrangePartition(
   registry: CellRegistry,
   layout?: NonNullable<import('./registry').CellScene['layouts']>[number],
   laneBounds?: RectangleClient,
+  rankGap?: number,
 ): CellOperation[] {
   if (layout) blocks.sort((a, b) => a.id.localeCompare(b.id));
   else stableBlocks(blocks);
@@ -313,6 +335,8 @@ function arrangePartition(
     const positions = relationshipArrangementPositions(
       blocks,
       arrangementLinks(store, blocks),
+      Math.max(96, gap),
+      rankGap ?? Math.max(160, gap),
     );
     return moveBlocks(
       store,
@@ -346,7 +370,7 @@ function arrangePartition(
       rows,
       arrangementLinks(store, blocks, layout.edgeKind),
       Math.max(96, gap),
-      Math.max(160, gap),
+      rankGap ?? Math.max(160, gap),
     );
     return moveBlocks(
       store,

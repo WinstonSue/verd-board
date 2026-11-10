@@ -1,7 +1,7 @@
 import { createInlineText } from '@sue/board-common';
 import {
   createCellRuntime,
-  portAnchor,
+  resolvePort,
   terminalCurvePath,
   type EdgeCell,
   type NodeCell,
@@ -82,8 +82,8 @@ describe('dense mind branch geometry', () => {
       for (let i = 0; i < 9; i++) {
         const edge = r.store.cells[`edge-${i}`] as EdgeCell;
         const ports = mindBranchPorts(r.store, edge)!;
-        const source = portAnchor(geometry.get('root')!, ports.source),
-          target = portAnchor(geometry.get(`child-${i}`)!, ports.target);
+        const source = resolvePort(geometry.get('root')!, ports.source),
+          target = resolvePort(geometry.get(`child-${i}`)!, ports.target);
         const points = sample(terminalCurvePath(source, target));
         expect(points[0]).toEqual(source.point);
         expect(points.at(-1)).toEqual(target.point);

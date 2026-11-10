@@ -395,6 +395,7 @@ export function packageDrift(file, model) {
 export async function validateWorkspace(entries, runtime) {
   const errors = runtime.validation
     .validateNativeWorkspace(entries)
+    .filter((issue) => issue.severity === 'error')
     .map(
       (issue) =>
         (issue.path ?? issue.fileId ?? 'workspace') + ': ' + issue.message,

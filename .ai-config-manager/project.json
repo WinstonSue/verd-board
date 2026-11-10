@@ -10,9 +10,7 @@
     {
       "name": "cursor",
       "link": ".cursor",
-      "skills": [
-        "verd-board-dev"
-      ]
+      "skills": ["verd-board-dev"]
     },
     {
       "name": "agent",

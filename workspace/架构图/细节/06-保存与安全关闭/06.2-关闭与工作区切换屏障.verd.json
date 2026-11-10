@@ -115,7 +115,9 @@
                       {
                         "type": "textStyle",
                         "attrs": {
-                          "fontSize": "20px"
+                          "fontSize": "20px",
+                          "color": "#ffffff",
+                          "colorMode": "custom"
                         }
                       }
                     ]
@@ -129,14 +131,12 @@
       "appearance": {
         "fill": "#0f766e",
         "strokeColor": "#0f766e",
-        "strokeWidth": 1.5
+        "strokeWidth": 1.5,
+        "textColor": "#ffffff"
       },
       "data": {
         "graphMode": "process",
-        "origin": [
-          0,
-          0
-        ],
+        "origin": [0, 0],
         "memberIds": [
           "demo:close/start",
           "demo:close/request",
@@ -149,7 +149,8 @@
           "demo:close/continue",
           "demo:close/web"
         ]
-      }
+      },
+      "name": "关闭 / 离开页面"
     },
     "demo:close/request": {
       "id": "demo:close/request",

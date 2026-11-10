@@ -1,10 +1,11 @@
+import { observeContentWrites } from './service-routes';
 import {
   expectSettingValue,
   selectSetting,
   setSettingSlider,
 } from '../../helpers/settings-controls';
 import { selectHistoryAction } from './app-actions';
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test, type Page } from './service-fixture';
 import { openAppMenu, openSettings, selectAppAction } from './app-actions';
 import { selectDrawingTool } from './drawing-tools';
 import { backToPreviousCanvas } from './workspace-nav';
@@ -38,7 +39,10 @@ test('settings sections are grouped menu items with keyboard navigation', async 
   await page.goto('/');
   const settings = await openSettings(page);
   const menu = settings.getByRole('menu', { name: '设置栏目' });
-  await expect(menu.getByRole('menuitem')).toHaveCount(5);
+  await expect(menu.getByRole('menuitem')).toHaveCount(8);
+  await expect(
+    menu.getByRole('menuitem', { name: '自定义 Skills', exact: true }),
+  ).toBeVisible();
   await expect(menu.getByRole('button')).toHaveCount(0);
   await expect(menu.getByText('个人偏好', { exact: true })).toBeVisible();
   const appearance = menu.getByRole('menuitem', { name: '外观', exact: true });
@@ -230,20 +234,7 @@ test('settings preserve the mounted canvas, selection, viewport, tool, and undo 
 test('interaction settings update gestures immediately, persist, and reset independently of language', async ({
   page,
 }) => {
-  await page.addInitScript(() => {
-    (window as any).settingsWrites = 0;
-    const original = IDBObjectStore.prototype.put;
-    IDBObjectStore.prototype.put = function (
-      this: IDBObjectStore,
-      ...args: any[]
-    ) {
-      // Only document content writes count; `meta`/`workspaces` carry
-      // per-tab camera state and session bookkeeping now.
-      if (['files', 'trash'].includes(this.name))
-        (window as any).settingsWrites++;
-      return original.apply(this, args as never);
-    } as typeof original;
-  });
+  await observeContentWrites(page, 'settingsWrites');
   await page.goto('/');
   await skipTutorial(page);
   // Boot commits (default board seed, session state) are debounced; sample

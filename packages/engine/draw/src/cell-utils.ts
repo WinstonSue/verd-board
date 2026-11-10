@@ -11,8 +11,12 @@ import {
   type Point,
 } from '@sue/board-core';
 import type { TableCellData } from './cell-commands';
-import { swimlaneTracks, withSwimlaneMembers } from './swimlane-members';
-import { validateTableData } from './cell-table';
+import {
+  swimlaneTracks,
+  withSwimlaneMembers,
+  growSwimlaneTracks,
+} from './swimlane-members';
+import { validateTableData, tableGrid } from './cell-table';
 import { hitVectorLine, type VectorLineData } from './path';
 import { DrawKind } from './public-api';
 export class TextNodeUtil extends NodeUtil {
@@ -64,7 +68,20 @@ export class SwimlaneNodeUtil extends TableNodeUtil {
     DrawKind.swimlane;
   readonly lanes = swimlaneTracks;
   readonly withLaneMembers = withSwimlaneMembers;
+  readonly growLanes = growSwimlaneTracks;
   readonly routingObstacle = false;
+  readonly routingObstacles = (cell: Cell, geometry?: NodeGeometry) => {
+    if (cell.cellType !== 'node') return [];
+    return tableGrid(cell as NodeCell<TableCellData>, geometry)
+      .entries.filter((e) => e.entry.role && e.entry.role !== 'body')
+      .map((e) => ({
+        id: `${cell.id}:header:${e.entry.id}`,
+        x: e.x - 0.5,
+        y: e.y - 0.5,
+        width: e.width + 1,
+        height: e.height + 1,
+      }));
+  };
 
   override validate(store: CellStore, cell: Cell) {
     const issue = super.validate(store, cell);

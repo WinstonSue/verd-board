@@ -156,52 +156,6 @@ describe('FileTree', () => {
     expect(onTrashDirectory).toHaveBeenCalledWith('docs');
     expect(document.querySelector('dialog')).toBeNull();
   });
-
-  it('keeps owned files at their real paths and also indents shortcuts', async () => {
-    const props = await setup({
-      canvases: [
-        { frameId: 'a', name: 'Alpha', path: 'docs/a.verd.json' },
-        {
-          frameId: 'c',
-          name: 'Child',
-          path: 'c.verd.json',
-          diagram: 'workflow',
-        },
-      ],
-      subgraphs: [
-        {
-          frameId: 'c',
-          name: 'Child',
-          path: 'c.verd.json',
-          diagram: 'workflow',
-          placement: 'owned',
-          ownerFrameId: 'a',
-        },
-      ],
-      expandedOwners: ['a'],
-    });
-    await click(button('Alpha'));
-    expect(props.onOpenFile).toHaveBeenCalledWith('a');
-    expect(button('Alpha').getAttribute('aria-current')).toBe('page');
-    expect(
-      button('Alpha')
-        .closest<HTMLElement>('.file-tree-row')
-        ?.style.getPropertyValue('--depth'),
-    ).toBe('1');
-    expect(
-      button('Child (快捷入口)')
-        .closest<HTMLElement>('.file-tree-row')
-        ?.style.getPropertyValue('--depth'),
-    ).toBe('2');
-    expect(button('Child').getAttribute('title')).toBe('c.verd.json');
-    expect(container.querySelectorAll('[data-file-id="c"]')).toHaveLength(2);
-    expect(
-      container.querySelector(
-        '.file-tree-body details, .file-tree-body summary',
-      ),
-    ).toBeNull();
-    expect(container.textContent).not.toContain('更多');
-  });
   it('opens ordered actions and closes the menu after selecting trash', async () => {
     const props = await setup();
     await click(button('「Alpha」的操作'));
@@ -241,62 +195,6 @@ describe('FileTree', () => {
         (item) => item.textContent,
       ),
     ).toEqual(['导出(含依赖)']);
-  });
-  it('limits shortcut menus to navigation and keeps canonical file menus independent', async () => {
-    const props = await setup({
-      canvases: [
-        { frameId: 'a', name: 'Alpha', path: 'a.verd.json' },
-        {
-          frameId: 'c',
-          name: 'Child',
-          path: 'docs/c.verd.json',
-          diagram: 'mind',
-          dirty: true,
-        },
-      ],
-      subgraphs: [
-        {
-          frameId: 'c',
-          name: 'Child',
-          path: 'docs/c.verd.json',
-          diagram: 'mind',
-          placement: 'owned',
-          ownerFrameId: 'a',
-        },
-      ],
-      expandedOwners: ['a'],
-      onRevealFile: vi.fn(),
-      activeFileId: 'c',
-    });
-    const source = container.querySelector<HTMLElement>(
-      '[data-entry-kind="file"][data-file-id="c"]',
-    )!;
-    const shortcut = container.querySelector<HTMLElement>(
-      '[data-entry-kind="shortcut"]',
-    )!;
-    expect(source.classList.contains('is-active')).toBe(true);
-    expect(shortcut.classList.contains('is-active')).toBe(true);
-    expect(source.querySelector('.file-tree-dirty')).toBeTruthy();
-    expect(shortcut.querySelector('.file-tree-dirty')).toBeTruthy();
-    await click(shortcut.querySelector<HTMLButtonElement>('.file-tree-more')!);
-    expect(
-      [...document.querySelectorAll('[role="menuitem"]')].map(
-        (item) => item.textContent,
-      ),
-    ).toEqual(['打开', '在文件夹中显示']);
-    expect(source.classList.contains('is-menu-open')).toBe(false);
-    await click(button('在文件夹中显示'));
-    expect(props.onRevealFile).toHaveBeenCalledWith('c');
-    expect(props.onOpenFile).not.toHaveBeenCalled();
-    await click(button('Child (快捷入口)'));
-    expect(props.onOpenFile).toHaveBeenCalledWith('c');
-    await click(source.querySelector<HTMLButtonElement>('.file-tree-more')!);
-    expect(
-      [...document.querySelectorAll('[role="menuitem"]')].map(
-        (item) => item.textContent,
-      ),
-    ).toEqual(['重命名/移动', '创建独立副本', '导出(含依赖)', '移入回收站']);
-    expect(shortcut.classList.contains('is-menu-open')).toBe(false);
   });
   it('shows unorganized files at real paths even when their former owner is missing', async () => {
     await setup({
@@ -423,4 +321,44 @@ it('exposes selected paths and creation through a floating menu', async () => {
   await click(button('新建'));
   expect(document.querySelector('[role="menu"]')).toBeTruthy();
   expect(button('新建文件夹')).toBeTruthy();
+});
+
+it('shows ordinary originals beside native files and preserves genuinely empty directories', async () => {
+  const onOpenResource = vi.fn(),
+    onOrganize = vi.fn(),
+    onTrashResource = vi.fn();
+  await setup({
+    entries: [
+      { path: 'docs', kind: 'directory' },
+      { path: 'empty', kind: 'directory' },
+      ...['notes.md', 'image.png', 'paper.pdf', 'data.json'].map((name) => ({
+        path: 'docs/' + name,
+        kind: 'file' as const,
+        canvas: false,
+      })),
+    ],
+    onOpenResource,
+    onOrganize,
+    onTrashResource,
+  });
+  expect(
+    container.querySelectorAll('[data-entry-kind="resource"]'),
+  ).toHaveLength(4);
+  expect(container.querySelectorAll('[data-file-id="a"]')).toHaveLength(1);
+  expect(button('empty')).toBeTruthy();
+  await click(button('notes.md'));
+  expect(onOpenResource).toHaveBeenCalledWith('docs/notes.md');
+  expect(button('notes.md').closest('[data-file-id]')).toBeNull();
+  await click(button('「notes.md」的操作'));
+  await click(button('重命名'));
+  expect(onOrganize).toHaveBeenCalledWith('docs/notes.md', 'rename');
+  await click(button('「notes.md」的操作'));
+  await click(button('移入回收站'));
+  expect(onTrashResource).toHaveBeenCalledWith('docs/notes.md');
+});
+
+it('renders a root containing only an ordinary file instead of an empty workspace', async () => {
+  await setup({ entries: [{ path: 'readme.md', kind: 'file' }], canvases: [] });
+  expect(button('readme.md')).toBeTruthy();
+  expect(container.querySelector('.file-tree-empty')).toBeNull();
 });

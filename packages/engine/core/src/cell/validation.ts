@@ -1,3 +1,4 @@
+import { isValidAnchor } from '../anchor';
 import { withCellValidationReads } from './validation-read-context';
 import { laneContains } from './lanes';
 import { geometryBounds, groupLeafMembers, isGroupableCell } from './group';
@@ -169,11 +170,7 @@ function validateStoreContents(
     if (isEdgeCell(cell)) {
       for (const terminal of [cell.source, cell.target]) {
         if ('cellId' in terminal) {
-          if (
-            terminal.anchor &&
-            (terminal.anchor.length !== 2 ||
-              !terminal.anchor.every(Number.isFinite))
-          )
+          if (terminal.anchor && !isValidAnchor(terminal.anchor))
             report(cell.id, 'Invalid bound anchor');
           const endpoint = store.cells[terminal.cellId];
           if (isDocumentCell(endpoint))
@@ -207,6 +204,11 @@ function validateStoreContents(
           cell.route.strategy !== 'optimized')
       )
         report(cell.id, 'Invalid routing strategy');
+      if (
+        cell.route.origin !== undefined &&
+        !['manual', 'generated'].includes(cell.route.origin)
+      )
+        report(cell.id, 'Invalid route origin');
       const error = registry?.validateEdge(store, cell);
       if (error) report(cell.id, error);
     }

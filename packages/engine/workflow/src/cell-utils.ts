@@ -1,6 +1,6 @@
 import {
-  assertWholeGroupsMoved,
-  availableEdgePorts,
+  availablePorts,
+  findPort,
   EdgeUtil,
   groupLeafMembers,
   indexCells,
@@ -20,11 +20,11 @@ import {
   type NodeCell,
   type NodeGeometry,
   type Point,
-  type PortSpec,
+  type Port,
 } from '@sue/board-core';
 import { WorkflowKind, type WorkflowStartData } from './public-api';
 
-export const workflowCellPorts = (start = false): PortSpec[] =>
+export const workflowCellPorts = (start = false): Port[] =>
   (['top', 'right', 'bottom', 'left'] as const).map((side) => ({
     id: side,
     side,
@@ -55,7 +55,7 @@ export function defaultWorkflowPort(
   edgeId?: string,
 ) {
   const side = preferredWorkflowPortSide(node.geometry, other.geometry, end);
-  const ports = availableEdgePorts(store, node, end, edgeId);
+  const ports = availablePorts(store, node, end, edgeId);
   return (ports.find((port) => port.side === side) ?? ports[0])?.id;
 }
 
@@ -115,48 +115,8 @@ export abstract class WorkflowNodeUtil extends NodeUtil {
 }
 export class WorkflowStartNodeUtil extends WorkflowNodeUtil {
   readonly kind = WorkflowKind.workflowStart;
-  override move(
-    store: CellStore,
-    cell: Cell,
-    geometry: NodeGeometry,
-  ): CellOperation[] {
-    if (!isNodeCell(cell)) return [];
-    const data = workflowStartData(cell);
-    if (!data) return [];
-    const dx = geometry.x - cell.geometry.x,
-      dy = geometry.y - cell.geometry.y;
-    assertWholeGroupsMoved(store, data.memberIds);
-    return [
-      {
-        type: 'replace_cell',
-        cell: {
-          ...cell,
-          geometry,
-          data: { ...data, origin: [data.origin[0] + dx, data.origin[1] + dy] },
-        },
-      },
-      ...data.memberIds
-        .filter((id) => id !== cell.id)
-        .flatMap((id) => {
-          const member = store.cells[id];
-          return isNodeCell(member) && !member.geometry.derived
-            ? [
-                {
-                  type: 'replace_cell' as const,
-                  cell: {
-                    ...member,
-                    geometry: {
-                      ...member.geometry,
-                      x: member.geometry.x + dx,
-                      y: member.geometry.y + dy,
-                    },
-                  },
-                },
-              ]
-            : [];
-        }),
-    ];
-  }
+  // Ordinary dragging uses NodeUtil.move: the legacy layout origin and other
+  // members stay fixed. Selection/group translation remains an explicit move.
   override capabilities(
     store: CellStore,
     cell: Cell,
@@ -410,14 +370,8 @@ export class WorkflowEdgeUtil extends EdgeUtil {
     const graph = workflowStartOf(store, sourceId);
     if (!graph || workflowStartOf(store, targetId)?.id !== graph.id)
       return 'Workflow edges must stay in one graph';
-    const sourcePort = source.ports?.find(
-      (port) =>
-        port.id === ('portId' in edge.source ? edge.source.portId : undefined),
-    );
-    const targetPort = target.ports?.find(
-      (port) =>
-        port.id === ('portId' in edge.target ? edge.target.portId : undefined),
-    );
+    const sourcePort = findPort(source, edge.source.portId);
+    const targetPort = findPort(target, edge.target.portId);
     if (
       !sourcePort ||
       !targetPort ||

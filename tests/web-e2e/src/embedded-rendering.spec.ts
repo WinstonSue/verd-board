@@ -1,9 +1,11 @@
-import { expect, test, type Page } from '@playwright/test';
+import { openActiveFile } from './app-actions';
+import { expect, test, type Page } from './service-fixture';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { selectAppAction, setAppLanguage } from './app-actions';
 import { selectDrawingTool } from './drawing-tools';
 import { persistedWorkspace } from './workspace-nav';
+import { cellBodyPoint } from '../../helpers/port-controls';
 
 const active = (page: Page) => page.locator('.workspace-pane.is-active');
 const canvas = (page: Page) =>
@@ -13,6 +15,7 @@ const previewImageUrl =
 async function seed(page: Page, plain = false, includeImage = false) {
   await page.setViewportSize({ width: 1440, height: 1000 });
   await page.goto('/');
+  await openActiveFile(page);
   const skip = page.getByRole('button', { name: '跳过', exact: true });
   if (await skip.isVisible()) await skip.click();
   await setAppLanguage(page, 'zh');
@@ -347,6 +350,35 @@ test('an activated ordinary whiteboard creates and undoes cells in its source fi
     )
     .toBe(1);
   await page.keyboard.press('ControlOrMeta+Shift+z');
+  await expect
+    .poll(
+      async () =>
+        Object.keys(
+          (await persistedWorkspace(page))!.records['plain-target'].cells,
+        ).length,
+    )
+    .toBe(2);
+  await selectDrawingTool(page, '选择');
+  const contextPoint = await cellBodyPoint(
+    nested.locator('[data-cell-kind="geometry"]').last(),
+  );
+  await page.mouse.click(contextPoint.x, contextPoint.y, { button: 'right' });
+  const contextMenu = page.getByRole('menu', { name: '画布编辑', exact: true });
+  await contextMenu
+    .getByRole('menuitem', { name: '复制副本', exact: true })
+    .click();
+  await expect
+    .poll(
+      async () =>
+        Object.keys(
+          (await persistedWorkspace(page))!.records['plain-target'].cells,
+        ).length,
+    )
+    .toBe(3);
+  expect((await persistedWorkspace(page))!.records['realtime-owner']).toEqual(
+    ownerBefore,
+  );
+  await page.keyboard.press('ControlOrMeta+z');
   await expect
     .poll(
       async () =>

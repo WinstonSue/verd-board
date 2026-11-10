@@ -1,12 +1,8 @@
-import { test } from '@playwright/test';
+import { test, expect } from '@playwright/test';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import {
-  desktopDevUrl,
-  electron,
-  writeDesktopLauncher,
-} from './desktop-launcher';
+import { electron, writeDesktopLauncher } from './desktop-launcher';
 import { exerciseFindBars } from '../../helpers/find-bar';
 
 test('Desktop shares canvas and document find controls and preserves replacement history', async () => {
@@ -24,11 +20,12 @@ test('Desktop shares canvas and document find controls and preserves replacement
       },
     });
     const page = await desktop.firstWindow();
+    await expect(page.locator('.workspace-shell')).toBeVisible();
     await exerciseFindBars(
       page,
       (name) => info.outputPath(name),
       'dark',
-      desktopDevUrl,
+      page.url(),
     );
   } finally {
     await desktop?.close();

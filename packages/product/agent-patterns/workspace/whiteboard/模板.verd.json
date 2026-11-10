@@ -20,9 +20,7 @@
       "pattern:whiteboard/arrow-1",
       "pattern:whiteboard/arrow-2"
     ],
-    "groups": [
-      "pattern:whiteboard/group-review"
-    ],
+    "groups": ["pattern:whiteboard/group-review"],
     "view": {
       "theme": {
         "themeColorMode": "default"

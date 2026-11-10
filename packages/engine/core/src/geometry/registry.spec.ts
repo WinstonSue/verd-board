@@ -1,7 +1,8 @@
+import { resolvePort } from '../port';
 import { describe, expect, it } from 'vitest';
 import { createDefaultShapeGeometryRegistry } from './registry';
 import { hitNodeShape, nodeShapeGeometry } from './node';
-import { portAnchor } from './edge';
+
 import type { NodeCell } from '../cell/types';
 
 const registry = createDefaultShapeGeometryRegistry();
@@ -72,10 +73,10 @@ describe('native whiteboard geometry', () => {
       height: 100,
       outline: 'manualInput',
     };
-    const anchor = portAnchor(geometry, { side: 'top', offset: 0.5 });
+    const anchor = resolvePort(geometry, { side: 'top', offset: 0.5 });
     expect(anchor.point[0]).toBeCloseTo(80);
     expect(anchor.point[1]).toBeCloseTo(12.5);
-    const rotated = portAnchor(
+    const rotated = resolvePort(
       { ...geometry, rotation: Math.PI / 2 },
       { side: 'top', offset: 0.5 },
     );

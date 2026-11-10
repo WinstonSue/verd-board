@@ -1,4 +1,5 @@
-import { portAnchor, relativeAnchor } from '../geometry/edge';
+import { resolveTerminal } from '../terminal/resolve';
+
 import type { Point } from '../interfaces/point';
 import { frameScene } from './frame';
 import { groupLeafMembers, lockedByAncestor } from './group';
@@ -37,17 +38,10 @@ export interface CellFragment {
 }
 const copy = <T>(value: T): T => JSON.parse(JSON.stringify(value)) as T;
 const freePoint = (store: CellStore, terminal: EdgeCell['source']): Point => {
-  if ('point' in terminal) return [...terminal.point];
-  const cell = store.cells[terminal.cellId];
-  if (!cell || !isNodeCell(cell)) return [0, 0];
-  if (terminal.anchor) return relativeAnchor(cell.geometry, terminal.anchor);
-  const port = cell.ports?.find((port) => port.id === terminal.portId);
-  return port
-    ? portAnchor(cell.geometry, port).point
-    : [
-        cell.geometry.x + cell.geometry.width / 2,
-        cell.geometry.y + cell.geometry.height / 2,
-      ];
+  const position = resolveTerminal(store, terminal, undefined, {
+    automatic: 'center',
+  });
+  return position ? [...position.point] : [0, 0];
 };
 export const copyCellFragment = (
   store: CellStore,

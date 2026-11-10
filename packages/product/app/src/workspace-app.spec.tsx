@@ -115,6 +115,12 @@ afterEach(async () => {
 
 const hostWith = async (path = 'ws-ui') => {
   const host = createMemoryWorkspaceHost({ now: () => 1_700_000_000_000 });
+  // This fixture emulates a Desktop host, including picker and built-in actions.
+  host.capabilities = {
+    pickWorkspace: true,
+    openBuiltinWorkspace: true,
+    openPatternWorkspace: true,
+  };
   const handle = (await host.openWorkspace({ path }))!;
   return { host, handle, path };
 };
@@ -511,7 +517,7 @@ describe('workspace shell navigation', () => {
     ).toBeTruthy();
   });
 
-  it('keeps optimistic name input, updates the sidebar and returns focus to the workspace menu', async () => {
+  it('keeps the name draft, updates the saved sidebar name and returns focus to the workspace menu', async () => {
     const { host, path } = await hostWith('ws-name');
     await render(<WorkspaceApp host={host} workspace={{ path }} />);
     const trigger = container.querySelector<HTMLButtonElement>(
@@ -550,6 +556,61 @@ describe('workspace shell navigation', () => {
       container.querySelector('[data-testid="workspace-settings-page"]'),
     ).toBeNull();
     expect(document.activeElement).toBe(trigger);
+  });
+
+  it('keeps the committed workspace name while a rename is pending and after it is rejected', async () => {
+    const { host, path, handle } = await hostWith('ws-name-rejected');
+    const config = (await host.readSnapshot(handle)).config;
+    const seeded = await host.commit(handle, {
+      transactionId: 'saved-name',
+      config: {
+        value: { ...config.value, name: 'Saved name' },
+        expectedVersion: config.version,
+      },
+    });
+    expect(seeded.outcome).toBe('applied');
+    const commit = host.commit.bind(host);
+    let rejectRename!: () => void;
+    const gate = new Promise<void>((resolve) => (rejectRename = resolve));
+    const started = vi.fn();
+    host.commit = async (target, request) => {
+      if (request.config?.value['name'] === 'Rejected name') {
+        started();
+        await gate;
+        return {
+          transactionId: request.transactionId,
+          outcome: 'rejected',
+          reason: 'invalid',
+        };
+      }
+      return commit(target, request);
+    };
+    await render(<WorkspaceApp host={host} workspace={{ path }} />);
+    await openWorkspaceMenu();
+    await act(async () => workspaceAction('workspace-open-settings').click());
+    const input = container.querySelector<HTMLInputElement>(
+      '[data-testid="workspace-settings-name"]',
+    )!;
+    await act(async () => {
+      Object.getOwnPropertyDescriptor(
+        HTMLInputElement.prototype,
+        'value',
+      )!.set!.call(input, 'Rejected name');
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+    });
+    const title = () =>
+      container.querySelector('.workspace-menu-name')?.textContent;
+    expect(title()).toBe('Saved name');
+    await act(async () =>
+      input.dispatchEvent(new FocusEvent('focusout', { bubbles: true })),
+    );
+    expect(started).toHaveBeenCalledOnce();
+    expect(title()).toBe('Saved name');
+    await act(async () => rejectRename());
+    expect(title()).toBe('Saved name');
+    expect((await host.readSnapshot(handle)).config.value['name']).toBe(
+      'Saved name',
+    );
   });
 
   it('shows preferences directly in My and keeps workspace settings independent', async () => {
@@ -1075,4 +1136,20 @@ it('keeps shared startup handles open across StrictMode effect replay while load
   expect(close).not.toHaveBeenCalled();
   await openWorkspaceMenu();
   expect(workspaceAction('workspace-history-current').disabled).toBe(true);
+});
+
+it('hides unsupported host entries while preserving the legacy host capability contract', async () => {
+  const { host, path } = await hostWith('capabilities');
+  host.capabilities = {
+    pickWorkspace: false,
+    openBuiltinWorkspace: false,
+    openPatternWorkspace: false,
+  };
+  await render(
+    <WorkspaceApp host={host} workspace={{ path }} allowWorkspaceSwitching />,
+  );
+  await openWorkspaceMenu();
+  expect(workspaceAction('workspace-open-folder')).toBeNull();
+  expect(workspaceAction('workspace-open-builtin')).toBeNull();
+  expect(workspaceAction('workspace-open-patterns')).toBeNull();
 });

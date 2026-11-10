@@ -101,7 +101,9 @@
                       {
                         "type": "textStyle",
                         "attrs": {
-                          "fontSize": "24px"
+                          "fontSize": "24px",
+                          "color": "#ffffff",
+                          "colorMode": "custom"
                         }
                       }
                     ]
@@ -114,12 +116,15 @@
       },
       "appearance": {
         "fill": "#0f766e",
-        "strokeColor": "#0f766e"
+        "strokeColor": "#0f766e",
+        "textColor": "#ffffff"
       },
       "data": {
         "layout": "standard",
-        "rightNodeCount": 20
-      }
+        "rightNodeCount": 20,
+        "maxNodeWidth": 320
+      },
+      "name": "环境、源码与文档维护"
     },
     "demo:development/node/5-3": {
       "id": "demo:development/node/5-3",
@@ -536,12 +541,12 @@
         "outline": "roundRectangle"
       },
       "content": {
-        "label": "测试使用临时工作区，不修改正式内容",
+        "label": "测试只用临时工作区，保留原内容",
         "text": {
           "schemaVersion": 1,
           "id": "demo:development/node/5-4/text",
           "kind": "inline",
-          "plainText": "测试使用临时工作区，不修改正式内容",
+          "plainText": "测试只用临时工作区，保留原内容",
           "content": {
             "type": "doc",
             "content": [
@@ -550,7 +555,7 @@
                 "content": [
                   {
                     "type": "text",
-                    "text": "测试使用临时工作区，不修改正式内容",
+                    "text": "测试只用临时工作区，保留原内容",
                     "marks": [
                       {
                         "type": "textStyle",
@@ -578,7 +583,8 @@
           "strokeColor": "#2563eb",
           "strokeWidth": 2
         }
-      }
+      },
+      "name": "测试使用临时工作区，不修改正式内容"
     },
     "demo:development/node/0-2": {
       "id": "demo:development/node/0-2",

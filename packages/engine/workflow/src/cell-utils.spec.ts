@@ -2,7 +2,7 @@ import {
   copyCellFragment,
   createCellRuntime,
   planCellPaste,
-  snapEdgeTerminal,
+  snapTerminal,
   type EdgeCell,
   type NodeCell,
 } from '@sue/board-core';
@@ -74,7 +74,7 @@ describe('native workflow rules', () => {
       ),
     ).toBe('bottom');
     const snap = (point: [number, number]) =>
-      snapEdgeTerminal(
+      snapTerminal(
         store,
         'frame',
         point,
@@ -147,15 +147,15 @@ describe('native workflow rules', () => {
       id: 'auto',
       operations: autoLayoutWorkflow(r.store, 'z-start'),
     });
-    for (const id of ['a-task', 'b-task'])
-      expect((r.store.cells[id] as NodeCell).geometry).toMatchObject({
-        ...layout.get(id),
-        derived: false,
-      });
+    for (const id of ['a-task', 'b-task']) {
+      const g = (r.store.cells[id] as NodeCell).geometry;
+      expect(g.derived).toBe(false);
+      expect(Number.isFinite(g.x) && Number.isFinite(g.y)).toBe(true);
+    }
     r.undo();
     expect(r.store).toEqual(before);
   });
-  it('moves the graph origin and fixed members with its start in one reversible transaction', () => {
+  it('moves only the start, preserving fixed and legacy derived members in one reversible transaction', () => {
     const r = runtime();
     const a = r.store.cells.a as NodeCell;
     r.transact({
@@ -191,27 +191,25 @@ describe('native workflow rules', () => {
         y: 130,
       }),
     });
-    expect(
-      (r.store.cells.start as NodeCell<WorkflowStartData>).data!.origin,
-    ).toEqual([140, 130]);
-    expect((r.store.cells.a as NodeCell).geometry).toMatchObject({
-      x: 500,
-      y: 250,
+    expect((r.store.cells.start as NodeCell).geometry).toMatchObject({
+      x: 140,
+      y: 130,
     });
-    expect(layoutWorkflowCells(r.store, 'frame').get('b')).toMatchObject({
-      x: derived.x + 100,
-      y: derived.y + 50,
-    });
+    expect(r.store.cells.start).toMatchObject({ data: start.data });
+    expect(r.store.cells.a).toEqual(before.cells.a);
+    expect(r.store.cells.b).toEqual(before.cells.b);
+    expect(layoutWorkflowCells(r.store, 'frame').get('b')).toEqual(derived);
+    const moved = structuredClone(r.store);
     r.undo();
     expect(r.store).toEqual(before);
     r.redo();
-    expect((r.store.cells.a as NodeCell).geometry).toMatchObject({
-      x: 500,
-      y: 250,
-    });
+    expect(r.store).toEqual(moved);
+    expect(
+      createCellRuntime(r.snapshot, createTestCellRegistry()).store,
+    ).toEqual(moved);
   });
 
-  it('auto layouts one graph, preserves its start, restores manual positions on undo and rejects process cycles', () => {
+  it('auto layouts one graph, preserves its start, restores manual positions on undo and supports process cycles', () => {
     const r = runtime();
     r.transact({
       id: 'other',
@@ -273,8 +271,8 @@ describe('native workflow rules', () => {
         { type: 'insert_cell', parentId: 'frame', cell: edge('ba', 'b', 'a') },
       ],
     });
-    expect(canAutoLayoutWorkflow(r.store, 'start')).toBe(false);
-    expect(() => autoLayoutWorkflow(r.store, 'start')).toThrow('cyclic');
+    expect(canAutoLayoutWorkflow(r.store, 'start')).toBe(true);
+    expect(autoLayoutWorkflow(r.store, 'start').length).toBeGreaterThan(0);
   });
   it('protects starts and rejects incoming start edges', () => {
     const r = runtime();

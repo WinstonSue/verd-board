@@ -1,9 +1,26 @@
+import { withGitVersioning } from '@sue/verd-board-app/headless';
 import {
   FOLDER_ID_FILE,
   isFolderIdentityPath,
   readFolderIdentity,
 } from '@sue/verd-board-app/headless';
 import { readWorkspaceGeneration } from './workspace-lock';
+import {
+  assertResourcePath,
+  assertResourceLayout,
+  migrateWorkspaceResourcesUnlocked,
+  readResourceMetadata,
+} from './workspace-resource-storage';
+import { assertSkillFile } from './workspace-skills';
+import {
+  createNodeWorkspaceGit,
+  recoverGitNativeLock,
+  recoverGitPurge,
+} from './workspace-git';
+import {
+  cleanPublishedTemps,
+  recoverGitRestore,
+} from './workspace-git-restore';
 import * as crypto from 'crypto';
 import { watch, type FSWatcher } from 'fs';
 import * as fs from 'fs/promises';
@@ -26,6 +43,12 @@ import {
 } from './workspace-project';
 import {
   baseName,
+  isWorkspaceContentPath,
+  normalizeResourceKey,
+  resourceStoragePath,
+  RESOURCE_DIR,
+  LEGACY_RESOURCE_DIR,
+  workspaceDisplayName,
   conflictCommit,
   isCanvasPath,
   isDocumentPath,
@@ -132,7 +155,7 @@ const readJsonFile = async (target: string): Promise<unknown | null> => {
 
 type JournalOp =
   | {
-      kind: 'write';
+      kind: 'write' | 'resource-write';
       path: string;
       before: FileVersion | null;
       after: FileVersion;
@@ -189,7 +212,11 @@ function isTransactionJournal(raw: unknown): raw is TransactionJournal {
   )
     return false;
   const contentPath = (value: unknown) =>
-    typeof value === 'string' && normalizeWorkspacePath(value) === value;
+    typeof value === 'string' &&
+    (value.startsWith(LEGACY_RESOURCE_DIR + '/')
+      ? normalizeResourceKey(value) ===
+        value.slice(LEGACY_RESOURCE_DIR.length + 1)
+      : normalizeWorkspacePath(value) === value);
   const stagedPathValid = (value: unknown) =>
     typeof value === 'string' &&
     value.startsWith(`transactions/${journal.transactionId}.staging/`) &&
@@ -202,6 +229,15 @@ function isTransactionJournal(raw: unknown): raw is TransactionJournal {
         case 'write':
           return (
             contentPath(op.path) &&
+            typeof op.after === 'string' &&
+            stagedPathValid(op.staged)
+          );
+        case 'resource-write':
+          return (
+            typeof op.path === 'string' &&
+            op.path.startsWith(RESOURCE_DIR + '/') &&
+            resourceStoragePath(op.path.slice(RESOURCE_DIR.length + 1)) ===
+              op.path &&
             typeof op.after === 'string' &&
             stagedPathValid(op.staged)
           );
@@ -430,7 +466,9 @@ const createFsWorkspaceHostInner = (
   };
 
   const applyJournalOp = async (root: string, op: JournalOp) => {
-    if (op.kind === 'write') {
+    if (op.kind === 'write' || op.kind === 'resource-write') {
+      if (op.kind === 'resource-write')
+        await assertResourcePath(root, op.path.slice(RESOURCE_DIR.length + 1));
       const content = await fs.readFile(metaPath(root, op.staged));
       await publishFile(
         absolute(root, op.path),
@@ -540,7 +578,17 @@ const createFsWorkspaceHostInner = (
       }
     };
     for (const op of journal.ops) {
-      if (op.kind === 'write') {
+      if (op.kind === 'write' || op.kind === 'resource-write') {
+        if (op.kind === 'resource-write') {
+          try {
+            await assertResourcePath(
+              root,
+              op.path.slice(RESOURCE_DIR.length + 1),
+            );
+          } catch (error) {
+            return 'Recovery conflict: ' + String(error);
+          }
+        }
         const current = await versionAt(root, op.path);
         if (current === op.after) continue;
         if (current === op.before && (await stagedContent(op.staged))) {
@@ -616,6 +664,15 @@ const createFsWorkspaceHostInner = (
       }
       return `Recovery conflict at ${op.kind}: found third version`;
     }
+    for (const op of journal.ops) {
+      if (op.kind === 'write' || op.kind === 'resource-write')
+        await cleanPublishedTemps(root, op.path);
+      else if (op.kind === 'config' || op.kind === 'session')
+        await cleanPublishedTemps(
+          root,
+          `${META_DIR}/${op.kind === 'config' ? CONFIG_FILE : SESSION_FILE}`,
+        );
+    }
     return null;
   };
 
@@ -661,14 +718,18 @@ const createFsWorkspaceHostInner = (
         continue;
       }
       const versions: Record<string, FileVersion> = {};
+      const resourceVersions: Record<string, FileVersion> = {};
       journal.ops.forEach((op) => {
         if (op.kind === 'write') versions[op.path] = op.after;
+        if (op.kind === 'resource-write')
+          resourceVersions[op.path.slice(RESOURCE_DIR.length + 1)] = op.after;
       });
       await fs.mkdir(metaPath(root, RECEIPTS_DIR), { recursive: true });
       await writeJsonFile(receiptPath(root, journal.transactionId), {
         transactionId: journal.transactionId,
         outcome: 'applied',
         versions,
+        resourceVersions,
         trashEntries: journal.ops.flatMap((op) =>
           op.kind === 'trash' ? [{ path: op.path, entryId: op.entryId }] : [],
         ),
@@ -719,7 +780,10 @@ const createFsWorkspaceHostInner = (
           if (
             !relativePath ||
             relativePath === META_DIR ||
-            relativePath.startsWith(`${META_DIR}/`)
+            (relativePath.startsWith(`${META_DIR}/`) &&
+              relativePath !== `${META_DIR}/config.json` &&
+              relativePath !== RESOURCE_DIR &&
+              !relativePath.startsWith(RESOURCE_DIR + '/'))
           )
             return;
           pending ??= new Set();
@@ -783,13 +847,18 @@ const createFsWorkspaceHostInner = (
             : null;
         if (!conflict) {
           const versions: Record<string, FileVersion> = {};
+          const resourceVersions: Record<string, FileVersion> = {};
           journal.ops.forEach((op) => {
             if (op.kind === 'write') versions[op.path] = op.after;
+            if (op.kind === 'resource-write')
+              resourceVersions[op.path.slice(RESOURCE_DIR.length + 1)] =
+                op.after;
           });
           const applied: CommitReceipt = {
             transactionId: request.transactionId,
             outcome: 'applied',
             versions,
+            resourceVersions,
             trashEntries: journal.ops.flatMap((op) =>
               op.kind === 'trash'
                 ? [{ path: op.path, entryId: op.entryId }]
@@ -872,6 +941,13 @@ const createFsWorkspaceHostInner = (
       return versionAt(workspace.root, target);
     };
     try {
+      if (request.resourceWrites?.length) {
+        if (workspace.recoveryDiagnostics.length)
+          throw new Error('Resource migration or recovery requires attention');
+        await assertResourceLayout(workspace.root);
+        for (const op of request.resourceWrites)
+          await assertResourcePath(workspace.root, op.path);
+      }
       // A lexical relative path must not escape through a directory symlink.
       for (const relativePath of [
         ...(request.writes ?? []).map((op) => op.path),
@@ -1041,8 +1117,14 @@ const createFsWorkspaceHostInner = (
         planned.set(to, stat === 'directory' ? 'directory' : current!);
         for (const [key, mark] of moved) planned.set(key, mark);
       }
-      for (const [index, op] of (request.writes ?? []).entries()) {
-        const relativePath = normalizeWorkspacePath(op.path);
+      const writeOps = [
+        ...(request.writes ?? []).map((op) => ({ op, resource: false })),
+        ...(request.resourceWrites ?? []).map((op) => ({ op, resource: true })),
+      ];
+      for (const [index, { op, resource }] of writeOps.entries()) {
+        const relativePath = resource
+          ? resourceStoragePath(op.path)
+          : normalizeWorkspacePath(op.path);
         if (
           isFolderIdentityPath(relativePath) &&
           (await virtualStat(parentWorkspacePath(relativePath) ?? '')) !==
@@ -1083,7 +1165,7 @@ const createFsWorkspaceHostInner = (
             reject(request.transactionId, 'io-error', { path: relativePath }),
           );
         ops.push({
-          kind: 'write',
+          kind: resource ? 'resource-write' : 'write',
           path: relativePath,
           before: await virtualVersion(relativePath),
           after: sha256(content),
@@ -1151,6 +1233,7 @@ const createFsWorkspaceHostInner = (
     journal.phase = 'applying';
     await writeJournal(workspace.root, journal);
     const versions: Record<string, FileVersion> = {};
+    const resourceVersions: Record<string, FileVersion> = {};
     const trashEntries: { path: string; entryId: string }[] = [];
     try {
       for (const op of ops) {
@@ -1159,11 +1242,13 @@ const createFsWorkspaceHostInner = (
           trashEntries.push({ path: op.path, entryId: op.entryId });
       }
       for (const op of ops) {
-        if (op.kind === 'write') {
+        if (op.kind === 'write' || op.kind === 'resource-write') {
           const current = await versionAt(workspace.root, op.path);
           if (current !== op.after)
             throw new Error(`Publish verification failed: ${op.path}`);
-          versions[op.path] = op.after;
+          if (op.kind === 'resource-write')
+            resourceVersions[op.path.slice(RESOURCE_DIR.length + 1)] = op.after;
+          else versions[op.path] = op.after;
           workspace.ownWrites.set(op.path, op.after);
         }
         if (op.kind === 'move') {
@@ -1206,6 +1291,7 @@ const createFsWorkspaceHostInner = (
           transactionId: request.transactionId,
           outcome: 'applied',
           versions,
+          resourceVersions,
           trashEntries: trashEntries.length ? trashEntries : undefined,
         };
         await fs.mkdir(metaPath(workspace.root, RECEIPTS_DIR), {
@@ -1234,6 +1320,7 @@ const createFsWorkspaceHostInner = (
       transactionId: request.transactionId,
       outcome: 'applied',
       versions,
+      resourceVersions,
       trashEntries: trashEntries.length ? trashEntries : undefined,
     };
     await fs.mkdir(metaPath(workspace.root, RECEIPTS_DIR), { recursive: true });
@@ -1247,6 +1334,7 @@ const createFsWorkspaceHostInner = (
     });
     const touched = [
       ...Object.keys(versions),
+      ...Object.keys(resourceVersions).map(resourceStoragePath),
       ...trashEntries.map((entry) => entry.path),
       ...ops.flatMap((op) =>
         op.kind === 'move'
@@ -1294,7 +1382,12 @@ const createFsWorkspaceHostInner = (
       existing = undefined;
     }
     const configTarget = metaPath(root, CONFIG_FILE);
-    if (!(await exists(configTarget))) {
+    // Resume explicit Git mutations before initialization can recreate restored metadata.
+    await recoverGitNativeLock(root);
+    await recoverGitPurge(root);
+    await recoverGitRestore(root);
+    const hadProjectConfig = await exists(configTarget);
+    if (!hadProjectConfig) {
       if (!create && (await fs.readdir(root)).length > 0) return null;
       await fs.mkdir(metaPath(root), { recursive: true });
       await fs.mkdir(metaPath(root, TRANSACTIONS_DIR), { recursive: true });
@@ -1312,6 +1405,13 @@ const createFsWorkspaceHostInner = (
     }
     await markCurrentMetadataUnlocked(root);
     const recoveryDiagnostics = await recoverWorkspace(root);
+    if (!recoveryDiagnostics.length) {
+      try {
+        await migrateWorkspaceResourcesUnlocked(root);
+      } catch (error) {
+        recoveryDiagnostics.push(String(error));
+      }
+    }
     const configStat = await fs.lstat(configTarget);
     if (!configStat.isFile() || configStat.isSymbolicLink())
       throw new Error(
@@ -1336,11 +1436,15 @@ const createFsWorkspaceHostInner = (
         message: String(error),
       });
     }
-    const setup = await initializeWorkspaceAgentUnlocked(root, shared);
+    const setup = await initializeWorkspaceAgentUnlocked(root, shared, {
+      preserveContent:
+        hadProjectConfig && (await exists(path.join(root, '.git'))),
+    });
     agentSetupDiagnostics.push(
       ...setup.diagnostics.filter((d) => d.code.endsWith('-conflict')),
     );
     if (existing) {
+      existing.name = workspaceDisplayName(config.value.name, existing.name);
       existing.recoveryDiagnostics = recoveryDiagnostics;
       existing.agentSetupDiagnostics = agentSetupDiagnostics;
       return { key: existing.id, name: existing.name };
@@ -1349,7 +1453,7 @@ const createFsWorkspaceHostInner = (
       generation: await readWorkspaceGeneration(root),
       id: `ws-${++counter}`,
       root,
-      name: config.value.name || name || baseName(root),
+      name: workspaceDisplayName(config.value.name, name || baseName(root)),
       queue: createSerialQueue(),
       watcher: null,
       ownWrites: new Map(),
@@ -1372,7 +1476,15 @@ const createFsWorkspaceHostInner = (
   ): Promise<RawFileRead> => {
     const normalized = normalizeWorkspacePath(relativePath);
     try {
-      const content = await fs.readFile(absolute(workspace.root, normalized));
+      if (normalized.startsWith('.agents/'))
+        await assertSkillFile(workspace.root, normalized);
+      const root = await fs.realpath(workspace.root);
+      const target = await fs.realpath(absolute(workspace.root, normalized));
+      const relative = path.relative(root, target).split(path.sep).join('/');
+      normalizeWorkspacePath(relative);
+      if (!(await fs.stat(target)).isFile())
+        throw new Error('Not an ordinary file');
+      const content = await fs.readFile(target);
       return {
         path: normalized,
         version: sha256(content),
@@ -1392,12 +1504,17 @@ const createFsWorkspaceHostInner = (
       .catch(() => [] as string[]);
     const entries: WorkspaceEntryMeta[] = [];
     for (const name of names.sort()) {
-      if ([META_DIR, '.verdboard', FOLDER_ID_FILE].includes(name)) continue;
+      if (
+        [META_DIR, '.verdboard', LEGACY_RESOURCE_DIR, FOLDER_ID_FILE].includes(
+          name,
+        )
+      )
+        continue;
       const relativePath = dir ? `${dir}/${name}` : name;
       const stat = await fs
-        .stat(absolute(root, relativePath))
+        .lstat(absolute(root, relativePath))
         .catch(() => null);
-      if (!stat) continue;
+      if (!stat || stat.isSymbolicLink()) continue;
       if (stat.isDirectory()) {
         entries.push({
           path: relativePath,
@@ -1439,6 +1556,12 @@ const createFsWorkspaceHostInner = (
   };
 
   return {
+    storageKind: 'filesystem',
+    capabilities: {
+      pickWorkspace: !!options.pickDirectory,
+      openBuiltinWorkspace: false,
+      openPatternWorkspace: false,
+    },
     workspaces,
     suspendWorkspaceWatch(handle) {
       const workspace = workspaces.get(handle.key);
@@ -1502,8 +1625,20 @@ const createFsWorkspaceHostInner = (
       const canvases: WorkspaceHostSnapshot['canvases'] = [];
       const diagnostics: WorkspaceHostSnapshot['diagnostics'] =
         workspace.recoveryDiagnostics.map((message) => ({ message }));
+      let resources: WorkspaceHostSnapshot['resources'] = [];
+      try {
+        resources = await readResourceMetadata(workspace.root, sha256);
+      } catch (error) {
+        diagnostics.push({ message: String(error), path: RESOURCE_DIR });
+      }
+      try {
+        await assertResourceLayout(workspace.root);
+      } catch (error) {
+        diagnostics.push({ message: String(error), path: LEGACY_RESOURCE_DIR });
+      }
       for (const entry of entries) {
-        if (!entry.canvas) continue;
+        if (!entry.canvas || !isWorkspaceContentPath(entry.path, entries))
+          continue;
         try {
           const raw = await fs.readFile(
             absolute(workspace.root, entry.path),
@@ -1542,7 +1677,8 @@ const createFsWorkspaceHostInner = (
       }
       const documents: WorkspaceHostSnapshot['documents'] = [];
       for (const entry of entries) {
-        if (!entry.document) continue;
+        if (!entry.document || !isWorkspaceContentPath(entry.path, entries))
+          continue;
         try {
           const raw = await fs.readFile(
             absolute(workspace.root, entry.path),
@@ -1617,6 +1753,7 @@ const createFsWorkspaceHostInner = (
         // Reads both the v1 `{frameId}` and v2 `{fileId}` tab shapes.
         session: normalizeWorkspaceSessionState(session),
         entries,
+        resources,
         canvases,
         documents,
         trash,
@@ -1626,12 +1763,42 @@ const createFsWorkspaceHostInner = (
     async readFile(handle, relativePath) {
       return readFileInner(workspaceOf(handle), relativePath);
     },
+    async readResource(handle, key) {
+      const workspace = workspaceOf(handle);
+      const normalized = normalizeResourceKey(key);
+      const target = await assertResourcePath(workspace.root, normalized);
+      const content = await fs.readFile(target);
+      return {
+        path: normalized,
+        version: sha256(content),
+        content: new Uint8Array(content),
+      };
+    },
     async commit(handle, request) {
       const workspace = workspaceOf(handle);
       return workspace.queue(() =>
         withWorkspaceLock(workspace.root, () =>
           applyCommit(workspace, request),
         ),
+      );
+    },
+    async git(handle, request) {
+      const workspace = workspaceOf(handle);
+      return workspace.queue(() =>
+        withWorkspaceLock(workspace.root, async () => {
+          if (
+            workspace.generation !==
+            (await readWorkspaceGeneration(workspace.root))
+          )
+            throw new Error('WORKSPACE_REPLACED: reopen the workspace');
+          const recoveryErrors = await recoverWorkspace(workspace.root);
+          if (recoveryErrors.length) throw new Error(recoveryErrors.join('; '));
+          const git = createNodeWorkspaceGit(workspace.root, {
+            notify: (paths) =>
+              workspace.listeners.forEach((listener) => listener({ paths })),
+          });
+          return git(request);
+        }),
       );
     },
     subscribe(handle, listener) {
@@ -1675,7 +1842,7 @@ const createFsWorkspaceHostInner = (
 };
 
 export const createFsWorkspaceHost = (options: FsWorkspaceHostOptions) => {
-  const host = createFsWorkspaceHostInner(options);
+  const host = withGitVersioning(createFsWorkspaceHostInner(options));
   const readSnapshot = host.readSnapshot.bind(host);
   host.readSnapshot = (handle) => {
     const workspace = host.workspaces.get(handle.key);
@@ -1700,6 +1867,19 @@ export const createFsWorkspaceHost = (options: FsWorkspaceHostOptions) => {
       )
         throw new Error('WORKSPACE_REPLACED: reopen the workspace');
       return readFile(handle, file);
+    });
+  };
+  const readResource = host.readResource.bind(host);
+  host.readResource = (handle, key) => {
+    const workspace = host.workspaces.get(handle.key);
+    if (!workspace) throw new Error('Unknown workspace');
+    return withWorkspaceLock(workspace.root, async () => {
+      if (
+        workspace.closing ||
+        workspace.generation !== (await readWorkspaceGeneration(workspace.root))
+      )
+        throw new Error('WORKSPACE_REPLACED: reopen the workspace');
+      return readResource(handle, key);
     });
   };
   return Object.assign(host, {

@@ -1,0 +1,149 @@
+{
+  "format": "verd-frame",
+  "version": 2,
+  "frame": {
+    "id": "pattern:uml-sequence/uml-example-sequence",
+    "kind": "frame",
+    "cellType": "frame",
+    "geometry": {
+      "x": 0,
+      "y": 0,
+      "width": 960,
+      "height": 640
+    },
+    "children": [
+      "pattern:uml-sequence/uml-example-sequence-root",
+      "pattern:uml-sequence/uml-example-user",
+      "pattern:uml-sequence/uml-example-service",
+      "pattern:uml-sequence/uml-example-loop",
+      "pattern:uml-sequence/uml-example-call"
+    ],
+    "groups": [],
+    "name": "UML 时序图"
+  },
+  "cells": {
+    "pattern:uml-sequence/uml-example-sequence-root": {
+      "id": "pattern:uml-sequence/uml-example-sequence-root",
+      "kind": "uml-sequence-root",
+      "cellType": "node",
+      "geometry": {
+        "x": 0,
+        "y": 0,
+        "width": 0,
+        "height": 0
+      },
+      "content": {
+        "label": ""
+      },
+      "data": {
+        "participantIds": [
+          "pattern:uml-sequence/uml-example-user",
+          "pattern:uml-sequence/uml-example-service"
+        ],
+        "events": [
+          {
+            "type": "cell",
+            "cellId": "pattern:uml-sequence/uml-example-loop"
+          }
+        ]
+      },
+      "hidden": true
+    },
+    "pattern:uml-sequence/uml-example-user": {
+      "id": "pattern:uml-sequence/uml-example-user",
+      "kind": "uml-participant",
+      "cellType": "node",
+      "geometry": {
+        "x": 60,
+        "y": 80,
+        "width": 200,
+        "height": 100,
+        "outline": "rectangle"
+      },
+      "content": {
+        "label": "Actor"
+      },
+      "data": {
+        "actorType": "actor"
+      },
+      "name": "Actor"
+    },
+    "pattern:uml-sequence/uml-example-service": {
+      "id": "pattern:uml-sequence/uml-example-service",
+      "kind": "uml-participant",
+      "cellType": "node",
+      "geometry": {
+        "x": 60,
+        "y": 80,
+        "width": 200,
+        "height": 100,
+        "outline": "rectangle"
+      },
+      "content": {
+        "label": "Participant"
+      },
+      "data": {
+        "actorType": "participant"
+      },
+      "name": "Participant"
+    },
+    "pattern:uml-sequence/uml-example-loop": {
+      "id": "pattern:uml-sequence/uml-example-loop",
+      "kind": "uml-fragment",
+      "cellType": "node",
+      "geometry": {
+        "x": 60,
+        "y": 80,
+        "width": 200,
+        "height": 100,
+        "outline": "rectangle"
+      },
+      "content": {
+        "label": "loop"
+      },
+      "data": {
+        "operator": "loop",
+        "operands": [
+          {
+            "id": "uml-example-loop:branch:0",
+            "guard": "condition",
+            "events": [
+              {
+                "type": "cell",
+                "cellId": "pattern:uml-sequence/uml-example-call"
+              }
+            ]
+          }
+        ]
+      },
+      "name": "loop"
+    },
+    "pattern:uml-sequence/uml-example-call": {
+      "id": "pattern:uml-sequence/uml-example-call",
+      "kind": "uml-message",
+      "cellType": "edge",
+      "source": {
+        "cellId": "pattern:uml-sequence/uml-example-user"
+      },
+      "target": {
+        "cellId": "pattern:uml-sequence/uml-example-service"
+      },
+      "route": {
+        "mode": "straight"
+      },
+      "labels": [
+        {
+          "text": "message()"
+        }
+      ],
+      "data": {
+        "messageKind": "sync",
+        "targetMarker": "solid-triangle",
+        "sourceMarker": "none"
+      }
+    }
+  },
+  "organization": {
+    "kind": "standalone"
+  }
+}

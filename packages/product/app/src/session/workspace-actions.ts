@@ -72,7 +72,6 @@ const commandTypes = [
   'import-files',
   'edit-file',
   'edit-files',
-  'set-organization',
 ] as const satisfies readonly WorkspaceCommand['type'][];
 type AssertNever<T extends never> = T;
 /** Adding a WorkspaceCommand variant must add its action above. */

@@ -71,10 +71,7 @@
       },
       "data": {
         "graphMode": "process",
-        "origin": [
-          60,
-          110
-        ],
+        "origin": [60, 110],
         "memberIds": [
           "pattern:multi-system/pattern:multi/agent/pay-start",
           "pattern:multi-system/pattern:multi/agent/task-fill",
@@ -205,8 +202,9 @@
         }
       ],
       "content": {
-        "label": "满足交付条件？"
-      }
+        "label": "交付检查通过？"
+      },
+      "name": "满足交付条件？"
     },
     "pattern:multi-system/pattern:multi/agent/task-done": {
       "id": "pattern:multi-system/pattern:multi/agent/task-done",
@@ -376,7 +374,7 @@
       },
       "labels": [
         {
-          "text": "重试"
+          "text": "人工处理后重试"
         }
       ]
     },

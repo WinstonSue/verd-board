@@ -1,5 +1,45 @@
 # @sue/board-workflow
 
+## 2.1.0
+
+### Major Changes
+
+- 33dc37e: Introduce explicit, instance-scoped CellPlugin and FrameUIPlugin composition for Draw, Mind, Workflow, Architecture and UML. Domain kinds and models move out of core. FrameEditor composes a complete editor from one domain; FrameCanvas takes the same pluginSet used for previews, references and image export. Add the Draw React package and public per-package CSS entries; keep rich text built into React core and inject optional converters from the host.
+
+  Pass the installed registry to independent domain-sensitive helpers. Reject unknown kinds before opening or importing files, with no normalization or writes. Duplicate plugin IDs and kind conflicts fail explicitly; runtime installation is unsupported. Preserve atomic transaction/history behavior and existing FrameFileV2/DocumentFileV1 serialized fields. See the native Architecture, React integration and migration documents for the next-major contract. No version bump or publication is performed in this change.
+
+### Minor Changes
+
+- Prepare the application, SDK, UI and Agent together as 2.1.0 for this explicitly authorized early-stage release. This release includes the breaking API changes documented below; existing 2.0 consumers must follow the migration guide. Future releases retain the existing version rules. Local version preparation does not establish npm registry publication.
+
+### Patch Changes
+
+- Introduce scene geometry policies and detailed joint layout/routing plans. Enforce painted node clearance through routing and cleanup, retry placement with wider channels, preserve manual routes in background work, support cyclic process layout, and retain failed edge-only routes with diagnostics. Keep domain projections, endpoint semantics, undo and saved route provenance intact.
+- Extract Port, Anchor and Terminal into independent core modules with shared attachment resolution, port availability and terminal editing. Rename PortSpec to Port and EdgeTerminal to Terminal. Replace relativeAnchor, portAnchor, edgeTerminalPosition, availableEdgePorts, snapEdgeTerminal, replaceEdgeTerminal and bindEdgeRouteTerminals with resolveAnchor, resolvePort, resolveTerminal, availablePorts, snapTerminal, replaceTerminal and bindRouteTerminals. resolveTerminal returns undefined for an unresolved host and accepts explicit facing or center policies for automatic attachments.
+
+  All three resolvers return the shared ResolvedAnchor shape containing point and side. Callers that previously used the coordinate returned by relativeAnchor should read resolveAnchor(...).point.
+
+  Migrate engine, React and product consumers to the new APIs without compatibility aliases. Preserve native JSON, port-and-anchor bindings, domain routing preferences and endpoint controls based on the connector's actual cached route.
+
+- b06ca40: Reuse calculation-scoped hierarchy indexes for drag snap candidates and presentation visibility checks, removing quadratic whole-store scans from drag initialization and commit rendering. Preserve group, ancestor-lock, hidden-content and collapsed Mind semantics without caching mutable stores globally. Reuse pure topology, Workflow ownership and Mind branch reads within each synchronous full validation, clearing the context on completion or failure. Keep grouped Workflow and architecture layout conflicts visible through the shared lightweight availability check.
+- Move workflow starts independently without shifting other tasks or the legacy layout origin. Automatically assign nodes and groups to swimlanes only when fully contained, allowing boundary drops to release membership while preserving explicit assignment capacity checks.
+- Updated dependencies [5571a9a]
+- Updated dependencies [b06ca40]
+- Updated dependencies [b06ca40]
+- Updated dependencies [b06ca40]
+- Updated dependencies
+- Updated dependencies [33dc37e]
+- Updated dependencies [33dc37e]
+- Updated dependencies
+- Updated dependencies [b06ca40]
+- Updated dependencies [33dc37e]
+- Updated dependencies [33dc37e]
+- Updated dependencies [33dc37e]
+- Updated dependencies
+- Updated dependencies
+  - @sue/board-core@2.1.0
+  - @sue/board-layouts@2.1.0
+
 ## Unreleased
 
 新增 createWorkflowPlugin；场景、排列、成员关系、连接和开始节点保护归领域所有。

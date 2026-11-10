@@ -3,6 +3,7 @@ import {
   ConfigProvider,
   Input,
   InputNumber,
+  message,
   theme,
   type ButtonProps,
   type InputProps,
@@ -12,7 +13,9 @@ import enUS from '@sue/design-web-react/locale/en_US';
 import zhCN from '@sue/design-web-react/locale/zh_CN';
 import {
   forwardRef,
+  useEffect,
   useMemo,
+  useState,
   type ComponentProps,
   type CSSProperties,
   type ReactNode,
@@ -64,6 +67,27 @@ export function useWorkspaceDesignVariables(): CSSProperties {
     '--workspace-control-height': `${token.controlHeight}px`,
     '--workspace-gap': `${token.marginSM}px`,
   } as CSSProperties;
+}
+
+/** Keep transient feedback themed and visible inside native fullscreen. */
+export function useWorkspaceMessage() {
+  const [container, setContainer] = useState<HTMLElement>();
+  useEffect(() => {
+    const update = () =>
+      setContainer(
+        document.fullscreenElement instanceof HTMLElement
+          ? document.fullscreenElement
+          : document.body,
+      );
+    update();
+    document.addEventListener('fullscreenchange', update);
+    return () => document.removeEventListener('fullscreenchange', update);
+  }, []);
+  return message.useMessage({
+    duration: 3,
+    maxCount: 1,
+    getContainer: () => container ?? document.body,
+  });
 }
 
 type WorkspaceButtonProps = ComponentProps<'button'> & {

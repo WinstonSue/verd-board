@@ -5,6 +5,7 @@ import react from '@vitejs/plugin-react';
 
 export default defineConfig({
   root: __dirname,
+  resolve: { conditions: ['development', 'browser', 'module'] },
   cacheDir: '../../node_modules/.vite/apps/web',
   test: {
     globals: true,
@@ -13,7 +14,14 @@ export default defineConfig({
   },
 
   server: {
-    port: 7200,
+    port: Number(process.env.VERDBOARD_WEB_PORT ?? 7200),
+    strictPort: true,
+    proxy: {
+      '/api': {
+        target: `http://127.0.0.1:${process.env.VERDBOARD_SERVICE_PORT ?? 7201}`,
+        changeOrigin: true,
+      },
+    },
     host: 'localhost',
     headers: { 'Content-Security-Policy': "frame-ancestors 'none'" },
   },

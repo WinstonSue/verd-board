@@ -1,3 +1,13 @@
+import { resolvePort } from '../port';
+import type { ResolvedAnchor } from '../anchor';
+import { resolveTerminal } from '../terminal/resolve';
+import type { Terminal } from '../terminal/types';
+import {
+  geometryPolicyFor,
+  geometrySpacingFor,
+  GEOMETRY_POLICY_VERSION,
+} from '../cell/geometry-policy';
+import { createCellHierarchy } from '../cell/group';
 import { createSpatialIndex } from './spatial-index';
 import type { RectangleClient } from '../interfaces/rectangle-client';
 import {
@@ -12,11 +22,9 @@ import {
   type CellStore,
   type EdgeCell,
   type NodeGeometry,
-  type PortSpec,
 } from '../cell/types';
 import type { Point } from '../interfaces/point';
 import type { EdgeLabelLayout } from './edge-label';
-import { nodeShapeGeometry } from './node';
 import {
   routeOrthogonalAvoiding,
   routingSegmentPenalty,
@@ -37,9 +45,20 @@ import {
   routingBatches,
   sameRoutingResult,
 } from './routing-cache';
-import { facingSides, sideAnchor, type GeometrySide } from './side';
+import { type GeometrySide } from './side';
 
-type TerminalPosition = { point: Point; side: GeometrySide };
+type TerminalPosition = ResolvedAnchor;
+const resolveRoutingTerminal = (
+  store: CellStore,
+  terminal: Terminal,
+  other: Terminal,
+  geometry?: ReadonlyMap<string, NodeGeometry>,
+): TerminalPosition => {
+  const position = resolveTerminal(store, terminal, other, { geometry });
+  if (!position) throw new Error('Missing edge endpoint');
+  return position;
+};
+
 export interface EdgeRoutingContext {
   /** Shared across equivalent contexts; entries contain pure derived geometry. */
   crossingsCache?: {
@@ -53,8 +72,13 @@ export interface EdgeRoutingContext {
   readonly preview?: EdgeRoutingContext;
   readonly registry?: CellRegistry;
   readonly obstacles: readonly RoutingObstacle[];
+  readonly obstacleById?: ReadonlyMap<string, RoutingObstacle>;
   readonly queryObstacles?: (bounds: RectangleClient) => readonly string[];
   readonly clearance?: number;
+  readonly visualGap?: number;
+  readonly terminalRun?: number;
+  readonly geometry?: ReadonlyMap<string, NodeGeometry>;
+  readonly policyVersion?: number;
   /** Lazy frame-wide planning keeps all consumers independent of render order. */
   prepare?: () => void;
   labelLayouts?: Map<string, EdgeLabelLayout>;
@@ -94,7 +118,11 @@ export const createEdgeRoutingContext = (
     preview?: boolean;
   },
 ): EdgeRoutingContext => {
+  const policy = geometryPolicyFor(store, frameId, registry);
+  if (policy.edgeRouting === 'orthogonal')
+    geometry ??= policy.project?.(store, frameId);
   const frame = store.cells[frameId];
+  const hierarchy = createCellHierarchy(store);
   const obstacles: RoutingObstacle[] = [];
   if (isFrameCell(frame))
     for (const id of frame.children) {
@@ -102,10 +130,13 @@ export const createEdgeRoutingContext = (
       if (
         !isNodeCell(node) ||
         node.hidden ||
-        registry?.get(node.kind)?.routingObstacle === false
+        hierarchy.groupAncestors(id).some((owner) => store.cells[owner]?.hidden)
       )
         continue;
       const g = geometry?.get(id) ?? node.geometry;
+      const util = registry?.get(node.kind);
+      obstacles.push(...(util?.routingObstacles?.(node, g) ?? []));
+      if (util?.routingObstacle === false) continue;
       if (
         ![g.x, g.y, g.width, g.height, g.rotation ?? 0].every(
           Number.isFinite,
@@ -116,8 +147,16 @@ export const createEdgeRoutingContext = (
         continue;
       const cos = Math.abs(Math.cos(g.rotation ?? 0)),
         sin = Math.abs(Math.sin(g.rotation ?? 0));
-      const width = g.width * cos + g.height * sin,
-        height = g.width * sin + g.height * cos;
+      const stroke =
+        node.appearance?.strokeWidth ??
+        (isFrameCell(node) ||
+        node.kind === 'frame-reference' ||
+        node.kind === 'document-frame' ||
+        node.kind === 'document-reference'
+          ? 1
+          : 1.5);
+      const width = (g.width + stroke) * cos + (g.height + stroke) * sin,
+        height = (g.width + stroke) * sin + (g.height + stroke) * cos;
       obstacles.push({
         id,
         x: g.x + (g.width - width) / 2,
@@ -126,16 +165,23 @@ export const createEdgeRoutingContext = (
         height,
       });
     }
+  const spacing = geometrySpacingFor(policy);
+  obstacles.push(...(policy.obstacles?.(store, frameId, geometry) ?? []));
   obstacles.sort((a, b) => a.id.localeCompare(b.id));
   let obstacleIndex: ReturnType<typeof createSpatialIndex> | undefined;
   const context: EdgeRoutingContext = {
     obstacles,
+    obstacleById: new Map(obstacles.map((box) => [box.id, box])),
+    geometry,
     queryObstacles: (bounds) =>
       (obstacleIndex ??= createSpatialIndex(obstacles)).query(bounds),
     crossingsCache: previous?.crossingsCache ?? {},
     registry,
     routes: new Map(),
     clearance: previous?.clearance,
+    visualGap: spacing.visualNodeGap,
+    terminalRun: spacing.terminalRun,
+    policyVersion: GEOMETRY_POLICY_VERSION * 1000 + policy.version,
     terminals: new Map(),
     optimizeIds: options?.optimizeIds,
     fixedTerminalIds: options?.fixedTerminalIds,
@@ -146,7 +192,7 @@ export const createEdgeRoutingContext = (
     if (prepared) return;
     prepared = true;
     if (!options?.preview)
-      planFrameRoutes(store, frameId, geometry, context, previous);
+      planFrameRoutes(store, frameId, geometry, context, previous, hierarchy);
     // Retain only the current store and pure batch output after preparation.
     previous = undefined;
   };
@@ -156,7 +202,13 @@ export const createEdgeRoutingContext = (
 const automaticRoute = (edge: EdgeCell, registry?: CellRegistry) =>
   (edge.route.mode === 'auto' || edge.route.mode === 'orthogonal') &&
   !('points' in edge.route && edge.route.points?.length) &&
-  registry?.get(edge.kind)?.routable !== false;
+  registry?.get(edge.kind)?.routable !== false &&
+  !registry?.scenes.some(
+    (scene) =>
+      scene.kinds.includes(edge.kind) &&
+      scene.geometry &&
+      scene.geometry.edgeRouting !== 'orthogonal',
+  );
 
 const sameTerminal = (a: TerminalPosition, b: TerminalPosition) =>
   a.side === b.side && a.point[0] === b.point[0] && a.point[1] === b.point[1];
@@ -167,17 +219,31 @@ function planFrameRoutes(
   geometry: ReadonlyMap<string, NodeGeometry> | undefined,
   context: EdgeRoutingContext,
   previous?: EdgeRoutingContext,
+  hierarchy = createCellHierarchy(store),
 ) {
   const frame = store.cells[frameId];
   if (!isFrameCell(frame)) return;
-  const edges = frame.children
+  const allEdges = frame.children
     .map((id) => store.cells[id])
     .filter(
       (cell): cell is EdgeCell =>
         isEdgeCell(cell) &&
         !cell.hidden &&
-        automaticRoute(cell, context.registry),
-    );
+        !hierarchy
+          .groupAncestors(cell.id)
+          .some((id) => store.cells[id]?.hidden) &&
+        context.registry?.get(cell.kind)?.routable !== false &&
+        !context.registry?.scenes.some(
+          (scene) =>
+            scene.kinds.includes(cell.kind) &&
+            scene.geometry &&
+            scene.geometry.edgeRouting !== 'orthogonal',
+        ),
+    )
+    .sort((a, b) => a.id.localeCompare(b.id));
+  const edges = allEdges.filter((edge) =>
+    automaticRoute(edge, context.registry),
+  );
   const crossingPenalty = context.registry?.scenes.some(
     (scene) =>
       !!scene.routing && edges.some((edge) => scene.kinds.includes(edge.kind)),
@@ -195,14 +261,14 @@ function planFrameRoutes(
     side: GeometrySide;
   };
   const exits = new Map<string, Exit[]>();
-  for (const edge of edges) {
-    const source = edgeTerminalPosition(
+  for (const edge of allEdges) {
+    const source = resolveRoutingTerminal(
       store,
       edge.source,
       edge.target,
       geometry,
     );
-    const target = edgeTerminalPosition(
+    const target = resolveRoutingTerminal(
       store,
       edge.target,
       edge.source,
@@ -233,7 +299,7 @@ function planFrameRoutes(
         (geometry?.get(node.id) ?? node.geometry).rotation
       )
         return position;
-      return portAnchor(geometry?.get(node.id) ?? node.geometry, { side });
+      return resolvePort(geometry?.get(node.id) ?? node.geometry, { side });
     };
     const plannedSource = preferred('source', source),
       plannedTarget = preferred('target', target);
@@ -244,33 +310,72 @@ function planFrameRoutes(
       originalSource,
       originalTarget,
     });
+    // Saved paths and anchored ends reserve the same virtual slots as automatic
+    // edges. Optimizing a subset must not redistribute the remaining endpoints.
+    const virtualPosition = (end: 'source' | 'target'): TerminalPosition => {
+      const terminal = edge[end],
+        other = edge[end === 'source' ? 'target' : 'source'];
+      const unanchored =
+        'cellId' in terminal
+          ? { cellId: terminal.cellId, portId: terminal.portId }
+          : terminal;
+      const otherUnanchored =
+        'cellId' in other
+          ? { cellId: other.cellId, portId: other.portId }
+          : other;
+      const p = resolveRoutingTerminal(
+        store,
+        unanchored,
+        otherUnanchored,
+        geometry,
+      );
+      const n = 'cellId' in terminal ? store.cells[terminal.cellId] : undefined;
+      const side = preference?.[end];
+      return side &&
+        isNodeCell(n) &&
+        !(geometry?.get(n.id) ?? n.geometry).rotation &&
+        !('cellId' in terminal && terminal.portId)
+        ? resolvePort(geometry?.get(n.id) ?? n.geometry, { side })
+        : p;
+    };
+    const virtualSource = virtualPosition('source'),
+      virtualTarget = virtualPosition('target');
     for (const end of ['source', 'target'] as const) {
       const terminal = edge[end];
-      if (
-        context.fixedTerminalIds?.has(edge.id) ||
-        !('cellId' in terminal) ||
-        terminal.portId ||
-        terminal.anchor
-      )
-        continue;
+      if (!('cellId' in terminal) || terminal.portId) continue;
       const node = store.cells[terminal.cellId];
       if (
         !isNodeCell(node) ||
         (geometry?.get(node.id) ?? node.geometry).rotation
       )
         continue;
-      const position = end === 'source' ? plannedSource : plannedTarget;
+      const position = end === 'source' ? virtualSource : virtualTarget;
       const key = `${terminal.cellId}:${position.side}`;
       const list = exits.get(key) ?? [];
       list.push({
         edge,
         end,
-        other: end === 'source' ? target.point : source.point,
+        other: end === 'source' ? virtualTarget.point : virtualSource.point,
         side: position.side,
       });
       exits.set(key, list);
     }
   }
+  const assignExit = (
+    edge: EdgeCell,
+    end: 'source' | 'target',
+    position: TerminalPosition,
+  ) => {
+    const t = edge[end];
+    if (
+      automaticRoute(edge, context.registry) &&
+      !context.fixedTerminalIds?.has(edge.id) &&
+      'cellId' in t &&
+      !t.anchor &&
+      !t.portId
+    )
+      terminals.get(edge.id)![end] = position;
+  };
   // A short node side cannot accommodate arbitrarily many arrowheads.
   for (const [, list] of [...exits].sort(([a], [b]) => a.localeCompare(b))) {
     const terminal = list[0].edge[list[0].end];
@@ -301,7 +406,7 @@ function planFrameRoutes(
       const next = exits.get(nextKey) ?? [];
       next.push({ ...exit, side });
       exits.set(nextKey, next);
-      terminals.get(exit.edge.id)![exit.end] = portAnchor(bounds, { side });
+      assignExit(exit.edge, exit.end, resolvePort(bounds, { side }));
     }
   }
   for (const list of exits.values()) {
@@ -320,16 +425,20 @@ function planFrameRoutes(
         terminal.cellId
       ] as import('../cell/types').NodeCell;
       const bounds = geometry?.get(node.id) ?? node.geometry;
-      terminals.get(edge.id)![end] = portAnchor(bounds, {
-        side,
-        offset: (() => {
-          const size = axis === 0 ? bounds.width : bounds.height;
-          const padding = Math.min(16, size / (list.length + 1));
-          return (
-            (padding + ((size - 2 * padding) * at) / (list.length - 1)) / size
-          );
-        })(),
-      });
+      assignExit(
+        edge,
+        end,
+        resolvePort(bounds, {
+          side,
+          offset: (() => {
+            const size = axis === 0 ? bounds.width : bounds.height;
+            const padding = Math.min(16, size / (list.length + 1));
+            return (
+              (padding + ((size - 2 * padding) * at) / (list.length - 1)) / size
+            );
+          })(),
+        }),
+      );
     });
   }
   const length = (edge: EdgeCell) => {
@@ -359,8 +468,8 @@ function planFrameRoutes(
     ) {
       const points = edgeRoutePoints(
         edge,
-        edgeTerminalPosition(store, edge.source, edge.target, geometry),
-        edgeTerminalPosition(store, edge.target, edge.source, geometry),
+        resolveRoutingTerminal(store, edge.source, edge.target, geometry),
+        resolveRoutingTerminal(store, edge.target, edge.source, geometry),
       );
       addSegments(points);
       fixedRoutes.push({
@@ -377,6 +486,10 @@ function planFrameRoutes(
   const signature = JSON.stringify([
     frameId,
     context.clearance,
+    context.visualGap,
+    context.terminalRun,
+    context.policyVersion,
+    allEdges.map((e) => [e.id, e.kind, e.source, e.target]),
     crossingPenalty,
     'optimized-v1',
     [...(context.optimizeIds ?? [])].sort(),
@@ -427,6 +540,9 @@ function planFrameRoutes(
           sourceId: 'cellId' in edge.source ? edge.source.cellId : undefined,
           targetId: 'cellId' in edge.target ? edge.target.cellId : undefined,
           clearance: context.clearance,
+          visualGap: context.visualGap,
+          terminalRun: context.terminalRun,
+          allowFreeTerminalDirections: true,
           strokeWidth: edge.appearance?.strokeWidth,
           occupied,
           crossingPenalty,
@@ -510,6 +626,9 @@ function planFrameRoutes(
           sourceId: 'cellId' in edge.source ? edge.source.cellId : undefined,
           targetId: 'cellId' in edge.target ? edge.target.cellId : undefined,
           clearance: context.clearance,
+          visualGap: context.visualGap,
+          terminalRun: context.terminalRun,
+          allowFreeTerminalDirections: true,
           strokeWidth: edge.appearance?.strokeWidth,
           occupied: other,
           crossingPenalty,
@@ -547,6 +666,9 @@ function planFrameRoutes(
             sourceId: 'cellId' in edge.source ? edge.source.cellId : undefined,
             targetId: 'cellId' in edge.target ? edge.target.cellId : undefined,
             strokeWidth: edge.appearance?.strokeWidth,
+            visualGap: context.visualGap,
+            terminalRun: context.terminalRun,
+            allowFreeTerminalDirections: true,
             occupied: other,
             crossingPenalty,
           },
@@ -600,6 +722,9 @@ function planFrameRoutes(
           sourceId: 'cellId' in edge.source ? edge.source.cellId : undefined,
           targetId: 'cellId' in edge.target ? edge.target.cellId : undefined,
           clearance: context.clearance,
+          visualGap: context.visualGap,
+          terminalRun: context.terminalRun,
+          allowFreeTerminalDirections: true,
           strokeWidth: edge.appearance?.strokeWidth,
         },
         remainingCrossings,
@@ -626,93 +751,13 @@ function planFrameRoutes(
   });
 }
 
-export const relativeAnchor = (
-  geometry: NodeGeometry,
-  anchor: Point,
-): Point => {
-  const point: Point = [
-    geometry.x + geometry.width * anchor[0],
-    geometry.y + geometry.height * anchor[1],
-  ];
-  const rotation = geometry.rotation ?? 0,
-    cx = geometry.x + geometry.width / 2,
-    cy = geometry.y + geometry.height / 2;
-  const dx = point[0] - cx,
-    dy = point[1] - cy;
-  return [
-    cx + dx * Math.cos(rotation) - dy * Math.sin(rotation),
-    cy + dx * Math.sin(rotation) + dy * Math.cos(rotation),
-  ];
-};
-
-export const portAnchor = (
-  geometry: NodeGeometry,
-  port: Pick<PortSpec, 'side' | 'offset'>,
-): { point: Point; side: GeometrySide } => {
-  const point =
-    nodeShapeGeometry(geometry.outline)?.anchor?.(
-      geometry,
-      port.side,
-      port.offset ?? 0.5,
-    ) ?? sideAnchor(geometry, port.side, port.offset ?? 0.5);
-  const rotation = geometry.rotation ?? 0;
-  if (!rotation) return { point, side: port.side };
-  const cx = geometry.x + geometry.width / 2,
-    cy = geometry.y + geometry.height / 2;
-  const cos = Math.cos(rotation),
-    sin = Math.sin(rotation),
-    dx = point[0] - cx,
-    dy = point[1] - cy;
-  const sides: GeometrySide[] = ['right', 'bottom', 'left', 'top'];
-  const original = sides.indexOf(port.side),
-    quarter = Math.round(rotation / (Math.PI / 2));
-  return {
-    point: [cx + dx * cos - dy * sin, cy + dx * sin + dy * cos],
-    side: sides[(((original + quarter) % 4) + 4) % 4],
-  };
-};
-
-export const edgeTerminalPosition = (
-  store: CellStore,
-  terminal: EdgeCell['source'],
-  other: EdgeCell['source'],
-  geometry?: ReadonlyMap<string, NodeGeometry>,
-): { point: Point; side: GeometrySide } => {
-  if ('point' in terminal) return { point: terminal.point, side: 'right' };
-  const node = store.cells[terminal.cellId];
-  if (!isNodeCell(node)) throw new Error('Missing edge endpoint');
-  const bounds = geometry?.get(node.id) ?? node.geometry,
-    port = node.ports?.find((port) => port.id === terminal.portId);
-  if (port)
-    return {
-      point: terminal.anchor
-        ? relativeAnchor(bounds, terminal.anchor)
-        : portAnchor(bounds, port).point,
-      side: portAnchor(bounds, port).side,
-    };
-  const otherNode = 'cellId' in other ? store.cells[other.cellId] : undefined;
-  const otherBounds = isNodeCell(otherNode)
-    ? (geometry?.get(otherNode.id) ?? otherNode.geometry)
-    : {
-        x: 'point' in other ? other.point[0] : 0,
-        y: 'point' in other ? other.point[1] : 0,
-        width: 0,
-        height: 0,
-      };
-  const side = facingSides(bounds, otherBounds).sourceSide;
-  return {
-    point: terminal.anchor
-      ? relativeAnchor(bounds, terminal.anchor)
-      : portAnchor(bounds, { side }).point,
-    side,
-  };
-};
 export const edgePolyline = (
   store: CellStore,
   edge: EdgeCell,
   geometry?: ReadonlyMap<string, NodeGeometry>,
   routing?: EdgeRoutingContext,
 ) => {
+  geometry ??= routing?.geometry;
   if (
     !routing &&
     (edge.route.mode === 'auto' || edge.route.mode === 'orthogonal')
@@ -724,8 +769,8 @@ export const edgePolyline = (
   }
   return edgeRoutePoints(
     edge,
-    edgeTerminalPosition(store, edge.source, edge.target, geometry),
-    edgeTerminalPosition(store, edge.target, edge.source, geometry),
+    resolveRoutingTerminal(store, edge.source, edge.target, geometry),
+    resolveRoutingTerminal(store, edge.target, edge.source, geometry),
     routing,
   );
 };
@@ -905,6 +950,9 @@ export const edgeRoutePoints = (
         sourceId: 'cellId' in edge.source ? edge.source.cellId : undefined,
         targetId: 'cellId' in edge.target ? edge.target.cellId : undefined,
         clearance: routing.clearance,
+        visualGap: routing.visualGap,
+        terminalRun: routing.terminalRun,
+        allowFreeTerminalDirections: true,
         strokeWidth: edge.appearance?.strokeWidth,
       },
     );

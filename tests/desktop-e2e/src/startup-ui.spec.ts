@@ -78,8 +78,14 @@ test('Desktop fills the window, registers history and restores saved tabs', asyn
       .poll(async () => (await history()).map((entry) => entry.name))
       .toContain('workspace');
     const menu = await openWorkspaceMenu(page);
+    const currentWorkspace = menu.locator(
+      '.workspace-switcher-row[aria-current="true"]',
+    );
     await expect(
-      menu.getByRole('button', { name: 'workspace', exact: true }),
+      currentWorkspace.locator('.workspace-switcher-text'),
+    ).toHaveText('workspace');
+    await expect(
+      currentWorkspace.locator('.workspace-switcher-name'),
     ).toBeDisabled();
     await page.keyboard.press('Escape');
     for (const width of [1200, 1600]) {

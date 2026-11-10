@@ -3,7 +3,10 @@ import * as fs from 'node:fs/promises';
 import path from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
-import { patterns, patternWorkspaceUrl } from '@sue/verd-board-agent-patterns';
+import {
+  patterns,
+  patternWorkspaceUrl,
+} from '@sue/verd-board-agent-patterns/agent';
 import {
   validateNativeWorkspace,
   isWorkspaceFile,
@@ -11,6 +14,7 @@ import {
   remapWorkspaceFiles,
   createWorkspaceCellRegistry,
   normalizeWorkspacePath,
+  isWorkspaceContentPath,
   WORKSPACE_RULES,
   type WorkspaceFile,
 } from '@sue/verd-board-app/headless';
@@ -62,7 +66,6 @@ export async function expandPatterns(
       const file = remappedImport
         .files[0] as import('@sue/verd-board-app/headless').FrameFileV2;
       if (op.title) file.frame.name = op.title;
-      file.organization = { kind: 'standalone' };
       expanded.push({ type: 'file.import', file, path: op.path });
       continue;
     }
@@ -149,10 +152,7 @@ export async function prepareAuthoringBatch(
     e.path = normalizeWorkspacePath(e.path);
     const suffix =
       e.file.format === 'verd-document' ? '.verd-doc.json' : '.verd.json';
-    if (
-      !e.path.endsWith(suffix) ||
-      e.path.split('/').some((p) => p.startsWith('.'))
-    )
+    if (!e.path.endsWith(suffix) || !isWorkspaceContentPath(e.path))
       throw new Error('Invalid native content path: ' + e.path);
     if (occupied.has(e.path))
       throw new Error('Repeated native content path: ' + e.path);
@@ -160,6 +160,10 @@ export async function prepareAuthoringBatch(
     const id = workspaceFileId(e.file),
       before = originalById.get(id);
     if (JSON.stringify(before) !== JSON.stringify(e)) {
+      if (e.file.format === 'verd-frame' && e.file.organization !== undefined) {
+        e.file = { ...e.file };
+        delete e.file.organization;
+      }
       files.push(e);
       changes.push({ fileId: id, beforePath: before?.path, afterPath: e.path });
     }
@@ -182,6 +186,15 @@ export async function prepareAuthoringBatch(
     baseline.has(key(d)) && !affected.has(d.fileId ?? '')
       ? { ...d, severity: 'warning' as const }
       : d,
+  );
+  diagnostics.push(
+    ...result.geometryDiagnostics.map((d) => ({
+      severity: 'warning' as const,
+      code: d.code,
+      fileId: d.frameId,
+      cellId: d.cellIds[0],
+      message: d.message,
+    })),
   );
   // Unparseable source files are retained and must not be overwritten by a new file.
   for (const d of snapshot.diagnostics)

@@ -1,6 +1,6 @@
-import { test, expect, type Page } from '@playwright/test';
+import { test, expect, type Page } from './service-fixture';
 import { setAppLanguage } from './app-actions';
-import { persistedWorkspace } from './workspace-nav';
+import { persistedNavigation, persistedWorkspace } from './workspace-nav';
 import {
   activeTabTitle,
   openGroups,
@@ -191,6 +191,18 @@ test('groups retain independent tab sets, share one editor, rename, delete and r
     'data-save-state',
     'saved',
   );
+  await expect
+    .poll(async () => {
+      const navigation = await persistedNavigation(page);
+      return {
+        name: navigation?.groups?.find(
+          (group) => group.id === navigation?.activeGroupId,
+        )?.name,
+        activeTabId: navigation?.activeTabId,
+        tabs: navigation?.tabs.map((tab) => tab.fileId),
+      };
+    })
+    .toEqual({ name: 'Writing', activeTabId: 'a', tabs: ['doc', 'a'] });
   await page.reload();
   await expect.poll(() => ids(page)).toEqual(['doc', 'a']);
   await expect(tab(page, 'a')).toHaveAttribute('aria-selected', 'true');

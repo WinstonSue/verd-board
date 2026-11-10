@@ -207,6 +207,7 @@ export async function exerciseFindBars(
     } else {
       await query.press('Escape');
       await expect(find).toHaveCount(0);
+      await expect(pane.locator('.tiptap')).toBeFocused();
       await page.keyboard.press('ControlOrMeta+f');
       await expect(query).toHaveValue('cat');
       await expect(query).toBeFocused();

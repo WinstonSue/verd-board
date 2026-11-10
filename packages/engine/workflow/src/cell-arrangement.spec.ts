@@ -185,12 +185,20 @@ describe('workflow arrangement and domain groups', () => {
       foreign: 'other',
     });
     const start = runtime.store.cells.start as NodeCell;
-    expect(() =>
-      testCellRegistry.get('workflow-start')!.move!(runtime.store, start, {
-        ...start.geometry,
-        x: 500,
-      }),
-    ).toThrow('Ungroup first');
+    const beforeMove = runtime.store;
+    runtime.transact({
+      id: 'move-start',
+      operations: testCellRegistry.get('workflow-start')!.move!(
+        runtime.store,
+        start,
+        {
+          ...start.geometry,
+          x: 500,
+        },
+      ),
+    });
+    for (const id of ['a', 'foreign', 'group'])
+      expect(runtime.store.cells[id]).toEqual(beforeMove.cells[id]);
     runtime.transact({
       id: 'cut',
       operations: deleteCells(runtime.store, ['group'], {

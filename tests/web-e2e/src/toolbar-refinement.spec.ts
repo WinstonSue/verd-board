@@ -1,4 +1,5 @@
-import { expect, test, type Page, type Locator } from '@playwright/test';
+import { cellBodyPoint } from '../../helpers/port-controls';
+import { expect, test, type Page, type Locator } from './service-fixture';
 import path from 'node:path';
 import { openActiveFile, openAppMenu } from './app-actions';
 
@@ -92,7 +93,16 @@ for (const width of [800, 1440]) {
     const canvas = active(page).locator(
       'svg[aria-label="Frame canvas"][data-surface="root"]',
     );
-    await canvas.locator('[data-cell-id="shape-request"]').click();
+    const node = canvas.locator('[data-cell-id="shape-request"]');
+    if (width === 800) {
+      const box = (await node.boundingBox())!;
+      await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+      await page.keyboard.down('Control');
+      await page.mouse.wheel(0, -200);
+      await page.keyboard.up('Control');
+    }
+    const point = await cellBodyPoint(node);
+    await page.mouse.click(point.x, point.y);
     const inspector = active(page).getByRole('complementary', {
       name: 'Properties',
     });
@@ -130,13 +140,25 @@ for (const width of [800, 1440]) {
     await expect(input).toBeFocused();
     const [inputBox, searchButton] = await Promise.all([
       input.boundingBox(),
-      toolbar.getByRole('button', { name: '查找', exact: true }).boundingBox(),
+      toolbar.getByRole('button', { name: '演示', exact: true }).boundingBox(),
     ]);
-    expect(inputBox!.x + inputBox!.width).toBeLessThan(searchButton!.x);
-    expect(inputBox!.y + inputBox!.height / 2).toBeCloseTo(
-      searchButton!.y + searchButton!.height / 2,
-      0,
-    );
+    if (width === 800) {
+      // The narrow canvas wraps the search field above the action buttons.
+      expect(inputBox!.y + inputBox!.height).toBeLessThanOrEqual(
+        searchButton!.y,
+      );
+      const bounds = (await canvas.boundingBox())!;
+      expect(inputBox!.x).toBeGreaterThanOrEqual(bounds.x);
+      expect(inputBox!.x + inputBox!.width).toBeLessThanOrEqual(
+        bounds.x + bounds.width,
+      );
+    } else {
+      expect(inputBox!.x + inputBox!.width).toBeLessThan(searchButton!.x);
+      expect(inputBox!.y + inputBox!.height / 2).toBeCloseTo(
+        searchButton!.y + searchButton!.height / 2,
+        0,
+      );
+    }
     await input.press('Escape');
     await expect(find).toHaveCount(0);
     await field.evaluate((node) =>

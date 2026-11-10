@@ -71,10 +71,7 @@
       },
       "data": {
         "graphMode": "process",
-        "origin": [
-          60,
-          160
-        ],
+        "origin": [60, 160],
         "memberIds": [
           "pattern:workflow-process/pay-start",
           "pattern:workflow-process/task-fill",
@@ -172,10 +169,10 @@
       "kind": "workflow-decision",
       "cellType": "node",
       "geometry": {
-        "x": 720,
-        "y": 140,
-        "width": 120,
-        "height": 80,
+        "x": 680,
+        "y": 120,
+        "width": 200,
+        "height": 120,
         "outline": "diamond"
       },
       "ports": [
@@ -376,7 +373,7 @@
       },
       "labels": [
         {
-          "text": "重试"
+          "text": "修改后重试"
         }
       ]
     },
@@ -386,7 +383,7 @@
       "cellType": "edge",
       "source": {
         "cellId": "pattern:workflow-process/decision-result",
-        "portId": "bottom"
+        "portId": "right"
       },
       "target": {
         "cellId": "pattern:workflow-process/task-done",

@@ -2,3 +2,7 @@
 *
 !.gitignore
 !config.json
+!resources/
+resources/*
+!resources/assets/
+!resources/assets/**

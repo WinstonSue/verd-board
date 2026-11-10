@@ -9,9 +9,13 @@ import React, { act, createRef, useLayoutEffect, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createTestFramePluginSet } from '../../../../tests/fixtures/plugins/ui';
+import { createFrameDrawingTool } from '../../draw/src/frame-drawing-tool';
+import { createWorkflowStartCell } from '../../../engine/workflow/src/cell-commands';
+import { frameControlCursor } from './frame-control-cursor';
 import {
   FrameCanvas,
   type FrameCanvasController,
+  type FrameCanvasTool,
   type FrameCanvasInteractionSettings,
   type FrameCanvasViewState,
   type FrameRenderExtension,
@@ -53,9 +57,13 @@ const mount = async (
     autoFit?: boolean;
     readonly?: boolean;
     viewportInsets?: React.ComponentProps<typeof FrameCanvas>['viewportInsets'];
-    tool?: 'select' | 'hand';
+    tool?: 'select' | 'hand' | FrameCanvasTool;
     inputMode?: 'edit' | 'present';
     onPresentTap?: (cellId: string | null) => void;
+    actionHost?: React.ComponentProps<typeof FrameCanvas>['actionHost'];
+    onCanvasContextMenu?: React.ComponentProps<
+      typeof FrameCanvas
+    >['onCanvasContextMenu'];
     host?: boolean;
     extensions?: readonly FrameRenderExtension[];
     onViewStateChange?: (state: FrameCanvasViewState) => void;
@@ -102,11 +110,17 @@ const mount = async (
         readonly={options.readonly}
         inputMode={options.inputMode}
         onPresentTap={options.onPresentTap}
+        actionHost={options.actionHost}
+        onCanvasContextMenu={options.onCanvasContextMenu}
         viewportInsets={options.viewportInsets}
         extensions={extensions}
         onViewStateChange={options.onViewStateChange}
         onSelectionChange={options.onSelectionChange}
-        tool={{ mode: options.tool ?? 'select' }}
+        tool={
+          typeof options.tool === 'object'
+            ? options.tool
+            : { mode: options.tool ?? 'select' }
+        }
         {...(options.host
           ? {
               adapter: { toFrameSnapshot: (value: FrameSnapshot) => value },
@@ -1516,13 +1530,21 @@ describe('memory-only canvas camera', () => {
         }),
       );
       const cursors = (selector: string) =>
-        Array.from(
-          test.svg.querySelectorAll<SVGElement>(selector),
-          (handle) => handle.style.cursor,
+        Array.from(test.svg.querySelectorAll<SVGElement>(selector), (handle) =>
+          handle.style.cursor.replace(
+            /^var\(--frame-control-cursor,\s*(.*)\)$/,
+            '$1',
+          ),
         );
-      expect(cursors('[data-edge-endpoint]')).toEqual(['move', 'move']);
-      expect(cursors('[data-edge-route-point]')).toEqual(['move']);
-      expect(cursors('[data-edge-segment]')).toEqual(segmentCursors);
+      expect(cursors('[data-edge-endpoint]')).toEqual(
+        ['move', 'move'].map(frameControlCursor),
+      );
+      expect(cursors('[data-edge-route-point]')).toEqual([
+        frameControlCursor('move'),
+      ]);
+      expect(cursors('[data-edge-segment]')).toEqual(
+        segmentCursors.map(frameControlCursor),
+      );
     },
   );
   it('publishes edge-handle dragging and clears it on cancellation for mixed selection', async () => {
@@ -2658,7 +2680,7 @@ describe('memory-only canvas camera', () => {
             )!
             .getAttribute('r'),
         ),
-      ).toBeCloseTo(6 / Math.max(0.02, zoom * nestedScale));
+      ).toBeCloseTo(18 / Math.max(1e-8, zoom * nestedScale));
     }
     expect(
       setAttribute.mock.instances.filter((element) => hits.includes(element)),
@@ -2958,6 +2980,77 @@ describe('memory-only canvas camera', () => {
     expect(test.transform()).toBe('scale(2) translate(50 0)');
     expect(test.onChange).not.toHaveBeenCalled();
   });
+  it.each(['zoom', 'pointer'] as const)(
+    'refits while the initial viewport and chrome settle, then preserves %s interaction',
+    async (interaction) => {
+      const observers: ResizeObserverCallback[] = [];
+      vi.stubGlobal(
+        'ResizeObserver',
+        class {
+          constructor(callback: ResizeObserverCallback) {
+            observers.push(callback);
+          }
+          observe() {}
+          unobserve() {}
+          disconnect() {}
+        },
+      );
+      const options = {
+        autoFit: true,
+        viewportInsets: { top: 40, right: 40, bottom: 40, left: 40 },
+      };
+      const test = await mount(sample(), options);
+      const runtime = test.controller.current!.runtime;
+      const revision = runtime.revision;
+      const documentBefore = JSON.stringify(runtime.store);
+      expect(test.transform()).toBe('scale(1) translate(340 265)');
+      const resize = async (width: number, height: number) => {
+        vi.mocked(
+          SVGSVGElement.prototype.getBoundingClientRect,
+        ).mockReturnValue({
+          x: 0,
+          y: 0,
+          left: 0,
+          top: 0,
+          width,
+          height,
+          right: width,
+          bottom: height,
+          toJSON() {},
+        } as DOMRect);
+        await act(async () =>
+          observers.forEach((callback) => callback([], {} as ResizeObserver)),
+        );
+      };
+      await resize(600, 500);
+      expect(test.transform()).toBe('scale(1) translate(240 215)');
+      options.viewportInsets = { top: 60, right: 40, bottom: 80, left: 40 };
+      await act(async () => test.render());
+      expect(test.transform()).toBe('scale(1) translate(240 205)');
+      expect(runtime.revision).toBe(revision);
+      await act(async () => {
+        if (interaction === 'zoom')
+          await test.controller.current!.executeAction('canvas.view.set-zoom', {
+            zoom: 2,
+          });
+        else {
+          const node = test.svg.querySelector('[data-cell-id="a"]')!;
+          test.fire('pointerdown', 300, 240, 0, 1, node);
+          test.fire('pointerup', 300, 240, 0, 1, node);
+        }
+      });
+      await test.paint();
+      const manual = test.transform();
+      const manualRevision = runtime.revision;
+      await resize(500, 400);
+      options.viewportInsets = { top: 80, right: 40, bottom: 100, left: 40 };
+      await act(async () => test.render());
+      expect(test.transform()).toBe(manual);
+      expect(test.onChange).not.toHaveBeenCalled();
+      expect(runtime.revision).toBe(manualRevision);
+      expect(JSON.stringify(runtime.store)).toBe(documentBefore);
+    },
+  );
   it('ignores legacy cameras and fits the returning frame shell once', async () => {
     const value = sample(),
       frame = createFrameCell('nested', {
@@ -3122,7 +3215,847 @@ describe('memory-only canvas camera', () => {
 });
 
 describe('interactive ports and display paths', () => {
-  it('locally reveals ports and clips both edge ends without rebuilding nodes or editing the route', async () => {
+  const connected = () => {
+    const value = sample();
+    const a = value.store.cells.a as Core.NodeCell;
+    a.ports = [{ id: 'out', side: 'right', direction: 'output' }];
+    value.store.cells.b = {
+      ...a,
+      id: 'b',
+      geometry: { x: 240, y: 10, width: 100, height: 50 },
+      ports: [{ id: 'in', side: 'left', direction: 'input' }],
+    };
+    for (const id of ['e', 'e2', 'e3'])
+      value.store.cells[id] = {
+        id,
+        kind: 'arrow',
+        cellType: 'edge',
+        source: { cellId: 'a', portId: 'out' },
+        target: { cellId: 'b', portId: 'in' },
+        route: { mode: 'straight' },
+      };
+    (value.store.cells.root as Core.FrameCell).children.push(
+      'b',
+      'e',
+      'e2',
+      'e3',
+    );
+    return value;
+  };
+  const destinations = () => {
+    const value = connected();
+    for (const [id, y] of [
+      ['c', 100],
+      ['d', 300],
+    ] as const) {
+      value.store.cells[id] = {
+        ...(value.store.cells.a as Core.NodeCell),
+        id,
+        geometry: { x: 400, y, width: 160, height: 100 },
+        ports: [
+          { id: 'left', side: 'left', direction: 'input' },
+          { id: 'right', side: 'right', direction: 'output' },
+          { id: 'top', side: 'top', direction: 'input', maxConnections: 0 },
+          { id: 'bottom', side: 'bottom', direction: 'both' },
+        ],
+      };
+      (value.store.cells.root as Core.FrameCell).children.push(id);
+    }
+    return value;
+  };
+  const expectDestinationPorts = (
+    test: Awaited<ReturnType<typeof mount>>,
+    id: string,
+    visible: boolean,
+  ) => {
+    const marks = test.svg.querySelectorAll(
+      `[data-port-node-id="${id}"] [data-control-mark]`,
+    );
+    expect(marks).toHaveLength(4);
+    for (const mark of marks)
+      expect(mark.getAttribute('visibility') !== 'hidden').toBe(visible);
+  };
+  it.each(['new', 'source', 'target'] as const)(
+    'previews %s Workflow connections on the outline and commits only a named port',
+    async (mode) => {
+      const value = sample();
+      const ports: Core.Port[] = (
+        ['top', 'right', 'bottom', 'left'] as const
+      ).map((side) => ({ id: side, side, direction: 'both' }));
+      const a: Core.NodeCell = {
+        ...(value.store.cells.a as Core.NodeCell),
+        kind: 'workflow-task',
+        geometry: {
+          x: 100,
+          y: 100,
+          width: 160,
+          height: 100,
+          outline: 'rectangle',
+        },
+        ports,
+      };
+      const b = { ...a, id: 'b', geometry: { ...a.geometry, x: 400 } };
+      const graph = createWorkflowStartCell('graph', [50, 400]);
+      graph.data!.memberIds = ['graph', 'a', 'b'];
+      const edge: Core.EdgeCell = {
+        id: 'e',
+        kind: 'workflow-edge',
+        cellType: 'edge',
+        source: { cellId: 'a', portId: 'top' },
+        target: { cellId: 'b', portId: mode === 'target' ? 'top' : 'left' },
+        route: { mode: 'auto' },
+      };
+      Object.assign(value.store.cells, {
+        a,
+        b,
+        graph,
+        ...(mode === 'new' ? {} : { e: edge }),
+      });
+      (value.store.cells.root as Core.FrameCell).children = [
+        'graph',
+        'a',
+        'b',
+        ...(mode === 'new' ? [] : ['e']),
+      ];
+      const test = await mount(value);
+      if (mode !== 'new')
+        await act(async () =>
+          test.controller.current!.runtime.select({
+            focus: ['root'],
+            ids: ['e'],
+          }),
+        );
+      const movingEnd = mode === 'source' ? 'source' : 'target';
+      const destination = mode === 'source' ? a : b;
+      const x = destination.geometry.x;
+      const start =
+        mode === 'new'
+          ? test.svg.querySelector(
+              '[data-port-node-id="a"] [data-port-id="top"]',
+            )!
+          : test.svg.querySelector(
+              `[data-selected-edge-endpoints] [data-port-edge-id="e"][data-edge-endpoint="${movingEnd}"]`,
+            )!;
+      const original = structuredClone(test.controller.current!.runtime.store);
+      await act(async () => {
+        test.fire(
+          'pointerdown',
+          mode === 'new' ? 180 : x + 80,
+          100,
+          0,
+          1,
+          start,
+        );
+        test.fire('pointermove', x + 100, 112.5);
+      });
+      await test.paint();
+      if (mode === 'new') {
+        const path = test.svg.querySelector(
+          '[data-draft-cell-kind="workflow-edge"] [data-edge-display]',
+        )!;
+        expect(path).not.toBeNull();
+        // The pending path ends at the top outline rather than the right port.
+        const end = path.getAttribute('d')!.match(/L([\d.]+) ([\d.]+)$/)!;
+        expect(Number(end[1])).toBeCloseTo(x + 102.917631, 3);
+        expect(Number(end[2])).toBeCloseTo(107.0294416, 3);
+      } else {
+        const endpoint = test.svg.querySelector(
+          `[data-selected-edge-endpoints] [data-port-edge-id="e"][data-edge-endpoint="${movingEnd}"]`,
+        )!;
+        expect(Number(endpoint.getAttribute('cx'))).toBeCloseTo(
+          x + 102.917631,
+          3,
+        );
+        expect(Number(endpoint.getAttribute('cy'))).toBeCloseTo(107.0294416, 3);
+      }
+      expect(test.controller.current!.runtime.store).toEqual(original);
+      expect(test.onChange).not.toHaveBeenCalled();
+      await act(async () => test.fire('pointermove', x + 80, 150));
+      await test.paint();
+      if (mode !== 'new') {
+        const endpoint = test.svg.querySelector(
+          `[data-selected-edge-endpoints] [data-port-edge-id="e"][data-edge-endpoint="${movingEnd}"]`,
+        )!;
+        expect(Number(endpoint.getAttribute('cx'))).toBeCloseTo(x + 80, 3);
+        expect(Number(endpoint.getAttribute('cy'))).toBeCloseTo(150, 3);
+      }
+      await act(async () => test.fire('pointermove', x + 140, 137.5));
+      await test.paint();
+      await act(async () => test.fire('pointerup', x + 140, 137.5));
+      const committed = Object.values(
+        test.controller.current!.runtime.store.cells,
+      ).find(Core.isEdgeCell)!;
+      expect(committed[movingEnd]).toEqual({
+        cellId: destination.id,
+        portId: 'right',
+      });
+      expect(test.onChange).toHaveBeenCalledTimes(1);
+      await act(async () =>
+        test.controller.current!.executeAction('canvas.history.undo'),
+      );
+      expect(test.controller.current!.runtime.store).toEqual(original);
+    },
+  );
+  it.each(['new', 'target'] as const)(
+    'cancels a %s connection when the destination has no available ports',
+    async (mode) => {
+      const value = destinations();
+      (value.store.cells.c as Core.NodeCell).ports = (
+        value.store.cells.c as Core.NodeCell
+      ).ports!.map((port) => ({ ...port, maxConnections: 0 }));
+      const test = await mount(value);
+      if (mode === 'target')
+        await act(async () =>
+          test.controller.current!.runtime.select({
+            focus: ['root'],
+            ids: ['e'],
+          }),
+        );
+      const start =
+        mode === 'new'
+          ? test.svg.querySelector(
+              '[data-port-node-id="a"] [data-port-id="out"]',
+            )!
+          : test.svg.querySelector(
+              '[data-selected-edge-endpoints] [data-port-edge-id="e"][data-edge-endpoint="target"]',
+            )!;
+      const original = structuredClone(test.controller.current!.runtime.store);
+      await act(async () => {
+        test.fire('pointerdown', mode === 'new' ? 110 : 240, 35, 0, 1, start);
+        test.fire('pointermove', 480, 150);
+      });
+      await test.paint();
+      expectDestinationPorts(test, 'c', true);
+      await act(async () => test.fire('pointerup', 480, 150));
+      expect(test.controller.current!.runtime.store).toEqual(original);
+      expect(test.onChange).not.toHaveBeenCalled();
+      expectDestinationPorts(test, 'c', false);
+    },
+  );
+  it.each(['new', 'source', 'target'] as const)(
+    'reveals every destination port during %s connection dragging without node hover',
+    async (mode) => {
+      const test = await mount(destinations());
+      if (mode !== 'new')
+        await act(async () =>
+          test.controller.current!.runtime.select({
+            focus: ['root'],
+            ids: ['e'],
+          }),
+        );
+      const start =
+        mode === 'new'
+          ? test.svg.querySelector(
+              '[data-port-node-id="a"] [data-port-id="out"]',
+            )!
+          : test.svg.querySelector(
+              `[data-selected-edge-endpoints] [data-port-edge-id="e"][data-edge-endpoint="${mode}"]`,
+            )!;
+      await act(async () => {
+        test.fire(
+          'pointerdown',
+          mode === 'target' ? 240 : 110,
+          35,
+          0,
+          1,
+          start,
+        );
+        test.fire('pointermove', 480, 150);
+      });
+      await test.paint();
+      expect(test.svg.setPointerCapture).toHaveBeenCalledWith(1);
+      expectDestinationPorts(test, 'c', true);
+      expectDestinationPorts(test, 'd', false);
+      expect(
+        test.svg.querySelectorAll(
+          '[data-port-node-id="c"] [data-port-active="true"]',
+        ),
+      ).toHaveLength(0);
+      expect(test.onChange).not.toHaveBeenCalled();
+      await act(async () => test.fire('pointermove', 480, 350));
+      await test.paint();
+      expectDestinationPorts(test, 'c', false);
+      expectDestinationPorts(test, 'd', true);
+      await act(async () => test.fire('pointermove', 700, 550));
+      await test.paint();
+      expectDestinationPorts(test, 'd', false);
+      // The outer port hot region also keeps all sibling ports visible.
+      await act(async () => test.fire('pointermove', 385, 150));
+      await test.paint();
+      expectDestinationPorts(test, 'c', true);
+      const drop: Core.Point = mode === 'source' ? [480, 200] : [400, 150];
+      await act(async () => test.fire('pointermove', ...drop));
+      await test.paint();
+      await act(async () => test.fire('pointerup', ...drop));
+      const cells = Object.values(test.controller.current!.runtime.store.cells);
+      const edge =
+        mode === 'new'
+          ? cells.find(
+              (cell): cell is Core.EdgeCell =>
+                Core.isEdgeCell(cell) && !['e', 'e2', 'e3'].includes(cell.id),
+            )!
+          : (test.controller.current!.runtime.store.cells.e as Core.EdgeCell);
+      expect(edge[mode === 'source' ? 'source' : 'target']).toEqual({
+        cellId: 'c',
+        portId: mode === 'source' ? 'bottom' : 'left',
+      });
+      expect(cells.filter(Core.isEdgeCell)).toHaveLength(
+        mode === 'new' ? 4 : 3,
+      );
+      expect(test.onChange).toHaveBeenCalledTimes(1);
+      // A bound/selected endpoint can stay visible; its sibling ports must reset.
+      const right = test.svg.querySelector(
+        '[data-port-node-id="c"] [data-port-id="right"]',
+      )!;
+      expect(
+        right
+          .parentElement!.querySelector('[data-control-mark]')!
+          .getAttribute('visibility'),
+      ).toBe('hidden');
+    },
+  );
+  it.each(['pointercancel', 'lostpointercapture', 'Escape'])(
+    'clears destination ports on %s without committing a connection',
+    async (cancel) => {
+      const test = await mount(destinations());
+      await act(async () => {
+        test.fire(
+          'pointerdown',
+          110,
+          35,
+          0,
+          1,
+          test.svg.querySelector(
+            '[data-port-node-id="a"] [data-port-id="out"]',
+          )!,
+        );
+        test.fire('pointermove', 480, 150);
+      });
+      await test.paint();
+      expectDestinationPorts(test, 'c', true);
+      await act(async () => {
+        if (cancel === 'Escape')
+          test.svg.dispatchEvent(
+            new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }),
+          );
+        else test.fire(cancel, 480, 150);
+      });
+      await test.paint();
+      expectDestinationPorts(test, 'c', false);
+      expect(test.onChange).not.toHaveBeenCalled();
+    },
+  );
+  it.each(['arrow', 'bidirectional', 'line', 'curve'])(
+    'reveals destination ports and commits the nearest legal port for the toolbar %s tool',
+    async (pointer) => {
+      const test = await mount(destinations(), {
+        tool: createFrameDrawingTool({
+          pointer,
+          shape: 'rectangle',
+          pen: 'feltTipPen',
+        }),
+      });
+      await act(async () => {
+        test.fire('pointerdown', 150, 250);
+        test.fire('pointermove', 480, 150);
+      });
+      await test.paint();
+      expectDestinationPorts(test, 'c', true);
+      await act(async () => test.fire('pointermove', 700, 550));
+      await test.paint();
+      expectDestinationPorts(test, 'c', false);
+      await act(async () => test.fire('pointermove', 480, 150));
+      await test.paint();
+      await act(async () => test.fire('pointerup', 480, 150));
+      const edge = Object.values(
+        test.controller.current!.runtime.store.cells,
+      ).find(
+        (cell): cell is Core.EdgeCell =>
+          Core.isEdgeCell(cell) && !['e', 'e2', 'e3'].includes(cell.id),
+      )!;
+      expect(edge.target).toEqual({ cellId: 'c', portId: 'bottom' });
+      expect(test.onChange).toHaveBeenCalledTimes(1);
+    },
+  );
+  it.each([0.5, 2])('hits rotated layout geometry at zoom %s', async (zoom) => {
+    const test = await mount(destinations(), {
+      extensions: [
+        {
+          layout: () =>
+            new Map([
+              [
+                'c',
+                {
+                  x: 400,
+                  y: 100,
+                  width: 200,
+                  height: 60,
+                  rotation: Math.PI / 2,
+                },
+              ],
+            ]),
+        },
+      ],
+    });
+    await act(async () =>
+      test.controller.current!.executeAction('canvas.view.set-zoom', { zoom }),
+    );
+    await test.paint();
+    const camera = viewport(test.transform());
+    const screen = (x: number, y: number): Core.Point => [
+      (x - camera.origin[0]) * camera.zoom,
+      (y - camera.origin[1]) * camera.zoom,
+    ];
+    await act(async () => {
+      test.fire(
+        'pointerdown',
+        ...screen(110, 35),
+        0,
+        1,
+        test.svg.querySelector('[data-port-node-id="a"] [data-port-id="out"]')!,
+      );
+      // Inside the rotated shape, outside its unrotated bounds and every port.
+      test.fire('pointermove', ...screen(500, 180));
+    });
+    await test.paint();
+    expectDestinationPorts(test, 'c', true);
+    await act(async () => test.fire('pointermove', ...screen(575, 180)));
+    await test.paint();
+    expectDestinationPorts(test, 'c', false);
+    await act(async () => test.fire('pointercancel', ...screen(575, 180)));
+  });
+  it('reveals only sibling destinations through a nested frame screen transform', async () => {
+    const value = destinations();
+    const frame = Core.createFrameCell('nested', {
+      x: 80,
+      y: 40,
+      width: 600,
+      height: 450,
+    });
+    frame.children = [...(value.store.cells.root as Core.FrameCell).children];
+    value.store.cells.nested = frame;
+    value.store.cells.outside = {
+      ...(value.store.cells.c as Core.NodeCell),
+      id: 'outside',
+    };
+    (value.store.cells.root as Core.FrameCell).children = ['nested', 'outside'];
+    vi.stubGlobal(
+      'DOMPoint',
+      class {
+        constructor(
+          public x: number,
+          public y: number,
+        ) {}
+        matrixTransform(matrix: DOMMatrix) {
+          return {
+            x: matrix.a * this.x + matrix.c * this.y + matrix.e,
+            y: matrix.b * this.x + matrix.d * this.y + matrix.f,
+          };
+        }
+      },
+    );
+    const test = await mount(value);
+    await act(async () =>
+      test.controller.current!.runtime.select({
+        focus: ['root', 'nested'],
+        ids: [],
+      }),
+    );
+    const content = test.svg.querySelector<SVGGElement>(
+      '[data-frame-content-id="nested"]',
+    )!;
+    content.getScreenCTM = () =>
+      ({
+        inverse: () => ({
+          a: 1 / 0.75,
+          b: 0,
+          c: 0,
+          d: 1 / 0.75,
+          e: -80 / 0.75,
+          f: -40 / 0.75,
+        }),
+      }) as DOMMatrix;
+    const screen = (x: number, y: number): Core.Point => [
+      80 + x * 0.75,
+      40 + y * 0.75,
+    ];
+    await act(async () => {
+      test.fire(
+        'pointerdown',
+        ...screen(110, 35),
+        0,
+        1,
+        test.svg.querySelector('[data-port-node-id="a"] [data-port-id="out"]')!,
+      );
+      test.fire('pointermove', ...screen(480, 150));
+    });
+    await test.paint();
+    expectDestinationPorts(test, 'c', true);
+    expectDestinationPorts(test, 'outside', false);
+    await act(async () => test.fire('pointercancel', ...screen(480, 150)));
+    expectDestinationPorts(test, 'c', false);
+    expect(test.onChange).not.toHaveBeenCalled();
+  });
+  it.each(['node', 'point', 'segment', 'label'] as const)(
+    'does not reveal destination ports during a %s drag',
+    async (mode) => {
+      const value = destinations();
+      const edge = value.store.cells.e as Core.EdgeCell;
+      edge.route = {
+        mode: 'fixed',
+        points: [
+          [110, 35],
+          [180, 80],
+          [240, 35],
+        ],
+      };
+      edge.labels = [{ text: 'Label' }];
+      const test = await mount(value);
+      if (mode !== 'node')
+        await act(async () =>
+          test.controller.current!.runtime.select({
+            focus: ['root'],
+            ids: ['e'],
+          }),
+        );
+      const selectors = {
+        node: '[data-cell-id="a"]',
+        point: '[data-edge-controls="e"] [data-edge-route-point="1"]',
+        segment: '[data-edge-controls="e"] [data-edge-segment="0"]',
+        label: '[data-cell-id="e"] [data-edge-label="0"]',
+      };
+      const control = test.svg.querySelector(selectors[mode])!;
+      expect(control).not.toBeNull();
+      const x = Number(control.getAttribute('cx') ?? 60);
+      const y = Number(control.getAttribute('cy') ?? 35);
+      await act(async () => {
+        test.fire('pointerdown', x, y, 0, 1, control);
+        test.fire('pointermove', 480, 150);
+      });
+      await test.paint();
+      expectDestinationPorts(test, 'c', false);
+      await act(async () => test.fire('pointercancel', 480, 150));
+      expect(test.onChange).not.toHaveBeenCalled();
+    },
+  );
+  it('gives selection priority over hover and keeps one logical owner at shared ports', async () => {
+    const test = await mount(connected());
+    const hover = async (id: string) =>
+      act(async () =>
+        test.svg
+          .querySelector(`[data-cell-id="${id}"]`)!
+          .dispatchEvent(new MouseEvent('pointerover', { bubbles: true })),
+      );
+    const select = async (ids: string[]) =>
+      act(async () =>
+        test.controller.current!.runtime.select({ focus: ['root'], ids }),
+      );
+    const source = () =>
+      test.svg.querySelector('[data-port-node-id="a"] [data-port-id="out"]')!;
+    const target = () =>
+      test.svg.querySelector('[data-port-node-id="b"] [data-port-id="in"]')!;
+    await select(['a']);
+    await hover('e');
+    expect(source().getAttribute('data-port-owner')).toBe('node');
+    await select(['e']);
+    await hover('b');
+    expect(target().getAttribute('data-port-edge-id')).toBe('e');
+    expect(test.svg.querySelectorAll('[data-edge-endpoint]')).toHaveLength(2);
+    await select(['b', 'e']);
+    await hover('e3');
+    expect(target().getAttribute('data-port-owner')).toBe('node');
+    await select(['e', 'e3']);
+    expect(target().getAttribute('style')).toContain('not-allowed');
+    await act(async () => {
+      test.fire('pointerdown', 240, 35, 0, 1, target());
+      test.fire('pointerup', 240, 35);
+    });
+    expect(test.onChange).not.toHaveBeenCalled();
+    await select([]);
+    await hover('e2');
+    await act(async () => {
+      const edge = test.svg.querySelector('[data-cell-id="e2"]')!;
+      edge.dispatchEvent(
+        new MouseEvent('pointerout', {
+          bubbles: true,
+          relatedTarget: target(),
+        }),
+      );
+    });
+    await act(async () => test.fire('pointerover', 224, 35, 0, 1, target()));
+    expect(target().getAttribute('data-port-edge-id')).toBe('e2');
+    await act(async () => {
+      test.fire('pointerdown', 240, 35, 0, 1, target());
+      test.fire('pointerup', 240, 35);
+    });
+    expect(test.controller.current!.runtime.selection.ids).toEqual(['e2']);
+    expect(test.onChange).not.toHaveBeenCalled();
+    await act(async () => {
+      test.fire('pointerdown', 240, 35, 0, 1, target());
+      test.fire('pointermove', 450, 250);
+      test.fire('pointerup', 450, 250);
+    });
+    const store = test.controller.current!.runtime.store;
+    expect((store.cells.e2 as Core.EdgeCell).target).toEqual({
+      point: [450, 250],
+    });
+    expect((store.cells.e as Core.EdgeCell).target).toEqual({
+      cellId: 'b',
+      portId: 'in',
+    });
+    expect((store.cells.e3 as Core.EdgeCell).target).toEqual({
+      cellId: 'b',
+      portId: 'in',
+    });
+  });
+  it('owns both selected endpoints even when node controls are hidden by an extension', async () => {
+    const test = await mount(connected(), {
+      extensions: [{ kind: 'geometry', visible: () => false }],
+    });
+    const path = test.svg
+      .querySelector('[data-edge-display="e"]')!
+      .getAttribute('d');
+    await act(async () =>
+      test.controller.current!.runtime.select({ focus: ['root'], ids: ['e'] }),
+    );
+    const endpoints = test.svg.querySelectorAll(
+      '[data-port-edge-id="e"][data-edge-endpoint]',
+    );
+    expect(endpoints).toHaveLength(2);
+    expect(
+      [...endpoints].map((element) => [
+        Number(element.getAttribute('cx')),
+        Number(element.getAttribute('cy')),
+      ]),
+    ).toEqual([
+      [110, 35],
+      [240, 35],
+    ]);
+    for (const endpoint of endpoints) {
+      expect(
+        endpoint
+          .parentElement!.querySelector('[data-control-mark]')!
+          .getAttribute('visibility'),
+      ).not.toBe('hidden');
+    }
+    expect(
+      test.svg.querySelector('[data-edge-display="e"]')!.getAttribute('d'),
+    ).toBe(path);
+    expect(test.onChange).not.toHaveBeenCalled();
+  });
+  it.each([
+    'auto',
+    'anchor',
+    'port-and-anchor',
+    'free',
+    'locked-node',
+  ] as const)(
+    'keeps selected %s endpoints independent and aligned with the route',
+    async (kind) => {
+      const value = connected();
+      const edge = value.store.cells.e as Core.EdgeCell;
+      if (kind === 'auto') edge.source = { cellId: 'a' };
+      if (kind === 'anchor') edge.source = { cellId: 'a', anchor: [1, 0.6] };
+      if (kind === 'port-and-anchor')
+        edge.source = { cellId: 'a', portId: 'out', anchor: [1, 0.6] };
+      if (kind === 'free') edge.source = { point: [170, 80] };
+      if (kind === 'locked-node') value.store.cells.a.locked = true;
+      const expected = Core.edgePolyline(value.store, edge);
+      const test = await mount(value);
+      await act(async () =>
+        test.controller.current!.runtime.select({
+          focus: ['root'],
+          ids: ['e'],
+        }),
+      );
+      const endpoints = [
+        ...test.svg.querySelectorAll(
+          '[data-selected-edge-endpoints] [data-port-edge-id="e"][data-edge-endpoint]',
+        ),
+      ];
+      expect(endpoints).toHaveLength(2);
+      expect(
+        endpoints.map((element) => [
+          Number(element.getAttribute('cx')),
+          Number(element.getAttribute('cy')),
+        ]),
+      ).toEqual([expected[0], expected.at(-1)]);
+      expect(test.onChange).not.toHaveBeenCalled();
+    },
+  );
+  it('keeps a coincident self-loop as two logical endpoints and one blocked mark', async () => {
+    const value = connected();
+    const edge = value.store.cells.e as Core.EdgeCell;
+    edge.target = edge.source;
+    const test = await mount(value);
+    await act(async () =>
+      test.controller.current!.runtime.select({ focus: ['root'], ids: ['e'] }),
+    );
+    const groups = test.svg.querySelectorAll(
+      '[data-selected-edge-endpoints] [data-port-members]',
+    );
+    expect(groups).toHaveLength(1);
+    expect(JSON.parse(groups[0].getAttribute('data-port-members')!)).toContain(
+      JSON.stringify(['edge', 'e', 'source']),
+    );
+    expect(JSON.parse(groups[0].getAttribute('data-port-members')!)).toContain(
+      JSON.stringify(['edge', 'e', 'target']),
+    );
+    const hit = groups[0].querySelector('[data-control-hit]')!;
+    expect(hit.getAttribute('data-port-owner')).toBe('blocked');
+    await act(async () => {
+      test.fire('pointerdown', 110, 35, 0, 1, hit);
+      test.fire('pointermove', 450, 250);
+      test.fire('pointerup', 450, 250);
+    });
+    expect(test.onChange).not.toHaveBeenCalled();
+  });
+  it('mounts selected endpoints immediately while virtualized nodes await admission', async () => {
+    controlledFrames();
+    const value = connected();
+    const fillers = Array.from({ length: 1000 }, (_, index) => {
+      const id = `filler-${index}`;
+      value.store.cells[id] = {
+        ...(value.store.cells.a as Core.NodeCell),
+        id,
+        ports: [],
+        geometry: { x: 0, y: 0, width: 10, height: 10 },
+      };
+      return id;
+    });
+    (value.store.cells.root as Core.FrameCell).children = [
+      'e',
+      ...fillers,
+      'a',
+      'b',
+      'e2',
+      'e3',
+    ];
+    const test = await mount(value);
+    await act(async () =>
+      test.controller.current!.runtime.select({ focus: ['root'], ids: ['e'] }),
+    );
+    expect(test.svg.querySelector('[data-cell-id="a"]')).toBeNull();
+    expect(
+      test.svg.querySelectorAll('[data-port-edge-id="e"][data-edge-endpoint]'),
+    ).toHaveLength(2);
+    expect(
+      test.svg.querySelector('[data-edge-controls="e"] [data-edge-segment]'),
+    ).not.toBeNull();
+    expect(test.onChange).not.toHaveBeenCalled();
+  });
+  it.each([false, true])(
+    'edits the selected edge after a pending connection (anchor=%s)',
+    async (anchor) => {
+      const value = connected();
+      if (anchor)
+        (value.store.cells.e as Core.EdgeCell).source = {
+          cellId: 'a',
+          anchor: [1, 0.6],
+        };
+      const test = await mount(value);
+      const port = () =>
+        test.svg.querySelector('[data-port-node-id="a"] [data-port-id="out"]')!;
+      await act(async () => {
+        test.fire('pointerdown', 110, 35, 0, 1, port());
+        test.fire('pointerup', 110, 35);
+      });
+      await act(async () =>
+        test.controller.current!.runtime.select({
+          focus: ['root'],
+          ids: ['e'],
+        }),
+      );
+      const endpoint = anchor
+        ? test.svg.querySelector(
+            '[data-edge-controls="e"] [data-edge-endpoint="source"]',
+          )!
+        : port();
+      expect(endpoint.getAttribute('data-port-owner')).toBe('edge');
+      await act(async () => {
+        test.fire('pointerdown', 110, anchor ? 40 : 35, 0, 1, endpoint);
+        test.fire('pointermove', 450, 250);
+        test.fire('pointerup', 450, 250);
+      });
+      const cells = test.controller.current!.runtime.store.cells;
+      expect((cells.e as Core.EdgeCell).source).toEqual({ point: [450, 250] });
+      expect(Object.values(cells).filter(Core.isEdgeCell)).toHaveLength(3);
+      expect((cells.e2 as Core.EdgeCell).source).toEqual({
+        cellId: 'a',
+        portId: 'out',
+      });
+    },
+  );
+  it('reveals persistent outer hot targets locally, enlarges only the hovered mark and keeps selected ports white', async () => {
+    const test = await mount(connected());
+    const source = () =>
+      test.svg.querySelector('[data-port-node-id="a"] [data-port-id="out"]')!;
+    const mark = () =>
+      source().parentElement!.querySelector('[data-control-mark]')!;
+    const radius = () =>
+      Number(mark().querySelector('circle')!.getAttribute('r'));
+    const layouts = test.layout.mock.calls.length;
+    const shape = vi.spyOn(Core, 'nodeShapeSpec');
+    expect(mark().getAttribute('visibility')).toBe('hidden');
+    expect(source().getAttribute('r')).toBe('18');
+    await act(async () => test.fire('pointerover', 126, 35, 0, 1, source()));
+    expect(mark().getAttribute('visibility')).toBeNull();
+    expect(radius()).toBe(7.5);
+    expect(mark().getAttribute('fill')).toBe('#fff');
+    await act(async () =>
+      test.controller.current!.runtime.select({ focus: ['root'], ids: ['e'] }),
+    );
+    expect(mark().getAttribute('fill')).toBe('#fff');
+    expect(source().getAttribute('data-port-owner')).toBe('edge');
+    await act(async () => test.fire('pointerout', 160, 35, 0, 1, source()));
+    expect(radius()).toBe(5);
+    expect(mark().getAttribute('fill')).toBe('#fff');
+    expect(test.layout.mock.calls.length).toBe(layouts);
+    expect(shape).not.toHaveBeenCalled();
+    expect(test.onChange).not.toHaveBeenCalled();
+  });
+  it('keeps port hot targets screen-sized and respects rotations and cancellation', async () => {
+    const value = connected();
+    (value.store.cells.a as Core.NodeCell).geometry.rotation = Math.PI / 2;
+    const test = await mount(value);
+    await act(async () =>
+      test.controller.current!.runtime.select({ focus: ['root'], ids: ['e'] }),
+    );
+    expect(
+      test.svg
+        .querySelector('[data-port-node-id="a"]')!
+        .getAttribute('transform'),
+    ).toContain('rotate(90');
+    for (const zoom of [0.25, 1, 2]) {
+      await act(async () =>
+        test.controller.current!.executeAction('canvas.view.set-zoom', {
+          zoom,
+        }),
+      );
+      await test.paint();
+      expect(
+        Number(
+          test.svg
+            .querySelector('[data-port-node-id="b"] [data-port-id]')!
+            .getAttribute('r'),
+        ) * zoom,
+      ).toBe(18);
+    }
+    await act(async () => {
+      test.fire(
+        'pointerdown',
+        480,
+        70,
+        0,
+        1,
+        test.svg.querySelector('[data-port-node-id="b"] [data-port-id]')!,
+      );
+      test.fire('pointermove', 700, 300);
+      test.fire('pointercancel', 700, 300);
+    });
+    expect(test.onChange).not.toHaveBeenCalled();
+  });
+  it('locally reveals ports without changing paths, arrows, nodes or routes', async () => {
     const value = sample();
     const a = value.store.cells.a as Core.NodeCell;
     a.ports = [{ id: 'right', side: 'right', direction: 'both' }];
@@ -3144,37 +4077,58 @@ describe('interactive ports and display paths', () => {
     };
     (value.store.cells.root as Core.FrameCell).children.push('b', 'e');
     const shape = vi.spyOn(Core, 'nodeShapeSpec');
+    const routes = vi.spyOn(Core, 'edgeRoutePoints');
     const test = await mount(value);
     const path = () =>
       test.svg.querySelector('[data-cell-id="e"] path')!.getAttribute('d');
     const canonical = path(),
+      markers = () =>
+        Array.from(test.svg.querySelectorAll('[data-arrow-marker]'), (el) =>
+          el.getAttribute('d'),
+        ),
+      originalMarkers = markers(),
+      routeCount = routes.mock.calls.length,
       count = shape.mock.calls.length,
       layouts = test.layout.mock.calls.length;
-    expect(test.svg.querySelector('[data-port-id]')).toBeNull();
+    expect(test.svg.querySelector('[data-port-id]')).not.toBeNull();
+    expect(
+      test.svg.querySelectorAll(
+        '[data-control-mark]:not([visibility="hidden"])',
+      ),
+    ).toHaveLength(0);
     await act(async () =>
       test.svg
         .querySelector('[data-cell-id="a"]')!
         .dispatchEvent(new MouseEvent('pointerover', { bubbles: true })),
     );
     expect(
-      test.svg.querySelector('[data-cell-id="a"] [data-port-id]'),
+      test.svg.querySelector('[data-port-node-id="a"] [data-port-id]'),
     ).not.toBeNull();
-    expect(path()).not.toBe(canonical);
+    expect(path()).toBe(canonical);
+    expect(markers()).toEqual(originalMarkers);
     await act(async () => {
       test.controller.current!.runtime.select({
         focus: ['root'],
         ids: ['a', 'b'],
       });
     });
-    const ends = [...path()!.matchAll(/[-\d.]+/g)].map((m) => Number(m[0]));
-    expect(ends[0]).toBeCloseTo(119.75, 6);
-    expect(ends.at(-2)).toBeCloseTo(230.25, 6);
+    expect(path()).toBe(canonical);
+    expect(markers()).toEqual(originalMarkers);
+    await act(async () =>
+      test.controller.current!.runtime.select({ focus: ['root'], ids: ['e'] }),
+    );
+    expect(path()).toBe(canonical);
+    expect(markers()).toEqual(originalMarkers);
+    expect(test.svg.querySelectorAll('[data-port-owner="edge"]')).toHaveLength(
+      2,
+    );
     expect(
       (test.controller.current!.runtime.store.cells.e as Core.EdgeCell).route,
     ).toEqual({ mode: 'straight' });
     // Selection can rebuild its handles; hover alone must leave all scene geometry cached.
     expect(shape.mock.calls.length).toBe(count);
     expect(test.layout.mock.calls.length).toBe(layouts);
+    expect(routes.mock.calls.length).toBe(routeCount);
     expect(test.onChange).not.toHaveBeenCalled();
   });
   it.each([true, false])(
@@ -3191,6 +4145,306 @@ describe('interactive ports and display paths', () => {
           .dispatchEvent(new MouseEvent('pointerover', { bubbles: true })),
       );
       expect(test.svg.querySelector('[data-port-id]')).toBeNull();
+    },
+  );
+});
+
+describe('waypoint context menus', () => {
+  const fixture = (mode: 'fixed' | 'curve' | 'orthogonal' = 'fixed') => {
+    const value = sample();
+    value.store.cells.e = {
+      id: 'e',
+      cellType: 'edge',
+      kind: 'arrow',
+      source: { point: [100, 120] },
+      target: { point: [400, 120] },
+      route: {
+        mode,
+        points: [
+          [100, 120],
+          [200, 120],
+          [200, 220],
+          [300, 220],
+          [300, 120],
+          [400, 120],
+        ],
+      },
+      labels: [{ text: 'Label' }],
+    };
+    (value.store.cells.root as Core.FrameCell).children.push('e');
+    return value;
+  };
+  const open = async (test: Awaited<ReturnType<typeof mount>>, index = 2) => {
+    await act(async () =>
+      test.controller.current!.runtime.select({ focus: ['root'], ids: ['e'] }),
+    );
+    test.svg.focus();
+    const control = test.svg.querySelector(
+      `[data-edge-controls="e"] [data-edge-route-point="${index}"]`,
+    )!;
+    expect(control).not.toBeNull();
+    const x = Number(control.getAttribute('cx')),
+      y = Number(control.getAttribute('cy'));
+    await act(async () => test.fire('pointerdown', x, y, 2, 1, control));
+    expect(document.querySelector('[role="menu"]')).toBeNull();
+    await act(async () => test.fire('pointerup', x, y, 2));
+    return document.querySelector<HTMLButtonElement>('[role="menuitem"]')!;
+  };
+  it.each(['fixed', 'curve', 'orthogonal'] as const)(
+    'deletes a %s waypoint in one undoable edit',
+    async (mode) => {
+      const onCanvasContextMenu = vi.fn();
+      const test = await mount(fixture(mode), { onCanvasContextMenu });
+      const original = structuredClone(
+        test.controller.current!.runtime.store.cells.e as Core.EdgeCell,
+      );
+      const item = await open(test);
+      expect(item.textContent).toBe('删除锚点');
+      expect(item.disabled).toBe(false);
+      expect(onCanvasContextMenu).toHaveBeenCalledExactlyOnceWith(null);
+      expect(test.onChange).not.toHaveBeenCalled();
+      await act(async () => item.click());
+      const next = test.controller.current!.runtime.store.cells
+        .e as Core.EdgeCell;
+      expect(next.source).toEqual(original.source);
+      expect(next.target).toEqual(original.target);
+      expect(next.labels).toEqual(original.labels);
+      expect(next.route.mode).toBe(mode);
+      expect(next.route).toHaveProperty('origin', 'manual');
+      expect('points' in next.route && next.route.points).toHaveLength(
+        mode === 'orthogonal' ? 2 : 5,
+      );
+      expect(test.onChange).toHaveBeenCalledTimes(1);
+      expect(document.querySelector('[role="menu"]')).toBeNull();
+      expect(document.activeElement).toBe(test.svg);
+      await act(async () =>
+        test.controller.current!.executeAction('canvas.history.undo'),
+      );
+      expect(test.controller.current!.runtime.store.cells.e).toEqual(original);
+      await act(async () =>
+        test.controller.current!.executeAction('canvas.history.redo'),
+      );
+      expect(test.controller.current!.runtime.store.cells.e).toEqual(next);
+    },
+  );
+  it('disables minimal corners and lets Escape close a fully disabled menu', async () => {
+    const value = fixture('orthogonal');
+    const edge = value.store.cells.e as Core.EdgeCell;
+    edge.target = { point: [200, 220] };
+    edge.route = {
+      mode: 'orthogonal',
+      points: [
+        [100, 120],
+        [200, 120],
+        [200, 220],
+      ],
+    };
+    const test = await mount(value, { actionHost: { language: 'en' } });
+    const item = await open(test, 1);
+    expect(item.textContent).toBe('Delete waypoint');
+    expect(item.disabled).toBe(true);
+    const menu = document.querySelector<HTMLElement>('[role="menu"]')!;
+    expect(document.activeElement).toBe(menu);
+    await act(async () =>
+      menu.dispatchEvent(
+        new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }),
+      ),
+    );
+    expect(document.querySelector('[role="menu"]')).toBeNull();
+    expect(document.activeElement).toBe(test.svg);
+    expect(test.onChange).not.toHaveBeenCalled();
+  });
+  it.each([1, 2])(
+    'flattens a U from corner %s in one undoable edit',
+    async (index) => {
+      const value = fixture('orthogonal');
+      const edge = value.store.cells.e as Core.EdgeCell;
+      edge.source = { point: [100, 220] };
+      edge.target = { point: [400, 220] };
+      edge.route = {
+        mode: 'orthogonal',
+        points: [
+          [100, 220],
+          [100, 120],
+          [400, 120],
+          [400, 220],
+        ],
+      };
+      const test = await mount(value);
+      const original = structuredClone(
+        test.controller.current!.runtime.store.cells.e,
+      );
+      const item = await open(test, index);
+      expect(item.disabled).toBe(false);
+      await act(async () => item.click());
+      const next = test.controller.current!.runtime.store.cells
+        .e as Core.EdgeCell;
+      expect(next.route).toEqual({
+        mode: 'orthogonal',
+        origin: 'manual',
+        points: [
+          [100, 220],
+          [400, 220],
+        ],
+      });
+      expect(test.onChange).toHaveBeenCalledTimes(1);
+      expect(test.svg.querySelectorAll('[data-edge-route-point]')).toHaveLength(
+        0,
+      );
+      await act(async () =>
+        test.controller.current!.executeAction('canvas.history.undo'),
+      );
+      expect(test.controller.current!.runtime.store.cells.e).toEqual(original);
+      await act(async () =>
+        test.controller.current!.executeAction('canvas.history.redo'),
+      );
+      expect(test.controller.current!.runtime.store.cells.e).toEqual(next);
+    },
+  );
+  it('uses the winning waypoint when an overlapping node port receives the native right click', async () => {
+    const value = fixture();
+    (value.store.cells.a as Core.NodeCell).ports = [
+      { id: 'right', side: 'right', direction: 'both' },
+    ];
+    (value.store.cells.e as Core.EdgeCell).route = {
+      mode: 'fixed',
+      points: [
+        [100, 120],
+        [120, 35],
+        [200, 220],
+        [400, 120],
+      ],
+    };
+    const test = await mount(value);
+    await act(async () =>
+      test.controller.current!.runtime.select({ focus: ['root'], ids: ['e'] }),
+    );
+    const point = test.svg.querySelector<SVGCircleElement>(
+      '[data-edge-controls="e"] [data-edge-route-point="1"]',
+    )!;
+    const port = test.svg.querySelector<SVGCircleElement>(
+      '[data-port-node-id="a"] [data-port-id="right"]',
+    )!;
+    for (const element of [point, port])
+      element.getScreenCTM = () =>
+        ({ a: 1, b: 0, c: 0, d: 1, e: 0, f: 0 }) as DOMMatrix;
+    const descriptor = Object.getOwnPropertyDescriptor(
+      document,
+      'elementsFromPoint',
+    );
+    Object.defineProperty(document, 'elementsFromPoint', {
+      configurable: true,
+      value: () => [port, point],
+    });
+    cleanups.push(async () => {
+      if (descriptor)
+        Object.defineProperty(document, 'elementsFromPoint', descriptor);
+      else Reflect.deleteProperty(document, 'elementsFromPoint');
+    });
+    await act(async () => test.fire('pointerdown', 120, 35, 2, 1, port));
+    expect(test.controller.current!.runtime.selection.ids).toEqual(['e']);
+    await act(async () => test.fire('pointerup', 120, 35, 2));
+    const remove =
+      document.querySelector<HTMLButtonElement>('[role="menuitem"]')!;
+    expect(remove).not.toBeNull();
+    await act(async () => remove.click());
+    expect(
+      (test.controller.current!.runtime.store.cells.e as Core.EdgeCell).route,
+    ).toHaveProperty('points', [
+      [100, 120],
+      [200, 220],
+      [400, 120],
+    ]);
+  });
+  it.each(['route', 'locked'] as const)(
+    'dismisses a stale menu after the %s changes',
+    async (change) => {
+      const test = await mount(fixture());
+      const item = await open(test);
+      const current = test.controller.current!.runtime.store.cells
+        .e as Core.EdgeCell;
+      const next: Core.EdgeCell =
+        change === 'locked'
+          ? { ...current, locked: true }
+          : {
+              ...current,
+              route: {
+                mode: 'fixed',
+                points: [
+                  [100, 120],
+                  [250, 250],
+                  [400, 120],
+                ],
+              },
+            };
+      await act(async () =>
+        test.controller.current!.executeAction('canvas.apply-operations', {
+          operations: [{ type: 'replace_cell', cell: next }],
+        }),
+      );
+      expect(document.querySelector('[role="menu"]')).toBeNull();
+      await act(async () => item.click());
+      expect(test.controller.current!.runtime.store.cells.e).toEqual(next);
+      expect(test.onChange).toHaveBeenCalledTimes(1);
+    },
+  );
+  it('still pans when a waypoint is right-dragged and dismisses menus on outside clicks', async () => {
+    const onCanvasContextMenu = vi.fn();
+    const test = await mount(fixture(), { onCanvasContextMenu });
+    await open(test);
+    await act(async () =>
+      document.body.dispatchEvent(
+        new MouseEvent('pointerdown', { bubbles: true }),
+      ),
+    );
+    expect(document.querySelector('[role="menu"]')).toBeNull();
+    const point = test.svg.querySelector(
+      '[data-edge-controls="e"] [data-edge-route-point="2"]',
+    )!;
+    const before = test.transform();
+    await act(async () => {
+      test.fire('pointerdown', 200, 220, 2, 1, point);
+      test.fire('pointermove', 220, 240, 2);
+      test.fire('pointermove', 250, 270, 2);
+      test.fire('pointerup', 250, 270, 2);
+    });
+    await test.paint();
+    expect(document.querySelector('[role="menu"]')).toBeNull();
+    expect(test.transform()).not.toBe(before);
+    expect(test.onChange).not.toHaveBeenCalled();
+    expect(
+      onCanvasContextMenu.mock.calls.every(([point]) => point === null),
+    ).toBe(true);
+  });
+  it.each(['endpoint', 'segment', 'readonly'] as const)(
+    'does not offer waypoint deletion for %s controls',
+    async (mode) => {
+      const onCanvasContextMenu = vi.fn();
+      const test = await mount(fixture(), {
+        readonly: mode === 'readonly',
+        onCanvasContextMenu,
+      });
+      await act(async () =>
+        test.controller.current!.runtime.select({
+          focus: ['root'],
+          ids: ['e'],
+        }),
+      );
+      const control =
+        mode === 'readonly'
+          ? test.svg
+          : test.svg.querySelector(
+              mode === 'endpoint'
+                ? '[data-selected-edge-endpoints] [data-edge-endpoint="source"]'
+                : '[data-edge-controls="e"] [data-edge-segment="0"]',
+            )!;
+      await act(async () => {
+        test.fire('pointerdown', 150, 120, 2, 1, control);
+        test.fire('pointerup', 150, 120, 2);
+      });
+      expect(document.querySelector('[role="menu"]')).toBeNull();
+      expect(onCanvasContextMenu).toHaveBeenCalledWith([150, 120]);
+      expect(test.onChange).not.toHaveBeenCalled();
     },
   );
 });

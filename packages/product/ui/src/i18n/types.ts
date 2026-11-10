@@ -5,6 +5,9 @@ export type Language = 'zh' | 'en';
 
 // Define translation keys and their corresponding values
 export interface Translations {
+  'contextMenu.title': string;
+  'contextMenu.arrange': string;
+  'contextMenu.layers': string;
   'settings.appearance': string;
   'settings.appearance.system': string;
   'settings.appearance.light': string;

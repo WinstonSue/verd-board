@@ -1,4 +1,6 @@
 import { readFileSync } from 'node:fs';
+import { realpath, stat } from 'node:fs/promises';
+import { normalizeWorkspacePath } from '@sue/verd-board-app/headless';
 import { createBuiltinWorkspaceUpdater } from './builtin-workspace-update';
 import { app, BrowserWindow, dialog, ipcMain, session, shell } from 'electron';
 import * as path from 'path';
@@ -243,7 +245,7 @@ function registerWorkspaceHostIpc() {
                 ),
           },
         ).then((result) =>
-          workspaceManager.open({ path: result.path, name: 'Agent 范式库' }),
+          workspaceManager.open({ path: result.path, name: '文档编写推荐库' }),
         )
       : workspaceManager.open(request);
   });
@@ -263,9 +265,56 @@ function registerWorkspaceHostIpc() {
   handleTrusted('workspace-host:read-file', (_, handle, path: string) =>
     workspaceHost.readFile(handle, path),
   );
+  handleTrusted('workspace-host:read-resource', (_, handle, key: string) =>
+    workspaceHost.readResource(handle, key),
+  );
+  handleTrusted(
+    'workspace-host:open-resource',
+    async (_, handle, relative: string) => {
+      const root = await realpath(workspaceRoot(handle));
+      const target = await realpath(
+        path.join(root, normalizeWorkspacePath(relative)),
+      );
+      const location = path.relative(root, target);
+      if (
+        !location ||
+        location === '..' ||
+        location.startsWith('..' + path.sep) ||
+        path.isAbsolute(location) ||
+        !(await stat(target)).isFile()
+      )
+        throw new Error('Invalid resource path');
+      normalizeWorkspacePath(location.split(path.sep).join('/'));
+      const error = await shell.openPath(target);
+      if (error) throw new Error(error);
+    },
+  );
   handleTrusted('workspace-host:commit', (_, handle, request) =>
     workspaceHost.commit(handle, request),
   );
+  handleTrusted('workspace-host:versions', async (_, handle, request) => {
+    try {
+      return await workspaceHost.versions!(handle, request);
+    } catch (error) {
+      return {
+        versionError: {
+          code:
+            error && typeof error === 'object' && 'code' in error
+              ? error.code
+              : 'unsupported',
+          diagnostic:
+            error && typeof error === 'object' && 'diagnostic' in error
+              ? String(error.diagnostic)
+              : String(error),
+        },
+      };
+    }
+  });
+  handleTrusted('workspace-host:git', (_, handle, request) => {
+    if (!workspaceHost.git)
+      throw new Error('Git workspace host is unavailable');
+    return workspaceHost.git(handle, request);
+  });
   handleTrusted('workspace-host:resolve-conflict', (_, handle, request) =>
     workspaceHost.resolveConflict(handle, request),
   );

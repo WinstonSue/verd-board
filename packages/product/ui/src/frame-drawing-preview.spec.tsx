@@ -476,7 +476,7 @@ describe('cancellation, connection and eraser feedback', () => {
         .dispatchEvent(new MouseEvent('pointerover', { bubbles: true }));
     });
     const source = test.svg.querySelector(
-      '[data-cell-id="a"] [data-port-id="right"]',
+      '[data-port-node-id="a"] [data-port-id="right"]',
     )!;
     await act(async () => test.fire('pointerdown', [260, 150], source));
     await test.paint();
@@ -484,7 +484,7 @@ describe('cancellation, connection and eraser feedback', () => {
     await act(async () => test.fire('pointermove', [400, 150]));
     await test.paint();
     const target = test.svg.querySelector(
-      '[data-cell-id="b"] [data-port-id="left"]',
+      '[data-port-node-id="b"] [data-port-id="left"]',
     )!;
     expect(target.getAttribute('data-port-active')).toBe('true');
     expect(
@@ -516,7 +516,9 @@ describe('cancellation, connection and eraser feedback', () => {
       test.fire(
         'pointerdown',
         [400, 150],
-        test.svg.querySelector('[data-cell-id="b"] [data-port-id="left"]')!,
+        test.svg.querySelector(
+          '[data-port-node-id="b"] [data-port-id="left"]',
+        )!,
       ),
     );
     expect(test.onChange).toHaveBeenCalledOnce();
@@ -544,7 +546,9 @@ describe('cancellation, connection and eraser feedback', () => {
       test.fire(
         'pointerdown',
         [260, 150],
-        test.svg.querySelector('[data-cell-id="a"] [data-port-id="right"]')!,
+        test.svg.querySelector(
+          '[data-port-node-id="a"] [data-port-id="right"]',
+        )!,
       ),
     );
     await act(async () => test.fire('pointermove', [400, 150]));
@@ -828,7 +832,7 @@ describe('live draft dependencies', () => {
         .dispatchEvent(new MouseEvent('pointerover', { bubbles: true }));
     });
     const source = test.svg.querySelector(
-      '[data-cell-id="a"] [data-port-id="right"]',
+      '[data-port-node-id="a"] [data-port-id="right"]',
     )!;
     await act(async () => {
       test.fire('pointerdown', [260, 150], source);
@@ -876,7 +880,7 @@ describe('navigation interrupts visual drafts', () => {
         .dispatchEvent(new MouseEvent('pointerover', { bubbles: true }));
     });
     const port = test.svg.querySelector(
-      '[data-cell-id="a"] [data-port-id="right"]',
+      '[data-port-node-id="a"] [data-port-id="right"]',
     )!;
     await act(async () => {
       test.fire('pointerdown', [260, 150], port);

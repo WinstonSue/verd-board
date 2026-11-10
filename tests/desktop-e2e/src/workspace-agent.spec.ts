@@ -30,6 +30,32 @@ test('new Desktop workspace exposes project context and built-in tools to an ext
       path.join(project, 'AGENTS.md'),
       '# Existing project\nPreserve this.\n',
     );
+    for (const [id, title] of [
+      ['project-home', 'Project Home'],
+      ['project-overview', 'Project Overview'],
+    ]) {
+      await writeFile(
+        path.join(project, `${id}.verd-doc.json`),
+        JSON.stringify({
+          format: 'verd-document',
+          version: 1,
+          id,
+          title,
+          text: {
+            schemaVersion: 1,
+            id,
+            kind: 'block',
+            plainText: title,
+            content: {
+              type: 'doc',
+              content: [
+                { type: 'paragraph', content: [{ type: 'text', text: title }] },
+              ],
+            },
+          },
+        }),
+      );
+    }
     const launcher = path.join(directory, 'launch.cjs');
     await writeDesktopLauncher(launcher, userData);
     desktop = await electron.launch({
@@ -78,18 +104,33 @@ test('new Desktop workspace exposes project context and built-in tools to an ext
     expect(context().agent.ready).toBe(true);
     await openWorkspaceMenu(page);
     await page.getByTestId('workspace-open-settings').click();
+    await page.getByTestId('settings-nav-workspace.data').click();
     await expect(page.getByTestId('workspace-agent-status')).toContainText(
       '已就绪',
     );
+    await page.getByTestId('settings-nav-workspace.project').click();
     await page
       .getByTestId('workspace-settings-description')
       .fill('Frontend delivery project');
+    await page.getByTestId('workspace-settings-description').press('Tab');
     await expect
       .poll(() => context().description)
       .toBe('Frontend delivery project');
     await page
-      .getByTestId('workspace-settings-entries')
-      .fill('project-home\nproject-overview');
+      .getByTestId('workspace-entry-documents')
+      .getByRole('button', { name: '添加入口…', exact: true })
+      .click();
+    const picker = page.getByRole('dialog', {
+      name: '添加阅读入口',
+      exact: true,
+    });
+    await picker.getByRole('button', { name: /^添加 Project Home / }).click();
+    await expect
+      .poll(() => context().entryDocumentIds)
+      .toEqual(['project-home']);
+    await picker
+      .getByRole('button', { name: /^添加 Project Overview / })
+      .click();
     await expect
       .poll(() => context().entryDocumentIds)
       .toEqual(['project-home', 'project-overview']);

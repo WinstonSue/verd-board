@@ -45,6 +45,10 @@ export class ArchitectureLayerNodeUtil extends ArchitectureNodeUtil {
       typeof data.order !== 'string' ||
       !Array.isArray(data.memberIds) ||
       data.memberIds.some((id) => typeof id !== 'string') ||
+      (data.layoutPaddingTop !== undefined &&
+        (typeof data.layoutPaddingTop !== 'number' ||
+          !Number.isFinite(data.layoutPaddingTop) ||
+          data.layoutPaddingTop < 0)) ||
       new Set(data.memberIds).size !== data.memberIds.length
     )
       return 'Invalid architecture layer';
@@ -336,7 +340,8 @@ export const layoutArchitectureCells = (
       ? Math.min(...rectangles.map((rect) => rect.x)) - 20
       : 0;
     const minY = rectangles.length
-      ? Math.min(...rectangles.map((rect) => rect.y)) - 44
+      ? Math.min(...rectangles.map((rect) => rect.y)) -
+        Math.max(44, layer.data?.layoutPaddingTop ?? 44)
       : y;
     const right = rectangles.length
       ? Math.max(...rectangles.map((rect) => rect.x + rect.width)) + 20

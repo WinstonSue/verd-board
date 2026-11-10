@@ -115,7 +115,9 @@
                       {
                         "type": "textStyle",
                         "attrs": {
-                          "fontSize": "20px"
+                          "fontSize": "20px",
+                          "color": "#ffffff",
+                          "colorMode": "custom"
                         }
                       }
                     ]
@@ -129,14 +131,12 @@
       "appearance": {
         "fill": "#0f766e",
         "strokeColor": "#0f766e",
-        "strokeWidth": 1.5
+        "strokeWidth": 1.5,
+        "textColor": "#ffffff"
       },
       "data": {
         "graphMode": "process",
-        "origin": [
-          0,
-          0
-        ],
+        "origin": [0, 0],
         "memberIds": [
           "demo:export/start",
           "demo:export/tree",
@@ -148,7 +148,8 @@
           "demo:export/download",
           "demo:export/reject"
         ]
-      }
+      },
+      "name": "导出当前画布或独立文档"
     },
     "demo:export/tree": {
       "id": "demo:export/tree",

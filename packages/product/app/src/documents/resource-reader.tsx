@@ -195,6 +195,17 @@ export function ResourceReader({
           <Suspense fallback={<p>正在加载 PDF…</p>}>
             <PdfReader url={url} value={value} initialPage={page} />
           </Suspense>
+        ) : value.mime.startsWith('image/') ? (
+          <img
+            src={url}
+            alt={value.name}
+            style={{
+              maxWidth: '100%',
+              maxHeight: '80vh',
+              objectFit: 'contain',
+            }}
+            onError={() => setError('无法预览此图片，请下载原件')}
+          />
         ) : value.mime.startsWith('audio/') ? (
           <audio
             controls

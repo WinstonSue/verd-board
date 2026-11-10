@@ -71,10 +71,7 @@
       },
       "data": {
         "graphMode": "process",
-        "origin": [
-          60,
-          110
-        ],
+        "origin": [60, 110],
         "memberIds": [
           "pattern:multi-system/pattern:multi/release/pay-start",
           "pattern:multi-system/pattern:multi/release/task-fill",
@@ -376,7 +373,7 @@
       },
       "labels": [
         {
-          "text": "重试"
+          "text": "人工处理后重试"
         }
       ]
     },

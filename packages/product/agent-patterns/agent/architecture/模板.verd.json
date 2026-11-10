@@ -1,0 +1,309 @@
+{
+  "format": "verd-frame",
+  "version": 2,
+  "frame": {
+    "id": "pattern:architecture/canvas-arch",
+    "kind": "frame",
+    "cellType": "frame",
+    "name": "分层架构",
+    "geometry": {
+      "x": 0,
+      "y": 0,
+      "width": 960,
+      "height": 620
+    },
+    "children": [
+      "pattern:architecture/layer-access",
+      "pattern:architecture/layer-service",
+      "pattern:architecture/layer-data",
+      "pattern:architecture/mod-gateway",
+      "pattern:architecture/mod-order",
+      "pattern:architecture/mod-route",
+      "pattern:architecture/mod-db",
+      "pattern:architecture/dep-1",
+      "pattern:architecture/dep-2",
+      "pattern:architecture/dep-3"
+    ],
+    "groups": []
+  },
+  "cells": {
+    "pattern:architecture/layer-access": {
+      "id": "pattern:architecture/layer-access",
+      "kind": "architecture-layer",
+      "cellType": "node",
+      "geometry": {
+        "x": 0,
+        "y": 0,
+        "width": 280,
+        "height": 104,
+        "derived": true,
+        "outline": "rectangle"
+      },
+      "content": {
+        "label": "接入层"
+      },
+      "data": {
+        "order": "00000000",
+        "memberIds": ["pattern:architecture/mod-gateway"]
+      }
+    },
+    "pattern:architecture/layer-service": {
+      "id": "pattern:architecture/layer-service",
+      "kind": "architecture-layer",
+      "cellType": "node",
+      "geometry": {
+        "x": 0,
+        "y": 0,
+        "width": 280,
+        "height": 104,
+        "derived": true,
+        "outline": "rectangle"
+      },
+      "content": {
+        "label": "服务层"
+      },
+      "data": {
+        "order": "00000001",
+        "memberIds": [
+          "pattern:architecture/mod-order",
+          "pattern:architecture/mod-route"
+        ]
+      }
+    },
+    "pattern:architecture/layer-data": {
+      "id": "pattern:architecture/layer-data",
+      "kind": "architecture-layer",
+      "cellType": "node",
+      "geometry": {
+        "x": 0,
+        "y": 0,
+        "width": 280,
+        "height": 104,
+        "derived": true,
+        "outline": "rectangle"
+      },
+      "content": {
+        "label": "数据层"
+      },
+      "data": {
+        "order": "00000002",
+        "memberIds": ["pattern:architecture/mod-db"]
+      }
+    },
+    "pattern:architecture/mod-gateway": {
+      "id": "pattern:architecture/mod-gateway",
+      "kind": "architecture-module",
+      "cellType": "node",
+      "geometry": {
+        "x": 60,
+        "y": 64,
+        "width": 240,
+        "height": 44,
+        "outline": "roundRectangle"
+      },
+      "ports": [
+        {
+          "id": "top",
+          "side": "top",
+          "direction": "both"
+        },
+        {
+          "id": "right",
+          "side": "right",
+          "direction": "both"
+        },
+        {
+          "id": "bottom",
+          "side": "bottom",
+          "direction": "both"
+        },
+        {
+          "id": "left",
+          "side": "left",
+          "direction": "both"
+        }
+      ],
+      "content": {
+        "label": "API 网关"
+      },
+      "data": {
+        "shape": "box",
+        "placed": true
+      }
+    },
+    "pattern:architecture/mod-order": {
+      "id": "pattern:architecture/mod-order",
+      "kind": "architecture-module",
+      "cellType": "node",
+      "geometry": {
+        "x": 60,
+        "y": 220,
+        "width": 240,
+        "height": 44,
+        "outline": "roundRectangle"
+      },
+      "ports": [
+        {
+          "id": "top",
+          "side": "top",
+          "direction": "both"
+        },
+        {
+          "id": "right",
+          "side": "right",
+          "direction": "both"
+        },
+        {
+          "id": "bottom",
+          "side": "bottom",
+          "direction": "both"
+        },
+        {
+          "id": "left",
+          "side": "left",
+          "direction": "both"
+        }
+      ],
+      "content": {
+        "label": "订单服务"
+      },
+      "data": {
+        "shape": "box",
+        "placed": true
+      }
+    },
+    "pattern:architecture/mod-route": {
+      "id": "pattern:architecture/mod-route",
+      "kind": "architecture-module",
+      "cellType": "node",
+      "geometry": {
+        "x": 360,
+        "y": 198,
+        "width": 160,
+        "height": 88,
+        "outline": "diamond"
+      },
+      "ports": [
+        {
+          "id": "top",
+          "side": "top",
+          "direction": "both"
+        },
+        {
+          "id": "right",
+          "side": "right",
+          "direction": "both"
+        },
+        {
+          "id": "bottom",
+          "side": "bottom",
+          "direction": "both"
+        },
+        {
+          "id": "left",
+          "side": "left",
+          "direction": "both"
+        }
+      ],
+      "content": {
+        "label": "支付路由"
+      },
+      "data": {
+        "shape": "decision",
+        "placed": true
+      }
+    },
+    "pattern:architecture/mod-db": {
+      "id": "pattern:architecture/mod-db",
+      "kind": "architecture-module",
+      "cellType": "node",
+      "geometry": {
+        "x": 60,
+        "y": 360,
+        "width": 160,
+        "height": 88,
+        "outline": "store"
+      },
+      "ports": [
+        {
+          "id": "top",
+          "side": "top",
+          "direction": "both"
+        },
+        {
+          "id": "right",
+          "side": "right",
+          "direction": "both"
+        },
+        {
+          "id": "bottom",
+          "side": "bottom",
+          "direction": "both"
+        },
+        {
+          "id": "left",
+          "side": "left",
+          "direction": "both"
+        }
+      ],
+      "content": {
+        "label": "订单库"
+      },
+      "data": {
+        "shape": "store",
+        "placed": true
+      }
+    },
+    "pattern:architecture/dep-1": {
+      "id": "pattern:architecture/dep-1",
+      "kind": "architecture-edge",
+      "cellType": "edge",
+      "source": {
+        "cellId": "pattern:architecture/mod-gateway",
+        "portId": "bottom"
+      },
+      "target": {
+        "cellId": "pattern:architecture/mod-order",
+        "portId": "top"
+      },
+      "route": {
+        "mode": "orthogonal"
+      }
+    },
+    "pattern:architecture/dep-2": {
+      "id": "pattern:architecture/dep-2",
+      "kind": "architecture-edge",
+      "cellType": "edge",
+      "source": {
+        "cellId": "pattern:architecture/mod-order",
+        "portId": "right"
+      },
+      "target": {
+        "cellId": "pattern:architecture/mod-route",
+        "portId": "left"
+      },
+      "route": {
+        "mode": "orthogonal"
+      }
+    },
+    "pattern:architecture/dep-3": {
+      "id": "pattern:architecture/dep-3",
+      "kind": "architecture-edge",
+      "cellType": "edge",
+      "source": {
+        "cellId": "pattern:architecture/mod-order",
+        "portId": "bottom"
+      },
+      "target": {
+        "cellId": "pattern:architecture/mod-db",
+        "portId": "top"
+      },
+      "route": {
+        "mode": "orthogonal"
+      }
+    }
+  },
+  "organization": {
+    "kind": "standalone"
+  }
+}

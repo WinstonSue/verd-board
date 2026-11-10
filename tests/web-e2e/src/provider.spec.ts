@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './service-fixture';
 
 test('workflow harness projects fixture nodes', async ({ page }) => {
   await page.goto('/?harness=workflow');

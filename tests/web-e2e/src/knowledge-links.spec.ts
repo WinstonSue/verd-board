@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './service-fixture';
 import path from 'node:path';
 import { activeTabTitle } from './tab-actions';
 const doc = (id: string, title: string, content: object[]) => ({
@@ -129,7 +129,9 @@ test('internal link search, backlinks and static preview preserve the editing pa
     .locator('.workspace-pane.is-active')
     .getByRole('button', { name: /^关联内容(?: · |$)/ })
     .click();
-  await expect(dialog).toContainText('← Source');
+  await expect(
+    dialog.locator('.workspace-knowledge-relation strong'),
+  ).toHaveText(['Source', 'Source']);
   await dialog
     .getByRole('button', { name: '定位来源', exact: true })
     .first()

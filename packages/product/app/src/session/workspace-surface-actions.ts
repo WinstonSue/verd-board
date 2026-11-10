@@ -1,9 +1,14 @@
+import { isWorkspaceContentPath } from '../workspace-skills';
 import { readOrganization } from '../management/organization';
-import { isRegularCanvas } from '../frames/frame-organization';
-import type { FrameOrganization } from '../frames/frame-files';
+import type { WorkspaceHostCapabilities } from '../host/workspace-host';
 import type { ActionResult } from '@sue/board-common';
 import { workspaceTabGroups } from './workspace-navigation';
 import { isReferenceLocation } from '../documents/reference-locations';
+import {
+  customSkillDefinition,
+  workspaceSkillDefinition,
+  type WorkspaceSkillCommit,
+} from '../workspace-skills';
 import {
   workspaceCommandActionResult,
   type WorkspaceActionContext,
@@ -27,6 +32,13 @@ export const WORKSPACE_UI_ACTION_IDS = [
   'open-patterns',
   'open-history',
   'file.open',
+  'file.versions',
+  'resource.versions',
+  'directory.versions',
+  'resource.open',
+  'resource.rename-dialog',
+  'resource.move-dialog',
+  'resource.trash',
   'file.reveal',
   'file.return',
   'reference.locate',
@@ -49,7 +61,6 @@ export const WORKSPACE_UI_ACTION_IDS = [
   'directory.trash',
   'directory.copy-link',
   'directory.toggle',
-  'owner.toggle',
   'tab.activate',
   'tab.close',
   'tab.reorder',
@@ -67,36 +78,43 @@ export const WORKSPACE_UI_ACTION_IDS = [
   'save-retry',
   'reload',
   'settings.patch',
+  'skills.save',
+  'skills.create',
+  'skills.remove',
   'tab.close-left',
   'tab.close-right',
   'tab.close-others',
   'library.back',
   'library.pick',
-  'library.organize-dialog',
-  'library.organize-confirm',
-  'library.organization',
-  'library.organization-dialog',
   'conflict.keep-local',
   'conflict.load-disk',
   'conflict.save-copy',
   'conflict.compare',
-  'organize',
-  'organize.retry',
 ] as const;
 /** Migration ledger: each surface consumes these semantic IDs for names, state and execution. */
 export const WORKSPACE_ACTION_SURFACES = {
   fileNavigation: [
     'file.open',
+    'file.versions',
+    'resource.versions',
+    'directory.versions',
     'file.reveal',
     'file.return',
     'reference.locate',
   ],
   fileTree: [
+    'resource.open',
+    'resource.rename-dialog',
+    'resource.move-dialog',
+    'resource.trash',
     'create-canvas',
     'create-document',
     'import',
     'library',
     'file.open',
+    'file.versions',
+    'resource.versions',
+    'directory.versions',
     'file.reveal',
     'file.rename',
     'file.move',
@@ -114,7 +132,6 @@ export const WORKSPACE_ACTION_SURFACES = {
     'directory.trash',
     'directory.copy-link',
     'directory.toggle',
-    'owner.toggle',
     'mkdir',
   ],
   workspaceMenu: [
@@ -143,17 +160,7 @@ export const WORKSPACE_ACTION_SURFACES = {
     'group.rename',
     'group.delete',
   ],
-  library: [
-    'file.open',
-    'library.back',
-    'library.pick',
-    'library.organize-dialog',
-    'library.organize-confirm',
-    'library.organization-dialog',
-    'library.organization',
-    'organize',
-    'organize.retry',
-  ],
+  library: ['file.open', 'library.back', 'library.pick'],
   trash: [
     'trash.confirm-purge',
     'trash.confirm-clear',
@@ -161,7 +168,7 @@ export const WORKSPACE_ACTION_SURFACES = {
     'trash.purge',
     'trash.retry',
   ],
-  settings: ['settings.patch'],
+  settings: ['settings.patch', 'skills.create', 'skills.save', 'skills.remove'],
   banners: [
     'conflict.keep-local',
     'conflict.load-disk',
@@ -179,6 +186,7 @@ export const WORKSPACE_NATIVE_INTERACTIONS = [
 ] as const;
 export interface WorkspaceSurfaceState {
   allowWorkspaceSwitching: boolean;
+  capabilities?: Readonly<WorkspaceHostCapabilities>;
   isDefaultWorkspace: boolean;
   workspaceHistory?: ReadonlySet<string>;
   currentHistoryId?: string;
@@ -352,19 +360,28 @@ export function createWorkspaceSurfaceActions(options: {
   add('open-folder', '打开工作区文件夹', 'Open workspace folder', {
     allowNoSession: true,
     getState: (c) => ({
-      visible: options.getState().allowWorkspaceSwitching && !c.readonly,
+      visible:
+        options.getState().allowWorkspaceSwitching &&
+        !c.readonly &&
+        options.getState().capabilities?.pickWorkspace !== false,
     }),
   });
-  add('open-patterns', 'Agent 范式库', 'Agent pattern library', {
+  add('open-patterns', '文档编写推荐库', 'Document authoring recommendations', {
     allowNoSession: true,
     getState: (c) => ({
-      visible: options.getState().allowWorkspaceSwitching && !c.readonly,
+      visible:
+        options.getState().allowWorkspaceSwitching &&
+        !c.readonly &&
+        options.getState().capabilities?.openPatternWorkspace !== false,
     }),
   });
   add('open-builtin', '打开系统介绍', 'Open system introduction', {
     allowNoSession: true,
     getState: (c) => ({
-      visible: options.getState().allowWorkspaceSwitching && !c.readonly,
+      visible:
+        options.getState().allowWorkspaceSwitching &&
+        !c.readonly &&
+        options.getState().capabilities?.openBuiltinWorkspace !== false,
       enabled: !options.getState().isDefaultWorkspace,
       reason: options.getState().isDefaultWorkspace
         ? 'already-active'
@@ -641,12 +658,85 @@ export function createWorkspaceSurfaceActions(options: {
         ),
     }),
   });
-  add('owner.toggle', '展开/收起图表快捷入口', 'Toggle chart shortcuts', {
+  const resourceExists = (c: WorkspaceActionContext, args: unknown) => {
+    const path = workspaceActionArgument(args, 'path');
+    return (
+      typeof path === 'string' &&
+      isWorkspaceContentPath(path) &&
+      !!c.session
+        ?.getState()
+        .entries.some(
+          (entry) =>
+            entry.path === path &&
+            entry.kind === 'file' &&
+            !entry.canvas &&
+            !entry.document &&
+            !/\.verd(?:-doc)?\.json$/.test(path),
+        )
+    );
+  };
+  for (const kind of ['file', 'resource', 'directory'])
+    add(`${kind}.versions`, '版本历史', 'Version history', {
+      effect: 'view',
+      palette: false,
+      flushEditing: true,
+      execute: present,
+      validateArgs: (args) =>
+        stringArg(args, kind === 'file' ? 'fileId' : 'path'),
+      getState: (c, args) =>
+        targetState(
+          kind === 'file'
+            ? fileExists(c, args)
+            : !!c.session
+                ?.getState()
+                .entries.some(
+                  (e) =>
+                    e.path === workspaceActionArgument(args, 'path') &&
+                    e.kind === (kind === 'directory' ? 'directory' : 'file'),
+                ),
+        ),
+    });
+  add('resource.open', '打开', 'Open', {
     effect: 'view',
     palette: false,
-    validateArgs: (args) => stringArg(args, 'fileId'),
-    getState: (c, args) => targetState(fileExists(c, args)),
+    flushEditing: true,
+    validateArgs: (args) => stringArg(args, 'path'),
+    getState: (c, args) => targetState(resourceExists(c, args)),
+    execute: present,
   });
+  for (const [id, zh, en] of [
+    ['resource.rename-dialog', '重命名', 'Rename'],
+    ['resource.move-dialog', '移动到…', 'Move to…'],
+  ])
+    add(
+      id,
+      zh,
+      en,
+      write({
+        palette: false,
+        validateArgs: (args) => stringArg(args, 'path'),
+        getState: (c, args) => targetState(resourceExists(c, args)),
+        execute: present,
+      }),
+    );
+  add(
+    'resource.trash',
+    '移入回收站',
+    'Move to trash',
+    write({
+      effect: 'content',
+      palette: false,
+      validateArgs: (args) => stringArg(args, 'path'),
+      getState: (c, args) => targetState(resourceExists(c, args)),
+      execute: async (c, args) =>
+        workspaceCommandActionResult(
+          await c.session!.apply({
+            type: 'organize-entries',
+            trashPaths: [String(workspaceActionArgument(args, 'path'))],
+          }),
+        ),
+    }),
+  );
   const tabExists = (c: WorkspaceActionContext, args: unknown) =>
     !!c.session &&
     workspaceTabGroups(c.session.getState().session).some((group) =>
@@ -789,13 +879,19 @@ export function createWorkspaceSurfaceActions(options: {
           ),
         };
       },
-      execute: async (c, args) =>
-        workspaceCommandActionResult(
+      execute: async (c, args) => {
+        const state = await c.session!.versions({ type: 'status' });
+        if (state.status.enabled)
+          return options.invoke('versions-purge', {
+            entryIds: workspaceActionArgument(args, 'entryIds'),
+          });
+        return workspaceCommandActionResult(
           await c.session!.apply({
             type: 'purge-trash',
             entryIds: workspaceActionArgument(args, 'entryIds') as string[],
           }),
-        ),
+        );
+      },
     }),
   );
   add('trash.retry', '重试', 'Retry', {
@@ -859,6 +955,66 @@ export function createWorkspaceSurfaceActions(options: {
       },
     }),
   );
+  for (const operation of ['create', 'save', 'remove'] as const) {
+    add(
+      `skills.${operation}`,
+      operation === 'create'
+        ? '新建自定义 Skill'
+        : operation === 'save'
+          ? '保存 Skill'
+          : '删除 Skill',
+      operation === 'create'
+        ? 'Create custom Skill'
+        : operation === 'save'
+          ? 'Save workspace Skill'
+          : 'Remove workspace Skill',
+      write({
+        effect: 'content',
+        concurrency: 'queue',
+        palette: false,
+        validateArgs: (args) => {
+          const value = args as WorkspaceSkillCommit | undefined;
+          return (
+            !!value &&
+            typeof value.transactionId === 'string' &&
+            (operation !== 'remove'
+              ? Array.isArray(value.writes) &&
+                value.writes.length === 1 &&
+                (operation !== 'create' ||
+                  value.writes[0]?.expectedVersion === null) &&
+                !value.trash?.length
+              : Array.isArray(value.trash) &&
+                value.trash.length === 1 &&
+                !value.writes?.length)
+          );
+        },
+        execute: async (c, args) => {
+          if (operation === 'create')
+            customSkillDefinition(
+              workspaceSkillDefinition(
+                (args as WorkspaceSkillCommit).writes![0].path,
+              ).name,
+            );
+          const receipt = await c.session!.commitWorkspaceSkills(
+            args as WorkspaceSkillCommit,
+          );
+          return receipt.outcome === 'applied'
+            ? { status: 'completed' }
+            : {
+                status: 'failed',
+                code: `workspace-skill-${receipt.reason}`,
+                message:
+                  receipt.reason === 'version-conflict' ||
+                  receipt.reason === 'target-exists'
+                    ? '提示词已被外部修改，请重新加载。 / Skill changed externally. Reload before saving.'
+                    : receipt.reason === 'io-error'
+                      ? '保存结果尚未确认，请重试原操作。 / Save unconfirmed. Retry the same operation.'
+                      : '提示词保存失败：' + receipt.reason,
+              };
+        },
+      }),
+    );
+  }
   add('reload', '重新加载', 'Reload', {
     effect: 'external',
     allowNoSession: true,
@@ -919,110 +1075,6 @@ export function createWorkspaceSurfaceActions(options: {
     getState: (c, args) => targetState(fileExists(c, args)),
     execute: present,
   });
-  add(
-    'library.organize-dialog',
-    '整理已有图表',
-    'Organize existing charts',
-    write({ palette: false, execute: present }),
-  );
-  add(
-    'library.organize-confirm',
-    '确认整理',
-    'Confirm organization',
-    write({
-      palette: false,
-      validateArgs: (args) =>
-        Array.isArray(workspaceActionArgument(args, 'fileIds')),
-      getState: (c, args) => ({
-        visible: !c.readonly,
-        ...targetState(
-          (workspaceActionArgument(args, 'fileIds') as string[]).length > 0 &&
-            (workspaceActionArgument(args, 'fileIds') as string[]).every(
-              (fileId) => fileExists(c, { fileId }),
-            ),
-        ),
-      }),
-      execute: present,
-    }),
-  );
-  add(
-    'library.organization',
-    '设置归属',
-    'Set organization',
-    write({
-      effect: 'content',
-      palette: false,
-      validateArgs: (args) =>
-        stringArg(args, 'fileId') &&
-        !!workspaceActionArgument(args, 'organization') &&
-        typeof workspaceActionArgument(args, 'organization') === 'object',
-      getState: (c, args) => ({
-        visible: !c.readonly,
-        ...targetState(fileExists(c, args)),
-      }),
-      execute: async (c, args) =>
-        workspaceCommandActionResult(
-          await c.session!.apply({
-            type: 'set-organization',
-            fileId: String(workspaceActionArgument(args, 'fileId')),
-            organization: workspaceActionArgument(
-              args,
-              'organization',
-            ) as FrameOrganization,
-          }),
-        ),
-    }),
-  );
-  add(
-    'organize',
-    '确认整理',
-    'Confirm organization',
-    write({
-      effect: 'content',
-      palette: false,
-      validateArgs: (args) =>
-        Array.isArray(workspaceActionArgument(args, 'changes')),
-      execute: async (c, args) =>
-        workspaceCommandActionResult(
-          await c.session!.organize(
-            workspaceActionArgument(args, 'changes') as Parameters<
-              NonNullable<WorkspaceActionContext['session']>['organize']
-            >[0],
-          ),
-        ),
-    }),
-  );
-  add('organize.retry', '重试整理', 'Retry organization', {
-    effect: 'content',
-    requiresWrite: true,
-    allowPaused: true,
-    palette: false,
-    getState: (c) => ({
-      visible: !!c.session?.getState().organizeUnconfirmed,
-      enabled: !!c.session?.getState().organizeUnconfirmed,
-    }),
-    execute: async (c) =>
-      workspaceCommandActionResult(await c.session!.confirmOrganize()),
-  });
-  add(
-    'library.organization-dialog',
-    '调整归属…',
-    'Change ownership…',
-    write({
-      palette: false,
-      validateArgs: (args) => stringArg(args, 'fileId'),
-      getState: (c, args) => {
-        const file = c.session
-          ?.getState()
-          .files.get(String(workspaceActionArgument(args, 'fileId')))?.file;
-        return {
-          visible: !c.readonly,
-          ...targetState(file && !isRegularCanvas(file)),
-        };
-      },
-      execute: present,
-    }),
-  );
   for (const [action, zh, en] of [
     ['keep-local', '保留本地', 'Keep local'],
     ['load-disk', '采用磁盘', 'Load disk'],
@@ -1073,6 +1125,9 @@ export function createWorkspaceSurfaceActions(options: {
     'directory.create-canvas',
     'directory.create-document',
     'file.open',
+    'file.versions',
+    'resource.versions',
+    'directory.versions',
     'file.export',
     'file.move',
     'file.duplicate',
@@ -1088,8 +1143,6 @@ export function createWorkspaceSurfaceActions(options: {
     'library',
     'settings',
     'my',
-    'library.organization',
-    'organize',
   ]);
   entries.forEach((entry) => {
     if (barriers.has(entry.id.slice('workspace.'.length)))
@@ -1107,7 +1160,6 @@ export function createWorkspaceSurfaceActions(options: {
     'group.rename',
     'group.delete',
     'directory.toggle',
-    'owner.toggle',
   ]);
   entries.forEach((entry) => {
     if (metadata.has(entry.id.slice('workspace.'.length)))

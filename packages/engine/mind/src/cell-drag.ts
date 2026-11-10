@@ -4,7 +4,7 @@ import {
   isFrameCell,
   isNodeCell,
   lockedByAncestor,
-  portAnchor,
+  resolvePort,
   type Cell,
   type CellMoveContext,
   type CellOperation,
@@ -128,7 +128,7 @@ export const resolveMindChildMove = (
           ? ['left', 'right']
           : [mindGrowthSide(store, node.id)];
       return sides.flatMap((side) => {
-        const anchor = portAnchor(preview, {
+        const anchor = resolvePort(preview, {
           side: opposite[side],
           offset: 0.5,
         }).point;
@@ -158,7 +158,7 @@ export const resolveMindChildMove = (
           invalid = true;
           return [];
         }
-        const port = portAnchor(bounds, { side, offset: 0.5 }).point;
+        const port = resolvePort(bounds, { side, offset: 0.5 }).point;
         return [
           {
             node,

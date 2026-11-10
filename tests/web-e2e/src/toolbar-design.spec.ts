@@ -1,5 +1,6 @@
+import { openActiveFile } from './app-actions';
 import { selectHistoryAction } from './app-actions';
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test, type Page } from './service-fixture';
 import { createArchitectureFrameSnapshot } from '../../../packages/engine/architecture/src/cell-commands';
 import {
   createCellStore,
@@ -20,35 +21,39 @@ const canvas = (page: Page) =>
 const scenarios = [
   {
     name: 'board',
-    snapshot: () => ({ store: createCellStore(createFrameCell('frame')) }),
+    snapshot: () => ({
+      store: createCellStore(createFrameCell('toolbar-board')),
+    }),
   },
   {
     name: 'mind',
-    snapshot: () => createMindFrameSnapshot('frame', 'topic'),
+    snapshot: () => createMindFrameSnapshot('toolbar-mind', 'topic'),
     action: 'mind.root',
     kind: 'mind-root',
   },
   {
     name: 'workflow',
-    snapshot: () => createWorkflowFrameSnapshot('frame', 'topic'),
+    snapshot: () => createWorkflowFrameSnapshot('toolbar-workflow', 'topic'),
     action: 'workflow.task',
     kind: 'workflow-task',
   },
   {
     name: 'architecture',
-    snapshot: () => createArchitectureFrameSnapshot('frame', 'topic'),
+    snapshot: () =>
+      createArchitectureFrameSnapshot('toolbar-architecture', 'topic'),
     action: 'architecture.box',
     kind: 'architecture-module',
   },
   {
     name: 'uml-class',
-    snapshot: () => createUmlClassFrameSnapshot('frame', 'topic'),
+    snapshot: () => createUmlClassFrameSnapshot('toolbar-uml-class', 'topic'),
     action: 'uml.add-class',
     kind: 'uml-class',
   },
   {
     name: 'uml-sequence',
-    snapshot: () => createUmlSequenceFrameSnapshot('frame', 'topic'),
+    snapshot: () =>
+      createUmlSequenceFrameSnapshot('toolbar-uml-sequence', 'topic'),
     action: 'uml.add-participant',
     kind: 'uml-participant',
   },
@@ -67,12 +72,14 @@ for (const [appearance, language] of [
     await page.emulateMedia({ colorScheme: appearance });
     await page.setViewportSize({ width: 1440, height: 900 });
     await page.goto('/');
+    await openActiveFile(page);
     const skip = page.getByRole('button', { name: '跳过', exact: true });
     if (await skip.isVisible()) await skip.click();
     await setAppLanguage(page, language);
     for (const scenario of scenarios) {
       await page.setViewportSize({ width: 1440, height: 900 });
       await page.goto('/');
+      await openActiveFile(page);
       await page
         .locator('ylib-tabs')
         .getByRole('button', {
@@ -83,15 +90,37 @@ for (const [appearance, language] of [
       await expect(
         page.locator('.workspace-pane.is-active').getByTestId('verd-board'),
       ).toBeVisible();
+      await expect(
+        toolbar(page).getByRole('button', {
+          name: language === 'zh' ? '形状' : 'Shape',
+          exact: true,
+        }),
+      ).toBeEnabled();
+      const snapshot = scenario.snapshot();
+      const file = {
+        format: 'verd-frame',
+        version: 2,
+        frame: snapshot.store.cells[snapshot.store.rootId],
+        cells: Object.fromEntries(
+          Object.entries(snapshot.store.cells).filter(
+            ([id]) => id !== snapshot.store.rootId,
+          ),
+        ),
+      };
       await page
-        .locator('.workspace-pane.is-active')
-        .locator('input[type="file"][accept^="application/json"]')
-        .nth(1)
+        .locator(
+          'input[accept=".json,.verd.json,.verd-doc.json,.md,.markdown"]',
+        )
         .setInputFiles({
           name: `${scenario.name}.json`,
           mimeType: 'application/json',
-          buffer: Buffer.from(JSON.stringify(scenario.snapshot())),
+          buffer: Buffer.from(JSON.stringify(file)),
         });
+      await page
+        .locator(
+          `.file-tree-file[data-file-id="${snapshot.store.rootId}"] .file-tree-main`,
+        )
+        .click();
       await expect(toolbar(page)).toBeVisible();
       await expect(
         page
@@ -164,6 +193,7 @@ test('pen style menu keeps its localized selection and returns keyboard focus', 
   page,
 }) => {
   await page.goto('/');
+  await openActiveFile(page);
   await setAppLanguage(page, 'zh');
   const skip = page.getByRole('button', { name: '跳过', exact: true });
   if (await skip.isVisible()) await skip.click();
@@ -191,6 +221,7 @@ test('UML parameter popovers preserve self calls, branch drafts and one-step und
   page,
 }, testInfo) => {
   await page.goto('/');
+  await openActiveFile(page);
   await setAppLanguage(page, 'zh');
   const skip = page.getByRole('button', { name: '跳过', exact: true });
   if (await skip.isVisible()) await skip.click();

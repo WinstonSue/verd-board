@@ -1,3 +1,5 @@
+import type { Port } from '../port';
+import type { Terminal } from '../terminal/types';
 import type { NodeOutline } from '../geometry/shape';
 import type { Point } from '../interfaces/point';
 import type { RectangleClient } from '../interfaces/rectangle-client';
@@ -6,18 +8,6 @@ import type { BoardTheme, ColorSource } from '../interfaces/theme';
 export type CellId = string;
 
 export type CellType = 'node' | 'frame' | 'edge' | 'group';
-
-export type PortDirection = 'input' | 'output' | 'both';
-
-export type PortSide = 'top' | 'right' | 'bottom' | 'left';
-
-export interface PortSpec {
-  id: string;
-  direction: PortDirection;
-  side: PortSide;
-  offset?: number;
-  maxConnections?: number;
-}
 
 export interface NodeAppearance {
   colorSources?: { fill?: ColorSource; strokeColor?: ColorSource };
@@ -58,7 +48,7 @@ export interface NodeCell<T = unknown> extends CellBase {
   name?: string;
   geometry: NodeGeometry;
   appearance?: NodeAppearance;
-  ports?: PortSpec[];
+  ports?: Port[];
   content?: NodeContent;
   data?: T;
 }
@@ -153,9 +143,6 @@ export const createDocumentFrameCell = (
   kind: 'document-frame',
 });
 
-export type EdgeTerminal =
-  { cellId: CellId; portId?: string; anchor?: Point } | { point: Point };
-
 export interface EdgeAppearance {
   colorSources?: { strokeColor?: ColorSource };
   strokeColor?: string;
@@ -172,17 +159,18 @@ export interface EdgeLabel {
 }
 
 /** Legacy strategy flags are readable for compatibility; optimization is explicitly requested. */
-export type EdgeRoute =
+export type EdgeRoute = { origin?: 'manual' | 'generated' } & (
   | { mode: 'auto'; strategy?: 'optimized' }
   | { mode: 'orthogonal'; points?: Point[]; strategy?: 'optimized' }
   | { mode: 'straight'; points?: Point[] }
   | { mode: 'curve'; points?: Point[] }
-  | { mode: 'fixed'; points: Point[] };
+  | { mode: 'fixed'; points: Point[] }
+);
 
 export interface EdgeCell<T = unknown> extends CellBase {
   cellType: 'edge';
-  source: EdgeTerminal;
-  target: EdgeTerminal;
+  source: Terminal;
+  target: Terminal;
   route: EdgeRoute;
   labels?: EdgeLabel[];
   appearance?: EdgeAppearance;

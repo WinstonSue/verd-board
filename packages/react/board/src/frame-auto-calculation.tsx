@@ -7,8 +7,11 @@ import {
   isFrameCell,
   isGroupCell,
   isNodeCell,
-  optimizeEdges,
-  planCellLayout,
+  planOptimizeEdges,
+  planGeometryLayout,
+  geometryPolicyFor,
+  GEOMETRY_POLICY_VERSION,
+  type GeometryDiagnostic,
   resolveCellArrangementScope,
   type CellArrangementScope,
   type CellLayoutStyle,
@@ -133,8 +136,19 @@ function layoutSignature(
   if (!selection) return '';
   const current = resolveCellArrangementScope(store, selection);
   return JSON.stringify([
+    GEOMETRY_POLICY_VERSION,
+    geometryPolicyFor(store, current.frameId, registry).version,
     collectArrangementBlocks(store, current.frameId, current.ids, registry)
-      .map((b) => [b.id, b.locked, b.bounds.width, b.bounds.height])
+      .map((b) => [
+        b.id,
+        b.locked,
+        b.bounds.width,
+        b.bounds.height,
+        b.members.map((id) => {
+          const c = store.cells[id];
+          return isNodeCell(c) ? c.appearance?.strokeWidth : null;
+        }),
+      ])
       .sort(),
     arrangementEdgeIds(store, selection).map((id) => {
       const e = store.cells[id];
@@ -143,14 +157,21 @@ function layoutSignature(
             id,
             'cellId' in e.source ? e.source.cellId : null,
             'cellId' in e.target ? e.target.cellId : null,
+            e.appearance?.strokeWidth,
           ]
         : id;
     }),
   ]);
 }
-function routingSignature(store: CellStore, frameId: string) {
+function routingSignature(
+  store: CellStore,
+  frameId: string,
+  registry: CellRegistry,
+) {
   const frame = store.cells[frameId];
-  return JSON.stringify(
+  return JSON.stringify([
+    GEOMETRY_POLICY_VERSION,
+    geometryPolicyFor(store, frameId, registry).version,
     isFrameCell(frame)
       ? [...frame.children].sort().map((id) => {
           const cell = store.cells[id];
@@ -159,6 +180,7 @@ function routingSignature(store: CellStore, frameId: string) {
               id,
               cell.geometry,
               cell.ports,
+              cell.appearance?.strokeWidth,
               cell.hidden,
               cell.locked,
               cell.kind,
@@ -168,6 +190,7 @@ function routingSignature(store: CellStore, frameId: string) {
               id,
               cell.source,
               cell.target,
+              cell.route.origin === 'generated' ? null : cell.route,
               cell.appearance?.strokeWidth,
               cell.hidden,
               cell.locked,
@@ -178,7 +201,7 @@ function routingSignature(store: CellStore, frameId: string) {
             : id;
         })
       : null,
-  );
+  ]);
 }
 /** Pure preparation: user edit, node layout, then routes become one atomic write. */
 export function prepareAutoCalculation(
@@ -187,9 +210,15 @@ export function prepareAutoCalculation(
   config: FrameAutoCalculationConfig,
   registry: CellRegistry,
   skip: { layout?: boolean; edges?: boolean } = {},
-): { operations: CellOperation[]; expected: CellStore } {
+): {
+  operations: CellOperation[];
+  expected: CellStore;
+  diagnostics: GeometryDiagnostic[];
+} {
   let expected = applyCellOperations(before, operations, registry);
   const result = [...operations];
+  const diagnostics: GeometryDiagnostic[] = [];
+  const routedWithLayout = new Set<string>();
   const append = (extra: CellOperation[]) => {
     if (!extra.length) return;
     result.push(...extra);
@@ -210,18 +239,20 @@ export function prepareAutoCalculation(
       if (isNodeCell(a) && isNodeCell(b))
         return (
           a.geometry.width !== b.geometry.width ||
-          a.geometry.height !== b.geometry.height
+          a.geometry.height !== b.geometry.height ||
+          a.appearance?.strokeWidth !== b.appearance?.strokeWidth
         );
       if (isEdgeCell(a) && isEdgeCell(b))
         return (
+          a.appearance?.strokeWidth !== b.appearance?.strokeWidth ||
           JSON.stringify([
             'cellId' in a.source ? a.source.cellId : null,
             'cellId' in a.target ? a.target.cellId : null,
           ]) !==
-          JSON.stringify([
-            'cellId' in b.source ? b.source.cellId : null,
-            'cellId' in b.target ? b.target.cellId : null,
-          ])
+            JSON.stringify([
+              'cellId' in b.source ? b.source.cellId : null,
+              'cellId' in b.target ? b.target.cellId : null,
+            ])
         );
       return (
         isGroupCell(a) &&
@@ -241,26 +272,39 @@ export function prepareAutoCalculation(
       ) &&
       layoutSignature(before, scope, registry) !==
         layoutSignature(expected, scope, registry)
-    )
-      append(planCellLayout(expected, selection, style, registry));
+    ) {
+      const plan = planGeometryLayout(expected, selection, style, registry, {
+        automatic: true,
+      });
+      append(plan.operations);
+      diagnostics.push(...plan.diagnostics);
+      if (plan.status === 'success')
+        arrangementEdgeIds(expected, selection).forEach((id) =>
+          routedWithLayout.add(id),
+        );
+    }
   }
   if (config.edges && !skip.edges) {
     const { scope } = config.edges;
     const selection = autoCalculationSelection(expected, scope);
     if (
       selection &&
-      routingSignature(before, scope.frameId) !==
-        routingSignature(expected, scope.frameId)
-    )
-      append(
-        optimizeEdges(
-          expected,
-          arrangementEdgeIds(expected, selection),
-          registry,
+      routingSignature(before, scope.frameId, registry) !==
+        routingSignature(expected, scope.frameId, registry)
+    ) {
+      const plan = planOptimizeEdges(
+        expected,
+        arrangementEdgeIds(expected, selection).filter(
+          (id) => !routedWithLayout.has(id),
         ),
+        registry,
+        { automatic: true },
       );
+      append(plan.operations);
+      diagnostics.push(...plan.diagnostics);
+    }
   }
-  return { operations: result, expected };
+  return { operations: result, expected, diagnostics };
 }
 
 /** Remove deleted scope identities only after the initiating edit is accepted. */

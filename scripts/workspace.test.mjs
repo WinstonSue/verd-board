@@ -14,6 +14,31 @@ import {
   withWorkspaceRuntime,
 } from './workspace.mjs';
 
+test('workspace checks do not turn authoring warnings into errors', async () => {
+  const warning = {
+    code: 'workflow.port-direction',
+    severity: 'warning',
+    message: 'Loop output uses left port',
+  };
+  const error = {
+    code: 'frame.invalid',
+    severity: 'error',
+    message: 'Invalid port',
+  };
+  assert.deepEqual(
+    await validateWorkspace([], {
+      validation: { validateNativeWorkspace: () => [warning] },
+    }),
+    [],
+  );
+  assert.deepEqual(
+    await validateWorkspace([], {
+      validation: { validateNativeWorkspace: () => [warning, error] },
+    }),
+    ['workspace: Invalid port'],
+  );
+});
+
 test('project content validates, package facts are current, refresh is idempotent', async () => {
   const entries = await readWorkspace(),
     model = await readPackageModel();

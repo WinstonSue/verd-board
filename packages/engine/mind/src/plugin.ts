@@ -6,7 +6,7 @@ import {
   type CellStore,
   type EdgeCell,
 } from '@sue/board-core';
-import { registerMindCells } from './cell-utils';
+import { layoutMindCells, registerMindCells } from './cell-utils';
 import { MindKind } from './kinds';
 import { mapBoardTextLinks } from '@sue/board-common';
 function normalizeMindRelations(
@@ -104,6 +104,27 @@ export const createMindPlugin = (): CellPlugin => ({
   scenes: [
     {
       id: 'mind',
+      geometry: {
+        version: 1,
+        nodeLayout: 'domain',
+        edgeRouting: 'domain',
+        defaultStyle: 'mind',
+        validate: (context) =>
+          ['mind', 'domain'].includes(context.style)
+            ? []
+            : [
+                {
+                  code: 'geometry.domain-managed',
+                  message:
+                    'Mind geometry is derived from its tree style and sibling order.',
+                  frameId: context.frameId,
+                  sceneId: 'mind',
+                  cellIds: context.selection.ids,
+                },
+              ],
+        project: layoutMindCells,
+        planLayout: () => [],
+      },
       anchorKinds: ['mind-root'],
       kinds: Object.values(MindKind),
       allowGroups: false,

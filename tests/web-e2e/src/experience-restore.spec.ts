@@ -1,5 +1,7 @@
+import { cellBodyPoint } from '../../helpers/port-controls';
+import { openActiveFile } from './app-actions';
 import { selectHistoryAction } from './app-actions';
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test, type Page } from './service-fixture';
 import { selectDrawingTool } from './drawing-tools';
 import {
   activateBoardTab,
@@ -10,10 +12,18 @@ import { mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 
+test.use({ actionTimeout: 10_000 });
+
 const canvas = (page: Page) =>
   page.locator('svg[aria-label="Frame canvas"][data-surface="root"]:visible');
+const activeCanvas = (page: Page) =>
+  page.locator('svg[aria-label="Frame canvas"]:visible').last();
 const cells = (page: Page, kind: string) =>
-  canvas(page).locator(`[data-cell-kind="${kind}"]`);
+  canvas(page).locator(
+    kind === 'frame'
+      ? '[data-cell-kind="frame"], [data-cell-kind="frame-reference"]'
+      : `[data-cell-kind="${kind}"]`,
+  );
 const world = (page: Page) =>
   canvas(page).locator('g[transform*="scale"]').first();
 const emptyPoint = async (page: Page) => {
@@ -90,9 +100,10 @@ test('restores editing, gestures, summaries, and file open', async ({
   test.setTimeout(180_000);
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto('/');
-  await page.evaluate(() => indexedDB.deleteDatabase('VerdBoard'));
+  await openActiveFile(page);
   await clearWorkspaceStorage(page);
   await page.reload();
+  await openActiveFile(page);
   const skip = page.getByRole('button', { name: '跳过', exact: true });
   if (await skip.isVisible().catch(() => false)) await skip.click();
 
@@ -165,7 +176,14 @@ test('restores editing, gestures, summaries, and file open', async ({
   const box = (await canvas(page).boundingBox())!;
   await page.mouse.click(box.x + 520, box.y + 280);
   await page.getByRole('button', { name: '选择', exact: true }).click();
-  await cells(page, 'mind-root').last().click();
+  await cells(page, 'frame')
+    .last()
+    .locator(':scope > [data-frame-contents] > [data-frame-content-plate]')
+    .dblclick({ position: { x: 25, y: 90 } });
+  {
+    const point = await cellBodyPoint(cells(page, 'mind-root').last());
+    await page.mouse.click(point.x, point.y);
+  }
   await page
     .getByRole('button', { name: 'Selection bold', exact: true })
     .click();
@@ -214,27 +232,38 @@ test('restores editing, gestures, summaries, and file open', async ({
   expect(JSON.stringify((await formatted()).content.text)).toContain('bold');
   await page.reload();
   if (await skip.isVisible().catch(() => false)) await skip.click();
-  await cells(page, 'mind-root').last().click();
+  await cells(page, 'frame')
+    .last()
+    .locator(':scope > [data-frame-contents] > [data-frame-content-plate]')
+    .dblclick({ position: { x: 25, y: 90 } });
+  {
+    const point = await cellBodyPoint(cells(page, 'mind-root').last());
+    await page.mouse.click(point.x, point.y);
+  }
   expect(JSON.stringify((await formatted()).content.text)).toContain(
     'https://example.com',
   );
 
-  await canvas(page).press('Tab');
+  await activeCanvas(page).press('Tab');
+  await expect(page.locator('.ProseMirror:visible')).toBeFocused();
   await page.keyboard.press('Escape');
   await expect(cells(page, 'mind-child')).toHaveCount(1);
   await cells(page, 'mind-child').first().click();
-  await canvas(page).press('Tab');
+  await activeCanvas(page).press('Tab');
+  await expect(page.locator('.ProseMirror:visible')).toBeFocused();
   await page.keyboard.press('Escape');
   await expect(cells(page, 'mind-child')).toHaveCount(2);
   await cells(page, 'mind-child').first().click();
   const parentId = await cells(page, 'mind-child')
     .first()
     .getAttribute('data-cell-id');
+
   await page.locator(`[data-mind-fold="${parentId}"]`).click();
   await expect
     .poll(async () => (await findCell(page, 'mind-child'))?.data?.collapsed)
     .toBe(true);
-  await canvas(page).press('Tab');
+  await activeCanvas(page).press('Tab');
+  await expect(page.locator('.ProseMirror:visible')).toBeFocused();
   await page.keyboard.press('Escape');
   await expect
     .poll(async () => {
@@ -268,32 +297,31 @@ test('restores editing, gestures, summaries, and file open', async ({
   await page
     .getByLabel('Mind right node count', { exact: true })
     .press('Enter');
-  await canvas(page).press('Tab');
+  await activeCanvas(page).press('Tab');
   const formatting = page.getByRole('toolbar', {
     name: 'Text formatting',
     exact: true,
   });
   await expect(page.locator('.ProseMirror:visible')).toBeFocused();
-  await canvas(page).focus();
   await page.keyboard.press('Escape');
   await expect(formatting).toBeHidden();
   const topics = cells(page, 'mind-child');
   await expect(topics).toHaveCount(2);
-  await topics
-    .nth(0)
-    .locator('path')
-    .first()
-    .click({ position: { x: 6, y: 10 } });
-  await topics
-    .nth(1)
-    .locator('path')
-    .first()
-    .click({ modifiers: ['Shift'], position: { x: 6, y: 10 } });
+  const firstTopic = await cellBodyPoint(topics.nth(0));
+  await page.mouse.click(firstTopic.x, firstTopic.y);
+  const secondTopic = await cellBodyPoint(topics.nth(1));
+  await page.keyboard.down('Shift');
+  await page.mouse.click(secondTopic.x, secondTopic.y);
+  await page.keyboard.up('Shift');
   await page.getByRole('button', { name: '概要', exact: true }).click();
   await expect(cells(page, 'mind-summary-edge')).toHaveCount(2);
   await selectHistoryAction(page, '撤销');
   await expect(cells(page, 'mind-summary-edge')).toHaveCount(0);
 
+  await activeCanvas(page).press('Escape');
+  await expect(canvas(page).locator('svg[data-surface="nested"]')).toHaveCount(
+    0,
+  );
   await activateBoardTab(page);
   await page.getByRole('button', { name: '形状', exact: true }).click();
   await page.getByTestId('shape-rectangle').click();
@@ -360,10 +388,12 @@ test('restores editing, gestures, summaries, and file open', async ({
   expect(await transform()).not.toBe(beforeMiddle);
 
   const menu = await emptyPoint(page);
-  const contextMenu = page.getByRole('dialog', { name: 'Selection actions' });
+  const contextMenu = page.getByRole('menu', {
+    name: /^(画布编辑|Canvas editing)$/,
+  });
   await page.mouse.click(menu.x, menu.y, { button: 'right' });
   await expect(
-    contextMenu.getByRole('button', { name: '复制', exact: true }),
+    contextMenu.getByRole('menuitem', { name: '粘贴', exact: true }),
   ).toBeVisible();
   await page.keyboard.press('Escape');
   await expect(contextMenu).toBeHidden();

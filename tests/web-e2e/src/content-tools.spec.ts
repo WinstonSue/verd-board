@@ -1,5 +1,6 @@
+import { initializeVersions, closeVersionSettings } from './version-actions';
 import { selectSetting } from '../../helpers/settings-controls';
-import { test, expect, type Page } from '@playwright/test';
+import { test, expect, type Page } from './service-fixture';
 import { zipSync, strToU8 } from 'fflate';
 import { openDocumentInsert, openSettings } from './app-actions';
 import { exerciseDocumentBlockActions } from './document-block-actions';
@@ -367,6 +368,8 @@ test('metadata, named versions and filtered views persist across reload', async 
   page,
 }) => {
   await openDoc(page);
+  await initializeVersions(page);
+  await closeVersionSettings(page);
   await active(page)
     .getByRole('button', { name: '内容管理', exact: true })
     .click();
@@ -379,8 +382,13 @@ test('metadata, named versions and filtered views persist across reload', async 
   await dialog.getByRole('textbox', { name: '内容状态' }).fill('review');
   await dialog.getByRole('textbox', { name: '内容状态' }).blur();
   await dialog.getByRole('tab', { name: '版本历史', exact: true }).click();
-  await dialog.getByRole('textbox', { name: '版本名称' }).fill('Baseline');
-  await dialog.getByRole('button', { name: '保存版本', exact: true }).click();
+  await dialog
+    .getByRole('textbox', { name: '版本说明', exact: true })
+    .fill('Baseline');
+  await dialog
+    .getByRole('button', { name: '为此文件创建版本', exact: true })
+    .last()
+    .click();
   await expect(dialog).toContainText('Baseline');
   await dialog.getByRole('button', { name: '关闭', exact: true }).click();
   await active(page).locator('.tiptap').fill('New decision');
@@ -395,8 +403,20 @@ test('metadata, named versions and filtered views persist across reload', async 
   await dialog.getByRole('tab', { name: '版本历史', exact: true }).click();
   await expect(dialog).toContainText('Baseline');
   await dialog
-    .getByRole('button', { name: '恢复此版本', exact: true })
-    .first()
+    .getByRole('textbox', { name: '版本说明', exact: true })
+    .fill('Edited');
+  await dialog
+    .getByRole('button', { name: '为此文件创建版本', exact: true })
+    .last()
+    .click();
+  await dialog
+    .locator('.workspace-git-log article')
+    .filter({ hasText: 'Baseline' })
+    .getByRole('button', { name: '恢复此版本…', exact: true })
+    .click();
+  await dialog
+    .getByRole('region', { name: '恢复预览', exact: true })
+    .getByRole('button', { name: '确认恢复', exact: true })
     .click();
   await expect(
     dialog.getByRole('button', { name: '关闭', exact: true }),
@@ -411,34 +431,14 @@ test('metadata, named versions and filtered views persist across reload', async 
   await page.getByRole('button', { name: '保存筛选视图', exact: true }).click();
   await expect
     .poll(() =>
-      page.evaluate(
-        () =>
-          new Promise<boolean>((resolve) => {
-            const request = indexedDB.open('verdboard-host');
-            request.onerror = () => resolve(false);
-            request.onsuccess = () => {
-              const db = request.result;
-              const read = db.transaction('meta').objectStore('meta').getAll();
-              read.onsuccess = () => {
-                const rows = read.result as {
-                  config: { value: { savedViews?: { name: string }[] } };
-                }[];
-                db.close();
-                resolve(
-                  rows.some((row) =>
-                    row.config.value.savedViews?.some(
-                      (view) => view.name === 'Design docs',
-                    ),
-                  ),
-                );
-              };
-              read.onerror = () => {
-                db.close();
-                resolve(false);
-              };
-            };
-          }),
-      ),
+      page.evaluate(async () => {
+        const { meta } = await (window as any).__verdReadDisk();
+        return (
+          meta.config.value.savedViews?.some(
+            (view: { name: string }) => view.name === 'Design docs',
+          ) ?? false
+        );
+      }),
     )
     .toBe(true);
   await page.reload();
@@ -468,9 +468,7 @@ test('ZIP imports keep folders, links and images with an explicit result', async
     mimeType: 'application/zip',
     buffer: Buffer.from(bytes),
   });
-  await expect(page.locator('.workspace-notice-banner')).toContainText(
-    '导入 2',
-  );
+  await expect(page.locator('.sue-message-notice')).toContainText('导入 2');
   await page.getByRole('button', { name: '所有内容', exact: true }).click();
   await page
     .locator('.management-result')

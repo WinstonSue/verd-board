@@ -9,6 +9,8 @@ import {
 export function relationshipArrangementPositions(
   blocks: readonly ArrangementBlock[],
   links: readonly ArrangementLink[],
+  nodeGap = 96,
+  rankGap = 160,
 ): Map<string, Point> {
   const ids = blocks.map((block) => block.id).sort();
   const nodes = new Map(blocks.map((block) => [block.id, block]));
@@ -96,7 +98,7 @@ export function relationshipArrangementPositions(
       const rank = ranks[owner.get(member)!];
       (rows[rank] ??= []).push(nodes.get(member)!);
     }
-    const positions = graphArrangementPositions(rows, links, 96, 160);
+    const positions = graphArrangementPositions(rows, links, nodeGap, rankGap);
     parts.push({
       positions,
       width: Math.max(
@@ -129,9 +131,9 @@ export function relationshipArrangementPositions(
     row.forEach((part, column) => {
       for (const [id, point] of part.positions)
         result.set(id, [x + point[0], y + point[1]]);
-      x += widths[column] + 96;
+      x += widths[column] + nodeGap;
     });
-    y += Math.max(...row.map((part) => part.height)) + 96;
+    y += Math.max(...row.map((part) => part.height)) + nodeGap;
   }
   return result;
 }

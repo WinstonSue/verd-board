@@ -56,6 +56,18 @@ it.each(['project', 'agent-patterns'] as const)(
     const before = await host.readSnapshot(handle),
       snapshot = await readNativeSnapshot(target);
     await fs.writeFile(path.join(target, 'user-file.txt'), 'keep in backup');
+    const skill = '.agents/skills/verd-workspace/SKILL.md';
+    await fs.mkdir(
+      path.join(target, '.agents/skills/verd-workspace/references'),
+      { recursive: true },
+    );
+    const skillSource =
+      '---\nname: verd-workspace\ndescription: Workspace requirements\n---\nUse project terms.\n';
+    await fs.writeFile(path.join(target, skill), skillSource);
+    await fs.writeFile(
+      path.join(target, '.agents/skills/verd-workspace/references/details.md'),
+      'Keep resources',
+    );
     const receipt = await host.commit(handle, {
       transactionId: 'confirmed',
       writes: [
@@ -67,6 +79,18 @@ it.each(['project', 'agent-patterns'] as const)(
       backupParent: path.dirname(target),
     });
     expect(next.key).not.toBe(handle.key);
+    expect(await fs.readFile(path.join(target, skill), 'utf8')).toBe(
+      skillSource,
+    );
+    expect(
+      await fs.readFile(
+        path.join(
+          target,
+          '.agents/skills/verd-workspace/references/details.md',
+        ),
+        'utf8',
+      ),
+    ).toBe('Keep resources');
     expect((await host.readSnapshot(next)).config.value.identity).toBe(
       before.config.value.identity,
     );
@@ -123,6 +147,24 @@ it('rejects an unconfirmed resource revision without changing the existing works
   expect(
     await fs.readFile(path.join(target, '.verdscrolls/config.json'), 'utf8'),
   ).toBe(before);
+});
+it('leaves the existing workspace intact when user Skills cannot be preserved', async () => {
+  const { target, handle, updater } = await setup();
+  const before = await fs.readFile(
+    path.join(target, '.verdscrolls/config.json'),
+    'utf8',
+  );
+  await fs.writeFile(path.join(target, '.agents'), 'An occupied user path');
+  const info = (await updater.info(handle))!;
+  await expect(updater.update(handle, info.releaseId)).rejects.toThrow(
+    'Invalid workspace .agents',
+  );
+  expect(
+    await fs.readFile(path.join(target, '.verdscrolls/config.json'), 'utf8'),
+  ).toBe(before);
+  expect(await fs.readFile(path.join(target, '.agents'), 'utf8')).toBe(
+    'An occupied user path',
+  );
 });
 it('recovers a crash between the backup and publication before opening', async () => {
   const { target, userData, handle, host, updater } = await setup();

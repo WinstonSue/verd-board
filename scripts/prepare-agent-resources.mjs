@@ -16,11 +16,16 @@ export function nodeArchive(platform, arch) {
     throw new Error('Unsupported agent runtime target');
   return `node-v${NODE_VERSION}-${platform === 'win32' ? 'win' : platform}-${arch}.${platform === 'win32' ? 'zip' : 'tar.gz'}`;
 }
-function run(cmd, args, cwd, env = process.env) {
-  const result = spawnSync(cmd, args, { cwd, env, encoding: 'utf8' });
+function run(cmd, args, cwd, env = process.env, inheritOutput = false) {
+  const result = spawnSync(cmd, args, {
+    cwd,
+    env,
+    encoding: 'utf8',
+    stdio: inheritOutput ? 'inherit' : 'pipe',
+  });
   if (result.error || result.status !== 0)
     throw new Error(
-      `${cmd}: ${result.error ?? result.stderr ?? result.stdout}`,
+      `${cmd}: ${result.error ?? (result.stderr || result.stdout || result.signal || result.status)}`,
     );
   return result.stdout;
 }
@@ -126,10 +131,13 @@ export async function prepareAgentResources(
         'install',
         '--prod',
         '--ignore-scripts',
+        '--prefer-offline',
         '--no-frozen-lockfile',
         '--config.node-linker=hoisted',
       ],
       app,
+      process.env,
+      true,
     );
     // No package manager or machine-specific install metadata is needed at runtime.
     for (const f of [
@@ -152,18 +160,39 @@ export async function prepareAgentResources(
       app,
       'node_modules/@sue/verd-board-agent-patterns',
     );
-    await fs.cp(path.join(agent, 'skills'), path.join(stage, 'skills'), {
-      recursive: true,
-    });
+    const { parseSkillDocument } = await import(
+      pathToFileURL(
+        path.join(app, 'node_modules/@sue/verd-board-app/dist/headless.js'),
+      ).href
+    );
+    const catalog = JSON.parse(
+      await fs.readFile(path.join(patterns, 'catalog.json'), 'utf8'),
+    );
+    for (const relative of [
+      'skills/verd-authoring/SKILL.md',
+      ...catalog.map((item) => item.skillPath),
+    ]) {
+      if (!/^skills\/verd-[\w-]+\/SKILL\.md$/.test(relative))
+        throw new Error('Invalid Agent Skill path: ' + relative);
+      parseSkillDocument(
+        await fs.readFile(path.join(patterns, 'agent', relative), 'utf8'),
+        relative.split('/')[1],
+      );
+    }
+    await fs.cp(
+      path.join(patterns, 'agent/skills/verd-authoring'),
+      path.join(stage, 'skills/verd-authoring'),
+      {
+        recursive: true,
+      },
+    );
     await fs.copyFile(
       path.join(patterns, 'catalog.json'),
       path.join(stage, 'catalog.json'),
     );
-    await fs.cp(
-      path.join(patterns, 'workspace'),
-      path.join(stage, 'patterns'),
-      { recursive: true },
-    );
+    await fs.cp(path.join(patterns, 'agent'), path.join(stage, 'patterns'), {
+      recursive: true,
+    });
     const cli = path.join(agent, 'dist/cli.js');
     await fs.writeFile(
       path.join(stage, 'rules.json'),

@@ -233,12 +233,12 @@
         "derived": false
       },
       "content": {
-        "label": "用原生画布表达关系，用原生文档落地文字。当前源码 · 2026-10-28；历史发布与待发布迁移分别标明。",
+        "label": "用原生画布表达关系，用原生文档落地文字。当前源码；Desktop 产品版本与 SDK 待发布契约分别说明。",
         "text": {
           "schemaVersion": 1,
           "id": "demo:home/intro/text",
           "kind": "inline",
-          "plainText": "用原生画布表达关系，用原生文档落地文字。当前源码 · 2026-10-28；历史发布与待发布迁移分别标明。",
+          "plainText": "用原生画布表达关系，用原生文档落地文字。当前源码；Desktop 产品版本与 SDK 待发布契约分别说明。",
           "content": {
             "type": "doc",
             "content": [
@@ -247,7 +247,7 @@
                 "content": [
                   {
                     "type": "text",
-                    "text": "用原生画布表达关系，用原生文档落地文字。当前源码 · 2026-10-28；历史发布与待发布迁移分别标明。",
+                    "text": "用原生画布表达关系，用原生文档落地文字。当前源码；Desktop 产品版本与 SDK 待发布契约分别说明。",
                     "marks": [
                       {
                         "type": "textStyle",
@@ -294,7 +294,8 @@
           "direction": "both",
           "offset": 0.5
         }
-      ]
+      ],
+      "name": "用原生画布表达关系，用原生文档落地文字。当前源码 · 2026-10-28；历史发布与待发布迁移分别标明。"
     },
     "demo:home/guide": {
       "id": "demo:home/guide",

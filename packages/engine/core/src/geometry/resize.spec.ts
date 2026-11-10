@@ -1,14 +1,15 @@
+import { resolveAnchor } from '../anchor';
 import { describe, expect, it } from 'vitest';
 import { resizeNodeGeometry, rotateNodeGeometry } from './resize';
-import { relativeAnchor } from './edge';
+
 describe('native geometry editing', () => {
   const box = { x: 100, y: 50, width: 160, height: 100 };
   it('keeps the opposite corner fixed for rotated and unrotated nodes', () => {
     for (const rotation of [0, Math.PI / 2, 0.8]) {
       const original = { ...box, rotation },
-        opposite = relativeAnchor(original, [1, 1]);
+        opposite = resolveAnchor(original, [1, 1]).point;
       const resized = resizeNodeGeometry(original, 'nw', [-30, -40]);
-      const result = relativeAnchor(resized, [1, 1]);
+      const result = resolveAnchor(resized, [1, 1]).point;
       expect(result[0]).toBeCloseTo(opposite[0]);
       expect(result[1]).toBeCloseTo(opposite[1]);
       expect(resized.width).toBeGreaterThan(0);

@@ -1,6 +1,8 @@
+import { cellBodyPoint, nodePort } from '../../helpers/port-controls';
 import { selectHistoryAction } from './app-actions';
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test, type Page } from './service-fixture';
 import { readFileSync } from 'node:fs';
+import path from 'node:path';
 import { openActiveFile, selectAppAction } from './app-actions';
 import { bodyEditor, editBody } from './body-editor';
 import { selectDrawingTool } from './drawing-tools';
@@ -10,6 +12,7 @@ import {
   backToPreviousCanvas,
   clearWorkspaceStorage,
   persistedWorkspace,
+  persistedNavigation,
 } from './workspace-nav';
 const canvas = (page: Page) =>
   page.locator('svg[aria-label="Frame canvas"][data-surface="root"]:visible');
@@ -32,6 +35,7 @@ test('multi-selection drag and group alignment preserve member spacing with one-
   page,
 }) => {
   await page.goto('/');
+  await openActiveFile(page);
   await createAt(page, '形状', 180, 160);
   await createAt(page, '形状', 400, 160);
   await createAt(page, '形状', 650, 400);
@@ -106,6 +110,7 @@ test('grid, Frame aspect ratio and automatic stylus protection retain their prod
   page,
 }) => {
   await page.goto('/');
+  await openActiveFile(page);
   await page.getByLabel('Canvas grid', { exact: true }).check();
   await page.getByLabel('Canvas grid size', { exact: true }).fill('32');
   await page.getByLabel('Canvas grid size', { exact: true }).press('Enter');
@@ -217,6 +222,7 @@ test('new mind topics inherit typography and expand their layout without copying
 
 const summaryFixture = async (page: Page) => {
   await page.goto('/');
+  await openActiveFile(page);
   await selectAppAction(page, '文本导入');
   const dialog = page.getByRole('dialog', { name: '文本导入' });
   await dialog.getByLabel('导入格式').selectOption('markdown');
@@ -347,10 +353,16 @@ test('mind style inheritance, branch appearance and image edits survive history,
       strokeColor: '#aa0000',
       strokeWidth: 4,
       strokeStyle: 'dotted',
+      colorSources: { fill: 'custom', strokeColor: 'custom' },
     });
   await expect
     .poll(async () => (await saved(childId))?.data?.branchAppearance)
-    .toEqual({ strokeColor: '#008800', strokeWidth: 5, strokeStyle: 'dotted' });
+    .toEqual({
+      strokeColor: '#008800',
+      strokeWidth: 5,
+      strokeStyle: 'dotted',
+      colorSources: { strokeColor: 'custom' },
+    });
   expect((await saved(childId))?.data?.image).toBeUndefined();
   expect((await saved(childId))?.data?.emojis).toBeUndefined();
   await expect(child.locator('[data-mind-hit-box]')).toHaveCount(1);
@@ -399,7 +411,7 @@ test('mind drags reorder siblings, change parents using the pointer and ignore c
     (await node.locator('path').first().boundingBox())!;
   const from = await bounds(c),
     first = await bounds(a);
-  await page.mouse.move(from.x + 8, from.y + from.height / 2);
+  await page.mouse.move(from.x + from.width / 3, from.y + from.height / 2);
   await page.mouse.down();
   await page.mouse.move(first.x + first.width / 2, first.y - 8, { steps: 10 });
   await page.mouse.up();
@@ -417,7 +429,7 @@ test('mind drags reorder siblings, change parents using the pointer and ignore c
   const source = await bounds(a),
     target = await bounds(b);
   await page.mouse.move(
-    source.x + source.width - 8,
+    source.x + (source.width * 2) / 3,
     source.y + source.height / 2,
   );
   await page.mouse.down();
@@ -431,7 +443,10 @@ test('mind drags reorder siblings, change parents using the pointer and ignore c
   await expect(cells(page, 'mind-branch')).toHaveCount(3);
   const ancestor = await bounds(b),
     descendant = await bounds(a);
-  await page.mouse.move(ancestor.x + 8, ancestor.y + ancestor.height / 2);
+  await page.mouse.move(
+    ancestor.x + ancestor.width / 3,
+    ancestor.y + ancestor.height / 2,
+  );
   await page.mouse.down();
   await page.mouse.move(
     descendant.x + descendant.width / 2,
@@ -472,7 +487,7 @@ for (const grip of ['left', 'right'] as const) {
       (await node.locator('path').first().boundingBox())!;
     const source = await bounds(a),
       target = await bounds(b);
-    const offset = grip === 'left' ? 8 : source.width - 8;
+    const offset = grip === 'left' ? source.width / 3 : (source.width * 2) / 3;
     const destination = {
       x: target.x + target.width + 20 + offset,
       y: target.y + target.height / 2,
@@ -523,7 +538,10 @@ test('summary brackets adjust sibling ids through one transaction and persist in
 }) => {
   const { aId, bId, cId, b } = await summaryFixture(page);
   await expect.poll(() => summaryRange(page)).toEqual([aId, cId]);
-  await cells(page, 'mind-summary').click();
+  {
+    const point = await cellBodyPoint(cells(page, 'mind-summary'));
+    await page.mouse.click(point.x, point.y);
+  }
   const handle = canvas(page).locator('[data-summary-handle="start"]');
   await expect(handle).toBeVisible();
   const from = (await handle.boundingBox())!,
@@ -544,7 +562,17 @@ test('summary brackets adjust sibling ids through one transaction and persist in
   await expect(canvas(page).locator('[data-mind-summary-bracket]')).toHaveCount(
     1,
   );
-  await cells(page, 'mind-summary').click();
+  // A reference paints a static preview until its shell is activated.
+  await cells(page, 'frame')
+    .locator(':scope > [data-frame-contents] > [data-frame-content-plate]')
+    .dblclick({ position: { x: 25, y: 90 } });
+  await expect(canvas(page).locator('svg[data-surface="nested"]')).toHaveCount(
+    1,
+  );
+  {
+    const point = await cellBodyPoint(cells(page, 'mind-summary'));
+    await page.mouse.click(point.x, point.y);
+  }
   const embeddedHandle = (await handle.boundingBox())!,
     embeddedA = (await cells(page, 'mind-child')
       .filter({ hasText: 'Topic A' })
@@ -569,7 +597,10 @@ test('summary brackets adjust sibling ids through one transaction and persist in
   await cells(page, 'frame').locator('[data-frame-title-id]').first().click();
   await page.getByTestId('frame-open').locator('visible=true').click();
   await expect(cells(page, 'mind-summary')).toHaveCount(1);
-  await cells(page, 'mind-summary').click();
+  {
+    const point = await cellBodyPoint(cells(page, 'mind-summary'));
+    await page.mouse.click(point.x, point.y);
+  }
   await expect(canvas(page).locator('[data-summary-handle]')).toHaveCount(2);
   const exported = (await downloadImage(page, 'svg')).bytes.toString();
   expect(exported).toContain('data-mind-summary-bracket');
@@ -603,6 +634,7 @@ test('product runs the native runtime and autosaves partitioned documents', asyn
   page,
 }) => {
   await page.goto('/');
+  await openActiveFile(page);
   await expect(page.locator('[data-runtime="cells"]')).toBeVisible();
   await createAt(page, '形状');
   await expect(cells(page, 'geometry')).toHaveCount(1);
@@ -621,6 +653,7 @@ test('embedded mind editing and detail editing share cells across navigation and
   page,
 }) => {
   await page.goto('/');
+  await openActiveFile(page);
   await createAt(page, '思维导图');
   await expect(cells(page, 'mind-root')).toHaveCount(1);
   // Embedded previews are view-only; add the child on the detail canvas.
@@ -652,6 +685,7 @@ test('deleting a container and undo restores its entire subtree', async ({
   page,
 }) => {
   await page.goto('/');
+  await openActiveFile(page);
   await createAt(page, '思维导图');
   await cells(page, 'frame').locator('[data-frame-title-id]').first().click();
   await page.getByTestId('frame-open').locator('visible=true').click();
@@ -672,6 +706,7 @@ test('draws and erases native freehand through one transaction history', async (
   page,
 }) => {
   await page.goto('/');
+  await openActiveFile(page);
   await page.getByRole('button', { name: '画笔', exact: true }).click();
   const box = (await canvas(page).boundingBox())!;
   await page.mouse.move(box.x + 280, box.y + 180);
@@ -693,6 +728,7 @@ test('imports Markdown into a native embedded Frame, edits detail and exports th
   page,
 }) => {
   await page.goto('/');
+  await openActiveFile(page);
   await selectAppAction(page, '文本导入');
   const dialog = page.getByRole('dialog', { name: '文本导入' });
   await dialog.getByLabel('导入格式').selectOption('markdown');
@@ -708,6 +744,7 @@ test('imports Markdown into a native embedded Frame, edits detail and exports th
   await page.getByTestId('frame-open').locator('visible=true').click();
   await page.getByRole('button', { name: '子主题', exact: true }).click();
   await expect(cells(page, 'mind-child')).toHaveCount(4);
+  await canvas(page).press('Escape');
   await selectAppAction(page, '导出为 Markdown');
   // Markdown export previews first; the dialog's download button saves it.
   const preview = page.getByRole('dialog', { name: 'Markdown preview' });
@@ -735,6 +772,7 @@ test('imports Mermaid geometry and bound labeled arrows through the native conve
   page,
 }) => {
   await page.goto('/');
+  await openActiveFile(page);
   await selectAppAction(page, '文本导入');
   const dialog = page.getByRole('dialog', { name: '文本导入' });
   await dialog
@@ -774,6 +812,7 @@ test('draws every whiteboard symbol with the native renderer and restores them f
   const errors: string[] = [];
   page.on('pageerror', (error) => errors.push(error.message));
   await page.goto('/');
+  await openActiveFile(page);
   await page.getByRole('button', { name: '形状', exact: true }).click();
   const shapeSelect = page.locator('.frame-shape-grid button[data-shape]');
   const shapes = await shapeSelect.evaluateAll((buttons) =>
@@ -815,6 +854,7 @@ test('uses shape contours for erasing, preserves boundary ports and supports nat
   page,
 }) => {
   await page.goto('/');
+  await openActiveFile(page);
   await page.getByRole('button', { name: '形状', exact: true }).click();
   await page.getByTestId('shape-diamond').click();
   const box = (await canvas(page).boundingBox())!;
@@ -833,7 +873,7 @@ test('uses shape contours for erasing, preserves boundary ports and supports nat
   const input = cells(page, 'geometry').last();
   await input.hover();
   expect(
-    Number(await input.locator('[data-port-id="top"]').getAttribute('cy')),
+    Number(await (await nodePort(input, 'top')).getAttribute('cy')),
   ).toBeCloseTo(332.5);
   await page.getByRole('button', { name: '选择', exact: true }).click();
   await input.click();
@@ -860,6 +900,7 @@ test('resizes, rotates and formats a native shape with undo and durable rich tex
   page,
 }) => {
   await page.goto('/');
+  await openActiveFile(page);
   await createAt(page, '形状');
   const node = cells(page, 'geometry');
   await node.click();
@@ -935,6 +976,7 @@ test('edits arrow bindings, route segments and multiple labels through native tr
   page,
 }) => {
   await page.goto('/');
+  await openActiveFile(page);
   await activateBoardTab(page);
   await createAt(page, '形状', 260, 180);
   await createAt(page, '形状', 560, 340);
@@ -966,7 +1008,23 @@ test('edits arrow bindings, route segments and multiple labels through native tr
   await page
     .getByLabel('Edge route', { exact: true })
     .selectOption('orthogonal');
-  const segment = edge.locator('[data-edge-segment]').first();
+  const segments = canvas(page).locator(
+    `[data-edge-controls="${await edge.getAttribute('data-cell-id')}"] [data-edge-segment]`,
+  );
+  // A short terminal stub can sit beneath the endpoint's larger hit target.
+  const exposed = await segments.evaluateAll((elements) =>
+    elements.findIndex((element) => {
+      const box = element.getBoundingClientRect();
+      return (
+        document.elementFromPoint(
+          box.x + box.width / 2,
+          box.y + box.height / 2,
+        ) === element
+      );
+    }),
+  );
+  expect(exposed).toBeGreaterThanOrEqual(0);
+  const segment = segments.nth(exposed);
   const segmentBox = (await segment.boundingBox())!;
   await page.mouse.move(
     segmentBox.x + segmentBox.width / 2,
@@ -982,7 +1040,9 @@ test('edits arrow bindings, route segments and multiple labels through native tr
   await expect
     .poll(async () => (await savedEdge())?.route.points?.length ?? 0)
     .toBeGreaterThan(2);
-  const endpoint = edge.locator('[data-edge-endpoint="target"]');
+  const endpoint = canvas(page).locator(
+    `[data-port-edge-id="${await edge.getAttribute('data-cell-id')}"][data-edge-endpoint="target"]`,
+  );
   const endpointBox = (await endpoint.boundingBox())!;
   await page.mouse.move(
     endpointBox.x + endpointBox.width / 2,
@@ -1089,6 +1149,7 @@ test('saves a mind note before closing its editor and hides collapsed descendant
   page,
 }) => {
   await page.goto('/');
+  await openActiveFile(page);
   await createAt(page, '思维导图');
   await cells(page, 'frame').locator('[data-frame-title-id]').first().click();
   await page.getByTestId('frame-open').locator('visible=true').click();
@@ -1242,7 +1303,7 @@ test('swimlane title, direction and lane count persist as native grid data', asy
   await expect(lane.getByLabel('Swimlane direction')).toHaveValue('vertical');
 });
 
-test('workflow swimlanes can assign and release a native task', async ({
+test('workflow swimlanes support independent start dragging, boundary release and explicit assignment', async ({
   page,
 }) => {
   await page.goto('/');
@@ -1254,7 +1315,8 @@ test('workflow swimlanes can assign and release a native task', async ({
   await page.getByTestId('palette-task').click();
   await page.getByRole('button', { name: '适配画布', exact: true }).click();
   const task = cells(page, 'workflow-task').first();
-  await task.click();
+  const point = await cellBodyPoint(task);
+  await page.mouse.click(point.x, point.y);
   const taskId = await task.getAttribute('data-cell-id');
   await expandPropertyGroup(page);
   const assignment = page.getByLabel('分配泳道', { exact: true });
@@ -1267,8 +1329,78 @@ test('workflow swimlanes can assign and release a native task', async ({
     return Object.values(lane?.data.laneMembers ?? {}).flat();
   };
   await expect.poll(members).toContain(taskId);
+  const savedCells = async () => {
+    const state = await persisted(page);
+    return Object.values(state?.records ?? {}).find(
+      (record: any) => record.cells[taskId!],
+    )!.cells;
+  };
+  const drag = async (
+    node: ReturnType<typeof cells>,
+    dx: number,
+    dy: number,
+  ) => {
+    const point = await cellBodyPoint(node);
+    const scale = await node.evaluate(
+      (element) => (element as SVGGraphicsElement).getScreenCTM()!.a,
+    );
+    await page.keyboard.down('Alt');
+    await page.mouse.move(point.x, point.y);
+    await page.mouse.down();
+    await page.mouse.move(point.x + dx * scale, point.y + dy * scale, {
+      steps: 6,
+    });
+    await page.mouse.up();
+    await page.keyboard.up('Alt');
+  };
+  const before = await savedCells();
+  const start = cells(page, 'workflow-start');
+  const startId = (await start.getAttribute('data-cell-id'))!;
+  const lane = cells(page, 'swimlane');
+  const laneId = (await lane.getAttribute('data-cell-id'))!;
+  await drag(start, 60, -40);
+  await expect
+    .poll(async () => (await savedCells())[startId].geometry.x)
+    .toBe(before[startId].geometry.x + 60);
+  const moved = await savedCells();
+  expect(moved[startId].geometry.y).toBe(before[startId].geometry.y - 40);
+  expect(moved[startId].data).toEqual(before[startId].data);
+  expect(moved[taskId!]).toEqual(before[taskId!]);
+  expect(moved[laneId]).toEqual(before[laneId]);
+  await selectHistoryAction(page, '撤销');
+  await expect.poll(savedCells).toEqual(before);
+  await selectHistoryAction(page, '重做');
+  await expect.poll(savedCells).toEqual(moved);
+
+  // Keep the centre inside the lane while placing its left edge outside.
+  const bodyX = Number(
+    await lane
+      .locator('[data-table-role="body"] rect')
+      .first()
+      .getAttribute('x'),
+  );
+  await drag(task, bodyX - 10 - moved[taskId!].geometry.x, 0);
+  await expect.poll(members).toEqual([]);
+  await expect
+    .poll(async () => (await savedCells())[taskId!].geometry.x)
+    .toBe(bodyX - 10);
+  const released = await savedCells();
+  await selectHistoryAction(page, '撤销');
+  await expect.poll(savedCells).toEqual(moved);
+  await selectHistoryAction(page, '重做');
+  await expect.poll(savedCells).toEqual(released);
+  await page.reload();
+  await expect(task).toBeVisible();
+  await expect.poll(savedCells).toEqual(released);
+  const taskPoint = await cellBodyPoint(task);
+  await page.mouse.click(taskPoint.x, taskPoint.y);
+  await expandPropertyGroup(page);
+  await assignment.selectOption('0');
+  await expect.poll(members).toContain(taskId);
+  const assigned = (await savedCells())[taskId!];
   await assignment.selectOption('remove');
   await expect.poll(members).toEqual([]);
+  expect((await savedCells())[taskId!]).toEqual(assigned);
   await expect(task).toBeVisible();
 });
 
@@ -1276,6 +1408,7 @@ test('vector line multi-click creation, closure, curve editing and vertex transa
   page,
 }) => {
   await page.goto('/');
+  await openActiveFile(page);
   await selectDrawingTool(page, '折线');
   const box = (await canvas(page).boundingBox())!;
   const click = (x: number, y: number) =>
@@ -1343,6 +1476,7 @@ test('open vector lines complete on double click and keyboard, and single point 
   page,
 }) => {
   await page.goto('/');
+  await openActiveFile(page);
   const box = (await canvas(page).boundingBox())!;
   await selectDrawingTool(page, '折线');
   await page.mouse.click(box.x + 100, box.y + 100);
@@ -1367,6 +1501,7 @@ test('vector line eraser hits a rendered curve and deletion can be undone', asyn
   page,
 }) => {
   await page.goto('/');
+  await openActiveFile(page);
   await selectDrawingTool(page, '折线');
   const box = (await canvas(page).boundingBox())!;
   await page.mouse.click(box.x + 100, box.y + 100);
@@ -1443,6 +1578,7 @@ test('image exports preserve rich text, selection scope, transparency and real J
   page,
 }) => {
   await page.goto('/');
+  await openActiveFile(page);
   await createAt(page, '形状', 100, 120);
   await createAt(page, '形状', 400, 120);
   const node = cells(page, 'geometry').first(),
@@ -1479,7 +1615,7 @@ test('image exports preserve rich text, selection scope, transparency and real J
   expect(jpg.name).toMatch(/\.jpg$/);
   const jpgPixels = await imagePixels(page, [...jpg.bytes]);
   expect(jpgPixels.corner).toEqual([255, 255, 255, 255]);
-  await page.getByRole('button', { name: '+', exact: true }).click();
+  await page.getByRole('button', { name: 'Zoom in', exact: true }).click();
   const zoomed = await downloadImage(page, 'png');
   expect((await imagePixels(page, [...zoomed.bytes])).width).toBe(
     pngPixels.width,
@@ -1496,6 +1632,7 @@ test('image export embeds uploaded images and renders nested and detail frames w
   page,
 }) => {
   await page.goto('/');
+  await openActiveFile(page);
   const png = await page.evaluate(() => {
     const image = document.createElement('canvas');
     image.width = 40;
@@ -1532,6 +1669,7 @@ test('image export reports unavailable assets and cleans up its temporary render
   page,
 }) => {
   await page.goto('/');
+  await openActiveFile(page);
   await page.route('**/missing-export-image.png', (route) =>
     route.fulfill({ status: 404, body: 'Missing' }),
   );
@@ -1582,6 +1720,7 @@ test('multi-selection appearance and group layer blocks survive history, shortcu
   page,
 }) => {
   await page.goto('/');
+  await openActiveFile(page);
   await createAt(page, '形状', 200, 200);
   await createAt(page, '形状', 440, 200);
   await createAt(page, '形状', 680, 200);
@@ -1655,6 +1794,7 @@ test('native keyboard cut and paste preserve a group closure with fresh identity
   page,
 }) => {
   await page.goto('/');
+  await openActiveFile(page);
   await createAt(page, '形状', 220, 240);
   await createAt(page, '形状', 460, 240);
   const original = await cells(page, 'geometry').evaluateAll((elements) =>
@@ -1704,6 +1844,7 @@ test('shadow filters remain self-contained in SVG and affect exported PNG pixels
   page,
 }) => {
   await page.goto('/');
+  await openActiveFile(page);
   await createAt(page, '形状', 220, 240);
   await cells(page, 'geometry').click();
   await page.getByLabel('填充', { exact: true }).fill('#ff0000');
@@ -1739,27 +1880,34 @@ test('context actions retain multi-selection and use system clipboard with histo
 }) => {
   await context.grantPermissions(['clipboard-read', 'clipboard-write']);
   await page.goto('/');
+  await openActiveFile(page);
   await createAt(page, '形状', 220, 240);
   await createAt(page, '形状', 460, 240);
   await cells(page, 'geometry').first().click();
   await cells(page, 'geometry')
     .last()
     .click({ modifiers: ['Shift'] });
-  await cells(page, 'geometry').first().click({ button: 'right' });
-  const actions = page.getByRole('dialog', { name: 'Selection actions' });
-  await expect(actions).toBeVisible();
-  await actions.getByLabel('Shadow', { exact: true }).selectOption('sm');
+  await page
+    .locator('.frame-inspector:visible')
+    .getByLabel('Shadow', { exact: true })
+    .selectOption('sm');
   await expect(
     cells(page, 'geometry').first().locator(':scope > g[filter]'),
   ).toHaveAttribute('filter', /-sm\)$/);
   await expect(
     cells(page, 'geometry').last().locator(':scope > g[filter]'),
   ).toHaveAttribute('filter', /-sm\)$/);
-  await actions.getByRole('button', { name: '剪切', exact: true }).click();
+  await cells(page, 'geometry').first().click({ button: 'right' });
+  const actions = page.getByRole('menu', {
+    name: /^(画布编辑|Canvas editing)$/,
+  });
+  await expect(actions).toBeVisible();
+  await expect(actions.locator('input, select, textarea')).toHaveCount(0);
+  await actions.getByRole('menuitem', { name: '剪切', exact: true }).click();
   await expect(cells(page, 'geometry')).toHaveCount(0);
   await expect(actions).toBeHidden();
   await canvas(page).click({ button: 'right', position: { x: 100, y: 400 } });
-  await actions.getByRole('button', { name: '粘贴', exact: true }).click();
+  await actions.getByRole('menuitem', { name: '粘贴', exact: true }).click();
   await expect(cells(page, 'geometry')).toHaveCount(2);
   await selectHistoryAction(page, '撤销');
   await expect(cells(page, 'geometry')).toHaveCount(0);
@@ -1776,6 +1924,7 @@ for (const viewport of [
   }) => {
     await page.setViewportSize(viewport);
     await page.goto('/');
+    await openActiveFile(page);
     await createAt(page, '形状', 280, 180);
     const inspectorToggle = page.getByRole('button', {
       name: '收起属性面板',
@@ -1784,7 +1933,9 @@ for (const viewport of [
     if (await inspectorToggle.isVisible()) await inspectorToggle.click();
     const box = (await canvas(page).boundingBox())!;
     const nodeBox = (await cells(page, 'geometry').first().boundingBox())!;
-    const menu = page.getByRole('dialog', { name: 'Selection actions' });
+    const menu = page.getByRole('menu', {
+      name: /^(画布编辑|Canvas editing)$/,
+    });
     const world = canvas(page).locator('[data-frame-world]');
     const transform = await world.getAttribute('transform');
     for (const point of [
@@ -1825,6 +1976,7 @@ test('right-click then left-click on a shape only selects it, without node or ca
   page,
 }) => {
   await page.goto('/');
+  await openActiveFile(page);
   await createAt(page, '形状', 280, 180);
   const node = cells(page, 'geometry').first();
   const outline = node.locator('path').first();
@@ -1833,7 +1985,9 @@ test('right-click then left-click on a shape only selects it, without node or ca
   const transform = await world.getAttribute('transform');
   const box = (await node.boundingBox())!;
   const center = { x: box.x + box.width / 2, y: box.y + box.height / 2 };
-  const actions = page.getByRole('dialog', { name: 'Selection actions' });
+  const actions = page.getByRole('menu', {
+    name: /^(画布编辑|Canvas editing)$/,
+  });
   await page.mouse.move(center.x, center.y);
   await page.mouse.down({ button: 'right' });
   await expect(actions).toBeHidden();
@@ -1853,7 +2007,9 @@ test('right-click then left-click on a shape only selects it, without node or ca
   await expect(world).toHaveAttribute('transform', transform!);
   await page.mouse.click(center.x - box.width / 3, center.y);
   await expect(actions).toBeHidden();
-  await expect(node).toHaveAttribute('stroke', '#6366f1');
+  await expect(
+    node.locator('[data-interaction-stroke="selected"]').first(),
+  ).toBeVisible();
   await page.mouse.move(center.x + 20, center.y + 10, { steps: 3 });
   await page.mouse.move(center.x - 30, center.y - 8, { steps: 3 });
   await expect(outline).toHaveAttribute('d', d!);
@@ -1864,6 +2020,7 @@ test('right-button canvas drags keep the context menu hidden through release', a
   page,
 }) => {
   await page.goto('/');
+  await openActiveFile(page);
   await createAt(page, '形状', 280, 180);
   const node = cells(page, 'geometry').first();
   const outline = node.locator('path').first();
@@ -1872,7 +2029,9 @@ test('right-button canvas drags keep the context menu hidden through release', a
   const transform = await world.getAttribute('transform');
   const box = (await node.boundingBox())!;
   const center = { x: box.x + box.width / 2, y: box.y + box.height / 2 };
-  const actions = page.getByRole('dialog', { name: 'Selection actions' });
+  const actions = page.getByRole('menu', {
+    name: /^(画布编辑|Canvas editing)$/,
+  });
   await page.mouse.move(center.x, center.y);
   await page.mouse.down({ button: 'right' });
   await node.dispatchEvent('contextmenu', {
@@ -1896,6 +2055,7 @@ test('drawing and export shortcuts work on the canvas and preserve typing in ins
   page,
 }) => {
   await page.goto('/');
+  await openActiveFile(page);
   await canvas(page).focus();
   await page.keyboard.press('o');
   await page.getByRole('button', { name: '形状', exact: true }).click();
@@ -2004,14 +2164,9 @@ test('all nine mind layouts keep root origins and render sibling directions thro
     await expect.poll(async () => (await saved())?.data.layout).toBe(value);
     await page.getByRole('button', { name: '适配画布', exact: true }).click();
     await expect(cells(page, 'mind-summary')).toHaveCount(1);
-    const root = (await center
-      .locator(':scope > g > path')
-      .first()
-      .boundingBox())!;
+    const root = (await center.locator('path').first().boundingBox())!;
     const topics = await Promise.all(
-      [a, b, c].map((topic) =>
-        topic.locator(':scope > g > path').first().boundingBox(),
-      ),
+      [a, b, c].map((topic) => topic.locator('path').first().boundingBox()),
     );
     expect(topics.every(Boolean)).toBe(true);
     expect(
@@ -2172,6 +2327,7 @@ test('horizontal vector lines retain their stroke and visible shadow in PNG expo
   page,
 }) => {
   await page.goto('/');
+  await openActiveFile(page);
   await selectDrawingTool(page, '折线');
   const box = (await canvas(page).boundingBox())!;
   await page.mouse.click(box.x + 220, box.y + 240);
@@ -2203,6 +2359,7 @@ test('batch text formatting preserves labels through history, duplication, clear
   page,
 }) => {
   await page.goto('/');
+  await openActiveFile(page);
   await createAt(page, '形状', 200, 160);
   await cells(page, 'geometry').first().click();
   await editBody(page, 'Alpha');
@@ -2247,7 +2404,7 @@ test('batch text formatting preserves labels through history, duplication, clear
         data?.records[data.manifest.rootId]?.cells ?? {},
       ).filter(
         (cell: any) =>
-          cell.kind === 'geometry' && cell.content.text?.align === 'left',
+          cell.kind === 'geometry' && cell.content?.text?.align === 'left',
       ).length;
     })
     .toBe(4);
@@ -2271,12 +2428,14 @@ for (const [tool, anchor, member, add] of [
     page,
   }) => {
     await page.goto('/');
+    await openActiveFile(page);
     await createAt(page, '形状', 60, 60);
     await createAt(page, tool);
     await cells(page, 'frame').locator('[data-frame-title-id]').first().click();
     await page.getByTestId('frame-open').locator('visible=true').click();
     await page.getByRole('button', { name: add, exact: true }).click();
     await expect(cells(page, member)).toHaveCount(1);
+    await expect(page.locator('.ProseMirror:visible')).toBeFocused();
     await selectAppAction(page, '清空');
     await page
       .getByRole('button', { name: 'Confirm clear frame', exact: true })
@@ -2302,6 +2461,12 @@ for (const [tool, anchor, member, add] of [
         ];
       })
       .toEqual([1, 0, 1]);
+    const boardId = await page
+      .getByRole('tab', { selected: true })
+      .getAttribute('data-tab-id');
+    await expect
+      .poll(async () => (await persistedNavigation(page))?.activeTabId)
+      .toBe(boardId);
     await page.reload();
     await expect(cells(page, anchor)).toHaveCount(1);
     await expect(cells(page, member)).toHaveCount(0);
@@ -2313,6 +2478,7 @@ test('moving a shape into a native frame frees boundary arrows and persists owne
   page,
 }) => {
   await page.goto('/');
+  await openActiveFile(page);
   await createAt(page, '形状', 140, 140);
   await createAt(page, '形状', 440, 280);
   await selectDrawingTool(page, '箭头');
@@ -2408,6 +2574,7 @@ test('workflow ports reject DAG cycles and cross-graph links, while process cycl
   page,
 }) => {
   await page.goto('/');
+  await openActiveFile(page);
   await createAt(page, '流程图');
   await cells(page, 'frame').locator('[data-frame-title-id]').first().click();
   await page.getByTestId('frame-open').locator('visible=true').click();
@@ -2418,23 +2585,23 @@ test('workflow ports reject DAG cycles and cross-graph links, while process cycl
     decision = cells(page, 'workflow-decision');
   const taskId = (await task.getAttribute('data-cell-id'))!;
   await task.hover();
-  await task.locator('[data-port-id="right"]').click();
+  await (await nodePort(task, 'right')).click();
   await decision.hover();
-  await decision.locator('[data-port-id="left"]').click();
+  await (await nodePort(decision, 'left')).click();
   await expect(cells(page, 'workflow-edge')).toHaveCount(1);
   await decision.hover();
-  await decision.locator('[data-port-id="bottom"]').click();
+  await (await nodePort(decision, 'bottom')).click();
   await task.hover();
-  await task.locator('[data-port-id="bottom"]').click();
+  await (await nodePort(task, 'bottom')).click();
   await expect(page.getByRole('alert').first()).toContainText('Cycle');
   await expect(cells(page, 'workflow-edge')).toHaveCount(1);
   const start = cells(page, 'workflow-start').first();
   await start.click();
   await page.getByTestId('workflow-graph-mode').selectOption('process');
   await decision.hover();
-  await decision.locator('[data-port-id="bottom"]').click();
+  await (await nodePort(decision, 'bottom')).click();
   await task.hover();
-  await task.locator('[data-port-id="bottom"]').click();
+  await (await nodePort(task, 'bottom')).click();
   await expect(cells(page, 'workflow-edge')).toHaveCount(2);
   await expect(page.getByTestId('workflow-auto-layout')).toBeDisabled();
   await start.click();
@@ -2446,16 +2613,16 @@ test('workflow ports reject DAG cycles and cross-graph links, while process cycl
   await expect(start).toHaveCount(1);
   await page.getByRole('button', { name: '添加流程图', exact: true }).click();
   const other = cells(page, 'workflow-start').nth(1);
-  await other.click();
+  await expect(await nodePort(other, 'top')).toHaveAttribute(
+    'data-port-state',
+    'selected',
+  );
   await page.getByTestId('palette-task').click();
   await page.getByRole('button', { name: '适配画布', exact: true }).click();
   await task.hover();
-  await task.locator('[data-port-id="top"]').click();
+  await (await nodePort(task, 'top')).click();
   await cells(page, 'workflow-task').nth(1).hover();
-  await cells(page, 'workflow-task')
-    .nth(1)
-    .locator('[data-port-id="top"]')
-    .click();
+  await (await nodePort(cells(page, 'workflow-task').nth(1), 'top')).click();
   await expect(page.getByRole('alert').first()).toContainText(
     'Workflow edges must stay in one graph',
   );
@@ -2480,7 +2647,11 @@ test('architecture dependencies route across layers, reject self-links and retai
   page,
 }) => {
   await page.goto('/');
+  await openActiveFile(page);
   await createAt(page, '架构图');
+  const shellId = await cells(page, 'frame')
+    .first()
+    .getAttribute('data-cell-id');
   await cells(page, 'frame').locator('[data-frame-title-id]').first().click();
   await page.getByTestId('frame-open').locator('visible=true').click();
   await page.getByRole('button', { name: '模块', exact: true }).click();
@@ -2489,7 +2660,10 @@ test('architecture dependencies route across layers, reject self-links and retai
   await page.getByRole('button', { name: '模块', exact: true }).click();
   const second = cells(page, 'architecture-module').nth(1);
   const secondId = (await second.getAttribute('data-cell-id'))!;
-  await second.click();
+  {
+    const point = await cellBodyPoint(second);
+    await page.mouse.click(point.x, point.y);
+  }
   const layers = await page
     .getByLabel('Architecture layer', { exact: true })
     .locator('option')
@@ -2500,24 +2674,47 @@ test('architecture dependencies route across layers, reject self-links and retai
     .getByLabel('Architecture layer', { exact: true })
     .selectOption(layers[1]);
   await page.getByRole('button', { name: '适配画布', exact: true }).click();
-  await first.hover();
-  await first.locator('[data-port-id="bottom"]').click();
-  await second.hover();
-  await second.locator('[data-port-id="top"]').click();
+  {
+    const point = await cellBodyPoint(first);
+    await page.mouse.move(point.x, point.y);
+  }
+  await (await nodePort(first, 'bottom')).click();
+  {
+    const point = await cellBodyPoint(second);
+    await page.mouse.move(point.x, point.y);
+  }
+  await (await nodePort(second, 'top')).click();
   const edge = cells(page, 'architecture-edge');
   await expect(edge).toHaveCount(1);
   await expect(edge.locator('[data-edge-hit]')).toHaveAttribute('d', /L/);
-  await first.hover();
-  await first.locator('[data-port-id="top"]').click();
-  await first.hover();
-  await first.locator('[data-port-id="left"]').click();
+  {
+    const point = await cellBodyPoint(first);
+    await page.mouse.move(point.x, point.y);
+  }
+  await (await nodePort(first, 'top')).click();
+  {
+    const point = await cellBodyPoint(first);
+    await page.mouse.move(point.x, point.y);
+  }
+  await (await nodePort(first, 'left')).click();
   await expect(page.getByRole('alert').first()).toContainText(
     'Invalid architecture dependency',
   );
   await expect(edge).toHaveCount(1);
-  await second.click();
+  {
+    const point = await cellBodyPoint(second);
+    await page.mouse.click(point.x, point.y);
+  }
   await page.getByRole('spinbutton', { name: 'x', exact: true }).fill('340');
   await page.getByRole('spinbutton', { name: 'x', exact: true }).press('Enter');
+  await expect
+    .poll(async () => {
+      const data = await persisted(page);
+      return Object.values(data?.records ?? {})
+        .map((record: any) => record.cells[secondId])
+        .find(Boolean)?.geometry?.x;
+    })
+    .toBe(340);
   await expect
     .poll(async () => {
       const data = await persisted(page);
@@ -2526,46 +2723,59 @@ test('architecture dependencies route across layers, reject self-links and retai
         .find(Boolean)?.data?.placed;
     })
     .toBe(true);
+  await expect
+    .poll(async () => {
+      const data = await persisted(page);
+      return Object.values(data?.records ?? {})
+        .flatMap((record: any) => Object.values(record.cells))
+        .filter((cell: any) => cell.kind === 'architecture-edge').length;
+    })
+    .toBe(1);
   await page.reload();
   await activateBoardTab(page);
-  await cells(page, 'frame').locator('[data-frame-title-id]').first().click();
+  await canvas(page)
+    .locator(`[data-cell-id="${shellId}"] [data-frame-title-id]`)
+    .first()
+    .click();
   await page.getByTestId('frame-open').locator('visible=true').click();
   await expect(edge).toHaveCount(1);
-  await second.click();
+  {
+    const point = await cellBodyPoint(second);
+    await page.mouse.click(point.x, point.y);
+  }
   await expect(
     page.getByRole('spinbutton', { name: 'x', exact: true }),
   ).toHaveValue('340');
 });
 
-test('legacy domain workspace migrates shared copies and detached documents through real startup without changing its backup', async ({
+test('legacy domain workspace migrates shared copies and detached documents as native service fixtures without changing the backup', async ({
   page,
 }) => {
   const fixture = JSON.parse(
-    readFileSync('../fixtures/legacy/domain-workspace.json', 'utf8'),
+    readFileSync(
+      path.resolve(__dirname, '../../fixtures/legacy/domain-workspace.json'),
+      'utf8',
+    ),
   );
   await page.goto('/');
+  await openActiveFile(page);
   await expect(canvas(page)).toBeVisible();
   await expect
     .poll(async () => (await persisted(page))?.manifest.format)
     .toBe('verd-workspace');
   await page.evaluate(async (source) => {
-    const db = await new Promise<IDBDatabase>((resolve, reject) => {
-      const request = indexedDB.open('VerdBoard');
-      request.onsuccess = () => resolve(request.result);
-      request.onerror = () => reject(request.error);
-    });
-    await new Promise<void>((resolve, reject) => {
-      const transaction = db.transaction('verdboard_store', 'readwrite'),
-        store = transaction.objectStore('verdboard_store');
-      store.clear();
-      Object.entries(source).forEach(([key, value]) => store.put(value, key));
-      transaction.oncomplete = () => resolve();
-      transaction.onerror = () => reject(transaction.error);
-    });
-    db.close();
+    const records: [string, unknown][] = [];
+    const store = {
+      put(value: unknown, key: string) {
+        records.push([key, value]);
+      },
+    };
+    Object.entries(source).forEach(([key, value]) => store.put(value, key));
+    await (window as any).__verdSeedLegacy(records);
   }, fixture);
   await clearWorkspaceStorage(page);
   await page.reload();
+  await openActiveFile(page);
   await expect(cells(page, 'mind-root')).toHaveCount(2);
   await expect(cells(page, 'architecture-module')).toHaveCount(2);
   // The import-files commit lands after the migrated cells render.
@@ -2610,20 +2820,8 @@ test('legacy domain workspace migrates shared copies and detached documents thro
     .click();
   await expect(cells(page, 'workflow-start')).toHaveCount(2);
   await expect(cells(page, 'workflow-edge')).toHaveCount(3);
-  const backup = await page.evaluate(async () => {
-    const db = await new Promise<IDBDatabase>((resolve) => {
-      const request = indexedDB.open('VerdBoard');
-      request.onsuccess = () => resolve(request.result);
-    });
-    const result = await new Promise((resolve) => {
-      const request = db
-        .transaction('verdboard_store')
-        .objectStore('verdboard_store')
-        .get('legacy_workspace_backup');
-      request.onsuccess = () => resolve(request.result);
-    });
-    db.close();
-    return result;
-  });
+  const backup = await page.evaluate(() =>
+    (window as any).__verdLegacyBackup(),
+  );
   expect(backup).toEqual(fixture);
 });

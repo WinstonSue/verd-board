@@ -40,6 +40,16 @@ description: VerdBoard 本仓开发口径：包落点、workspace 依赖、命�
 - 根 README、中文原生导航与英文 Documentation 同步重大定位与入口；不再建按月变更目录，不恢复另一份正文源。
 - AI 样例位于 `tests/fixtures/ai-canvas/`，契约测试直接读原生规范 codeBlock；修改时同步正文和输入夹具。
 
+## 开发与发布强制门禁
+
+- 每项需求完成前全量执行 ESLint 与 Prettier：`pnpm lint`、`pnpm format:check`；必须实际运行涉及功能的单测和 E2E，缺少覆盖时补充。公共能力覆盖 Web/Desktop，宿主专属能力覆盖对应宿主，CLI、资源和升级变更覆盖相应专项。
+- 使用 `pnpm check:dev --unit <仓库相对测试文件> --web-e2e <测试文件> --desktop-e2e <测试文件>`；参数可重复，选择范围时必须同时有单测与 E2E。未指定范围则执行全量。相关性由开发者/Agent 对照需求审阅，不以测试选择器冒充自动影响分析。
+- PR CI 使用 `pnpm check:ci` 全量运行单测、脚本测试、四套 Web/Desktop 开发态与生产态 E2E，及现有类型、文档、插件、消费者和资源验收。零重试，不通过新增 skip、放宽断言或截断失败掩盖问题；Desktop Agent 接入必须使用本轮资源。
+- 所有产品和独立 SDK/npm 包发布均执行 `pnpm check:release`，并分别核对 Agent 工程、用户文档编写推荐库、系统介绍是否同步最新业务。前两项允许审阅后无变更并说明理由；系统介绍每次版本发布必须实际更新原生正文，版本号、日期、排版和缓存变化不计入。
+- 版本化核对记录位于 `.release/`，通过 `pnpm release:review` 生成待填写记录，绑定目标版本清单、源码和内容摘要；业务变化后重新审阅。首次基线只显式创建一次，不追补历史、不自动重置。`pnpm release` 升版前核对，`pnpm pub` 与 `pnpm package:desktop` 在发布结果产生前执行完整门禁；日常开发仍不打包或替换正式应用。
+- 推荐库 `packages/product/agent-patterns/workspace/` 面向用户，只提供建议和示例，不产生 Agent 默认提示或约束。真正 Agent 规范、默认 Skills 和执行模板位于同包 `agent/`，使用独立目录索引和加载入口；两边允许知识重合，但分别维护审阅。工作区 AGENTS 接入及用户显式配置的 `.agents/skills` 继续生效。
+- 每次发布同步系统介绍的相关正文、入口、能力和限制，并维护原生 `text.content/plainText` 一致。完整资源升级继续校验摘要并要求未提交计划重新生成；推荐正文不作为默认 Agent 指令来源。
+
 ## 数据、画布与保存
 
 - 修改元素经 CellTransaction / CellRuntime 和 FrameCanvasController；主题位于 `FrameCell.view`，相机只在内存。

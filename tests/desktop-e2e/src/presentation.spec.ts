@@ -444,10 +444,20 @@ test('desktop document enters presentation directly and preserves the draft on e
       .locator('.file-tree-name')
       .getByText('Presentation note', { exact: true })
       .click();
+    await expect(page.getByRole('tab', { selected: true })).toHaveAttribute(
+      'data-tab-id',
+      'presentation-note',
+    );
+    await expect(page.locator('.workspace-content')).toHaveAttribute(
+      'aria-busy',
+      'false',
+    );
     const editor = page.locator('.workspace-pane.is-active .ProseMirror');
     await editor.click();
+    await expect(editor).toBeFocused();
     await page.keyboard.press('ControlOrMeta+End');
     await page.keyboard.type(' preserved draft');
+    await expect(editor).toContainText('preserved draft');
     await page
       .locator('.workspace-pane.is-active')
       .getByRole('toolbar', { name: 'document', exact: true })

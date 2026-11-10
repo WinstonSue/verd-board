@@ -8,7 +8,7 @@ import {
   validateCellStore,
   type Cell,
   type EdgeCell,
-  type EdgeTerminal,
+  type Terminal,
   type FrameSnapshot,
   type NodeAppearance,
   type NodeCell,
@@ -106,7 +106,7 @@ export const graphToFrameSnapshot = (
       key,
       groupId,
     );
-  const terminal = (point: Point, origin?: string): EdgeTerminal => {
+  const terminal = (point: Point, origin?: string): Terminal => {
     const id = origin && origins.get(origin),
       cell = id ? cells[id] : undefined;
     if (!isNodeCell(cell)) return { point };

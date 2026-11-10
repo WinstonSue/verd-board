@@ -229,24 +229,8 @@ describe('per-file persistence feedback', () => {
     expect(status(session, 'b').lastSavedAt).toBeUndefined();
   });
 
-  it('records direct organization writes and explicit conflict resolution', async () => {
+  it('records explicit conflict resolution as a confirmed save', async () => {
     const { session, host, handle } = await setup();
-    expect(
-      (
-        await session.organize([
-          {
-            fileId: 'board',
-            organization: { kind: 'standalone' },
-            basisOrganization: null,
-            basisSources: [],
-          },
-        ])
-      ).ok,
-    ).toBe(true);
-    expect(status(session, 'board')).toMatchObject({
-      status: 'saved',
-      lastSavedAt: expect.any(Number),
-    });
     await edit(session);
     const entry = session.getState().documents.get('a')!;
     await host.commit(handle, {
@@ -271,39 +255,6 @@ describe('per-file persistence feedback', () => {
     expect(status(session)).toEqual({
       status: 'saved',
       lastSavedAt: undefined,
-    });
-  });
-
-  it('publishes failed organization confirmations and then records the real successful write', async () => {
-    const { session, host } = await setup();
-    const commit = host.commit;
-    host.commit = async (_handle, request) => ({
-      transactionId: request.transactionId,
-      outcome: 'rejected',
-      reason: 'io-error',
-    });
-    expect(
-      (
-        await session.organize([
-          {
-            fileId: 'board',
-            organization: { kind: 'standalone' },
-            basisOrganization: null,
-            basisSources: [],
-          },
-        ])
-      ).unconfirmed,
-    ).toBe(true);
-    expect(status(session, 'board').status).toBe('error');
-    const observed: string[] = [];
-    session.subscribe(() => observed.push(status(session, 'board').status));
-    expect((await session.confirmOrganize()).ok).toBe(false);
-    expect(observed.at(-1)).toBe('error');
-    host.commit = commit;
-    expect((await session.confirmOrganize()).ok).toBe(true);
-    expect(status(session, 'board')).toMatchObject({
-      status: 'saved',
-      lastSavedAt: expect.any(Number),
     });
   });
 

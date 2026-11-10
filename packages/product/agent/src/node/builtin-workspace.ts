@@ -12,6 +12,9 @@ export const isBuiltinAsset = (relative: string) =>
   relative === 'AGENTS.md' ||
   relative === '.verdscrolls/config.json' ||
   relative === '.verdscrolls/.gitignore' ||
+  /^\.verdscrolls\/resources\/assets\/[a-f0-9]{64}\.[a-z0-9]+$/.test(
+    relative,
+  ) ||
   (!relative.split('/').some((p) => p.startsWith('.')) &&
     /\.verd(?:-doc)?\.json$/.test(relative));
 
@@ -30,7 +33,9 @@ export async function readBuiltinRelease(
       if (
         e.isDirectory() &&
         (!relative.split('/').some((part) => part.startsWith('.')) ||
-          relative === '.verdscrolls')
+          relative === '.verdscrolls' ||
+          relative === '.verdscrolls/resources' ||
+          relative === '.verdscrolls/resources/assets')
       )
         await walk(relative);
       else if (isBuiltinAsset(relative)) {

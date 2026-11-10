@@ -73,16 +73,34 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { spawn, spawnSync } from 'node:child_process';
 import { readNativeSnapshot, prepareAuthoringBatch, applyPreparedBatch, validateNativeWorkspace } from '@sue/verd-board-agent';
-import { patterns, patternWorkspaceUrl } from '@sue/verd-board-agent-patterns';
+import { patterns, patternWorkspaceUrl } from '@sue/verd-board-agent-patterns/agent';
+import { recommendationWorkspaceUrl } from '@sue/verd-board-agent-patterns/recommendations';
 import { fileURLToPath } from 'node:url';
 const base = process.cwd(), root = path.join(base, 'content-'+Date.now());
 const cli = path.join(base, 'node_modules/.bin/verd');
 const run = args => { const r=spawnSync(cli,args,{encoding:'utf8'}); assert.equal(r.status,0,r.stderr); return JSON.parse(r.stdout); };
 await fs.mkdir(root,{recursive:true});
+const doctorBefore = await fs.readdir(root);
+const unreadyDoctor = spawnSync(cli,['doctor','--workspace',root,'--json'],{encoding:'utf8'});
+assert.equal(unreadyDoctor.status,1,unreadyDoctor.stderr);
+assert.equal(JSON.parse(unreadyDoctor.stdout).ready,false);
+assert.equal(unreadyDoctor.stderr,'');
+assert.deepEqual(await fs.readdir(root),doctorBefore);
+
 assert.ok(run(['describe','--json']).document.nodes.frameReference);
 assert.equal(run(['patterns','--json']).length,13);
 assert.ok((await fs.readFile(run(['skill']).path,'utf8')).includes('verd plan'));
-assert.equal(validateNativeWorkspace((await readNativeSnapshot(fileURLToPath(patternWorkspaceUrl))).entries).length,0);
+const bundledEntries=(await readNativeSnapshot(fileURLToPath(patternWorkspaceUrl))).entries; assert.ok(bundledEntries.length>20);
+const bundledDiagnostics=validateNativeWorkspace(bundledEntries);
+assert.ok(bundledDiagnostics.every(d=>d.code==='workflow.port-direction' && d.severity==='warning'));
+const assertValid = diagnostics => { assert.equal(diagnostics.length,bundledDiagnostics.length); assert.ok(diagnostics.every(d=>d.code==='workflow.port-direction' && d.severity==='warning')); };
+assert.ok(run(['rules','--json']).runtime['workflow.port-direction']);
+const reversed=JSON.parse(await fs.readFile(new URL('workflow-process/模板.verd.json',patternWorkspaceUrl),'utf8'));
+const reversedEdge=Object.values(reversed.cells).find(cell=>cell.cellType==='edge');
+reversed.cells[reversedEdge.source.cellId].ports.find(port=>port.id===reversedEdge.source.portId).side='top';
+const reversedDiagnostics=validateNativeWorkspace([{path:'reverse.verd.json',file:reversed}]);
+assert.ok(reversedDiagnostics.some(d=>d.code==='workflow.port-direction' && d.severity==='warning'));
+assert.ok(!validateNativeWorkspace([{path:'reverse.verd.json',file:reversed}],{profile:'runtime'}).some(d=>d.code==='workflow.port-direction'));
 const previews = [];
 if (process.argv.includes('--preview')) {
   for (const p of patterns) for (const [index, template] of p.templatePaths.entries()) {
@@ -95,12 +113,29 @@ if (process.argv.includes('--preview')) {
   }
   console.log(JSON.stringify({previews})); process.exit(0);
 }
+// Recommendation changes cannot become executable defaults or change instantiated content.
+const defaults=Object.fromEntries(['describe','rules','patterns','skill'].map(command=>[command,run([command,'--json'])]));
+const recommendationFile=new URL('rich-document/模板.verd-doc.json',recommendationWorkspaceUrl);
+const recommendationOriginal=await fs.readFile(recommendationFile,'utf8');
+const independenceSnapshot=await readNativeSnapshot(root);
+const instantiate=()=>prepareAuthoringBatch(independenceSnapshot,[{type:'pattern.instantiate',patternId:'rich-document'}]);
+const canonical=plan=>{
+ let json=JSON.stringify(plan.files.map(entry=>({...entry,path:entry.path.replace(/^[a-f0-9]{8}-/, '')})));
+ for(const [oldId,newId] of Object.entries(plan.idMap).sort((a,b)=>b[1].length-a[1].length))json=json.split(newId).join(oldId);
+ return JSON.parse(json);
+};
+const agentTemplateBefore=canonical(await instantiate());
+try {
+ await fs.writeFile(recommendationFile,JSON.stringify({format:'user-advice',text:'Changed recommendation only'}));
+ for(const command of Object.keys(defaults))assert.deepEqual(run([command,'--json']),defaults[command]);
+ assert.deepEqual(canonical(await instantiate()),agentTemplateBefore);
+} finally {await fs.writeFile(recommendationFile,recommendationOriginal);}
 const initial=await readNativeSnapshot(root);
 const plan=await prepareAuthoringBatch(initial,patterns.map(p=>({type:'pattern.instantiate',patternId:p.id,dir:p.id})));
-assert.deepEqual(plan.diagnostics,[]);
+assertValid(plan.diagnostics);
 assert.equal((await applyPreparedBatch(root,plan)).outcome,'applied');
 assert.equal((await applyPreparedBatch(root,plan)).transactionId,plan.transactionId);
-assert.deepEqual(validateNativeWorkspace((await readNativeSnapshot(root)).entries),[]);
+assertValid(validateNativeWorkspace((await readNativeSnapshot(root)).entries));
 const basis=await readNativeSnapshot(root);
 const make=title=>prepareAuthoringBatch(basis,[{type:'file.create',kind:'document',title,id:title,path:title+'.verd-doc.json'}]);
 const a=await make('A'),b=await make('B');
@@ -109,7 +144,7 @@ const invoke=plan=>new Promise(resolve=>{const p=spawn(cli,['apply','--workspace
 const results=await Promise.all([invoke(path.join(base,'a.json')),invoke(path.join(base,'b.json'))]);
 assert.deepEqual(results.map(r=>r.code).sort(),[0,3],JSON.stringify(results));
 const copied=path.join(base,'library-'+Date.now());run(['patterns','workspace','--dest',copied]);
-assert.deepEqual(validateNativeWorkspace((await readNativeSnapshot(copied)).entries),[]);
+assertValid(validateNativeWorkspace((await readNativeSnapshot(copied)).entries));
 assert.notEqual(spawnSync(cli,['patterns','workspace','--dest',copied]).status,0);
 // A live Desktop-style session retains its unsaved draft when the CLI publishes newer bytes.
 const snapshot=await readNativeSnapshot(root),doc=snapshot.entries.find(e=>e.file.format==='verd-document');
@@ -124,11 +159,11 @@ await applyPreparedBatch(root,changed);worker.stdin.write('flush');
 await new Promise((resolve,reject)=>worker.on('exit',code=>code===0?resolve():reject(new Error(stdout))));
 assert.ok(stdout.includes('"saved":false'));
 assert.ok((await readNativeSnapshot(root)).entries.find(e=>e.file.id===doc.file.id).file.text.plainText.startsWith('CLI current'));
-assert.deepEqual(validateNativeWorkspace((await readNativeSnapshot(root)).entries),[]);
+assertValid(validateNativeWorkspace((await readNativeSnapshot(root)).entries));
 const dead=spawn(process.execPath,['--input-type=module','-e',  "import {withWorkspaceLock} from '@sue/verd-board-agent/node';await withWorkspaceLock(process.env.TEST_ROOT,async()=>{console.log('locked');await new Promise(()=>setInterval(()=>{},1000));});"],{cwd:base,env:{...process.env,NODE_OPTIONS:'',TEST_ROOT:root},stdio:['ignore','pipe','pipe']});
 await new Promise((resolve,reject)=>{dead.stdout.once('data',resolve);dead.on('error',reject);dead.on('exit',code=>reject(new Error('Lock worker exited '+code)));});
 const died=new Promise(resolve=>dead.once('exit',resolve));dead.kill('SIGKILL');await died;
-assert.deepEqual(validateNativeWorkspace((await readNativeSnapshot(root)).entries),[]);
+assertValid(validateNativeWorkspace((await readNativeSnapshot(root)).entries));
 console.log(JSON.stringify({patterns:patterns.length,files:(await readNativeSnapshot(root)).entries.length,concurrent:results.map(r=>r.code),desktopConflict:true,deadLockRecovered:true}));
 `,
 );

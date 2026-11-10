@@ -65,8 +65,8 @@ export function BuiltinWorkspaceSettings({
         ? '系统介绍'
         : 'System introduction'
       : zh
-        ? 'Agent 范式库'
-        : 'Agent pattern library';
+        ? '文档编写推荐库'
+        : 'Document authoring recommendations';
   return (
     <SettingsSection data-testid="builtin-workspace-settings" title={name}>
       <SettingsKeyValue

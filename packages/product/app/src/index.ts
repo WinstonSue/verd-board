@@ -5,6 +5,7 @@ export * from './documents/workspace-references';
 export * from './session/target-navigation';
 export * from './frames/workspace-storage';
 export * from './host/workspace-host';
+export * from './host/workspace-git';
 export { createMemoryWorkspaceHost } from './host/memory-workspace-host';
 export { createWebWorkspaceHost } from './host/web-workspace-host';
 export { createDesktopWorkspaceHost } from './host/desktop-workspace-host';
@@ -19,3 +20,16 @@ export {
 export { WorkspaceApp, type WorkspaceAppProps } from './workspace-app';
 
 export * from './documents/knowledge-index';
+export * from './workspace-skills';
+
+export * from './documents/workspace-package';
+
+export * from './host/workspace-versions';
+export {
+  createGitVersionProvider,
+  withGitVersioning,
+} from './git/version-provider';
+
+export * from './host/service-workspace-host';
+export * from './host/browser-backup';
+export * from './host/service-protocol';

@@ -1,3 +1,4 @@
+import { isWorkspaceContentPath } from '../workspace-skills';
 import type { CellId, CellRegistry } from '@sue/board-core';
 import {
   documentFileDiagnostic,
@@ -17,6 +18,7 @@ import {
 } from '../frames/frame-files';
 import {
   isDocumentPath,
+  isProjectInternalPath,
   type FileVersion,
   type WorkspaceHandle,
   type WorkspaceHost,
@@ -77,6 +79,11 @@ export async function readWorkspaceFiles(
     value: unknown,
     diagnostic?: string,
   ) => {
+    if (
+      isProjectInternalPath(path) ||
+      !isWorkspaceContentPath(path, snapshot.entries)
+    )
+      return;
     const raw = value as { id?: unknown; frame?: { id?: unknown } } | null;
     const rawId = isDocumentPath(path) ? raw?.id : raw?.frame?.id;
     const id = typeof rawId === 'string' ? rawId : undefined;
@@ -114,8 +121,11 @@ export async function readWorkspaceFiles(
         );
         return;
       }
+      const file = value as WorkspaceFile;
+      const normalized = file.format === 'verd-frame' ? { ...file } : file;
+      if (normalized.format === 'verd-frame') delete normalized.organization;
       candidates.push({
-        file: value as WorkspaceFile,
+        file: normalized,
         path,
         version,
         dirty: false,

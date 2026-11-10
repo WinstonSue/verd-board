@@ -3,7 +3,7 @@ import {
   isEdgeCell,
   isNodeCell,
   polylinePath,
-  portAnchor,
+  resolvePort,
   terminalCurvePath,
   resolveThemeColor,
   resolveBoardTheme,
@@ -48,7 +48,7 @@ const branchDrawing = (
   const targetBounds = geometry.get(targetNode.id) ?? targetNode.geometry;
   const ports = mindBranchPorts(store, cell);
   const source = ports
-    ? portAnchor(sourceBounds, ports.source)
+    ? resolvePort(sourceBounds, ports.source)
     : {
         point: [
           sourceBounds.x + sourceBounds.width,
@@ -57,7 +57,7 @@ const branchDrawing = (
         side: 'right' as const,
       };
   const target = ports
-    ? portAnchor(targetBounds, ports.target)
+    ? resolvePort(targetBounds, ports.target)
     : {
         point: [targetBounds.x, targetBounds.y + targetBounds.height / 2] as [
           number,

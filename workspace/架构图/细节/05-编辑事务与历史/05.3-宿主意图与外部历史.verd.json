@@ -657,14 +657,12 @@
       "appearance": {
         "fill": "#0f766e",
         "strokeColor": "#0f766e",
-        "strokeWidth": 1.5
+        "strokeWidth": 1.5,
+        "textColor": "#ffffff"
       },
       "data": {
         "graphMode": "process",
-        "origin": [
-          0,
-          0
-        ],
+        "origin": [0, 0],
         "memberIds": [
           "demo:edit/local",
           "demo:edit/accept",
@@ -694,7 +692,9 @@
                       {
                         "type": "textStyle",
                         "attrs": {
-                          "fontSize": "20px"
+                          "fontSize": "20px",
+                          "color": "#ffffff",
+                          "colorMode": "custom"
                         }
                       }
                     ]
@@ -704,7 +704,8 @@
             ]
           }
         }
-      }
+      },
+      "name": "宿主意图与外部历史"
     },
     "project:detail/05/03/entry/11": {
       "id": "project:detail/05/03/entry/11",
@@ -769,7 +770,7 @@
                 "content": [
                   {
                     "type": "text",
-                    "text": "读图：宿主持有业务 value；编辑器等待回执后重新投影，不擅自持久化业务数据。"
+                    "text": "读图：宿主持有 value；编辑器收到回执后重新投影。"
                   }
                 ]
               },
@@ -869,13 +870,14 @@
               }
             ]
           },
-          "plainText": "相关文档：React接入\n读图：宿主持有业务 value；编辑器等待回执后重新投影，不擅自持久化业务数据。\n返回专题总览\n相关细节：Cell 事务与统一历史\n相关细节：Actions 与编辑提交屏障\n系统架构 · 模型和事务\n布局、路由与保存边界\n源码入口：packages/react/board/src/frame-canvas.tsx；packages/react/board/src/frame-canvas.tsx；packages/react/board/src/frame-editor.tsx。"
+          "plainText": "相关文档：React接入\n读图：宿主持有 value；编辑器收到回执后重新投影。\n返回专题总览\n相关细节：Cell 事务与统一历史\n相关细节：Actions 与编辑提交屏障\n系统架构 · 模型和事务\n布局、路由与保存边界\n源码入口：packages/react/board/src/frame-canvas.tsx；packages/react/board/src/frame-canvas.tsx；packages/react/board/src/frame-editor.tsx。"
         }
       },
       "appearance": {
         "fill": "none",
         "strokeColor": "none"
-      }
+      },
+      "name": "相关文档：React接入 读图：宿主持有业务 value；编辑器等待回执后重新投影，不擅自持久化业务数据。 返回专题总览 相关细节：Cell 事务与统一历史 相关细节：Actions 与编辑提交屏障 系统架构 · 模型和事务 布局、路由与保存边界 源码入口：packages/react/board/src/frame-canvas.tsx；packages/react/board/src/frame-canvas.tsx；packages/react/board/src/frame-editor.tsx。"
     }
   },
   "organization": {

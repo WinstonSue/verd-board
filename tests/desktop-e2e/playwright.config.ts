@@ -4,6 +4,8 @@ import path from 'node:path';
 process.env['VERDBOARD_E2E_MODE'] = 'dev';
 
 export default defineConfig({
+  retries: 0,
+  maxFailures: 0,
   testDir: './src',
   testIgnore: ['**/packaged.spec.ts', '**/demo.spec.ts'],
   grepInvert: /@prod/,

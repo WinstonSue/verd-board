@@ -108,12 +108,12 @@
         }
       ],
       "content": {
-        "label": "当前文件 / 引用源内容变化",
+        "label": "文件与引用源内容变化",
         "text": {
           "schemaVersion": 1,
           "id": "demo:save/start/text",
           "kind": "inline",
-          "plainText": "当前文件 / 引用源内容变化",
+          "plainText": "文件与引用源内容变化",
           "content": {
             "type": "doc",
             "content": [
@@ -122,7 +122,7 @@
                 "content": [
                   {
                     "type": "text",
-                    "text": "当前文件 / 引用源内容变化",
+                    "text": "文件与引用源内容变化",
                     "marks": [
                       {
                         "type": "bold"
@@ -130,7 +130,9 @@
                       {
                         "type": "textStyle",
                         "attrs": {
-                          "fontSize": "20px"
+                          "fontSize": "20px",
+                          "color": "#ffffff",
+                          "colorMode": "custom"
                         }
                       }
                     ]
@@ -144,14 +146,12 @@
       "appearance": {
         "fill": "#0f766e",
         "strokeColor": "#0f766e",
-        "strokeWidth": 1.5
+        "strokeWidth": 1.5,
+        "textColor": "#ffffff"
       },
       "data": {
         "graphMode": "process",
-        "origin": [
-          0,
-          0
-        ],
+        "origin": [0, 0],
         "memberIds": [
           "demo:save/start",
           "demo:save/queue",
@@ -169,7 +169,8 @@
           "demo:save/gc",
           "project:detail/06/01/unknown"
         ]
-      }
+      },
+      "name": "当前文件 / 引用源内容变化"
     },
     "demo:save/queue": {
       "id": "demo:save/queue",
@@ -398,12 +399,12 @@
         }
       ],
       "content": {
-        "label": "文件内容未变？",
+        "label": "内容未变？",
         "text": {
           "schemaVersion": 1,
           "id": "demo:save/same/text",
           "kind": "inline",
-          "plainText": "文件内容未变？",
+          "plainText": "内容未变？",
           "content": {
             "type": "doc",
             "content": [
@@ -412,7 +413,7 @@
                 "content": [
                   {
                     "type": "text",
-                    "text": "文件内容未变？",
+                    "text": "内容未变？",
                     "marks": [
                       {
                         "type": "textStyle",
@@ -433,7 +434,8 @@
         "fill": "#fffbeb",
         "strokeColor": "#d97706",
         "strokeWidth": 1.5
-      }
+      },
+      "name": "文件内容未变？"
     },
     "demo:save/reuse": {
       "id": "demo:save/reuse",
@@ -662,12 +664,12 @@
         }
       ],
       "content": {
-        "label": "预期版本仍匹配？",
+        "label": "版本仍匹配？",
         "text": {
           "schemaVersion": 1,
           "id": "demo:save/verify/text",
           "kind": "inline",
-          "plainText": "预期版本仍匹配？",
+          "plainText": "版本仍匹配？",
           "content": {
             "type": "doc",
             "content": [
@@ -676,7 +678,7 @@
                 "content": [
                   {
                     "type": "text",
-                    "text": "预期版本仍匹配？",
+                    "text": "版本仍匹配？",
                     "marks": [
                       {
                         "type": "textStyle",
@@ -697,7 +699,8 @@
         "fill": "#fffbeb",
         "strokeColor": "#d97706",
         "strokeWidth": 1.5
-      }
+      },
+      "name": "预期版本仍匹配？"
     },
     "demo:save/manifest": {
       "id": "demo:save/manifest",
@@ -926,12 +929,12 @@
         }
       ],
       "content": {
-        "label": "还有待保存内容？",
+        "label": "仍有待保存？",
         "text": {
           "schemaVersion": 1,
           "id": "demo:save/newer/text",
           "kind": "inline",
-          "plainText": "还有待保存内容？",
+          "plainText": "仍有待保存？",
           "content": {
             "type": "doc",
             "content": [
@@ -940,7 +943,7 @@
                 "content": [
                   {
                     "type": "text",
-                    "text": "还有待保存内容？",
+                    "text": "仍有待保存？",
                     "marks": [
                       {
                         "type": "textStyle",
@@ -961,7 +964,8 @@
         "fill": "#fffbeb",
         "strokeColor": "#d97706",
         "strokeWidth": 1.5
-      }
+      },
+      "name": "还有待保存内容？"
     },
     "demo:save/done": {
       "id": "demo:save/done",

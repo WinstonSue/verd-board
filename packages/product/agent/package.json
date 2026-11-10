@@ -1,6 +1,6 @@
 {
   "name": "@sue/verd-board-agent",
-  "version": "0.1.0",
+  "version": "2.1.0",
   "type": "module",
   "private": false,
   "main": "./dist/index.cjs",
@@ -8,8 +8,7 @@
   "types": "./src/index.ts",
   "files": [
     "dist",
-    "CHANGELOG.md",
-    "skills"
+    "CHANGELOG.md"
   ],
   "scripts": {
     "build": "vite build && vite build --config vite.preview.config.ts",

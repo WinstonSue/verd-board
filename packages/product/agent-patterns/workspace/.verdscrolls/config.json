@@ -2,12 +2,10 @@
   "version": 1,
   "value": {
     "identity": "builtin:agent-patterns",
-    "name": "Agent 范式库",
+    "name": "文档编写推荐库",
     "project": {
-      "description": "用于原生图文编写的规则说明、模板与可编辑示例。",
-      "entryDocumentIds": [
-        "pattern-library:index"
-      ]
+      "description": "面向用户的文档与图表编写建议、模板和示例；不作为 Agent 默认指令来源。",
+      "entryDocumentIds": ["pattern-library:index"]
     }
   }
 }

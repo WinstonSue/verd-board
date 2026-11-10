@@ -555,7 +555,7 @@ describe('arrangement and group interaction', () => {
     expect(runtime.store.cells.d).toEqual(value.store.cells.d);
     expect((runtime.store.cells.b as NodeCell).geometry).toMatchObject({
       x: 0,
-      y: 152,
+      y: 216,
     });
     const historySize = runtime.history.undos.length;
     await act(async () => {
@@ -646,7 +646,7 @@ describe('arrangement and group interaction', () => {
     },
   );
 
-  it('checks a conflicting layout at execution and never creates a transaction', async () => {
+  it('expands a conflicting layout at execution while keeping the outside node fixed', async () => {
     const value = freeFixture();
     value.store = applyCellOperations(
       value.store,
@@ -681,8 +681,10 @@ describe('arrangement and group interaction', () => {
     await act(async () => {
       await test.controller.current!.executeAction('canvas.layout.horizontal');
     });
-    expect(test.onChange).not.toHaveBeenCalled();
-    expect(test.controller.current!.runtime.store).toEqual(value.store);
+    expect(test.onChange).toHaveBeenCalledTimes(1);
+    expect(test.controller.current!.runtime.store.cells.c).toEqual(
+      value.store.cells.c,
+    );
   });
 
   it('fits the selected nodes in one transaction and preserves geometry on host rejection', async () => {
@@ -1586,9 +1588,12 @@ it('does no full optimization while dragging and runs it exactly once on release
   expect(api().runtime.history.undos).toHaveLength(0);
   await test.fire(test.svg, 'pointerup', 45, 120, { altKey: true });
   expect(optimize).toHaveBeenCalledTimes(1);
-  expect((api().runtime.store.cells.connected as EdgeCell).route).toMatchObject(
-    { mode: 'orthogonal', points: expect.any(Array) },
-  );
+  expect((api().runtime.store.cells.connected as EdgeCell).route).toEqual({
+    mode: 'auto',
+  });
+  expect(api().getGeometryDiagnostics()).toMatchObject([
+    { code: 'routing.terminal-blocked', cellIds: ['connected'] },
+  ]);
   expect(api().runtime.store.cells.b).toEqual(value.store.cells.b);
   expect(api().runtime.history.undos).toHaveLength(1);
   await act(async () => {
@@ -1601,7 +1606,7 @@ it('does no full optimization while dragging and runs it exactly once on release
 it('does not plan node layouts when querying action availability', async () => {
   const test = await mount({ value: freeFixture() });
   const planner = await import('../../../engine/core/src/cell/layout-plan');
-  const plan = vi.spyOn(planner, 'planCellLayout');
+  const plan = vi.spyOn(planner, 'planGeometryLayout');
   for (let i = 0; i < 10; i++) {
     expect(
       test.controller.current!.getActionState('canvas.layout.grid').enabled,

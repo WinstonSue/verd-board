@@ -1,9 +1,10 @@
 import { openDocumentInsert } from './app-actions';
-import { test, expect, type Page } from '@playwright/test';
+import { test, expect, type Page } from './service-fixture';
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { selectAppAction, setAppLanguage } from './app-actions';
 import { activeTabTitle } from './tab-actions';
+import { persistedNavigation } from './workspace-nav';
 
 const fixtures = path.resolve(__dirname, '../../fixtures/ai-canvas');
 const active = (page: Page) => page.locator('.workspace-pane.is-active');
@@ -83,6 +84,8 @@ async function openFrame(page: Page, name: string) {
     .locator('.file-tree-name')
     .filter({ hasText: new RegExp(`^${name}$`) })
     .click();
+  await expect(activeTabTitle(page)).toHaveText(name);
+  await page.locator('.workspace-content[aria-busy="false"]').waitFor();
   await expect(
     active(page).getByRole('application', { name: 'Frame canvas' }).first(),
   ).toBeVisible();
@@ -248,6 +251,9 @@ for (const scene of [
       'data-save-state',
       'saved',
     );
+    await expect
+      .poll(async () => (await persistedNavigation(page))?.activeTabId)
+      .toBe(frame.frame.id);
     await page.reload();
     await expect(
       active(page).locator('[data-cell-kind="document-reference"]').first(),

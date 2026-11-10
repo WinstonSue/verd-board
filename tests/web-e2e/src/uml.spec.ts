@@ -1,5 +1,5 @@
 import { selectHistoryAction } from './app-actions';
-import { test, expect, type Page } from '@playwright/test';
+import { test, expect, type Page } from './service-fixture';
 import { readFile } from 'node:fs/promises';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
@@ -36,7 +36,7 @@ test('UML class editing, six-way relationship settings, native save and Mermaid/
   await attributes.press('Tab');
   await expect(nodes(page, 'uml-class').first()).toContainText('+id: string');
   await createWithParameters(page, '添加关系');
-  await nodes(page, 'uml-relation').click();
+  await expect(page.getByLabel('关系类型')).toBeVisible();
   await page.getByLabel('关系类型').selectOption('realization');
   await page.getByLabel('来源多重性').fill('1');
   await page.getByLabel('来源多重性').press('Tab');
@@ -82,8 +82,10 @@ test('UML class editing, six-way relationship settings, native save and Mermaid/
   await classNodes
     .first()
     .click({ button: 'right', position: { x: 12, y: 12 } });
-  const selection = page.getByRole('dialog', { name: 'Selection actions' });
-  await selection.getByRole('button', { name: '分组', exact: true }).click();
+  const selection = page.getByRole('menu', {
+    name: /^(画布编辑|Canvas editing)$/,
+  });
+  await selection.getByRole('menuitem', { name: '组合', exact: true }).click();
   const groupCount = async () =>
     Object.values<any>((await saved())?.cells ?? {}).filter(
       (cell) => cell.cellType === 'group',

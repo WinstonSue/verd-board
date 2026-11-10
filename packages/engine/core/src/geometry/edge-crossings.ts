@@ -1,4 +1,5 @@
 import type { Point } from '../interfaces/point';
+import type { RectangleClient } from '../interfaces/rectangle-client';
 import { isEdgeCell, isFrameCell, type CellStore } from '../cell/types';
 import { edgePolyline, type EdgeRoutingContext } from './edge';
 
@@ -14,6 +15,42 @@ export {
 } from './edge-intersections';
 const delta = (a: Point, b: Point): Point => [a[0] - b[0], a[1] - b[1]];
 const cross = (a: Point, b: Point) => a[0] * b[1] - a[1] * b[0];
+
+/** Only nearby painted footprints can affect a small display corner or bridge. */
+export function edgeDecorationSafetyBounds(
+  points: readonly Point[],
+  routing: EdgeRoutingContext,
+  strokeWidth = 2,
+  radius = 6,
+): RectangleClient[] {
+  const gap = (routing.visualGap ?? 12) + strokeWidth / 2;
+  const ids = new Set<string>();
+  for (const p of points.slice(1, -1)) {
+    const distance = gap + radius;
+    for (const id of routing.queryObstacles?.({
+      x: p[0] - distance,
+      y: p[1] - distance,
+      width: distance * 2,
+      height: distance * 2,
+    }) ?? routing.obstacles.map((b) => b.id))
+      ids.add(id);
+  }
+  return [...ids].flatMap((id) => {
+    const b =
+      routing.obstacleById?.get(id) ??
+      routing.obstacles.find((b) => b.id === id);
+    return b
+      ? [
+          {
+            x: b.x - gap,
+            y: b.y - gap,
+            width: b.width + gap * 2,
+            height: b.height + gap * 2,
+          },
+        ]
+      : [];
+  });
+}
 
 const frameCrossings = new WeakMap<
   EdgeRoutingContext,
@@ -39,7 +76,17 @@ export function frameEdgeCrossingJumps(
           : [];
       })
     : [];
-  const signature = JSON.stringify([routes, routing.obstacles]);
+  const signature = JSON.stringify([
+    routes,
+    routing.obstacles,
+    routing.visualGap,
+    routing.policyVersion,
+    routes.map(
+      (route) =>
+        (store.cells[route.id] as import('../cell/types').EdgeCell).appearance
+          ?.strokeWidth,
+    ),
+  ]);
   const shared = routing.crossingsCache;
   if (shared?.signature === signature && shared.value) {
     frameCrossings.set(routing, shared.value);
@@ -49,9 +96,29 @@ export function frameEdgeCrossingJumps(
   // Do not let a bridge bulge into a nearby node in a cramped manual drawing.
   for (const [id, jumps] of result) {
     const safe = jumps.flatMap((jump) => {
+      const gap =
+        (routing.visualGap ?? 12) +
+        ((store.cells[id] as import('../cell/types').EdgeCell).appearance
+          ?.strokeWidth ?? 2) /
+          2;
+      const range = jump.radius + gap;
+      const nearby = routing.queryObstacles?.({
+        x: jump.point[0] - range,
+        y: jump.point[1] - range,
+        width: range * 2,
+        height: range * 2,
+      });
+      const boxes = nearby
+        ? nearby.flatMap((id) => {
+            const b =
+              routing.obstacleById?.get(id) ??
+              routing.obstacles.find((b) => b.id === id);
+            return b ? [b] : [];
+          })
+        : routing.obstacles;
       const radius = Math.min(
         jump.radius,
-        ...routing.obstacles.map(
+        ...boxes.map(
           (box) =>
             Math.hypot(
               Math.max(
@@ -64,7 +131,7 @@ export function frameEdgeCrossingJumps(
                 0,
                 jump.point[1] - box.y - box.height,
               ),
-            ) - 1,
+            ) - gap,
         ),
       );
       return radius >= 2 ? [{ point: jump.point, radius }] : [];
@@ -84,6 +151,7 @@ export function decoratedPolylinePath(
   points: readonly Point[],
   jumps: readonly EdgeJump[] = [],
   cornerRadius = 0,
+  safetyBounds: readonly RectangleClient[] = [],
 ): string {
   if (points.length < 2) return '';
   const towards = (a: Point, b: Point, amount: number): Point => {
@@ -102,6 +170,12 @@ export function decoratedPolylinePath(
           cornerRadius,
           Math.hypot(...delta(point, points[at - 1])) / 3,
           Math.hypot(...delta(point, points[at + 1])) / 3,
+          ...safetyBounds.map((box) =>
+            Math.hypot(
+              Math.max(box.x - point[0], 0, point[0] - box.x - box.width),
+              Math.max(box.y - point[1], 0, point[1] - box.y - box.height),
+            ),
+          ),
         ),
   );
   let path = `M${points[0].join(' ')}`;

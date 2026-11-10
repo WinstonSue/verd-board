@@ -85,8 +85,16 @@ if (process.isMainFrame)
         ipcRenderer.invoke('workspace-host:snapshot', handle),
       readFile: (handle: unknown, path: string) =>
         ipcRenderer.invoke('workspace-host:read-file', handle, path),
+      readResource: (handle: unknown, key: string) =>
+        ipcRenderer.invoke('workspace-host:read-resource', handle, key),
+      openResourceExternal: (handle: unknown, path: string) =>
+        ipcRenderer.invoke('workspace-host:open-resource', handle, path),
       commit: (handle: unknown, request: unknown) =>
         ipcRenderer.invoke('workspace-host:commit', handle, request),
+      versions: (handle: unknown, request: unknown) =>
+        ipcRenderer.invoke('workspace-host:versions', handle, request),
+      git: (handle: unknown, request: unknown) =>
+        ipcRenderer.invoke('workspace-host:git', handle, request),
       resolveConflict: (handle: unknown, request: unknown) =>
         ipcRenderer.invoke('workspace-host:resolve-conflict', handle, request),
       closeWorkspace: (handle: unknown) =>

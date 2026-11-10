@@ -1,3 +1,5 @@
+import { createHash } from 'node:crypto';
+import { cellBodyPoint } from '../../helpers/port-controls';
 import { test, expect } from '@playwright/test';
 import { electron, writeDesktopLauncher } from './desktop-launcher';
 import {
@@ -7,6 +9,7 @@ import {
   readFile,
   writeFile,
   readdir,
+  realpath,
   rename,
   rm,
 } from 'node:fs/promises';
@@ -53,7 +56,7 @@ for (const kind of ['project', 'agent-patterns'] as const) {
       );
       const entryId =
         kind === 'project' ? 'project-doc:README' : 'pattern-library:index';
-      const entryTitle = kind === 'project' ? '文档导航' : 'Agent 范式库';
+      const entryTitle = kind === 'project' ? '文档导航' : '文档编写推荐库';
       await expect(page.getByRole('tab', { selected: true })).toHaveAttribute(
         'data-tab-id',
         entryId,
@@ -93,10 +96,19 @@ for (const kind of ['project', 'agent-patterns'] as const) {
               '[data-cell-kind="document-frame"], [data-cell-kind="document-reference"]',
             ),
           ).toHaveCount(0);
-          await canvas()
-            .locator('[data-frame-header] [data-frame-title-id] > rect')
-            .first()
-            .click();
+          const header = canvas()
+            .locator('[data-frame-header] [data-frame-title-id]')
+            .first();
+          const box = (await header.boundingBox())!;
+          await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+          await page.keyboard.down('Control');
+          await page.mouse.wheel(0, -200);
+          await page.keyboard.up('Control');
+          await expect
+            .poll(async () => (await header.boundingBox())!.height)
+            .toBeGreaterThan(box.height * 2);
+          const point = await cellBodyPoint(header);
+          await page.mouse.click(point.x, point.y);
           await page
             .locator('.workspace-pane.is-active')
             .getByTestId('frame-open')
@@ -163,9 +175,31 @@ for (const kind of ['project', 'agent-patterns'] as const) {
       ).not.toBeChecked();
       await page.getByRole('checkbox', { name: '备份当前工作区' }).check();
       await desktop.evaluate(({ dialog }) => {
-        dialog.showOpenDialog = async () => ({ canceled: true, filePaths: [] });
+        const state = globalThis as typeof globalThis & {
+          verdBuiltinBackupCancelledCalls: number;
+        };
+        state.verdBuiltinBackupCancelledCalls = 0;
+        dialog.showOpenDialog = async () => {
+          state.verdBuiltinBackupCancelledCalls++;
+          return { canceled: true, filePaths: [] };
+        };
       });
       await page.getByRole('button', { name: '选择目录并备份更新' }).click();
+      await expect
+        .poll(() =>
+          desktop.evaluate(
+            () =>
+              (
+                globalThis as typeof globalThis & {
+                  verdBuiltinBackupCancelledCalls: number;
+                }
+              ).verdBuiltinBackupCancelledCalls,
+          ),
+        )
+        .toBe(1);
+      await expect(
+        page.getByRole('button', { name: '选择目录并备份更新' }),
+      ).toBeEnabled();
       await expect(
         page.getByTestId('workspace-action-confirmation'),
       ).toBeVisible();
@@ -214,13 +248,17 @@ for (const kind of ['project', 'agent-patterns'] as const) {
       const history: { id: string; name: string }[] = await page.evaluate(() =>
         (window as any).electronAPI.workspaceHost.listWorkspaceHistory(),
       );
-      const copy = history.find((entry) => entry.name.includes('-备份-'))!;
+      const backupId = createHash('sha256')
+        .update(await realpath(path.join(backups, entries[0])))
+        .digest('hex');
+      const copy = history.find((entry) => entry.id === backupId)!;
       expect(copy).toBeTruthy();
       await page.getByTestId('workspace-menu-trigger').click();
-      await page
+      const backupRow = page
         .getByTestId('workspace-switcher-dialog')
-        .getByRole('button', { name: copy.name, exact: true })
-        .click();
+        .getByTestId(`workspace-history-${copy.id}`);
+      await expect(backupRow).toContainText(copy.name);
+      await backupRow.click();
       await expect(
         page.getByTestId('workspace-switcher-dialog'),
       ).not.toBeVisible();

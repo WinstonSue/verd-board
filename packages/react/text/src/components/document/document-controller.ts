@@ -29,6 +29,7 @@ import type {
 import {
   activeEditorTextColor,
   documentFromEditor,
+  editorTextSelection,
 } from '../../utils/controller';
 import { findInDocument } from './document-search';
 import { documentSearchHighlightKey } from './document-search-highlight';
@@ -228,31 +229,7 @@ export function createDocumentController(
       return commands.commit();
     },
     getSelection() {
-      if (editor.isDestroyed) return null;
-      const view = editor.view;
-      const native = view.dom.ownerDocument.getSelection();
-      // A native key/pointer selection can precede ProseMirror's selection
-      // observer. Snapshot it without flushing or dispatching a transaction.
-      if (
-        view.hasFocus() &&
-        native?.anchorNode &&
-        native.focusNode &&
-        view.dom.contains(native.anchorNode) &&
-        view.dom.contains(native.focusNode)
-      ) {
-        try {
-          const anchor = view.posAtDOM(native.anchorNode, native.anchorOffset);
-          const head = view.posAtDOM(native.focusNode, native.focusOffset);
-          const from = Math.min(anchor, head),
-            to = Math.max(anchor, head);
-          if (from >= 0 && to <= editor.state.doc.content.size)
-            return { from, to, collapsed: from === to };
-        } catch {
-          // An atom or composing DOM range may have no current model mapping.
-        }
-      }
-      const { from, to } = editor.state.selection;
-      return { from, to, collapsed: from === to };
+      return editorTextSelection(editor);
     },
 
     toggleMark(mark) {

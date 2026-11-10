@@ -7,7 +7,7 @@ import {
   patterns,
   patternWorkspaceUrl,
   patternRules,
-} from '@sue/verd-board-agent-patterns';
+} from '@sue/verd-board-agent-patterns/agent';
 import {
   createDocumentFile,
   validateNativeWorkspace,
@@ -27,6 +27,19 @@ import {
   type BoardTextNode,
 } from '@sue/board-common';
 
+function expectDirectionWarnings(
+  diagnostics: ReturnType<typeof validateNativeWorkspace>,
+  count: number,
+) {
+  expect(diagnostics).toHaveLength(count);
+  expect(
+    diagnostics.every(
+      (issue) =>
+        issue.code === 'workflow.port-direction' &&
+        issue.severity === 'warning',
+    ),
+  ).toBe(true);
+}
 const temporary: string[] = [];
 async function workspace() {
   const root = await fs.mkdtemp(path.join(os.tmpdir(), 'verd-agent-test-'));
@@ -390,7 +403,7 @@ describe('agent patterns and real authoring contracts', () => {
     const snapshot = await readNativeSnapshot(
       fileURLToPath(patternWorkspaceUrl),
     );
-    expect(validateNativeWorkspace(snapshot.entries)).toEqual([]);
+    expectDirectionWarnings(validateNativeWorkspace(snapshot.entries), 12);
     expect(patterns).toHaveLength(13);
     expect(patterns.map((pattern) => pattern.id)).toEqual(
       expect.arrayContaining([
@@ -400,8 +413,9 @@ describe('agent patterns and real authoring contracts', () => {
         'requirements',
       ]),
     );
-    for (const rule of patternRules)
-      expect(Object.keys(WORKSPACE_RULES)).toContain(rule.id);
+    expect(patternRules.map((rule) => rule.id).sort()).toEqual(
+      Object.keys(WORKSPACE_RULES).sort(),
+    );
     for (const pattern of patterns) {
       expect(pattern.ruleIds.every((id) => id in WORKSPACE_RULES)).toBe(true);
       const plan = await prepareAuthoringBatch(
@@ -414,9 +428,15 @@ describe('agent patterns and real authoring contracts', () => {
           },
         ],
       );
-      expect(plan.diagnostics).toEqual([]);
+      const count =
+        pattern.id === 'workflow-process'
+          ? 3
+          : pattern.id === 'multi-system'
+            ? 9
+            : 0;
+      expectDirectionWarnings(plan.diagnostics, count);
       expect(plan.files.length).toBe(pattern.templatePaths.length);
-      expect(validateNativeWorkspace(plan.files)).toEqual([]);
+      expectDirectionWarnings(validateNativeWorkspace(plan.files), count);
       expect(
         plan.files.some((e) =>
           e.file.format === 'verd-document'
@@ -426,9 +446,9 @@ describe('agent patterns and real authoring contracts', () => {
       ).toBe(true);
     }
   });
-  it('makes the native diagram quality guide discoverable from the skill and workflow guides', async () => {
+  it('makes the native diagram quality guide discoverable from the skill and every pattern guide', async () => {
     const skill = await fs.readFile(
-      new URL('../skills/verd-authoring/SKILL.md', import.meta.url),
+      new URL('skills/verd-authoring/SKILL.md', patternWorkspaceUrl),
       'utf8',
     );
     const relative = skill.match(
@@ -446,7 +466,7 @@ describe('agent patterns and real authoring contracts', () => {
     const snapshot = await readNativeSnapshot(
       fileURLToPath(patternWorkspaceUrl),
     );
-    expect(validateNativeWorkspace(snapshot.entries)).toEqual([]);
+    expectDirectionWarnings(validateNativeWorkspace(snapshot.entries), 12);
     const linksToGuide = (node: BoardTextNode): boolean =>
       !!node.marks?.some(
         (mark) =>
@@ -454,11 +474,14 @@ describe('agent patterns and real authoring contracts', () => {
           mark.attrs?.['href'] ===
             `verd://file/${encodeURIComponent(guide.id)}`,
       ) || !!node.content?.some(linksToGuide);
-    for (const id of [
-      'pattern-library:index',
-      'pattern-guide:workflow-dag',
-      'pattern-guide:workflow-process',
-    ]) {
+    const guideIds = patterns.map((pattern) => {
+      const entry = snapshot.entries.find(
+        (entry) => entry.path === pattern.guidePath,
+      );
+      expect(entry?.file.format).toBe('verd-document');
+      return entry?.file.format === 'verd-document' ? entry.file.id : '';
+    });
+    for (const id of new Set(['pattern-library:index', ...guideIds])) {
       const source = snapshot.entries.find(
         (entry) =>
           entry.file.format === 'verd-document' && entry.file.id === id,
@@ -466,6 +489,48 @@ describe('agent patterns and real authoring contracts', () => {
       expect(source?.format).toBe('verd-document');
       if (source?.format === 'verd-document')
         expect(linksToGuide(source.text.content)).toBe(true);
+    }
+  });
+  it('connects shared document guidance to all four specialized document templates', async () => {
+    const snapshot = await readNativeSnapshot(
+      fileURLToPath(patternWorkspaceUrl),
+    );
+    const containsLink = (node: BoardTextNode, fileId: string): boolean =>
+      !!node.marks?.some(
+        (mark) =>
+          mark.type === 'link' &&
+          mark.attrs?.['href'] === `verd://file/${encodeURIComponent(fileId)}`,
+      ) || !!node.content?.some((child) => containsLink(child, fileId));
+    for (const id of [
+      'technical-proposal',
+      'adr',
+      'system-design',
+      'requirements',
+    ]) {
+      const pattern = patterns.find((pattern) => pattern.id === id)!;
+      expect(pattern.guidePath).toBe('rich-document/规则说明.verd-doc.json');
+      expect(pattern.ruleIds).toEqual(
+        expect.arrayContaining([
+          'document.identity',
+          'text.schema',
+          'text.cache',
+          'reference.invalid',
+          'link.file',
+          'link.heading',
+        ]),
+      );
+      expect(pattern.ruleIds).not.toContain('frame.invalid');
+      expect(pattern.ruleIds).not.toContain('organization.invalid');
+      for (const sourcePath of ['范式导航.verd-doc.json', pattern.guidePath]) {
+        const file = snapshot.entries.find(
+          (entry) => entry.path === sourcePath,
+        )?.file;
+        expect(file?.format).toBe('verd-document');
+        if (file?.format === 'verd-document')
+          expect(containsLink(file.text.content, pattern.rootFileId)).toBe(
+            true,
+          );
+      }
     }
   });
   it('seeds once, preserves edited copies and refuses explicit replacement', async () => {

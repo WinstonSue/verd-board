@@ -1,11 +1,11 @@
 {
   "name": "web",
-  "version": "0.0.1",
+  "version": "2.1.0",
   "private": true,
   "scripts": {
-    "dev": "vite --host=0.0.0.0",
+    "dev": "node ../../scripts/web.mjs dev",
     "build": "vite build",
-    "preview": "vite preview",
+    "preview": "node ../../scripts/web.mjs start",
     "lint": "eslint .",
     "test": "vitest run --passWithNoTests"
   },

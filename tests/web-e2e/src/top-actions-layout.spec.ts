@@ -1,9 +1,9 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from './service-fixture';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 
 // Exercise the actual product components without depending on workspace file navigation.
-for (const width of [800, 1440]) {
+for (const width of [540, 800, 1440]) {
   test(`canvas and document share action order, with inline canvas find (${width}px)`, async ({
     page,
   }, info) => {
@@ -21,34 +21,11 @@ for (const width of [800, 1440]) {
         cells: { [file.frame.id]: file.frame, ...file.cells },
       },
     };
-    await page.route('**/app/app.tsx*', async (route) => {
-      const response = await route.fetch();
-      const source = await response.text();
-      const reactUrl = source.match(
-        /from\s+["']([^"']*\/react\.js[^"']*)["']/,
-      )?.[1];
-      if (!reactUrl) throw new Error('Unable to resolve the app React runtime');
-      await route.fulfill({
-        response,
-        contentType: 'text/javascript',
-        body: `
-        import React from ${JSON.stringify(reactUrl)};
-        import { VerdFrame, DocumentPage, I18nProvider } from ${JSON.stringify('/@fs' + path.join(root, 'packages/product/ui/src/index.ts'))};
-        const { createElement, useState } = React;
-        export default function App() {
-          const [value, setValue] = useState(${JSON.stringify(initial)});
-          const [document, setDocument] = useState({ id: 'layout-doc', schemaVersion: 1, kind: 'block', plainText: 'Body', content: { type: 'doc', content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Body' }] }] } });
-          const [surface, setSurface] = useState('canvas');
-          window.__showLayoutDocument = () => setSurface('document');
-          return createElement(I18nProvider, { language: 'zh', persistLanguage: false }, createElement('div', { style: { height: '100vh', width: '100%' } },
-            surface === 'canvas' ? createElement(VerdFrame, { value, frameId: ${JSON.stringify(file.frame.id)}, showSaveStatus: false, onChange: change => setValue(change.snapshot), onOpenFrame: () => {} }) :
-            createElement(DocumentPage, { value: document, title: 'Layout document', showSaveStatus: false, onChange: change => setDocument(change.value), onPresent: async () => ({ status: 'completed' }) })
-          ));
-        }
-      `,
-      });
-    });
-    await page.goto('/');
+    await page.addInitScript((value) => {
+      (window as unknown as { __verdLayoutValue: unknown }).__verdLayoutValue =
+        value;
+    }, initial);
+    await page.goto('/?harness=top-actions');
     const canvas = page.locator('svg[data-surface="root"]');
     await expect(canvas).toBeVisible();
     const actions = page.getByRole('toolbar', { name: 'App actions' });
@@ -63,22 +40,40 @@ for (const width of [800, 1440]) {
       await actions.getByRole('button', { name: '查找', exact: true }).click();
       const search = page.getByRole('search', { name: '查找画布' });
       const input = search.getByRole('textbox', { name: '查找', exact: true });
+      const close = actions.getByRole('button', { name: '关闭查找' });
       await expect(input).toBeFocused();
+      await expect(actions.getByRole('search')).toHaveCount(1);
+      await expect(
+        actions.getByRole('button', { name: '查找', exact: true }),
+      ).toHaveCount(0);
+      await expect(close).toHaveCount(1);
+      await expect(close).toBeVisible();
       const [field, button, row, area] = await Promise.all([
         input.boundingBox(),
-        actions
-          .getByRole('button', { name: '查找', exact: true })
-          .boundingBox(),
+        close.boundingBox(),
         actions.boundingBox(),
         canvas.boundingBox(),
       ]);
-      expect(field!.x + field!.width).toBeLessThan(row!.x);
-      expect(field!.y + field!.height / 2).toBeCloseTo(
-        button!.y + button!.height / 2,
-        0,
+      expect(field!.x).toBeGreaterThanOrEqual(row!.x);
+      expect(field!.x + field!.width).toBeLessThanOrEqual(row!.x + row!.width);
+      expect(button!.x + button!.width).toBeLessThanOrEqual(
+        row!.x + row!.width,
       );
-      expect((await search.boundingBox())!.height).toBeCloseTo(row!.height, 0);
+      expect(button!.y + button!.height).toBeLessThanOrEqual(
+        row!.y + row!.height,
+      );
+      expect(
+        await search.evaluate(
+          (element) => getComputedStyle(element).borderTopWidth,
+        ),
+      ).toBe('0px');
       expect(field!.x).toBeGreaterThanOrEqual(area!.x);
+      expect(row!.x + row!.width).toBeLessThanOrEqual(area!.x + area!.width);
+      if (width >= 800)
+        expect(field!.y + field!.height / 2).toBeCloseTo(
+          button!.y + button!.height / 2,
+          0,
+        );
       if (collapsed) {
         const expand = await page
           .locator('.frame-inspector-reopen')
@@ -92,8 +87,13 @@ for (const width of [800, 1440]) {
           `canvas-find-${collapsed ? 'collapsed' : 'expanded'}.png`,
         ),
       });
-      await input.press('Escape');
+      if (collapsed) await input.press('Escape');
+      else await close.click();
       await expect(search).toHaveCount(0);
+      await expect(canvas).toBeFocused();
+      await expect(
+        actions.getByRole('button', { name: '查找', exact: true }),
+      ).toBeVisible();
     }
     await page.evaluate(() =>
       (
@@ -109,5 +109,24 @@ for (const width of [800, 1440]) {
     const menu = await documentActions.locator('button').last().boundingBox();
     expect(menu!.x + menu!.width).toBeCloseTo(width - 8, 0);
     await page.screenshot({ path: info.outputPath('document-actions.png') });
+    await documentActions
+      .getByRole('button', { name: '查找', exact: true })
+      .click();
+    await expect(
+      documentActions.getByRole('button', { name: '查找', exact: true }),
+    ).toHaveCount(0);
+    await expect(
+      documentActions.getByRole('button', { name: '关闭查找' }),
+    ).toHaveCount(1);
+    const documentInput = documentActions.getByRole('textbox', {
+      name: '查找',
+      exact: true,
+    });
+    await expect(documentInput).toBeFocused();
+    await documentInput.fill('Body');
+    await expect(documentActions.getByRole('search')).toContainText('1/1');
+    await documentInput.press('Escape');
+    await expect(documentActions.getByRole('search')).toHaveCount(0);
+    await expect(page.locator('.tiptap')).toBeFocused();
   });
 }

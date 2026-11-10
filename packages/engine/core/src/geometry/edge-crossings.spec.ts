@@ -116,4 +116,23 @@ describe('connector crossing display', () => {
       }),
     ).toEqual(edgeDisplayGeometry(points, true, 5, 5));
   });
+  it('reduces only a corner whose visible envelope reaches a safety obstacle', () => {
+    const points: [number, number][] = [
+      [0, 0],
+      [100, 0],
+      [100, 100],
+      [200, 100],
+    ];
+    const path = decoratedPolylinePath(points, [], 6, [
+      { x: 102, y: -10, width: 20, height: 20 },
+    ]);
+    expect(path).toContain('Q100 0 100 2');
+    expect(path).toContain('Q100 100 106 100');
+    expect(points).toEqual([
+      [0, 0],
+      [100, 0],
+      [100, 100],
+      [200, 100],
+    ]);
+  });
 });

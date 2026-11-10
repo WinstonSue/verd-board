@@ -2,8 +2,10 @@ import * as fs from 'node:fs/promises';
 import path from 'node:path';
 import os from 'node:os';
 import { createHash, randomUUID } from 'node:crypto';
+import { readWorkspaceSkillsUnlocked } from './workspace-skills';
 import {
   FOLDER_ID_FILE,
+  isProjectInternalPath,
   readFolderIdentity,
   type NativeWorkspaceEntry,
   type AuthoringDiagnostic,
@@ -181,7 +183,11 @@ export async function readNativeSnapshotUnlocked(
     for (const child of children.sort((a, b) =>
       a.name < b.name ? -1 : a.name > b.name ? 1 : 0,
     )) {
-      if (child.name.startsWith('.') || child.name === 'node_modules') continue;
+      if (
+        isProjectInternalPath(child.name) ||
+        ['.git', '.agents', 'node_modules'].includes(child.name)
+      )
+        continue;
       const relative = dir ? `${dir}/${child.name}` : child.name;
       if (child.isDirectory()) await walk(relative);
       else if (/\.verd(?:-doc)?\.json$/.test(child.name)) {
@@ -209,6 +215,9 @@ export async function readNativeSnapshotUnlocked(
     }
   }
   await walk('');
+  const skills = await readWorkspaceSkillsUnlocked(root);
+  manifest.push(...skills.manifest);
+  diagnostics.push(...skills.diagnostics);
   const journals = await fs
     .readdir(path.join(root, '.verdscrolls', 'transactions'))
     .catch((error) => {

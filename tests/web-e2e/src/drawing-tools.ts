@@ -1,4 +1,5 @@
 import { type Page } from '@playwright/test';
+import { openActiveFile } from './app-actions';
 
 const groupedTools: Record<string, string> = {
   箭头: '连线',
@@ -22,6 +23,8 @@ const groupedTools: Record<string, string> = {
 
 export async function selectDrawingTool(page: Page, label: string) {
   const toolbar = page.getByRole('toolbar', { name: 'Drawing tools' });
+  await page.locator('.workspace-content[aria-busy="false"]').waitFor();
+  if (!(await toolbar.isVisible())) await openActiveFile(page);
   const group = groupedTools[label];
   if (group) {
     const trigger = toolbar.getByRole('button', { name: group, exact: true });

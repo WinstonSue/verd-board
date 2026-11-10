@@ -61,6 +61,18 @@ export default defineConfig(({ command, mode }) => {
   });
   return {
     root: __dirname,
+    // The renderer is sandboxed: Git's browser dependencies must not be rewritten
+    // to Electron's dynamic require("buffer") shim by the renderer plugin.
+    resolve: {
+      alias: [
+        {
+          find: /^(?:node:)?buffer$/,
+          replacement: createRequire(
+            path.resolve(__dirname, '../../packages/product/app/package.json'),
+          ).resolve('buffer/'),
+        },
+      ],
+    },
     cacheDir: `../../node_modules/.vite/apps/desktop${automated ? '-e2e' : ''}`,
     test: {
       globals: true,
@@ -114,6 +126,9 @@ export default defineConfig(({ command, mode }) => {
                   outDir: electronOutput,
                   rollupOptions: {
                     external: ['electron'],
+                    // The distribution includes main.js and preload.js, so native
+                    // Git's lazy shared helpers must stay inside the main bundle.
+                    output: { inlineDynamicImports: true },
                   },
                 },
               },

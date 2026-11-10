@@ -58,7 +58,8 @@ export interface BoardTextChange {
 
 export interface BoardTextController {
   readonly document: BoardTextDocument;
-  focus(): void;
+  /** Defaults to the end; preserve restores the current editor selection. */
+  focus(position?: 'start' | 'end' | 'preserve'): void;
   blur(): void;
   selectAll(): void;
   selectRange(from: number, to: number): void;

@@ -10,6 +10,33 @@ import {
 } from '@sue/board-common';
 import { measureContainerSize } from './measure';
 
+/** Snapshot browser input before the editor's selection observer catches up. */
+export function editorTextSelection(editor: Editor): BoardTextSelection | null {
+  if (editor.isDestroyed) return null;
+  const view = editor.view;
+  const native = view.dom.ownerDocument.getSelection();
+  if (
+    view.hasFocus() &&
+    native?.anchorNode &&
+    native.focusNode &&
+    view.dom.contains(native.anchorNode) &&
+    view.dom.contains(native.focusNode)
+  ) {
+    try {
+      const anchor = view.posAtDOM(native.anchorNode, native.anchorOffset);
+      const head = view.posAtDOM(native.focusNode, native.focusOffset);
+      const from = Math.min(anchor, head);
+      const to = Math.max(anchor, head);
+      if (from >= 0 && to <= editor.state.doc.content.size)
+        return { from, to, collapsed: from === to };
+    } catch {
+      // An atom or composing DOM range may have no current model mapping.
+    }
+  }
+  const { from, to } = editor.state.selection;
+  return { from, to, collapsed: from === to };
+}
+
 /** Reads presentation only; the editor's stored literal and source remain untouched. */
 export function activeEditorTextColor(editor: Editor): string | undefined {
   if (editor.isDestroyed) return undefined;
@@ -64,9 +91,10 @@ export function createBoardTextController(
         ? document
         : documentFromEditor(editor, document);
     },
-    focus() {
+    focus(position = 'end') {
       if (!editor.isDestroyed) {
-        editor.commands.focus('end');
+        if (position === 'preserve') editor.view.focus();
+        else editor.commands.focus(position);
       }
     },
     blur() {
@@ -85,14 +113,15 @@ export function createBoardTextController(
       const docSize = editor.state.doc.content.size;
       const start = Math.max(0, Math.min(from, docSize));
       const end = Math.max(start, Math.min(to, docSize));
+      if (
+        editor.state.selection.from === start &&
+        editor.state.selection.to === end
+      )
+        return;
       editor.commands.setTextSelection({ from: start, to: end });
     },
     getSelection(): BoardTextSelection | null {
-      if (editor.isDestroyed) {
-        return null;
-      }
-      const { from, to } = editor.state.selection;
-      return { from, to, collapsed: from === to };
+      return editorTextSelection(editor);
     },
     getActiveMarks(): BoardTextMarks {
       return {

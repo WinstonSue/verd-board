@@ -1,4 +1,4 @@
-import { _electron, type ElectronApplication } from '@playwright/test';
+import { _electron, test, type ElectronApplication } from '@playwright/test';
 import { writeFile } from 'node:fs/promises';
 import path from 'node:path';
 
@@ -40,6 +40,7 @@ export async function writeDesktopLauncher(launcher: string, userData: string) {
 
 let active: ElectronApplication | undefined;
 let launching = false;
+let traceSequence = 0;
 
 /** Vite owns the compiler; Playwright owns only the Electron children it launches. */
 export const electron = {
@@ -60,9 +61,35 @@ export const electron = {
     if (desktopMode === 'dev') env.VITE_DEV_SERVER_URL = desktopDevUrl;
     else delete env.VITE_DEV_SERVER_URL;
     try {
-      const desktop = await _electron.launch({ ...options, env });
+      // Compare runtimes using the same isolated data and source-based tests.
+      const executablePath =
+        options.executablePath ??
+        process.env['VERDBOARD_E2E_ELECTRON_EXECUTABLE'];
+      const desktop = await _electron.launch({
+        ...options,
+        ...(executablePath ? { executablePath } : {}),
+        env,
+      });
       const child = desktop.process();
       active = desktop;
+      const info = test.info();
+      const traceName = `electron-${++traceSequence}`;
+      await desktop.context().tracing.start({
+        screenshots: true,
+        snapshots: true,
+        sources: true,
+      });
+      const errors: string[] = [];
+      const observe = (page: import('@playwright/test').Page) => {
+        page.on('pageerror', (error) =>
+          errors.push(error.stack ?? error.message),
+        );
+        page.on('console', (message) => {
+          if (message.type() === 'error') errors.push(message.text());
+        });
+      };
+      desktop.context().pages().forEach(observe);
+      desktop.context().on('page', observe);
       const killOwnedChild = () => {
         if (child.exitCode === null && child.signalCode === null) {
           child.kill('SIGKILL');
@@ -83,6 +110,27 @@ export const electron = {
           // Temporary test data only: a broken flush must not leave a GUI process.
           const deadline = setTimeout(killOwnedChild, 10_000);
           try {
+            const failed =
+              info.errors.length > 0 || info.status !== info.expectedStatus;
+            try {
+              await desktop
+                .context()
+                .tracing.stop(
+                  failed ? { path: info.outputPath(`${traceName}.zip`) } : {},
+                );
+              if (failed) {
+                await info.attach(traceName, {
+                  path: info.outputPath(`${traceName}.zip`),
+                  contentType: 'application/zip',
+                });
+                await info.attach(`${traceName}-console`, {
+                  body: errors.join('\n'),
+                  contentType: 'text/plain',
+                });
+              }
+            } catch {
+              // An already closed/crashed Electron context cannot export a trace.
+            }
             await close();
           } finally {
             clearTimeout(deadline);

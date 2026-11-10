@@ -2,7 +2,7 @@ import { stageBuiltinWorkspace } from './builtin-workspace';
 import * as fs from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { patternWorkspaceUrl } from '@sue/verd-board-agent-patterns';
+import { recommendationWorkspaceUrl } from '@sue/verd-board-agent-patterns/recommendations';
 import { validateNativeWorkspace } from '@sue/verd-board-app/headless';
 import {
   withWorkspaceLock,
@@ -37,7 +37,7 @@ export async function initializePatternWorkspace(
     const staging = await fs.mkdtemp(target + '.seed-');
     try {
       await stageBuiltinWorkspace(
-        options.source ?? fileURLToPath(patternWorkspaceUrl),
+        options.source ?? fileURLToPath(recommendationWorkspaceUrl),
         staging,
         'agent-patterns',
         options.appVersion,

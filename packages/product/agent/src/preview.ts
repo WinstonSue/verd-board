@@ -2,7 +2,10 @@ import * as fs from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createServer } from 'node:http';
-import type { WorkspaceFile } from '@sue/verd-board-app/headless';
+import {
+  resourceStoragePath,
+  type WorkspaceFile,
+} from '@sue/verd-board-app/headless';
 
 export async function previewAuthoring(
   files: WorkspaceFile[],
@@ -32,7 +35,12 @@ export async function previewAuthoring(
         );
       let source = assetCache.get(asset);
       if (!source) {
-        const resolved = await fs.realpath(path.join(workspaceRoot, asset));
+        const resolved = await fs
+          .realpath(path.join(workspaceRoot, resourceStoragePath(asset)))
+          .catch((error) => {
+            if (error.code !== 'ENOENT') throw error;
+            return fs.realpath(path.join(workspaceRoot, asset));
+          });
         if (!resolved.startsWith(workspaceRoot + path.sep))
           throw new Error('Asset escapes workspace');
         const bytes = await fs.readFile(resolved);

@@ -1,5 +1,6 @@
+import { openActiveFile } from './app-actions';
 import { selectSetting } from '../../helpers/settings-controls';
-import { test, expect } from '@playwright/test';
+import { test, expect } from './service-fixture';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 test('file menus dismiss across canvas capture, copy stable links and selection toolbar preserves local formatting', async ({
@@ -18,6 +19,7 @@ test('file menus dismiss across canvas capture, copy stable links and selection 
   );
   file.cells['shape-request'].content = { label: 'Selection sample' };
   await page.goto('/');
+  await openActiveFile(page);
   await page
     .locator('input[accept=".json,.verd.json,.verd-doc.json,.md,.markdown"]')
     .setInputFiles({
@@ -29,6 +31,7 @@ test('file menus dismiss across canvas capture, copy stable links and selection 
     .locator('.file-tree-name')
     .filter({ hasText: file.frame.name })
     .click();
+  await page.locator('.workspace-content[aria-busy="false"]').waitFor();
   const canvas = page.locator(
     '.workspace-pane.is-active svg[aria-label="Frame canvas"][data-surface="root"]',
   );
@@ -59,11 +62,27 @@ test('file menus dismiss across canvas capture, copy stable links and selection 
   await expect(toolbar).toHaveCount(0);
   await editor.press('ControlOrMeta+a');
   await expect(toolbar).toBeVisible();
+  await expect(editor).toBeFocused();
+  await expect
+    .poll(() => page.evaluate(() => window.getSelection()?.toString()))
+    .toBe('Selection sample');
   await expect(
     toolbar.getByLabel('Search workspace or enter a URL'),
   ).toHaveCount(0);
   await editor.press('ArrowLeft');
-  for (let i = 0; i < 9; i++) await editor.press('Shift+ArrowRight');
+  await expect
+    .poll(() => page.evaluate(() => window.getSelection()?.toString()))
+    .toBe('');
+  await expect(toolbar).toHaveCount(0);
+  for (let i = 0; i < 9; i++) {
+    await editor.press('Shift+ArrowRight');
+    await expect
+      .poll(() => page.evaluate(() => window.getSelection()?.toString()))
+      .toBe('Selection'.slice(0, i + 1));
+  }
+  await expect
+    .poll(() => page.evaluate(() => window.getSelection()?.toString()))
+    .toBe('Selection');
   await toolbar.getByRole('button', { name: '加粗', exact: true }).click();
   await expect(editor.locator('strong')).toHaveText('Selection');
   await editor.press('ControlOrMeta+a');
@@ -175,11 +194,19 @@ test('file menus dismiss across canvas capture, copy stable links and selection 
   );
   await node.click();
   await node.click({ button: 'right' });
-  const selectionActions = page.getByRole('dialog', {
-    name: 'Selection actions',
+  const selectionActions = page.getByRole('menu', {
+    name: /^(画布编辑|Canvas editing)$/,
     exact: true,
   });
-  await selectionActions
+  await expect(selectionActions.locator('input, select, textarea')).toHaveCount(
+    0,
+  );
+  await expect(
+    selectionActions.getByRole('menuitem', { name: '编辑链接', exact: true }),
+  ).toHaveCount(0);
+  await page.keyboard.press('Escape');
+  await page
+    .locator('.frame-inspector:visible')
     .getByRole('button', { name: '编辑链接', exact: true })
     .click();
   await linkDialog
@@ -275,6 +302,7 @@ test('document file links use encoded identities, work readonly and report clipb
     },
   };
   await page.goto('/');
+  await openActiveFile(page);
   await page
     .locator('input[accept=".json,.verd.json,.verd-doc.json,.md,.markdown"]')
     .setInputFiles({
@@ -291,22 +319,22 @@ test('document file links use encoded identities, work readonly and report clipb
   await expect
     .poll(() => page.evaluate(() => navigator.clipboard.readText()))
     .toBe(`verd://file/${encodeURIComponent(id)}`);
+  const message = page.locator('.sue-message-notice');
+  await expect(message).toHaveCount(1);
+  await expect(message).toHaveText('已复制链接');
+  await expect(page.getByRole('button', { name: '知道了' })).toHaveCount(0);
+  await row.click({ button: 'right' });
+  await page.getByRole('menuitem', { name: '复制链接', exact: true }).click();
+  await expect(message).toHaveCount(1);
+  await expect(message).toHaveText('已复制链接');
+  await expect(message).toHaveCount(0, { timeout: 4500 });
   await expect
     .poll(() =>
       page.evaluate(async () => {
-        const db = await new Promise<IDBDatabase>((resolve) => {
-          const request = indexedDB.open('verdboard-host');
-          request.onsuccess = () => resolve(request.result);
-        });
-        const rows = await new Promise<any[]>((resolve) => {
-          const request = db.transaction('files').objectStore('files').getAll();
-          request.onsuccess = () => resolve(request.result);
-        });
-        db.close();
-        return rows.some(
-          (row) =>
-            row.kind === 'file' &&
-            new TextDecoder().decode(row.content).includes('Copy document'),
+        const { nodes } = await (window as any).__verdReadDisk();
+        return nodes.some(
+          (node: { kind: string; text: string }) =>
+            node.kind === 'file' && node.text.includes('Copy document'),
         );
       }),
     )
@@ -328,5 +356,8 @@ test('document file links use encoded identities, work readonly and report clipb
   });
   await row.click({ button: 'right' });
   await page.getByRole('menuitem', { name: '复制链接', exact: true }).click();
-  await expect(page.getByRole('alert')).toContainText('无法复制链接');
+  const error = page.locator('.file-tree-operation-error');
+  await expect(error).toContainText('无法复制链接');
+  await expect(message).toHaveCount(0, { timeout: 4500 });
+  await expect(error).toContainText('无法复制链接');
 });

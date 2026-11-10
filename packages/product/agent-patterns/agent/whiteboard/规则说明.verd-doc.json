@@ -1,0 +1,135 @@
+{
+  "format": "verd-document",
+  "version": 1,
+  "id": "pattern-guide:whiteboard",
+  "title": "白板说明板 · 编写规则",
+  "text": {
+    "schemaVersion": 1,
+    "id": "pattern-guide:whiteboard",
+    "kind": "block",
+    "content": {
+      "type": "doc",
+      "content": [
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 1
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "白板说明板 · 编写规则"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "按信息区域编排图形、标注、表格与箭头；分组表达编辑整体。"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "图表编写规范",
+              "marks": [
+                {
+                  "type": "link",
+                  "attrs": {
+                    "href": "verd://file/pattern-guide%3Adiagram-quality",
+                    "target": null
+                  }
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "text": " · 判断语义、文字适配、路径与泳道规则，以及 validate → preview → 看图的交付闭环。"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "以区域、注释、组合和表格组织内容；组合表示编辑整体，不代替领域归属。普通内容泳道可作为表格使用，只有结构图成员才填写 laneMembers。"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "实例化参数：title 为根文件标题；工具自动生成独立身份。模板实例化会重新映射整个引用闭包。"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "编辑示例：先 inspect 获得身份与正文块，再使用 document.splice、node.upsert 或对应关系操作，plan 后 validate 与 preview。"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "结构规则：以 verd rules 和 describe 返回的已安装版本为准。视觉布局需要复核预览。"
+            }
+          ]
+        },
+        {
+          "type": "codeBlock",
+          "attrs": {
+            "language": "json"
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "{\n  \"type\": \"pattern.instantiate\",\n  \"patternId\": \"whiteboard\",\n  \"parameters\": {\n    \"title\": \"白板说明板\"\n  },\n  \"dir\": \"whiteboard\"\n}"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "打开原生模板",
+              "marks": [
+                {
+                  "type": "link",
+                  "attrs": {
+                    "href": "verd://file/pattern%3Awhiteboard%2Fcanvas-basic"
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "基础白板展示图形、连线和人工复核链接入口，不是一份完整业务流程。用于真实流程时，需根据已有规则补齐判断结果与后续处理，不从图形样例推导业务门槛。"
+            }
+          ]
+        }
+      ]
+    },
+    "plainText": "白板说明板 · 编写规则\n按信息区域编排图形、标注、表格与箭头；分组表达编辑整体。\n图表编写规范 · 判断语义、文字适配、路径与泳道规则，以及 validate → preview → 看图的交付闭环。\n以区域、注释、组合和表格组织内容；组合表示编辑整体，不代替领域归属。普通内容泳道可作为表格使用，只有结构图成员才填写 laneMembers。\n实例化参数：title 为根文件标题；工具自动生成独立身份。模板实例化会重新映射整个引用闭包。\n编辑示例：先 inspect 获得身份与正文块，再使用 document.splice、node.upsert 或对应关系操作，plan 后 validate 与 preview。\n结构规则：以 verd rules 和 describe 返回的已安装版本为准。视觉布局需要复核预览。\n{\n  \"type\": \"pattern.instantiate\",\n  \"patternId\": \"whiteboard\",\n  \"parameters\": {\n    \"title\": \"白板说明板\"\n  },\n  \"dir\": \"whiteboard\"\n}\n打开原生模板\n基础白板展示图形、连线和人工复核链接入口，不是一份完整业务流程。用于真实流程时，需根据已有规则补齐判断结果与后续处理，不从图形样例推导业务门槛。",
+    "align": "left"
+  }
+}

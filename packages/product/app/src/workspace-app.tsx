@@ -1,16 +1,30 @@
+import { VersionHistoryPanel } from './documents/version-history-panel';
+import type { VersionScope } from './host/workspace-versions';
 import { enterDocumentPresentation } from './documents/presentation-entry';
+import { isWorkspaceContentPath } from './workspace-skills';
+import { createWorkspaceSkillsModel } from './management/workspace-skills-model';
 import { findFoldersById } from './host/folder-identity';
 import {
   WorkspaceManagementMenu,
   WorkspaceManagementResize,
 } from './management/workspace-management-slots';
-import { useAutomaticVersions } from './documents/automatic-versions';
+import { VersionSettingsPanel } from './documents/version-settings-panel';
 import { WorkspaceAssetScope } from './documents/workspace-asset-scope';
+import {
+  OrdinaryResourceReader,
+  ordinaryResourceMime,
+} from './documents/ordinary-resources';
 import {
   storeAttachment,
   inlineFileAssets,
 } from './documents/workspace-resources';
 import { ContentTools } from './documents/content-tools';
+import {
+  createWorkspacePackage,
+  parseWorkspacePackage,
+  WORKSPACE_PACKAGE_MAX_JSON_BYTES,
+  type WorkspaceResource,
+} from './documents/workspace-package';
 import { importMarkdownCollection } from './documents/portable-archive';
 import { createKnowledgeIndexer } from './documents/knowledge-index';
 import { KnowledgePanel } from './documents/knowledge-panel';
@@ -104,11 +118,11 @@ import {
   ChartLibrary,
   FileTree,
   I18nProvider,
-  OrganizePreview,
   PreviewMountProvider,
   WorkspaceDesignProvider,
   WorkspaceLinkEditor,
   useWorkspaceDesignVariables,
+  useWorkspaceMessage,
   useI18n,
   VerdFrame,
   FrameSaveStatus,
@@ -123,7 +137,6 @@ import {
   type DocumentEditorChange,
   type DocumentSaveState,
   type DocumentSelection,
-  type OrganizePreviewRow,
 } from '@sue/verd-board-ui';
 import {
   LoaderCircle,
@@ -157,24 +170,21 @@ import {
   type PreviewOptions,
 } from './documents/workspace-previews';
 import {
-  parseWorkspaceExport,
   remapWorkspaceFiles,
   workspaceDocumentDependents,
-  workspaceExportBundle,
 } from './documents/workspace-references';
 import {
   assessReferencePlace,
   createFrameFile,
   diagramKindOf,
   isRegularCanvas,
-  organizePreviewIsStale,
   partitionCellStore,
-  recommendOrganization,
   referenceSourcesOf,
   sameFrameContent,
   type FrameFileV2,
 } from './frames/frame-files';
 import type { WorkspaceSnapshot } from './frames/workspace-storage';
+import { workspaceHostSupports } from './host/workspace-host';
 import type {
   OpenWorkspaceRequest,
   WorkspaceHandle,
@@ -221,6 +231,8 @@ export interface WorkspaceAppProps {
   onOpen?(handle: WorkspaceHandle): void;
   /** Desktop directory picker and return-to-built-in actions. */
   allowWorkspaceSwitching?: boolean;
+  /** Optional migration action for hosts with existing browser workspaces. */
+  onMigrateBrowserData?(): void;
 }
 
 const sameFile = (left: FrameFileV2, right: FrameFileV2) =>
@@ -272,6 +284,7 @@ function WorkspaceAppShell({
   readonly = false,
   onOpen,
   allowWorkspaceSwitching = false,
+  onMigrateBrowserData,
 }: WorkspaceAppProps) {
   const { language } = useI18n();
   const workspaceDesign = useWorkspaceDesignVariables();
@@ -281,6 +294,13 @@ function WorkspaceAppShell({
     document.documentElement.lang = locale === 'zh' ? 'zh-CN' : 'en';
   }, [locale]);
   const [session, setSession] = useState<WorkspaceSession | null>(null);
+  const settingsFlush = useRef<(() => Promise<boolean>) | null>(null);
+  const registerSettingsFlush = useCallback(
+    (flush: (() => Promise<boolean>) | null) => {
+      settingsFlush.current = flush;
+    },
+    [],
+  );
   const autoCalculationSession = useMemo(
     () =>
       createFrameAutoCalculationSession((frameId) => {
@@ -314,6 +334,7 @@ function WorkspaceAppShell({
   >(() => async () => ({ status: 'completed' }));
   const workspaceSurfaceState = useRef({
     allowWorkspaceSwitching,
+    capabilities: host.capabilities,
     isDefaultWorkspace: false,
     workspaceHistory: undefined as ReadonlySet<string> | undefined,
     currentHistoryId: undefined as string | undefined,
@@ -497,18 +518,27 @@ function WorkspaceAppShell({
     openAutoCalculationFiles.current = { owner: autoCalculationSession, ids };
   }, [autoCalculationNavigation, autoCalculationSession]);
   const [error, setError] = useState<string | null>(null);
+  const [message, messageHolder] = useWorkspaceMessage();
   const [notice, setNotice] = useState<{
     text: string;
-    tone: 'info' | 'error';
   } | null>(null);
   const notify = useCallback(
-    (text: string, tone: 'info' | 'error' = 'info') =>
-      setNotice({ text, tone }),
-    [],
+    (text: string, tone: 'info' | 'error' = 'info') => {
+      if (tone === 'error') setNotice({ text });
+      else void message.info({ content: text, key: 'workspace-notice' });
+    },
+    [message],
   );
-  useAutomaticVersions(session, snapshot, readonly, (message) =>
-    notify(message, 'error'),
-  );
+  const [gitDialog, setGitDialog] = useState<{
+    scope: VersionScope;
+  } | null>(null);
+  const [versionPurgeIds, setVersionPurgeIds] = useState<string[]>([]);
+  const [gitBusy, setGitBusy] = useState(false);
+  const gitTitle = locale === 'zh' ? '版本历史' : 'Version history';
+  useEffect(() => {
+    setGitDialog(null);
+    setGitBusy(false);
+  }, [session]);
   const [history, setHistory] = useState<WorkspaceHistoryEntry[]>([]);
   const [currentHistoryId, setCurrentHistoryId] = useState<string>();
   const historyRequests = useRef({ sequence: 0 });
@@ -799,7 +829,34 @@ function WorkspaceAppShell({
   const [workspaceSettingsSection, setWorkspaceSettingsSection] =
     useState<string>('workspace.project');
   const [failedPath, setFailedPath] = useState<string | null>(null);
-  const [expandedOwners, setExpandedOwners] = useState<string[]>([]);
+  const [ordinaryResource, setOrdinaryResource] = useState<{
+    session: WorkspaceSession;
+    path: string;
+  } | null>(null);
+  const openOrdinaryResource = useCallback(
+    (path: string) => {
+      const active = activeWorkspace.current;
+      if (!active) return;
+      const mime = ordinaryResourceMime(path);
+      if (mime !== 'application/octet-stream') {
+        setOrdinaryResource({ session: active.session, path });
+        return;
+      }
+      void (async () => {
+        if (host.openResourceExternal)
+          await host.openResourceExternal(active.handle, path);
+        else {
+          const raw = await active.session.readRawFile(path);
+          if (activeWorkspace.current !== active) return;
+          download(
+            path.split('/').pop()!,
+            new Blob([raw.content as BlobPart], { type: mime }),
+          );
+        }
+      })().catch((error) => notify(String(error), 'error'));
+    },
+    [host, notify],
+  );
   const [fileTreeReveal, setFileTreeReveal] = useState<{
     fileId: string;
     nonce: number;
@@ -814,7 +871,6 @@ function WorkspaceAppShell({
     | 'uml-class'
     | 'uml-sequence'
   >('all');
-  const [libraryOwner, setLibraryOwner] = useState('all');
   const [libraryScroll, setLibraryScroll] = useState(0);
   const [pickerMode, setPickerMode] = useState<'chart' | 'preview'>('chart');
   const [pickerFileId, setPickerFileId] = useState<string | null>(null);
@@ -840,9 +896,6 @@ function WorkspaceAppShell({
     kind?: 'document' | 'document-frame';
     newDocument?: boolean;
   } | null>(null);
-  const [organizeRows, setOrganizeRows] = useState<OrganizePreviewRow[] | null>(
-    null,
-  );
   const entryOrigins = useRef(new Map<string, NavigationOrigin>());
   const [, setSourceRev] = useState(0);
   const [folderReveal, setFolderReveal] = useState<{
@@ -988,6 +1041,19 @@ function WorkspaceAppShell({
     existingHandle?: WorkspaceHandle,
     updateOptions?: { backup: boolean },
   ): Promise<ActionResult> => {
+    if (
+      (request?.pick && !workspaceHostSupports(host, 'pickWorkspace')) ||
+      (request?.patterns &&
+        !workspaceHostSupports(host, 'openPatternWorkspace')) ||
+      (!initial &&
+        request?.default &&
+        !workspaceHostSupports(host, 'openBuiltinWorkspace'))
+    )
+      return { status: 'rejected', code: 'unsupported-workspace-operation' };
+    if (switchingRef.current && !initial)
+      return { status: 'rejected', code: 'workspace-switching' };
+    if (!initial && settingsFlush.current && !(await settingsFlush.current()))
+      return { status: 'rejected', code: 'settings-save-failed' };
     if (switchingRef.current && !initial)
       return { status: 'rejected', code: 'workspace-switching' };
     const sequence = ++requestSequence.current;
@@ -1166,13 +1232,12 @@ function WorkspaceAppShell({
       entryOrigins.current.clear();
       documentRestoreRef.current.clear();
       referenceScrollRef.current.clear();
-      seenSubgraphs.current = null;
       setFailedPath(null);
+      setOrdinaryResource(null);
       setSettingsView(null);
       setPlaceTarget(null);
       setPickerFileId(null);
       setDocumentPickerFileId(null);
-      setOrganizeRows(null);
       navigationAbort.current?.abort();
       navigationSequence.current++;
       pendingOrigin.current = null;
@@ -1182,13 +1247,6 @@ function WorkspaceAppShell({
       setFileTreeReveal(undefined);
       setFolderReveal(undefined);
       setNavigationRequest(null);
-      setExpandedOwners(
-        handle.isDefault &&
-          raw.session === null &&
-          opened.getState().session.activeTabId === 'board-root'
-          ? ['board-root']
-          : [],
-      );
       canvasRef.current = createCanvasSession({
         session: opened,
         registry: registryRef.current ?? undefined,
@@ -1270,8 +1328,28 @@ function WorkspaceAppShell({
   }, [host]);
 
   useEffect(() => {
-    const flush = () => void session?.flush().catch(() => {});
-    window.addEventListener('beforeunload', flush);
+    const flush = () =>
+      void (async () => {
+        if (settingsFlush.current && !(await settingsFlush.current())) return;
+        await session?.flush();
+      })().catch(() => {});
+    const beforeUnload = (event: BeforeUnloadEvent) => {
+      const state = session?.getState();
+      if (
+        !host.onShutdown &&
+        state &&
+        (state.saveStatus === 'saving' ||
+          state.saveStatus === 'error' ||
+          [...state.filePersistence.values()].some(
+            (file) => file.status === 'saving' || file.status === 'error',
+          ))
+      ) {
+        event.preventDefault();
+        event.returnValue = '';
+      }
+      flush();
+    };
+    window.addEventListener('beforeunload', beforeUnload);
     window.addEventListener('pagehide', flush);
     const onVisibility = () => {
       if (document.visibilityState === 'hidden') flush();
@@ -1281,15 +1359,14 @@ function WorkspaceAppShell({
     // web returns a no-op since its pagehide handler above is the
     // best-effort equivalent for IndexedDB writes.
     const offShutdown =
-      host.onShutdown?.(() =>
-        session
-          ? session.flush().then((saved) => {
-              if (!saved) throw new Error('Workspace could not be saved');
-            })
-          : Promise.resolve(),
-      ) ?? (() => {});
+      host.onShutdown?.(async () => {
+        if (settingsFlush.current && !(await settingsFlush.current()))
+          throw new Error('Workspace settings could not be saved');
+        if (session && !(await session.flush()))
+          throw new Error('Workspace could not be saved');
+      }) ?? (() => {});
     return () => {
-      window.removeEventListener('beforeunload', flush);
+      window.removeEventListener('beforeunload', beforeUnload);
       window.removeEventListener('pagehide', flush);
       document.removeEventListener('visibilitychange', onVisibility);
       offShutdown();
@@ -1345,9 +1422,12 @@ function WorkspaceAppShell({
             ? 'file'
             : current.activeView),
       });
+      const fileView = (next.activeView ?? 'file') === 'file';
+      if (!fileView) navigationFeedback.cancel();
       const changing =
-        next.activeTabId !== current.activeTabId ||
-        next.activeGroupId !== current.activeGroupId;
+        fileView &&
+        ((current.activeView ?? 'file') !== 'file' ||
+          next.activeTabId !== current.activeTabId);
       const existing = navigationFeedback.current();
       const ticket = changing
         ? (existing ??
@@ -1456,26 +1536,16 @@ function WorkspaceAppShell({
         activeView: 'file',
       });
       const state = session.getState();
-      const view = state.organization.byFile.get(fileId);
-      const ownerId =
-        view?.placement.kind === 'owned'
-          ? view.placement.ownerFrameId
-          : undefined;
-      if (ownerId)
-        setExpandedOwners((current) =>
-          current.includes(ownerId) ? current : [...current, ownerId],
-        );
       const path =
         state.files.get(fileId)?.path ??
         state.documents.get(fileId)?.path ??
         [...state.failedFiles.values()].find(
           (failure) => failure.fileId === fileId,
         )?.path;
-      const ownerPath = ownerId ? state.files.get(ownerId)?.path : undefined;
       const expandedDirs = [
         ...new Set([
           ...state.session.expandedDirs,
-          ...[path, ownerPath].flatMap((value) =>
+          ...[path].flatMap((value) =>
             value ? workspaceFileDirectories(value) : [],
           ),
         ]),
@@ -1657,26 +1727,6 @@ function WorkspaceAppShell({
     },
     [session, placeTarget, notify, applyWorkspaceAction],
   );
-
-  const seenSubgraphs = useRef<Map<string, string> | null>(null);
-  useEffect(() => {
-    if (!snapshot) return;
-    const current = new Map<string, string>();
-    snapshot.organization.ownedBy.forEach((ids, owner) =>
-      ids.forEach((id) => current.set(id, owner)),
-    );
-    if (seenSubgraphs.current) {
-      const owners: string[] = [];
-      snapshot.organization.ownedBy.forEach((ids, owner) => {
-        if (ids.some((id) => seenSubgraphs.current?.get(id) !== owner))
-          owners.push(owner);
-      });
-      if (owners.length)
-        setExpandedOwners((prev) => [...new Set([...prev, ...owners])]);
-    }
-    seenSubgraphs.current = current;
-  }, [snapshot]);
-
   const closeTabs = useCallback(
     (fileId: CellId, scope: TabCloseScope = 'self') => {
       if (!session) return;
@@ -1882,11 +1932,8 @@ function WorkspaceAppShell({
             ([id, entry]) => [id, entry.file] as const,
           ),
         );
-        const mounted = existing.get(mountedFrameId);
         const partitioned = partitionCellStore(change.snapshot.store, {
           existing,
-          creationOwnerId:
-            mounted && isRegularCanvas(mounted) ? mountedFrameId : undefined,
         });
         const updated = partitioned.files.filter((file) => {
           const previous = existing.get(file.frame.id);
@@ -1915,12 +1962,6 @@ function WorkspaceAppShell({
             type: 'edit-file',
             sourceFileId: sourceId,
             store: change.snapshot.store,
-            creationOwnerId:
-              existing.get(sourceId) && isRegularCanvas(existing.get(sourceId)!)
-                ? sourceId
-                : mounted && isRegularCanvas(mounted)
-                  ? mountedFrameId
-                  : undefined,
             label: change.transaction.id,
           }).then((result) => {
             if (!result.ok)
@@ -1984,70 +2025,44 @@ function WorkspaceAppShell({
       if (!session) return;
       const state = session.getState();
       const docEntry = state.documents.get(fileId);
-      if (docEntry) {
-        const sourceFile = session.exportDocument(fileId);
-        if (!sourceFile) return;
+      if (format === 'markdown' && docEntry) {
         const file = (await inlineFileAssets(
           session,
-          sourceFile,
+          docEntry.file,
         )) as DocumentFileV1;
-        const name = file.title || documentDisplayName(docEntry.path);
-        if (format === 'markdown') {
-          const { markdown, warnings } = serializeTextDocumentToMarkdown(
-            file.text,
-          );
-          if (warnings.length)
-            notify(
-              (locale === 'zh'
-                ? '部分格式无法导出为 Markdown：'
-                : 'Some formatting could not be exported to Markdown: ') +
-                warnings.map((item) => item.message).join('; '),
-            );
-          download(
-            `${name}.md`,
-            new Blob([markdown], { type: 'text/markdown' }),
-          );
-          return;
-        }
-        const closure = await Promise.all(
-          session
-            .exportWorkspaceFiles(fileId)
-            .map((file) => inlineFileAssets(session, file)),
+        const { markdown, warnings } = serializeTextDocumentToMarkdown(
+          file.text,
         );
+        if (warnings.length)
+          notify(
+            (locale === 'zh'
+              ? '部分格式无法导出为 Markdown：'
+              : 'Some formatting could not be exported to Markdown: ') +
+              warnings.map((item) => item.message).join('; '),
+          );
         download(
-          closure.length > 1 ? `${name}.verd.json` : `${name}.verd-doc.json`,
-          new Blob(
-            [
-              JSON.stringify(
-                closure.length > 1
-                  ? workspaceExportBundle(closure, fileId)
-                  : file,
-                null,
-                2,
-              ),
-            ],
-            { type: 'application/json' },
-          ),
+          `${file.title || documentDisplayName(docEntry.path)}.md`,
+          new Blob([markdown], { type: 'text/markdown' }),
         );
         return;
       }
-      const files = await Promise.all(
-        session
-          .exportWorkspaceFiles(fileId)
-          .map((file) => inlineFileAssets(session, file)),
-      );
+      const files = session.exportWorkspaceFiles(fileId);
       if (!files.length) return;
-      const entry = state.files.get(fileId);
+      const value = await createWorkspacePackage(
+        files,
+        fileId,
+        async (path) => (await session.readRawFile(path)).content,
+      );
+      const entry = docEntry ?? state.files.get(fileId);
       const name =
-        entry?.file.frame.name || canvasDisplayName(entry?.path ?? 'frame');
+        docEntry?.file.title ||
+        state.files.get(fileId)?.file.frame.name ||
+        canvasDisplayName(entry?.path ?? 'frame');
       download(
-        `${name}.verd.json`,
-        new Blob(
-          [JSON.stringify(workspaceExportBundle(files, fileId), null, 2)],
-          {
-            type: 'application/json',
-          },
-        ),
+        `${name}${value.format === 'verd-document' ? '.verd-doc.json' : '.verd.json'}`,
+        new Blob([JSON.stringify(value, null, 2)], {
+          type: 'application/json',
+        }),
       );
     },
     [session, locale, notify],
@@ -2066,22 +2081,6 @@ function WorkspaceAppShell({
       ) {
         try {
           const imported = await importMarkdownCollection(selectedFiles);
-          if ('resources' in imported && imported.resources?.length) {
-            const resources = [];
-            for (const item of imported.resources) {
-              if (
-                !session
-                  .getState()
-                  .entries.some((entry) => entry.path === item.path)
-              )
-                resources.push(item);
-            }
-            if (resources.length) {
-              const receipt = await session.commitResources(resources);
-              if (receipt.outcome !== 'applied')
-                throw new Error('附件导入失败');
-            }
-          }
           const state = session.getState();
           const remapped = remapWorkspaceFiles(
             imported.files.map((item) => item.file),
@@ -2107,6 +2106,10 @@ function WorkspaceAppShell({
           const result = await applyWorkspaceAction({
             type: 'batch',
             files,
+            resources: imported.resources?.map((item) => ({
+              assetId: item.path.split('/').pop()!,
+              content: item.content,
+            })),
             label: 'import-collection',
           });
           if (!result.ok)
@@ -2123,7 +2126,10 @@ function WorkspaceAppShell({
         return;
       }
       try {
+        if (file.size > WORKSPACE_PACKAGE_MAX_JSON_BYTES)
+          throw new Error('JSON import exceeds 384 MiB');
         const definition = await file.text();
+        let resources: WorkspaceResource[] | undefined;
         let imported: (FrameFileV2 | DocumentFileV1)[] | null = null;
         if (/\.(md|markdown)$/i.test(file.name)) {
           // Markdown imports become new standalone documents.
@@ -2149,15 +2155,20 @@ function WorkspaceAppShell({
                 warnings.map((item) => item.message).join('; '),
             );
         } else {
+          let parsed: unknown;
           try {
-            const parsed: unknown = JSON.parse(definition);
-            // A standalone document file imports as itself; anything else
-            // falls through to the canvas bundle / legacy readers.
-            if (isDocumentFileV1(parsed)) imported = [parsed];
-            else imported = parseWorkspaceExport(parsed);
+            parsed = JSON.parse(definition);
           } catch {
-            imported = null;
+            parsed = null;
           }
+          const prepared = await parseWorkspacePackage(parsed);
+          imported = prepared?.files ?? null;
+          if (
+            prepared &&
+            (parsed as { version?: number })?.version === 2 &&
+            (parsed as { format?: string })?.format === 'verd-canvas-bundle'
+          )
+            resources = prepared.resources;
         }
         if (!imported && parseLegacy) {
           const snapshot = await parseLegacy(definition, file.name);
@@ -2167,6 +2178,7 @@ function WorkspaceAppShell({
         const result = await applyWorkspaceAction({
           type: 'import-files',
           files: imported,
+          resources,
           label: 'import',
         });
         if (!result.ok)
@@ -2201,6 +2213,7 @@ function WorkspaceAppShell({
   );
   workspaceSurfaceState.current = {
     allowWorkspaceSwitching,
+    capabilities: host.capabilities,
     isDefaultWorkspace,
     workspaceHistory: host.listWorkspaceHistory
       ? new Set(history.map((entry) => entry.id))
@@ -2937,19 +2950,41 @@ function WorkspaceAppShell({
     files.get(fileId) ?? documents.get(fileId);
   const activeTab = tabs.find((tab) => tab.fileId === activeTabId);
   const activeEntry = activeTab ? entryForTab(activeTab.fileId) : undefined;
+  const openFailedFile = (path: string) => {
+    if (!snapshot) return;
+
+    navigationFeedback.cancel();
+    const failure = snapshot.failedFiles.get(path);
+    const sameIdentity = [...snapshot.failedFiles.values()].filter(
+      (item) => item.fileId === failure?.fileId,
+    );
+    const local = failure?.fileId ? entryForTab(failure.fileId) : undefined;
+    if (
+      failure?.fileId &&
+      sameIdentity.length === 1 &&
+      (!local || local.path === path)
+    )
+      openFile(failure.fileId);
+    else {
+      setLibraryOpen(false);
+      setFailedPath(path);
+    }
+  };
 
   const defaultName = isDefaultWorkspace
     ? locale === 'zh'
       ? '我的工作区'
       : 'My workspace'
     : handleName;
+  const savedWorkspaceName = (snapshot.savedConfig ?? snapshot.config).value[
+    'name'
+  ];
   const workspaceName = isDefaultWorkspace
     ? locale === 'zh'
       ? '系统介绍'
       : 'System introduction'
-    : typeof snapshot.config.value['name'] === 'string' &&
-        snapshot.config.value['name'].trim()
-      ? snapshot.config.value['name'].trim()
+    : typeof savedWorkspaceName === 'string' && savedWorkspaceName.trim()
+      ? savedWorkspaceName.trim()
       : defaultName;
   const paneReady = () => {
     if (pendingReturn.current || restoringEmbeddedOrigin.current) return false;
@@ -2971,6 +3006,7 @@ function WorkspaceAppShell({
   };
   workspaceSurfaceState.current = {
     allowWorkspaceSwitching,
+    capabilities: host.capabilities,
     isDefaultWorkspace,
     workspaceHistory: host.listWorkspaceHistory
       ? new Set(history.map((entry) => entry.id))
@@ -2990,6 +3026,15 @@ function WorkspaceAppShell({
     ),
   };
   workspaceDialogs.current = {
+    'versions-purge': (args) => {
+      const entryIds = workspaceActionArgument(args, 'entryIds');
+      setVersionPurgeIds(
+        Array.isArray(entryIds)
+          ? entryIds.filter((id): id is string => typeof id === 'string')
+          : [],
+      );
+      openSettings('workspace.versions');
+    },
     'quick-open': () => {
       workspaceContent.current
         ?.closest('.workspace-shell')
@@ -3092,14 +3137,6 @@ function WorkspaceAppShell({
           ? dirs.filter((dir) => dir !== path)
           : [...dirs, path],
       });
-    },
-    'owner.toggle': (args) => {
-      const id = String(workspaceActionArgument(args, 'fileId'));
-      setExpandedOwners((current) =>
-        current.includes(id)
-          ? current.filter((value) => value !== id)
-          : [...current, id],
-      );
     },
     'tab.activate': (args) => {
       setFailedPath(null);
@@ -3260,9 +3297,6 @@ function WorkspaceAppShell({
         : origin.kind === 'canvas'
           ? (origin.sourceFileId ?? origin.fileId)
           : origin.fileId);
-    const placement = snapshot.organization.byFile.get(fileId)?.placement;
-    const ownerId =
-      placement?.kind === 'owned' ? placement.ownerFrameId : undefined;
     const grouped = new Map<string, WorkspaceReferenceLocationGroup>();
     for (const location of referenceLocations.get(fileId) ?? []) {
       const source = entryForTab(location.sourceFileId);
@@ -3315,29 +3349,29 @@ function WorkspaceAppShell({
           </button>
         )}
         <WorkspaceFileNavigation
+          status={
+            entry.file.format === 'verd-document' ? (
+              <DocumentSaveStatus state={saveStateFor(entry)} locale={locale} />
+            ) : (
+              <FrameSaveStatus
+                status={persistenceForPage(fileId).status}
+                lastSavedAt={persistenceForPage(fileId).lastSavedAt}
+                onRetrySave={
+                  workspaceActionState('workspace.save-retry').enabled
+                    ? () => {
+                        void workspaceActions.executeAction(
+                          'workspace.save-retry',
+                        );
+                      }
+                    : undefined
+                }
+              />
+            )
+          }
           actions={
             <>
-              {entry.file.format === 'verd-document' ? (
-                <DocumentSaveStatus
-                  state={saveStateFor(entry)}
-                  locale={locale}
-                />
-              ) : (
-                <FrameSaveStatus
-                  status={persistenceForPage(fileId).status}
-                  lastSavedAt={persistenceForPage(fileId).lastSavedAt}
-                  onRetrySave={
-                    workspaceActionState('workspace.save-retry').enabled
-                      ? () => {
-                          void workspaceActions.executeAction(
-                            'workspace.save-retry',
-                          );
-                        }
-                      : undefined
-                  }
-                />
-              )}
               <ContentTools
+                onVersionSettings={() => openSettings('workspace.versions')}
                 locale={locale}
                 session={session}
                 fileId={fileId}
@@ -3420,14 +3454,6 @@ function WorkspaceAppShell({
                 }
               : undefined
           }
-          owner={
-            ownerId && files.has(ownerId)
-              ? {
-                  title: label(ownerId),
-                  action: action('file.open', { fileId: ownerId }),
-                }
-              : undefined
-          }
           revealAction={action('file.reveal', { fileId })}
           references={[...grouped.values()].sort(
             (a, b) =>
@@ -3462,7 +3488,9 @@ function WorkspaceAppShell({
             isDefault={isDefaultWorkspace}
             key={activeWorkspace.current?.handle.key}
             onOpenFolder={
-              allowWorkspaceSwitching && !readonly
+              allowWorkspaceSwitching &&
+              !readonly &&
+              workspaceHostSupports(host, 'pickWorkspace')
                 ? () => {
                     void openWorkspaceRequest({ pick: true }).finally(() =>
                       setMenuFocusRequest((current) => current + 1),
@@ -3471,14 +3499,18 @@ function WorkspaceAppShell({
                 : undefined
             }
             onOpenBuiltin={
-              allowWorkspaceSwitching && !readonly
+              allowWorkspaceSwitching &&
+              !readonly &&
+              workspaceHostSupports(host, 'openBuiltinWorkspace')
                 ? () => {
                     void openWorkspaceRequest({ default: true });
                   }
                 : undefined
             }
             onOpenPatterns={
-              allowWorkspaceSwitching && !readonly
+              allowWorkspaceSwitching &&
+              !readonly &&
+              workspaceHostSupports(host, 'openPatternWorkspace')
                 ? () => {
                     void openWorkspaceRequest({ patterns: true });
                   }
@@ -3494,6 +3526,8 @@ function WorkspaceAppShell({
               )
             }
             snapshot={snapshot}
+            onOpenResource={openOrdinaryResource}
+            onOpenFailedFile={openFailedFile}
             host={host}
             content={workspaceContent}
             locale={locale}
@@ -3569,6 +3603,7 @@ function WorkspaceAppShell({
 
             tree={
               <FileTree
+                onVersions={(scope) => setGitDialog({ scope })}
                 hideLibraryNavigation
                 onOrganize={(path, kind) => {
                   workspaceContent.current
@@ -3585,7 +3620,9 @@ function WorkspaceAppShell({
                     : undefined
                 }
                 actionSource={workspaceActions}
-                entries={snapshot.entries}
+                entries={snapshot.entries.filter((entry) =>
+                  isWorkspaceContentPath(entry.path, snapshot.entries),
+                )}
                 canvases={canvases}
                 documents={docs}
                 failedFiles={[...snapshot.failedFiles.values()]}
@@ -3595,74 +3632,19 @@ function WorkspaceAppShell({
                     (failure) => failure.fileId === activeTabId,
                   )?.path
                 }
-                onOpenFailedFile={(path) => {
-                  navigationFeedback.cancel();
-                  const failure = snapshot.failedFiles.get(path);
-                  const sameIdentity = [
-                    ...snapshot.failedFiles.values(),
-                  ].filter((item) => item.fileId === failure?.fileId);
-                  const local = failure?.fileId
-                    ? entryForTab(failure.fileId)
-                    : undefined;
-                  if (
-                    failure?.fileId &&
-                    sameIdentity.length === 1 &&
-                    (!local || local.path === path)
-                  )
-                    openFile(failure.fileId);
-                  else {
-                    setLibraryOpen(false);
-                    setFailedPath(path);
-                  }
-                }}
+                onOpenFailedFile={openFailedFile}
                 activeFileId={libraryOpen ? null : (activeTab?.fileId ?? null)}
                 libraryActive={libraryOpen}
                 expandedDirs={snapshot.session.expandedDirs}
                 locale={locale}
+                onOpenResource={openOrdinaryResource}
+                onTrashResource={(path) => {
+                  void applyWorkspaceAction({
+                    type: 'organize-entries',
+                    trashPaths: [path],
+                  });
+                }}
                 onOpenFile={openFile}
-                subgraphs={[...files.values()]
-                  .filter((entry) => diagramKindOf(entry.file) !== 'canvas')
-                  .map((entry) => {
-                    const view = snapshot.organization.byFile.get(
-                      entry.file.frame.id,
-                    );
-                    const placement = view?.placement;
-                    const ownerId =
-                      placement?.kind === 'owned'
-                        ? placement.ownerFrameId
-                        : undefined;
-                    return {
-                      frameId: entry.file.frame.id,
-                      name:
-                        entry.file.frame.name || canvasDisplayName(entry.path),
-                      path: entry.path,
-                      diagram: diagramKindOf(entry.file) as
-                        | 'mind'
-                        | 'workflow'
-                        | 'architecture'
-                        | 'uml-class'
-                        | 'uml-sequence',
-                      placement:
-                        placement?.kind === 'owned'
-                          ? ('owned' as const)
-                          : placement?.kind === 'unorganized'
-                            ? ('unorganized' as const)
-                            : placement?.kind === 'standalone'
-                              ? ('standalone' as const)
-                              : ('legacy' as const),
-                      ownerFrameId: ownerId,
-                      dirty: entry.dirty,
-                      conflicted: entry.conflicted,
-                    };
-                  })}
-                expandedOwners={expandedOwners}
-                onToggleOwner={(frameId) =>
-                  setExpandedOwners((current) =>
-                    current.includes(frameId)
-                      ? current.filter((id) => id !== frameId)
-                      : [...current, frameId],
-                  )
-                }
                 onOpenLibrary={() => {
                   setPickerFileId(null);
                   persistNav({ activeView: 'library' });
@@ -3679,7 +3661,6 @@ function WorkspaceAppShell({
                     return { path: matches[0].path, nonce: folderReveal.nonce };
                   return undefined;
                 })()}
-                onRevealFile={revealFileInTree}
                 onToggleDir={(path) => {
                   const dirs = snapshot.session.expandedDirs;
                   persistNav({
@@ -3746,6 +3727,29 @@ function WorkspaceAppShell({
               inert={switchingWorkspace}
               aria-busy={switchingWorkspace}
             >
+              {messageHolder}
+              {gitDialog && (
+                <VmDialog
+                  title={gitTitle}
+                  closeLabel={locale === 'zh' ? '关闭' : 'Close'}
+                  className="workspace-git-dialog"
+                  busy={gitBusy}
+                  onClose={() => setGitDialog(null)}
+                >
+                  <VersionHistoryPanel
+                    key={JSON.stringify(gitDialog.scope)}
+                    session={session}
+                    scope={gitDialog.scope}
+                    onSettings={() => {
+                      setGitDialog(null);
+                      openSettings('workspace.versions');
+                    }}
+                    readonly={readonly || switchingWorkspace}
+                    locale={locale}
+                    onBusyChange={setGitBusy}
+                  />
+                </VmDialog>
+              )}
               {documentPickerFileId && !readonly && (
                 <VmDialog
                   title={
@@ -3831,7 +3835,9 @@ function WorkspaceAppShell({
                     openSettings('workspace.project');
                   }}
                   onOpenFolder={
-                    allowWorkspaceSwitching && !readonly
+                    allowWorkspaceSwitching &&
+                    !readonly &&
+                    workspaceHostSupports(host, 'pickWorkspace')
                       ? () => {
                           void openWorkspaceRequest({ pick: true }).finally(
                             () => setMenuFocusRequest((current) => current + 1),
@@ -3840,14 +3846,18 @@ function WorkspaceAppShell({
                       : undefined
                   }
                   onOpenPatterns={
-                    allowWorkspaceSwitching && !readonly
+                    allowWorkspaceSwitching &&
+                    !readonly &&
+                    workspaceHostSupports(host, 'openPatternWorkspace')
                       ? () => {
                           void openWorkspaceRequest({ patterns: true });
                         }
                       : undefined
                   }
                   onOpenBuiltin={
-                    allowWorkspaceSwitching && !readonly
+                    allowWorkspaceSwitching &&
+                    !readonly &&
+                    workspaceHostSupports(host, 'openBuiltinWorkspace')
                       ? () => {
                           void openWorkspaceRequest({ default: true }).finally(
                             () => setMenuFocusRequest((current) => current + 1),
@@ -4031,23 +4041,7 @@ function WorkspaceAppShell({
                         switchingWorkspace ||
                         snapshot.mutationsPaused
                       }
-                      owners={[...files.values()]
-                        .filter((entry) => isRegularCanvas(entry.file))
-                        .map((entry) => ({
-                          frameId: entry.file.frame.id,
-                          name:
-                            entry.file.frame.name ||
-                            canvasDisplayName(entry.path),
-                        }))}
                       rows={[...files.values()].map((entry) => {
-                        const view = snapshot.organization.byFile.get(
-                          entry.file.frame.id,
-                        );
-                        const placement = view?.placement;
-                        const ownerId =
-                          placement?.kind === 'owned'
-                            ? placement.ownerFrameId
-                            : undefined;
                         const sources = referenceSourcesOf(
                           [...files.values()].map((item) => item.file),
                           entry.file.frame.id,
@@ -4059,21 +4053,6 @@ function WorkspaceAppShell({
                             canvasDisplayName(entry.path),
                           path: entry.path,
                           diagram: diagramKindOf(entry.file),
-                          placement:
-                            placement?.kind === 'owned'
-                              ? ('owned' as const)
-                              : placement?.kind === 'unorganized'
-                                ? ('unorganized' as const)
-                                : placement?.kind === 'standalone'
-                                  ? ('standalone' as const)
-                                  : ('legacy' as const),
-                          ownerFrameId: ownerId,
-                          ownerName: ownerId
-                            ? files.get(ownerId)?.file.frame.name ||
-                              canvasDisplayName(
-                                files.get(ownerId)?.path ?? ownerId,
-                              )
-                            : undefined,
                           referenceLabel:
                             locale === 'zh'
                               ? `${sources.reduce((sum, group) => sum + group.refIds.length, 0)} 处引用 · ${sources.length} 个画布`
@@ -4084,11 +4063,9 @@ function WorkspaceAppShell({
                       })}
                       query={libraryQuery}
                       diagram={libraryDiagram}
-                      owner={libraryOwner}
                       scrollTop={libraryScroll}
                       onQueryChange={setLibraryQuery}
                       onDiagramChange={setLibraryDiagram}
-                      onOwnerChange={setLibraryOwner}
                       onScroll={setLibraryScroll}
                       picker={pickerFileId ? pickerMode : null}
                       onPickerMode={setPickerMode}
@@ -4098,20 +4075,6 @@ function WorkspaceAppShell({
                         setPickerFileId(null);
                         setFailedPath(null);
                         setLibraryOpen(false);
-                      }}
-                      onChangeOrganization={async (fileId, organization) => {
-                        const result = workspaceActionCommandResult(
-                          await workspaceActions.executeAction(
-                            'workspace.library.organization',
-                            { fileId, organization },
-                          ),
-                        );
-                        if (!result.ok)
-                          throw new Error(
-                            result.diagnostics
-                              .map((item) => item.message)
-                              .join('; '),
-                          );
                       }}
                       onOpen={(fileId) => {
                         listOrigins.current.set(fileId, 'library');
@@ -4126,57 +4089,6 @@ function WorkspaceAppShell({
                             }
                           : undefined
                       }
-                      onOrganize={() => {
-                        const frames = [...files.values()].map(
-                          (entry) => entry.file,
-                        );
-                        const recommended = recommendOrganization(frames);
-                        setOrganizeRows(
-                          recommended.map((row) => {
-                            const file = files.get(row.fileId)!;
-                            const sources = referenceSourcesOf(
-                              frames,
-                              row.fileId,
-                            );
-                            const ownerId =
-                              row.organization.kind === 'subgraph'
-                                ? row.organization.ownerFrameId
-                                : undefined;
-                            return {
-                              fileId: row.fileId,
-                              name:
-                                file.file.frame.name ||
-                                canvasDisplayName(file.path),
-                              path: file.path,
-                              diagram: diagramKindOf(file.file),
-                              sources: sources
-                                .map(
-                                  (source) =>
-                                    files.get(source.fileId)?.file.frame.name ||
-                                    canvasDisplayName(
-                                      files.get(source.fileId)?.path ??
-                                        source.fileId,
-                                    ),
-                                )
-                                .join(', '),
-                              recommendedOwnerName: ownerId
-                                ? files.get(ownerId)?.file.frame.name ||
-                                  canvasDisplayName(
-                                    files.get(ownerId)?.path ?? ownerId,
-                                  )
-                                : locale === 'zh'
-                                  ? '独立'
-                                  : 'Standalone',
-                              reason: row.reason,
-                              choice: ownerId ? 'owner' : 'standalone',
-                              ownerFrameId: ownerId,
-                              basisSources: sources.map(
-                                (source) => source.fileId,
-                              ),
-                            };
-                          }),
-                        );
-                      }}
                     />
                   ) : null}
                   <div
@@ -4559,123 +4471,7 @@ function WorkspaceAppShell({
                       );
                     })}
                   </div>
-                  {organizeRows ? (
-                    <OrganizePreview
-                      actionSource={workspaceActions}
-                      locale={locale}
-                      owners={[...files.values()]
-                        .filter((entry) => isRegularCanvas(entry.file))
-                        .map((entry) => ({
-                          frameId: entry.file.frame.id,
-                          name:
-                            entry.file.frame.name ||
-                            canvasDisplayName(entry.path),
-                        }))}
-                      rows={organizeRows}
-                      onCancel={() => setOrganizeRows(null)}
-                      onChange={(fileId, choice, ownerFrameId) =>
-                        setOrganizeRows(
-                          (current) =>
-                            current?.map((row) =>
-                              row.fileId === fileId
-                                ? { ...row, choice, ownerFrameId }
-                                : row,
-                            ) ?? null,
-                        )
-                      }
-                      onConfirm={() => {
-                        const frames = [...files.values()].map(
-                          (entry) => entry.file,
-                        );
-                        const stale = (organizeRows ?? []).filter((row) => {
-                          const file = files.get(row.fileId)?.file;
-                          const sources = referenceSourcesOf(
-                            frames,
-                            row.fileId,
-                          ).map((source) => source.fileId);
-                          return organizePreviewIsStale(
-                            row.basisSources ?? [],
-                            sources,
-                            !!file?.organization,
-                          );
-                        });
-                        if (stale.length) {
-                          const refreshed = recommendOrganization(frames);
-                          setOrganizeRows(
-                            (current) =>
-                              current?.map((row) => {
-                                if (
-                                  !stale.some(
-                                    (item) => item.fileId === row.fileId,
-                                  )
-                                )
-                                  return row;
-                                const next = refreshed.find(
-                                  (item) => item.fileId === row.fileId,
-                                );
-                                if (!next) return row;
-                                const ownerId =
-                                  next.organization.kind === 'subgraph'
-                                    ? next.organization.ownerFrameId
-                                    : undefined;
-                                return {
-                                  ...row,
-                                  reason: next.reason,
-                                  choice: ownerId ? 'owner' : 'standalone',
-                                  ownerFrameId: ownerId,
-                                  basisSources: referenceSourcesOf(
-                                    frames,
-                                    row.fileId,
-                                  ).map((source) => source.fileId),
-                                  recommendedOwnerName: ownerId
-                                    ? files.get(ownerId)?.file.frame.name ||
-                                      canvasDisplayName(
-                                        files.get(ownerId)?.path ?? ownerId,
-                                      )
-                                    : row.recommendedOwnerName,
-                                };
-                              }) ?? null,
-                          );
-                          notify(
-                            locale === 'zh'
-                              ? '部分图表已变化，请确认更新后的建议'
-                              : 'Some charts changed. Review the refreshed rows.',
-                          );
-                          return;
-                        }
-                        void workspaceActions
-                          .executeAction('workspace.organize', {
-                            changes: organizeRows.map((row) => ({
-                              fileId: row.fileId,
-                              organization:
-                                row.choice === 'owner' && row.ownerFrameId
-                                  ? {
-                                      kind: 'subgraph' as const,
-                                      ownerFrameId: row.ownerFrameId,
-                                    }
-                                  : row.choice === 'unorganized'
-                                    ? { kind: 'subgraph' as const }
-                                    : { kind: 'standalone' as const },
-                              basisOrganization: null,
-                              basisSources: referenceSourcesOf(
-                                frames,
-                                row.fileId,
-                              ).map((source) => source.fileId),
-                            })),
-                          })
-                          .then(workspaceActionCommandResult)
-                          .then((result) => {
-                            if (!result.ok)
-                              notify(
-                                result.diagnostics
-                                  .map((item) => item.message)
-                                  .join('; '),
-                              );
-                            else setOrganizeRows(null);
-                          });
-                      }}
-                    />
-                  ) : null}
+
                   <div className="workspace-banners">
                     {snapshot.saveStatus === 'error' ||
                     [...snapshot.filePersistence.values()].some(
@@ -4748,8 +4544,8 @@ function WorkspaceAppShell({
 
                     {notice ? (
                       <div
-                        className={`workspace-notice-banner${presenting ? ' workspace-presentation-notice' : ''}${notice.tone === 'error' ? ' is-error' : ''}`}
-                        role={notice.tone === 'error' ? 'alert' : 'status'}
+                        className={`workspace-notice-banner is-error${presenting ? ' workspace-presentation-notice' : ''}`}
+                        role="alert"
                       >
                         <span>{notice.text}</span>
                         <button type="button" onClick={() => setNotice(null)}>
@@ -4830,11 +4626,35 @@ function WorkspaceAppShell({
                       : 'workspace-settings-back'
                   }
                   workspace={{
+                    versioning: {
+                      render: ({ readonly: versionReadonly, onBusyChange }) => (
+                        <VersionSettingsPanel
+                          session={session}
+                          readonly={versionReadonly}
+                          locale={locale}
+                          onBusyChange={onBusyChange}
+                          purgeEntryIds={versionPurgeIds}
+                          gitAdmin={
+                            !!host.git &&
+                            (!host.versions ||
+                              host.versionProvider?.id === 'git')
+                          }
+                        />
+                      ),
+                    },
+                    onRegisterFlush: registerSettingsFlush,
+                    onMigrateBrowserData,
+                    skills: createWorkspaceSkillsModel(
+                      session!,
+                      activeWorkspace.current!.handle.key,
+                      workspaceActions,
+                      locale,
+                      () => workspaceActionContext.current.session === session,
+                    ),
                     readonly,
                     storage:
-                      typeof window !== 'undefined' && 'electronAPI' in window
-                        ? 'desktop'
-                        : 'browser',
+                      host.storageKind ??
+                      (host.readWorkspaceLocation ? 'filesystem' : 'browser'),
                     persistence: {
                       status: snapshot.saveStatus,
                       error:
@@ -4921,6 +4741,14 @@ function WorkspaceAppShell({
                           );
                       },
                       onPurge: async (entryIds) => {
+                        const versions = await session.versions({
+                          type: 'status',
+                        });
+                        if (versions.status.enabled) {
+                          setVersionPurgeIds(entryIds);
+                          openSettings('workspace.versions');
+                          return;
+                        }
                         const result = await applyWorkspaceAction({
                           type: 'purge-trash',
                           entryIds,
@@ -5024,6 +4852,14 @@ function WorkspaceAppShell({
                 onChange={(event) => void importDocument(event)}
               />
             </div>
+            {ordinaryResource?.session === session && (
+              <OrdinaryResourceReader
+                session={session}
+                snapshot={snapshot}
+                path={ordinaryResource.path}
+                onClose={() => setOrdinaryResource(null)}
+              />
+            )}
           </WorkspaceManagement>
         </ActionScope>
       </FrameAutoCalculationProvider>
@@ -5049,7 +4885,9 @@ function WorkspaceAppShell({
           };
         }),
         ...snapshot.entries.flatMap((entry) =>
-          entry.kind === 'directory' && !entry.folderId
+          entry.kind === 'directory' &&
+          isWorkspaceContentPath(entry.path, snapshot.entries) &&
+          !entry.folderId
             ? [
                 {
                   folderPath: entry.path,

@@ -1,3 +1,6 @@
+export * from './anchor';
+export * from './port';
+export * from './terminal';
 export * from './cell/index';
 export * from './cell/kinds';
 export * from './cell/types';

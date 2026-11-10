@@ -15,7 +15,7 @@ import {
   type FrameCell,
   type GroupCell,
   type NodeCell,
-  type PortSpec,
+  type Port,
 } from '@sue/board-core';
 import { type MindRootData } from '@sue/board-mind';
 import { describe, expect, it } from 'vitest';
@@ -59,7 +59,7 @@ const legacyStore = (): CellStore => {
     aspectRatio: '16:9',
     locked: true,
     hidden: true,
-    ports: [{ id: 'p1', direction: 'both', side: 'right' } as PortSpec],
+    ports: [{ id: 'p1', direction: 'both', side: 'right' } as Port],
     geometry: { x: 100, y: 50, width: 400, height: 300 },
   };
   const wfFrame = createFrameCell('wf-frame', {

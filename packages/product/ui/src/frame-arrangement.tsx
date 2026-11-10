@@ -33,7 +33,7 @@ import { useI18n } from './i18n';
 import { FrameTooltip, frameDisabledReason } from './frame-tooltip';
 import { FrameRoutingButton } from './frame-routing-button';
 
-/** The inspector and context menu share controller commands and availability. */
+/** Full layout configuration belongs to the inspector; commands use shared Actions. */
 export function FrameArrangement({
   store,
   selection,

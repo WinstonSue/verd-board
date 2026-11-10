@@ -286,12 +286,12 @@
         "strokeWidth": 1.5
       },
       "content": {
-        "label": "Cell 事务与统一历史\n校验通过才整体提交；布局、位置与图文历史的保存边界分开说明。",
+        "label": "Cell 事务与统一历史\n校验后整体提交；布局与图文历史分开说明。",
         "text": {
           "schemaVersion": 1,
           "id": "project:overview/05/summary/2/text",
           "kind": "inline",
-          "plainText": "Cell 事务与统一历史\n校验通过才整体提交；布局、位置与图文历史的保存边界分开说明。",
+          "plainText": "Cell 事务与统一历史\n校验后整体提交；布局与图文历史分开说明。",
           "content": {
             "type": "doc",
             "content": [
@@ -318,7 +318,7 @@
                 "content": [
                   {
                     "type": "text",
-                    "text": "校验通过才整体提交；布局、位置与图文历史的保存边界分开说明。",
+                    "text": "校验后整体提交；布局与图文历史分开说明。",
                     "marks": [
                       {
                         "type": "textStyle",
@@ -334,7 +334,8 @@
             ]
           }
         }
-      }
+      },
+      "name": "Cell 事务与统一历史 校验通过才整体提交；布局、位置与图文历史的保存边界分开说明。"
     },
     "project:overview/05/summary/3": {
       "id": "project:overview/05/summary/3",
@@ -380,12 +381,12 @@
         "strokeWidth": 1.5
       },
       "content": {
-        "label": "宿主意图与外部历史\n宿主持有业务 value；编辑器等待回执后重新投影，不擅自持久化业务数据。",
+        "label": "宿主意图与外部历史\n宿主持有 value；编辑器收到回执后重新投影。",
         "text": {
           "schemaVersion": 1,
           "id": "project:overview/05/summary/3/text",
           "kind": "inline",
-          "plainText": "宿主意图与外部历史\n宿主持有业务 value；编辑器等待回执后重新投影，不擅自持久化业务数据。",
+          "plainText": "宿主意图与外部历史\n宿主持有 value；编辑器收到回执后重新投影。",
           "content": {
             "type": "doc",
             "content": [
@@ -412,7 +413,7 @@
                 "content": [
                   {
                     "type": "text",
-                    "text": "宿主持有业务 value；编辑器等待回执后重新投影，不擅自持久化业务数据。",
+                    "text": "宿主持有 value；编辑器收到回执后重新投影。",
                     "marks": [
                       {
                         "type": "textStyle",
@@ -428,7 +429,8 @@
             ]
           }
         }
-      }
+      },
+      "name": "宿主意图与外部历史 宿主持有业务 value；编辑器等待回执后重新投影，不擅自持久化业务数据。"
     },
     "project:overview/05/detail/1": {
       "id": "project:overview/05/detail/1",

@@ -68,10 +68,7 @@
       },
       "data": {
         "graphMode": "dag",
-        "origin": [
-          60,
-          140
-        ],
+        "origin": [60, 140],
         "memberIds": [
           "pattern:workflow-dag/flow-start",
           "pattern:workflow-dag/task-submit",
@@ -127,10 +124,10 @@
       "kind": "workflow-decision",
       "cellType": "node",
       "geometry": {
-        "x": 500,
-        "y": 120,
-        "width": 120,
-        "height": 80,
+        "x": 460,
+        "y": 100,
+        "width": 200,
+        "height": 120,
         "outline": "diamond"
       },
       "ports": [
@@ -168,7 +165,7 @@
       "kind": "workflow-task",
       "cellType": "node",
       "geometry": {
-        "x": 700,
+        "x": 780,
         "y": 80,
         "width": 160,
         "height": 48,
@@ -209,7 +206,7 @@
       "kind": "workflow-task",
       "cellType": "node",
       "geometry": {
-        "x": 700,
+        "x": 780,
         "y": 220,
         "width": 160,
         "height": 48,

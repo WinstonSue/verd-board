@@ -12,11 +12,9 @@ import {
   type CellRegistry,
 } from '@sue/board-core';
 import {
-  organizationForCopy,
   remapFrameFileIds,
   type FrameFileDiagnostic,
 } from '../frames/frame-files';
-import { type CopyOwnershipMode } from '../frames/frame-organization';
 import {
   isDocumentFileV1,
   isWorkspaceFile,
@@ -65,21 +63,8 @@ export function workspaceDocumentDependents(
       sources.map((source) => source.sourceId),
     ),
   );
-  for (const file of files) {
-    if (
-      file.format === 'verd-frame' &&
-      file.organization?.kind === 'subgraph' &&
-      file.organization.ownerFrameId
-    ) {
-      const childId = file.frame.id;
-      dependents.set(childId, [
-        ...(dependents.get(childId) ?? []),
-        file.organization.ownerFrameId,
-      ]);
-    }
-  }
   const result = new Set(files.filter(isDocumentFileV1).map((file) => file.id));
-  // Follow reverse dependencies once, including cycles and owned subgraphs.
+  // Follow actual reverse references once, including cycles.
   for (const id of result)
     for (const sourceId of dependents.get(id) ?? [])
       if (present.has(sourceId)) result.add(sourceId);
@@ -154,7 +139,7 @@ export function workspaceReferences(file: WorkspaceFile): WorkspaceReference[] {
   return result;
 }
 
-/** Finite even for cycles; ownership is followed only from an owner to its children. */
+/** Actual reference closure, finite even for cycles. */
 export function workspaceFileClosure(
   files: readonly WorkspaceFile[],
   rootId: string,
@@ -169,14 +154,6 @@ export function workspaceFileClosure(
     seen.add(id);
     result.push(file);
     references.targetsOf.get(id)?.forEach((ref) => visit(ref.targetId));
-    files.forEach((child) => {
-      if (
-        child.format === 'verd-frame' &&
-        child.organization?.kind === 'subgraph' &&
-        child.organization.ownerFrameId === id
-      )
-        visit(child.frame.id);
-    });
   };
   visit(rootId);
   return result;
@@ -242,7 +219,7 @@ export function remapWorkspaceFiles(
   files: readonly WorkspaceFile[],
   collide: (id: string) => boolean,
   createId: () => string,
-  copy?: { rootId: string; mode?: CopyOwnershipMode; assignOwnerId?: string },
+  copy?: { rootId: string },
   registry: CellRegistry = createWorkspaceCellRegistry(),
 ): { files: WorkspaceFile[]; idMap: Map<CellId, CellId> } {
   const all = files.flatMap((file) =>
@@ -292,15 +269,6 @@ export function remapWorkspaceFiles(
       };
     }
     const next = remapFrameFileIds(file, idMap, { registry, targetOwnerOf });
-    if (copy) {
-      const org = organizationForCopy(file, idMap, {
-        mode: copy.mode ?? 'retarget',
-        isRoot: file.frame.id === copy.rootId,
-        assignOwnerId: copy.assignOwnerId,
-      });
-      if (org) next.organization = org;
-      else delete next.organization;
-    }
     return next;
   });
   return { files: remapped, idMap };

@@ -1,4 +1,6 @@
-import { portAnchor, relativeAnchor } from '../geometry/edge';
+import { resolveTerminal } from '../terminal/resolve';
+import type { Terminal } from '../terminal/types';
+
 import type { Point } from '../interfaces/point';
 import { copyCellFragment } from './clipboard';
 import { convertFramePoint, frameScene } from './frame';
@@ -11,21 +13,14 @@ import {
   isGroupCell,
   isNodeCell,
   type CellStore,
-  type EdgeTerminal,
 } from './types';
 
-const terminalPosition = (store: CellStore, terminal: EdgeTerminal): Point => {
-  if ('point' in terminal) return [...terminal.point];
-  const node = store.cells[terminal.cellId];
-  if (!isNodeCell(node)) throw new Error('Missing transfer endpoint');
-  if (terminal.anchor) return relativeAnchor(node.geometry, terminal.anchor);
-  const port = node.ports?.find((port) => port.id === terminal.portId);
-  return port
-    ? portAnchor(node.geometry, port).point
-    : [
-        node.geometry.x + node.geometry.width / 2,
-        node.geometry.y + node.geometry.height / 2,
-      ];
+const terminalPosition = (store: CellStore, terminal: Terminal): Point => {
+  const position = resolveTerminal(store, terminal, undefined, {
+    automatic: 'center',
+  });
+  if (!position) throw new Error('Missing transfer endpoint');
+  return [...position.point];
 };
 
 /** Moves whiteboard content and complete embedded frames while retaining their internal coordinates. */

@@ -1,4 +1,6 @@
+import { serviceFixture } from './service-fixture';
 import { expect, type Page } from '@playwright/test';
+import type { WorkspaceSessionState } from '../../../packages/product/app/src/host/workspace-host';
 
 /**
  * Detail canvases open as workspace tabs (frameId is the tab identity), and
@@ -37,105 +39,59 @@ export const activateBoardTab = async (page: Page) => {
  * the legacy root-frame semantics rather than the active tab. `records` holds
  * each file's FrameFileV2 `{frame, cells}` keyed by frameId.
  */
-export const persistedWorkspace = async (page: Page) =>
-  page.evaluate(async () => {
-    const db = await new Promise<IDBDatabase>((resolve, reject) => {
-      const request = indexedDB.open('verdboard-host');
-      request.onsuccess = () => resolve(request.result);
-      request.onerror = () => reject(request.error);
-    });
-    const getAll = (store: string) =>
-      new Promise<any[]>((resolve, reject) => {
-        const request = db
-          .transaction(store, 'readonly')
-          .objectStore(store)
-          .getAll();
-        request.onsuccess = () => resolve(request.result);
-        request.onerror = () => reject(request.error);
-      });
-    const get = (store: string, key: string) =>
-      new Promise<unknown>((resolve, reject) => {
-        const request = db
-          .transaction(store, 'readonly')
-          .objectStore(store)
-          .get(key);
-        request.onsuccess = () => resolve(request.result);
-        request.onerror = () => reject(request.error);
-      });
-    const [nodes, meta] = await Promise.all([
-      getAll('files'),
-      get('meta', 'default'),
-    ]);
-    db.close();
-    const records: Record<string, any> = {};
-    const paths: Record<string, string> = {};
-    for (const node of nodes) {
-      if (
-        node.wsKey !== 'default' ||
-        node.kind !== 'file' ||
-        !node.path.endsWith('.verd.json')
-      )
-        continue;
-      const parsed = JSON.parse(new TextDecoder().decode(node.content));
-      if (parsed?.format === 'verd-frame') {
-        records[parsed.frame.id] = parsed;
-        paths[parsed.frame.id] = node.path;
-      }
+export const persistedWorkspace = async (page: Page) => {
+  const { nodes, meta } = await serviceFixture(page).readDisk();
+  const records: Record<string, any> = {};
+  const paths: Record<string, string> = {};
+  for (const node of nodes) {
+    if (node.kind !== 'file' || !node.path.endsWith('.verd.json')) continue;
+    const parsed = JSON.parse(node.text);
+    if (parsed?.format === 'verd-frame') {
+      records[parsed.frame.id] = parsed;
+      paths[parsed.frame.id] = node.path;
     }
-    const ids = Object.keys(records);
-    if (!ids.length) return null;
-    const referenced = new Set<string>();
-    for (const record of Object.values(records))
-      for (const cell of Object.values<any>(record.cells))
-        if (cell.data?.targetFrameId) referenced.add(cell.data.targetFrameId);
-    const detached = ids.filter((id) => !referenced.has(id));
-    const session = (
-      meta as
-        | {
-            session?: { activeTabId?: string; tabs?: { fileId: string }[] };
-          }
-        | undefined
-    )?.session;
-    const active = session?.activeTabId;
-    const rootId =
-      (active && detached.includes(active) && active) ||
-      detached.sort()[0] ||
-      ids.sort()[0];
-    const manifest = {
-      format: 'verd-workspace',
-      rootId,
-      frames: Object.fromEntries(ids.map((id) => [id, id])),
-      detachedFrameIds: ids.filter(
-        (id) => id !== rootId && !referenced.has(id),
-      ),
-    };
-    return {
-      manifest,
-      records,
-      paths,
-      tabs: session?.tabs?.map(({ fileId }) => fileId) ?? [],
-    };
-  });
+  }
+  const ids = Object.keys(records);
+  if (!ids.length) return null;
+  const referenced = new Set<string>();
+  for (const record of Object.values(records))
+    for (const cell of Object.values<any>(record.cells))
+      if (cell.data?.targetFrameId) referenced.add(cell.data.targetFrameId);
+  const detached = ids.filter((id) => !referenced.has(id));
+  const session = (
+    meta as
+      | {
+          session?: { activeTabId?: string; tabs?: { fileId: string }[] };
+        }
+      | undefined
+  )?.session;
+  const active = session?.activeTabId;
+  const rootId =
+    (active && detached.includes(active) && active) ||
+    detached.sort()[0] ||
+    ids.sort()[0];
+  const manifest = {
+    format: 'verd-workspace',
+    rootId,
+    frames: Object.fromEntries(ids.map((id) => [id, id])),
+    detachedFrameIds: ids.filter((id) => id !== rootId && !referenced.has(id)),
+  };
+  return {
+    manifest,
+    records,
+    paths,
+    tabs: session?.tabs?.map(({ fileId }) => fileId) ?? [],
+  };
+};
 
 /** Waits until the app has finished its initial workspace save. */
 export const waitForWorkspacePersisted = async (page: Page) =>
   await expect.poll(() => persistedWorkspace(page)).not.toBeNull();
 
-/**
- * Fixture seeding writes the pre-workspace `VerdBoard` record; the host only
- * migrates it when the workspace is empty, so drop `verdboard-host` before
- * reloading. The delete request stays queued until the app's connection
- * closes during the subsequent navigation.
- */
-export const clearWorkspaceStorage = async (page: Page) => {
-  await page.evaluate(
-    () =>
-      new Promise<void>((resolve) => {
-        const request = indexedDB.deleteDatabase('verdboard-host');
-        request.onsuccess =
-          request.onblocked =
-          request.onerror =
-            () => resolve();
-      }),
-  );
-};
+/** Navigation has its own debounce; content's saved badge can precede it. */
+export const persistedNavigation = async (page: Page) =>
+  (await serviceFixture(page).readDisk()).meta.session as
+    WorkspaceSessionState | undefined;
+
+/** Legacy fixtures are converted directly to native files by the service fixture. */
+export const clearWorkspaceStorage = async (_page: Page) => {};

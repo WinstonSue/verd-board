@@ -1,5 +1,165 @@
 # @sue/verd-board-app
 
+## 2.1.0
+
+### Major Changes
+
+- b06ca40: Standardize bundled project and pattern workspaces with portable project context. Add explicit offline full updates with complete directory backups, restart recovery, retained project identity and terminal receipts, and instance generation checks that reject stale hosts and authoring plans.
+
+  Use document navigation as the built-in project homepage and honor configured reading entries when no session has been saved. Preserve existing sessions and keep diagram navigation available through document links.
+
+  Display the selected reading entry instead of hiding it behind the management homepage. Explain that installing the app preserves existing copies and that confirmed replacement opens the new navigation document.
+
+  Move bilingual navigation to the workspace root and project diagrams into the diagrams directory. Consolidate navigation into reading indexes, replace document posters with compact source links, and permit existing plain text annotations in specialized scenes without adding them to scene layout membership.
+
+- 33dc37e: Introduce explicit, instance-scoped CellPlugin and FrameUIPlugin composition for Draw, Mind, Workflow, Architecture and UML. Domain kinds and models move out of core. FrameEditor composes a complete editor from one domain; FrameCanvas takes the same pluginSet used for previews, references and image export. Add the Draw React package and public per-package CSS entries; keep rich text built into React core and inject optional converters from the host.
+
+  Pass the installed registry to independent domain-sensitive helpers. Reject unknown kinds before opening or importing files, with no normalization or writes. Duplicate plugin IDs and kind conflicts fail explicitly; runtime installation is unsupported. Preserve atomic transaction/history behavior and existing FrameFileV2/DocumentFileV1 serialized fields. See the native Architecture, React integration and migration documents for the next-major contract. No version bump or publication is performed in this change.
+
+- 33dc37e: Separate current file identity, entry source and ownership in workspace navigation. Replace ownership breadcrumbs with a current-file header, per-file return context and grouped direct embed locations across canvases and documents. Preserve the source view on return, identify repeated embeds, and keep independent or unorganized files discoverable.
+
+  Add `WorkspaceFileNavigation` and document-controller `locateFrameReference(targetFrameId, occurrence)`. Resolve document embeds against the current body and reject stale body revisions before selection. Route reference location and return through workspace Actions and editing receipts. Keep file formats and persistent workspace link addresses unchanged.
+
+- 33dc37e: Remember successfully opened desktop workspaces across restarts and reopen them from the workspace menu or startup recovery page. Preserve save protection, retain unavailable folders without recreating them, and migrate the previous workspace selection.
+- 33dc37e: Unify editor toolbars, menus, shortcuts, command palettes, help and public user operations around instance-scoped Actions. Add the renderer-independent `@sue/board-react-actions` package. Replace discrete canvas/document controller mutation methods, plugin-local shortcuts, tool command callbacks and `CellUtil.keyboard` with shared action definitions, availability and execution. Capture original targets before focus or asynchronous transport changes; await actual host editing receipts and preserve cancellation, rejection and failure results.
+
+  Add shared `WorkspaceTarget` codecs and stable single-Cell workspace links. Resolve Cell identity through the live owner index after cross-Frame moves, with the URL file ID as a hint/fallback. Replace legacy document-link exports and reveal props with common codecs, `FrameLinkHost`, abortable `revealTarget` and typed document navigation results. Temporarily expand required Mind ancestors through occurrence-local view projections; canonical content, undo history, other occurrences and exports remain unchanged.
+
+  Map explicit standard and domain rich-text link slots once after copy/import/paste ownership is known, including custom UML plans. Custom `CellPastePlan` implementations must return `idMap`; inject protocol/text mappers into core registries without adding a core-to-common runtime dependency. Preserve `FrameFileV2`, `DocumentFileV1` and native bundle versions. See native React integration and migration documents for breaking API replacements. Prepare Changesets only; do not bump versions or publish as part of this change.
+
+- b06ca40: Unify personal preferences and project configuration in a searchable settings center, with ordered reading entries, scoped defaults, save feedback and safe project field patches. Preserve existing settings entry actions and standalone settings wrappers.
+- b06ca40: Reorganize workspace navigation, chart browsing, switching and quick open around compact lists and consistent dialogs. Consolidate settings sections, preserve drafts while searching, commit text and numeric values when editing finishes, and retain existing action IDs and stored workspace formats.
+
+  Unify interface typography around system fonts and a 14px baseline, adopt neutral appearance tokens, and preserve legacy canvas paint. Share modal, icon, form and settings primitives; align workspace switching, sidebar navigation, management lists and content actions. Keep nested menus inside modal portal roots and add style and geometry regression checks.
+
+- Show ordinary workspace resources at their real paths, consolidate durable resources under `.verdscrolls/resources`, and migrate existing resource stores without changing attachment addresses. WorkspaceHost implementations must provide readResource and support resourceWrites/resourceVersions separately from content entries.
+
+  Keep AGENTS.md and agent.md guidance out of content navigation while preserving the original files for Agent tools.
+
+  Treat every diagram as an independent file. Remove canvas ownership commands, indexes and UI interfaces; copying and exporting follow actual references. Legacy organization fields remain readable and inert.
+
+### Minor Changes
+
+- a63a1ad: Add a standalone agent authoring CLI and independently maintained native pattern library. Share editor schemas, workspace validation and journaled filesystem commits with Desktop, expose atomic batch authoring, and initialize an editable pattern workspace without overwriting user copies. Include real-renderer previews and a bundled authoring skill.
+- Add self-contained native v2 resource packages with validated, atomic file and asset import and idempotent recovery. Declare host workspace capabilities, keep saved names consistent with history, and finish management-view navigation correctly. Make read-only doctor exit unsuccessfully when the workspace is unready. Preserve native/v1 imports and existing third-party host behavior.
+
+  Keep automatic camera fits synchronized with initial viewport and toolbar measurements until user interaction takes over, without writing document content or changing manually positioned cameras.
+
+  Read focused native text selections without changing content, and synchronize canvas selections before rendering controls so stale editor ranges cannot overwrite a newly moved caret. Preserve text history.
+
+- b06ca40: Add document folding, LaTeX nodes, resource cards, local media and PDF reading with stable asset page links. Keep canvas label schemas separate. Store portable binary assets without base64, add PDF runtime assets and restrict external frames and workspace IPC.
+- b06ca40: Publish native project documentation and pattern workspaces as independently versioned npm resources. Desktop checks compatible releases using local npm credentials, reminds without downloading, and prepares verified exact versions before the existing backed-up atomic replacement. Keep offline recovery and project identity intact.
+- b06ca40: Add searchable internal links, a separate knowledge relationship index, and read-only related-content previews. Keep embed dependency/export behavior unchanged. Documents can preview link targets from the link picker; workspace documents and canvases support Alt-click previews and source navigation.
+- b06ca40: Add slash insertion and paragraph actions, native writing templates, stable block anchors and live read-only excerpts, portable content properties and saved filters, local content checkpoints with preview/restore, conflict comparison and independent recovery copies, managed image assets, and folder/ZIP migration with portable export reports. Keep resource writes in WorkspaceSession, guard them with content versions, and clear recoverable snapshots when their source is permanently deleted.
+- Add a local filesystem service for Web with the shared desktop workspace lifecycle, typed HTTP/SSE host, directory selection, Git remote sync, Agent tools and complete browser-workspace migration. Declare host storage explicitly and preserve desktop entry points.
+
+  Clear source IndexedDB records after a successful validated migration, retain the complete backup, protect concurrent edits and leave current browser data intact when importing a backup file.
+
+- Use root Git repositories for explicit file and workspace versions. Add local browser Git, native Desktop Git and fast-forward remote synchronization, same-commit previews, guarded restores, and reviewed history cleanup with explicit remote-provider follow-up states. Keep legacy snapshots readable while removing automatic recovery snapshots and automatic commits.
+- Expose provider-independent file and directory version history, with Git storage configuration in workspace settings. Add explicit scope, opaque version identifiers, capability and error contracts, reviewed creation plans, stable directory history across moves, and guarded directory restores that preserve unrelated content and staging. Retain existing repositories and legacy snapshots.
+- b06ca40: Initialize AI project discovery when a filesystem workspace opens: preserve user AGENTS prose, link versioned shared tools/specifications, expose project context and readiness, and provide read-only context/doctor plus explicit init/repair commands. Migrate legacy metadata atomically to .verdscrolls with journal/receipt/trash preservation and legacy-writer guards. Bundle a checksum-verified standalone Node runtime and complete CLI dependencies in Desktop resources; retain older deployed resource versions and bind pending plans to the resource build.
+- b06ca40: Add workspace creation and history management, home and unified content navigation, portable favorites and manual ordering, batch file and directory organization with undo, and local full-text search.
+- Maintain workspace prompt supplements and independently named custom Skills in settings as standard SKILL.md documents. Preserve YAML metadata and referenced resources, use conditional transactions with conflict-safe drafts and idempotent retries, discover external Skills, and activate custom instructions by description. Skill changes invalidate prepared plans; bundled workspace updates retain user Skills.
+
+  Provide a standard Skill entrance for every default pattern, referencing its native rules and templates. View the common authoring Skill, selected pattern Skill, Markdown source and related rules directly from the prompt scope selector. Keep the common authoring document in the content package as its single source while retaining the existing shared runtime path. Include registered default Skills in bundled release manifests and exclude Skill internals from content navigation and Markdown imports.
+
+- Prepare the application, SDK, UI and Agent together as 2.1.0 for this explicitly authorized early-stage release. This release includes the breaking API changes documented below; existing 2.0 consumers must follow the migration guide. Future releases retain the existing version rules. Local version preparation does not establish npm registry publication.
+
+### Patch Changes
+
+- 33dc37e: Add a readiness-driven content fade and a thin progress strip shown only after navigation waits longer than 300ms. Track captured editing barriers, target readiness and positioning without remounting editors, and cancel stale navigation feedback on replacement, failure or workspace changes. Respect reduced motion and preserve document and canvas view state.
+- 5571a9a: Add light and dark variants for Classic, Colorful, Soft, Retro, Fresh and Ocean while preserving existing theme IDs. Resolve canvas colors at render time, take over all unmarked component colors, and retain per-field custom color sources through edits, copying and inheritance. Adapt embedded documents, references and presentation without saving appearance into files or undo history. Image exports can use the current, light or dark appearance independently of their background choice and retain the full source content of selected references; existing third-party renderers retain legacy colors when appearance is omitted. Share domain color defaults across drawing and inspectors, add Mind branch reset, and distinguish explicitly authored Mermaid styles from renderer defaults.
+
+  Make rich-text color provenance explicit with optional textStyle.attrs.colorSource. Unmarked and theme text inherits readable local colors in canvases, standalone documents and embedded documents; custom text keeps its literal color. Share the schema across previews and editors, preserve original literals and sources in HTML, record identical manual color choices, and clear only the color override when returning to the theme. Keep legacy third-party rendering and user workspace files unchanged; cover real legacy text marks, appearance switching, history, source roundtrips and image exports.
+
+  Add five color roles, three emphasis levels and six coordinated categorical families to every theme appearance. Domain mappings distinguish workflow roles, architecture layers, UML classifiers and participants, drawing shape families, table headers and swimlanes. Share local fill/stroke/text resolution with inspectors and exports, preserve custom field overrides and Mind schemes, and document the actual palette values and swatches in the native architecture design.
+
+- b06ca40: Bound obstacle routing allocation, reuse prepared atomic transactions and topology indexes, and preserve unaffected workspace files and canvas state. Add opt-in layout dependency keys, shared spatial queries, geometry-based offscreen navigation, and buffered, staged mounting for large canvases.
+- 8edcd06: Bundle system introduction and pattern workspaces with the app, make backups optional and discoverable, preserve presentation across internal links, and correct content tabs, storage locations and search snippets.
+- b06ca40: Remove deprecated CellIndex.membersOf: use groupOf for group membership and domainOwnerOf for domain ownership. Preserve combined lookup precedence with parentOf, domainOwnerOf, then groupOf. Remove legacyThemeColors and the ignored fifth resolveThemeColor argument; use the four-argument resolver and explicit custom color sources. Replace the UI WorkspaceId alias with EditorKind.
+
+  Remove unused internal code and attachment scans, route Keep both through the registered workspace.resolve-conflict action, and synchronize bundled native project documentation and independent content release guidance.
+
+- Separate user authoring recommendations from executable Agent defaults, with independent catalogs and loading entries. Keep existing Agent exports, editable library identities and manual update behavior while routing product templates to the user source.
+
+  Add repository-wide development checks, full CI and publishing gates, and version-bound reviews of Agent tooling, user recommendations and the system introduction. Require substantive introduction updates for product and standalone package releases, and isolate production E2E probe artifacts from normal web output.
+
+- b06ca40: Add configurable rich text link activation, make readonly and presentation links clickable, and simplify the document toolbar with accessible responsive menus. Remove the document body focus outline while retaining control and node selection feedback.
+- 33dc37e: Separate one-shot node layout and edge optimization from independently enabled session automation. Save one-shot optimized routes as editable points; preserve legacy strategy compatibility without implicit continuous work. Coalesce interaction previews and defer full routing until release, keeping automatic derived changes in the initiating transaction and undo entry.
+- 33dc37e: Reduce tab switching and document opening work by caching workspace snapshots, isolating document page rendering, reusing editor setup, and checking native export dependencies without cloning files.
+- b06ca40: Dismiss file menus reliably when clicking the canvas, add stable file link copying, and replace the persistent canvas text form with a themed selection-only formatting toolbar.
+- Extract Port, Anchor and Terminal into independent core modules with shared attachment resolution, port availability and terminal editing. Rename PortSpec to Port and EdgeTerminal to Terminal. Replace relativeAnchor, portAnchor, edgeTerminalPosition, availableEdgePorts, snapEdgeTerminal, replaceEdgeTerminal and bindEdgeRouteTerminals with resolveAnchor, resolvePort, resolveTerminal, availablePorts, snapTerminal, replaceTerminal and bindRouteTerminals. resolveTerminal returns undefined for an unresolved host and accepts explicit facing or center policies for automatic attachments.
+
+  All three resolvers return the shared ResolvedAnchor shape containing point and side. Callers that previously used the coordinate returned by relativeAnchor should read resolveAnchor(...).point.
+
+  Migrate engine, React and product consumers to the new APIs without compatibility aliases. Preserve native JSON, port-and-anchor bindings, domain routing preferences and endpoint controls based on the connector's actual cached route.
+
+- 33dc37e: Handle command palette shortcuts before editor key isolation and add opt-in root fallback for body/html focus after reload. Preserve nearest-scope routing and modal ownership, and keep document page actions alive through React StrictMode effect replay.
+- Keep connectors and arrows fixed when ports appear, prioritize selected node or edge ports, and enlarge connection editing targets. Add non-blocking workflow port-direction guidance for agent authoring.
+- 33dc37e: Introduce typed Schema settings panels, reusable geometry definitions and additive propertyPanels/settingsPanels plugin contributions. Migrate ordinary application, workspace, common and domain fields while retaining existing controls, commit timing, inheritance, transactions and history. Preserve concurrent host fields when applying inspector edits.
+
+  Consume the separately maintained Settings SDK through published package versions. Candidate integration and consumer scripts accept a checksummed tarball manifest; publish the Schema runtime/SDK and pin its final versions before registry-only release verification. No version bump or publication is performed here.
+
+- 33dc37e: Start a clearer 180ms opacity transition after the target editor is ready, independently of loading completion. Add immutable per-file persistence feedback and source-aware page save status so opening files and persisting navigation do not report unsaved content or change file save times. Keep workspace-level failures visible and handle in-flight edits, retries, moves, organization and conflict resolution.
+- Updated dependencies [33dc37e]
+- Updated dependencies [5571a9a]
+- Updated dependencies [a63a1ad]
+- Updated dependencies [b06ca40]
+- Updated dependencies [b06ca40]
+- Updated dependencies [8edcd06]
+- Updated dependencies
+- Updated dependencies [b06ca40]
+- Updated dependencies [33dc37e]
+- Updated dependencies
+- Updated dependencies
+- Updated dependencies [b06ca40]
+- Updated dependencies [b06ca40]
+- Updated dependencies
+- Updated dependencies [33dc37e]
+- Updated dependencies [33dc37e]
+- Updated dependencies [33dc37e]
+- Updated dependencies [b06ca40]
+- Updated dependencies [b06ca40]
+- Updated dependencies
+- Updated dependencies [33dc37e]
+- Updated dependencies [b06ca40]
+- Updated dependencies [b06ca40]
+- Updated dependencies [b06ca40]
+- Updated dependencies
+- Updated dependencies
+- Updated dependencies [33dc37e]
+- Updated dependencies [33dc37e]
+- Updated dependencies
+- Updated dependencies
+- Updated dependencies [33dc37e]
+- Updated dependencies [33dc37e]
+- Updated dependencies [33dc37e]
+- Updated dependencies [33dc37e]
+- Updated dependencies [33dc37e]
+- Updated dependencies
+- Updated dependencies [b06ca40]
+- Updated dependencies [33dc37e]
+- Updated dependencies [b06ca40]
+- Updated dependencies [b06ca40]
+- Updated dependencies [b06ca40]
+- Updated dependencies
+- Updated dependencies
+- Updated dependencies
+  - @sue/verd-board-ui@2.1.0
+  - @sue/board-common@2.1.0
+  - @sue/board-core@2.1.0
+  - @sue/board-draw@2.1.0
+  - @sue/board-mind@2.1.0
+  - @sue/board-react-text@2.1.0
+  - @sue/board-react-uml@2.1.0
+  - @sue/verd-board-agent-patterns@2.1.0
+  - @sue/board-uml@2.1.0
+  - @sue/board-markdown-to-text@2.1.0
+  - @sue/board-workflow@2.1.0
+  - @sue/board-architecture@2.1.0
+  - @sue/board-react-actions@2.1.0
+  - @sue/board-layouts@2.1.0
+
 ## Unreleased
 
 工作区、持久化、导入和实例运行时显式传递产品插件 registry；已有文件格式版本不变。

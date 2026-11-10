@@ -96,12 +96,43 @@ let context = run(
 );
 assert.equal(context.agent.ready, true);
 assert.equal(context.name, 'Acceptance');
+const customSkill = path.join(
+  project,
+  '.agents/skills/acceptance-writing/SKILL.md',
+);
+await fs.mkdir(path.dirname(customSkill), { recursive: true });
+await fs.writeFile(
+  customSkill,
+  '---\nname: acceptance-writing\ndescription: Acceptance writing instructions\n---\nUse the acceptance vocabulary.\n',
+);
+assert.ok(
+  run(['context', '--json']).workspaceSkills.some(
+    (entry) => entry.scope === 'custom' && entry.name === 'acceptance-writing',
+  ),
+);
 const identity = context.identity;
 // Follow the same installed guide path an external agent receives.
 const skill = await fs.readFile(
   path.join(deployed, 'skills/verd-authoring/SKILL.md'),
   'utf8',
 );
+assert.equal(
+  skill,
+  await fs.readFile(
+    path.join(deployed, 'patterns/skills/verd-authoring/SKILL.md'),
+    'utf8',
+  ),
+);
+assert.equal(skill, await fs.readFile(run(['skill', '--json']).path, 'utf8'));
+for (const pattern of run(['patterns', '--json'])) {
+  assert.equal(pattern.skillPath, `skills/verd-${pattern.id}/SKILL.md`);
+  const entrance = await fs.readFile(
+    path.join(deployed, 'patterns', pattern.skillPath),
+    'utf8',
+  );
+  assert.ok(entrance.includes(`name: verd-${pattern.id}`));
+  assert.ok(entrance.includes(pattern.guidePath));
+}
 const qualityGuidePath = skill.match(
   /shared\/patterns\/([^`]+\.verd-doc\.json)/,
 )?.[1];
@@ -113,6 +144,8 @@ const qualityGuide = JSON.parse(
   await fs.readFile(path.join(deployed, 'patterns', qualityGuidePath), 'utf8'),
 );
 assert.equal(qualityGuide.id, 'pattern-guide:diagram-quality');
+assert.ok(skill.includes('workflow.port-direction'));
+assert.ok(qualityGuide.text.plainText.includes('workflow.port-direction'));
 assert.ok(
   (await fs.readFile(path.join(project, 'AGENTS.md'), 'utf8')).startsWith(
     '# User rules\nKeep this text.\n',

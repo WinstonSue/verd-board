@@ -25,9 +25,10 @@ export function FrameMenu({
       Math.max(0, Math.min(point[0], window.innerWidth - bounds.width)),
       Math.max(0, Math.min(point[1], window.innerHeight - bounds.height)),
     ]);
-    root.current
-      ?.querySelector<HTMLButtonElement>('button:not(:disabled)')
-      ?.focus();
+    (
+      root.current?.querySelector<HTMLButtonElement>('button:not(:disabled)') ??
+      root.current
+    )?.focus();
   }, [point]);
   useEffect(() => {
     const dismiss = (event: PointerEvent) => {

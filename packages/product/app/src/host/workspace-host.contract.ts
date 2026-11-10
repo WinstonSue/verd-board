@@ -55,6 +55,155 @@ export const describeWorkspaceHostContract = (
   createContext: () => Promise<WorkspaceHostContractContext>,
 ) => {
   describe(`${name} contract`, () => {
+    it('keeps managed resources outside content entries and commits their versions separately', async () => {
+      const { host, open } = await createContext();
+      const handle = await open();
+      const request = {
+        transactionId: tx(),
+        writes: [
+          {
+            path: 'ordinary.json',
+            content: '{"ordinary":true}',
+            expectedVersion: null,
+          },
+        ],
+        resourceWrites: [
+          {
+            path: 'history/snapshot.verd.json',
+            content: canvasJson('internal-frame'),
+            expectedVersion: null,
+          },
+        ],
+      };
+      const receipt = applied(await host.commit(handle, request));
+      expect(await host.commit(handle, request)).toEqual(receipt);
+      expect(Object.keys(receipt.versions ?? {})).toEqual(['ordinary.json']);
+      expect(Object.keys(receipt.resourceVersions ?? {})).toEqual([
+        'history/snapshot.verd.json',
+      ]);
+      const snapshot = await host.readSnapshot(handle);
+      expect(
+        snapshot.entries.some((entry) => entry.path === 'ordinary.json'),
+      ).toBe(true);
+      expect(
+        snapshot.entries.some((entry) => entry.path.includes('.verd')),
+      ).toBe(false);
+      expect(snapshot.canvases).toEqual([]);
+      expect(snapshot.resources).toEqual([
+        {
+          key: 'history/snapshot.verd.json',
+          version: receipt.resourceVersions!['history/snapshot.verd.json'],
+          size: new TextEncoder().encode(canvasJson('internal-frame')).length,
+        },
+      ]);
+      expect(
+        decode(
+          (await host.readResource(handle, 'history/snapshot.verd.json'))
+            .content,
+        ),
+      ).toBe(canvasJson('internal-frame'));
+      await expect(
+        host.readFile(
+          handle,
+          '.verdscrolls/resources/history/snapshot.verd.json',
+        ),
+      ).rejects.toThrow();
+      await expect(
+        host.readFile(handle, '.verd-resources/history/snapshot.verd.json'),
+      ).rejects.toThrow();
+      await host.closeWorkspace(handle);
+    });
+
+    it('rejects mixed content/resource commits atomically and enforces resource CAS and boundaries', async () => {
+      const { host, open } = await createContext();
+      const handle = await open();
+      const first = applied(
+        await host.commit(handle, {
+          transactionId: tx(),
+          resourceWrites: [
+            {
+              path: 'assets/original.bin',
+              content: new Uint8Array([0, 255, 10]),
+              expectedVersion: null,
+            },
+          ],
+        }),
+      );
+      const rejected = await host.commit(handle, {
+        transactionId: tx(),
+        writes: [
+          {
+            path: 'must-not-exist.txt',
+            content: 'partial',
+            expectedVersion: null,
+          },
+        ],
+        resourceWrites: [
+          {
+            path: 'assets/original.bin',
+            content: 'overwrite',
+            expectedVersion: null,
+          },
+        ],
+      });
+      expect(rejected.outcome).toBe('rejected');
+      await expect(
+        host.readFile(handle, 'must-not-exist.txt'),
+      ).rejects.toThrow();
+      expect(
+        Array.from(
+          (await host.readResource(handle, 'assets/original.bin')).content,
+        ),
+      ).toEqual([0, 255, 10]);
+      applied(
+        await host.commit(handle, {
+          transactionId: tx(),
+          resourceWrites: [
+            {
+              path: 'assets/original.bin',
+              content: 'updated',
+              expectedVersion: first.resourceVersions!['assets/original.bin'],
+            },
+          ],
+        }),
+      );
+      for (const key of [
+        '../config.json',
+        'assets/../../config.json',
+        'cache/file',
+        'assets/nested/file',
+        'assets/..',
+        '.verdscrolls/config.json',
+      ]) {
+        await expect(host.readResource(handle, key)).rejects.toThrow();
+        expect(
+          (
+            await host.commit(handle, {
+              transactionId: tx(),
+              resourceWrites: [
+                { path: key, content: 'bad', expectedVersion: null },
+              ],
+            })
+          ).outcome,
+        ).toBe('rejected');
+      }
+      expect(
+        (
+          await host.commit(handle, {
+            transactionId: tx(),
+            writes: [
+              {
+                path: '.verdscrolls/resources/assets/bypass.bin',
+                content: 'bad',
+                expectedVersion: null,
+              },
+            ],
+          })
+        ).outcome,
+      ).toBe('rejected');
+      await host.closeWorkspace(handle);
+    });
+
     it('keeps one folder identity through concurrent issuance, moves and restore', async () => {
       const { host, open } = await createContext();
       const handle = await open();

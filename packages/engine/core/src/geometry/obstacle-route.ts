@@ -11,7 +11,16 @@ export interface OrthogonalRoutingOptions {
   sourceId?: string;
   targetId?: string;
   clearance?: number;
+  /** Painted edge-to-node gap. When set, safety is never relaxed to legacy clearance. */
+  visualGap?: number;
+  /** Receives deterministic search failure details without changing fallback geometry. */
+  onBlocked?(
+    reason: 'terminal-blocked' | 'search-budget' | 'no-safe-route',
+  ): void;
   strokeWidth?: number;
+  terminalRun?: number;
+  /** Free endpoints have no node normal; legacy callers still validate both directions. */
+  allowFreeTerminalDirections?: boolean;
   bendPenalty?: number;
   crossingPenalty?: number;
   /** Previously planned edges are soft obstacles, never impassable walls. */
@@ -68,7 +77,26 @@ export const routingSegmentPenalty = (
 export interface OrthogonalRoutingResult {
   points: Point[];
   status: 'clear' | 'routed' | 'blocked';
+  reason?: 'terminal-blocked' | 'search-budget' | 'no-safe-route';
 }
+
+export const routingClearance = (options: OrthogonalRoutingOptions) =>
+  options.visualGap === undefined
+    ? (options.clearance ?? 12)
+    : Math.max(12, options.visualGap) +
+      Math.max(0, options.strokeWidth ?? 2) / 2 +
+      6;
+export const routingObstacleBoxes = (
+  obstacles: readonly RoutingObstacle[],
+  clearance: number,
+) =>
+  obstacles.map((box) => ({
+    ...box,
+    x: box.x - clearance,
+    y: box.y - clearance,
+    width: box.width + clearance * 2,
+    height: box.height + clearance * 2,
+  }));
 
 const directions: GeometrySide[] = ['right', 'bottom', 'left', 'top'];
 const epsilon = 1e-8;
@@ -151,18 +179,13 @@ export function isClearOrthogonalRoute(
   )
     return false;
   if (
-    !outwardSegment(points[0], points[1], sourceSide) ||
-    !outwardSegment(points.at(-1)!, points.at(-2)!, targetSide)
+    ((!options.allowFreeTerminalDirections || options.sourceId !== undefined) &&
+      !outwardSegment(points[0], points[1], sourceSide)) ||
+    ((!options.allowFreeTerminalDirections || options.targetId !== undefined) &&
+      !outwardSegment(points.at(-1)!, points.at(-2)!, targetSide))
   )
     return false;
-  const clearance = options.clearance ?? 12;
-  const boxes = obstacles.map((box) => ({
-    ...box,
-    x: box.x - clearance,
-    y: box.y - clearance,
-    width: box.width + clearance * 2,
-    height: box.height + clearance * 2,
-  }));
+  const boxes = routingObstacleBoxes(obstacles, routingClearance(options));
   return clearRoute(points, boxes, sourceSide, targetSide, options);
 }
 
@@ -171,6 +194,7 @@ const escape = (
   side: GeometrySide,
   boxes: readonly RoutingObstacle[],
   ownId?: string,
+  terminalRun = 24,
 ): Point | undefined => {
   const axis = side === 'left' || side === 'right' ? 0 : 1;
   const sign = side === 'right' || side === 'bottom' ? 1 : -1;
@@ -179,7 +203,7 @@ const escape = (
     at === 0 ? [box.x, box.x + box.width] : [box.y, box.y + box.height];
   const boundary = own ? bounds(own, axis)[sign === 1 ? 1 : 0] : point[axis];
   const minimum = Math.max(0, (boundary - point[axis]) * sign);
-  let distance = Math.max(24, minimum);
+  let distance = Math.max(24, terminalRun, minimum);
   for (const box of boxes) {
     if (box.id === ownId) continue;
     if (inside(point, box)) return undefined;
@@ -298,9 +322,24 @@ const findRoute = (
   boxes: readonly RoutingObstacle[],
   options: OrthogonalRoutingOptions,
 ): Point[] | undefined => {
-  const start = escape(source, sourceSide, boxes, options.sourceId);
-  const end = escape(target, targetSide, boxes, options.targetId);
-  if (!start || !end) return undefined;
+  const start = escape(
+    source,
+    sourceSide,
+    boxes,
+    options.sourceId,
+    options.terminalRun,
+  );
+  const end = escape(
+    target,
+    targetSide,
+    boxes,
+    options.targetId,
+    options.terminalRun,
+  );
+  if (!start || !end) {
+    options.onBlocked?.('terminal-blocked');
+    return undefined;
+  }
   if (boxes.some((box) => inside(start, box) || inside(end, box))) return;
   if (
     !clearRoute([source, start], boxes, sourceSide, targetSide, {
@@ -362,7 +401,10 @@ const findRoute = (
     width = xs.length,
     height = ys.length;
   const bytes = 8 * (width + 1) * (height + 1) + 64 * width * height;
-  if (bytes > (options.maxSearchBytes ?? 32 * 1024 * 1024)) return;
+  if (bytes > (options.maxSearchBytes ?? 32 * 1024 * 1024)) {
+    options.onBlocked?.('search-budget');
+    return;
+  }
   const grid = visibility(xs, ys, boxes);
   const congestion = {
     horizontal: new Float64Array(width * height),
@@ -420,7 +462,10 @@ const findRoute = (
   let entry: QueueEntry | undefined;
   let steps = 0;
   while ((entry = queue.pop())) {
-    if (++steps > (options.maxSearchSteps ?? 100000)) return;
+    if (++steps > (options.maxSearchSteps ?? 100000)) {
+      options.onBlocked?.('search-budget');
+      return;
+    }
     const { state, cost } = entry;
     if (cost !== distances[state]) continue;
     const node = Math.floor(state / 4),
@@ -484,10 +529,19 @@ export const routeOrthogonalAvoiding = (
 ): OrthogonalRoutingResult => {
   const original = routeOrthogonal(source, sourceSide, target, targetSide);
   const minimum = Math.max(0, options.strokeWidth ?? 2) / 2 + 1;
-  for (const clearance of new Set([
-    Math.max(minimum, options.clearance ?? 12),
-    minimum,
-  ])) {
+  let reason: NonNullable<OrthogonalRoutingResult['reason']> = 'no-safe-route';
+  const searchOptions = {
+    ...options,
+    onBlocked: (value: typeof reason) => {
+      reason = value;
+      options.onBlocked?.(value);
+    },
+  };
+  for (const clearance of new Set(
+    options.visualGap !== undefined
+      ? [routingClearance(options)]
+      : [Math.max(minimum, options.clearance ?? 12), minimum],
+  )) {
     const boxes = obstacles.map((box) => ({
       ...box,
       x: box.x - clearance,
@@ -560,14 +614,14 @@ export const routeOrthogonalAvoiding = (
         target,
         targetSide,
         local,
-        options,
+        searchOptions,
       );
       if (points && clearRoute(points, boxes, sourceSide, targetSide, options))
         return { points, status: 'routed' };
       if (local.length === boxes.length) break;
     }
   }
-  return { points: original, status: 'blocked' };
+  return { points: original, status: 'blocked', reason };
 };
 
 /** Separate residual shared lanes without moving authored terminals or crossing shapes. */
@@ -578,7 +632,10 @@ export function separateOrthogonalSegments(
   obstacles: readonly RoutingObstacle[],
   options: OrthogonalRoutingOptions,
 ): Point[] {
-  const clearance = Math.max(0, options.strokeWidth ?? 2) / 2 + 1;
+  const clearance =
+    options.visualGap === undefined
+      ? Math.max(0, options.strokeWidth ?? 2) / 2 + 1
+      : routingClearance(options);
   const boxes = obstacles.map((box) => ({
     ...box,
     x: box.x - clearance,

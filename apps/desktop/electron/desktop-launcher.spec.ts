@@ -6,11 +6,24 @@ import { runInNewContext } from 'node:vm';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 
 const launch = vi.hoisted(() => vi.fn());
-vi.mock('@playwright/test', () => ({ _electron: { launch } }));
+const info = vi.hoisted(() => ({
+  errors: [] as Error[],
+  status: 'passed',
+  expectedStatus: 'passed',
+  outputPath: (name: string) => path.join('/tmp', name),
+  attach: vi.fn(),
+}));
+vi.mock('@playwright/test', () => ({
+  _electron: { launch },
+  test: { info: () => info },
+}));
 
 beforeEach(() => {
   vi.resetModules();
   launch.mockReset();
+  info.errors = [];
+  info.status = 'passed';
+  info.attach.mockReset();
 });
 afterEach(() => vi.useRealTimers());
 
@@ -34,7 +47,21 @@ function application(blockClose = false) {
     child.exitCode = 0;
     child.emit('exit');
   });
-  return { child, close, desktop: { process: () => child, close } };
+  const page = new EventEmitter();
+  const context = Object.assign(new EventEmitter(), {
+    pages: () => [page],
+    tracing: {
+      start: vi.fn().mockResolvedValue(undefined),
+      stop: vi.fn().mockResolvedValue(undefined),
+    },
+  });
+  return {
+    child,
+    close,
+    context,
+    page,
+    desktop: { process: () => child, context: () => context, close },
+  };
 }
 
 it('allows a restart only after the previous owned process exits', async () => {
@@ -54,9 +81,42 @@ it('allows a restart only after the previous owned process exits', async () => {
   await desktop.close();
   await desktop.close();
   expect(first.close).toHaveBeenCalledTimes(1);
+  expect(first.context.tracing.start).toHaveBeenCalledWith({
+    screenshots: true,
+    snapshots: true,
+    sources: true,
+  });
+  expect(first.context.tracing.stop).toHaveBeenCalledExactlyOnceWith({});
+  expect(info.attach).not.toHaveBeenCalled();
   expect(first.child.kill).not.toHaveBeenCalled();
   expect(process.listenerCount('exit')).toBe(listeners);
   await (await electron.launch({ args: ['test.cjs'] })).close();
+});
+
+it('retains Electron DOM traces and console errors when a test fails', async () => {
+  const { electron } =
+    await import('../../../tests/desktop-e2e/src/desktop-launcher');
+  const instance = application();
+  launch.mockResolvedValueOnce(instance.desktop);
+  const desktop = await electron.launch({ args: ['test.cjs'] });
+  instance.page.emit('console', {
+    type: () => 'error',
+    text: () => 'renderer failed',
+  });
+  info.status = 'failed';
+  info.errors = [new Error('assertion failed')];
+  await desktop.close();
+  expect(instance.context.tracing.stop).toHaveBeenCalledWith({
+    path: '/tmp/electron-1.zip',
+  });
+  expect(info.attach).toHaveBeenCalledWith('electron-1', {
+    path: '/tmp/electron-1.zip',
+    contentType: 'application/zip',
+  });
+  expect(info.attach).toHaveBeenCalledWith('electron-1-console', {
+    body: 'renderer failed',
+    contentType: 'text/plain',
+  });
 });
 
 it('rejects overlapping launches and permits retry after a launch failure', async () => {

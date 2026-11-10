@@ -1,10 +1,8 @@
 import {
-  arrangeCells,
   assertWholeGroupsMoved,
   createCellRegistry,
   createCellStore,
   createFrameCell,
-  frameLanes,
   planCellLayout,
   groupAncestors,
   indexCells,
@@ -190,7 +188,8 @@ export const canAutoLayoutWorkflow = (
   store: CellStore,
   startId: string,
 ): boolean => {
-  const { nodes, edges } = workflowGraph(store, startId);
+  const { start, nodes, edges } = workflowGraph(store, startId);
+  if ((start.data as WorkflowStartData).graphMode === 'process') return true;
   const incoming = new Map(nodes.map((node) => [node.id, 0]));
   edges.forEach((edge) =>
     incoming.set(edge.target, incoming.get(edge.target)! + 1),
@@ -223,47 +222,18 @@ export const autoLayoutWorkflow = (
 ): CellOperation[] => {
   if (!canAutoLayoutWorkflow(store, startId))
     throw new Error('Cannot auto layout a cyclic workflow');
-  const { start, nodes, edges } = workflowGraph(store, startId);
+  const { nodes } = workflowGraph(store, startId);
   assertWholeGroupsMoved(
     store,
     nodes.map((node) => node.id),
   );
   const frameId = indexCells(store).parentOf.get(startId)!;
-  const laneMembers = new Set(
-    frameLanes(store, frameId, registry).flatMap((lane) => lane.members),
-  );
-  const hasLanes = nodes.some((node) => laneMembers.has(node.id));
-  if (hasLanes || nodes.some((node) => groupAncestors(store, node.id).length)) {
-    const ids = [
-      ...new Set(
-        nodes.map((node) => groupAncestors(store, node.id).at(-1) ?? node.id),
-      ),
-    ];
-    if (hasLanes)
-      return planCellLayout(store, { focus: [frameId], ids }, 'flow', registry);
-    return arrangeCells(store, frameId, ids, 'flow', 32, registry);
-  }
-  const layout = layoutDag(
-    nodes.map((node) => ({
-      id: node.id,
-      width: node.geometry.width,
-      height: node.geometry.height,
-    })),
-    edges,
-  );
-  const origin = layout.positions[startId];
-  return nodes.map((node) => ({
-    type: 'replace_cell',
-    cell: {
-      ...node,
-      geometry: {
-        ...node.geometry,
-        x: start.geometry.x + layout.positions[node.id][0] - origin[0],
-        y: start.geometry.y + layout.positions[node.id][1] - origin[1],
-        derived: false,
-      },
-    },
-  }));
+  const ids = [
+    ...new Set(
+      nodes.map((node) => groupAncestors(store, node.id).at(-1) ?? node.id),
+    ),
+  ];
+  return planCellLayout(store, { focus: [frameId], ids }, 'flow', registry);
 };
 
 /** Idempotent compatibility conversion: preserve the old displayed positions. */

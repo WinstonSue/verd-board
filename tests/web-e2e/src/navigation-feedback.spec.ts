@@ -1,4 +1,4 @@
-import { test, expect, type Page } from '@playwright/test';
+import { test, expect, type Page } from './service-fixture';
 import { activeTabTitle } from './tab-actions';
 
 const active = (page: Page) => page.locator('.workspace-pane.is-active');

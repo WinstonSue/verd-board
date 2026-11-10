@@ -1,10 +1,13 @@
 import type { EdgeLabelLayout, Point } from '@sue/board-core';
 import {
   isEdgeCell,
+  planDomainGraphLayout,
+  resolveCellArrangementScope,
   type Cell,
   type CellPlugin,
   type EdgeCell,
 } from '@sue/board-core';
+import { layoutUmlCells, layoutUmlSequence } from './layout';
 import { registerUmlCells } from './cell-utils';
 import {
   normalizeUmlRelations,
@@ -70,6 +73,32 @@ export const createUmlPlugin = (): CellPlugin => ({
   scenes: [
     {
       id: 'uml-class',
+      geometry: {
+        version: 1,
+        nodeLayout: 'domain',
+        edgeRouting: 'orthogonal',
+        project: layoutUmlCells,
+        planLayout(context) {
+          const scope = resolveCellArrangementScope(
+            context.store,
+            context.selection,
+          );
+          return planDomainGraphLayout(context, {
+            ids: scope.ids,
+            links: Object.values(context.store.cells).flatMap((e) =>
+              isEdgeCell(e) &&
+              e.kind === 'uml-relation' &&
+              ['generalization', 'realization'].includes(
+                (e.data as { relation?: string })?.relation ?? '',
+              ) &&
+              'cellId' in e.source &&
+              'cellId' in e.target
+                ? [{ source: e.target.cellId, target: e.source.cellId }]
+                : [],
+            ),
+          });
+        },
+      },
       sharedKinds: ['swimlane'],
       laneMemberKinds: ['uml-class'],
       anchorKinds: ['uml-class-root'],
@@ -81,6 +110,27 @@ export const createUmlPlugin = (): CellPlugin => ({
     {
       arrangeable: false,
       id: 'uml-sequence',
+      geometry: {
+        version: 1,
+        nodeLayout: 'domain',
+        edgeRouting: 'domain',
+        defaultStyle: 'sequence',
+        validate: (context) =>
+          ['sequence', 'domain'].includes(context.style)
+            ? []
+            : [
+                {
+                  code: 'geometry.domain-managed',
+                  message:
+                    'Sequence geometry is derived from participant and event order.',
+                  frameId: context.frameId,
+                  sceneId: 'uml-sequence',
+                  cellIds: context.selection.ids,
+                },
+              ],
+        project: (store, frameId) => layoutUmlSequence(store, frameId).geometry,
+        planLayout: () => [],
+      },
       anchorKinds: ['uml-sequence-root'],
       kinds: [
         'uml-sequence-root',
@@ -113,6 +163,7 @@ export const createUmlPlugin = (): CellPlugin => ({
       register(util) {
         Object.assign(util, {
           fitText: false,
+          routable: util.kind !== 'uml-message',
           canConnect: (node: Cell) => node.kind === 'uml-class',
           labelLayout:
             util.kind === 'uml-message' ? messageLabelLayout : undefined,

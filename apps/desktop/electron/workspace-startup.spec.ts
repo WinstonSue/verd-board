@@ -443,3 +443,33 @@ it('creates an empty desktop workspace, pins its record and removes only history
   ).toBe(false);
   expect(await exists(path.join(dir, 'Notes'))).toBe(true);
 });
+
+it('reads saved names for history and cached handles without opening folders or changing order', async () => {
+  const { dir, host, manager } = await setup();
+  const root = path.join(dir, 'named-workspace');
+  const policy = manager();
+  const handle = await policy.open({ path: root });
+  await policy.activate(handle);
+  const before = (await policy.listHistory())[0];
+  const config = (await host.readSnapshot(handle)).config;
+  expect(
+    (
+      await host.commit(handle, {
+        transactionId: 'rename-test',
+        config: {
+          expectedVersion: config.version,
+          value: { ...config.value, name: 'New name' },
+        },
+      })
+    ).outcome,
+  ).toBe('applied');
+  const open = vi.spyOn(host, 'openWorkspace');
+  const snapshot = vi.spyOn(host, 'readSnapshot');
+  expect((await policy.listHistory())[0]).toEqual({
+    ...before,
+    name: 'New name',
+  });
+  expect(open).not.toHaveBeenCalled();
+  expect(snapshot).not.toHaveBeenCalled();
+  expect((await policy.open({ path: root })).name).toBe('New name');
+});

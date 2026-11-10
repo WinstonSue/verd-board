@@ -1,5 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import path from 'node:path';
+import * as fs from 'node:fs/promises';
+import os from 'node:os';
 
 const mocks = vi.hoisted(() => {
   const handlers = new Map<string, (...args: unknown[]) => unknown>();
@@ -33,6 +35,8 @@ const mocks = vi.hoisted(() => {
     writeGlobalConfig: vi.fn(),
     readSnapshot: vi.fn(),
     readFile: vi.fn(),
+    readResource: vi.fn(),
+    workspaces: new Map<string, { root: string }>(),
     commit: vi.fn(),
     resolveConflict: vi.fn(),
     closeWorkspace: vi.fn(),
@@ -90,7 +94,7 @@ vi.mock('electron', () => ({
     },
   },
   dialog: {},
-  shell: {},
+  shell: { openPath: vi.fn(async () => '') },
 }));
 vi.mock('./workspace-host-fs', () => ({
   createFsWorkspaceHost: (options: object) => {
@@ -113,6 +117,7 @@ beforeEach(() => {
   vi.resetModules();
   vi.clearAllMocks();
   mocks.handlers.clear();
+  mocks.host.workspaces.clear();
   mocks.order.length = 0;
   mocks.application.isPackaged = false;
   mocks.manager.listHistory.mockResolvedValue([]);
@@ -221,4 +226,53 @@ it('rejects workspace IPC from an external child frame', async () => {
     ),
   ).rejects.toThrow('Untrusted IPC frame');
   expect(mocks.host.readSnapshot).not.toHaveBeenCalled();
+});
+
+it('opens only ordinary workspace files through the trusted resource IPC', async () => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), 'verd-open-resource-'));
+  const outside = await fs.mkdtemp(
+    path.join(os.tmpdir(), 'verd-outside-resource-'),
+  );
+  try {
+    await fs.writeFile(path.join(root, 'notes.md'), '# original');
+    await fs.writeFile(path.join(outside, 'external.md'), 'external');
+    await fs.symlink(
+      path.join(outside, 'external.md'),
+      path.join(root, 'escape.md'),
+    );
+    await fs.mkdir(path.join(root, '.verdscrolls'));
+    await fs.writeFile(path.join(root, '.verdscrolls/config.json'), '{}');
+    await fs.symlink(
+      path.join(root, '.verdscrolls/config.json'),
+      path.join(root, 'internal.json'),
+    );
+    await import('./main');
+    await vi.waitFor(() => expect(mocks.order).toContain('load'));
+    mocks.host.workspaces.set('test', { root });
+    const open = mocks.handlers.get('workspace-host:open-resource')!;
+    const event = {
+      sender: mocks.window.webContents,
+      senderFrame: mocks.window.webContents.mainFrame,
+    };
+    await expect(
+      open(event, { key: 'test' }, 'notes.md'),
+    ).resolves.toBeUndefined();
+    const { shell } = await import('electron');
+    expect(shell.openPath).toHaveBeenCalledWith(
+      await fs.realpath(path.join(root, 'notes.md')),
+    );
+    for (const target of [
+      '../external.md',
+      '.verdscrolls/config.json',
+      'escape.md',
+      'internal.json',
+      '.verdscrolls',
+    ])
+      await expect(open(event, { key: 'test' }, target)).rejects.toThrow();
+    await expect(open(event, { key: 'missing' }, 'notes.md')).rejects.toThrow();
+    expect(shell.openPath).toHaveBeenCalledOnce();
+  } finally {
+    await fs.rm(root, { recursive: true, force: true });
+    await fs.rm(outside, { recursive: true, force: true });
+  }
 });

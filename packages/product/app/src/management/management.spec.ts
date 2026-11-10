@@ -19,6 +19,7 @@ const doc = (id: string, text = '知识管理') => {
   file.text.plainText = text;
   return file;
 };
+const ordinaryBytes = new Uint8Array([0, 255, 10, 195, 40]);
 async function setup() {
   const host = createWebWorkspaceHost({
     indexedDB: new IDBFactory(),
@@ -39,7 +40,7 @@ async function setup() {
         content: JSON.stringify(doc('two')),
         expectedVersion: null,
       },
-      { path: 'a/raw.bin', content: 'raw', expectedVersion: null },
+      { path: 'a/raw.bin', content: ordinaryBytes, expectedVersion: null },
       { path: 'a/bad.verd-doc.json', content: 'broken', expectedVersion: null },
     ],
   });
@@ -81,6 +82,9 @@ describe('workspace organization', () => {
       ).toBe(true);
       let snapshot = await host.readSnapshot(handle);
       expect(snapshot.entries.map((e) => e.path)).toContain('target/a/raw.bin');
+      expect((await host.readFile(handle, 'target/a/raw.bin')).content).toEqual(
+        ordinaryBytes,
+      );
       expect(snapshot.entries.map((e) => e.path)).toContain('target/a/empty');
       expect(snapshot.entries.map((e) => e.path)).toContain(
         'target/a/bad.verd-doc.json',
@@ -88,6 +92,9 @@ describe('workspace organization', () => {
       expect((await session.undo()).ok).toBe(true);
       snapshot = await host.readSnapshot(handle);
       expect(snapshot.entries.map((e) => e.path)).toContain('a/raw.bin');
+      expect((await host.readFile(handle, 'a/raw.bin')).content).toEqual(
+        ordinaryBytes,
+      );
       expect(snapshot.entries.map((e) => e.path)).toContain(
         'two.verd-doc.json',
       );
@@ -133,6 +140,9 @@ describe('workspace organization', () => {
       expect(
         (await host.readSnapshot(handle)).entries.map((e) => e.path),
       ).toContain('a/raw.bin');
+      expect((await host.readFile(handle, 'a/raw.bin')).content).toEqual(
+        ordinaryBytes,
+      );
       expect((await session.redo()).ok).toBe(true);
     } finally {
       session.dispose();

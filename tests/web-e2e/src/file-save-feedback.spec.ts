@@ -1,4 +1,5 @@
-import { test, expect, type Page } from '@playwright/test';
+import { installSaveProbe } from './service-routes';
+import { test, expect, type Page } from './service-fixture';
 import path from 'node:path';
 
 const active = (page: Page) => page.locator('.workspace-pane.is-active');
@@ -14,7 +15,10 @@ const open = async (page: Page, title: string) => {
   );
 };
 
-async function seed(page: Page) {
+async function seed(
+  page: Page,
+  titles: { canvas?: string; document?: string } = {},
+) {
   await page.addInitScript(() => {
     const waiters: Array<() => void> = [];
     const probe = {
@@ -42,26 +46,10 @@ async function seed(page: Page) {
       characterData: true,
     });
   });
-  await page.route('**/host/web-workspace-host.ts*', async (route) => {
-    const response = await route.fetch();
-    const source = await response.text();
-    const marker = 'async commit(handle, request_) {';
-    expect(source).toContain(marker);
-    await route.fulfill({
-      response,
-      body: source.replace(
-        marker,
-        `${marker}
-      const probe = globalThis.__saveProbe;
-      probe?.writes.push((request_.writes ?? []).map(write => write.path));
-      if (probe?.rejectNavigation && request_.session && !request_.writes?.length)
-        return { transactionId: request_.transactionId, outcome: 'rejected', reason: 'io-error' };
-      if (probe?.holdWrites && request_.writes?.length) await probe.wait();
-    `,
-      ),
-    });
-  });
-  await page.route('**/src/main.tsx', (route) => route.abort());
+  await installSaveProbe(page);
+  const production = test.info().project.metadata['runtime'] === 'production';
+  const mainScript = production ? '**/assets/index-*.js' : '**/src/main.tsx';
+  await page.route(mainScript, (route) => route.abort());
   await page.goto('/');
   const frame = (id: string, name: string, reference = false) => ({
     format: 'verd-frame',
@@ -91,7 +79,7 @@ async function seed(page: Page) {
     format: 'verd-document',
     version: 1,
     id: 'note',
-    title: 'Note',
+    title: titles.document ?? 'Note',
     text: {
       schemaVersion: 1,
       kind: 'block',
@@ -108,7 +96,7 @@ async function seed(page: Page) {
   const writes = [
     {
       path: 'folder/a.verd.json',
-      content: JSON.stringify(frame('a', 'Quiet A', true)),
+      content: JSON.stringify(frame('a', titles.canvas ?? 'Quiet A', true)),
       expectedVersion: null,
     },
     {
@@ -124,8 +112,8 @@ async function seed(page: Page) {
   ];
   await page.evaluate(
     async ({ modulePath, writes }) => {
-      const { createWebWorkspaceHost } = await import(modulePath);
-      const host = createWebWorkspaceHost();
+      const { createServiceWorkspaceHost } = await import(modulePath);
+      const host = createServiceWorkspaceHost();
       const handle = await host.openWorkspace({ default: true });
       const receipt = await host.commit(handle, {
         transactionId: 'save-feedback-seed',
@@ -140,20 +128,69 @@ async function seed(page: Page) {
         throw new Error('Unable to seed save feedback');
     },
     {
-      modulePath:
-        '/@fs' +
-        path.resolve(
-          __dirname,
-          '../../../packages/product/app/src/host/web-workspace-host.ts',
-        ),
+      modulePath: production
+        ? '/test-support/workspace-host.js'
+        : '/@fs' +
+          path.resolve(
+            __dirname,
+            '../../../apps/web/src/test-support/workspace-host.ts',
+          ),
       writes,
     },
   );
-  await page.unroute('**/src/main.tsx');
+  await page.unroute(mainScript);
   await page.reload();
   await expect(status(page)).toHaveAttribute('data-save-state', 'saved');
   await expect(active(page)).toHaveAttribute('data-pane-entrance', 'complete');
 }
+
+test('canvas and document keep save feedback next to truncated long titles', async ({
+  page,
+}, info) => {
+  await page.setViewportSize({ width: 800, height: 900 });
+  const title = '这是一个用于验证保存状态始终紧邻标题的很长文件名称'.repeat(4);
+  await seed(page, { canvas: title, document: title + '文档' });
+  for (const name of [title, title + '文档']) {
+    await open(page, name);
+    const navigation = active(page).locator('.workspace-file-navigation');
+    const titleNode = navigation.locator('.workspace-file-navigation-title');
+    const feedback = navigation.locator('.workspace-file-navigation-status');
+    await expect(feedback.getByTestId('save-status')).toHaveText('已保存');
+    const [heading, saved, fileInfo, row] = await Promise.all([
+      titleNode.boundingBox(),
+      feedback.boundingBox(),
+      navigation
+        .getByRole('button', { name: '文件信息', exact: true })
+        .boundingBox(),
+      navigation.boundingBox(),
+    ]);
+    expect(saved!.x - heading!.x - heading!.width).toBeCloseTo(8, 0);
+    expect(fileInfo!.x - saved!.x - saved!.width).toBeCloseTo(8, 0);
+    expect(fileInfo!.x + fileInfo!.width).toBeLessThanOrEqual(
+      row!.x + row!.width,
+    );
+    for (const button of await navigation
+      .locator('.workspace-file-navigation-actions button')
+      .all()) {
+      const bounds = (await button.boundingBox())!;
+      expect(bounds.x).toBeGreaterThanOrEqual(fileInfo!.x + fileInfo!.width);
+      expect(bounds.x + bounds.width).toBeLessThanOrEqual(row!.x + row!.width);
+    }
+    expect(
+      await titleNode.evaluate((node) => node.scrollWidth > node.clientWidth),
+    ).toBe(true);
+    await expect(
+      navigation
+        .locator('.workspace-file-navigation-actions')
+        .getByTestId('save-status'),
+    ).toHaveCount(0);
+    await page.screenshot({
+      path: info.outputPath(
+        `long-title-${name === title ? 'canvas' : 'document'}.png`,
+      ),
+    });
+  }
+});
 
 test('disk files stay saved through first render, tab activation and folder navigation', async ({
   page,
@@ -242,7 +279,7 @@ test('real source edits affect their referencing page but not an unrelated clean
   const editor = active(page).locator('.ProseMirror[contenteditable="true"]');
   await editor.click();
   await editor.press('ControlOrMeta+End');
-  await editor.pressSequentially(' edited');
+  await page.keyboard.insertText(' edited');
   await expect(
     active(page).locator('.document-page__save.is-saving'),
   ).toBeVisible();

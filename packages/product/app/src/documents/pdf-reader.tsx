@@ -354,16 +354,18 @@ export default function PdfReader({
         >
           适合整页
         </button>
-        <button
-          onClick={() => {
-            const assetId = value.src.split('/').pop()!;
-            void navigator.clipboard
-              .writeText(createAssetLink({ assetId, page }))
-              .catch((e) => setError(String(e)));
-          }}
-        >
-          复制页码引用
-        </button>
+        {value.src.startsWith('verd-asset:') && (
+          <button
+            onClick={() => {
+              const assetId = value.src.split('/').pop()!;
+              void navigator.clipboard
+                .writeText(createAssetLink({ assetId, page }))
+                .catch((e) => setError(String(e)));
+            }}
+          >
+            复制页码引用
+          </button>
+        )}
       </nav>
       <label>
         PDF 内查找

@@ -131,7 +131,9 @@
                       {
                         "type": "textStyle",
                         "attrs": {
-                          "fontSize": "20px"
+                          "fontSize": "20px",
+                          "color": "#ffffff",
+                          "colorMode": "custom"
                         }
                       }
                     ]
@@ -145,14 +147,12 @@
       "appearance": {
         "fill": "#0f766e",
         "strokeColor": "#0f766e",
-        "strokeWidth": 1.5
+        "strokeWidth": 1.5,
+        "textColor": "#ffffff"
       },
       "data": {
         "graphMode": "process",
-        "origin": [
-          0,
-          0
-        ],
+        "origin": [0, 0],
         "memberIds": [
           "demo:import/start",
           "demo:import/format",
@@ -170,7 +170,8 @@
           "demo:import/document",
           "demo:import/document-commit"
         ]
-      }
+      },
+      "name": "文件 / 文本入口"
     },
     "demo:import/format": {
       "id": "demo:import/format",
@@ -1939,7 +1940,7 @@
                 "content": [
                   {
                     "type": "text",
-                    "text": "读图：输入先解析与校验，确认后才修改；区分工作区文件导入和画布内插入。"
+                    "text": "读图：输入先校验，确认后修改；文件导入与画布插入分开。"
                   }
                 ]
               },
@@ -2005,13 +2006,14 @@
               }
             ]
           },
-          "plainText": "相关文档：格式转换器\n读图：输入先解析与校验，确认后才修改；区分工作区文件导入和画布内插入。\n返回专题总览\n相关细节：导出闭包与格式能力\nAI画布数据规范 · 3. 可导入格式与产品入口\n源码入口：packages/product/ui/src/frame-import-dialog.tsx；packages/engine/core/src/cell/clipboard.ts；packages/product/app/src/frames/frame-files.ts。"
+          "plainText": "相关文档：格式转换器\n读图：输入先校验，确认后修改；文件导入与画布插入分开。\n返回专题总览\n相关细节：导出闭包与格式能力\nAI画布数据规范 · 3. 可导入格式与产品入口\n源码入口：packages/product/ui/src/frame-import-dialog.tsx；packages/engine/core/src/cell/clipboard.ts；packages/product/app/src/frames/frame-files.ts。"
         }
       },
       "appearance": {
         "fill": "none",
         "strokeColor": "none"
-      }
+      },
+      "name": "相关文档：格式转换器 读图：输入先解析与校验，确认后才修改；区分工作区文件导入和画布内插入。 返回专题总览 相关细节：导出闭包与格式能力 AI画布数据规范 · 3. 可导入格式与产品入口 源码入口：packages/product/ui/src/frame-import-dialog.tsx；packages/engine/core/src/cell/clipboard.ts；packages/product/app/src/frames/frame-files.ts。"
     }
   },
   "organization": {

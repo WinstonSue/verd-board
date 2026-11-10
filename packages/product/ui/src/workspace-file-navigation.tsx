@@ -12,12 +12,12 @@ export interface WorkspaceReferenceLocationGroup {
 
 export interface WorkspaceFileNavigationProps {
   actions?: ReactNode;
+  status?: ReactNode;
   title: string;
   path: string;
   active: boolean;
   locale: 'zh' | 'en';
   source?: { title: string; action: WorkspaceActionBinding };
-  owner?: { title: string; action: WorkspaceActionBinding };
   revealAction: WorkspaceActionBinding;
   references: readonly WorkspaceReferenceLocationGroup[];
   onError?(message: string): void;
@@ -27,11 +27,11 @@ export interface WorkspaceFileNavigationProps {
 export function WorkspaceFileNavigation({
   title,
   actions,
+  status,
   path,
   active,
   locale,
   source,
-  owner,
   revealAction,
   references,
   onError,
@@ -64,17 +64,6 @@ export function WorkspaceFileNavigation({
     })),
   );
   const infoItems: FileTreeMenuItem[] = [
-    ...(owner
-      ? [
-          {
-            id: 'owner',
-            label: `${zh ? '所属画布' : 'Owner canvas'}：${owner.title}`,
-            icon: PanelsTopLeft,
-            action: owner.action,
-            onSelect() {},
-          },
-        ]
-      : []),
     {
       id: 'reveal',
       label: zh ? '在文件夹中显示' : 'Show in folder',
@@ -92,6 +81,9 @@ export function WorkspaceFileNavigation({
       <span className="workspace-file-navigation-title" title={title}>
         {title}
       </span>
+      {status && (
+        <div className="workspace-file-navigation-status">{status}</div>
+      )}
       <button
         ref={infoRef}
         type="button"

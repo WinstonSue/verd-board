@@ -1,4 +1,5 @@
 import type { Point } from '../interfaces/point';
+import type { RectangleClient } from '../interfaces/rectangle-client';
 import { polylinePath } from './polyline';
 import { decoratedPolylinePath, type EdgeJump } from './edge-crossings';
 
@@ -30,7 +31,11 @@ export function edgeDisplayGeometry(
   curve: boolean,
   sourceRadius = 0,
   targetRadius = 0,
-  decoration?: { jumps?: readonly EdgeJump[]; cornerRadius?: number },
+  decoration?: {
+    jumps?: readonly EdgeJump[];
+    cornerRadius?: number;
+    safetyBounds?: readonly RectangleClient[];
+  },
 ): { path: string; markerPoints: Point[] } {
   if (points.length < 2) return { path: '', markerPoints: [] };
   const segments: Cubic[] = points.slice(1).map((end, i) => {
@@ -98,6 +103,7 @@ export function edgeDisplayGeometry(
             retainedPoints,
             decoration.jumps,
             decoration.cornerRadius,
+            decoration.safetyBounds,
           )
         : polylinePath(retainedPoints);
   return {

@@ -1,0 +1,345 @@
+{
+  "format": "verd-frame",
+  "version": 2,
+  "frame": {
+    "id": "pattern:multi-system/pattern:multi/overview",
+    "kind": "frame",
+    "cellType": "frame",
+    "name": "协作总图",
+    "geometry": {
+      "x": 0,
+      "y": 0,
+      "width": 1500,
+      "height": 920
+    },
+    "children": [
+      "pattern:multi-system/overview/title",
+      "pattern:multi-system/overview/intake",
+      "pattern:multi-system/pattern:multi/ref/intake",
+      "pattern:multi-system/overview/agent",
+      "pattern:multi-system/pattern:multi/ref/agent",
+      "pattern:multi-system/overview/release",
+      "pattern:multi-system/pattern:multi/ref/release",
+      "pattern:multi-system/overview/intake-agent",
+      "pattern:multi-system/overview/agent-release",
+      "pattern:multi-system/overview/release-intake",
+      "pattern:multi-system/overview/footer"
+    ],
+    "groups": []
+  },
+  "cells": {
+    "pattern:multi-system/overview/title": {
+      "id": "pattern:multi-system/overview/title",
+      "kind": "geometry",
+      "cellType": "node",
+      "geometry": {
+        "x": 50,
+        "y": 30,
+        "width": 1400,
+        "height": 80,
+        "outline": "text"
+      },
+      "content": {
+        "label": "多系统协作：边界、交接与业务验收"
+      },
+      "ports": [
+        {
+          "id": "top",
+          "side": "top",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "right",
+          "side": "right",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "bottom",
+          "side": "bottom",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "left",
+          "side": "left",
+          "direction": "both",
+          "offset": 0.5
+        }
+      ]
+    },
+    "pattern:multi-system/overview/intake": {
+      "id": "pattern:multi-system/overview/intake",
+      "kind": "geometry",
+      "cellType": "node",
+      "geometry": {
+        "x": 60,
+        "y": 170,
+        "width": 400,
+        "height": 170,
+        "outline": "roundRectangle"
+      },
+      "content": {
+        "label": "工单接入\n标准任务 / 分派 / 业务验收 / 结果回写"
+      },
+      "ports": [
+        {
+          "id": "top",
+          "side": "top",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "right",
+          "side": "right",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "bottom",
+          "side": "bottom",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "left",
+          "side": "left",
+          "direction": "both",
+          "offset": 0.5
+        }
+      ]
+    },
+    "pattern:multi-system/pattern:multi/ref/intake": {
+      "id": "pattern:multi-system/pattern:multi/ref/intake",
+      "kind": "frame-reference",
+      "cellType": "node",
+      "geometry": {
+        "x": 60,
+        "y": 500,
+        "width": 400,
+        "height": 280
+      },
+      "data": {
+        "targetFrameId": "pattern:multi-system/pattern:multi/intake"
+      }
+    },
+    "pattern:multi-system/overview/agent": {
+      "id": "pattern:multi-system/overview/agent",
+      "kind": "geometry",
+      "cellType": "node",
+      "geometry": {
+        "x": 550,
+        "y": 170,
+        "width": 400,
+        "height": 170,
+        "outline": "roundRectangle"
+      },
+      "content": {
+        "label": "Agent 开发与人工处理\n受限执行 / PR/MR / 诊断与回归证据"
+      },
+      "ports": [
+        {
+          "id": "top",
+          "side": "top",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "right",
+          "side": "right",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "bottom",
+          "side": "bottom",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "left",
+          "side": "left",
+          "direction": "both",
+          "offset": 0.5
+        }
+      ]
+    },
+    "pattern:multi-system/pattern:multi/ref/agent": {
+      "id": "pattern:multi-system/pattern:multi/ref/agent",
+      "kind": "frame-reference",
+      "cellType": "node",
+      "geometry": {
+        "x": 550,
+        "y": 500,
+        "width": 400,
+        "height": 280
+      },
+      "data": {
+        "targetFrameId": "pattern:multi-system/pattern:multi/agent"
+      }
+    },
+    "pattern:multi-system/overview/release": {
+      "id": "pattern:multi-system/overview/release",
+      "kind": "geometry",
+      "cellType": "node",
+      "geometry": {
+        "x": 1040,
+        "y": 170,
+        "width": 400,
+        "height": 170,
+        "outline": "roundRectangle"
+      },
+      "content": {
+        "label": "代码发布\n独立检查 / 评审 / 部署与恢复"
+      },
+      "ports": [
+        {
+          "id": "top",
+          "side": "top",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "right",
+          "side": "right",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "bottom",
+          "side": "bottom",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "left",
+          "side": "left",
+          "direction": "both",
+          "offset": 0.5
+        }
+      ]
+    },
+    "pattern:multi-system/pattern:multi/ref/release": {
+      "id": "pattern:multi-system/pattern:multi/ref/release",
+      "kind": "frame-reference",
+      "cellType": "node",
+      "geometry": {
+        "x": 1040,
+        "y": 500,
+        "width": 400,
+        "height": 280
+      },
+      "data": {
+        "targetFrameId": "pattern:multi-system/pattern:multi/release"
+      }
+    },
+    "pattern:multi-system/overview/intake-agent": {
+      "id": "pattern:multi-system/overview/intake-agent",
+      "kind": "arrow",
+      "cellType": "edge",
+      "source": {
+        "cellId": "pattern:multi-system/overview/intake",
+        "portId": "right"
+      },
+      "target": {
+        "cellId": "pattern:multi-system/overview/agent",
+        "portId": "left"
+      },
+      "route": {
+        "mode": "orthogonal"
+      },
+      "labels": [
+        {
+          "text": "标准任务"
+        }
+      ]
+    },
+    "pattern:multi-system/overview/agent-release": {
+      "id": "pattern:multi-system/overview/agent-release",
+      "kind": "arrow",
+      "cellType": "edge",
+      "source": {
+        "cellId": "pattern:multi-system/overview/agent",
+        "portId": "right"
+      },
+      "target": {
+        "cellId": "pattern:multi-system/overview/release",
+        "portId": "left"
+      },
+      "route": {
+        "mode": "orthogonal"
+      },
+      "labels": [
+        {
+          "text": "PR/MR 与证据"
+        }
+      ]
+    },
+    "pattern:multi-system/overview/release-intake": {
+      "id": "pattern:multi-system/overview/release-intake",
+      "kind": "arrow",
+      "cellType": "edge",
+      "source": {
+        "cellId": "pattern:multi-system/overview/release",
+        "portId": "bottom"
+      },
+      "target": {
+        "cellId": "pattern:multi-system/overview/intake",
+        "portId": "bottom"
+      },
+      "route": {
+        "mode": "orthogonal"
+      },
+      "labels": [
+        {
+          "text": "发布结果回流，业务验收决定任务完成"
+        }
+      ]
+    },
+    "pattern:multi-system/overview/footer": {
+      "id": "pattern:multi-system/overview/footer",
+      "kind": "geometry",
+      "cellType": "node",
+      "geometry": {
+        "x": 60,
+        "y": 810,
+        "width": 1380,
+        "height": 70,
+        "outline": "text"
+      },
+      "content": {
+        "label": "下方卡片查看各系统内部流程；图文通过稳定 ID 关联，职责与规则在对应正文维护。"
+      },
+      "ports": [
+        {
+          "id": "top",
+          "side": "top",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "right",
+          "side": "right",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "bottom",
+          "side": "bottom",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "left",
+          "side": "left",
+          "direction": "both",
+          "offset": 0.5
+        }
+      ]
+    }
+  },
+  "organization": {
+    "kind": "standalone"
+  }
+}

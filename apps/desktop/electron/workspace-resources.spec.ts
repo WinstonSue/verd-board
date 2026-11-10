@@ -1,4 +1,5 @@
 import * as fs from 'fs/promises';
+import { createHash } from 'node:crypto';
 import * as os from 'os';
 import * as path from 'path';
 import { createRequire } from 'module';
@@ -46,6 +47,22 @@ it('electron-builder includes every native document and nested diagram while exc
         );
       },
     });
+    const bytes = new Uint8Array([0, 10, 255]);
+    const assetPath =
+      '.verdscrolls/resources/assets/' +
+      createHash('sha256').update(bytes).digest('hex') +
+      '.bin';
+    await fs.mkdir(path.dirname(path.join(source, assetPath)), {
+      recursive: true,
+    });
+    await fs.writeFile(path.join(source, assetPath), bytes);
+    await fs.mkdir(path.join(source, '.verdscrolls/resources/history'), {
+      recursive: true,
+    });
+    await fs.writeFile(
+      path.join(source, '.verdscrolls/resources/history/local.snapshot.json'),
+      '{}',
+    );
     const native = (await listing(source)).filter((file) =>
       /\.verd(?:-doc)?\.json$/.test(file),
     );
@@ -94,6 +111,7 @@ it('electron-builder includes every native document and nested diagram while exc
         '.verdscrolls/config.json',
         '.verdscrolls/.gitignore',
         '.verdscrolls/release.json',
+        assetPath,
       ].sort(),
     );
     expect(native).toContain('架构图/项目导览.verd.json');

@@ -179,3 +179,20 @@ export function SettingsDraftInput({
     </div>
   );
 }
+
+export function useSettingsDraftFlush(
+  key: string,
+  flush: () => Promise<boolean>,
+) {
+  const registry = useContext(DraftContext);
+  const latest = useRef(flush);
+  latest.current = flush;
+  useEffect(() => {
+    if (!registry) return;
+    const run = () => latest.current();
+    registry.set(key, run);
+    return () => {
+      if (registry.get(key) === run) registry.delete(key);
+    };
+  }, [registry, key]);
+}

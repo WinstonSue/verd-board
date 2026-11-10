@@ -1,4 +1,4 @@
-import { test } from '@playwright/test';
+import { test } from './service-fixture';
 import { exerciseFindBars } from '../../helpers/find-bar';
 
 for (const appearance of ['light', 'dark'] as const) {

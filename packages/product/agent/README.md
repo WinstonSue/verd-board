@@ -17,9 +17,9 @@ verd preview FILE_ID --workspace /path/to/workspace --plan plan.json --out previ
 verd apply --workspace /path/to/workspace --plan plan.json
 ```
 
-Preview uses bundled browser assets; install Chromium once with `verd preview --install-browser`. Other commands do not need a browser. All commands output JSON; failures use nonzero exit codes (validation 1, input/environment 2, stale workspace 3).
+Preview uses bundled browser assets; install Chromium once with `verd preview --install-browser`. Other commands do not need a browser. All commands output JSON; failures use nonzero exit codes (validation 1, input/environment 2, stale workspace 3). Read-only `doctor` exits 0 when `ready` is true and 1 when the project is unready; it never initializes or repairs the project without `--repair`.
 
-The public API exports `AuthoringOperation`, `PreparedBatch`, `AuthoringDiagnostic`, `readNativeSnapshot`, `prepareAuthoringBatch`, and `applyPreparedBatch`. `@sue/verd-board-agent/node` exports the same filesystem host used by Desktop.
+The public API exports `AuthoringOperation`, `PreparedBatch`, `AuthoringDiagnostic`, `readNativeSnapshot`, `prepareAuthoringBatch`, and `applyPreparedBatch`. `@sue/verd-board-agent/node` exports the same filesystem host used by Desktop and the local Web service.
 
 Native rules and executable templates live in `@sue/verd-board-agent-patterns`. Local browsing copies preserve edits and never change the installed templates. No MCP server or publishing is involved.
 
@@ -28,3 +28,5 @@ Commands discover the nearest initialized ancestor, stopping at an uninitialized
 The `/node` entry exports `WorkspaceProjectContext`, discovery, initialization, status inspection and versioned resource deployment. Migration atomically renames legacy `.verdboard` before recovery. Populated dual directories and old writers block writes; unreadable journals remain on disk. A resource build change invalidates pending plans; confirmed transaction IDs still return their original receipts. macOS/Linux use directory symlinks and Windows uses junctions.
 
 `verd resource-import --input /absolute/paper.pdf --workspace /path/to/workspace --json` stores a bounded, content-addressed local resource and returns attachment attributes. Pass these attributes to an `attachment` node in `document.set` or `document.splice`; PDF page references use `verd://asset/<sha256>.pdf#page=1`.
+
+The `/node` entry also exports `createLocalWorkspaceManager`, `seedBuiltinWorkspace` and `createBuiltinWorkspaceUpdater`. Desktop and Service share initialization, recent workspaces, seeding, updates, backups and recovery while injecting their own directory selection and data locations.

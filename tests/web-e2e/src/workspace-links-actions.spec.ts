@@ -1,4 +1,7 @@
-import { expect, test, type Page } from '@playwright/test';
+import { createLocalWorkspace } from './service-actions';
+import { serviceFixture } from './service-fixture';
+import { cellBodyPoint } from '../../helpers/port-controls';
+import { expect, test, type Page } from './service-fixture';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import type {
@@ -180,15 +183,21 @@ test('workflow paste routes menu and native text and rejects damaged Verd fragme
   const start = cell(page, 'flow-start');
   await expect(start).toBeVisible();
   await page.evaluate(() => navigator.clipboard.writeText('Menu task'));
-  await start.click({ button: 'right' });
+  {
+    const point = await cellBodyPoint(start);
+    await page.mouse.click(point.x, point.y, { button: 'right' });
+  }
   await page
-    .getByRole('dialog', { name: 'Selection actions' })
-    .getByRole('button', { name: '粘贴', exact: true })
+    .getByRole('menu', { name: /^(画布编辑|Canvas editing)$/ })
+    .getByRole('menuitem', { name: '粘贴', exact: true })
     .click();
   await expect(
     canvas(page).getByText('Menu task', { exact: true }),
   ).toBeVisible();
-  await start.click();
+  {
+    const point = await cellBodyPoint(start);
+    await page.mouse.click(point.x, point.y);
+  }
   await page.evaluate(() => navigator.clipboard.writeText('Keyboard task'));
   await page.keyboard.press('ControlOrMeta+v');
   await expect(
@@ -312,6 +321,11 @@ test('a link expands both collapsed Mind ancestors temporarily while export and 
   try {
     const target = await reopened.newPage();
     await target.goto(page.url());
+    await createLocalWorkspace(
+      target,
+      'Reopened mind',
+      serviceFixture(page).root,
+    );
     await importJson(target, 'reopened-mind.json', exported);
     await fileRow(target, '思维导图').click();
     await expect(cell(target, 'mind-root')).toBeVisible();
@@ -422,7 +436,10 @@ test('return to an embedded document waits for its editor and restores the origi
     exact: true,
   });
   await link.scrollIntoViewIfNeeded();
-  await link.click();
+  {
+    const point = await cellBodyPoint(link);
+    await page.mouse.click(point.x, point.y);
+  }
   await link.evaluate(async (element) => {
     const text = element.firstChild!;
     const range = document.createRange();
@@ -507,16 +524,25 @@ test('canvas text opens with click preference and presentation overrides modifie
   );
   await fileRow(page, scene.frame.name!).click();
   const link = pane(page).getByRole('link', { name: label, exact: true });
-  await link.click();
+  {
+    const point = await cellBodyPoint(link);
+    await page.mouse.click(point.x, point.y);
+  }
   await expect(canvas(page)).toBeVisible();
   await page.evaluate(() => {
     const key = 'verdboard.interaction-settings';
     localStorage.setItem(key, JSON.stringify({ linkActivation: 'click' }));
     window.dispatchEvent(new StorageEvent('storage', { key }));
   });
-  await link.hover();
+  {
+    const point = await cellBodyPoint(link);
+    await page.mouse.move(point.x, point.y);
+  }
   await expect(link).toHaveAttribute('title', '单击打开链接');
-  await link.click();
+  {
+    const point = await cellBodyPoint(link);
+    await page.mouse.click(point.x, point.y);
+  }
   await expect(activeTabTitle(page)).toHaveText('Canvas link target');
   await fileRow(page, scene.frame.name!).click();
   await page.evaluate(() => {

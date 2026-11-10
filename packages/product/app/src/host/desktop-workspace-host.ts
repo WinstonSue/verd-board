@@ -1,3 +1,4 @@
+import { VersionError, type VersionResult } from './workspace-versions';
 import type {
   ChangeHint,
   CommitReceipt,
@@ -13,6 +14,14 @@ import type {
 } from './workspace-host';
 
 interface DesktopBridge {
+  git: NonNullable<WorkspaceHost['git']>;
+  versions(
+    handle: WorkspaceHandle,
+    request: Parameters<NonNullable<WorkspaceHost['versions']>>[1],
+  ): Promise<
+    | VersionResult
+    | { versionError: { code: VersionError['code']; diagnostic: string } }
+  >;
   readWorkspaceLocation: NonNullable<WorkspaceHost['readWorkspaceLocation']>;
   revealWorkspaceLocation: NonNullable<
     WorkspaceHost['revealWorkspaceLocation']
@@ -34,6 +43,8 @@ interface DesktopBridge {
   listWorkspaceHistory(): Promise<WorkspaceHistoryEntry[]>;
   readSnapshot(handle: WorkspaceHandle): Promise<WorkspaceHostSnapshot>;
   readFile(handle: WorkspaceHandle, path: string): Promise<RawFileRead>;
+  readResource: WorkspaceHost['readResource'];
+  openResourceExternal: NonNullable<WorkspaceHost['openResourceExternal']>;
   commit(
     handle: WorkspaceHandle,
     request: CommitRequest,
@@ -72,6 +83,12 @@ export const createDesktopWorkspaceHost = (): WorkspaceHost => {
     return api;
   };
   return {
+    storageKind: 'filesystem',
+    capabilities: {
+      pickWorkspace: true,
+      openBuiltinWorkspace: true,
+      openPatternWorkspace: true,
+    },
     readWorkspaceLocation: (h) => bridge().readWorkspaceLocation(h),
     revealWorkspaceLocation: (h) => bridge().revealWorkspaceLocation(h),
     readBuiltinUpdate: (h) => bridge().readBuiltinUpdate(h),
@@ -89,7 +106,21 @@ export const createDesktopWorkspaceHost = (): WorkspaceHost => {
     listWorkspaceHistory: () => bridge().listWorkspaceHistory(),
     readSnapshot: (handle) => bridge().readSnapshot(handle),
     readFile: (handle, path) => bridge().readFile(handle, path),
+    readResource: (handle, key) => bridge().readResource(handle, key),
+    openResourceExternal: (handle, path) =>
+      bridge().openResourceExternal(handle, path),
     commit: (handle, request) => bridge().commit(handle, request),
+    versionProvider: { id: 'git' },
+    versions: async (handle, request) => {
+      const value = await bridge().versions(handle, request);
+      if ('versionError' in value)
+        throw new VersionError(
+          value.versionError.code,
+          value.versionError.diagnostic,
+        );
+      return value;
+    },
+    git: (handle, request) => bridge().git(handle, request),
     subscribe: (handle, listener) => bridge().subscribe(handle, listener),
     resolveConflict: (handle, request) =>
       bridge().resolveConflict(handle, request),

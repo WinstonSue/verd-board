@@ -1946,24 +1946,6 @@ export function FrameProductShell({
             className={`frame-top-actions${findOpen ? ' frame-top-actions--finding' : ''}`}
             ref={appToolbar}
           >
-            {controller.current && (
-              <FrameFindBar
-                key={frameId}
-                store={value.store}
-                frameId={frameId}
-                controller={controller.current}
-                inputRef={findInput}
-                open={findOpen && !presenting && !suspended}
-                onClose={() => {
-                  setFindOpen(false);
-                  rootRef.current
-                    ?.querySelector<SVGSVGElement>(
-                      'svg[aria-label="Frame canvas"]',
-                    )
-                    ?.focus();
-                }}
-              />
-            )}
             <div
               className="frame-app-toolbar"
               role="toolbar"
@@ -1984,13 +1966,33 @@ export function FrameProductShell({
                   退出手写模式
                 </button>
               )}
-              <FrameIconButton
-                label={labelFor('product.find')}
-                title={actionTitle('product.find')}
-                icon={Search}
-                disabled={!stateFor('product.find').enabled}
-                onClick={() => runAction('product.find')}
-              />
+              {controller.current && (
+                <FrameFindBar
+                  key={frameId}
+                  store={value.store}
+                  frameId={frameId}
+                  controller={controller.current}
+                  inputRef={findInput}
+                  open={findOpen && !presenting && !suspended}
+                  onClose={() => {
+                    setFindOpen(false);
+                    rootRef.current
+                      ?.querySelector<SVGSVGElement>(
+                        'svg[aria-label="Frame canvas"]',
+                      )
+                      ?.focus();
+                  }}
+                />
+              )}
+              {!findOpen && (
+                <FrameIconButton
+                  label={labelFor('product.find')}
+                  title={actionTitle('product.find')}
+                  icon={Search}
+                  disabled={!stateFor('product.find').enabled}
+                  onClick={() => runAction('product.find')}
+                />
+              )}
               <FrameIconButton
                 label={labelFor('product.presentation')}
                 icon={Presentation}

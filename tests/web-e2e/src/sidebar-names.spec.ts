@@ -1,6 +1,6 @@
 import { openHistoryAction } from './app-actions';
 import { selectHistoryAction } from './app-actions';
-import { test, expect, type Page } from '@playwright/test';
+import { test, expect, type Page } from './service-fixture';
 import { readFileSync } from 'node:fs';
 import { selectDrawingTool } from './drawing-tools';
 import { selectAppAction } from './app-actions';
@@ -106,7 +106,7 @@ test('first complete body session supplies a plain name, then body and explicit 
   await page.getByRole('checkbox', { name: '锁定', exact: true }).check();
   await expect(name).toBeDisabled();
   await nodes(page).hover();
-  await expect(nodes(page).locator('[data-port-id]')).toHaveCount(0);
+  await expect(canvas(page).locator('[data-port-id]')).toHaveCount(0);
 });
 
 test('shape dismissal leaves selection and bidirectional arrows persist both markers with straight routes', async ({
@@ -149,7 +149,7 @@ test('shape dismissal leaves selection and bidirectional arrows persist both mar
   await expect(edge.locator('[data-arrow-marker]')).toHaveCount(2);
 });
 
-test('visible ports trim thick curves at both ends while export keeps canonical endpoints without ports', async ({
+test('visible ports preserve thick curve geometry and export canonical endpoints without ports', async ({
   page,
 }) => {
   const node = (id: string, x: number, side: string) => ({
@@ -221,8 +221,8 @@ test('visible ports trim thick curves at both ends while export keeps canonical 
   await nodes(page)
     .last()
     .click({ modifiers: ['Shift'] });
-  await expect(nodes(page).locator('[data-port-id]')).toHaveCount(2);
-  await expect(path).not.toHaveAttribute('d', canonical!);
+  await expect(canvas(page).locator('[data-port-id]')).toHaveCount(2);
+  await expect(path).toHaveAttribute('d', canonical!);
   expect(await path.getAttribute('d')).not.toMatch(/NaN|Infinity/);
   await expect(edge).toContainText('Unchanged label');
   const download = page.waitForEvent('download');

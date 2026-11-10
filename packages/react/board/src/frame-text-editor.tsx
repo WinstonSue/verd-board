@@ -240,51 +240,75 @@ export function FrameTextEditor({
           return;
         if (reason === 'cancelled')
           controller.selectRange(selection.from, selection.to);
-        bodyRef.current?.querySelector<HTMLElement>('.ProseMirror')?.focus();
+        controller.focus('preserve');
         document.dispatchEvent(new Event('selectionchange'));
       },
     });
   };
   useEffect(() => {
     let pending = 0;
+    const readSelection = () => {
+      if (toolbarRef.current?.contains(document.activeElement)) return;
+      const native = window.getSelection();
+      const selection = controller?.getSelection();
+      if (
+        !readonly &&
+        !composing.current &&
+        selection &&
+        bodyRef.current?.contains(document.activeElement) &&
+        bodyRef.current.contains(native?.anchorNode ?? null) &&
+        bodyRef.current.contains(native?.focusNode ?? null)
+      ) {
+        // Commit the browser's selection before rendering controls. Otherwise
+        // an editor view update can restore its previous model range while
+        // the native selection observer is still pending.
+        controller?.selectRange(selection.from, selection.to);
+      }
+      const visible =
+        !readonly &&
+        !composing.current &&
+        !!selection &&
+        !selection.collapsed &&
+        !!native &&
+        !native.isCollapsed &&
+        (!!bodyRef.current?.contains(document.activeElement) ||
+          !!bodyRef.current?.contains(native?.anchorNode ?? null));
+      if (visible) {
+        const previous = selectionRef.current;
+        if (
+          previous?.from !== selection.from ||
+          previous?.to !== selection.to
+        ) {
+          refresh((value) => value + 1);
+        }
+        selectionRef.current = selection;
+        if (
+          native &&
+          !native.isCollapsed &&
+          native.rangeCount &&
+          bodyRef.current?.contains(native.anchorNode)
+        )
+          selectedRange.current = native.getRangeAt(0).cloneRange();
+      } else setPanel(null);
+      setSelectionVisible(visible);
+    };
     const update = () => {
       cancelAnimationFrame(pending);
-      pending = requestAnimationFrame(() => {
-        if (toolbarRef.current?.contains(document.activeElement)) return;
-        const native = window.getSelection();
-        const selection = controller?.getSelection();
-        const visible =
-          !readonly &&
-          !composing.current &&
-          !!selection &&
-          !selection.collapsed &&
-          (!!bodyRef.current?.contains(document.activeElement) ||
-            !!bodyRef.current?.contains(native?.anchorNode ?? null));
-        if (visible) {
-          const previous = selectionRef.current;
-          if (
-            previous?.from !== selection.from ||
-            previous?.to !== selection.to
-          ) {
-            refresh((value) => value + 1);
-          }
-          selectionRef.current = selection;
-          if (
-            native &&
-            !native.isCollapsed &&
-            native.rangeCount &&
-            bodyRef.current?.contains(native.anchorNode)
-          )
-            selectedRange.current = native.getRangeAt(0).cloneRange();
-        } else setPanel(null);
-        setSelectionVisible(visible);
-      });
+      // Keyboard and pointer defaults can update the native range before
+      // selectionchange or the editor observer. Do not leave stale controls
+      // visible while waiting for a browser event or the next paint.
+      readSelection();
+      pending = requestAnimationFrame(readSelection);
     };
     document.addEventListener('selectionchange', update);
+    document.addEventListener('keyup', update);
+    document.addEventListener('mouseup', update);
     update();
     return () => {
       cancelAnimationFrame(pending);
       document.removeEventListener('selectionchange', update);
+      document.removeEventListener('keyup', update);
+      document.removeEventListener('mouseup', update);
     };
   }, [controller, readonly]);
   const apply = (run: () => void) => {
@@ -342,7 +366,7 @@ export function FrameTextEditor({
           event.stopPropagation();
           setPanel(null);
           restoreSelection();
-          bodyRef.current?.querySelector<HTMLElement>('.ProseMirror')?.focus();
+          controller?.focus('preserve');
           return;
         }
         if (
@@ -665,9 +689,7 @@ export function FrameTextEditor({
                   onClick={() => {
                     setPanel(null);
                     restoreSelection();
-                    bodyRef.current
-                      ?.querySelector<HTMLElement>('.ProseMirror')
-                      ?.focus();
+                    controller?.focus('preserve');
                   }}
                 >
                   {zh ? '取消' : 'Cancel'}

@@ -11,6 +11,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { committedCells, seedEmptyCanvas } from './workspace-disk';
 import { openActiveFile, setAppLanguage } from '../../web-e2e/src/app-actions';
+import { cellBodyPoint } from '../../helpers/port-controls';
 
 test.use({ actionTimeout: 6000 });
 
@@ -98,6 +99,34 @@ test('Desktop numeric inspector commits one history step, cancels locked drafts 
           )?.geometry.x,
       )
       .toBe(123);
+    const contextPoint = await cellBodyPoint(node);
+    await page.mouse.click(contextPoint.x, contextPoint.y, { button: 'right' });
+    const contextMenu = page.getByRole('menu', {
+      name: '画布编辑',
+      exact: true,
+    });
+    await expect(contextMenu.locator('input, select, textarea')).toHaveCount(0);
+    const layers = contextMenu.getByRole('menuitem', {
+      name: '图层',
+      exact: true,
+    });
+    await layers.focus();
+    await page.keyboard.press('ArrowRight');
+    await expect(
+      page
+        .getByRole('menu', { name: '图层', exact: true })
+        .getByRole('menuitem')
+        .first(),
+    ).toBeFocused();
+    await page.keyboard.press('Escape');
+    await expect(layers).toBeFocused();
+    await contextMenu
+      .getByRole('menuitem', { name: '复制副本', exact: true })
+      .click();
+    await expect(node).toHaveCount(2);
+    await expect(contextMenu).toHaveCount(0);
+    await selectHistoryAction(page, '撤销');
+    await expect(node).toHaveCount(1);
     await close(desktop, page);
     desktop = await electron.launch({ args: [launcher], env });
     page = await desktop.firstWindow();

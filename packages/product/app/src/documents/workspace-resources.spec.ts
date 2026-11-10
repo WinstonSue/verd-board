@@ -10,12 +10,52 @@ import {
 } from '../session/workspace-session';
 import { createDocumentFile } from './document-files';
 import {
-  saveRevision,
   readRevisions,
   readRevision,
   restoreRevision,
   inlineFileAssets,
+  type Revision,
 } from './workspace-resources';
+import {
+  workspaceFileId,
+  workspaceFileTitle,
+  type WorkspaceFile,
+} from './document-files';
+/** Seed a pre-Git archive; production never creates legacy snapshots anymore. */
+async function seedLegacyRevision(
+  session: WorkspaceSession,
+  file: WorkspaceFile,
+  name = 'Legacy snapshot',
+) {
+  const { manifest, expectedVersion } = await readRevisions(session);
+  const revision: Revision = {
+    id: crypto.randomUUID(),
+    fileId: workspaceFileId(file),
+    title: workspaceFileTitle(file),
+    name,
+    at: Date.now(),
+    path: '',
+  };
+  revision.path = `.verd-resources/history/${revision.id}.snapshot.json`;
+  const receipt = await session.commitResources([
+    {
+      path: revision.path,
+      content: JSON.stringify(file),
+      expectedVersion: null,
+    },
+    {
+      path: '.verd-resources/history/index.json',
+      content: JSON.stringify({
+        ...manifest,
+        revisions: [revision, ...manifest.revisions],
+      }),
+      expectedVersion,
+    },
+  ]);
+  if (receipt.outcome !== 'applied')
+    throw new Error('Legacy fixture save failed');
+  return revision;
+}
 const sessions: WorkspaceSession[] = [];
 afterEach(() => sessions.splice(0).forEach((session) => session.dispose()));
 async function setup() {
@@ -31,7 +71,7 @@ async function setup() {
 describe('durable versions and resource transactions', () => {
   it('survives reopening, previews old content, and restores as an undoable new edit', async () => {
     const { host, handle, session, file } = await setup();
-    const revision = await saveRevision(session, file, 'Named version');
+    const revision = await seedLegacyRevision(session, file, 'Named version');
     await session.apply({ type: 'file', file: { ...file, title: 'After' } });
     await session.flush();
     session.dispose();
@@ -49,7 +89,7 @@ describe('durable versions and resource transactions', () => {
     expect(reopened.getState().documents.get('doc')?.file.title).toBe('Before');
     await reopened.undo();
     expect(reopened.getState().documents.get('doc')?.file.title).toBe('After');
-    expect((await readRevisions(reopened)).manifest.revisions).toHaveLength(2);
+    expect((await readRevisions(reopened)).manifest.revisions).toHaveLength(1);
   });
   it('rejects readonly resource writes and path escapes', async () => {
     const { session } = await setup();
@@ -60,21 +100,24 @@ describe('durable versions and resource transactions', () => {
     ).rejects.toThrow();
     session.setReadonly(true);
     await expect(
-      saveRevision(session, session.getState().documents.get('doc')!.file),
+      seedLegacyRevision(
+        session,
+        session.getState().documents.get('doc')!.file,
+      ),
     ).rejects.toThrow();
   });
   it('compares versions before write and never overwrites an unrelated raw file', async () => {
     const { session } = await setup();
     await session.commitResources([
       {
-        path: '.verd-resources/test.bin',
+        path: '.verd-resources/assets/test.bin',
         content: 'first',
         expectedVersion: null,
       },
     ]);
     const receipt = await session.commitResources([
       {
-        path: '.verd-resources/test.bin',
+        path: '.verd-resources/assets/test.bin',
         content: 'second',
         expectedVersion: null,
       },
@@ -82,7 +125,7 @@ describe('durable versions and resource transactions', () => {
     expect(receipt.outcome).toBe('rejected');
     expect(
       new TextDecoder().decode(
-        (await session.readRawFile('.verd-resources/test.bin')).content,
+        (await session.readRawFile('.verd-resources/assets/test.bin')).content,
       ),
     ).toBe('first');
   });
@@ -123,7 +166,7 @@ describe('durable versions and resource transactions', () => {
   });
   it('permanent deletion purges persisted versions as well as live undo history', async () => {
     const { session, file } = await setup();
-    const revision = await saveRevision(session, file);
+    const revision = await seedLegacyRevision(session, file);
     await session.apply({ type: 'trash-file', fileId: 'doc' });
     await session.flush();
     const entry = session.getState().trash[0];
@@ -186,7 +229,7 @@ it('keeps file metadata through canvas edits, duplication and search', async () 
 
 it('retains purge bindings across process restart', async () => {
   const { host, handle, session, file } = await setup();
-  const revision = await saveRevision(session, file, 'Archive');
+  const revision = await seedLegacyRevision(session, file, 'Archive');
   await session.apply({ type: 'trash-file', fileId: 'doc' });
   await session.flush();
   session.dispose();

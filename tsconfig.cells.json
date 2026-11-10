@@ -3,10 +3,7 @@
   "compilerOptions": {
     "jsx": "react-jsx",
     "noEmit": true,
-    "types": [
-      "vite/client",
-      "node"
-    ]
+    "types": ["vite/client", "node"]
   },
   "include": [
     "packages/engine/core/src/cell/**/*.ts",
@@ -30,8 +27,5 @@
     "packages/engine/uml/src/**/*.ts",
     "packages/react/uml/src/**/*.tsx"
   ],
-  "exclude": [
-    "**/*.spec.ts",
-    "**/*.spec.tsx"
-  ]
+  "exclude": ["**/*.spec.ts", "**/*.spec.tsx"]
 }

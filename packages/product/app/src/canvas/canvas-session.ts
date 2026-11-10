@@ -463,9 +463,6 @@ export const createCanvasSession = (options: {
       type: 'edit-file',
       sourceFileId: occurrence.fileId,
       store: occurrence.runtime.store,
-      creationOwnerId: isRegularCanvas(entry.file)
-        ? occurrence.fileId
-        : undefined,
       label: transaction.id,
     });
     if (!result.ok) {

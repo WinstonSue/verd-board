@@ -82,3 +82,10 @@ Thumbs.db
 /.codenote/run.json
 /.codenote/run.json.previous
 /.claude/plugins/.codenote-generated/
+
+# Generated service content bundles.
+/apps/service/build/
+
+/apps/service/dist-e2e-*/
+/apps/web/dist-e2e/
+/.quality/

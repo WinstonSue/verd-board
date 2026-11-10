@@ -1,9 +1,19 @@
+import { withGitVersioning } from '../git/version-provider';
+import { isWorkspaceContentPath } from '../workspace-skills';
+import { type GitWorkspaceData } from '../git/workspace-git-engine';
+import { createBrowserGitEngine } from '../git/browser-git-engine';
 import { isFolderIdentityPath, readFolderIdentity } from './folder-identity';
 import { isFrameFileV2 } from '../frames/frame-files';
 import { isDocumentFileV1 } from '../documents/document-files';
 import { digestBytes } from './memory-workspace-host';
 import {
   baseName,
+  isProjectInternalPath,
+  normalizeResourceKey,
+  resourceStoragePath,
+  RESOURCE_DIR,
+  LEGACY_RESOURCE_DIR,
+  workspaceDisplayName,
   conflictCommit,
   isCanvasPath,
   isDocumentPath,
@@ -62,6 +72,7 @@ interface StoredMeta {
   wsKey: string;
   config: { version: number; value: Record<string, unknown> };
   session: WorkspaceSessionState | null;
+  resourceLayoutVersion?: 1;
 }
 
 const request = <T>(req: IDBRequest<T>): Promise<T> =>
@@ -241,11 +252,18 @@ export const createWebWorkspaceHost = (
     };
     const writeVersions = new Map<string, FileVersion>();
     try {
-      writes = (request_.writes ?? []).map((op) => ({
-        ...op,
-        path: normalizeWorkspacePath(op.path),
-        bytes: encode(op.content),
-      }));
+      writes = [
+        ...(request_.writes ?? []).map((op) => ({
+          ...op,
+          path: normalizeWorkspacePath(op.path),
+          bytes: encode(op.content),
+        })),
+        ...(request_.resourceWrites ?? []).map((op) => ({
+          ...op,
+          path: resourceStoragePath(op.path),
+          bytes: encode(op.content),
+        })),
+      ];
       for (const op of writes)
         writeVersions.set(op.path, await sha256(op.bytes));
       (request_.purge ?? []).forEach(normalizeTrashEntryId);
@@ -280,6 +298,7 @@ export const createWebWorkspaceHost = (
     const [files, trashStore, receipts, metaStore] = stores;
     const completion = done(txn);
     const versions: Record<string, FileVersion> = {};
+    const resourceVersions: Record<string, FileVersion> = {};
     const trashEntries: { path: string; entryId: string }[] = [];
     const touched = new Set<string>();
     const get = async (path: string) =>
@@ -494,7 +513,10 @@ export const createWebWorkspaceHost = (
             updatedAt: now(),
           }),
         );
-        versions[op.path] = writeVersions.get(op.path)!;
+        if (op.path.startsWith(RESOURCE_DIR + '/'))
+          resourceVersions[op.path.slice(RESOURCE_DIR.length + 1)] =
+            writeVersions.get(op.path)!;
+        else versions[op.path] = writeVersions.get(op.path)!;
         touched.add(op.path);
       }
       if (request_.config) {
@@ -537,6 +559,23 @@ export const createWebWorkspaceHost = (
         const { id: _id, ...receipt } = recorded;
         return { receipt, touched: [] };
       }
+      if (
+        request_.resourceWrites?.length &&
+        (await allFilesIn(files, wsKey)).some(
+          (node) =>
+            node.path === LEGACY_RESOURCE_DIR ||
+            node.path.startsWith(LEGACY_RESOURCE_DIR + '/'),
+        )
+      ) {
+        txn.abort();
+        await completion.catch(() => {});
+        return {
+          receipt: reject(request_.transactionId, 'invalid', {
+            path: 'Resource migration conflict',
+          }),
+          touched: [],
+        };
+      }
       const violation = await run();
       if (violation) {
         // Rejections roll the whole batch back; the receipt persists alone
@@ -562,6 +601,7 @@ export const createWebWorkspaceHost = (
         transactionId: request_.transactionId,
         outcome: 'applied',
         versions,
+        resourceVersions,
         trashEntries: trashEntries.length ? trashEntries : undefined,
       };
       await request(
@@ -614,7 +654,202 @@ export const createWebWorkspaceHost = (
     };
   };
 
-  return {
+  // Git runs against a disposable overlay; both its metadata and user files are
+  // published into this existing database in the same compare-and-swap batch.
+  type GitSource = {
+    stored: StoredNode[];
+    trash: (StoredTrashEntry & { id: string })[];
+    meta: StoredMeta;
+  };
+  const fingerprint = (source: GitSource) =>
+    JSON.stringify({
+      files: source.stored
+        .map((node) =>
+          node.kind === 'file'
+            ? [node.path, node.version, node.size]
+            : [node.path],
+        )
+        .sort((a, b) => String(a[0]).localeCompare(String(b[0]))),
+      trash: source.trash
+        .map((entry) => [
+          entry.entryId,
+          entry.originalPath,
+          Object.entries(entry.nodes)
+            .map(([path, node]) => [
+              path,
+              node.kind === 'file' ? node.version : 'directory',
+            ])
+            .sort(),
+        ])
+        .sort(),
+      config: source.meta.config,
+    });
+  const gitEngines = new Map<
+    string,
+    ReturnType<typeof createBrowserGitEngine>
+  >();
+  const gitEngine = (handle: WorkspaceHandle) => {
+    const wsKey = workspaceOf(handle);
+    let engine = gitEngines.get(wsKey);
+    if (engine) return engine;
+    engine = createBrowserGitEngine({
+      now,
+      async load(): Promise<GitWorkspaceData> {
+        const { txn, stores } = await store(
+          ['files', 'trash', 'meta'],
+          'readonly',
+        );
+        const completion = done(txn);
+        const [stored, trash, meta] = await Promise.all([
+          allFilesIn(stores[0], wsKey),
+          request(stores[1].index('ws').getAll(wsKey)) as Promise<
+            (StoredTrashEntry & { id: string })[]
+          >,
+          request(stores[2].get(wsKey)) as Promise<StoredMeta | undefined>,
+        ]);
+        await completion;
+        if (!meta) throw new Error('Unknown workspace: ' + wsKey);
+        const files = new Map<string, Uint8Array>();
+        for (const node of stored)
+          if (node.kind === 'file')
+            files.set(node.path, (await decode(node.content)).slice());
+        files.set(
+          '.verdscrolls/config.json',
+          encode(JSON.stringify(meta.config)),
+        );
+        const entries: GitWorkspaceData['trash'] = new Map();
+        for (const entry of trash) {
+          const files = new Map<string, Uint8Array>();
+          for (const [path, node] of Object.entries(entry.nodes))
+            if (node.kind === 'file')
+              files.set(path, (await decode(node.content)).slice());
+          entries.set(entry.entryId, { files });
+        }
+        return {
+          files,
+          directories: new Set(
+            stored
+              .filter((node) => node.kind === 'directory')
+              .map((node) => node.path),
+          ),
+          trash: entries,
+          source: { stored, trash, meta } satisfies GitSource,
+        };
+      },
+      async publish(before, after) {
+        const source = before.source as GitSource;
+        const timestamp = now();
+        const fileRecords = new Map<string, StoredNode>();
+        for (const [path, content] of after.files) {
+          if (path === '.verdscrolls/config.json') continue;
+          fileRecords.set(path, {
+            id: fileKey(wsKey, path),
+            wsKey,
+            path,
+            kind: 'file',
+            content: content.slice().buffer as ArrayBuffer,
+            size: content.length,
+            version: await sha256(content),
+            updatedAt: timestamp,
+          });
+          let parent = parentWorkspacePath(path);
+          while (parent) {
+            if (!fileRecords.has(parent))
+              fileRecords.set(parent, {
+                id: fileKey(wsKey, parent),
+                wsKey,
+                path: parent,
+                kind: 'directory',
+              });
+            parent = parentWorkspacePath(parent);
+          }
+        }
+        const trashRecords = new Map<
+          string,
+          StoredTrashEntry & { id: string }
+        >();
+        for (const [id, entry] of after.trash) {
+          const old = source.trash.find((item) => item.entryId === id);
+          if (!old) throw new Error('Trash changed during Git operation');
+          const nodes: StoredTrashEntry['nodes'] = {};
+          for (const [path, node] of Object.entries(old.nodes))
+            if (node.kind === 'directory') nodes[path] = node;
+          for (const [path, content] of entry.files)
+            nodes[path] = {
+              kind: 'file',
+              content: content.slice().buffer as ArrayBuffer,
+              version: await sha256(content),
+            };
+          trashRecords.set(id, { ...old, nodes });
+        }
+        const configBytes = after.files.get('.verdscrolls/config.json');
+        const config = configBytes
+          ? (JSON.parse(
+              new TextDecoder().decode(configBytes),
+            ) as StoredMeta['config'])
+          : source.meta.config;
+        if (
+          typeof config?.version !== 'number' ||
+          !config.value ||
+          typeof config.value !== 'object'
+        )
+          throw new Error('Invalid restored workspace configuration');
+        const { txn, stores } = await store(
+          ['files', 'trash', 'meta'],
+          'readwrite',
+        );
+        const completion = done(txn);
+        try {
+          const [stored, trash, meta] = await Promise.all([
+            allFilesIn(stores[0], wsKey),
+            request(stores[1].index('ws').getAll(wsKey)) as Promise<
+              (StoredTrashEntry & { id: string })[]
+            >,
+            request(stores[2].get(wsKey)) as Promise<StoredMeta>,
+          ]);
+          if (fingerprint({ stored, trash, meta }) !== fingerprint(source))
+            throw new Error(
+              'Workspace changed while preparing Git operation; retry',
+            );
+          for (const node of stored)
+            if (node.kind === 'file' && !after.files.has(node.path))
+              await request(stores[0].delete(node.id));
+          for (const node of fileRecords.values())
+            await request(stores[0].put(node));
+          for (const entry of trash)
+            if (!trashRecords.has(entry.entryId))
+              await request(stores[1].delete(entry.id));
+          for (const entry of trashRecords.values())
+            await request(stores[1].put(entry));
+          // Keep navigation state from the current transaction; only portable config is versioned.
+          await request(stores[2].put({ ...meta, config }));
+          await completion;
+        } catch (error) {
+          try {
+            txn.abort();
+          } catch {
+            /* The transaction may already have aborted. */
+          }
+          await completion.catch(() => {});
+          throw error;
+        }
+        notify(wsKey, [
+          ...new Set([...before.files.keys(), ...after.files.keys()]),
+        ]);
+      },
+    });
+    gitEngines.set(wsKey, engine);
+    return engine;
+  };
+
+  return withGitVersioning({
+    storageKind: 'browser',
+    capabilities: {
+      pickWorkspace: false,
+      openBuiltinWorkspace: false,
+      openPatternWorkspace: false,
+    },
+    git: (handle, request) => gitEngine(handle)(request),
     async readGlobalConfig() {
       const { stores } = await store('global', 'readonly');
       const snapshot = (await request(stores[0].get('config'))) as
@@ -636,6 +871,8 @@ export const createWebWorkspaceHost = (
       return { applied: true, snapshot: next };
     },
     async openWorkspace(request_: OpenWorkspaceRequest = {}) {
+      if (request_.pick || request_.patterns)
+        throw new Error('Workspace operation is not supported by this host');
       let key =
         request_.historyId ??
         (request_.default
@@ -652,13 +889,63 @@ export const createWebWorkspaceHost = (
         const history = await this.listWorkspaceHistory?.();
         if (history?.[0]?.lastOpenedAt) key = history[0].id;
       }
-      const { txn, stores } = await store(['workspaces', 'meta'], 'readwrite');
+      const { txn, stores } = await store(
+        ['workspaces', 'meta', 'files'],
+        'readwrite',
+      );
       const completion = done(txn);
       const existing = (await request(stores[0].get(key))) as
         { key: string; name: string } | undefined;
       if (existing) {
+        const meta = (await request(stores[1].get(key))) as
+          StoredMeta | undefined;
+        if (meta && !meta.resourceLayoutVersion) {
+          const nodes = await allFilesIn(stores[2], key);
+          const legacy = nodes.filter(
+            (node) =>
+              node.path === LEGACY_RESOURCE_DIR ||
+              node.path.startsWith(LEGACY_RESOURCE_DIR + '/'),
+          );
+          const current = nodes.filter(
+            (node) =>
+              node.path === RESOURCE_DIR ||
+              node.path.startsWith(RESOURCE_DIR + '/'),
+          );
+          const oldHasContent = legacy.some((node) => node.kind === 'file');
+          const currentHasContent = current.some(
+            (node) => node.kind === 'file',
+          );
+          if (!oldHasContent || !currentHasContent) {
+            for (const node of legacy) await request(stores[2].delete(node.id));
+            if (oldHasContent) {
+              for (const node of current)
+                await request(stores[2].delete(node.id));
+              for (const node of legacy) {
+                const target =
+                  RESOURCE_DIR + node.path.slice(LEGACY_RESOURCE_DIR.length);
+                await request(
+                  stores[2].put({
+                    ...node,
+                    id: fileKey(key, target),
+                    path: target,
+                  }),
+                );
+              }
+            }
+            await request(
+              stores[1].put({
+                ...meta,
+                resourceLayoutVersion: 1,
+              } satisfies StoredMeta),
+            );
+          }
+        }
         await completion;
-        return { key, name: existing.name, historyId: key };
+        return {
+          key,
+          name: workspaceDisplayName(meta?.config.value['name'], existing.name),
+          historyId: key,
+        };
       }
       if (request_.create === false || request_.pick) {
         await completion;
@@ -679,6 +966,7 @@ export const createWebWorkspaceHost = (
             },
           },
           session: null,
+          resourceLayoutVersion: 1,
         } satisfies StoredMeta),
       );
       await completion;
@@ -692,7 +980,10 @@ export const createWebWorkspaceHost = (
       });
     },
     async listWorkspaceHistory() {
-      const { stores } = await store('workspaces', 'readonly');
+      const { stores } = await store(['workspaces', 'meta'], 'readonly');
+      const metadataRequest = request(stores[1].getAll()) as Promise<
+        StoredMeta[]
+      >;
       const items = (await request(stores[0].getAll())) as {
         key: string;
         name: string;
@@ -700,11 +991,17 @@ export const createWebWorkspaceHost = (
         pinned?: boolean;
         hidden?: boolean;
       }[];
+      const metadata = new Map(
+        (await metadataRequest).map((meta) => [meta.wsKey, meta]),
+      );
       return items
         .filter((i) => !i.hidden)
         .map((i) => ({
           id: i.key,
-          name: i.name,
+          name: workspaceDisplayName(
+            metadata.get(i.key)?.config.value['name'],
+            i.name,
+          ),
           lastOpenedAt: i.lastOpenedAt ?? 0,
           pinned: i.pinned,
           availability: 'available' as const,
@@ -763,7 +1060,11 @@ export const createWebWorkspaceHost = (
       }
       const entries: WorkspaceEntryMeta[] = stored
         .filter(
-          (node) => node.kind !== 'file' || !isFolderIdentityPath(node.path),
+          (node) =>
+            !isProjectInternalPath(node.path) &&
+            node.path !== '.git' &&
+            !node.path.startsWith('.git/') &&
+            (node.kind !== 'file' || !isFolderIdentityPath(node.path)),
         )
         .map((node) => ({
           path: node.path,
@@ -781,8 +1082,25 @@ export const createWebWorkspaceHost = (
       const canvases: WorkspaceHostSnapshot['canvases'] = [];
       const documents: WorkspaceHostSnapshot['documents'] = [];
       const diagnostics: WorkspaceHostSnapshot['diagnostics'] = [];
+      if (
+        stored.some(
+          (node) =>
+            node.path === LEGACY_RESOURCE_DIR ||
+            node.path.startsWith(LEGACY_RESOURCE_DIR + '/'),
+        )
+      )
+        diagnostics.push({
+          path: LEGACY_RESOURCE_DIR,
+          message:
+            'Resource migration conflict: preserve both directories and close older writers before reopening.',
+        });
       for (const node of stored) {
-        if (node.kind !== 'file' || !isCanvasPath(node.path)) continue;
+        if (
+          node.kind !== 'file' ||
+          !isWorkspaceContentPath(node.path, entries) ||
+          !isCanvasPath(node.path)
+        )
+          continue;
         try {
           const parsed: unknown = JSON.parse(
             new TextDecoder().decode(await decode(node.content)),
@@ -818,7 +1136,12 @@ export const createWebWorkspaceHost = (
         }
       }
       for (const node of stored) {
-        if (node.kind !== 'file' || !isDocumentPath(node.path)) continue;
+        if (
+          node.kind !== 'file' ||
+          !isWorkspaceContentPath(node.path, entries) ||
+          !isDocumentPath(node.path)
+        )
+          continue;
         try {
           const parsed: unknown = JSON.parse(
             new TextDecoder().decode(await decode(node.content)),
@@ -857,6 +1180,17 @@ export const createWebWorkspaceHost = (
         config: meta.config,
         session: meta.session,
         entries,
+        resources: stored.flatMap((node) => {
+          if (node.kind !== 'file' || !node.path.startsWith(RESOURCE_DIR + '/'))
+            return [];
+          const key = node.path.slice(RESOURCE_DIR.length + 1);
+          try {
+            normalizeResourceKey(key);
+          } catch {
+            return [];
+          }
+          return [{ key, version: node.version, size: node.size }];
+        }),
         canvases,
         documents,
         trash: trashed.map((entry) => ({
@@ -869,6 +1203,20 @@ export const createWebWorkspaceHost = (
     },
     async readFile(handle, path) {
       return readFileInner(handle, path);
+    },
+    async readResource(handle, key) {
+      const wsKey = workspaceOf(handle);
+      const { stores } = await store('files', 'readonly');
+      const node = (await request(
+        stores[0].get(fileKey(wsKey, resourceStoragePath(key))),
+      )) as StoredNode | undefined;
+      if (!node || node.kind !== 'file')
+        throw new Error('Missing resource: ' + key);
+      return {
+        path: normalizeResourceKey(key),
+        version: node.version,
+        content: await decode(node.content),
+      };
     },
     async commit(handle, request_) {
       const { receipt, touched } = await applyCommit(
@@ -902,9 +1250,12 @@ export const createWebWorkspaceHost = (
       if (receipt.outcome === 'applied') notify(workspaceOf(handle), touched);
       return receipt;
     },
-    async closeWorkspace() {},
+    async closeWorkspace(handle) {
+      gitEngines.get(handle.key)?.dispose();
+      gitEngines.delete(handle.key);
+    },
     onShutdown() {
       return () => {};
     },
-  };
+  });
 };

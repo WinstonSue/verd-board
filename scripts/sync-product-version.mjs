@@ -5,6 +5,7 @@ const product = JSON.parse(
 );
 for (const file of [
   'apps/desktop/package.json',
+  'apps/service/package.json',
   'packages/product/docs/package.json',
   'packages/product/agent-patterns/package.json',
 ]) {

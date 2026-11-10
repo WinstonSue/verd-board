@@ -1,3 +1,4 @@
+import { observeContentWrites } from './service-routes';
 import {
   expectSettingValue,
   selectSetting,
@@ -7,7 +8,7 @@ import { readable } from './text-color-checks';
 import { persistedWorkspace } from './workspace-nav';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
-import { expect, test, type Locator, type Page } from '@playwright/test';
+import { expect, test, type Locator, type Page } from './service-fixture';
 import {
   openAppMenu,
   openActiveFile,
@@ -315,15 +316,7 @@ test('dark interface covers settings, portaled menus, help, and readonly at wide
 test('canvas and embedded documents adapt without changing authored colors, camera or content writes', async ({
   page,
 }, testInfo) => {
-  await page.addInitScript(() => {
-    const state = window as typeof window & { appearanceWrites: number };
-    state.appearanceWrites = 0;
-    const put = IDBObjectStore.prototype.put;
-    IDBObjectStore.prototype.put = function (...args: Parameters<typeof put>) {
-      if (['files', 'trash'].includes(this.name)) state.appearanceWrites++;
-      return put.apply(this, args);
-    };
-  });
+  await observeContentWrites(page, 'appearanceWrites');
   await seed(page);
   // Wait for the imported bundle's debounced content writes to finish.
   await expect

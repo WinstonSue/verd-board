@@ -1,0 +1,20 @@
+{
+  "name": "service",
+  "version": "2.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "node ../../scripts/web.mjs service-build",
+    "test": "vitest run",
+    "lint": "eslint src"
+  },
+  "dependencies": {
+    "@sue/verd-board-agent": "workspace:*",
+    "@sue/verd-board-app": "workspace:*"
+  },
+  "devDependencies": {
+    "vite": "^6.2.2",
+    "vitest": "^3.0.8",
+    "fake-indexeddb": "6.2.5"
+  }
+}

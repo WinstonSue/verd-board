@@ -1,14 +1,14 @@
+import { bindRouteTerminals } from '../terminal/edit';
+import { replaceTerminal } from '../terminal/edit';
+import { snapTerminal } from '../terminal/edit';
 import { describe, expect, it } from 'vitest';
 import { createTestCellRegistry as createFixtureRegistry } from '../../../../../tests/fixtures/plugins/registry';
 import { edgePolyline } from '../geometry/edge';
 import type { Point } from '../interfaces/point';
 import {
-  bindEdgeRouteTerminals,
   moveEdgeRoutePoint,
   moveEdgeSegment,
   polylineClosestPosition,
-  replaceEdgeTerminal,
-  snapEdgeTerminal,
 } from './edge-edit';
 import { applyCellOperations } from './index';
 import { normalizeCellPositionOperations } from './position';
@@ -70,7 +70,7 @@ describe('native edge editing', () => {
   };
   it('snaps to actual ports or shape boundaries and never to another Frame child', () => {
     expect(
-      snapEdgeTerminal(
+      snapTerminal(
         store,
         'root',
         [259, 150],
@@ -83,7 +83,7 @@ describe('native edge editing', () => {
       cellId: 'a',
       portId: 'right',
     });
-    const anchor = snapEdgeTerminal(
+    const anchor = snapTerminal(
       store,
       'root',
       [180, 101],
@@ -94,7 +94,7 @@ describe('native edge editing', () => {
     );
     expect(anchor).toMatchObject({ cellId: 'a' });
     expect(
-      snapEdgeTerminal(
+      snapTerminal(
         store,
         'root',
         [450, 150],
@@ -107,7 +107,7 @@ describe('native edge editing', () => {
       point: [450, 150],
     });
     expect(
-      snapEdgeTerminal(
+      snapTerminal(
         store,
         'root',
         [102, 102],
@@ -119,12 +119,12 @@ describe('native edge editing', () => {
     ).toEqual({ point: [102, 102] });
   });
   it('updates explicit route endpoints when binding and releasing an arrow', () => {
-    const bound = replaceEdgeTerminal(store, edge, 'target', {
+    const bound = replaceTerminal(store, edge, 'target', {
       cellId: 'a',
       portId: 'right',
     });
     expect(edgePolyline(store, bound).at(-1)).toEqual([260, 150]);
-    const released = replaceEdgeTerminal(store, bound, 'target', {
+    const released = replaceTerminal(store, bound, 'target', {
       point: [600, 400],
     });
     expect(edgePolyline(store, released).at(-1)).toEqual([600, 400]);
@@ -186,6 +186,7 @@ describe('native edge editing', () => {
       ).route,
     ).toEqual({
       mode: 'curve',
+      origin: 'manual',
       points: [
         [0, 0],
         [150, 80],
@@ -256,7 +257,7 @@ describe('native edge editing', () => {
     const points = edgePolyline(graph, connector);
     expect(points[0][0]).toBe(120);
     expect(points[0][1]).toBe(16);
-    const bound = bindEdgeRouteTerminals(graph, connector, points);
+    const bound = bindRouteTerminals(graph, connector, points);
     expect(bound.source).toMatchObject({ cellId: 'source' });
     if (!('cellId' in bound.source)) throw new Error('Missing bound source');
     expect(bound.source.anchor![0]).toBe(1);
@@ -287,13 +288,13 @@ describe('native edge editing', () => {
     expect(connector.source).toEqual({ cellId: 'source' });
     for (const mode of ['curve', 'straight', 'fixed'] as const) {
       const authored = { ...connector, route: { mode, points } };
-      expect(bindEdgeRouteTerminals(graph, authored, points)).toBe(authored);
+      expect(bindRouteTerminals(graph, authored, points)).toBe(authored);
     }
     const explicit = {
       ...connector,
       source: { cellId: 'source', portId: 'right' },
       target: { cellId: 'first', anchor: [0, 0.5] as Point },
     };
-    expect(bindEdgeRouteTerminals(graph, explicit, points)).toBe(explicit);
+    expect(bindRouteTerminals(graph, explicit, points)).toBe(explicit);
   });
 });

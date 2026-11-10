@@ -1,0 +1,135 @@
+{
+  "format": "verd-document",
+  "version": 1,
+  "id": "pattern:technical-proposal",
+  "title": "技术方案",
+  "text": {
+    "schemaVersion": 1,
+    "id": "pattern:technical-proposal",
+    "kind": "block",
+    "align": "left",
+    "content": {
+      "type": "doc",
+      "content": [
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 1
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "技术方案"
+            }
+          ]
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 2
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "背景与目标"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "说明要解决的问题、使用者与可衡量的目标。"
+            }
+          ]
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 2
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "范围与约束"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "列出本次包含的能力、边界和必须遵守的约束。"
+            }
+          ]
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 2
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "候选方案"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "比较主要选择、收益、成本与风险。"
+            }
+          ]
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 2
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "设计与接口"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "描述模块职责、数据流、接口和相关架构图。"
+            }
+          ]
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 2
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "实施与验收"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "拆分交付步骤，并明确测试场景、上线和回退方法。"
+            }
+          ]
+        }
+      ]
+    },
+    "plainText": "技术方案\n背景与目标\n说明要解决的问题、使用者与可衡量的目标。\n范围与约束\n列出本次包含的能力、边界和必须遵守的约束。\n候选方案\n比较主要选择、收益、成本与风险。\n设计与接口\n描述模块职责、数据流、接口和相关架构图。\n实施与验收\n拆分交付步骤，并明确测试场景、上线和回退方法。"
+  }
+}

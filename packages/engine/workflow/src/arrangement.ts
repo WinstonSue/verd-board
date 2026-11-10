@@ -49,7 +49,20 @@ export function flowRows(
       }
     ready = next.sort((a, b) => a.id.localeCompare(b.id));
   }
-  if (visited !== blocks.length)
-    throw new Error('Cannot arrange a cyclic grouped workflow');
+  if (visited !== blocks.length) {
+    const members = new Set(blocks.flatMap((block) => block.members));
+    const process = Object.values(store.cells).some(
+      (cell) =>
+        cell.kind === 'workflow-start' &&
+        members.has(cell.id) &&
+        (cell.data as { graphMode?: string })?.graphMode === 'process',
+    );
+    if (!process) throw new Error('Cannot arrange a cyclic grouped workflow');
+    rows.push(
+      blocks
+        .filter((block) => !rows.flat().includes(block))
+        .sort((a, b) => a.id.localeCompare(b.id)),
+    );
+  }
   return rows;
 }

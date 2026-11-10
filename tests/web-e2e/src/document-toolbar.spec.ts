@@ -2,7 +2,7 @@ import {
   expectSettingValue,
   selectSetting,
 } from '../../helpers/settings-controls';
-import { test, expect, type Page, type Locator } from '@playwright/test';
+import { test, expect, type Page, type Locator } from './service-fixture';
 import { activeTabTitle } from './tab-actions';
 import { openDocumentInsert } from './app-actions';
 

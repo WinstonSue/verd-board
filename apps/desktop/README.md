@@ -66,6 +66,6 @@ Desktop dev/prod E2E 统一使用 `tests/desktop-e2e/src/desktop-launcher.ts`，
 
 新建或打开文件夹自动维护根 `AGENTS.md` 的专属受管块，并将 `.verdscrolls/shared` 链接到 userData 中按版本保留的工具资源。工作区设置显示 AI 就绪状态，可维护简介和入口文档 ID。打包钩子按目标平台准备经官方 SHA-256 校验的 Node 24.18.1 与完整 CLI；旧资源版本保留。开发时先运行 `pnpm exec turbo run build --filter=@sue/verd-board-agent` 和 `pnpm prepare:agent-resources apps/desktop/build/agent-resources/mac-arm64`，目标平台/CPU 按本机调整；也可用 `VERD_AGENT_RESOURCES` 指向临时准备目录。资源未准备时工作区仍可使用，并显示 AI 接入未就绪。
 
-系统介绍与 Agent 范式库随应用内置，版本与产品版本一致，不通过 npm 检查或下载。安装新应用不会自动替换已有副本。仅进入对应工作区时，名称旁的小标记提示可用更新；点击进入“设置 → 数据与维护”，确认后更新为当前应用附带内容。更新默认不备份；勾选备份后选择父目录，完整副本保存到独立子目录并加入普通工作区列表。取消目录选择不更新。更新先保存当前会话，保留项目身份和终态事务回执，重新打开新版导航文档。
+系统介绍与 文档编写推荐库随应用内置，版本与产品版本一致，不通过 npm 检查或下载。安装新应用不会自动替换已有副本。仅进入对应工作区时，名称旁的小标记提示可用更新；点击进入“设置 → 数据与维护”，确认后更新为当前应用附带内容。更新默认不备份；勾选备份后选择父目录，完整副本保存到独立子目录并加入普通工作区列表。取消目录选择不更新。更新先保存当前会话，保留项目身份和终态事务回执，重新打开新版导航文档。
 
 `pnpm build:content` 从仓库原生内容直接准备内置资源；`node --test scripts/builtin-package.test.mjs` 校验摘要和产品版本。内置内容不单独通过 npm 发布。

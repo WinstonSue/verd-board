@@ -7,3 +7,14 @@ pnpm-lock.yaml
 *.min.js
 # Contract-bound to codeBlock text in the native AI specification
 tests/fixtures/ai-canvas/
+# Generated runtime bundles, regression builds, and test output.
+apps/desktop/build/agent-resources/
+apps/desktop/build/builtin-workspaces/
+apps/service/build/
+**/dist-electron*/
+**/dist-e2e*/
+**/release-history/
+**/test-results/
+**/playwright-report/
+.turbo/
+.quality/

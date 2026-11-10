@@ -1595,10 +1595,11 @@ describe('reference instance editing', () => {
       ).length,
     ).toBeGreaterThan(0);
     expect(
-      view.container.querySelector(
-        '[data-reference-instance="r2"] [data-port-id="p"]',
-      ),
-    ).toBeNull();
+      view.container
+        .querySelector('[data-reference-instance="r2"] [data-port-id="p"]')
+        ?.parentElement?.querySelector('[data-control-mark]')
+        ?.getAttribute('visibility'),
+    ).toBe('hidden');
     await act(async () => {
       first.dispatchEvent(pointer('pointerdown'));
     });

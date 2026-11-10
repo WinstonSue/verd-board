@@ -27,6 +27,7 @@ import {
 } from './workspace-settings-content';
 import { BuiltinWorkspaceSettings } from './builtin-workspace-settings';
 import { WorkspaceTrash } from './workspace-trash';
+import { WorkspaceSkillsSettings } from './workspace-skills-settings';
 import { useMindMaxWidth } from './mind-preferences';
 import './settings-sections.scss';
 
@@ -86,6 +87,23 @@ function SettingsCenterContent({
     ...(workspace
       ? [
           { id: 'workspace.project', label: zh ? '常规' : 'General' },
+          ...(workspace.versioning
+            ? [
+                {
+                  id: 'workspace.versions',
+                  label: zh ? '版本管理' : 'Version management',
+                },
+              ]
+            : []),
+          ...(workspace.skills
+            ? [
+                { id: 'workspace.skills', label: zh ? '提示词' : 'Prompts' },
+                {
+                  id: 'workspace.custom-skills',
+                  label: zh ? '自定义 Skills' : 'Custom Skills',
+                },
+              ]
+            : []),
           {
             id: 'workspace.data',
             label: zh ? '数据与维护' : 'Data and maintenance',
@@ -273,13 +291,14 @@ function SettingsCenterContent({
                 itemMarginInline: 0,
                 itemMarginBlock: 0,
                 groupTitleFontSize: token.fontSizeSM,
+                padding: token.paddingSM,
               },
             },
           }}
         >
           <Menu
             mode="inline"
-            inlineIndent={token.paddingXS}
+            inlineIndent={token.paddingSM}
             aria-label={zh ? '设置栏目' : 'Settings sections'}
             selectedKeys={[selected]}
             disabled={busy}
@@ -396,12 +415,30 @@ function SettingsCenterContent({
                   />
                 </fieldset>
               )}
+              {(selected === 'workspace.skills' ||
+                selected === 'workspace.custom-skills') &&
+                w.skills && (
+                  <WorkspaceSkillsSettings
+                    key={`${w.skills.workspaceKey}:${selected}`}
+                    custom={selected === 'workspace.custom-skills'}
+                    model={w.skills}
+                    zh={zh}
+                    disabled={!!disabled}
+                    drafts={drafts}
+                    onBusy={setBusy}
+                  />
+                )}
+              {selected === 'workspace.versions' &&
+                w.versioning?.render({
+                  readonly: !!w.readonly,
+                  onBusyChange: setBusy,
+                })}
               {selected === 'workspace.data' && (
                 <>
                   {w.storage && (
                     <SettingsSection title={zh ? '存储位置' : 'Storage'}>
                       <SettingsRow label={zh ? '工作区资料' : 'Workspace data'}>
-                        {w.storage === 'desktop' && w.storageLocation ? (
+                        {w.storage !== 'browser' && w.storageLocation ? (
                           <WorkspaceButton
                             type="button"
                             intent="ghost"
@@ -430,6 +467,16 @@ function SettingsCenterContent({
                           <WorkspaceAlert type="error" title={storageError} />
                         )}
                       </SettingsRow>
+                    </SettingsSection>
+                  )}
+                  {w.onMigrateBrowserData && (
+                    <SettingsSection title={zh ? '浏览器数据' : 'Browser data'}>
+                      <WorkspaceButton
+                        disabled={disabled || busy}
+                        onClick={w.onMigrateBrowserData}
+                      >
+                        {zh ? '迁移浏览器数据' : 'Migrate browser data'}
+                      </WorkspaceButton>
                     </SettingsSection>
                   )}
                   {w.agent && (
@@ -487,6 +534,9 @@ export type SettingsSectionId =
   | 'personal.general'
   | 'personal.editor'
   | 'workspace.project'
+  | 'workspace.skills'
+  | 'workspace.custom-skills'
+  | 'workspace.versions'
   | 'workspace.data'
   | 'workspace.trash';
 export function normalizeSettingsSection(section: string): SettingsSectionId {
@@ -499,6 +549,9 @@ export function normalizeSettingsSection(section: string): SettingsSectionId {
       'personal.general',
       'personal.editor',
       'workspace.project',
+      'workspace.skills',
+      'workspace.custom-skills',
+      'workspace.versions',
       'workspace.data',
       'workspace.trash',
     ].includes(section)
@@ -508,6 +561,14 @@ export function normalizeSettingsSection(section: string): SettingsSectionId {
 }
 export function SettingsCenter(props: SettingsCenterProps) {
   const drafts = useRef(new Map<string, () => Promise<boolean>>()).current;
+  const registerFlush = props.workspace?.onRegisterFlush;
+  useEffect(() => {
+    registerFlush?.(async () => {
+      for (const save of drafts.values()) if (!(await save())) return false;
+      return true;
+    });
+    return () => registerFlush?.(null);
+  }, [drafts, registerFlush]);
   return (
     <SettingsDraftProvider drafts={drafts}>
       <SettingsCenterContent {...props} drafts={drafts} />

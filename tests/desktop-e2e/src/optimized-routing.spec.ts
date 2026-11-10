@@ -1,3 +1,8 @@
+import {
+  applyCellOperations,
+  planGeometryLayout,
+} from '../../../packages/engine/core/src/cell/index';
+import { createWorkspaceCellRegistry } from '../../../packages/product/app/src/frames/plugins';
 import { electron, writeDesktopLauncher } from './desktop-launcher';
 import { expect, test, type ElectronApplication } from '@playwright/test';
 import {
@@ -31,7 +36,29 @@ test('one-shot optimized paths persist across desktop restart without enabling c
       ),
       filename,
     );
-    const before = JSON.parse(await readFile(filename, 'utf8'));
+    const source = JSON.parse(await readFile(filename, 'utf8'));
+    // Give all 43 relationships the current 96px layout clearance before testing
+    // route-only optimization; the authored diagram has two blocked terminals.
+    const registry = createWorkspaceCellRegistry();
+    const initial = {
+      rootId: source.frame.id,
+      cells: { [source.frame.id]: source.frame, ...source.cells },
+    };
+    const plan = planGeometryLayout(
+      initial,
+      { focus: [initial.rootId], ids: [] },
+      'layers',
+      registry,
+    );
+    expect(plan.status).toBe('success');
+    const prepared = applyCellOperations(initial, plan.operations, registry);
+    const before = {
+      ...source,
+      frame: prepared.cells[prepared.rootId],
+      cells: Object.fromEntries(
+        Object.entries(prepared.cells).filter(([id]) => id !== prepared.rootId),
+      ),
+    };
     const edgeCount = Object.values<{ cellType: string }>(before.cells).filter(
       (cell) => cell.cellType === 'edge',
     ).length;

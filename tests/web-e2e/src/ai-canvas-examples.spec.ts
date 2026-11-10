@@ -1,5 +1,6 @@
-import { test, expect, type Page } from '@playwright/test';
+import { test, expect, type Page } from './service-fixture';
 import path from 'node:path';
+import { openActiveFile } from './app-actions';
 
 const dir = path.resolve(__dirname, '../../fixtures/ai-canvas');
 // Each open tab mounts its own VerdFrame; only the active tab is visible.
@@ -19,11 +20,15 @@ const workspaceImport = (page: Page, file: string) =>
     .setInputFiles(path.join(dir, file));
 // The active tab pane; hidden inputs live inside it.
 const activeHost = (page: Page) => page.locator('.workspace-pane.is-active');
-const canvasInput = (page: Page, index: 0 | 1, file: string) =>
-  activeHost(page)
+const canvasInput = async (page: Page, index: 0 | 1, file: string) => {
+  await page.locator('.workspace-content[aria-busy="false"]').waitFor();
+  if (!(await canvas(page).isVisible())) await openActiveFile(page);
+  await expect(canvas(page)).toBeVisible();
+  return activeHost(page)
     .locator('input[accept="application/json,.md,.markdown,.mmd,.mermaid"]')
     .nth(index)
     .setInputFiles(path.join(dir, file));
+};
 // nth(0) is「导入」(insert into the frame), nth(1) is「打开」(replace the frame).
 const canvasImport = (page: Page, file: string) => canvasInput(page, 0, file);
 const canvasOpen = (page: Page, file: string) => canvasInput(page, 1, file);

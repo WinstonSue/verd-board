@@ -1,5 +1,120 @@
 # @sue/board-react
 
+## 2.1.0
+
+### Major Changes
+
+- b06ca40: Standardize bundled project and pattern workspaces with portable project context. Add explicit offline full updates with complete directory backups, restart recovery, retained project identity and terminal receipts, and instance generation checks that reject stale hosts and authoring plans.
+
+  Use document navigation as the built-in project homepage and honor configured reading entries when no session has been saved. Preserve existing sessions and keep diagram navigation available through document links.
+
+  Display the selected reading entry instead of hiding it behind the management homepage. Explain that installing the app preserves existing copies and that confirmed replacement opens the new navigation document.
+
+  Move bilingual navigation to the workspace root and project diagrams into the diagrams directory. Consolidate navigation into reading indexes, replace document posters with compact source links, and permit existing plain text annotations in specialized scenes without adding them to scene layout membership.
+
+- 33dc37e: Introduce explicit, instance-scoped CellPlugin and FrameUIPlugin composition for Draw, Mind, Workflow, Architecture and UML. Domain kinds and models move out of core. FrameEditor composes a complete editor from one domain; FrameCanvas takes the same pluginSet used for previews, references and image export. Add the Draw React package and public per-package CSS entries; keep rich text built into React core and inject optional converters from the host.
+
+  Pass the installed registry to independent domain-sensitive helpers. Reject unknown kinds before opening or importing files, with no normalization or writes. Duplicate plugin IDs and kind conflicts fail explicitly; runtime installation is unsupported. Preserve atomic transaction/history behavior and existing FrameFileV2/DocumentFileV1 serialized fields. See the native Architecture, React integration and migration documents for the next-major contract. No version bump or publication is performed in this change.
+
+- 33dc37e: Unify editor toolbars, menus, shortcuts, command palettes, help and public user operations around instance-scoped Actions. Add the renderer-independent `@sue/board-react-actions` package. Replace discrete canvas/document controller mutation methods, plugin-local shortcuts, tool command callbacks and `CellUtil.keyboard` with shared action definitions, availability and execution. Capture original targets before focus or asynchronous transport changes; await actual host editing receipts and preserve cancellation, rejection and failure results.
+
+  Add shared `WorkspaceTarget` codecs and stable single-Cell workspace links. Resolve Cell identity through the live owner index after cross-Frame moves, with the URL file ID as a hint/fallback. Replace legacy document-link exports and reveal props with common codecs, `FrameLinkHost`, abortable `revealTarget` and typed document navigation results. Temporarily expand required Mind ancestors through occurrence-local view projections; canonical content, undo history, other occurrences and exports remain unchanged.
+
+  Map explicit standard and domain rich-text link slots once after copy/import/paste ownership is known, including custom UML plans. Custom `CellPastePlan` implementations must return `idMap`; inject protocol/text mappers into core registries without adding a core-to-common runtime dependency. Preserve `FrameFileV2`, `DocumentFileV1` and native bundle versions. See native React integration and migration documents for breaking API replacements. Prepare Changesets only; do not bump versions or publish as part of this change.
+
+### Minor Changes
+
+- 5571a9a: Add light and dark variants for Classic, Colorful, Soft, Retro, Fresh and Ocean while preserving existing theme IDs. Resolve canvas colors at render time, take over all unmarked component colors, and retain per-field custom color sources through edits, copying and inheritance. Adapt embedded documents, references and presentation without saving appearance into files or undo history. Image exports can use the current, light or dark appearance independently of their background choice and retain the full source content of selected references; existing third-party renderers retain legacy colors when appearance is omitted. Share domain color defaults across drawing and inspectors, add Mind branch reset, and distinguish explicitly authored Mermaid styles from renderer defaults.
+
+  Make rich-text color provenance explicit with optional textStyle.attrs.colorSource. Unmarked and theme text inherits readable local colors in canvases, standalone documents and embedded documents; custom text keeps its literal color. Share the schema across previews and editors, preserve original literals and sources in HTML, record identical manual color choices, and clear only the color override when returning to the theme. Keep legacy third-party rendering and user workspace files unchanged; cover real legacy text marks, appearance switching, history, source roundtrips and image exports.
+
+  Add five color roles, three emphasis levels and six coordinated categorical families to every theme appearance. Domain mappings distinguish workflow roles, architecture layers, UML classifiers and participants, drawing shape families, table headers and swimlanes. Share local fill/stroke/text resolution with inspectors and exports, preserve custom field overrides and Mind schemes, and document the actual palette values and swatches in the native architecture design.
+
+- 33dc37e: Separate one-shot node layout and edge optimization from independently enabled session automation. Save one-shot optimized routes as editable points; preserve legacy strategy compatibility without implicit continuous work. Coalesce interaction previews and defer full routing until release, keeping automatic derived changes in the initiating transaction and undo entry.
+- 33dc37e: Introduce typed Schema settings panels, reusable geometry definitions and additive propertyPanels/settingsPanels plugin contributions. Migrate ordinary application, workspace, common and domain fields while retaining existing controls, commit timing, inheritance, transactions and history. Preserve concurrent host fields when applying inspector edits.
+
+  Consume the separately maintained Settings SDK through published package versions. Candidate integration and consumer scripts accept a checksummed tarball manifest; publish the Schema runtime/SDK and pin its final versions before registry-only release verification. No version bump or publication is performed here.
+
+- Prepare the application, SDK, UI and Agent together as 2.1.0 for this explicitly authorized early-stage release. This release includes the breaking API changes documented below; existing 2.0 consumers must follow the migration guide. Future releases retain the existing version rules. Local version preparation does not establish npm registry publication.
+
+### Patch Changes
+
+- b06ca40: Bound obstacle routing allocation, reuse prepared atomic transactions and topology indexes, and preserve unaffected workspace files and canvas state. Add opt-in layout dependency keys, shared spatial queries, geometry-based offscreen navigation, and buffered, staged mounting for large canvases.
+- Focus the canvas context menu on editing commands, with contextual grouping, locking, alignment and layer submenus, keyboard navigation, and duplicate actions. Keep appearance, text and layout configuration in the inspector and improve shared alignment command labels.
+- b06ca40: Remove deprecated CellIndex.membersOf: use groupOf for group membership and domainOwnerOf for domain ownership. Preserve combined lookup precedence with parentOf, domainOwnerOf, then groupOf. Remove legacyThemeColors and the ignored fifth resolveThemeColor argument; use the four-argument resolver and explicit custom color sources. Replace the UI WorkspaceId alias with EditorKind.
+
+  Remove unused internal code and attachment scans, route Keep both through the registered workspace.resolve-conflict action, and synchronize bundled native project documentation and independent content release guidance.
+
+- Add self-contained native v2 resource packages with validated, atomic file and asset import and idempotent recovery. Declare host workspace capabilities, keep saved names consistent with history, and finish management-view navigation correctly. Make read-only doctor exit unsuccessfully when the workspace is unready. Preserve native/v1 imports and existing third-party host behavior.
+
+  Keep automatic camera fits synchronized with initial viewport and toolbar measurements until user interaction takes over, without writing document content or changing manually positioned cameras.
+
+  Read focused native text selections without changing content, and synchronize canvas selections before rendering controls so stale editor ranges cannot overwrite a newly moved caret. Preserve text history.
+
+- b06ca40: Add configurable rich text link activation, make readonly and presentation links clickable, and simplify the document toolbar with accessible responsive menus. Remove the document body focus outline while retaining control and node selection feedback.
+- Introduce scene geometry policies and detailed joint layout/routing plans. Enforce painted node clearance through routing and cleanup, retry placement with wider channels, preserve manual routes in background work, support cyclic process layout, and retain failed edge-only routes with diagnostics. Keep domain projections, endpoint semantics, undo and saved route provenance intact.
+- b06ca40: Dismiss file menus reliably when clicking the canvas, add stable file link copying, and replace the persistent canvas text form with a themed selection-only formatting toolbar.
+- Extract Port, Anchor and Terminal into independent core modules with shared attachment resolution, port availability and terminal editing. Rename PortSpec to Port and EdgeTerminal to Terminal. Replace relativeAnchor, portAnchor, edgeTerminalPosition, availableEdgePorts, snapEdgeTerminal, replaceEdgeTerminal and bindEdgeRouteTerminals with resolveAnchor, resolvePort, resolveTerminal, availablePorts, snapTerminal, replaceTerminal and bindRouteTerminals. resolveTerminal returns undefined for an unresolved host and accepts explicit facing or center policies for automatic attachments.
+
+  All three resolvers return the shared ResolvedAnchor shape containing point and side. Callers that previously used the coordinate returned by relativeAnchor should read resolveAnchor(...).point.
+
+  Migrate engine, React and product consumers to the new APIs without compatibility aliases. Preserve native JSON, port-and-anchor bindings, domain routing preferences and endpoint controls based on the connector's actual cached route.
+
+- b06ca40: Reuse calculation-scoped hierarchy indexes for drag snap candidates and presentation visibility checks, removing quadratic whole-store scans from drag initialization and commit rendering. Preserve group, ancestor-lock, hidden-content and collapsed Mind semantics without caching mutable stores globally. Reuse pure topology, Workflow ownership and Mind branch reads within each synchronous full validation, clearing the context on completion or failure. Keep grouped Workflow and architecture layout conflicts visible through the shared lightweight availability check.
+- 33dc37e: Add bounded deterministic one-shot route optimization, shared optimize/reset actions and a routing split button. Save optimized routes as editable orthogonal paths, preserving endpoint constraints and single-step undo. Continuous work requires an explicit session switch. Show canvas disabled reasons in accessible component tooltips instead of native browser titles.
+- 33dc37e: Handle command palette shortcuts before editor key isolation and add opt-in root fallback for body/html focus after reload. Preserve nearest-scope routing and modal ownership, and keep document page actions alive through React StrictMode effect replay.
+- Keep connectors and arrows fixed when ports appear, prioritize selected node or edge ports, and enlarge connection editing targets. Add non-blocking workflow port-direction guidance for agent authoring.
+- 33dc37e: Improve connected-node spacing, architecture terminal allocation and frame-wide orthogonal routing. Add display-only line jumps, rounded elbows and local relationship highlighting while preserving authored paths and document formats.
+
+  Keep relationship hints subordinate to selection and simplify automatic short connector stairs within a bounded crossing budget, preserving authored waypoints.
+
+  Unify node, connector and arrow interaction outlines in opaque #6366f1 with scene-scaled widths (authored width + 1 for selection/editing, authored width for self-hover and direct relationships) and a shared light/dark soft shadow. Keep interaction paint independent of authored opacity, width, color and shadow, update only local leaves during zoom or hover, and omit interaction outlines and filters from image export.
+
+  Strengthen the shared interaction shadow with a 0.75px shadow-only spread, 2.25px / 90% light halo and 1.25px / 65% dark halo, with half the effective local stroke width plus 12px screen-space filter padding. Verify actual shadow pixels beyond the interaction stroke across backgrounds and zoom levels.
+
+  Replace authored outlines during interaction instead of layering color over the original stroke. Highlight isolated nodes and Frame/reference shells on self-hover, preserve dash patterns and arrow semantics, and restore authored stroke paint in image clones without changing the live canvas.
+
+- Keep ports white and make their 36px hit regions reachable from outside nodes and connectors. Enlarge hovered handles, resolve overlapping targets by proximity, and align endpoint snapping with the pointer.
+
+  Keep draggable port cursors consistent across hit regions and visible marks. Give selected edge endpoints priority over overlapping ports on their node and cancel unfinished connection drafts when editing an edge.
+
+  Render selected edge endpoints in an independent overlay using the same cached route as the connector, preserving controls when endpoint nodes are hidden or awaiting virtualization. Resolve coincident ports once and restore stationary-pointer hover across control ownership changes.
+
+  Manage control cursors through one canvas writer, keep the accepted gesture cursor across hover and DOM changes, and use a screen-sized four-direction SVG for move controls. Verify native Electron cursor images and hotspots alongside rendered ownership and interaction traces.
+
+  Pin the bundled Desktop runtime to Electron 45.1.0. Desktop now requires macOS 13 or later and 64-bit Windows/Linux.
+
+- Updated dependencies [5571a9a]
+- Updated dependencies [a63a1ad]
+- Updated dependencies [b06ca40]
+- Updated dependencies [b06ca40]
+- Updated dependencies [b06ca40]
+- Updated dependencies
+- Updated dependencies [b06ca40]
+- Updated dependencies [b06ca40]
+- Updated dependencies
+- Updated dependencies [33dc37e]
+- Updated dependencies [33dc37e]
+- Updated dependencies [33dc37e]
+- Updated dependencies [b06ca40]
+- Updated dependencies
+- Updated dependencies [b06ca40]
+- Updated dependencies [b06ca40]
+- Updated dependencies [b06ca40]
+- Updated dependencies [33dc37e]
+- Updated dependencies [33dc37e]
+- Updated dependencies [33dc37e]
+- Updated dependencies [33dc37e]
+- Updated dependencies [33dc37e]
+- Updated dependencies
+- Updated dependencies [b06ca40]
+- Updated dependencies [b06ca40]
+- Updated dependencies
+  - @sue/board-common@2.1.0
+  - @sue/board-core@2.1.0
+  - @sue/board-react-text@2.1.0
+  - @sue/board-react-actions@2.1.0
+
 ## Unreleased
 
 新增 FrameEditor、FrameUIPlugin 与 createFramePluginSet；保留受控/宿主/历史接口及内置富文本。领域交互从 kind 分支改为贡献策略，转换器由宿主注入，新增公开 CSS。

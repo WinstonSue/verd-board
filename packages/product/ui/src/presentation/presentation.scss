@@ -125,6 +125,11 @@
 }
 
 .workspace-shell.is-presenting {
+  // The editor isolates its popovers; lift that context above the tab strip
+  // while it owns the fullscreen presentation, including document targets.
+  .workspace-panes {
+    z-index: 1000;
+  }
   .workspace-pane.is-active .presentation-mode,
   .workspace-document-presentation {
     position: fixed;

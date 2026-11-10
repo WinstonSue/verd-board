@@ -167,7 +167,9 @@
                       {
                         "type": "textStyle",
                         "attrs": {
-                          "fontSize": "24px"
+                          "fontSize": "24px",
+                          "color": "#ffffff",
+                          "colorMode": "custom"
                         }
                       }
                     ]
@@ -180,12 +182,15 @@
       },
       "appearance": {
         "fill": "#0f766e",
-        "strokeColor": "#0f766e"
+        "strokeColor": "#0f766e",
+        "textColor": "#ffffff"
       },
       "data": {
         "layout": "standard",
-        "rightNodeCount": 20
-      }
+        "rightNodeCount": 20,
+        "maxNodeWidth": 320
+      },
+      "name": "领域场景与图文引用"
     },
     "demo:model/node/6-3": {
       "id": "demo:model/node/6-3",
@@ -710,12 +715,12 @@
         "outline": "roundRectangle"
       },
       "content": {
-        "label": "文件 id 与 BoardTextDocument.id 一致",
+        "label": "文档 id = BoardTextDocument.id",
         "text": {
           "schemaVersion": 1,
           "id": "demo:model/node/6-1/text",
           "kind": "inline",
-          "plainText": "文件 id 与 BoardTextDocument.id 一致",
+          "plainText": "文档 id = BoardTextDocument.id",
           "content": {
             "type": "doc",
             "content": [
@@ -724,7 +729,7 @@
                 "content": [
                   {
                     "type": "text",
-                    "text": "文件 id 与 BoardTextDocument.id 一致",
+                    "text": "文档 id = BoardTextDocument.id",
                     "marks": [
                       {
                         "type": "textStyle",
@@ -750,7 +755,8 @@
         "branchAppearance": {
           "strokeWidth": 2
         }
-      }
+      },
+      "name": "文件 id 与 BoardTextDocument.id 一致"
     },
     "demo:model/node/3-4": {
       "id": "demo:model/node/3-4",

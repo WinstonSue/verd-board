@@ -9,7 +9,6 @@ import {
 import { type FrameUIPlugin } from '@sue/board-react';
 import {
   addWorkflowTask,
-  autoLayoutWorkflow,
   canAutoLayoutWorkflow,
   createWorkflowPlugin,
   createWorkflowStartCell,
@@ -128,9 +127,25 @@ export const createWorkflowUIPlugin = (): FrameUIPlugin => ({
       },
       execute: (c) => {
         const start = activeStart(c);
-        return start
-          ? c.runOperations(autoLayoutWorkflow(c.store, start.id, c.registry))
-          : { status: 'rejected', code: 'missing-workflow' };
+        if (!start || !c.controller)
+          return { status: 'rejected', code: 'missing-workflow' };
+        return c.controller
+          .applyGeometryLayout(
+            {
+              focus: [c.frameId],
+              ids: (start.data as { memberIds: string[] }).memberIds,
+            },
+            'flow',
+          )
+          .then((result) =>
+            result.status === 'accepted'
+              ? { status: 'completed' as const }
+              : {
+                  status: 'rejected' as const,
+                  code: 'layout-rejected',
+                  message: result.message,
+                },
+          );
       },
     },
     {

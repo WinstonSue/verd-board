@@ -113,7 +113,8 @@ test('Desktop isolates broken generated files, keeps editing available and recov
       text: { ...doc.text, id: 'repaired' },
     };
     await writeFile(unknownPath, JSON.stringify(repaired));
-    await expect(active.locator('.document-page input').first()).toHaveValue(
+    await expect(active.locator('.document-page__content')).toHaveAttribute(
+      'aria-label',
       'Repaired document',
     );
     await writeFile(flowPath, JSON.stringify(valid));

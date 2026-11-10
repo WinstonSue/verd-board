@@ -1,4 +1,4 @@
-import { test, expect, type Page } from '@playwright/test';
+import { test, expect, type Page } from './service-fixture';
 import { activeTabTitle } from './tab-actions';
 
 const paragraph = (value: string) => ({

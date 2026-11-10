@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import {
   applyCellOperations,
   createCellStore,
@@ -48,6 +48,40 @@ const change = (cell: NodeCell): CellOperation[] => [
 ];
 
 describe('session auto calculation', () => {
+  it('replans joint geometry when a painted node stroke changes, even with edge-only automation off', () => {
+    const before = fixture(),
+      a = before.cells.a as NodeCell;
+    const planned = prepareAutoCalculation(
+      before,
+      change({ ...a, appearance: { strokeWidth: 40 } }),
+      { layout: { scope: scope(before), style: 'horizontal' } },
+      registry,
+    );
+    expect((planned.expected.cells.e as EdgeCell).route.origin).toBe(
+      'generated',
+    );
+    expect(planned.diagnostics).toEqual([]);
+  });
+  it('plans affected routes only once when both automatic switches are on', async () => {
+    const optimization =
+      await import('../../../engine/core/src/geometry/route-optimization');
+    const spy = vi.spyOn(optimization, 'optimizeFrameRoutes');
+    const before = fixture(),
+      a = before.cells.a as NodeCell;
+    const scopeValue = scope(before);
+    const result = prepareAutoCalculation(
+      before,
+      change({ ...a, geometry: { ...a.geometry, width: 120 } }),
+      {
+        layout: { scope: scopeValue, style: 'horizontal' },
+        edges: { scope: scopeValue },
+      },
+      registry,
+    );
+    expect(result.diagnostics).toEqual([]);
+    expect(spy).toHaveBeenCalledTimes(1);
+    spy.mockRestore();
+  });
   it('defaults off, shares logical frame settings, isolates files, and clears on close', () => {
     const session = createFrameAutoCalculationSession((frameId) =>
       frameId === 'root' ? 'file-a' : 'file-b',
@@ -201,9 +235,14 @@ describe('session auto calculation', () => {
     expect(JSON.stringify(before)).toBe(original);
     const obstacle = node('outside', 230, 0);
     const blocked = applyCellOperations(before, change(obstacle), registry);
-    expect(() =>
-      prepareAutoCalculation(blocked, operations, config, registry),
-    ).toThrow('layout-overlap');
+    const expanded = prepareAutoCalculation(
+      blocked,
+      operations,
+      config,
+      registry,
+    );
+    expect(expanded.diagnostics).toEqual([]);
+    expect(expanded.expected.cells.outside).toEqual(obstacle);
     expect(blocked.cells.outside).toEqual(obstacle);
   });
 });

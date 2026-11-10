@@ -1,5 +1,69 @@
 # @sue/board-react-text
 
+## 2.1.0
+
+### Major Changes
+
+- b06ca40: Standardize bundled project and pattern workspaces with portable project context. Add explicit offline full updates with complete directory backups, restart recovery, retained project identity and terminal receipts, and instance generation checks that reject stale hosts and authoring plans.
+
+  Use document navigation as the built-in project homepage and honor configured reading entries when no session has been saved. Preserve existing sessions and keep diagram navigation available through document links.
+
+  Display the selected reading entry instead of hiding it behind the management homepage. Explain that installing the app preserves existing copies and that confirmed replacement opens the new navigation document.
+
+  Move bilingual navigation to the workspace root and project diagrams into the diagrams directory. Consolidate navigation into reading indexes, replace document posters with compact source links, and permit existing plain text annotations in specialized scenes without adding them to scene layout membership.
+
+- 33dc37e: Separate current file identity, entry source and ownership in workspace navigation. Replace ownership breadcrumbs with a current-file header, per-file return context and grouped direct embed locations across canvases and documents. Preserve the source view on return, identify repeated embeds, and keep independent or unorganized files discoverable.
+
+  Add `WorkspaceFileNavigation` and document-controller `locateFrameReference(targetFrameId, occurrence)`. Resolve document embeds against the current body and reject stale body revisions before selection. Route reference location and return through workspace Actions and editing receipts. Keep file formats and persistent workspace link addresses unchanged.
+
+- 33dc37e: Unify editor toolbars, menus, shortcuts, command palettes, help and public user operations around instance-scoped Actions. Add the renderer-independent `@sue/board-react-actions` package. Replace discrete canvas/document controller mutation methods, plugin-local shortcuts, tool command callbacks and `CellUtil.keyboard` with shared action definitions, availability and execution. Capture original targets before focus or asynchronous transport changes; await actual host editing receipts and preserve cancellation, rejection and failure results.
+
+  Add shared `WorkspaceTarget` codecs and stable single-Cell workspace links. Resolve Cell identity through the live owner index after cross-Frame moves, with the URL file ID as a hint/fallback. Replace legacy document-link exports and reveal props with common codecs, `FrameLinkHost`, abortable `revealTarget` and typed document navigation results. Temporarily expand required Mind ancestors through occurrence-local view projections; canonical content, undo history, other occurrences and exports remain unchanged.
+
+  Map explicit standard and domain rich-text link slots once after copy/import/paste ownership is known, including custom UML plans. Custom `CellPastePlan` implementations must return `idMap`; inject protocol/text mappers into core registries without adding a core-to-common runtime dependency. Preserve `FrameFileV2`, `DocumentFileV1` and native bundle versions. See native React integration and migration documents for breaking API replacements. Prepare Changesets only; do not bump versions or publish as part of this change.
+
+### Minor Changes
+
+- 5571a9a: Add light and dark variants for Classic, Colorful, Soft, Retro, Fresh and Ocean while preserving existing theme IDs. Resolve canvas colors at render time, take over all unmarked component colors, and retain per-field custom color sources through edits, copying and inheritance. Adapt embedded documents, references and presentation without saving appearance into files or undo history. Image exports can use the current, light or dark appearance independently of their background choice and retain the full source content of selected references; existing third-party renderers retain legacy colors when appearance is omitted. Share domain color defaults across drawing and inspectors, add Mind branch reset, and distinguish explicitly authored Mermaid styles from renderer defaults.
+
+  Make rich-text color provenance explicit with optional textStyle.attrs.colorSource. Unmarked and theme text inherits readable local colors in canvases, standalone documents and embedded documents; custom text keeps its literal color. Share the schema across previews and editors, preserve original literals and sources in HTML, record identical manual color choices, and clear only the color override when returning to the theme. Keep legacy third-party rendering and user workspace files unchanged; cover real legacy text marks, appearance switching, history, source roundtrips and image exports.
+
+  Add five color roles, three emphasis levels and six coordinated categorical families to every theme appearance. Domain mappings distinguish workflow roles, architecture layers, UML classifiers and participants, drawing shape families, table headers and swimlanes. Share local fill/stroke/text resolution with inspectors and exports, preserve custom field overrides and Mind schemes, and document the actual palette values and swatches in the native architecture design.
+
+- a63a1ad: Add a standalone agent authoring CLI and independently maintained native pattern library. Share editor schemas, workspace validation and journaled filesystem commits with Desktop, expose atomic batch authoring, and initialize an editable pattern workspace without overwriting user copies. Include real-renderer previews and a bundled authoring skill.
+- b06ca40: Add document folding, LaTeX nodes, resource cards, local media and PDF reading with stable asset page links. Keep canvas label schemas separate. Store portable binary assets without base64, add PDF runtime assets and restrict external frames and workspace IPC.
+- 33dc37e: Introduce explicit, instance-scoped CellPlugin and FrameUIPlugin composition for Draw, Mind, Workflow, Architecture and UML. Domain kinds and models move out of core. FrameEditor composes a complete editor from one domain; FrameCanvas takes the same pluginSet used for previews, references and image export. Add the Draw React package and public per-package CSS entries; keep rich text built into React core and inject optional converters from the host.
+
+  Pass the installed registry to independent domain-sensitive helpers. Reject unknown kinds before opening or importing files, with no normalization or writes. Duplicate plugin IDs and kind conflicts fail explicitly; runtime installation is unsupported. Preserve atomic transaction/history behavior and existing FrameFileV2/DocumentFileV1 serialized fields. See the native Architecture, React integration and migration documents for the next-major contract. No version bump or publication is performed in this change.
+
+- b06ca40: Add searchable internal links, a separate knowledge relationship index, and read-only related-content previews. Keep embed dependency/export behavior unchanged. Documents can preview link targets from the link picker; workspace documents and canvases support Alt-click previews and source navigation.
+- b06ca40: Add slash insertion and paragraph actions, native writing templates, stable block anchors and live read-only excerpts, portable content properties and saved filters, local content checkpoints with preview/restore, conflict comparison and independent recovery copies, managed image assets, and folder/ZIP migration with portable export reports. Keep resource writes in WorkspaceSession, guard them with content versions, and clear recoverable snapshots when their source is permanently deleted.
+- Prepare the application, SDK, UI and Agent together as 2.1.0 for this explicitly authorized early-stage release. This release includes the breaking API changes documented below; existing 2.0 consumers must follow the migration guide. Future releases retain the existing version rules. Local version preparation does not establish npm registry publication.
+
+### Patch Changes
+
+- Add self-contained native v2 resource packages with validated, atomic file and asset import and idempotent recovery. Declare host workspace capabilities, keep saved names consistent with history, and finish management-view navigation correctly. Make read-only doctor exit unsuccessfully when the workspace is unready. Preserve native/v1 imports and existing third-party host behavior.
+
+  Keep automatic camera fits synchronized with initial viewport and toolbar measurements until user interaction takes over, without writing document content or changing manually positioned cameras.
+
+  Read focused native text selections without changing content, and synchronize canvas selections before rendering controls so stale editor ranges cannot overwrite a newly moved caret. Preserve text history.
+
+- b06ca40: Add configurable rich text link activation, make readonly and presentation links clickable, and simplify the document toolbar with accessible responsive menus. Remove the document body focus outline while retaining control and node selection feedback.
+- 33dc37e: Reduce tab switching and document opening work by caching workspace snapshots, isolating document page rendering, reusing editor setup, and checking native export dependencies without cloning files.
+- b06ca40: Dismiss file menus reliably when clicking the canvas, add stable file link copying, and replace the persistent canvas text form with a themed selection-only formatting toolbar.
+- b06ca40: Add workspace creation and history management, home and unified content navigation, portable favorites and manual ordering, batch file and directory organization with undo, and local full-text search.
+- Updated dependencies [5571a9a]
+- Updated dependencies
+- Updated dependencies [b06ca40]
+- Updated dependencies [b06ca40]
+- Updated dependencies [33dc37e]
+- Updated dependencies [33dc37e]
+- Updated dependencies [b06ca40]
+- Updated dependencies [b06ca40]
+- Updated dependencies
+  - @sue/board-common@2.1.0
+  - @sue/board-react-actions@2.1.0
+
 ## Unreleased
 
 公开 style.css 同时包含内联和独立文档样式，由 board-react 的公开样式组合。

@@ -1,5 +1,5 @@
 import { selectHistoryAction } from './app-actions';
-import { expect, test, type Locator, type Page } from '@playwright/test';
+import { expect, test, type Locator, type Page } from './service-fixture';
 import { readFileSync } from 'node:fs';
 import { writeFile } from 'node:fs/promises';
 import path from 'node:path';
@@ -366,42 +366,36 @@ async function seedMultiRootMind(page: Page) {
   await waitForWorkspacePersisted(page);
   // Match the existing diagram fixture seeding path so IDs survive migration.
   await page.evaluate(async (snapshot) => {
-    const db = await new Promise<IDBDatabase>((resolve, reject) => {
-      const request = indexedDB.open('VerdBoard');
-      request.onsuccess = () => resolve(request.result);
-      request.onerror = () => reject(request.error);
-    });
-    await new Promise<void>((resolve, reject) => {
-      const transaction = db.transaction('verdboard_store', 'readwrite');
-      const saved = transaction.objectStore('verdboard_store');
-      saved.clear();
-      const frames: Record<string, string> = {};
-      for (const cell of Object.values(snapshot.store.cells)) {
-        if (cell.cellType !== 'frame') continue;
-        const frame = cell as FrameCell;
-        const key = `frames/${frame.id}/fixture`;
-        frames[frame.id] = key;
-        const cells = Object.fromEntries(
-          [...frame.children, ...frame.groups]
-            .filter((id) => snapshot.store.cells[id]?.cellType !== 'frame')
-            .map((id) => [id, snapshot.store.cells[id]]),
-        );
-        saved.put({ format: 'verd-frame', version: 1, frame, cells }, key);
-      }
-      saved.put(
-        {
-          format: 'verd-workspace',
-          version: 2,
-          rootId: snapshot.store.rootId,
-          frames,
-          detachedFrameIds: [],
-        },
-        'main_board_content',
+    const records: [string, unknown][] = [];
+    const saved = {
+      put(value: unknown, key: string) {
+        records.push([key, value]);
+      },
+    };
+    const frames: Record<string, string> = {};
+    for (const cell of Object.values(snapshot.store.cells)) {
+      if (cell.cellType !== 'frame') continue;
+      const frame = cell as FrameCell;
+      const key = `frames/${frame.id}/fixture`;
+      frames[frame.id] = key;
+      const cells = Object.fromEntries(
+        [...frame.children, ...frame.groups]
+          .filter((id) => snapshot.store.cells[id]?.cellType !== 'frame')
+          .map((id) => [id, snapshot.store.cells[id]]),
       );
-      transaction.oncomplete = () => resolve();
-      transaction.onerror = () => reject(transaction.error);
-    });
-    db.close();
+      saved.put({ format: 'verd-frame', version: 1, frame, cells }, key);
+    }
+    saved.put(
+      {
+        format: 'verd-workspace',
+        version: 2,
+        rootId: snapshot.store.rootId,
+        frames,
+        detachedFrameIds: [],
+      },
+      'main_board_content',
+    );
+    await (window as any).__verdSeedLegacy(records);
   }, snapshot);
   await clearWorkspaceStorage(page);
   await page.reload();

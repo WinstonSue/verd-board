@@ -2,6 +2,8 @@ import type { CellId } from '@sue/board-core';
 export interface ArchitectureLayerData {
   order: string;
   memberIds: CellId[];
+  /** Extra room reserved by explicit layout; omitted in legacy documents. */
+  layoutPaddingTop?: number;
 }
 
 export interface ArchitectureModuleData {

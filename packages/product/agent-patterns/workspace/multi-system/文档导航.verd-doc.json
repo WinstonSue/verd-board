@@ -27,6 +27,15 @@
           "content": [
             {
               "type": "text",
+              "text": "本文面向用户提供编写建议与示例，可包含 Agent 规范中的知识，但不作为 Agent 默认提示、Skill 或约束来源。真正的 Agent 规范由独立工程资源维护。"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
               "text": "阅读顺序：协作总图 → 系统内部图 → 规则正文。"
             }
           ]
@@ -48,7 +57,7 @@
         }
       ]
     },
-    "plainText": "文档导航\n阅读顺序：协作总图 → 系统内部图 → 规则正文。\n工单、开发与发布分别维护自己的状态；人工处理保留出口。\n打开画布 verd://file/pattern%3Amulti-system%2Fpattern%3Amulti%2Foverview",
+    "plainText": "文档导航\n本文面向用户提供编写建议与示例，可包含 Agent 规范中的知识，但不作为 Agent 默认提示、Skill 或约束来源。真正的 Agent 规范由独立工程资源维护。\n阅读顺序：协作总图 → 系统内部图 → 规则正文。\n工单、开发与发布分别维护自己的状态；人工处理保留出口。\n打开画布 verd://file/pattern%3Amulti-system%2Fpattern%3Amulti%2Foverview",
     "align": "left"
   }
 }

@@ -1,6 +1,8 @@
+import { observeContentWrites } from './service-routes';
+import { openActiveFile } from './app-actions';
 import { openHistoryAction } from './app-actions';
 import { selectHistoryAction } from './app-actions';
-import { expect, test, type Locator } from '@playwright/test';
+import { expect, test, type Locator } from './service-fixture';
 import { activateBoardTab, backToPreviousCanvas } from './workspace-nav';
 import { expandPropertyGroup } from './property-group';
 
@@ -14,6 +16,7 @@ test('native edge hit targets keep twelve screen pixels through camera zoom', as
 }) => {
   await page.setViewportSize({ width: 1280, height: 900 });
   await page.goto('/');
+  await openActiveFile(page);
   const skip = page.getByRole('button', { name: '跳过', exact: true });
   if (await skip.isVisible().catch(() => false)) await skip.click();
   const file = {
@@ -65,6 +68,8 @@ test('native edge hit targets keep twelve screen pixels through camera zoom', as
       return { x: point.x, y: point.y };
     });
   for (const target of [0.1, 1, 4]) {
+    // The selected edge's foreground segment handle owns its midpoint.
+    await canvas(page).press('Escape');
     const anchor = await middle();
     const delta = -Math.log(target / (await zoom())) / 0.01;
     await page.mouse.move(anchor.x, anchor.y);
@@ -89,7 +94,9 @@ test('native edge hit targets keep twelve screen pixels through camera zoom', as
     expect(await isHit(8)).toBe(false);
     await page.mouse.click(point.x, point.y + 5);
     await expect(
-      canvas(page).locator(`[data-edge-controls="${edgeId}"]`),
+      canvas(page).locator(
+        `[data-edge-controls="${edgeId}"][data-frame-export-exclude]`,
+      ),
     ).toHaveCount(1);
   }
 });
@@ -166,19 +173,9 @@ for (const width of [1280, 800])
     page,
   }) => {
     await page.setViewportSize({ width, height: 844 });
-    await page.addInitScript(() => {
-      const state = window as unknown as { recenterWrites: number };
-      state.recenterWrites = 0;
-      for (const method of ['put', 'add', 'delete'] as const) {
-        const original = IDBObjectStore.prototype[method];
-        IDBObjectStore.prototype[method] = function (...args: any[]) {
-          if (this.name === 'files' || this.name === 'trash')
-            state.recenterWrites++;
-          return original.apply(this, args as never);
-        } as typeof original;
-      }
-    });
+    await observeContentWrites(page, 'recenterWrites');
     await page.goto('/');
+    await openActiveFile(page);
     const skip = page.getByRole('button', { name: '跳过', exact: true });
     if (await skip.isVisible().catch(() => false)) await skip.click();
     const recenter = page.getByTestId('canvas-recenter');
@@ -339,19 +336,9 @@ test('camera navigation never saves, left tooltips sit beside icons, and selecti
 }) => {
   const errors: string[] = [];
   page.on('pageerror', (error) => errors.push(error.message));
-  await page.addInitScript(() => {
-    const state = window as unknown as { cameraTestWrites: number };
-    state.cameraTestWrites = 0;
-    for (const method of ['put', 'add', 'delete'] as const) {
-      const original = IDBObjectStore.prototype[method];
-      IDBObjectStore.prototype[method] = function (...args: any[]) {
-        if (this.name === 'files' || this.name === 'trash')
-          state.cameraTestWrites++;
-        return original.apply(this, args as never);
-      } as typeof original;
-    }
-  });
+  await observeContentWrites(page, 'cameraTestWrites');
   await page.goto('/');
+  await openActiveFile(page);
   const skip = page.getByRole('button', { name: '跳过', exact: true });
   if (await skip.isVisible().catch(() => false)) await skip.click();
   const undo = await openHistoryAction(page, '撤销');
@@ -439,6 +426,7 @@ test('nested details return one level at a time and focus the opened shell', asy
   page,
 }) => {
   await page.goto('/');
+  await openActiveFile(page);
   const skip = page.getByRole('button', { name: '跳过', exact: true });
   if (await skip.isVisible().catch(() => false)) await skip.click();
   const frame = (
@@ -603,19 +591,9 @@ for (const modifier of ['ctrlKey', 'metaKey'] as const)
   test(`${modifier} wheel uses 0.01 exponential zoom, preserves its anchor and never saves at either limit`, async ({
     page,
   }) => {
-    await page.addInitScript(() => {
-      const state = window as unknown as { zoomWrites: number };
-      state.zoomWrites = 0;
-      for (const method of ['put', 'add', 'delete'] as const) {
-        const original = IDBObjectStore.prototype[method];
-        IDBObjectStore.prototype[method] = function (...args: any[]) {
-          if (this.name === 'files' || this.name === 'trash')
-            state.zoomWrites++;
-          return original.apply(this, args as never);
-        } as typeof original;
-      }
-    });
+    await observeContentWrites(page, 'zoomWrites');
     await page.goto('/');
+    await openActiveFile(page);
     const skip = page.getByRole('button', { name: '跳过', exact: true });
     if (await skip.isVisible().catch(() => false)) await skip.click();
     await expect(canvas(page)).toBeVisible();

@@ -161,6 +161,8 @@ export function WorkspaceAssetScope({
   const resolveReading = resourceResolve;
   useEffect(() => {
     const click = (event: MouseEvent) => {
+      if ((event.target as Element)?.closest?.('[data-version-preview]'))
+        return;
       const link = (event.target as Element)?.closest?.('a');
       const target = link && parseAssetLink(link.getAttribute('href') || '');
       if (!target) return;

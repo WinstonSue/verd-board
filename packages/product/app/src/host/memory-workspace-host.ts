@@ -1,3 +1,9 @@
+import { withGitVersioning } from '../git/version-provider';
+import { isWorkspaceContentPath } from '../workspace-skills';
+import {
+  createWorkspaceGitEngine,
+  type GitWorkspaceData,
+} from '../git/workspace-git-engine';
 import {
   FOLDER_ID_FILE,
   isFolderIdentityPath,
@@ -7,6 +13,11 @@ import { isFrameFileV2 } from '../frames/frame-files';
 import { isDocumentFileV1 } from '../documents/document-files';
 import {
   baseName,
+  isProjectInternalPath,
+  normalizeResourceKey,
+  resourceStoragePath,
+  RESOURCE_DIR,
+  LEGACY_RESOURCE_DIR,
   conflictCommit,
   isCanvasPath,
   isDocumentPath,
@@ -38,7 +49,9 @@ export const digestBytes = (content: Uint8Array): FileVersion => {
 };
 
 const encode = (content: Uint8Array | string): Uint8Array =>
-  typeof content === 'string' ? new TextEncoder().encode(content) : content;
+  typeof content === 'string'
+    ? new TextEncoder().encode(content)
+    : content.slice();
 
 const decode = (content: Uint8Array): string =>
   new TextDecoder().decode(content);
@@ -167,6 +180,7 @@ export const createMemoryWorkspaceHost = (
     let config = workspace.config;
     let session = workspace.session;
     const versions: Record<string, FileVersion> = {};
+    const resourceVersions: Record<string, FileVersion> = {};
     const trashEntries: { path: string; entryId: string }[] = [];
     const fail = (receipt: CommitReceipt): CommitReceipt => {
       workspace.receipts.set(request.transactionId, receipt);
@@ -283,8 +297,26 @@ export const createMemoryWorkspaceHost = (
           if (value.kind === 'file') versions[target] = value.version;
         });
       }
-      for (const op of request.writes ?? []) {
-        const path = normalizeWorkspacePath(op.path);
+      if (
+        request.resourceWrites?.length &&
+        [...nodes.keys()].some(
+          (p) =>
+            p === LEGACY_RESOURCE_DIR ||
+            p.startsWith(LEGACY_RESOURCE_DIR + '/'),
+        )
+      )
+        return fail(
+          reject(request.transactionId, 'invalid', {
+            path: 'Resource migration conflict',
+          }),
+        );
+      for (const [op, resource] of [
+        ...(request.writes ?? []).map((op) => [op, false] as const),
+        ...(request.resourceWrites ?? []).map((op) => [op, true] as const),
+      ]) {
+        const path = resource
+          ? resourceStoragePath(op.path)
+          : normalizeWorkspacePath(op.path);
         const node = nodes.get(path);
         if (
           isFolderIdentityPath(path) &&
@@ -319,7 +351,8 @@ export const createMemoryWorkspaceHost = (
         const version = digestBytes(content);
         materialize(nodes, path);
         nodes.set(path, { kind: 'file', content, version });
-        versions[path] = version;
+        if (resource) resourceVersions[normalizeResourceKey(op.path)] = version;
+        else versions[path] = version;
       }
       for (const entryId of request.purge ?? [])
         trash.delete(normalizeTrashEntryId(entryId));
@@ -348,6 +381,7 @@ export const createMemoryWorkspaceHost = (
       transactionId: request.transactionId,
       outcome: 'applied',
       versions,
+      resourceVersions,
       trashEntries: trashEntries.length ? trashEntries : undefined,
     };
     workspace.nodes = nodes;
@@ -355,16 +389,132 @@ export const createMemoryWorkspaceHost = (
     workspace.config = config;
     workspace.session = session;
     workspace.receipts.set(request.transactionId, receipt);
-    const touched = Object.keys(versions).concat(
-      trashEntries.map((entry) => entry.path),
-    );
+    const touched = Object.keys(versions)
+      .concat(Object.keys(resourceVersions).map(resourceStoragePath))
+      .concat(trashEntries.map((entry) => entry.path));
     if (touched.length || request.purge?.length || request.restore?.length)
       workspace.listeners.forEach((listener) => listener({ paths: touched }));
     return receipt;
   };
 
-  return {
+  const gitEngines = new Map<
+    string,
+    ReturnType<typeof createWorkspaceGitEngine>
+  >();
+  const gitEngine = (handle: WorkspaceHandle) => {
+    let engine = gitEngines.get(handle.key);
+    if (engine) return engine;
+    engine = createWorkspaceGitEngine({
+      now,
+      async load() {
+        const workspace = workspaceOf(handle);
+        const files = new Map<string, Uint8Array>(
+          [...workspace.nodes].flatMap(([path, node]) =>
+            node.kind === 'file' ? [[path, node.content.slice()] as const] : [],
+          ),
+        );
+        files.set(
+          '.verdscrolls/config.json',
+          encode(JSON.stringify(workspace.config)),
+        );
+        return {
+          files,
+          directories: new Set(
+            [...workspace.nodes]
+              .filter(([, node]) => node.kind === 'directory')
+              .map(([path]) => path),
+          ),
+          trash: new Map(
+            [...workspace.trash].map(([id, entry]) => [
+              id,
+              {
+                files: new Map(
+                  Object.entries(entry.nodes).flatMap(([path, node]) =>
+                    node.kind === 'file'
+                      ? [[path, node.content.slice()] as const]
+                      : [],
+                  ),
+                ),
+              },
+            ]),
+          ),
+          source: {
+            nodes: workspace.nodes,
+            trash: workspace.trash,
+            config: workspace.config,
+          },
+        };
+      },
+      async publish(before: GitWorkspaceData, after: GitWorkspaceData) {
+        const workspace = workspaceOf(handle);
+        const source = before.source as Pick<
+          MemoryWorkspace,
+          'nodes' | 'trash' | 'config'
+        >;
+        if (
+          workspace.nodes !== source.nodes ||
+          workspace.trash !== source.trash ||
+          workspace.config !== source.config
+        )
+          throw new Error(
+            'Workspace changed while preparing Git operation; retry',
+          );
+        const nodes = cloneNodes(workspace.nodes);
+        for (const [path, node] of nodes)
+          if (node.kind === 'file' && !after.files.has(path))
+            nodes.delete(path);
+        for (const [path, content] of after.files) {
+          if (path === '.verdscrolls/config.json') continue;
+          materialize(nodes, path);
+          nodes.set(path, {
+            kind: 'file',
+            content: content.slice(),
+            version: digestBytes(content),
+          });
+        }
+        const configBytes = after.files.get('.verdscrolls/config.json');
+        const config = configBytes
+          ? (JSON.parse(decode(configBytes)) as MemoryWorkspace['config'])
+          : workspace.config;
+        if (
+          typeof config?.version !== 'number' ||
+          !config.value ||
+          typeof config.value !== 'object'
+        )
+          throw new Error('Invalid restored workspace configuration');
+        const trash = new Map<string, MemoryTrashEntry>();
+        for (const [id, entry] of after.trash) {
+          const original = workspace.trash.get(id);
+          if (!original) throw new Error('Trash changed during Git operation');
+          const kept: Record<string, MemoryNode> = {};
+          for (const [path, node] of Object.entries(original.nodes))
+            if (node.kind === 'directory') kept[path] = node;
+          for (const [path, content] of entry.files)
+            kept[path] = {
+              kind: 'file',
+              content: content.slice(),
+              version: digestBytes(content),
+            };
+          trash.set(id, { ...original, nodes: kept });
+        }
+        workspace.nodes = nodes;
+        workspace.trash = trash;
+        workspace.config = config;
+        workspace.listeners.forEach((listener) => listener({}));
+      },
+    });
+    gitEngines.set(handle.key, engine);
+    return engine;
+  };
+
+  return withGitVersioning({
+    capabilities: {
+      pickWorkspace: !!options.pickWorkspace,
+      openBuiltinWorkspace: false,
+      openPatternWorkspace: false,
+    },
     workspaces,
+    git: (handle, request) => gitEngine(handle)(request),
     async readGlobalConfig() {
       return globalConfig;
     },
@@ -404,7 +554,11 @@ export const createMemoryWorkspaceHost = (
       };
       const entries: WorkspaceEntryMeta[] = [...workspace.nodes.entries()]
         .filter(
-          ([path, node]) => node.kind !== 'file' || !isFolderIdentityPath(path),
+          ([path, node]) =>
+            !isProjectInternalPath(path) &&
+            path !== '.git' &&
+            !path.startsWith('.git/') &&
+            (node.kind !== 'file' || !isFolderIdentityPath(path)),
         )
         .map(([path, node]) => ({
           path,
@@ -420,7 +574,10 @@ export const createMemoryWorkspaceHost = (
       const documents: WorkspaceHostSnapshot['documents'] = [];
       const diagnostics: WorkspaceHostSnapshot['diagnostics'] = [];
       entries
-        .filter((entry) => entry.canvas)
+        .filter(
+          (entry) =>
+            entry.canvas && isWorkspaceContentPath(entry.path, entries),
+        )
         .forEach((entry) => {
           const node = workspace.nodes.get(entry.path);
           if (!node || node.kind !== 'file') return;
@@ -457,7 +614,10 @@ export const createMemoryWorkspaceHost = (
           }
         });
       entries
-        .filter((entry) => entry.document)
+        .filter(
+          (entry) =>
+            entry.document && isWorkspaceContentPath(entry.path, entries),
+        )
         .forEach((entry) => {
           const node = workspace.nodes.get(entry.path);
           if (!node || node.kind !== 'file') return;
@@ -497,6 +657,17 @@ export const createMemoryWorkspaceHost = (
         config: workspace.config,
         session: workspace.session ? { ...workspace.session } : null,
         entries,
+        resources: [...workspace.nodes].flatMap(([path, node]) => {
+          if (node.kind !== 'file' || !path.startsWith(RESOURCE_DIR + '/'))
+            return [];
+          const key = path.slice(RESOURCE_DIR.length + 1);
+          try {
+            normalizeResourceKey(key);
+          } catch {
+            return [];
+          }
+          return [{ key, version: node.version, size: node.content.length }];
+        }),
         canvases,
         documents,
         trash: [...workspace.trash.values()].map((entry) => ({
@@ -509,6 +680,16 @@ export const createMemoryWorkspaceHost = (
     },
     async readFile(handle, path) {
       return readFileInner(handle, path);
+    },
+    async readResource(handle, key) {
+      const node = workspaceOf(handle).nodes.get(resourceStoragePath(key));
+      if (!node || node.kind !== 'file')
+        throw new Error('Missing resource: ' + key);
+      return {
+        path: normalizeResourceKey(key),
+        version: node.version,
+        content: node.content.slice(),
+      };
     },
     async commit(handle, request) {
       return applyCommit(workspaceOf(handle), request);
@@ -532,5 +713,5 @@ export const createMemoryWorkspaceHost = (
     onShutdown() {
       return () => {};
     },
-  };
+  });
 };

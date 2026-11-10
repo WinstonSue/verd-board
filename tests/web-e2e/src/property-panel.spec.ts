@@ -1,5 +1,7 @@
+import { selectSetting } from '../../helpers/settings-controls';
+import { openActiveFile } from './app-actions';
 import { selectHistoryAction } from './app-actions';
-import { expect, test, type Locator, type Page } from '@playwright/test';
+import { expect, test, type Locator, type Page } from './service-fixture';
 import { createArchitectureFrameSnapshot } from '../../../packages/engine/architecture/src/cell-commands';
 import { applyCellOperations } from '../../../packages/engine/core/src/cell/index';
 import {
@@ -84,6 +86,7 @@ function fixture(): FrameSnapshot {
 }
 async function open(page: Page, snapshot = fixture()) {
   await page.goto('/');
+  await openActiveFile(page);
   await pane(page)
     .locator('input[type="file"][accept^="application/json"]')
     .nth(1)
@@ -293,8 +296,14 @@ for (const viewport of [
         language === 'zh' ? '工作区设置' : 'Workspace settings',
       );
       await page.getByTestId('settings-nav-workspace.project').click();
+      await selectSetting(
+        page.getByRole('combobox', { name: /^(宽度来源|Width source)$/ }),
+        'custom',
+      );
       await page.getByTestId('workspace-settings-mind-width').fill('336');
+      await page.getByTestId('workspace-settings-mind-width').press('Tab');
       await page.getByTestId('workspace-settings-back').click();
+      await expect(page.getByTestId('workspace-settings-page')).toHaveCount(0);
       await hit(node(page, 'topic'));
       await expect(panel(page)).toContainText('336');
       const width = async () =>

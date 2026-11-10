@@ -1,5 +1,5 @@
 import { selectHistoryAction } from './app-actions';
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test, type Page } from './service-fixture';
 import { openActiveFile, openSettings } from './app-actions';
 import { expandPropertyGroup } from './property-group';
 import { persistedWorkspace } from './workspace-nav';
@@ -154,7 +154,8 @@ test('localized alignment, distribution and partial/all layouts save exact scope
     .click();
   await expect
     .poll(async () => byLabel(await saved(page), 'B').geometry.y)
-    .toBe(172);
+    // Current geometry policy: A.y 100 + height 40 + nodeGap 96.
+    .toBe(236);
   expect(byLabel(await saved(page), 'C')).toEqual(byLabel(before, 'C'));
   expect(byLabel(await saved(page), 'Inside')).toEqual(
     byLabel(original, 'Inside'),
@@ -333,14 +334,16 @@ test('the context menu shares grouping and arrangement availability', async ({
   await node(page, 'A').click();
   await node(page, 'B').click({ modifiers: ['Shift'] });
   await node(page, 'A').click({ button: 'right' });
-  const menu = page.getByRole('dialog', { name: 'Selection actions' });
+  const menu = page.getByRole('menu', { name: /^(画布编辑|Canvas editing)$/ });
+  await menu.getByRole('menuitem', { name: '对齐与分布', exact: true }).hover();
+  const align = page.getByRole('menu', { name: '对齐与分布', exact: true });
   await expect(
-    menu.getByRole('button', { name: '左对齐', exact: true }),
+    align.getByRole('menuitem', { name: '左对齐', exact: true }),
   ).toBeEnabled();
   await expect(
-    menu.getByRole('button', { name: '水平等距分布', exact: true }),
-  ).toBeDisabled();
-  await menu.getByRole('button', { name: '分组', exact: true }).click();
+    align.getByRole('menuitem', { name: '水平等距分布', exact: true }),
+  ).toHaveCount(0);
+  await menu.getByRole('menuitem', { name: '组合', exact: true }).click();
   await expect
     .poll(
       async () =>
@@ -352,7 +355,7 @@ test('the context menu shares grouping and arrangement availability', async ({
   await expect(menu).toBeHidden();
   await node(page, 'A').click({ button: 'right' });
   await expect(
-    menu.getByRole('button', { name: '取消分组', exact: true }),
+    menu.getByRole('menuitem', { name: '取消组合', exact: true }),
   ).toBeEnabled();
 });
 

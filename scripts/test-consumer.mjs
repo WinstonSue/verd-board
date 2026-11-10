@@ -184,12 +184,11 @@ const workspaceSettingsProps: WorkspaceSettingsProps = {
 };
 const fileTreeProps: FileTreeProps = {
   entries: [], canvases: [], expandedDirs: [], onToggleDir() {}, onOpenFile() {}, onCreateCanvas() {}, onTrash() {},
-  revealFile: { fileId: 'chart', nonce: 1 }, onRevealFile() {},
+  revealFile: { fileId: 'chart', nonce: 1 },
 };
 const libraryProps: ChartLibraryProps = {
-  rows: [{ frameId: 'chart', name: 'Chart', path: 'charts/chart.verd.json', diagram: 'mind', placement: 'owned', ownerFrameId: 'board', referenceLabel: '' }],
-  owners: [{ frameId: 'board', name: 'Board' }], onOpen() {}, onBack() {},
-  onChangeOrganization(_id, organization) { if (organization.kind === 'subgraph') void organization.ownerFrameId; },
+  rows: [{ frameId: 'chart', name: 'Chart', path: 'charts/chart.verd.json', diagram: 'mind', referenceLabel: '' }],
+  onOpen() {}, onBack() {},
 };
 void [textProps, standardProps, hostProps, productProps, storage, myProps, workspaceSettingsProps, fileTreeProps, libraryProps];
 const canvas = React.createRef<FrameCanvasController>();

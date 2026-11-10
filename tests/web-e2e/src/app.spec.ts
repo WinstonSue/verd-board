@@ -1,11 +1,15 @@
-import { selectHistoryAction } from './app-actions';
+import { rejectNextCommit } from './service-routes';
+import { cellBodyPoint } from '../../helpers/port-controls';
+import { nodePorts } from '../../helpers/port-controls';
+import { openActiveFile, selectHistoryAction } from './app-actions';
 import { editBody } from './body-editor';
-import { test, expect, type Page } from '@playwright/test';
+import { test, expect, type Page } from './service-fixture';
 import { selectDrawingTool } from './drawing-tools';
 import {
   activateBoardTab,
   backToPreviousCanvas,
   persistedWorkspace,
+  persistedNavigation,
 } from './workspace-nav';
 import { expandPropertyGroup } from './property-group';
 
@@ -71,7 +75,13 @@ const zoomBy = async (page: Page, workspace: Workspace, count: number) => {
 
 test.beforeEach(async ({ page }) => {
   await page.goto('/');
+  await openActiveFile(page);
   await expect(board(page)).toBeVisible();
+  await expect
+    .poll(() =>
+      persistedNavigation(page).then((session) => session?.activeView),
+    )
+    .toBe('file');
 });
 
 test('loads the web whiteboard', async ({ page }) => {
@@ -104,24 +114,21 @@ test('edits names in the header and keeps them after reload', async ({
   await expect(header.locator('[data-testid="inspector-name"]')).toBeVisible();
   const originalName = await label.inputValue();
   await label.fill('新的中心主题名称');
-  await mindPane.getByTestId('save-status').click();
+  await label.press('Tab');
   await expect(label).toHaveValue('新的中心主题名称');
-  await expect(mindPane.getByTestId('save-status')).toHaveAttribute(
-    'data-save-state',
-    'saved',
-  );
-  await expect(mindPane.getByTestId('save-status')).toHaveAttribute(
-    'title',
-    /最后一次成功保存/,
-  );
+  await expect(
+    page.getByTestId('save-status').locator('visible=true'),
+  ).toHaveAttribute('data-save-state', 'saved');
+  await expect(
+    page.getByTestId('save-status').locator('visible=true'),
+  ).toHaveAttribute('title', /最后一次成功保存/);
   await selectHistoryAction(page, '撤销');
   await expect(label).toHaveValue(originalName!);
   await selectHistoryAction(page, '重做');
   await expect(label).toHaveValue('新的中心主题名称');
-  await expect(mindPane.getByTestId('save-status')).toHaveAttribute(
-    'data-save-state',
-    'saved',
-  );
+  await expect(
+    page.getByTestId('save-status').locator('visible=true'),
+  ).toHaveAttribute('data-save-state', 'saved');
   await page.reload();
   // The workspace session restores the last-active tab — the mind detail
   // view reopens directly.
@@ -165,11 +172,11 @@ test('uses a 1px default Frame content border and honors explicit no stroke', as
   await expect(page.getByLabel('Stroke width', { exact: true })).toHaveValue(
     '1',
   );
-  await expect(page.getByLabel('描边', { exact: true })).toHaveValue('#cbd5e1');
+  await expect(page.getByLabel('描边', { exact: true })).toHaveValue('#64748b');
   await canvas(page).press('Escape');
   const plate = cells(page, 'frame').locator('[data-frame-outline]');
   await expect(plate).toHaveAttribute('stroke-width', '1');
-  await expect(plate).toHaveAttribute('stroke', '#cbd5e1');
+  await expect(plate).toHaveAttribute('stroke', '#64748b');
   await selectFrame(page);
   await page.getByRole('button', { name: '无描边', exact: true }).click();
   await canvas(page).press('Escape');
@@ -195,25 +202,7 @@ test('keeps the previous save time visible after a save failure on a narrow scre
   await expect(status).toHaveAttribute('data-save-state', 'saved');
   const savedTime = ((await status.textContent()) ?? '').split('·')[1]?.trim();
   expect(savedTime).toBeTruthy();
-  await page.evaluate(() => {
-    const state = window as unknown as { failedCommit?: boolean };
-    const openTransaction = IDBDatabase.prototype.transaction;
-    IDBDatabase.prototype.transaction = function (
-      ...args: Parameters<typeof openTransaction>
-    ) {
-      const stores = args[0];
-      if (
-        !state.failedCommit &&
-        this.name === 'verdboard-host' &&
-        Array.isArray(stores) &&
-        stores.includes('receipts')
-      ) {
-        state.failedCommit = true;
-        throw new DOMException('disk full', 'QuotaExceededError');
-      }
-      return openTransaction.apply(this, args);
-    } as typeof IDBDatabase.prototype.transaction;
-  });
+  await rejectNextCommit(page);
   await createAt(page, '形状', 0.65, 0.35);
   await expect(status).toHaveAttribute('data-save-state', 'error');
   await expect(status).toContainText(savedTime!);
@@ -376,9 +365,7 @@ test('renders flowchart shapes, directional ports, and viewport controls', async
   ] as const) {
     await expect(cells(page, kind)).toHaveAttribute('data-node-shape', shape);
     await cells(page, kind).hover();
-    await expect(cells(page, kind).locator('[data-port-id]')).toHaveCount(
-      ports,
-    );
+    await expect(await nodePorts(cells(page, kind))).toHaveCount(ports);
     await expect(
       cells(page, kind).locator('[data-shape-part]').first(),
     ).toBeVisible();
@@ -464,7 +451,10 @@ test('inserts a workflow component, renames a node, and opens exclusive edit', a
     pane(page, 'workflow').getByTestId('inspector-name'),
   ).toHaveValue('Start');
   await expect(start.locator('[contenteditable="true"]')).toHaveCount(0);
-  await start.dblclick();
+  {
+    const point = await cellBodyPoint(start);
+    await page.mouse.dblclick(point.x, point.y);
+  }
   await start.locator('[contenteditable="true"]').fill('Kickoff2');
   await page.keyboard.press('Enter');
   await backToPreviousCanvas(page);
@@ -678,7 +668,7 @@ test('architecture layer sorting and module ownership changes survive undo, casc
   ).toHaveValue(secondId);
 });
 
-test('workflow start coordinate properties move its graph origin and fixed members in one undo step', async ({
+test('workflow start coordinate properties move the selected node independently and undo in one step', async ({
   page,
 }) => {
   await page.goto('/');
@@ -698,16 +688,16 @@ test('workflow start coordinate properties move its graph origin and fixed membe
   await workflowPane.getByLabel('x', { exact: true }).fill('140');
   await workflowPane.getByLabel('x', { exact: true }).press('Enter');
   await expect
-    .poll(async () => (await savedKind(page, 'workflow-start'))[0]?.data.origin)
-    .toEqual([140, 80]);
+    .poll(async () => (await savedKind(page, 'workflow-start'))[0]?.geometry)
+    .toMatchObject({ x: 140, y: 80 });
   await expect
     .poll(async () => (await savedKind(page, 'workflow-task'))[0]?.geometry)
-    .toMatchObject({ x: 400, y: 200 });
+    .toMatchObject({ x: 300, y: 200 });
   await selectHistoryAction(page, '撤销');
   await expect
     .poll(async () => (await savedKind(page, 'workflow-task'))[0]?.geometry)
     .toMatchObject({ x: 300, y: 200 });
   await expect
-    .poll(async () => (await savedKind(page, 'workflow-start'))[0]?.data.origin)
-    .toEqual([40, 80]);
+    .poll(async () => (await savedKind(page, 'workflow-start'))[0]?.geometry)
+    .toMatchObject({ x: 40, y: 80 });
 });

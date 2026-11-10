@@ -1,5 +1,5 @@
 import { selectSetting } from '../../helpers/settings-controls';
-import { type Page } from '@playwright/test';
+import { expect, type Page } from '@playwright/test';
 
 export async function openDocumentInsert(
   page: Page,
@@ -24,11 +24,25 @@ export async function openActiveFile(page: Page) {
     .locator('.file-tree-file.is-active .file-tree-main')
     .first();
   await page.locator('.file-tree-file .file-tree-main').first().waitFor();
-  await (
-    (await active.count())
-      ? active
-      : page.locator('.file-tree-file .file-tree-main').first()
-  ).click();
+  const target = (await active.count())
+    ? active
+    : page.locator('.file-tree-file .file-tree-main').first();
+  const fileId = await target.evaluate((element) =>
+    element.closest('[data-file-id]')!.getAttribute('data-file-id'),
+  );
+  await target.click();
+  await expect(
+    page.locator(`[role="tab"][data-tab-id=${JSON.stringify(fileId)}]`),
+  ).toHaveAttribute('aria-selected', 'true');
+  await page.locator('.workspace-content[aria-busy="false"]').waitFor();
+  const pane = page.locator('.workspace-pane.is-active');
+  await pane.waitFor({ state: 'visible' });
+  await pane
+    .locator(
+      'svg[aria-label="Frame canvas"][data-surface="root"], .document-page',
+    )
+    .first()
+    .waitFor({ state: 'visible' });
 }
 
 export async function openAppMenu(page: Page) {

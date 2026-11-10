@@ -53,12 +53,8 @@
       },
       "data": {
         "classifier": "class",
-        "attributes": [
-          "+id: string"
-        ],
-        "methods": [
-          "+save() void"
-        ]
+        "attributes": ["+id: string"],
+        "methods": ["+save() void"]
       },
       "ports": [
         {
@@ -100,12 +96,8 @@
       },
       "data": {
         "classifier": "interface",
-        "attributes": [
-          "+id: string"
-        ],
-        "methods": [
-          "+save() void"
-        ]
+        "attributes": ["+id: string"],
+        "methods": ["+save() void"]
       },
       "ports": [
         {

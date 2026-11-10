@@ -163,12 +163,12 @@
         "strokeWidth": 1.5
       },
       "content": {
-        "label": "作用范围与提交边界\n范围固定、锁定对象不动；两个自动开关默认关闭，自动结果合入原事务。",
+        "label": "作用范围与提交边界\n范围固定、锁定不动；自动开关默认关闭，结果合入原事务。",
         "text": {
           "schemaVersion": 1,
           "id": "project:overview/09/summary/1/text",
           "kind": "inline",
-          "plainText": "作用范围与提交边界\n范围固定、锁定对象不动；两个自动开关默认关闭，自动结果合入原事务。",
+          "plainText": "作用范围与提交边界\n范围固定、锁定不动；自动开关默认关闭，结果合入原事务。",
           "content": {
             "type": "doc",
             "content": [
@@ -195,7 +195,7 @@
                 "content": [
                   {
                     "type": "text",
-                    "text": "范围固定、锁定对象不动；两个自动开关默认关闭，自动结果合入原事务。",
+                    "text": "范围固定、锁定不动；自动开关默认关闭，结果合入原事务。",
                     "marks": [
                       {
                         "type": "textStyle",
@@ -211,7 +211,8 @@
             ]
           }
         }
-      }
+      },
+      "name": "作用范围与提交边界 范围固定、锁定对象不动；两个自动开关默认关闭，自动结果合入原事务。"
     },
     "project:overview/09/summary/2": {
       "id": "project:overview/09/summary/2",
@@ -257,12 +258,12 @@
         "strokeWidth": 1.5
       },
       "content": {
-        "label": "各场景节点布局\n白板循环支持不代表所有领域允许循环；Mind 与 UML 时序采用派生几何。",
+        "label": "各场景节点布局\n白板可含循环；各领域遵循自身约束，Mind 与时序几何派生。",
         "text": {
           "schemaVersion": 1,
           "id": "project:overview/09/summary/2/text",
           "kind": "inline",
-          "plainText": "各场景节点布局\n白板循环支持不代表所有领域允许循环；Mind 与 UML 时序采用派生几何。",
+          "plainText": "各场景节点布局\n白板可含循环；各领域遵循自身约束，Mind 与时序几何派生。",
           "content": {
             "type": "doc",
             "content": [
@@ -289,7 +290,7 @@
                 "content": [
                   {
                     "type": "text",
-                    "text": "白板循环支持不代表所有领域允许循环；Mind 与 UML 时序采用派生几何。",
+                    "text": "白板可含循环；各领域遵循自身约束，Mind 与时序几何派生。",
                     "marks": [
                       {
                         "type": "textStyle",
@@ -305,7 +306,8 @@
             ]
           }
         }
-      }
+      },
+      "name": "各场景节点布局 白板循环支持不代表所有领域允许循环；Mind 与 UML 时序采用派生几何。"
     },
     "project:overview/09/summary/3": {
       "id": "project:overview/09/summary/3",

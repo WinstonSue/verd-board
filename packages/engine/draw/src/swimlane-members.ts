@@ -5,6 +5,7 @@ import {
   type CellLane,
   type CellStore,
   type NodeCell,
+  type RectangleClient,
 } from '@sue/board-core';
 import { deriveBoardTextPlainText } from '@sue/board-common';
 import type { TableCellData } from './cell-commands';
@@ -69,6 +70,53 @@ export function withSwimlaneMembers(
         ...cell.data!.laneMembers,
         ...Object.fromEntries(tracks),
       },
+    },
+  };
+}
+
+/** Enlarge semantic tracks without changing membership or shrinking any track. */
+export function growSwimlaneTracks(
+  cell: Cell,
+  demands: ReadonlyMap<string, RectangleClient>,
+): Cell {
+  if (!swimlaneCell(cell)) return cell;
+  const grid = tableGrid(cell);
+  const rows = [...cell.data!.rows],
+    columns = [...cell.data!.columns];
+  const rowSizes = [...grid.rows],
+    columnSizes = [...grid.columns];
+  for (const lane of swimlaneTracks(cell)) {
+    const demand = demands.get(lane.id);
+    if (!demand) continue;
+    const header = grid.entries.find((e) => e.entry.id === lane.id)!;
+    const body = grid.entries.find(
+      (e) =>
+        e.entry.role === 'body' &&
+        (cell.data!.direction === 'vertical'
+          ? e.column === header.column
+          : e.row === header.row),
+    );
+    if (!body) continue;
+    columnSizes[body.column] = Math.max(
+      columnSizes[body.column],
+      demand.x + demand.width + 24 - lane.bounds.x,
+    );
+    rowSizes[body.row] = Math.max(
+      rowSizes[body.row],
+      demand.y + demand.height + 24 - lane.bounds.y,
+    );
+  }
+  return {
+    ...cell,
+    geometry: {
+      ...cell.geometry,
+      width: columnSizes.reduce((a, b) => a + b, 0),
+      height: rowSizes.reduce((a, b) => a + b, 0),
+    },
+    data: {
+      ...cell.data!,
+      rows: rows.map((r, i) => ({ ...r, height: rowSizes[i] })),
+      columns: columns.map((c, i) => ({ ...c, width: columnSizes[i] })),
     },
   };
 }

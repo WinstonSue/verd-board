@@ -5,6 +5,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { setAppLanguage } from '../../web-e2e/src/app-actions';
 import { activeTabTitle } from '../../web-e2e/src/tab-actions';
+import { cellBodyPoint } from '../../helpers/port-controls';
 
 const root = path.resolve(__dirname, '../../..');
 test('Desktop previews documents in every canvas, adopts external edits and preserves source bytes while reading', async ({
@@ -113,14 +114,23 @@ test('Desktop previews documents in every canvas, adopts external edits and pres
         .filter({ hasText: new RegExp(`^${frame.frame.name}$`) })
         .click();
       if (index === 0) await setAppLanguage(page, 'zh');
+      await expect(activeTabTitle(page)).toHaveText(frame.frame.name);
+      await page.locator('.workspace-content[aria-busy="false"]').waitFor();
       await active.getByTestId('canvas-status-fit').press('Enter');
-      const reader = active.locator('[data-document-preview-scroll]').first();
+      const reader = active
+        .locator(
+          '[data-cell-id^="desktop-document-"] [data-document-preview-scroll]',
+        )
+        .first();
       await expect(
         reader.locator('.board-document-content').first(),
       ).toHaveAttribute('contenteditable', 'false');
       await expect(reader.locator('.ProseMirror')).toHaveCount(0);
       await expect(reader).toContainText('Desktop source body');
-      await reader.hover();
+      // SVG foreignObject visibility differs from HTML actionability in Electron.
+      // Require a real unobstructed reader hit before sending native wheel input.
+      const point = await cellBodyPoint(reader);
+      await page.mouse.move(point.x, point.y);
       await page.mouse.wheel(0, 400);
       await expect
         .poll(() => reader.evaluate((el) => el.scrollTop))
@@ -136,7 +146,11 @@ test('Desktop previews documents in every canvas, adopts external edits and pres
     doc.text.plainText = 'External source update';
     await writeFile(docPath, JSON.stringify(doc, null, 2));
     await expect(
-      active.locator('[data-document-preview-scroll]').first(),
+      active
+        .locator(
+          '[data-cell-id^="desktop-document-"] [data-document-preview-scroll]',
+        )
+        .first(),
     ).toContainText('External source update');
     await active
       .getByRole('button', { name: '打开详情', exact: true })

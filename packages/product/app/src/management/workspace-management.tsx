@@ -12,6 +12,7 @@ import {
   type FileTreeMenuItem,
 } from '@sue/verd-board-ui';
 import { assembleWorkspaceStore } from '../frames/frame-files';
+import { isWorkspaceContentPath } from '../workspace-skills';
 import {
   localizedTemplates,
   instantiateTemplate,
@@ -89,6 +90,8 @@ type Props = {
   children: ReactNode;
   tree: ReactNode;
   revealFolderNonce?: number;
+  onOpenResource?(path: string): void;
+  onOpenFailedFile?(path: string): void;
   onOpen(id: string, origin?: 'all' | 'library'): void;
   setFavorite(id: string, favorite: boolean): Promise<ActionResult>;
   onSearchHit(hit: SearchHit): Promise<void>;
@@ -511,6 +514,35 @@ export function WorkspaceManagement(p: Props) {
       `${f.title} ${f.path} ${(f.file.properties?.tags ?? []).join(' ')} ${f.file.properties?.status ?? ''} ${f.file.properties?.source ?? ''}`
         .toLowerCase()
         .includes(query.toLowerCase()),
+  );
+  const rawRows = p.snapshot.entries.filter(
+    (entry) =>
+      entry.kind === 'file' &&
+      !entry.canvas &&
+      !entry.document &&
+      !/\.verd(?:-doc)?\.json$/.test(entry.path) &&
+      isWorkspaceContentPath(entry.path, p.snapshot.entries) &&
+      !files.some((file) => file.path === entry.path) &&
+      (type === 'all' || type === 'resource') &&
+      !tagFilter &&
+      !statusFilter &&
+      !favoriteOnly &&
+      (!directoryFilter || entry.path.startsWith(directoryFilter + '/')) &&
+      entry.path.toLowerCase().includes(query.toLowerCase()),
+  );
+  const failedRows = [...p.snapshot.failedFiles.values()].filter(
+    (entry) =>
+      isWorkspaceContentPath(entry.path, p.snapshot.entries) &&
+      (type === 'all' || type === entry.kind) &&
+      !tagFilter &&
+      !statusFilter &&
+      !favoriteOnly &&
+      (!directoryFilter || entry.path.startsWith(directoryFilter + '/')) &&
+      entry.path.toLowerCase().includes(query.toLowerCase()),
+  );
+  const resultCount = rows.length + rawRows.length + failedRows.length;
+  const resultPaths = [...rows, ...rawRows, ...failedRows].map(
+    (item) => item.path,
   );
   const fileList = (ids: string[], reorder = false, sidebarRow = false) =>
     ids
@@ -1071,6 +1103,10 @@ export function WorkspaceManagement(p: Props) {
                         .filter(
                           (entry) =>
                             entry.kind === 'directory' &&
+                            isWorkspaceContentPath(
+                              entry.path,
+                              p.snapshot.entries,
+                            ) &&
                             !entry.path.startsWith('.verd-resources'),
                         )
                         .map((entry) => (
@@ -1216,6 +1252,7 @@ export function WorkspaceManagement(p: Props) {
                 >
                   <option value="all">{t('全部', 'All')}</option>
                   <option value="document">{t('文档', 'Documents')}</option>
+                  <option value="resource">{t('资源', 'Resources')}</option>
                   <option value="canvas">{t('普通画布', 'Canvases')}</option>
                   {[
                     ['mind', '思维导图', 'Mind maps'],
@@ -1324,10 +1361,10 @@ export function WorkspaceManagement(p: Props) {
                 ))}
               </div>
               <p className="content-result-count">
-                {view === 'all' ? rows.length : filteredHits.length}{' '}
+                {view === 'all' ? resultCount : filteredHits.length}{' '}
                 {t('项结果', 'results')}
               </p>
-              {!(view === 'all' ? rows.length : filteredHits.length) && (
+              {!(view === 'all' ? resultCount : filteredHits.length) && (
                 <p className="workspace-empty-state">
                   {t('没有匹配的内容', 'No matching content')}
                 </p>
@@ -1343,11 +1380,7 @@ export function WorkspaceManagement(p: Props) {
                         onClick={(e) => {
                           if (e.shiftKey) {
                             e.preventDefault();
-                            choose(
-                              f.path,
-                              e,
-                              rows.map((f) => f.path),
-                            );
+                            choose(f.path, e, resultPaths);
                           } else anchor.current = f.path;
                         }}
                         onChange={() =>
@@ -1361,11 +1394,7 @@ export function WorkspaceManagement(p: Props) {
                       <WorkspaceButton
                         onClick={(e) => {
                           if (e.metaKey || e.ctrlKey || e.shiftKey)
-                            choose(
-                              f.path,
-                              e,
-                              rows.map((f) => f.path),
-                            );
+                            choose(f.path, e, resultPaths);
                           else open(f.id);
                         }}
                       >
@@ -1456,12 +1485,135 @@ export function WorkspaceManagement(p: Props) {
                       )}
                     </div>
                   ))}
-                  {[...p.snapshot.failedFiles.values()].map((f) => (
-                    <p key={f.path}>
-                      <TriangleAlert strokeWidth={1.75} size={16} aria-hidden />{' '}
-                      {f.path}
-                    </p>
-                  ))}
+                  {rawRows
+                    .slice(0, Math.max(0, limit - rows.length))
+                    .map((resource) => {
+                      const path = resource.path,
+                        title = path.split('/').pop()!;
+                      return (
+                        <div
+                          className="management-result"
+                          key={path}
+                          data-entry-path={path}
+                          data-entry-kind="resource"
+                        >
+                          <input
+                            type="checkbox"
+                            checked={selected.includes(path)}
+                            aria-label={t('选择', 'Select') + ' ' + title}
+                            onClick={(event) => {
+                              if (event.shiftKey) {
+                                event.preventDefault();
+                                choose(path, event, resultPaths);
+                              } else anchor.current = path;
+                            }}
+                            onChange={() =>
+                              setSelected((old) =>
+                                old.includes(path)
+                                  ? old.filter((value) => value !== path)
+                                  : [...old, path],
+                              )
+                            }
+                          />
+                          <WorkspaceButton
+                            onClick={(event) => {
+                              if (
+                                event.metaKey ||
+                                event.ctrlKey ||
+                                event.shiftKey
+                              )
+                                choose(path, event, resultPaths);
+                              else p.onOpenResource?.(path);
+                            }}
+                          >
+                            <FileText size={16} aria-hidden />
+                            <span>
+                              {title}
+                              <small>{path}</small>
+                            </span>
+                          </WorkspaceButton>
+                          {!p.readonly && (
+                            <IconButton
+                              icon={Ellipsis}
+                              aria-label={t('更多操作', 'More actions')}
+                              aria-haspopup="menu"
+                              onClick={(event) =>
+                                setMenu({
+                                  anchor: event.currentTarget,
+                                  items: [
+                                    {
+                                      id: 'rename',
+                                      label: t('重命名', 'Rename'),
+                                      icon: Pencil,
+                                      onSelect: () => {
+                                        setSelected([path]);
+                                        setName(title);
+                                        setDialog('rename');
+                                      },
+                                    },
+                                    {
+                                      id: 'move',
+                                      label: t('移动到…', 'Move to…'),
+                                      icon: FolderInput,
+                                      onSelect: () => {
+                                        setSelected([path]);
+                                        setDialog('move');
+                                      },
+                                    },
+                                    {
+                                      id: 'trash',
+                                      label: t('移入回收站', 'Move to trash'),
+                                      icon: Trash2,
+                                      danger: true,
+                                      onSelect: () => {
+                                        setSelected([path]);
+                                        setDialog('trash');
+                                      },
+                                    },
+                                  ],
+                                })
+                              }
+                            />
+                          )}
+                        </div>
+                      );
+                    })}
+                  {failedRows
+                    .slice(0, Math.max(0, limit - rows.length - rawRows.length))
+                    .map((failure) => (
+                      <div
+                        key={failure.path}
+                        className="management-result"
+                        data-entry-path={failure.path}
+                        data-entry-kind="failed"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={selected.includes(failure.path)}
+                          aria-label={t('选择', 'Select') + ' ' + failure.path}
+                          onChange={() =>
+                            setSelected((old) =>
+                              old.includes(failure.path)
+                                ? old.filter((path) => path !== failure.path)
+                                : [...old, failure.path],
+                            )
+                          }
+                        />
+                        <WorkspaceButton
+                          onClick={() => p.onOpenFailedFile?.(failure.path)}
+                        >
+                          <TriangleAlert size={16} aria-hidden />
+                          <span>
+                            {failure.path}
+                            <small>
+                              {failure.diagnostics
+                                .map((issue) => issue.message)
+                                .join('; ')}
+                            </small>
+                          </span>
+                        </WorkspaceButton>
+                      </div>
+                    ))}
                 </>
               ) : (
                 filteredHits.slice(0, limit).map((hit, i) => (
@@ -1478,7 +1630,7 @@ export function WorkspaceManagement(p: Props) {
                   </WorkspaceButton>
                 ))
               )}
-              {(view === 'all' ? rows.length : filteredHits.length) > limit && (
+              {(view === 'all' ? resultCount : filteredHits.length) > limit && (
                 <WorkspaceButton onClick={() => setLimit(limit + 60)}>
                   {t('显示更多', 'Show more')}
                 </WorkspaceButton>
@@ -1698,6 +1850,7 @@ export function WorkspaceManagement(p: Props) {
                       .filter(
                         (e) =>
                           e.kind === 'directory' &&
+                          isWorkspaceContentPath(e.path, p.snapshot.entries) &&
                           !selectedRoots.some(
                             (path) =>
                               e.path === path || e.path.startsWith(path + '/'),

@@ -1,5 +1,7 @@
+import { observeContentWrites } from './service-routes';
+import { openActiveFile } from './app-actions';
 import { selectSetting } from '../../helpers/settings-controls';
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test, type Page } from './service-fixture';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { setAppLanguage, selectAppAction } from './app-actions';
@@ -15,22 +17,10 @@ async function appearance(page: Page, value: 'light' | 'dark') {
   await page.getByTestId('my-back').click();
 }
 async function seed(page: Page, embedded = false) {
-  await page.addInitScript(() => {
-    const observed = window as unknown as { themeContentWrites: number };
-    observed.themeContentWrites = 0;
-    const put = IDBObjectStore.prototype.put;
-    IDBObjectStore.prototype.put = function (value, ...args) {
-      if (
-        this.name === 'files' &&
-        value?.kind === 'file' &&
-        /\.verd(?:-doc)?\.json$/.test(value.path)
-      )
-        observed.themeContentWrites++;
-      return put.call(this, value, ...args);
-    };
-  });
+  await observeContentWrites(page, 'themeContentWrites', true);
   await page.emulateMedia({ colorScheme: 'light' });
   await page.goto('/');
+  await openActiveFile(page);
   await setAppLanguage(page, 'zh');
   const files = [
     'theme-text-sources.verd.json',
@@ -104,20 +94,9 @@ async function seed(page: Page, embedded = false) {
 
 async function nativeContents(page: Page) {
   return page.evaluate(async () => {
-    const db = await new Promise<IDBDatabase>((resolve, reject) => {
-      const request = indexedDB.open('verdboard-host');
-      request.onsuccess = () => resolve(request.result);
-      request.onerror = () => reject(request.error);
-    });
-    const files = await new Promise<any[]>((resolve, reject) => {
-      const request = db
-        .transaction('files', 'readonly')
-        .objectStore('files')
-        .getAll();
-      request.onsuccess = () => resolve(request.result);
-      request.onerror = () => reject(request.error);
-    });
-    db.close();
+    const { nodes: files } = (await (window as any).__verdReadDisk()) as {
+      nodes: { path: string; kind: string; text: string }[];
+    };
     return Object.fromEntries(
       files
         .filter(
@@ -125,7 +104,7 @@ async function nativeContents(page: Page) {
             file.kind === 'file' && /\.verd(?:-doc)?\.json$/.test(file.path),
         )
         .sort((a, b) => a.path.localeCompare(b.path))
-        .map((file) => [file.path, new TextDecoder().decode(file.content)]),
+        .map((file) => [file.path, file.text]),
     );
   });
 }

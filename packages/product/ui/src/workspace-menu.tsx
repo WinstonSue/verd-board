@@ -110,7 +110,7 @@ export function WorkspaceMenu({
     items.push({
       id: 'open-patterns',
       action: bindWorkspaceAction(actionSource, 'workspace.open-patterns'),
-      label: zh ? 'Agent 范式库' : 'Agent pattern library',
+      label: zh ? '文档编写推荐库' : 'Document authoring recommendations',
       icon: FolderOpen,
       testId: 'workspace-open-patterns',
       onSelect: onOpenPatterns,
@@ -186,7 +186,7 @@ export function WorkspaceMenu({
       {updatesAvailable && onUpdate && (
         <WorkspaceButton
           type="button"
-          className="workspace-button-ghost"
+          className="workspace-button-ghost workspace-content-update"
           data-testid="workspace-content-update"
           title={zh ? '系统内置内容有更新' : 'Bundled content update available'}
           aria-label={zh ? '查看内置内容更新' : 'View bundled content update'}

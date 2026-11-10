@@ -92,9 +92,80 @@ const closeWindow = async (page: Page) => {
   desktop = undefined;
 };
 
+test('Desktop shows ordinary originals and migrates project resources without parsing snapshots', async () => {
+  const workspace = workspaceDir();
+  await mkdir(path.join(workspace, '原件'), { recursive: true });
+  await mkdir(path.join(workspace, '空目录'), { recursive: true });
+  await mkdir(path.join(workspace, '.verd-resources/assets'), {
+    recursive: true,
+  });
+  await mkdir(path.join(workspace, '.verd-resources/history'), {
+    recursive: true,
+  });
+  const image = Buffer.from(
+    'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aSWQAAAAASUVORK5CYII=',
+    'base64',
+  );
+  await writeFile(path.join(workspace, '原件/photo.png'), image);
+  await writeFile(path.join(workspace, '原件/notes.md'), '# original');
+  await writeFile(
+    path.join(workspace, '.verd-resources/assets/source.bin'),
+    'managed original',
+  );
+  await writeFile(
+    path.join(workspace, '.verd-resources/history/hidden.verd.json'),
+    '{}',
+  );
+  const page = await launch();
+  const directory = directoryRow(page, '原件');
+  await directory.locator('.file-tree-dir-toggle').click();
+  await expect(
+    page.locator('.file-tree-row[data-entry-kind="resource"]', {
+      hasText: 'photo.png',
+    }),
+  ).toBeVisible();
+  await expect(directoryRow(page, '空目录')).toBeVisible();
+  await expect(page.locator('.file-tree')).not.toContainText('.verdscrolls');
+  await expect(page.locator('.file-tree')).not.toContainText('hidden');
+  await page
+    .locator('.file-tree-name')
+    .filter({ hasText: /^photo.png$/ })
+    .click();
+  const reader = page.getByRole('dialog', { name: 'photo.png', exact: true });
+  await expect
+    .poll(() =>
+      reader
+        .locator('img')
+        .evaluate((img: HTMLImageElement) => img.naturalWidth),
+    )
+    .toBeGreaterThan(0);
+  await reader.getByRole('button', { name: '关闭', exact: true }).click();
+  expect(await readFile(path.join(workspace, '原件/photo.png'))).toEqual(image);
+  expect(
+    await readFile(
+      path.join(workspace, '.verdscrolls/resources/assets/source.bin'),
+      'utf8',
+    ),
+  ).toBe('managed original');
+  await expect(
+    readFile(path.join(workspace, '.verd-resources/assets/source.bin')),
+  ).rejects.toThrow();
+  await closeWindow(page);
+  await launch();
+  expect(
+    await readFile(
+      path.join(workspace, '.verdscrolls/resources/assets/source.bin'),
+      'utf8',
+    ),
+  ).toBe('managed original');
+});
+
 test('Desktop keeps a folder link after a filesystem rename and reopen', async () => {
   let page = await launch();
   await createFolder(page, 'Link target');
+  await desktop!.evaluate(({ clipboard }) =>
+    clipboard.writeText('folder-link-before-first-copy'),
+  );
   await folderAction(page, 'Link target', '复制链接');
   const copy = () => desktop!.evaluate(({ clipboard }) => clipboard.readText());
   await expect.poll(copy).toMatch(/^verd:\/\/folder\//);
@@ -542,9 +613,6 @@ test('Desktop camera navigation leaves a 156-cell workspace untouched and reopen
     errors: string[] = [];
   page.on('pageerror', (error) => errors.push(error.message));
   await expect(cells(page, 'geometry')).toHaveCount(150);
-  const initial = await canvas(page)
-    .locator(':scope > [data-frame-world]')
-    .getAttribute('transform');
   // Legacy migration writes the six native files asynchronously. Establish
   // the baseline only after all of them exist, before measuring camera work.
   await expect
@@ -555,6 +623,16 @@ test('Desktop camera navigation leaves a 156-cell workspace untouched and reopen
     await openHistoryAction(page, '撤销')
   ).isDisabled();
   await page.keyboard.press('Escape');
+  await page.evaluate(() => document.fonts.ready);
+  await page.evaluate(
+    () =>
+      new Promise<void>((resolve) =>
+        requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
+      ),
+  );
+  const initial = await canvas(page)
+    .locator(':scope > [data-frame-world]')
+    .getAttribute('transform');
   const tasks: number[] = [];
   await page.evaluate(() => {
     (window as any).cameraLongTasks = [];

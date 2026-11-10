@@ -1,3 +1,4 @@
+import type { Terminal } from '../terminal/types';
 import type { CellOperation } from './index';
 import {
   isNodeCell,
@@ -5,7 +6,6 @@ import {
   type Cell,
   type CellStore,
   type NodeGeometry,
-  type EdgeTerminal,
 } from './types';
 import type { Point } from '../interfaces/point';
 
@@ -37,10 +37,7 @@ export const roundNodeGeometry = (geometry: NodeGeometry): NodeGeometry =>
   roundNodeDimensions(roundNodePosition(geometry));
 
 const samePoint = (a: Point, b: Point) => a[0] === b[0] && a[1] === b[1];
-const roundTerminal = (
-  next: EdgeTerminal,
-  previous?: EdgeTerminal,
-): EdgeTerminal =>
+const roundTerminal = (next: Terminal, previous?: Terminal): Terminal =>
   'point' in next &&
   (!previous ||
     !('point' in previous) ||

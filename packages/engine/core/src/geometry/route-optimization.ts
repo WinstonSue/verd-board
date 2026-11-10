@@ -55,7 +55,27 @@ export function optimizeFrameRoutes(
       cost = 0;
     for (let at = 0; at < edges.length; at++) {
       const path = paths.get(edges[at].id)!;
-      if (path.status === 'blocked') blocked++;
+      const edge = edges[at],
+        entry = context.routes.get(edge.id)!;
+      if (
+        path.status === 'blocked' ||
+        !isClearOrthogonalRoute(
+          path.points,
+          entry.source.side,
+          entry.target.side,
+          context.obstacles,
+          {
+            sourceId: 'cellId' in edge.source ? edge.source.cellId : undefined,
+            targetId: 'cellId' in edge.target ? edge.target.cellId : undefined,
+            visualGap: context.visualGap,
+            terminalRun: context.terminalRun,
+            allowFreeTerminalDirections: true,
+            strokeWidth: edge.appearance?.strokeWidth,
+            clearance: context.clearance,
+          },
+        )
+      )
+        blocked++;
       cost += length(path.points) + 24 * Math.max(0, path.points.length - 2);
       const other = [
         ...fixedSegments,
@@ -111,6 +131,9 @@ export function optimizeFrameRoutes(
           sourceId: 'cellId' in edge.source ? edge.source.cellId : undefined,
           targetId: 'cellId' in edge.target ? edge.target.cellId : undefined,
           clearance: context.clearance,
+          visualGap: context.visualGap,
+          terminalRun: context.terminalRun,
+          allowFreeTerminalDirections: true,
           strokeWidth: edge.appearance?.strokeWidth,
           occupied: other,
           crossingPenalty,
@@ -157,7 +180,9 @@ export function optimizeFrameRoutes(
           ...(compacted ? [compacted.points] : []),
         ]) {
           if (
-            length(points) > length(baseline.get(edge.id)!.points) * 1.2 + 48 ||
+            (currentScore.blocked === 0 &&
+              length(points) >
+                length(baseline.get(edge.id)!.points) * 1.2 + 48) ||
             !isClearOrthogonalRoute(
               points,
               entry.source.side,
@@ -171,7 +196,8 @@ export function optimizeFrameRoutes(
           paths.set(edge.id, { status: 'routed', points });
           const next = score(paths);
           if (
-            totalLength(paths) <= baselineLength * 1.1 + 1e-6 &&
+            (currentScore.blocked > 0 ||
+              totalLength(paths) <= baselineLength * 1.1 + 1e-6) &&
             better(next, currentScore)
           ) {
             currentScore = next;

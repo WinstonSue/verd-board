@@ -1,7 +1,7 @@
 import { openHistoryAction } from './app-actions';
 import { selectHistoryAction } from './app-actions';
 import { openTrash, setAppLanguage } from './app-actions';
-import { test, expect } from '@playwright/test';
+import { test, expect } from './service-fixture';
 import {
   createFolder,
   directoryRow,

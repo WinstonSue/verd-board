@@ -2,16 +2,16 @@
 
 ## 当前文件
 
-| 文件 | 职责 |
-| --- | --- |
-| `src/index.ts` | 原生 Frame 公共入口 |
-| `src/frame-canvas.tsx` | CellRuntime 生命周期、受控和宿主模式、嵌套挂载、选择、事务、绘制与指针交互 |
-| `src/frame-selection-handles.tsx` | 原生缩放与旋转手柄 |
-| `src/frame-rich-text.tsx` | BoardTextDocument 静态显示 |
-| `src/frame-text-editor.tsx` | TipTap 文本编辑与格式工具栏 |
-| `src/frame-export.tsx` | 同一只读渲染器生成 SVG/PNG/JPEG，嵌入资源、裁剪并清除编辑控件 |
-| `src/frame-canvas.spec.tsx` | 画布隔离、宿主意图、只读与外部历史 |
-| `src/frame-export.spec.ts` | 导出参数、嵌套裁剪、样式保留与控件清理 |
+| 文件                              | 职责                                                                       |
+| --------------------------------- | -------------------------------------------------------------------------- |
+| `src/index.ts`                    | 原生 Frame 公共入口                                                        |
+| `src/frame-canvas.tsx`            | CellRuntime 生命周期、受控和宿主模式、嵌套挂载、选择、事务、绘制与指针交互 |
+| `src/frame-selection-handles.tsx` | 原生缩放与旋转手柄                                                         |
+| `src/frame-rich-text.tsx`         | BoardTextDocument 静态显示                                                 |
+| `src/frame-text-editor.tsx`       | TipTap 文本编辑与格式工具栏                                                |
+| `src/frame-export.tsx`            | 同一只读渲染器生成 SVG/PNG/JPEG，嵌入资源、裁剪并清除编辑控件              |
+| `src/frame-canvas.spec.tsx`       | 画布隔离、宿主意图、只读与外部历史                                         |
+| `src/frame-export.spec.ts`        | 导出参数、嵌套裁剪、样式保留与控件清理                                     |
 
 ## 数据与提交
 

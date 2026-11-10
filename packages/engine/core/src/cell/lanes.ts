@@ -107,8 +107,6 @@ export function planLaneDrop(
     const bounds = unionCellBounds(
       nodes.map((node) => geometryBounds(node.geometry)),
     )!;
-    const x = bounds.x + bounds.width / 2,
-      y = bounds.y + bounds.height / 2;
     const target =
       assignment === null
         ? undefined
@@ -123,16 +121,12 @@ export function planLaneDrop(
               .find(
                 (lane) =>
                   !store.cells[lane.containerId].hidden &&
-                  x >= lane.bounds.x &&
-                  x <= lane.bounds.x + lane.bounds.width &&
-                  y >= lane.bounds.y &&
-                  y <= lane.bounds.y + lane.bounds.height,
+                  laneContains(lane.bounds, bounds),
               );
     if (assignment && !target) throw new Error('Swimlane is unavailable');
     if (target) nodes.forEach((node) => keepDomainOwners.add(node.id));
     if (target && !laneContains(target.bounds, bounds)) {
       if (
-        assignment === undefined ||
         bounds.width > target.bounds.width ||
         bounds.height > target.bounds.height
       )

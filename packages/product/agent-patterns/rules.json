@@ -1,11 +1,23 @@
 [
   {
+    "id": "file.invalid",
+    "description": "使用受支持的原生文档或画布文件封装。"
+  },
+  {
     "id": "identity.duplicate",
     "description": "文件和图元身份在同一工作区保持唯一；复制时统一重映射。"
   },
   {
+    "id": "document.identity",
+    "description": "独立文档 id 与 text.id 保持一致。"
+  },
+  {
     "id": "text.cache",
-    "description": "plainText 是正文派生缓存，由工具更新。"
+    "description": "plainText 是正文派生缓存，由工具从 content 更新。"
+  },
+  {
+    "id": "text.schema",
+    "description": "使用 describe 返回的真实编辑器 schema；独立文档与画布标签分别校验。"
   },
   {
     "id": "frame.invalid",
@@ -13,6 +25,30 @@
   },
   {
     "id": "reference.invalid",
-    "description": "引用目标类型必须正确。引用环允许存在；缺失占位与编写完整性分开检查。"
+    "description": "引用目标类型必须正确；引用环允许存在，缺失占位与编写完整性分开检查。"
+  },
+  {
+    "id": "link.invalid",
+    "description": "使用受支持的外部 URL 或稳定工作区链接。"
+  },
+  {
+    "id": "link.file",
+    "description": "文件链接指向当前工作区内存在的稳定文件身份。"
+  },
+  {
+    "id": "link.folder",
+    "description": "目录链接指向当前工作区内唯一的目录身份。"
+  },
+  {
+    "id": "link.cell",
+    "description": "图元链接使用工作区全局唯一且存在的 Cell 身份。"
+  },
+  {
+    "id": "link.heading",
+    "description": "标题使用当前 GitHub slug，保留重复后缀；稳定段落目标保留 block: 身份。"
+  },
+  {
+    "id": "workflow.port-direction",
+    "description": "流程图优先上/左入、下/右出；反向端口仅提示，回路和必要分支可保留并在预览中确认。"
   }
 ]

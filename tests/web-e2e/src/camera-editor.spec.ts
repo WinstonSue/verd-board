@@ -1,4 +1,5 @@
-import { expect, test, type Page } from '@playwright/test';
+import { openActiveFile } from './app-actions';
+import { expect, test, type Page } from './service-fixture';
 import { createInlineText } from '../../../packages/engine/common/src/public-api';
 import { clearWorkspaceStorage } from './workspace-nav';
 
@@ -10,83 +11,79 @@ const transform = (page: Page) =>
 async function load(page: Page) {
   await page.setViewportSize({ width: 1280, height: 900 });
   await page.goto('/');
+  await openActiveFile(page);
   await expect(canvas(page)).toBeVisible();
   await page.evaluate(async (text) => {
-    const db = await new Promise<IDBDatabase>((resolve, reject) => {
-      const request = indexedDB.open('VerdBoard');
-      request.onsuccess = () => resolve(request.result);
-      request.onerror = () => reject(request.error);
-    });
-    await new Promise<void>((resolve, reject) => {
-      const transaction = db.transaction('verdboard_store', 'readwrite'),
-        saved = transaction.objectStore('verdboard_store');
-      saved.clear();
-      saved.put(
-        {
-          format: 'verd-frame',
-          version: 1,
-          frame: {
-            id: 'root',
-            kind: 'frame',
-            cellType: 'frame',
-            geometry: { x: 0, y: 0, width: 960, height: 640 },
-            children: ['node', 'nested'],
-            groups: [],
-          },
-          cells: {
-            node: {
-              id: 'node',
-              kind: 'geometry',
-              cellType: 'node',
-              geometry: {
-                x: 100,
-                y: 100,
-                width: 240,
-                height: 90,
-                outline: 'rectangle',
-              },
-              content: { label: text.plainText, text },
+    const records: [string, unknown][] = [];
+    const saved = {
+      put(value: unknown, key: string) {
+        records.push([key, value]);
+      },
+    };
+    saved.put(
+      {
+        format: 'verd-frame',
+        version: 1,
+        frame: {
+          id: 'root',
+          kind: 'frame',
+          cellType: 'frame',
+          geometry: { x: 0, y: 0, width: 960, height: 640 },
+          children: ['node', 'nested'],
+          groups: [],
+        },
+        cells: {
+          node: {
+            id: 'node',
+            kind: 'geometry',
+            cellType: 'node',
+            geometry: {
+              x: 100,
+              y: 100,
+              width: 240,
+              height: 90,
+              outline: 'rectangle',
             },
+            content: { label: text.plainText, text },
           },
         },
-        'frames/root/test',
-      );
-      saved.put(
-        {
-          format: 'verd-frame',
-          version: 1,
-          frame: {
-            id: 'nested',
-            kind: 'frame',
-            cellType: 'frame',
-            geometry: { x: 450, y: 100, width: 200, height: 180 },
-            content: { label: 'Nested' },
-            children: [],
-            groups: [],
-          },
-          cells: {},
+      },
+      'frames/root/test',
+    );
+    saved.put(
+      {
+        format: 'verd-frame',
+        version: 1,
+        frame: {
+          id: 'nested',
+          kind: 'frame',
+          cellType: 'frame',
+          geometry: { x: 450, y: 100, width: 200, height: 180 },
+          content: { label: 'Nested' },
+          children: [],
+          groups: [],
         },
-        'frames/nested/test',
-      );
-      saved.put(
-        {
-          format: 'verd-workspace',
-          version: 2,
-          rootId: 'root',
-          frames: { root: 'frames/root/test', nested: 'frames/nested/test' },
-          detachedFrameIds: [],
-        },
-        'main_board_content',
-      );
-      transaction.oncomplete = () => resolve();
-      transaction.onerror = () => reject(transaction.error);
-    });
-    db.close();
+        cells: {},
+      },
+      'frames/nested/test',
+    );
+    saved.put(
+      {
+        format: 'verd-workspace',
+        version: 2,
+        rootId: 'root',
+        frames: { root: 'frames/root/test', nested: 'frames/nested/test' },
+        detachedFrameIds: [],
+      },
+      'main_board_content',
+    );
+    await (window as any).__verdSeedLegacy(records);
   }, createInlineText('Original'));
   await clearWorkspaceStorage(page);
   await page.reload();
   const skip = page.getByRole('button', { name: '跳过', exact: true });
   if (await skip.isVisible()) await skip.click();
+  await openActiveFile(page);
   await expect(canvas(page).locator('[data-cell-id="node"]')).toBeVisible();
 }
 async function zoomAt(page: Page, target: import('@playwright/test').Locator) {
@@ -158,10 +155,12 @@ test('native zoom reaches the title portal and preserves its active editor', asy
   page,
 }) => {
   await load(page);
-  // The legacy child frame migrates to a `frame-ref:<id>` reference cell.
-  await canvas(page)
-    .locator('[data-frame-title-id="frame-ref:nested"]')
-    .dblclick();
+  const title = canvas(page).locator(
+    '[data-frame-title-id="frame-ref:nested"]',
+  );
+  await title.click({ position: { x: 24, y: 12 } });
+  const bounds = await title.locator('> rect').boundingBox();
+  await page.mouse.dblclick(bounds!.x + 24, bounds!.y + 12);
   const editor = page.locator(
     '[data-frame-title-editor="frame-ref:nested"] [contenteditable="true"]',
   );

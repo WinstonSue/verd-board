@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './service-fixture';
 import { exerciseDocumentResources } from './document-resource-actions';
 test('native formulas, folds and local PDF remain usable after reload', async ({
   page,

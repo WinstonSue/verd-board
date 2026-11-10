@@ -1,5 +1,7 @@
+import { createLocalWorkspace } from './service-actions';
+import { serviceFixture } from './service-fixture';
 import { selectSetting } from '../../helpers/settings-controls';
-import { test, expect, type Page } from '@playwright/test';
+import { test, expect, type Page } from './service-fixture';
 import { selectDrawingTool } from './drawing-tools';
 import {
   openSettings,
@@ -105,7 +107,7 @@ test('library highlights navigation and clicking the active tab returns to editi
   await expect(canvas(page)).toBeVisible();
 });
 
-test('owned subgraphs indent and file navigation stays above the canvas', async ({
+test('independent diagrams have one directory entry and file navigation stays above the canvas', async ({
   page,
 }) => {
   await selectDrawingTool(page, '流程图');
@@ -124,20 +126,11 @@ test('owned subgraphs indent and file navigation stays above the canvas', async 
   await expect(activePane(page).getByTestId('verd-workflow')).toBeVisible();
   const breadcrumb = activePane(page).locator('.workspace-file-navigation');
   await expect(breadcrumb).toBeVisible();
-  const owned = page.locator('.file-tree-subgraph.is-active');
-  await expect(owned).toBeVisible();
-  const owner = rows(page)
-    .filter({ has: page.locator('.file-tree-twisty[aria-expanded]') })
-    .first();
-  expect(
-    await owned.evaluate((element) =>
-      Number((element as HTMLElement).style.getPropertyValue('--depth')),
-    ),
-  ).toBeGreaterThan(
-    await owner.evaluate((element) =>
-      Number((element as HTMLElement).style.getPropertyValue('--depth')),
-    ),
-  );
+  const row = page.locator('[data-entry-kind="file"].is-active');
+  await expect(row).toBeVisible();
+  const id = await row.getAttribute('data-file-id');
+  await expect(page.locator(`[data-file-id="${id}"]`)).toHaveCount(1);
+  await expect(page.locator('[data-entry-kind="shortcut"]')).toHaveCount(0);
   expect(
     await breadcrumb.evaluate((element) => {
       const box = element.getBoundingClientRect();
@@ -158,6 +151,12 @@ test('owned subgraphs indent and file navigation stays above the canvas', async 
 test('workspace settings use a centered dialog, retain names, restore focus and persist after reload', async ({
   page,
 }) => {
+  await createLocalWorkspace(
+    page,
+    'Settings source',
+    serviceFixture(page).root,
+  );
+  await openActiveFile(page);
   await selectWorkspaceAction(page, '工作区设置');
   const dialog = page.getByTestId('workspace-settings-page');
   await expect(dialog).toBeVisible();
@@ -259,6 +258,12 @@ test('sidebar keeps only My at the bottom and groups workspace actions under the
 test('long workspace names truncate in narrow layouts and retain their full title', async ({
   page,
 }) => {
+  await createLocalWorkspace(
+    page,
+    'Long name source',
+    serviceFixture(page).root,
+  );
+  await openActiveFile(page);
   const name = '用于验证侧栏长名称布局的项目工作区'.repeat(3);
   await selectWorkspaceAction(page, '工作区设置');
   await page.getByTestId('workspace-settings-name').fill(name);

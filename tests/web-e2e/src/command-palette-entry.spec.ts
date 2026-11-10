@@ -1,4 +1,4 @@
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test, type Page } from './service-fixture';
 import path from 'node:path';
 import { readFileSync } from 'node:fs';
 import {

@@ -1,15 +1,20 @@
+import { createLocalWorkspace } from './service-actions';
+import { serviceFixture } from './service-fixture';
 import { selectSetting } from '../../helpers/settings-controls';
-import { test, expect } from '@playwright/test';
+import { test, expect } from './service-fixture';
 test('workspace navigation, drafts, quick open and bounded settings', async ({
   page,
 }, info) => {
   await page.goto('/');
   await expect(page.locator('.workspace-shell')).toBeVisible();
+  await createLocalWorkspace(page, 'UX source', serviceFixture(page).root);
   await page.screenshot({ path: info.outputPath('home.png') });
   await page.getByTestId('workspace-my').click();
   const dialog = page.getByTestId('my-page');
   await expect(dialog).toBeVisible();
-  await expect(dialog.locator('nav button')).toHaveCount(5);
+  await expect(
+    dialog.getByRole('menu', { name: '设置栏目' }).getByRole('menuitem'),
+  ).toHaveCount(8);
   await dialog.getByTestId('settings-nav-workspace.project').click();
   const name = page.getByTestId('workspace-settings-name');
   await name.fill('界面测试工作区');

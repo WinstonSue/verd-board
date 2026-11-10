@@ -1,5 +1,23 @@
 # @sue/board-markdown-to-text
 
+## 2.1.0
+
+### Minor Changes
+
+- b06ca40: Add document folding, LaTeX nodes, resource cards, local media and PDF reading with stable asset page links. Keep canvas label schemas separate. Store portable binary assets without base64, add PDF runtime assets and restrict external frames and workspace IPC.
+- b06ca40: Add slash insertion and paragraph actions, native writing templates, stable block anchors and live read-only excerpts, portable content properties and saved filters, local content checkpoints with preview/restore, conflict comparison and independent recovery copies, managed image assets, and folder/ZIP migration with portable export reports. Keep resource writes in WorkspaceSession, guard them with content versions, and clear recoverable snapshots when their source is permanently deleted.
+- Prepare the application, SDK, UI and Agent together as 2.1.0 for this explicitly authorized early-stage release. This release includes the breaking API changes documented below; existing 2.0 consumers must follow the migration guide. Future releases retain the existing version rules. Local version preparation does not establish npm registry publication.
+
+### Patch Changes
+
+- Updated dependencies [5571a9a]
+- Updated dependencies
+- Updated dependencies [b06ca40]
+- Updated dependencies [b06ca40]
+- Updated dependencies [33dc37e]
+- Updated dependencies
+  - @sue/board-common@2.1.0
+
 ## 2.0.0
 
 ### Major Changes

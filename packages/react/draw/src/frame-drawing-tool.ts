@@ -1,11 +1,11 @@
 import {
   createFrameCell,
-  edgeTerminalPosition,
+  resolveTerminal,
   frameMinimumSize,
   isFrameCell,
   normalizeCellPositionOperations,
   roundFramePoint,
-  snapEdgeTerminal,
+  snapTerminal,
   type CellOperation,
   type CellStore,
   type EdgeCell,
@@ -100,7 +100,7 @@ export function createFrameDrawingTool({
     if (['arrow', 'bidirectional', 'line', 'curve'].includes(pointer)) {
       points = points.map(roundFramePoint);
       const tolerance = 12 / (context?.zoom ?? 1);
-      const source = snapEdgeTerminal(
+      const source = snapTerminal(
         store,
         parentId,
         points[0],
@@ -108,7 +108,7 @@ export function createFrameDrawingTool({
         'arrow',
         tolerance,
       );
-      const target = snapEdgeTerminal(
+      const target = snapTerminal(
         store,
         parentId,
         points.at(-1)!,
@@ -131,8 +131,12 @@ export function createFrameDrawingTool({
         },
       };
       if (pointer === 'curve') {
-        const start = edgeTerminalPosition(store, source, target).point;
-        const end = edgeTerminalPosition(store, target, source).point;
+        const sourcePosition = resolveTerminal(store, source, target);
+        const targetPosition = resolveTerminal(store, target, source);
+        if (!sourcePosition || !targetPosition)
+          throw new Error('Missing edge endpoint');
+        const start = sourcePosition.point;
+        const end = targetPosition.point;
         const dx = end[0] - start[0],
           dy = end[1] - start[1];
         const length = Math.hypot(dx, dy);

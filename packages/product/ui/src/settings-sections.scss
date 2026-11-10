@@ -246,3 +246,48 @@
   display: block;
   white-space: normal;
 }
+
+.workspace-skill-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 16px;
+}
+.workspace-skill-scope {
+  box-sizing: border-box;
+  width: 100%;
+  height: var(--vm-control-height);
+  padding: 0 10px;
+  border: 1px solid var(--vm-border-strong);
+  border-radius: var(--vm-radius-sm);
+  background: var(--vm-background);
+  color: inherit;
+  font: inherit;
+}
+.workspace-skill-guide {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font: inherit;
+  max-height: 50vh;
+  overflow: auto;
+}
+.workspace-skill-toolbar,
+.workspace-default-skill-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 12px 0 20px;
+}
+.workspace-default-skill-dialog {
+  width: min(860px, calc(100vw - 32px));
+  max-height: calc(100dvh - 32px);
+}
+.workspace-default-skill-content {
+  overflow: auto;
+  max-height: 60dvh;
+  pre {
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    font-family: var(--vm-font-mono);
+  }
+}

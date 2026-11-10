@@ -56,6 +56,273 @@
     "name": "02.1 编辑器与插件运行时"
   },
   "cells": {
+    "demo:runtime/layer/0": {
+      "id": "demo:runtime/layer/0",
+      "kind": "architecture-layer",
+      "cellType": "node",
+      "geometry": {
+        "x": 0,
+        "y": 0,
+        "width": 1980,
+        "height": 170,
+        "derived": true
+      },
+      "content": {
+        "label": "产品入口 · 图文文件与 Schema 设置",
+        "text": {
+          "schemaVersion": 1,
+          "id": "demo:runtime/layer/0/text",
+          "kind": "inline",
+          "plainText": "产品入口 · 图文文件与 Schema 设置",
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "产品入口 · 图文文件与 Schema 设置",
+                    "marks": [
+                      {
+                        "type": "bold"
+                      },
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "16px",
+                          "color": "#475569"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "data": {
+        "order": "00000000",
+        "fontSize": 24,
+        "memberIds": [
+          "demo:runtime/module/ui",
+          "demo:runtime/module/document-page"
+        ]
+      },
+      "appearance": {
+        "fill": "#f8fafc",
+        "strokeColor": "#e2e8f0",
+        "strokeWidth": 1
+      }
+    },
+    "demo:runtime/layer/1": {
+      "id": "demo:runtime/layer/1",
+      "kind": "architecture-layer",
+      "cellType": "node",
+      "geometry": {
+        "x": 0,
+        "y": 280,
+        "width": 1980,
+        "height": 170,
+        "derived": true
+      },
+      "content": {
+        "label": "编辑视图 · 独立文档与领域画布",
+        "text": {
+          "schemaVersion": 1,
+          "id": "demo:runtime/layer/1/text",
+          "kind": "inline",
+          "plainText": "编辑视图 · 独立文档与领域画布",
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "编辑视图 · 独立文档与领域画布",
+                    "marks": [
+                      {
+                        "type": "bold"
+                      },
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "16px",
+                          "color": "#475569"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "data": {
+        "order": "00000001",
+        "fontSize": 24,
+        "memberIds": [
+          "demo:runtime/module/canvas",
+          "demo:runtime/module/extensions",
+          "demo:runtime/module/text",
+          "demo:runtime/module/document-editor"
+        ]
+      },
+      "appearance": {
+        "fill": "#f8fafc",
+        "strokeColor": "#e2e8f0",
+        "strokeWidth": 1
+      }
+    },
+    "demo:runtime/layer/2": {
+      "id": "demo:runtime/layer/2",
+      "kind": "architecture-layer",
+      "cellType": "node",
+      "geometry": {
+        "x": 0,
+        "y": 560,
+        "width": 1980,
+        "height": 170,
+        "derived": true
+      },
+      "content": {
+        "label": "运行时 · 历史、索引、选择不进入快照",
+        "text": {
+          "schemaVersion": 1,
+          "id": "demo:runtime/layer/2/text",
+          "kind": "inline",
+          "plainText": "运行时 · 历史、索引、选择不进入快照",
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "运行时 · 历史、索引、选择不进入快照",
+                    "marks": [
+                      {
+                        "type": "bold"
+                      },
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "16px",
+                          "color": "#475569"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "data": {
+        "order": "00000002",
+        "fontSize": 24,
+        "memberIds": [
+          "demo:runtime/module/runtime",
+          "demo:runtime/module/registry",
+          "demo:runtime/module/camera"
+        ]
+      },
+      "appearance": {
+        "fill": "#f8fafc",
+        "strokeColor": "#e2e8f0",
+        "strokeWidth": 1
+      }
+    },
+    "project:detail/02/01/explanation-layer": {
+      "id": "project:detail/02/01/explanation-layer",
+      "kind": "architecture-layer",
+      "cellType": "node",
+      "geometry": {
+        "x": 0,
+        "y": 840,
+        "width": 1500,
+        "height": 200,
+        "derived": true,
+        "outline": "roundRectangle"
+      },
+      "ports": [
+        {
+          "id": "top",
+          "side": "top",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "right",
+          "side": "right",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "bottom",
+          "side": "bottom",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "left",
+          "side": "left",
+          "direction": "both",
+          "offset": 0.5
+        }
+      ],
+      "appearance": {
+        "fill": "#f0fdfa",
+        "strokeColor": "#94a3b8",
+        "strokeWidth": 1.5
+      },
+      "content": {
+        "label": "关键机制与边界",
+        "text": {
+          "schemaVersion": 1,
+          "id": "project:detail/02/01/explanation-layer/text",
+          "kind": "inline",
+          "plainText": "关键机制与边界",
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "关键机制与边界",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "20px",
+                          "color": "#1e293b"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "data": {
+        "order": "00000003",
+        "fontSize": 24,
+        "memberIds": [
+          "project:detail/02/01/preview",
+          "project:detail/02/01/visibility"
+        ]
+      }
+    },
     "demo:runtime/module/ui": {
       "id": "demo:runtime/module/ui",
       "kind": "architecture-module",
@@ -1115,189 +1382,6 @@
         "strokeWidth": 1.5
       }
     },
-    "demo:runtime/layer/0": {
-      "id": "demo:runtime/layer/0",
-      "kind": "architecture-layer",
-      "cellType": "node",
-      "geometry": {
-        "x": 0,
-        "y": 0,
-        "width": 1980,
-        "height": 170,
-        "derived": true
-      },
-      "content": {
-        "label": "产品入口 · 图文文件与 Schema 设置",
-        "text": {
-          "schemaVersion": 1,
-          "id": "demo:runtime/layer/0/text",
-          "kind": "inline",
-          "plainText": "产品入口 · 图文文件与 Schema 设置",
-          "content": {
-            "type": "doc",
-            "content": [
-              {
-                "type": "paragraph",
-                "content": [
-                  {
-                    "type": "text",
-                    "text": "产品入口 · 图文文件与 Schema 设置",
-                    "marks": [
-                      {
-                        "type": "bold"
-                      },
-                      {
-                        "type": "textStyle",
-                        "attrs": {
-                          "fontSize": "16px",
-                          "color": "#475569"
-                        }
-                      }
-                    ]
-                  }
-                ]
-              }
-            ]
-          }
-        }
-      },
-      "data": {
-        "order": "00000000",
-        "fontSize": 24,
-        "memberIds": [
-          "demo:runtime/module/ui",
-          "demo:runtime/module/document-page"
-        ]
-      },
-      "appearance": {
-        "fill": "#f8fafc",
-        "strokeColor": "#e2e8f0",
-        "strokeWidth": 1
-      }
-    },
-    "demo:runtime/layer/1": {
-      "id": "demo:runtime/layer/1",
-      "kind": "architecture-layer",
-      "cellType": "node",
-      "geometry": {
-        "x": 0,
-        "y": 280,
-        "width": 1980,
-        "height": 170,
-        "derived": true
-      },
-      "content": {
-        "label": "编辑视图 · 独立文档与领域画布",
-        "text": {
-          "schemaVersion": 1,
-          "id": "demo:runtime/layer/1/text",
-          "kind": "inline",
-          "plainText": "编辑视图 · 独立文档与领域画布",
-          "content": {
-            "type": "doc",
-            "content": [
-              {
-                "type": "paragraph",
-                "content": [
-                  {
-                    "type": "text",
-                    "text": "编辑视图 · 独立文档与领域画布",
-                    "marks": [
-                      {
-                        "type": "bold"
-                      },
-                      {
-                        "type": "textStyle",
-                        "attrs": {
-                          "fontSize": "16px",
-                          "color": "#475569"
-                        }
-                      }
-                    ]
-                  }
-                ]
-              }
-            ]
-          }
-        }
-      },
-      "data": {
-        "order": "00000001",
-        "fontSize": 24,
-        "memberIds": [
-          "demo:runtime/module/canvas",
-          "demo:runtime/module/extensions",
-          "demo:runtime/module/text",
-          "demo:runtime/module/document-editor"
-        ]
-      },
-      "appearance": {
-        "fill": "#f8fafc",
-        "strokeColor": "#e2e8f0",
-        "strokeWidth": 1
-      }
-    },
-    "demo:runtime/layer/2": {
-      "id": "demo:runtime/layer/2",
-      "kind": "architecture-layer",
-      "cellType": "node",
-      "geometry": {
-        "x": 0,
-        "y": 560,
-        "width": 1980,
-        "height": 170,
-        "derived": true
-      },
-      "content": {
-        "label": "运行时 · 历史、索引、选择不进入快照",
-        "text": {
-          "schemaVersion": 1,
-          "id": "demo:runtime/layer/2/text",
-          "kind": "inline",
-          "plainText": "运行时 · 历史、索引、选择不进入快照",
-          "content": {
-            "type": "doc",
-            "content": [
-              {
-                "type": "paragraph",
-                "content": [
-                  {
-                    "type": "text",
-                    "text": "运行时 · 历史、索引、选择不进入快照",
-                    "marks": [
-                      {
-                        "type": "bold"
-                      },
-                      {
-                        "type": "textStyle",
-                        "attrs": {
-                          "fontSize": "16px",
-                          "color": "#475569"
-                        }
-                      }
-                    ]
-                  }
-                ]
-              }
-            ]
-          }
-        }
-      },
-      "data": {
-        "order": "00000002",
-        "fontSize": 24,
-        "memberIds": [
-          "demo:runtime/module/runtime",
-          "demo:runtime/module/registry",
-          "demo:runtime/module/camera"
-        ]
-      },
-      "appearance": {
-        "fill": "#f8fafc",
-        "strokeColor": "#e2e8f0",
-        "strokeWidth": 1
-      }
-    },
     "project:detail/02/01/preview": {
       "id": "project:detail/02/01/preview",
       "kind": "architecture-module",
@@ -1444,12 +1528,12 @@
         "placed": true
       },
       "content": {
-        "label": "离屏暂停绘制\n编辑实例、焦点与选区保留；导出等待完整引用",
+        "label": "离屏暂停绘制\n编辑状态保留；导出等待完整引用",
         "text": {
           "schemaVersion": 1,
           "id": "project:detail/02/01/visibility/text",
           "kind": "inline",
-          "plainText": "离屏暂停绘制\n编辑实例、焦点与选区保留；导出等待完整引用",
+          "plainText": "离屏暂停绘制\n编辑状态保留；导出等待完整引用",
           "content": {
             "type": "doc",
             "content": [
@@ -1476,83 +1560,7 @@
                 "content": [
                   {
                     "type": "text",
-                    "text": "编辑实例、焦点与选区保留；导出等待完整引用",
-                    "marks": [
-                      {
-                        "type": "textStyle",
-                        "attrs": {
-                          "fontSize": "20px",
-                          "color": "#1e293b"
-                        }
-                      }
-                    ]
-                  }
-                ]
-              }
-            ]
-          }
-        }
-      }
-    },
-    "project:detail/02/01/explanation-layer": {
-      "id": "project:detail/02/01/explanation-layer",
-      "kind": "architecture-layer",
-      "cellType": "node",
-      "geometry": {
-        "x": 0,
-        "y": 840,
-        "width": 1500,
-        "height": 200,
-        "derived": true,
-        "outline": "roundRectangle"
-      },
-      "ports": [
-        {
-          "id": "top",
-          "side": "top",
-          "direction": "both",
-          "offset": 0.5
-        },
-        {
-          "id": "right",
-          "side": "right",
-          "direction": "both",
-          "offset": 0.5
-        },
-        {
-          "id": "bottom",
-          "side": "bottom",
-          "direction": "both",
-          "offset": 0.5
-        },
-        {
-          "id": "left",
-          "side": "left",
-          "direction": "both",
-          "offset": 0.5
-        }
-      ],
-      "appearance": {
-        "fill": "#f0fdfa",
-        "strokeColor": "#94a3b8",
-        "strokeWidth": 1.5
-      },
-      "content": {
-        "label": "关键机制与边界",
-        "text": {
-          "schemaVersion": 1,
-          "id": "project:detail/02/01/explanation-layer/text",
-          "kind": "inline",
-          "plainText": "关键机制与边界",
-          "content": {
-            "type": "doc",
-            "content": [
-              {
-                "type": "paragraph",
-                "content": [
-                  {
-                    "type": "text",
-                    "text": "关键机制与边界",
+                    "text": "编辑状态保留；导出等待完整引用",
                     "marks": [
                       {
                         "type": "textStyle",
@@ -1569,14 +1577,7 @@
           }
         }
       },
-      "data": {
-        "order": "00000003",
-        "fontSize": 24,
-        "memberIds": [
-          "project:detail/02/01/preview",
-          "project:detail/02/01/visibility"
-        ]
-      }
+      "name": "离屏暂停绘制 编辑实例、焦点与选区保留；导出等待完整引用"
     },
     "project:detail/02/01/document": {
       "id": "project:detail/02/01/document",

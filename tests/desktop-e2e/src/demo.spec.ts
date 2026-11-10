@@ -17,6 +17,7 @@ import {
 } from '../../web-e2e/src/app-actions';
 import { canvasFiles } from './workspace-disk';
 import { activeTabTitle } from '../../web-e2e/src/tab-actions';
+import { cellBodyPoint } from '../../helpers/port-controls';
 
 const root = path.resolve(__dirname, '../../..');
 const nativeFiles = async (
@@ -130,12 +131,25 @@ test('built-in native workspace opens its diagrams and documents, follows links 
       .sort();
     expect(topics).toHaveLength(9);
     const openReference = async (cellId: string) => {
+      await active().getByTestId('canvas-status-fit').press('Enter');
       const header = canvas()
         .locator(
-          `[data-cell-id="${cellId}"] > [data-frame-header] > [data-frame-title-id] > rect`,
+          `[data-cell-id="${cellId}"] > [data-frame-header] > [data-frame-title-id]`,
         )
         .first();
-      await header.click();
+      const initial = (await header.boundingBox())!;
+      await page.mouse.move(
+        initial.x + initial.width / 2,
+        initial.y + initial.height / 2,
+      );
+      await page.keyboard.down('Control');
+      await page.mouse.wheel(0, -200);
+      await page.keyboard.up('Control');
+      await expect
+        .poll(async () => (await header.boundingBox())!.height)
+        .toBeGreaterThan(initial.height * 2);
+      const point = await cellBodyPoint(header);
+      await page.mouse.click(point.x, point.y);
       const bounds = (await header.boundingBox())!;
       await active().getByTestId('frame-open').click();
       await expect(active()).toHaveAttribute('data-pane-entrance', 'complete');
@@ -148,7 +162,7 @@ test('built-in native workspace opens its diagrams and documents, follows links 
       await active().getByTestId('navigation-return').click();
       const header = canvas()
         .locator(
-          `[data-cell-id="${cellId}"] > [data-frame-header] > [data-frame-title-id] > rect`,
+          `[data-cell-id="${cellId}"] > [data-frame-header] > [data-frame-title-id]`,
         )
         .first();
       await expect(header).toBeVisible();

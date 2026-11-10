@@ -283,12 +283,12 @@
         "strokeWidth": 1.5
       },
       "content": {
-        "label": "检查、消费验收与发布\n区分开发服务验收与生产构建验收；正式打包和发布由维护者执行。",
+        "label": "检查、消费验收与发布\n开发与生产构建分别验收；正式发布由维护者执行。",
         "text": {
           "schemaVersion": 1,
           "id": "project:overview/08/summary/2/text",
           "kind": "inline",
-          "plainText": "检查、消费验收与发布\n区分开发服务验收与生产构建验收；正式打包和发布由维护者执行。",
+          "plainText": "检查、消费验收与发布\n开发与生产构建分别验收；正式发布由维护者执行。",
           "content": {
             "type": "doc",
             "content": [
@@ -315,7 +315,7 @@
                 "content": [
                   {
                     "type": "text",
-                    "text": "区分开发服务验收与生产构建验收；正式打包和发布由维护者执行。",
+                    "text": "开发与生产构建分别验收；正式发布由维护者执行。",
                     "marks": [
                       {
                         "type": "textStyle",
@@ -331,7 +331,8 @@
             ]
           }
         }
-      }
+      },
+      "name": "检查、消费验收与发布 区分开发服务验收与生产构建验收；正式打包和发布由维护者执行。"
     },
     "project:overview/08/detail/1": {
       "id": "project:overview/08/detail/1",

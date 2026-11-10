@@ -196,7 +196,10 @@ export function WorkspaceSwitcherDialog(p: WorkspaceSwitcherDialogProps) {
           },
           {
             icon: BookOpen,
-            label: t('打开 Agent 范式库', 'Open Agent pattern library'),
+            label: t(
+              '打开 文档编写推荐库',
+              'Open Document authoring recommendations',
+            ),
             run: p.onOpenPatterns,
             testId: 'workspace-open-patterns',
           },

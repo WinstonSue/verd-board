@@ -1,9 +1,6 @@
 import type { WorkspaceFile } from './document-files';
-import {
-  workspaceFileId,
-  workspaceFileTitle,
-  isWorkspaceFile,
-} from './document-files';
+import { normalizeResourceKey } from '../host/workspace-host';
+import { workspaceFileId, isWorkspaceFile } from './document-files';
 import type { WorkspaceSession } from '../session/workspace-session';
 export interface Revision {
   id: string;
@@ -29,53 +26,18 @@ export async function readRevisions(session: WorkspaceSession) {
     return { manifest, expectedVersion: raw.version };
   } catch (error) {
     // Never treat a corrupt existing index as an empty one: CAS also rejects overwrites.
-    const entries = session.getState().entries;
-    if (entries.some((entry) => entry.path === manifestPath)) throw error;
+    const resources = session.getState().resources ?? [];
+    if (
+      resources.some(
+        (entry) => entry.key === normalizeResourceKey(manifestPath),
+      )
+    )
+      throw error;
     return {
       manifest: { version: 1, revisions: [] } as Manifest,
       expectedVersion: null,
     };
   }
-}
-export async function saveRevision(
-  session: WorkspaceSession,
-  file: WorkspaceFile,
-  name = '自动快照',
-) {
-  if (
-    !session.getState().documents.has(workspaceFileId(file)) &&
-    !session.getState().files.has(workspaceFileId(file))
-  )
-    throw new Error('Cannot archive a removed file');
-  const { manifest, expectedVersion } = await readRevisions(session);
-  const id = crypto.randomUUID();
-  const revision: Revision = {
-    id,
-    fileId: workspaceFileId(file),
-    title: workspaceFileTitle(file),
-    name,
-    at: Date.now(),
-    path: `.verd-resources/history/${id}.snapshot.json`,
-  };
-  manifest.revisions = [revision, ...manifest.revisions];
-  const receipt = await session.commitResources(
-    [
-      {
-        path: revision.path,
-        content: JSON.stringify(file),
-        expectedVersion: null,
-      },
-      {
-        path: manifestPath,
-        content: JSON.stringify(manifest),
-        expectedVersion,
-      },
-    ],
-    [workspaceFileId(file)],
-  );
-  if (receipt.outcome !== 'applied')
-    throw new Error('Version save conflicted; retry.');
-  return revision;
 }
 export async function readRevision(
   session: WorkspaceSession,
@@ -102,7 +64,15 @@ export async function restoreRevision(
     session.getState().documents.get(revision.fileId)?.file ??
     session.getState().files.get(revision.fileId)?.file;
   if (!current) throw new Error('Restore the deleted file from Trash first.');
-  await saveRevision(session, current, '恢复前');
+  const status = (await session.versions({ type: 'status' })).status;
+  const entry =
+    session.getState().documents.get(revision.fileId) ??
+    session.getState().files.get(revision.fileId);
+  if (
+    status.enabled &&
+    status.changes.some((change) => change.path === entry?.path)
+  )
+    throw new Error('Commit this file before restoring its legacy version.');
   const latest =
     session.getState().documents.get(revision.fileId)?.file ??
     session.getState().files.get(revision.fileId)?.file;
@@ -138,7 +108,11 @@ export async function storeAttachment(session: WorkspaceSession, file: File) {
         .replace(/[^a-z0-9]/g, '')
         .slice(0, 12) || 'bin';
   const path = `.verd-resources/assets/${hash}.${extension}`;
-  if (!session.getState().entries.some((entry) => entry.path === path)) {
+  if (
+    !(session.getState().resources ?? []).some(
+      (entry) => entry.key === normalizeResourceKey(path),
+    )
+  ) {
     const result = await session.commitResources([
       { path, content: bytes, expectedVersion: null },
     ]);
@@ -169,6 +143,7 @@ export async function inlineFileAssets(
   const visit = async (value: unknown): Promise<void> => {
     if (!value || typeof value !== 'object') return;
     const obj = value as Record<string, unknown>;
+    if (obj['type'] === 'attachment') return;
     if (
       typeof obj['src'] === 'string' &&
       obj['src'].startsWith('verd-asset:')

@@ -183,6 +183,13 @@ export interface WorkspaceEntryMeta {
   size?: number;
 }
 
+/** Project resources have logical keys, never content-tree paths. */
+export interface WorkspaceResourceMeta {
+  key: string;
+  version: FileVersion;
+  size: number;
+}
+
 export interface WorkspaceCanvasPayload {
   path: string;
   version: FileVersion;
@@ -214,6 +221,7 @@ export interface WorkspaceHostSnapshot {
   config: WorkspaceConfigSnapshot;
   session: WorkspaceSessionState | null;
   entries: WorkspaceEntryMeta[];
+  resources?: WorkspaceResourceMeta[];
   canvases: WorkspaceCanvasPayload[];
   /**
    * Parsed `*.verd-doc.json` payloads. Hosts that predate documents may
@@ -279,6 +287,8 @@ export interface CommitRequest {
   /** Stable id; retries with the same id return the original receipt. */
   transactionId: string;
   writes?: FileWriteOp[];
+  /** Paths are resource keys (assets/... or history/...), not workspace paths. */
+  resourceWrites?: FileWriteOp[];
   moves?: FileMoveOp[];
   mkdirs?: string[];
   /** Move files or directories into the trash area. */
@@ -308,6 +318,7 @@ export interface CommitReceipt {
   actual?: FileVersion | null;
   /** Post-commit digests for every written or moved-to path. */
   versions?: Record<string, FileVersion>;
+  resourceVersions?: Record<string, FileVersion>;
   trashEntries?: { path: string; entryId: string }[];
 }
 
@@ -351,7 +362,31 @@ export interface BuiltinWorkspaceUpdateInfo {
   version: string;
   hasBackups: boolean;
 }
+export interface WorkspaceHostCapabilities {
+  pickWorkspace: boolean;
+  openBuiltinWorkspace: boolean;
+  openPatternWorkspace: boolean;
+}
+
+/** Absent declarations preserve the contract of existing third-party hosts. */
+export const workspaceHostSupports = (
+  host: Pick<WorkspaceHost, 'capabilities'>,
+  capability: keyof WorkspaceHostCapabilities,
+): boolean => host.capabilities?.[capability] !== false;
+
+export const workspaceDisplayName = (
+  value: unknown,
+  fallback: string,
+): string =>
+  typeof value === 'string' && value.trim() ? value.trim() : fallback;
+
 export interface WorkspaceHost {
+  storageKind?: 'filesystem' | 'browser';
+  versionProvider?: { id: string };
+  versions?: import('./workspace-versions').WorkspaceVersionHost;
+  /** Optional for third-party hosts; legacy snapshots remain readable. */
+  git?: import('./workspace-git').WorkspaceGitHost;
+  capabilities?: Readonly<WorkspaceHostCapabilities>;
   readWorkspaceLocation?(handle: WorkspaceHandle): Promise<string>;
   revealWorkspaceLocation?(handle: WorkspaceHandle): Promise<void>;
   readBuiltinUpdate?(
@@ -387,6 +422,8 @@ export interface WorkspaceHost {
   readSnapshot(handle: WorkspaceHandle): Promise<WorkspaceHostSnapshot>;
   /** Read raw bytes for plain (non-canvas) files on demand. */
   readFile(handle: WorkspaceHandle, path: string): Promise<RawFileRead>;
+  readResource(handle: WorkspaceHandle, key: string): Promise<RawFileRead>;
+  openResourceExternal?(handle: WorkspaceHandle, path: string): Promise<void>;
   commit(
     handle: WorkspaceHandle,
     request: CommitRequest,
@@ -406,6 +443,35 @@ export interface WorkspaceHost {
 
 export const WORKSPACE_META_DIR = '.verdscrolls';
 export const LEGACY_WORKSPACE_META_DIR = '.verdboard';
+export const LEGACY_RESOURCE_DIR = '.verd-resources';
+export const RESOURCE_DIR = `${WORKSPACE_META_DIR}/resources`;
+
+export const isProjectInternalPath = (path: string) =>
+  path
+    .split('/')
+    .some((part) =>
+      [
+        WORKSPACE_META_DIR,
+        LEGACY_WORKSPACE_META_DIR,
+        LEGACY_RESOURCE_DIR,
+      ].includes(part),
+    );
+
+/** Also accepts the historical logical URI path without exposing its storage. */
+export const normalizeResourceKey = (input: string): string => {
+  const key = input.startsWith(`${LEGACY_RESOURCE_DIR}/`)
+    ? input.slice(LEGACY_RESOURCE_DIR.length + 1)
+    : input;
+  if (
+    !/^(assets|history)\/[a-zA-Z0-9][a-zA-Z0-9._-]*$/.test(key) ||
+    key.split('/').some((part) => part === '.' || part === '..')
+  )
+    throw new Error('Invalid resource key: ' + input);
+  return key;
+};
+
+export const resourceStoragePath = (key: string) =>
+  `${RESOURCE_DIR}/${normalizeResourceKey(key)}`;
 export const CANVAS_FILE_SUFFIX = '.verd.json';
 export const DOCUMENT_FILE_SUFFIX = '.verd-doc.json';
 
@@ -414,7 +480,11 @@ export const isDocumentPath = (path: string) =>
   path.endsWith(DOCUMENT_FILE_SUFFIX);
 
 const SEGMENT = /^[^/\\]+$/;
-const RESERVED = new Set([WORKSPACE_META_DIR, LEGACY_WORKSPACE_META_DIR]);
+const RESERVED = new Set([
+  WORKSPACE_META_DIR,
+  LEGACY_WORKSPACE_META_DIR,
+  LEGACY_RESOURCE_DIR,
+]);
 
 /**
  * App-facing paths are workspace-relative POSIX paths. They can never escape

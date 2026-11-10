@@ -25,6 +25,7 @@ export * from './i18n';
 export * from './verd-frame';
 export * from './workspace-empty';
 export * from './workspace-settings';
+export type { WorkspaceSkillsSettingsProps } from './workspace-skills-settings';
 export * from './workspace-tabs';
 export * from './workspace-file-navigation';
 export { bindWorkspaceAction } from './workspace-action-bindings';
@@ -68,7 +69,10 @@ export {
   WorkspaceDialogTabs,
   WorkspaceDesignProvider,
   useWorkspaceDesignVariables,
+  useWorkspaceMessage,
   WorkspaceButton,
   WorkspaceInput,
 } from './workspace-design';
 export { WorkspaceLinkEditor } from './workspace-link-editor';
+
+export { useSettingsDraftFlush } from './settings-draft';

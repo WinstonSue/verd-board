@@ -189,12 +189,12 @@
         "strokeWidth": 1.5
       },
       "content": {
-        "label": "导入解析与内容落地\n输入先解析与校验，确认后才修改；区分工作区文件导入和画布内插入。",
+        "label": "导入解析与内容落地\n输入先校验，确认后修改；文件导入与画布插入分开。",
         "text": {
           "schemaVersion": 1,
           "id": "project:overview/07/summary/1/text",
           "kind": "inline",
-          "plainText": "导入解析与内容落地\n输入先解析与校验，确认后才修改；区分工作区文件导入和画布内插入。",
+          "plainText": "导入解析与内容落地\n输入先校验，确认后修改；文件导入与画布插入分开。",
           "content": {
             "type": "doc",
             "content": [
@@ -221,7 +221,7 @@
                 "content": [
                   {
                     "type": "text",
-                    "text": "输入先解析与校验，确认后才修改；区分工作区文件导入和画布内插入。",
+                    "text": "输入先校验，确认后修改；文件导入与画布插入分开。",
                     "marks": [
                       {
                         "type": "textStyle",
@@ -237,7 +237,8 @@
             ]
           }
         }
-      }
+      },
+      "name": "导入解析与内容落地 输入先解析与校验，确认后才修改；区分工作区文件导入和画布内插入。"
     },
     "project:overview/07/summary/2": {
       "id": "project:overview/07/summary/2",

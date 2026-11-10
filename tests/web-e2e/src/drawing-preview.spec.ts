@@ -1,6 +1,8 @@
-import { selectHistoryAction } from './app-actions';
-import { setAppLanguage } from './app-actions';
-import { expect, test, type Locator, type Page } from '@playwright/test';
+import { observeContentWrites } from './service-routes';
+import { nodePort } from '../../helpers/port-controls';
+import { openHistoryAction, selectHistoryAction } from './app-actions';
+import { setAppLanguage, openActiveFile } from './app-actions';
+import { expect, test, type Locator, type Page } from './service-fixture';
 import { selectDrawingTool } from './drawing-tools';
 import { persistedWorkspace } from './workspace-nav';
 
@@ -15,8 +17,11 @@ const contour = (element: Locator) =>
     paths
       .filter(
         (path) =>
+          path
+            .closest('svg')
+            ?.matches('[aria-label="Frame canvas"], [data-preview-viewport]') &&
           !path.closest(
-            '[data-selection-handles], [data-vector-controls], [data-edge-hit], [data-vector-hit], [data-port-id]',
+            '[data-selection-handles], [data-vector-controls], [data-edge-hit], [data-vector-hit], [data-port-id], [data-interaction-stroke], [data-frame-control-layer]',
           ),
       )
       .map((path) => ({
@@ -42,6 +47,7 @@ test.beforeEach(async ({ page }) => {
   await setAppLanguage(page, 'zh');
   const skip = page.getByRole('button', { name: '跳过', exact: true });
   if (await skip.isVisible().catch(() => false)) await skip.click();
+  await openActiveFile(page);
 });
 
 test('every shape has a real pre-release contour matching the final renderer', async ({
@@ -155,7 +161,21 @@ test('text grids container content and pen styles preview their final appearance
     await start(page);
     const preview = draft(page).locator('[data-draft-cell-kind="freehand"]');
     await expect(preview).toHaveAttribute('stroke-width', String(width));
-    await expect(preview).toHaveAttribute('opacity', String(opacity));
+    expect(
+      await preview
+        .locator('path')
+        .first()
+        .evaluate((path) => {
+          let alpha = 1;
+          for (
+            let element: Element | null = path;
+            element && !element.hasAttribute('data-drawing-preview');
+            element = element.parentElement
+          )
+            alpha *= Number(getComputedStyle(element).opacity);
+          return alpha;
+        }),
+    ).toBe(opacity);
     const paths = await contour(preview);
     await page.mouse.up();
     expect(await contour(cells(page, 'freehand'))).toEqual(paths);
@@ -169,19 +189,7 @@ test('long freehand paths survive continuous zoom and remain movable without cam
   const errors: string[] = [];
   page.on('pageerror', (error) => errors.push(error.message));
   await page.setViewportSize({ width: 1280, height: 900 });
-  await page.evaluate(() => {
-    const state = window as unknown as { freehandZoomWrites: number };
-    state.freehandZoomWrites = 0;
-    for (const method of ['put', 'add', 'delete'] as const) {
-      const original = IDBObjectStore.prototype[method];
-      IDBObjectStore.prototype[method] = function (...args: any[]) {
-        // Per-tab camera/session state persists under `meta` — only document
-        // content writes (`files`/`trash`) indicate a drawing mutation.
-        if (['files', 'trash'].includes(this.name)) state.freehandZoomWrites++;
-        return original.apply(this, args as never);
-      } as typeof original;
-    }
-  });
+  await observeContentWrites(page, 'freehandZoomWrites');
   await selectDrawingTool(page, '画笔');
   await page.getByRole('button', { name: '笔型', exact: true }).click();
   await page
@@ -291,9 +299,10 @@ test('long freehand paths survive continuous zoom and remain movable without cam
   );
   expect(await savedStroke()).toEqual(original);
   // Only the drawing and its move occupy history; zoom has no undo entries.
-  await undo.click();
+  await selectHistoryAction(page, '撤销');
   await expect(stroke).toHaveCount(0);
-  await expect(undo).toBeDisabled();
+  await expect(await openHistoryAction(page, '撤销')).toBeDisabled();
+  await page.keyboard.press('Escape');
   expect(errors).toEqual([]);
 });
 
@@ -344,7 +353,9 @@ test('line arrow and curve have appropriate geometry and markers before and afte
     });
   await page.mouse.click(point.x, point.y);
   await expect(
-    cells(page, 'arrow').nth(2).locator('[data-edge-route-point]'),
+    canvas(page).locator(
+      `[data-edge-controls="${await cells(page, 'arrow').nth(2).getAttribute('data-cell-id')}"] [data-edge-route-point]`,
+    ),
   ).toHaveCount(1);
 });
 
@@ -390,12 +401,8 @@ test('pending port connections and eraser candidates show feedback and can be ca
   await page.getByTestId('shape-rectangle').click();
   await page.mouse.click(box.x + 600, box.y + 200);
   await selectDrawingTool(page, '选择');
-  const source = cells(page, 'geometry')
-    .nth(0)
-    .locator('[data-port-id="right"]');
-  const target = cells(page, 'geometry')
-    .nth(1)
-    .locator('[data-port-id="left"]');
+  const source = await nodePort(cells(page, 'geometry').nth(0), 'right');
+  const target = await nodePort(cells(page, 'geometry').nth(1), 'left');
   await cells(page, 'geometry').first().hover();
   await source.click();
   await expect(source).toHaveAttribute('data-port-active', 'true');

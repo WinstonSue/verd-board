@@ -6,6 +6,7 @@ export const copyRoutingResult = (
   result: OrthogonalRoutingResult,
 ): OrthogonalRoutingResult => ({
   status: result.status,
+  ...(result.reason ? { reason: result.reason } : {}),
   points: result.points.map(([x, y]) => [x, y]),
 });
 export const sameRoutingResult = (

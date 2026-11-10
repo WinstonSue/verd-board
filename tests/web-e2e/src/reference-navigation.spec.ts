@@ -1,4 +1,5 @@
-import { expect, test, type Page } from '@playwright/test';
+import { openActiveFile } from './app-actions';
+import { expect, test, type Page } from './service-fixture';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { activeTabTitle } from './tab-actions';
@@ -102,6 +103,7 @@ test('groups repeated embeds, distinguishes entry from ownership, and restores r
       console.error('Navigation console error:', message.text());
   });
   await page.goto('/');
+  await openActiveFile(page);
   await skipOnboarding(page);
   const files = [
     target,
@@ -189,7 +191,7 @@ test('groups repeated embeds, distinguishes entry from ownership, and restores r
     .click();
   await expect(
     page.getByRole('menu', { name: '文件信息', exact: true }),
-  ).toContainText('所属画布：归属画布');
+  ).not.toContainText('所属画布');
   await page.keyboard.press('Escape');
   await navigation(page).getByTestId('navigation-return').click();
   await expect(
@@ -239,6 +241,10 @@ test('groups repeated embeds, distinguishes entry from ownership, and restores r
   await expect(
     page.getByText('引用已被移除，已返回来源文件。', { exact: true }),
   ).toBeVisible();
+  await page.mouse.move(0, 0);
+  await expect(
+    page.getByText('引用已被移除，已返回来源文件。', { exact: true }),
+  ).toBeHidden();
   await expect(
     navigation(page).locator('.workspace-file-navigation-title'),
   ).toHaveText('归属画布');

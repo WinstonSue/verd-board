@@ -16,6 +16,7 @@ import { ConfigPanel, defineSettings } from '@sue/board-react';
 import './settings-sections.scss';
 import { useState } from 'react';
 import { type BuiltinWorkspaceSettingsProps } from './builtin-workspace-settings';
+import type { WorkspaceSkillsSettingsProps } from './workspace-skills-settings';
 
 interface ProjectInfo {
   description: string;
@@ -30,6 +31,15 @@ export interface WorkspaceSettingsConfig {
 import { type WorkspaceTrashProps } from './workspace-trash';
 
 export interface WorkspaceSettingsProps {
+  versioning?: {
+    render(options: {
+      readonly: boolean;
+      onBusyChange(busy: boolean): void;
+    }): import('react').ReactNode;
+  };
+
+  skills?: WorkspaceSkillsSettingsProps;
+  onRegisterFlush?(flush: (() => Promise<boolean>) | null): void;
   initialSection?: 'general' | 'trash';
   fileChoices?: { id: string; title: string; path: string }[];
   builtin?: BuiltinWorkspaceSettingsProps['source'];
@@ -45,9 +55,10 @@ export interface WorkspaceSettingsProps {
     | import('@sue/schema-settings-react').CommitResult
     | Promise<import('@sue/schema-settings-react').CommitResult>;
   readonly?: boolean;
-  storage?: 'desktop' | 'browser';
+  storage?: 'desktop' | 'filesystem' | 'browser';
   storageLocation?: string;
   onOpenStorage?(): Promise<void>;
+  onMigrateBrowserData?(): void;
   persistence?: { status: string; error?: string; onRetry(): void };
   trash?: Omit<WorkspaceTrashProps, 'locale' | 'onBusyChange'>;
   onBack(): void;

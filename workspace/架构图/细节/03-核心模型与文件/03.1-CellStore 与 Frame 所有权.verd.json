@@ -171,7 +171,9 @@
                       {
                         "type": "textStyle",
                         "attrs": {
-                          "fontSize": "24px"
+                          "fontSize": "24px",
+                          "color": "#ffffff",
+                          "colorMode": "custom"
                         }
                       }
                     ]
@@ -184,12 +186,15 @@
       },
       "appearance": {
         "fill": "#0f766e",
-        "strokeColor": "#0f766e"
+        "strokeColor": "#0f766e",
+        "textColor": "#ffffff"
       },
       "data": {
         "layout": "standard",
-        "rightNodeCount": 20
-      }
+        "rightNodeCount": 20,
+        "maxNodeWidth": 320
+      },
+      "name": "CellStore 与 Frame 所有权"
     },
     "demo:model/node/2": {
       "id": "demo:model/node/2",
@@ -837,12 +842,12 @@
         "outline": "roundRectangle"
       },
       "content": {
-        "label": "view.theme 持久化；camera 不持久化",
+        "label": "view.theme 保存；camera 仅内存",
         "text": {
           "schemaVersion": 1,
           "id": "demo:model/node/1-4/text",
           "kind": "inline",
-          "plainText": "view.theme 持久化；camera 不持久化",
+          "plainText": "view.theme 保存；camera 仅内存",
           "content": {
             "type": "doc",
             "content": [
@@ -851,7 +856,7 @@
                 "content": [
                   {
                     "type": "text",
-                    "text": "view.theme 持久化；camera 不持久化",
+                    "text": "view.theme 保存；camera 仅内存",
                     "marks": [
                       {
                         "type": "textStyle",
@@ -879,7 +884,8 @@
           "strokeColor": "#2563eb",
           "strokeWidth": 2
         }
-      }
+      },
+      "name": "view.theme 持久化；camera 不持久化"
     },
     "demo:model/node/2-1": {
       "id": "demo:model/node/2-1",

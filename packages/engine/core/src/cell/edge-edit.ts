@@ -1,171 +1,7 @@
-import { edgeTerminalPosition, portAnchor } from '../geometry/edge';
-import {
-  hitNodeShape,
-  nodeShapeGeometry,
-  unrotateNodePoint,
-} from '../geometry/node';
 import { simplifyOrthogonal } from '../geometry/route';
 import type { Point } from '../interfaces/point';
-import { createCellRegistry, type CellRegistry } from './registry';
-import {
-  isEdgeCell,
-  isFrameCell,
-  isNodeCell,
-  type CellStore,
-  type EdgeCell,
-  type EdgeTerminal,
-  type NodeCell,
-} from './types';
+import type { EdgeCell } from './types';
 
-export const availableEdgePorts = (
-  store: CellStore,
-  node: NodeCell,
-  end: 'source' | 'target',
-  excludingEdgeId?: string,
-) =>
-  (node.ports ?? []).filter((port) => {
-    if (port.direction === (end === 'source' ? 'input' : 'output'))
-      return false;
-    if (port.maxConnections === undefined) return true;
-    const count = Object.values(store.cells).filter(
-      (edge) =>
-        isEdgeCell(edge) &&
-        edge.id !== excludingEdgeId &&
-        [edge.source, edge.target].some(
-          (terminal) =>
-            'cellId' in terminal &&
-            terminal.cellId === node.id &&
-            terminal.portId === port.id,
-        ),
-    ).length;
-    return count < port.maxConnections;
-  });
-
-/** Only direct siblings are eligible: snapping can never create a cross-Frame edge. */
-export const snapEdgeTerminal = (
-  store: CellStore,
-  frameId: string,
-  point: Point,
-  end: 'source' | 'target',
-  kind: string,
-  tolerance = 12,
-  registry: CellRegistry = createCellRegistry(),
-  candidates?: readonly string[],
-  opposite?: { terminal: EdgeTerminal; edgeId?: string },
-): EdgeTerminal => {
-  const frame = store.cells[frameId];
-  if (!isFrameCell(frame)) throw new Error('Missing edge frame');
-  for (const id of [...(candidates ?? frame.children)].reverse()) {
-    const node = store.cells[id];
-    if (!isNodeCell(node) || isFrameCell(node) || node.hidden || node.locked)
-      continue;
-    if (registry.get(kind)?.canConnect?.(node) === false) continue;
-    const ports = availableEdgePorts(store, node, end, opposite?.edgeId);
-    const nearest = ports
-      .map((port) => {
-        const [x, y] = portAnchor(node.geometry, port).point;
-        return { port, distance: Math.hypot(x - point[0], y - point[1]) };
-      })
-      .sort((a, b) => a.distance - b.distance);
-    const inside = hitNodeShape(node, point, tolerance);
-    if (nearest[0]?.distance <= tolerance)
-      return { cellId: node.id, portId: nearest[0].port.id };
-    if (
-      nearest.length &&
-      registry.get(kind)?.freeTerminals !== true &&
-      inside
-    ) {
-      const other =
-        opposite && 'cellId' in opposite.terminal
-          ? store.cells[opposite.terminal.cellId]
-          : undefined;
-      const preferred = isNodeCell(other)
-        ? registry
-            .get(kind)
-            ?.preferredPortSide?.(node.geometry, other.geometry, end)
-        : undefined;
-      const candidate =
-        nearest.find(({ port }) => port.side === preferred) ?? nearest[0];
-      return { cellId: node.id, portId: candidate.port.id };
-    }
-    if (registry.get(kind)?.freeTerminals !== true || !inside) continue;
-    const g = node.geometry,
-      local = unrotateNodePoint(g, point);
-    const boundary = nodeShapeGeometry(g.outline)?.nearest?.(g, local) ?? local;
-    return {
-      cellId: node.id,
-      anchor: [
-        (boundary[0] - g.x) / (g.width || 1),
-        (boundary[1] - g.y) / (g.height || 1),
-      ],
-    };
-  }
-  return { point: [...point] };
-};
-export const replaceEdgeTerminal = (
-  store: CellStore,
-  edge: EdgeCell,
-  end: 'source' | 'target',
-  terminal: EdgeTerminal,
-): EdgeCell => {
-  const next = { ...edge, [end]: terminal };
-  if (
-    next.route.mode !== 'orthogonal' &&
-    'points' in next.route &&
-    next.route.points
-  ) {
-    const points = next.route.points.map((p) => [...p] as Point);
-    points[end === 'source' ? 0 : points.length - 1] = edgeTerminalPosition(
-      store,
-      terminal,
-      end === 'source' ? next.target : next.source,
-    ).point;
-    next.route = { ...next.route, points };
-  }
-  return next;
-};
-
-/** Capture derived attachment points only when an automatic connector becomes
- * an authored path. Otherwise its endpoints would snap back to side midpoints. */
-export const bindEdgeRouteTerminals = (
-  store: CellStore,
-  edge: EdgeCell,
-  route: readonly Point[],
-): EdgeCell => {
-  if (
-    !['auto', 'orthogonal'].includes(edge.route.mode) ||
-    ('points' in edge.route && edge.route.points?.length) ||
-    route.length < 2
-  )
-    return edge;
-  let next = edge;
-  for (const end of ['source', 'target'] as const) {
-    const terminal = edge[end];
-    if (!('cellId' in terminal) || terminal.portId || terminal.anchor) continue;
-    const node = store.cells[terminal.cellId];
-    if (
-      !isNodeCell(node) ||
-      node.geometry.width <= 0 ||
-      node.geometry.height <= 0
-    )
-      continue;
-    const position = end === 'source' ? route[0] : route.at(-1)!;
-    const point = node.geometry.rotation
-      ? unrotateNodePoint(node.geometry, position)
-      : position;
-    next = {
-      ...next,
-      [end]: {
-        ...terminal,
-        anchor: [
-          (point[0] - node.geometry.x) / node.geometry.width,
-          (point[1] - node.geometry.y) / node.geometry.height,
-        ],
-      },
-    };
-  }
-  return next;
-};
 export const moveEdgeRoutePoint = (
   edge: EdgeCell,
   route: readonly Point[],
@@ -189,6 +25,7 @@ export const moveEdgeRoutePoint = (
       ...edge,
       route: {
         mode: 'orthogonal',
+        origin: 'manual',
         points: simplifyOrthogonal(points),
         ...(edge.route.strategy ? { strategy: edge.route.strategy } : {}),
       },
@@ -196,7 +33,11 @@ export const moveEdgeRoutePoint = (
   }
   return {
     ...edge,
-    route: { mode: edge.route.mode === 'curve' ? 'curve' : 'fixed', points },
+    route: {
+      mode: edge.route.mode === 'curve' ? 'curve' : 'fixed',
+      points,
+      origin: 'manual',
+    },
   };
 };
 export const moveEdgeSegment = (
@@ -226,6 +67,7 @@ export const moveEdgeSegment = (
       ...edge,
       route: {
         mode: 'orthogonal',
+        origin: 'manual',
         points: simplifyOrthogonal(points),
         ...(edge.route.strategy ? { strategy: edge.route.strategy } : {}),
       },
@@ -234,7 +76,11 @@ export const moveEdgeSegment = (
   points.splice(index + 1, 0, [...point]);
   return {
     ...edge,
-    route: { mode: edge.route.mode === 'curve' ? 'curve' : 'fixed', points },
+    route: {
+      mode: edge.route.mode === 'curve' ? 'curve' : 'fixed',
+      points,
+      origin: 'manual',
+    },
   };
 };
 export const polylineClosestPosition = (

@@ -283,12 +283,12 @@
         "strokeWidth": 1.5
       },
       "content": {
-        "label": "工作区会话与宿主数据流\nWorkspaceSession 是工作区唯一写入口；外部宿主意图详见⑤.3。",
+        "label": "工作区会话与宿主数据流\nWorkspaceSession 统一写入；宿主意图见⑤.3。",
         "text": {
           "schemaVersion": 1,
           "id": "project:overview/02/summary/2/text",
           "kind": "inline",
-          "plainText": "工作区会话与宿主数据流\nWorkspaceSession 是工作区唯一写入口；外部宿主意图详见⑤.3。",
+          "plainText": "工作区会话与宿主数据流\nWorkspaceSession 统一写入；宿主意图见⑤.3。",
           "content": {
             "type": "doc",
             "content": [
@@ -315,7 +315,7 @@
                 "content": [
                   {
                     "type": "text",
-                    "text": "WorkspaceSession 是工作区唯一写入口；外部宿主意图详见⑤.3。",
+                    "text": "WorkspaceSession 统一写入；宿主意图见⑤.3。",
                     "marks": [
                       {
                         "type": "textStyle",
@@ -331,7 +331,8 @@
             ]
           }
         }
-      }
+      },
+      "name": "工作区会话与宿主数据流 WorkspaceSession 是工作区唯一写入口；外部宿主意图详见⑤.3。"
     },
     "project:overview/02/detail/1": {
       "id": "project:overview/02/detail/1",

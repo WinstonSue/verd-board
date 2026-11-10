@@ -1,6 +1,7 @@
 import { memoizeCellValidationRead } from './validation-read-context';
 import type { NodeOutline } from '../geometry/shape';
 import type { Point } from '../interfaces/point';
+import type { RectangleClient } from '../interfaces/rectangle-client';
 import { cellDeletionLocked, groupLeafMembers } from './group';
 import { initializeNodeName } from './name';
 import {
@@ -28,6 +29,10 @@ import { validateCellStore } from './validation';
 export { memoizeCellValidationRead } from './validation-read-context';
 export * from './arrangement';
 export * from './layout-plan';
+export * from './geometry-policy';
+export * from './domain-layout';
+export * from './arrangement-graph';
+export * from './relationship-layout';
 export * from './clipboard';
 export * from './commands';
 export * from './edge-edit';
@@ -780,6 +785,10 @@ export interface CellUtil {
   copyWithEndpoints?: boolean;
   translateable?: boolean;
   routingObstacle?: boolean;
+  routingObstacles?: (
+    cell: Cell,
+    geometry?: NodeGeometry,
+  ) => readonly import('../geometry/obstacle-route').RoutingObstacle[];
   translate?: (cell: Cell, delta: Point) => Cell;
   retainOnSourceDeletion?: boolean;
   groupable?: boolean;
@@ -788,11 +797,15 @@ export interface CellUtil {
   orthogonalRoute?: boolean;
   lanes?: (cell: Cell) => readonly import('./lanes').CellLane[];
   withLaneMembers?: (cell: Cell, tracks: ReadonlyMap<string, string[]>) => Cell;
+  growLanes?: (
+    cell: Cell,
+    bounds: ReadonlyMap<string, RectangleClient>,
+  ) => Cell;
   preferredPortSide?: (
     node: NodeGeometry,
     other: NodeGeometry,
     end: 'source' | 'target',
-  ) => import('./types').PortSide;
+  ) => import('../port').PortSide;
   freeTerminals?: boolean;
   ownerKind?: string;
   canConnect?: (node: Cell) => boolean;

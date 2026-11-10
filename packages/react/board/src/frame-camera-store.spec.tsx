@@ -29,6 +29,29 @@ const mount = () => {
 };
 
 describe('camera output subscriptions', () => {
+  it('publishes connection targets only to old/new cells independently of hover', () => {
+    const test = mount();
+    const a = vi.fn(),
+      b = vi.fn(),
+      other = vi.fn();
+    test.camera.subscribeCell('a', a);
+    test.camera.subscribeCell('b', b);
+    test.camera.subscribeCell('other', other);
+    test.camera.setHovered('other');
+    other.mockClear();
+    test.camera.setConnectionTarget('a');
+    test.camera.setConnectionTarget('a');
+    test.camera.setConnectionTarget('b');
+    test.camera.leave('a');
+    expect(test.camera.getConnectionTargetId()).toBe('b');
+    expect(test.camera.getHoveredId()).toBe('other');
+    expect(a).toHaveBeenCalledTimes(2);
+    expect(b).toHaveBeenCalledTimes(1);
+    expect(other).not.toHaveBeenCalled();
+    test.camera.setConnectionTarget(null);
+    expect(b).toHaveBeenCalledTimes(2);
+    expect(test.camera.getConnectionTargetId()).toBeNull();
+  });
   it('notifies only the old/new hovered cell and ignores late leaves', () => {
     const test = mount();
     const a = vi.fn(),

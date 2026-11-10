@@ -12,18 +12,20 @@ import {
   createCanvasTextSchema,
   createDocumentHeadingSlugger,
 } from '@sue/board-react-text/schema';
-import { type CellRegistry } from '@sue/board-core';
+import {
+  findPort,
+  isEdgeCell,
+  isNodeCell,
+  type CellRegistry,
+} from '@sue/board-core';
+import { WorkflowKind } from '@sue/board-workflow';
 import {
   isWorkspaceFile,
   workspaceFileId,
   type WorkspaceFile,
 } from './documents/document-files';
 import { validateWorkspaceReferences } from './documents/workspace-references';
-import {
-  validateFrameFiles,
-  buildOrganizationIndex,
-  type FrameFileV2,
-} from './frames/frame-files';
+import { validateFrameFiles, type FrameFileV2 } from './frames/frame-files';
 import { createWorkspaceCellRegistry } from './frames/plugins';
 
 export interface AuthoringDiagnostic {
@@ -48,8 +50,9 @@ export const WORKSPACE_RULES = {
   'text.cache': 'Derive plainText from content using deriveBoardTextPlainText.',
   'text.schema': 'Use the actual editor schema returned by describe.',
   'frame.invalid': 'Use the registered cell kinds, scene membership and ports.',
+  'workflow.port-direction':
+    'Prefer top/left inputs and bottom/right outputs. Loops or necessary branches may keep an exception; confirm it in the preview.',
   'reference.invalid': 'References must target the correct native file kind.',
-  'organization.invalid': 'Follow supported standalone/subgraph ownership.',
   'link.invalid': 'Use supported external URLs or stable verd workspace links.',
   'link.file':
     'Create the linked file in the same workspace or correct its ID.',
@@ -193,15 +196,40 @@ export function validateNativeWorkspace(
         cellId: issue.cellId,
         path: paths.get(issue.frameId ?? ''),
       });
-    for (const issue of buildOrganizationIndex(frames).diagnostics)
-      report('organization.invalid', issue.message, {
-        fileId: issue.frameId,
-        path: paths.get(issue.frameId ?? ''),
-      });
   } catch (error) {
     report('frame.invalid', String(error));
   }
   if (!strict) return diagnostics;
+  for (const file of frames)
+    for (const edge of Object.values(file.cells)) {
+      if (!isEdgeCell(edge) || edge.kind !== WorkflowKind.workflowEdge)
+        continue;
+      for (const end of ['source', 'target'] as const) {
+        const terminal = edge[end];
+        if (!('cellId' in terminal) || !terminal.portId) continue;
+        const node = file.cells[terminal.cellId];
+        const port = isNodeCell(node)
+          ? findPort(node, terminal.portId)
+          : undefined;
+        if (!port) continue;
+        if (
+          end === 'source'
+            ? port.side === 'top' || port.side === 'left'
+            : port.side === 'bottom' || port.side === 'right'
+        )
+          report(
+            'workflow.port-direction',
+            `${end} uses the ${port.side} port`,
+            {
+              severity: 'warning',
+              fileId: file.frame.id,
+              path: paths.get(file.frame.id),
+              cellId: edge.id,
+              pointer: `/cells/${edge.id.replace(/~/g, '~0').replace(/\//g, '~1')}/${end}/portId`,
+            },
+          );
+      }
+    }
   const headings = new Map<string, Set<string>>();
   const owners = new Map<string, string>();
   for (const [id, file] of files) {

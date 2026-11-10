@@ -1,4 +1,29 @@
+import {
+  buildSelectedEndpointPlan,
+  terminalKey,
+  portKey,
+  portsCoincide,
+  PORT_COINCIDENCE_EPSILON,
+  resolvePortGroup,
+  type PortCandidate,
+  type ResolvedPortGroup,
+  type SelectedEndpointPlan,
+} from './frame-port-model';
+import {
+  FrameControlHandle,
+  FrameControlLayer,
+  FramePortSubscription,
+  FrameSelectedEndpointLayer,
+} from './frame-port-controls';
+import {
+  connectionDragState,
+  resolveConnectionDrag,
+  type ConnectionDragState,
+} from './frame-connection-drag';
+import { planWaypointRemoval } from './frame-edge-waypoints';
+import { FrameMenu } from './frame-menu';
 import { FrameVirtualLayer } from './frame-virtual-layer';
+import { useFrameCursor } from './frame-control-cursor';
 import { shouldActivateRichTextLink } from '@sue/board-react-text';
 import {
   resolveBoardTheme,
@@ -47,15 +72,16 @@ import {
 import {
   alignCells,
   applyCellOperations,
-  planCellLayout,
+  planGeometryLayout,
+  type GeometryDiagnostic,
   resolveCellArrangementScope,
   arrangementEdgeIds,
   rerouteEdges,
-  optimizeEdges,
+  planOptimizeEdges,
   optimizableEdgeIds,
   arrangementAvailability,
   assertRegisteredCellKinds,
-  bindEdgeRouteTerminals,
+  bindRouteTerminals,
   cellArrangementBounds,
   collectArrangementBlocks,
   copyCellFragment,
@@ -65,6 +91,7 @@ import {
   createDefaultShapeGeometryRegistry,
   createEdgeRoutingContext,
   frameEdgeCrossingJumps,
+  edgeDecorationSafetyBounds,
   curvePath,
   deleteCells,
   distanceToPolyline,
@@ -72,7 +99,7 @@ import {
   edgeLabelLayout,
   edgePolyline,
   edgeRoutePoints,
-  edgeTerminalPosition,
+  resolveTerminal,
   fitFrameContent,
   flattenCurve,
   focusedCellIds,
@@ -106,9 +133,10 @@ import {
   planCellPaste,
   polylineClosestPosition,
   polylinePath,
-  portAnchor,
-  relativeAnchor,
-  replaceEdgeTerminal,
+  resolvePort,
+  findPort,
+  resolveAnchor,
+  replaceTerminal,
   resizeNodeGeometry,
   rotateNodeGeometry,
   roundNodeGeometry,
@@ -116,8 +144,7 @@ import {
   selectionAllows,
   selectionObjectAtFocus,
   setCellsLocked,
-  availableEdgePorts,
-  snapEdgeTerminal,
+  availablePorts,
   stripFrameViewports,
   translateCellSelection,
   ungroupCells,
@@ -448,6 +475,11 @@ export interface FrameCanvasController {
   findOccurrence(occurrenceId: string): FrameCanvasController | null;
   getActionState(id: string, args?: unknown): ActionState;
   getAutoCalculation(): FrameAutoCalculationConfig;
+  getGeometryDiagnostics(): readonly GeometryDiagnostic[];
+  applyGeometryLayout(
+    selection: CellSelection,
+    style: import('@sue/board-core').CellLayoutStyle,
+  ): Promise<FrameIntentResult>;
   setAutoLayoutStyle(style: import('@sue/board-core').CellLayoutStyle): void;
   executeAction(
     id: string,
@@ -710,6 +742,15 @@ const rejectPreviewIntent = async (): Promise<FrameIntentResult> => ({
   message: 'Drawing previews cannot edit the document',
 });
 type DrawingTool = Extract<FrameCanvasTool, { complete: unknown }>;
+interface WaypointContext {
+  rootFrameId: string;
+  frameId: string;
+  store: CellStore;
+  displayStore: CellStore;
+  edge: EdgeCell;
+  points: readonly Point[];
+  index: number;
+}
 interface ConnectionDraft {
   cellId: string;
   portId: string;
@@ -720,6 +761,8 @@ interface ConnectionDraft {
   point: Point;
   target: EdgeCell['target'];
   scale: number;
+  start: Point;
+  dragged?: boolean;
 }
 
 const defaultCamera = (): import('@sue/board-core').Viewport => ({
@@ -938,19 +981,16 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
   );
   const [dragging, setDragging] = useState(false);
   const spaceHandRef = useRef(false);
-  useEffect(() => {
-    const release = (event: KeyboardEvent) => {
-      if (event.code === 'Space') spaceHandRef.current = false;
-    };
-    window.addEventListener('keyup', release);
-    return () => window.removeEventListener('keyup', release);
-  }, []);
   const rightDragRef = useRef<{
     pointerId: number;
     x: number;
     y: number;
     moved: boolean;
+    waypoint?: WaypointContext;
   } | null>(null);
+  const [waypointMenu, setWaypointMenu] = useState<
+    (WaypointContext & { point: Point }) | null
+  >(null);
   const presentTapRef = useRef<{
     pointerId: number;
     x: number;
@@ -973,7 +1013,47 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
     index: number;
   } | null>(null);
   const [failure, setFailure] = useState<string | null>(null);
+  const [geometryDiagnostics, setGeometryDiagnostics] = useState<
+    readonly GeometryDiagnostic[]
+  >([]);
+  const geometryDiagnosticsRef = useRef<readonly GeometryDiagnostic[]>([]);
+  const publishGeometryDiagnostics = (
+    diagnostics: readonly GeometryDiagnostic[],
+  ) => {
+    geometryDiagnosticsRef.current = diagnostics;
+    setGeometryDiagnostics(diagnostics);
+  };
   const svgRef = useRef<SVGSVGElement>(null);
+  const toolCursor =
+    props.tool?.mode === 'hand'
+      ? 'grab'
+      : props.tool?.mode === 'erase'
+        ? 'crosshair'
+        : undefined;
+  const canvasCursor = useFrameCursor(
+    svgRef,
+    spaceHandRef.current ? 'grab' : toolCursor,
+  );
+  useEffect(() => {
+    const release = (event: KeyboardEvent | Event) => {
+      if (event.type !== 'blur' && (event as KeyboardEvent).code !== 'Space')
+        return;
+      spaceHandRef.current = false;
+      canvasCursor.setBase(
+        propsRef.current.tool?.mode === 'hand'
+          ? 'grab'
+          : propsRef.current.tool?.mode === 'erase'
+            ? 'crosshair'
+            : undefined,
+      );
+    };
+    window.addEventListener('keyup', release);
+    window.addEventListener('blur', release);
+    return () => {
+      window.removeEventListener('keyup', release);
+      window.removeEventListener('blur', release);
+    };
+  }, [canvasCursor]);
   const pointFromEventRef = useRef<
     (event: { clientX: number; clientY: number }) => Point
   >(() => [0, 0]);
@@ -1193,6 +1273,8 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
       lastIntentPrediction.current = { before: runtime.store, expected };
       const settleAutoConfig = () => {
         if (!alive.current || propsRef.current.suspended) return;
+        if (prepared.diagnostics.length)
+          publishGeometryDiagnostics(prepared.diagnostics);
         const config = autoCalculationRef.current;
         const next = pruneAutoCalculationConfig(expected, config);
         if (next !== config) {
@@ -1890,17 +1972,31 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
           command.axis,
           runtime.registry,
         );
-      else if (command.type === 'layout')
-        operations = planCellLayout(
+      else if (
+        command.type === 'layout' ||
+        command.type === 'optimize-routes'
+      ) {
+        const plan =
+          command.type === 'layout'
+            ? planGeometryLayout(
+                store,
+                selection,
+                command.style,
+                runtime.registry,
+              )
+            : planOptimizeEdges(
+                store,
+                arrangementEdgeIds(store, selection),
+                runtime.registry,
+              );
+        operations = plan.operations;
+        publishGeometryDiagnostics(plan.diagnostics);
+      } else if (command.type === 'reroute')
+        operations = rerouteEdges(
           store,
-          selection,
-          command.style,
+          arrangementEdgeIds(store, selection),
           runtime.registry,
         );
-      else if (command.type === 'reroute' || command.type === 'optimize-routes')
-        operations = (
-          command.type === 'optimize-routes' ? optimizeEdges : rerouteEdges
-        )(store, arrangementEdgeIds(store, selection), runtime.registry);
       else if (command.type === 'group') {
         const groupId = transactionId();
         operations = groupCells(
@@ -1931,7 +2027,9 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
         {
           layout: command.type === 'layout',
           edges:
-            command.type === 'optimize-routes' || command.type === 'reroute',
+            command.type === 'layout' ||
+            command.type === 'optimize-routes' ||
+            command.type === 'reroute',
         },
       );
       if (keyboardSelectionRef.current === request) {
@@ -2488,6 +2586,21 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
         return null;
       },
       getAutoCalculation: () => autoCalculationRef.current,
+      getGeometryDiagnostics: () => geometryDiagnosticsRef.current,
+      applyGeometryLayout: async (selection, style) => {
+        const plan = planGeometryLayout(
+          selectionDisplayStore(),
+          selection,
+          style,
+          runtime.registry,
+        );
+        publishGeometryDiagnostics(plan.diagnostics);
+        if (!plan.operations.length) return { status: 'accepted' };
+        return dispatch(
+          { id: transactionId(), operations: plan.operations },
+          { layout: true, edges: true },
+        );
+      },
       setAutoLayoutStyle: (style) => {
         autoLayoutStyleRef.current = style;
         const config = autoCalculationRef.current;
@@ -2601,6 +2714,8 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
   const cameraOwnerRef = useRef(frameId);
   const cameraFrameRef = useRef<number | null>(null);
   const viewportMotionRef = useRef(0);
+  const automaticFitInterrupted = useRef(false);
+  const refreshAutomaticFit = useRef<() => void>(() => {});
   const cancelCameraFrame = useCallback(() => {
     if (cameraFrameRef.current === null) return;
     if (typeof window.cancelAnimationFrame === 'function')
@@ -3094,6 +3209,8 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
   fitRef.current = fitCanvas;
   useLayoutEffect(() => {
     cancelCameraFrame();
+    automaticFitInterrupted.current = false;
+    let automaticMotion = viewportMotionRef.current;
     cameraOwnerRef.current = frameId;
     const nestedOrigin = propsRef.current.viewportOrigin;
     cameraRef.current = nestedOrigin
@@ -3112,17 +3229,37 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
     paintCameraRef.current(cameraRef.current);
     cameraStore.publish(cameraRef.current);
     publishViewStateRef.current();
-    let initialized = propsRef.current.autoFit === false;
+    const automatic = propsRef.current.autoFit !== false;
+    let initialized = !automatic;
+    let fittedViewport = '';
     const fitIfNeeded = () => {
       const rect = captureViewportRect();
-      if (initialized) {
-        publishViewStateRef.current();
+      if (initialized) publishViewStateRef.current();
+      // Shell measurements can change after the first layout. Keep the
+      // automatic camera current until explicit navigation or input takes over.
+      if (
+        !automatic ||
+        automaticFitInterrupted.current ||
+        viewportMotionRef.current !== automaticMotion
+      )
         return;
-      }
       if (!rect || rect.width < 8 || rect.height < 8) return;
+      const insets = propsRef.current.viewportInsets;
+      const viewport = [
+        rect.width,
+        rect.height,
+        insets?.top,
+        insets?.right,
+        insets?.bottom,
+        insets?.left,
+      ].join(':');
+      if (initialized && viewport === fittedViewport) return;
       initialized = true;
       fitRef.current(propsRef.current.initialFocusCellId);
+      automaticMotion = viewportMotionRef.current;
+      fittedViewport = viewport;
     };
+    refreshAutomaticFit.current = fitIfNeeded;
     fitIfNeeded();
     const observer =
       typeof ResizeObserver === 'undefined'
@@ -3130,11 +3267,22 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
         : new ResizeObserver(fitIfNeeded);
     if (svgRef.current) observer?.observe(svgRef.current);
     return () => {
+      if (refreshAutomaticFit.current === fitIfNeeded)
+        refreshAutomaticFit.current = () => {};
       observer?.disconnect();
       viewportMotionRef.current += 1;
       cancelCameraFrame();
     };
   }, [frameId, cancelCameraFrame, cameraStore, captureViewportRect]);
+  useLayoutEffect(() => {
+    refreshAutomaticFit.current();
+  }, [
+    frameId,
+    props.viewportInsets?.top,
+    props.viewportInsets?.right,
+    props.viewportInsets?.bottom,
+    props.viewportInsets?.left,
+  ]);
   const nestedOriginX = props.viewportOrigin?.[0];
   const nestedOriginY = props.viewportOrigin?.[1];
   useLayoutEffect(() => {
@@ -3585,6 +3733,7 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
     context: FrameCanvasDrawingContext;
   } | null>(null);
   const draftPaintRef = useRef<number | null>(null);
+  const connectionDragStates = useRef(new Map<string, ConnectionDragState>());
   const cancelDraftPaint = () => {
     if (draftPaintRef.current === null) return;
     if (typeof window.cancelAnimationFrame === 'function')
@@ -3620,6 +3769,8 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
   };
   const clearDraftPaint = () => {
     cancelDraftPaint();
+    connectionDragStates.current.clear();
+    cameraStore.setConnectionTarget(null);
     setGesturePreview([]);
     setConnectionPreview(null);
   };
@@ -3630,6 +3781,8 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
     setAlignmentGuides([]);
   };
   const cancelInteraction = () => {
+    setWaypointMenu(null);
+    canvasCursor.cancel();
     gestureRef.current = null;
     eraserHoverRef.current = null;
     vectorDraftRef.current = null;
@@ -4062,6 +4215,39 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
     });
   };
 
+  const resolveManualConnection = useCallback(
+    (
+      ownerFrameId: string,
+      point: Point,
+      edge: EdgeCell,
+      end: 'source' | 'target',
+      scale: number,
+      commit = false,
+    ) => {
+      const base = frameLayouts(ownerFrameId);
+      const key = JSON.stringify([ownerFrameId, edge.id, end]);
+      let state = connectionDragStates.current.get(key);
+      if (!state) {
+        state = connectionDragState(edge[end]);
+        connectionDragStates.current.set(key, state);
+      }
+      return resolveConnectionDrag({
+        store: base.store,
+        frameId: ownerFrameId,
+        edge,
+        end,
+        point,
+        scale,
+        commit,
+        registry: runtime.registry,
+        state,
+        query: base.query,
+        getGeometry: base.getGeometry,
+        locked: (id) => lockedByAncestor(base.store, id),
+      });
+    },
+    [frameLayouts, lockedByAncestor, runtime.registry],
+  );
   const updateEdgeDrag = (
     event: React.PointerEvent<SVGElement>,
     capture = true,
@@ -4077,7 +4263,6 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
           (rootPoint[1] - edgeDrag.start[1]) / edgeDrag.scale,
       ];
     if (
-      edgeDrag.mode === 'label' &&
       !edgePendingPreviewRef.current &&
       Math.hypot(
         rootPoint[0] - edgeDrag.start[0],
@@ -4091,28 +4276,25 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
       svgRef.current?.setPointerCapture(event.pointerId);
     let next = edgeDrag.cell;
     if (edgeDrag.mode === 'point' || edgeDrag.mode === 'segment')
-      next = bindEdgeRouteTerminals(edgeDrag.store, next, edgeDrag.points);
-    if (edgeDrag.mode === 'source' || edgeDrag.mode === 'target')
-      next = replaceEdgeTerminal(
+      next = bindRouteTerminals(edgeDrag.store, next, edgeDrag.points);
+    if (edgeDrag.mode === 'source' || edgeDrag.mode === 'target') {
+      const result = resolveManualConnection(
+        edgeDrag.frameId,
+        point,
+        next,
+        edgeDrag.mode,
+        zoom * edgeDrag.scale,
+        !capture,
+      );
+      cameraStore.setConnectionTarget(result.nodeId);
+      if (!result.terminal) return null;
+      next = replaceTerminal(
         edgeDrag.store,
         next,
         edgeDrag.mode,
-        snapEdgeTerminal(
-          edgeDrag.store,
-          edgeDrag.frameId,
-          point,
-          edgeDrag.mode,
-          next.kind,
-          12 / (zoom * edgeDrag.scale),
-          runtime.registry,
-          undefined,
-          {
-            terminal: edgeDrag.mode === 'source' ? next.target : next.source,
-            edgeId: next.id,
-          },
-        ),
+        result.terminal,
       );
-    else if (edgeDrag.mode === 'point')
+    } else if (edgeDrag.mode === 'point')
       next = moveEdgeRoutePoint(next, edgeDrag.points, edgeDrag.index, point);
     else if (edgeDrag.mode === 'segment')
       next = moveEdgeSegment(next, edgeDrag.points, edgeDrag.index, point);
@@ -4141,6 +4323,47 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
     edgePendingPreviewRef.current = next;
     return next;
   };
+  const prepareDrawingConnections = useCallback(
+    (
+      operations: readonly CellOperation[],
+      ownerFrameId: string,
+      points: readonly Point[],
+      scale: number,
+      commit = false,
+    ) => {
+      const store = frameLayouts(ownerFrameId).store;
+      const prepared: CellOperation[] = [];
+      let targetId: string | null = null;
+      for (const operation of operations) {
+        if (
+          operation.type !== 'insert_cell' ||
+          operation.parentId !== ownerFrameId ||
+          !isEdgeCell(operation.cell) ||
+          !points.length
+        ) {
+          prepared.push(operation);
+          continue;
+        }
+        let edge = operation.cell;
+        for (const end of ['source', 'target'] as const) {
+          const result = resolveManualConnection(
+            ownerFrameId,
+            end === 'source' ? points[0] : points.at(-1)!,
+            edge,
+            end,
+            scale,
+            commit,
+          );
+          if (!result.terminal) return null;
+          edge = replaceTerminal(store, edge, end, result.terminal);
+          if (end === 'target') targetId = result.nodeId;
+        }
+        prepared.push({ ...operation, cell: edge });
+      }
+      return { operations: prepared, targetId };
+    },
+    [frameLayouts, resolveManualConnection],
+  );
   const draftScene = useMemo(() => {
     // Only active drafts invalidate this memo on zoom; input may start at any scale.
     const currentZoom = cameraRef.current.zoom ?? previewZoom;
@@ -4149,12 +4372,22 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
     if (!gesturePreview.length || !tool?.preview || !state?.context)
       return null;
     try {
+      const proposed = tool.preview(runtime.store, frameId, gesturePreview, {
+        ...state.context,
+        zoom: currentZoom,
+      });
+      const connection =
+        tool.mode === 'line'
+          ? prepareDrawingConnections(
+              proposed,
+              frameId,
+              gesturePreview,
+              currentZoom,
+            )
+          : null;
       const operations = normalizeCellPositionOperations(
         runtime.store,
-        tool.preview(runtime.store, frameId, gesturePreview, {
-          ...state.context,
-          zoom: currentZoom,
-        }),
+        connection?.operations ?? proposed,
       );
       const children = operations.flatMap((operation) =>
         operation.type === 'insert_cell' && operation.parentId === frameId
@@ -4171,6 +4404,7 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
       return {
         store,
         children,
+        connectionTargetId: connection?.targetId ?? null,
         preview: true,
         layouts: createFrameLayouts(
           store,
@@ -4195,7 +4429,12 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
     frameId,
     frameLayouts,
     props.extensions,
+    prepareDrawingConnections,
   ]);
+  useLayoutEffect(() => {
+    if (gestureRef.current?.mode !== 'line') return;
+    cameraStore.setConnectionTarget(draftScene?.connectionTargetId ?? null);
+  }, [draftScene, cameraStore]);
   const makeConnectionEdge = (
     connection: ConnectionDraft,
     target = connection.target,
@@ -4208,6 +4447,30 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
     route: { mode: 'auto' },
     data: frameCellUI(props.extensions, connection.kind).edgeData,
   });
+  const commitConnection = (
+    connection: ConnectionDraft,
+    target: EdgeCell['target'],
+  ) => {
+    const edge = makeConnectionEdge(connection, target);
+    try {
+      const operations: CellOperation[] = [
+        { type: 'insert_cell', parentId: connection.frameId, cell: edge },
+      ];
+      applyCellOperations(runtime.store, operations, runtime.registry);
+      connectingRef.current = null;
+      clearDraftPaint();
+      void dispatch({ id: transactionId(), operations });
+    } catch (error) {
+      connectingRef.current = null;
+      clearDraftPaint();
+      const result = {
+        status: 'rejected' as const,
+        message: error instanceof Error ? error.message : String(error),
+      };
+      setFailure(result.message);
+      propsRef.current.onReject?.(result);
+    }
+  };
   const connectionScene = useMemo(() => {
     if (!connectionPreview) return null;
     const base = frameLayouts(connectionPreview.frameId);
@@ -4258,10 +4521,24 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
       ),
     };
   }, [connectionPreview, frameLayouts, props.extensions, frameId]);
-  const updateConnection = (event: React.PointerEvent<SVGElement>) => {
+  const updateConnection = (
+    event: React.PointerEvent<SVGElement>,
+    commit = false,
+  ) => {
     const zoom = cameraRef.current.zoom ?? 1;
     const connection = connectingRef.current;
     if (!connection) return;
+    if (
+      event.buttons & 1 &&
+      Math.hypot(
+        event.clientX - connection.start[0],
+        event.clientY - connection.start[1],
+      ) >= 3
+    ) {
+      connection.dragged = true;
+      if (!svgRef.current?.hasPointerCapture(event.pointerId))
+        svgRef.current?.setPointerCapture(event.pointerId);
+    }
     const group = Array.from(
       svgRef.current?.querySelectorAll<SVGGElement>(
         '[data-frame-content-id]',
@@ -4276,57 +4553,17 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
         ? new DOMPoint(event.clientX, event.clientY).matrixTransform(matrix)
         : null;
     const point: Point = local ? [local.x, local.y] : pointFromEvent(event);
-    const base = frameLayouts(connection.frameId),
-      store = base.store;
-    let target = snapEdgeTerminal(
-      store,
+    const result = resolveManualConnection(
       connection.frameId,
       point,
+      makeConnectionEdge(connection),
       'target',
-      connection.kind,
-      12 /
-        (matrix ? 1 / Math.hypot(matrix.a, matrix.b) : zoom * connection.scale),
-      runtime.registry,
-      (() => {
-        const radius =
-          12 /
-          (matrix
-            ? 1 / Math.hypot(matrix.a, matrix.b)
-            : zoom * connection.scale);
-        return base.query({
-          x: point[0] - radius,
-          y: point[1] - radius,
-          width: 2 * radius,
-          height: 2 * radius,
-        });
-      })(),
-      { terminal: { cellId: connection.cellId, portId: connection.portId } },
+      matrix ? 1 / Math.hypot(matrix.a, matrix.b) : zoom * connection.scale,
+      commit,
     );
-    if (!('cellId' in target) || !target.portId) target = { point };
-    if ('cellId' in target) {
-      const node = store.cells[target.cellId];
-      const portId = target.portId;
-      const port = isNodeCell(node)
-        ? node.ports?.find((port) => port.id === portId)
-        : undefined;
-      const edge = makeConnectionEdge(connection, target);
-      const frame = store.cells[connection.frameId];
-      if (!port || port.direction === 'output' || !isFrameCell(frame))
-        target = { point };
-      else {
-        const candidate = {
-          ...store,
-          cells: {
-            ...store.cells,
-            [edge.id]: edge,
-            [frame.id]: { ...frame, children: [...frame.children, edge.id] },
-          },
-        };
-        if (runtime.registry.validateEdge(candidate, edge)) target = { point };
-      }
-    }
+    cameraStore.setConnectionTarget(result.nodeId);
     connection.point = point;
-    connection.target = target;
+    connection.target = result.terminal ?? { point };
     scheduleDraftPaint();
   };
   const edgeDragMode = edgeDragRef.current?.mode;
@@ -4382,6 +4619,7 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
     commitEditingTab,
     editText,
     makeConnectionEdge,
+    commitConnection,
   });
   sceneActionsRef.current = {
     dispatch,
@@ -4396,6 +4634,7 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
     commitEditingTab,
     editText,
     makeConnectionEdge,
+    commitConnection,
   };
   const sceneActions = useMemo(
     () => ({
@@ -4424,6 +4663,8 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
         sceneActionsRef.current.editText(...args),
       makeConnectionEdge: (...args: Parameters<typeof makeConnectionEdge>) =>
         sceneActionsRef.current.makeConnectionEdge(...args),
+      commitConnection: (...args: Parameters<typeof commitConnection>) =>
+        sceneActionsRef.current.commitConnection(...args),
       publishViewStateAfterCommit: () => {
         if (viewStatePublishQueued.current) return;
         viewStatePublishQueued.current = true;
@@ -4652,7 +4893,10 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
           : frameEdgeCrossingJumps(laidOut, id, routing);
       const relationEdges = new Map<string, string[]>();
       for (const cellId of frame.children) {
-        const edge = laidOut.cells[cellId];
+        const edge =
+          !drawingPreview && edgePreview?.id === cellId
+            ? edgePreview
+            : laidOut.cells[cellId];
         if (!isEdgeCell(edge) || edge.hidden) continue;
         for (const terminal of [edge.source, edge.target])
           if ('cellId' in terminal) {
@@ -4768,6 +5012,660 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
           !drawingPreview &&
           cameraStore.isHovered(context.cell.id),
       });
+      const startEdgeEdit = (
+        event: React.PointerEvent<SVGElement>,
+        cell: EdgeCell,
+        mode: 'source' | 'target' | 'point' | 'segment' | 'label',
+        localStart: Point,
+        points: Point[],
+        index = 0,
+      ) => {
+        if (event.button !== 0) return;
+        event.stopPropagation();
+        event.preventDefault();
+        if (
+          frameCellUI(props.extensions, cell.kind).editEdge === false ||
+          (frameCellUI(props.extensions, cell.kind).editEdgeLabel === false &&
+            mode === 'label')
+        ) {
+          sceneActions.select(cell.id, focus, event.shiftKey);
+          return;
+        }
+        if (
+          !renderEditable ||
+          pendingRef.current ||
+          cell.locked ||
+          parentScale * placement.scale <= 0
+        )
+          return;
+        if (!runtime.selection.ids.includes(cell.id))
+          sceneActions.select(cell.id, focus);
+        connectingRef.current = null;
+        sceneActions.clearDraftPaint();
+        // Endpoint snapping follows the pointer throughout the enlarged target.
+        // Route points and segments retain their original grab offset.
+        const matrix =
+          mode === 'source' || mode === 'target'
+            ? (event.currentTarget as SVGGraphicsElement).getScreenCTM?.()
+            : undefined;
+        const pointer =
+          matrix && typeof DOMPoint !== 'undefined'
+            ? new DOMPoint(event.clientX, event.clientY).matrixTransform(
+                matrix.inverse(),
+              )
+            : null;
+        edgeDragRef.current = {
+          cell: store.cells[cell.id] as EdgeCell,
+          start: sceneActions.pointFromEvent(event),
+          localStart: pointer ? [pointer.x, pointer.y] : localStart,
+          scale: parentScale * placement.scale,
+          frameId: id,
+          store: laidOut,
+          points,
+          mode,
+          index,
+        };
+        setDragging(true);
+        if (mode !== 'label')
+          svgRef.current?.setPointerCapture(event.pointerId);
+      };
+      const editableEdge = (cell: Cell | undefined): cell is EdgeCell =>
+        isEdgeCell(cell) &&
+        !cell.hidden &&
+        !cell.locked &&
+        !lockedByAncestor(store, cell.id) &&
+        !!runtime.registry.get(cell.kind)?.canConnect &&
+        frameCellUI(props.extensions, cell.kind).editEdge !== false;
+      const getEdgeRouteView = (cell: EdgeCell) => {
+        const getGeometry = (nodeId: string) =>
+          geometry.get(nodeId) ??
+          (isNodeCell(store.cells[nodeId])
+            ? store.cells[nodeId].geometry
+            : undefined);
+        const sourceGeometry =
+          'cellId' in cell.source ? getGeometry(cell.source.cellId) : undefined;
+        const targetGeometry =
+          'cellId' in cell.target ? getGeometry(cell.target.cellId) : undefined;
+        const routeRouting =
+          routing.preview &&
+          (!('cellId' in cell.source) ||
+            sourceGeometry === base.getGeometry(cell.source.cellId)) &&
+          (!('cellId' in cell.target) ||
+            targetGeometry === base.getGeometry(cell.target.cellId))
+            ? base.routing
+            : routing;
+        let route = base.routes.get(cell.id);
+        if (
+          !route ||
+          route.cell !== cell ||
+          route.routing !== routeRouting ||
+          route.sourceGeometry !== sourceGeometry ||
+          route.targetGeometry !== targetGeometry
+        ) {
+          const source = resolveTerminal(store, cell.source, cell.target, {
+            geometry,
+          });
+          const target = resolveTerminal(store, cell.target, cell.source, {
+            geometry,
+          });
+          if (!source || !target) throw new Error('Missing edge endpoint');
+          const points = edgeRoutePoints(cell, source, target, routeRouting);
+          const reusable =
+            route?.cell === cell && route.points === points ? route : undefined;
+          route = {
+            cell,
+            sourceGeometry,
+            targetGeometry,
+            routing: routeRouting,
+            points,
+            markers: reusable?.markers,
+            labelPoints: reusable
+              ? reusable.labelPoints
+              : cell.route.mode === 'curve'
+                ? flattenCurve(points)
+                : points,
+            path: reusable
+              ? reusable.path
+              : cell.route.mode === 'curve'
+                ? curvePath(points)
+                : polylinePath(points),
+          };
+          base.routes.set(cell.id, route);
+        }
+        return route;
+      };
+      const edgePoints = (cell: EdgeCell) => getEdgeRouteView(cell).points;
+      const nodeMode = runtime.selection.ids.some((selectedId) =>
+        isNodeCell(store.cells[selectedId]),
+      );
+      const startNodePort = (
+        event: React.PointerEvent<SVGElement>,
+        cell: NodeCell,
+        port: NonNullable<NodeCell['ports']>[number],
+      ) => {
+        event.stopPropagation();
+        if (!renderEditable || cell.locked || event.button !== 0) return;
+        if (pendingRef.current) return;
+        event.preventDefault();
+        const start = connectingRef.current;
+        if (!start) {
+          if (!availablePorts(store, cell, 'source').includes(port)) return;
+          if (!runtime.selection.ids.includes(cell.id))
+            sceneActions.select(cell.id, focus);
+          const source = resolvePort(
+            geometry.get(cell.id) ?? cell.geometry,
+            port,
+          ).point;
+          connectingRef.current = {
+            start: [event.clientX, event.clientY],
+            cellId: cell.id,
+            portId: port.id,
+            frameId: id,
+            key: activeToolKey,
+            id: transactionId(),
+            kind: frameCellUI(props.extensions, cell.kind).edgeKind ?? '',
+            point: source,
+            target: { point: source },
+            scale: parentScale * placement.scale,
+          };
+          sceneActions.scheduleDraftPaint();
+          return;
+        }
+        if (
+          id !== start.frameId ||
+          !availablePorts(store, cell, 'target').includes(port) ||
+          (cell.id === start.cellId && port.id === start.portId)
+        )
+          return;
+        sceneActions.commitConnection(start, {
+          cellId: cell.id,
+          portId: port.id,
+        });
+      };
+      const selectedIds = new Set(runtime.selection.ids);
+      const selectedEdges = runtime.selection.ids.flatMap((edgeId) => {
+        const cell =
+          edgePreview?.id === edgeId ? edgePreview : laidOut.cells[edgeId];
+        return frame.children.includes(edgeId) &&
+          editableEdge(cell) &&
+          labelEditing?.id !== edgeId
+          ? [cell]
+          : [];
+      });
+      const controlsEnabled =
+        renderEditable &&
+        !presenting &&
+        !props.exporting &&
+        props.referenceInteraction !== 'details';
+      const controlVisible = (cell: Cell, zoom: number) => {
+        const context = contextAtZoom(
+          contextForCell(
+            cell,
+            isNodeCell(cell)
+              ? (geometry.get(cell.id) ?? cell.geometry)
+              : undefined,
+          ),
+          zoom,
+        );
+        return (props.extensions ?? []).every(
+          (extension) =>
+            (extension.kind && extension.kind !== cell.kind) ||
+            !extension.visible ||
+            extension.visible(context),
+        );
+      };
+      let selectedPlan:
+        { zoom: number; value: SelectedEndpointPlan } | undefined;
+      const getSelectedEndpointPlan = (zoom: number): SelectedEndpointPlan => {
+        if (selectedPlan?.zoom === zoom) return selectedPlan.value;
+        const ports = new Map<string, readonly PortCandidate[]>();
+        const getNodePorts = (nodeId: string): readonly PortCandidate[] => {
+          const cached = ports.get(nodeId);
+          if (cached) return cached;
+          const node = laidOut.cells[nodeId];
+          const candidates: PortCandidate[] =
+            isNodeCell(node) &&
+            !node.hidden &&
+            !node.locked &&
+            !lockedByAncestor(store, nodeId) &&
+            controlVisible(node, zoom)
+              ? (node.ports ?? []).map((port) => ({
+                  key: portKey(nodeId, port.id),
+                  point: resolvePort(
+                    geometry.get(nodeId) ?? node.geometry,
+                    port,
+                  ).point,
+                  owner: { kind: 'node' as const, nodeId, portId: port.id },
+                  boundNodeId: nodeId,
+                  boundPortId: port.id,
+                }))
+              : [];
+          ports.set(nodeId, candidates);
+          return candidates;
+        };
+        const value = buildSelectedEndpointPlan({
+          edges: controlsEnabled
+            ? selectedEdges.filter((edge) => controlVisible(edge, zoom))
+            : [],
+          selectedIds,
+          nodeMode,
+          getPoints: edgePoints,
+          getNodePorts,
+          queryNodePorts: (point) =>
+            base
+              .query({
+                x: point[0] - PORT_COINCIDENCE_EPSILON,
+                y: point[1] - PORT_COINCIDENCE_EPSILON,
+                width: 2 * PORT_COINCIDENCE_EPSILON,
+                height: 2 * PORT_COINCIDENCE_EPSILON,
+              })
+              .flatMap(getNodePorts),
+        });
+        selectedPlan = { zoom, value };
+        return value;
+      };
+      const startPort = (
+        event: React.PointerEvent<SVGElement>,
+        candidate: PortCandidate,
+      ) => {
+        const owner = candidate.owner;
+        if (owner.kind === 'node') {
+          const node = laidOut.cells[owner.nodeId];
+          const port = isNodeCell(node) && findPort(node, owner.portId);
+          if (isNodeCell(node) && port) startNodePort(event, node, port);
+        } else {
+          const edge =
+            edgePreview?.id === owner.edgeId
+              ? edgePreview
+              : laidOut.cells[owner.edgeId];
+          if (!editableEdge(edge)) return;
+          const points = edgePoints(edge);
+          startEdgeEdit(
+            event,
+            edge,
+            owner.end,
+            owner.end === 'source' ? points[0] : points.at(-1)!,
+            points,
+          );
+        }
+      };
+      const renderSelectedEndpoint = (
+        group: ResolvedPortGroup,
+        zoom: number,
+      ) => {
+        const candidate = group.owner ?? group.members[0];
+        const owner = candidate.owner;
+        const node = group.members.find(
+          (member) => member.owner.kind === 'node',
+        );
+        const nodeOwner = node?.owner.kind === 'node' ? node.owner : undefined;
+        const ownerId = owner.kind === 'edge' ? owner.edgeId : owner.nodeId;
+        return (
+          <g
+            key={group.key}
+            data-port-node-id={nodeOwner?.nodeId}
+            data-edge-controls={
+              candidate.owner.kind === 'edge'
+                ? candidate.owner.edgeId
+                : undefined
+            }
+            data-port-members={JSON.stringify(
+              group.members.map((member) => member.key),
+            )}
+          >
+            <FrameControlHandle
+              controlKey={group.key}
+              point={group.point}
+              radius={nodeOwner ? 5 : 6}
+              scale={zoom * parentScale * placement.scale}
+              selected={group.selected}
+              nodeId={candidate.boundNodeId}
+              endpoint={owner.kind === 'edge'}
+              cursor={group.blocked ? 'not-allowed' : 'move'}
+              attributes={{
+                'data-port-id': nodeOwner?.portId,
+                'data-control-node-id': candidate.boundNodeId,
+                'data-port-owner': group.blocked ? 'blocked' : owner.kind,
+                'data-port-state': 'selected',
+                'data-port-edge-id':
+                  owner.kind === 'edge' ? owner.edgeId : undefined,
+                'data-edge-endpoint':
+                  owner.kind === 'edge' ? owner.end : undefined,
+              }}
+              onPointerEnter={() => cameraStore.setHovered(ownerId)}
+              onPointerLeave={() => cameraStore.leave(ownerId)}
+              onPointerDown={(event) => {
+                if (group.blocked) {
+                  event.stopPropagation();
+                  event.preventDefault();
+                  return;
+                }
+                startPort(event, candidate);
+              }}
+            />
+          </g>
+        );
+      };
+      const renderNativeControls = (cell: Cell) => {
+        if (
+          !renderEditable ||
+          presenting ||
+          props.exporting ||
+          cell.locked ||
+          lockedByAncestor(store, cell.id)
+        )
+          return null;
+        if (isNodeCell(cell)) {
+          if (!cell.ports?.length) return null;
+          const bounds = geometry.get(cell.id) ?? cell.geometry;
+          const connected = (relationEdges.get(cell.id) ?? []).flatMap(
+            (edgeId) => {
+              const edge =
+                edgePreview?.id === edgeId
+                  ? edgePreview
+                  : laidOut.cells[edgeId];
+              return editableEdge(edge) ? [edge] : [];
+            },
+          );
+          const ids = [cell.id, ...connected.map((edge) => edge.id)];
+          return (
+            <FramePortSubscription key={cell.id} camera={cameraStore} ids={ids}>
+              {(zoom, hovered, connectionTarget) => (
+                <g
+                  data-frame-export-exclude
+                  data-port-node-id={cell.id}
+                  transform={
+                    bounds.rotation
+                      ? `rotate(${(bounds.rotation * 180) / Math.PI} ${bounds.x + bounds.width / 2} ${bounds.y + bounds.height / 2})`
+                      : undefined
+                  }
+                >
+                  {cell.ports?.map((port) => {
+                    if (
+                      getSelectedEndpointPlan(zoom).suppressedNodePortKeys.has(
+                        portKey(cell.id, port.id),
+                      )
+                    )
+                      return null;
+                    const worldPoint = resolvePort(bounds, port).point;
+                    const nodeCandidate: PortCandidate = {
+                      key: portKey(cell.id, port.id),
+                      point: worldPoint,
+                      owner: { kind: 'node', nodeId: cell.id, portId: port.id },
+                      boundNodeId: cell.id,
+                      boundPortId: port.id,
+                    };
+                    const hoveredEdge = connected.find(
+                      (edge) =>
+                        edge.id === hovered && !selectedIds.has(edge.id),
+                    );
+                    const ends: PortCandidate[] = hoveredEdge
+                      ? (['source', 'target'] as const).flatMap((end) => {
+                          const terminal = hoveredEdge[end];
+                          if (
+                            !('cellId' in terminal) ||
+                            terminal.cellId !== cell.id ||
+                            terminal.portId !== port.id
+                          )
+                            return [];
+                          const points = edgePoints(hoveredEdge);
+                          const point =
+                            end === 'source' ? points[0] : points.at(-1)!;
+                          return portsCoincide(point, worldPoint)
+                            ? [
+                                {
+                                  key: terminalKey(hoveredEdge.id, end),
+                                  point,
+                                  owner: {
+                                    kind: 'edge' as const,
+                                    edgeId: hoveredEdge.id,
+                                    end,
+                                  },
+                                  boundNodeId: cell.id,
+                                  boundPortId: port.id,
+                                },
+                              ]
+                            : [];
+                        })
+                      : [];
+                    const resolved = resolvePortGroup(
+                      [nodeCandidate, ...ends],
+                      {
+                        selectedIds,
+                        nodeMode,
+                        hoveredId: hovered,
+                        connecting: !!connectingRef.current,
+                      },
+                    );
+                    const candidate = resolved.owner ?? nodeCandidate;
+                    const owner =
+                      candidate.owner.kind === 'edge'
+                        ? candidate.owner
+                        : undefined;
+                    const snapping = snapTerminals.some(
+                      (terminal) =>
+                        'cellId' in terminal &&
+                        terminal.cellId === cell.id &&
+                        terminal.portId === port.id,
+                    );
+                    const visible =
+                      owner ||
+                      selectedIds.has(cell.id) ||
+                      hovered === cell.id ||
+                      connectionTarget === cell.id ||
+                      snapping;
+                    const point = resolvePort(
+                      { ...bounds, rotation: 0 },
+                      port,
+                    ).point;
+                    const ownerId = owner?.edgeId ?? cell.id;
+                    const primary = resolved.selected;
+                    const ambiguous = resolved.blocked;
+                    return (
+                      <FrameControlHandle
+                        key={port.id}
+                        point={point}
+                        radius={5}
+                        scale={zoom * parentScale * placement.scale}
+                        visible={!!visible}
+                        selected={primary}
+                        controlKey={JSON.stringify([cell.id, port.id])}
+                        nodeId={cell.id}
+                        endpoint={!!owner}
+                        cursor={ambiguous ? 'not-allowed' : 'move'}
+                        attributes={{
+                          'data-port-id': port.id,
+                          'data-control-node-id': cell.id,
+                          'data-port-owner': owner ? 'edge' : 'node',
+                          'data-port-state': primary ? 'selected' : 'hover',
+                          'data-port-active': snapping ? 'true' : undefined,
+                          'data-port-edge-id': owner?.edgeId,
+                          'data-edge-endpoint': owner?.end,
+                        }}
+                        onPointerEnter={() => cameraStore.setHovered(ownerId)}
+                        onPointerLeave={() => cameraStore.leave(ownerId)}
+                        onPointerDown={(event) => {
+                          if (ambiguous) {
+                            event.stopPropagation();
+                            event.preventDefault();
+                            return;
+                          }
+                          startPort(event, candidate);
+                        }}
+                      />
+                    );
+                  })}
+                </g>
+              )}
+            </FramePortSubscription>
+          );
+        }
+        if (!editableEdge(cell) || labelEditing?.id === cell.id) return null;
+        const points = edgePoints(cell);
+        if (points.length < 2) return null;
+        const selected = runtime.selection.ids.includes(cell.id);
+        return (
+          <FramePortSubscription
+            key={cell.id}
+            camera={cameraStore}
+            ids={[cell.id]}
+          >
+            {(zoom, hovered) => (
+              <g data-frame-export-exclude data-edge-controls={cell.id}>
+                {selected &&
+                  points.slice(1).map((point, at) => {
+                    const previous = points[at];
+                    const middle: Point = [
+                      (previous[0] + point[0]) / 2,
+                      (previous[1] + point[1]) / 2,
+                    ];
+                    const cursor =
+                      cell.route.mode === 'auto' ||
+                      cell.route.mode === 'orthogonal'
+                        ? previous[1] === point[1]
+                          ? 'ns-resize'
+                          : 'ew-resize'
+                        : 'move';
+                    return (
+                      <FrameControlHandle
+                        key={`segment-${at}`}
+                        controlKey={JSON.stringify([cell.id, 'segment', at])}
+                        selected={selected}
+                        kind="segment"
+                        point={middle}
+                        square
+                        radius={3}
+                        scale={zoom * parentScale * placement.scale}
+                        cursor={cursor}
+                        attributes={{ 'data-edge-segment': String(at) }}
+                        onPointerDown={(event) =>
+                          startEdgeEdit(
+                            event,
+                            cell,
+                            'segment',
+                            middle,
+                            points,
+                            at,
+                          )
+                        }
+                      />
+                    );
+                  })}
+                {selected &&
+                  points.slice(1, -1).map((point, at) => (
+                    <FrameControlHandle
+                      key={`point-${at}`}
+                      controlKey={JSON.stringify([cell.id, 'point', at])}
+                      selected={selected}
+                      kind="point"
+                      point={point}
+                      radius={4}
+                      scale={zoom * parentScale * placement.scale}
+                      attributes={{
+                        'data-edge-route-point': String(at + 1),
+                      }}
+                      onPointerDown={(event) => {
+                        if (event.button === 2) {
+                          if (
+                            rightDragRef.current &&
+                            !pendingRef.current &&
+                            !edgeDragRef.current &&
+                            !connectingRef.current &&
+                            !gestureRef.current
+                          ) {
+                            // The control resolver can choose this waypoint over
+                            // the DOM target that the root initially selected.
+                            if (!runtime.selection.ids.includes(cell.id))
+                              sceneActions.select(cell.id, focus);
+                            rightDragRef.current.waypoint = {
+                              rootFrameId: frameId,
+                              frameId: id,
+                              store: runtime.store,
+                              displayStore: laidOut,
+                              edge: runtime.store.cells[cell.id] as EdgeCell,
+                              points: points.map(
+                                (point) => [...point] as Point,
+                              ),
+                              index: at + 1,
+                            };
+                            event.preventDefault();
+                            event.stopPropagation();
+                          }
+                          return;
+                        }
+                        startEdgeEdit(
+                          event,
+                          cell,
+                          'point',
+                          point,
+                          points,
+                          at + 1,
+                        );
+                      }}
+                    />
+                  ))}
+                {(['source', 'target'] as const).map((end) => {
+                  const terminal = cell[end];
+                  const point = end === 'source' ? points[0] : points.at(-1)!;
+                  const plan = getSelectedEndpointPlan(zoom);
+                  if (
+                    plan.ownedEdgeEndKeys.has(terminalKey(cell.id, end)) ||
+                    plan.hasPoint(point)
+                  )
+                    return null;
+                  if ('cellId' in terminal && terminal.portId) {
+                    const node = laidOut.cells[terminal.cellId];
+                    const port =
+                      isNodeCell(node) && findPort(node, terminal.portId);
+                    if (
+                      isNodeCell(node) &&
+                      !node.locked &&
+                      !node.hidden &&
+                      !lockedByAncestor(store, node.id) &&
+                      port &&
+                      controlVisible(node, zoom) &&
+                      portsCoincide(
+                        point,
+                        resolvePort(
+                          geometry.get(node.id) ?? node.geometry,
+                          port,
+                        ).point,
+                      )
+                    )
+                      return null;
+                  }
+                  return (
+                    <FrameControlHandle
+                      key={end}
+                      controlKey={JSON.stringify([cell.id, end])}
+                      selected={selected && !nodeMode}
+                      nodeId={
+                        'cellId' in terminal ? terminal.cellId : undefined
+                      }
+                      endpoint
+                      visible={selected || hovered === cell.id}
+                      point={point}
+                      scale={zoom * parentScale * placement.scale}
+                      attributes={{
+                        'data-edge-endpoint': end,
+                        'data-control-node-id':
+                          'cellId' in terminal ? terminal.cellId : undefined,
+                        'data-port-edge-id': cell.id,
+                        'data-port-owner': 'edge',
+                      }}
+                      onPointerEnter={() => cameraStore.setHovered(cell.id)}
+                      onPointerLeave={() => cameraStore.leave(cell.id)}
+                      onPointerDown={(event) =>
+                        startEdgeEdit(event, cell, end, point, points)
+                      }
+                    />
+                  );
+                })}
+              </g>
+            )}
+          </FramePortSubscription>
+        );
+      };
       const renderCellBody = (
         cellId: string,
         layer: 'body' | 'controls' = 'body',
@@ -4793,7 +5691,11 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
         const context = contextForCell(cell, bounds);
         if (
           layer === 'controls' &&
-          (staticScene || props.referenceInteraction === 'details')
+          (staticScene ||
+            (props.referenceInteraction === 'details' &&
+              (isDocumentCell(cell) ||
+                isFrameReferenceCell(cell) ||
+                isFrameCell(cell))))
         )
           return null;
 
@@ -4804,36 +5706,40 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
               (!extension.kind || extension.kind === cell.kind) &&
               extension.renderControls,
           );
-          if (!extensions?.length) return null;
+          const native = renderNativeControls(cell);
+          if (!extensions?.length) return native;
           return (
-            <FrameScaleContent
-              key={`${cellId}-controls`}
-              camera={cameraStore}
-              cellId={drawingPreview ? undefined : cellId}
-              render={(scale) => {
-                const current = contextAtZoom(context, scale);
-                const nodes = extensions.map((extension, index) => {
-                  const controls = extension.renderControls?.(current);
-                  return controls ? (
-                    <g key={index} data-frame-export-exclude>
-                      {controls}
+            <>
+              {native}
+              <FrameScaleContent
+                key={`${cellId}-controls`}
+                camera={cameraStore}
+                cellId={drawingPreview ? undefined : cellId}
+                render={(scale) => {
+                  const current = contextAtZoom(context, scale);
+                  const nodes = extensions.map((extension, index) => {
+                    const controls = extension.renderControls?.(current);
+                    return controls ? (
+                      <g key={index} data-frame-export-exclude>
+                        {controls}
+                      </g>
+                    ) : null;
+                  });
+                  if (!nodes.some(Boolean)) return null;
+                  return (
+                    <g
+                      transform={
+                        bounds?.rotation
+                          ? `rotate(${(bounds.rotation * 180) / Math.PI} ${bounds.x + bounds.width / 2} ${bounds.y + bounds.height / 2})`
+                          : undefined
+                      }
+                    >
+                      {nodes}
                     </g>
-                  ) : null;
-                });
-                if (!nodes.some(Boolean)) return null;
-                return (
-                  <g
-                    transform={
-                      bounds?.rotation
-                        ? `rotate(${(bounds.rotation * 180) / Math.PI} ${bounds.x + bounds.width / 2} ${bounds.y + bounds.height / 2})`
-                        : undefined
-                    }
-                  >
-                    {nodes}
-                  </g>
-                );
-              }}
-            />
+                  );
+                }}
+              />
+            </>
           );
         }
         const capabilities = runtime.registry.get(cell.kind);
@@ -4902,10 +5808,10 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
             geometry,
             mode,
             handle,
-            localStart: relativeAnchor(bounds, [
+            localStart: resolveAnchor(bounds, [
               0.5,
               -offset / (bounds.height || 1),
-            ]),
+            ]).point,
           };
           svgRef.current?.setPointerCapture(event.pointerId);
         };
@@ -5552,6 +6458,9 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
                       onSelection={(selection) =>
                         propsRef.current.onInstanceSelection?.(selection)
                       }
+                      onCanvasContextMenu={(point) =>
+                        propsRef.current.onCanvasContextMenu?.(point)
+                      }
                       onExit={() => {
                         if (activated) {
                           void finishInlineEditing();
@@ -5782,135 +6691,20 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
           );
         }
         if (isEdgeCell(cell)) {
-          const sourceGeometry =
-            'cellId' in cell.source
-              ? context.getGeometry(cell.source.cellId)
-              : undefined;
-          const targetGeometry =
-            'cellId' in cell.target
-              ? context.getGeometry(cell.target.cellId)
-              : undefined;
-          const routeRouting =
-            routing.preview &&
-            (!('cellId' in cell.source) ||
-              sourceGeometry === base.getGeometry(cell.source.cellId)) &&
-            (!('cellId' in cell.target) ||
-              targetGeometry === base.getGeometry(cell.target.cellId))
-              ? base.routing
-              : routing;
-          let route = base.routes.get(cellId);
-          if (
-            !route ||
-            route.cell !== cell ||
-            route.routing !== routeRouting ||
-            route.sourceGeometry !== sourceGeometry ||
-            route.targetGeometry !== targetGeometry
-          ) {
-            const source = edgeTerminalPosition(
-              store,
-              cell.source,
-              cell.target,
-              geometry,
-            );
-            const target = edgeTerminalPosition(
-              store,
-              cell.target,
-              cell.source,
-              geometry,
-            );
-            const points = edgeRoutePoints(cell, source, target, routeRouting);
-            const reusable =
-              route?.cell === cell && route.points === points
-                ? route
-                : undefined;
-            route = {
-              cell,
-              sourceGeometry,
-              targetGeometry,
-              routing: routeRouting,
-              points,
-              markers: reusable?.markers,
-              labelPoints: reusable
-                ? reusable.labelPoints
-                : cell.route.mode === 'curve'
-                  ? flattenCurve(points)
-                  : points,
-              path: reusable
-                ? reusable.path
-                : cell.route.mode === 'curve'
-                  ? curvePath(points)
-                  : polylinePath(points),
-            };
-            base.routes.set(cellId, route);
-          }
+          const route = getEdgeRouteView(cell);
           const { points, labelPoints } = route;
           const beginEdgeEdit = (
             event: React.PointerEvent<SVGElement>,
             mode: 'source' | 'target' | 'point' | 'segment' | 'label',
             localStart: Point,
             index = 0,
-          ) => {
-            if (event.button !== 0) return;
-            event.stopPropagation();
-            event.preventDefault();
-            if (
-              frameCellUI(props.extensions, cell.kind).editEdge === false ||
-              (frameCellUI(props.extensions, cell.kind).editEdgeLabel ===
-                false &&
-                mode === 'label')
-            ) {
-              sceneActions.select(cellId, focus, event.shiftKey);
-              return;
-            }
-            if (
-              !renderEditable ||
-              pendingRef.current ||
-              cell.locked ||
-              parentScale * placement.scale <= 0
-            )
-              return;
-            edgeDragRef.current = {
-              cell: store.cells[cellId] as EdgeCell,
-              start: sceneActions.pointFromEvent(event),
-              localStart,
-              scale: parentScale * placement.scale,
-              frameId: id,
-              store: laidOut,
-              points,
-              mode,
-              index,
-            };
-            setDragging(true);
-            if (mode !== 'label')
-              svgRef.current?.setPointerCapture(event.pointerId);
-          };
+          ) => startEdgeEdit(event, cell, mode, localStart, points, index);
           const markerData = cell.data as
             { sourceMarker?: string; targetMarker?: string } | undefined;
           const isBranch =
             frameCellUI(props.extensions, cell.kind).branch === true;
           const readableEdge =
             runtime.registry.get(cell.kind)?.routable !== false;
-          const interactiveEndpoint = (terminal: EdgeCell['source']) => {
-            if (!('cellId' in terminal) || !terminal.portId || !editable)
-              return;
-            const node = store.cells[terminal.cellId];
-            if (
-              !isNodeCell(node) ||
-              node.locked ||
-              lockedByAncestor(store, node.id) ||
-              !node.ports?.some((p) => p.id === terminal.portId)
-            )
-              return;
-            return {
-              id: node.id,
-              radius: 5 + (node.appearance?.strokeWidth ?? 1.5) / 2,
-              visible:
-                runtime.selection.ids.includes(node.id) ||
-                snapTerminals.some(
-                  (t) => 'cellId' in t && t.cellId === node.id,
-                ),
-            };
-          };
           const shadowPoints = [
             ...points,
             ...(cell.labels ?? []).flatMap((_, at) => {
@@ -5949,8 +6743,18 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
                 if (!drawingPreview && readableEdge)
                   cameraStore.setHovered(cellId);
               }}
-              onPointerLeave={() => {
-                if (readableEdge) cameraStore.leave(cellId);
+              onPointerLeave={(event) => {
+                const next = event.relatedTarget;
+                const control =
+                  next instanceof Element
+                    ? next.closest('[data-port-edge-id], [data-edge-controls]')
+                    : null;
+                if (
+                  readableEdge &&
+                  control?.getAttribute('data-port-edge-id') !== cellId &&
+                  control?.getAttribute('data-edge-controls') !== cellId
+                )
+                  cameraStore.leave(cellId);
               }}
               onDoubleClick={(event) => {
                 event.stopPropagation();
@@ -6064,6 +6868,15 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
                                 : undefined
                             }
                             jumps={crossingJumps?.get(cellId)}
+                            safetyBounds={
+                              readableEdge
+                                ? edgeDecorationSafetyBounds(
+                                    points,
+                                    routing,
+                                    cell.appearance?.strokeWidth,
+                                  )
+                                : undefined
+                            }
                             rounded={
                               readableEdge &&
                               (cell.route.mode === 'auto' ||
@@ -6080,8 +6893,6 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
                               )
                             }
                             curve={cell.route.mode === 'curve'}
-                            source={interactiveEndpoint(cell.source)}
-                            target={interactiveEndpoint(cell.target)}
                             markerKinds={[
                               markerData?.sourceMarker ?? 'none',
                               markerData?.targetMarker ??
@@ -6263,107 +7074,6 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
                 data-frame-node-interaction-slot
                 data-frame-export-exclude="interaction-slot"
               />
-              {selected &&
-                renderEditable &&
-                !cell.locked &&
-                labelEditing?.id !== cellId &&
-                !!runtime.registry.get(cell.kind)?.canConnect && (
-                  <FrameScaleContent
-                    camera={cameraStore}
-                    cellId={drawingPreview ? undefined : cellId}
-                    render={(zoom) => (
-                      <g
-                        data-edge-controls={cellId}
-                        fill="#fff"
-                        stroke="#6366f1"
-                        strokeWidth={1}
-                      >
-                        {(['source', 'target'] as const).map((end) => {
-                          const point =
-                            end === 'source' ? points[0] : points.at(-1)!;
-                          return (
-                            <circle
-                              key={end}
-                              data-edge-endpoint={end}
-                              style={{ cursor: 'move' }}
-                              cx={point[0]}
-                              cy={point[1]}
-                              r={
-                                6 /
-                                Math.max(
-                                  0.02,
-                                  zoom * parentScale * placement.scale,
-                                )
-                              }
-                              vectorEffect="non-scaling-stroke"
-                              onPointerDown={(event) =>
-                                beginEdgeEdit(event, end, point)
-                              }
-                            />
-                          );
-                        })}
-                        {points.slice(1, -1).map((point, at) => (
-                          <circle
-                            key={at}
-                            data-edge-route-point={at + 1}
-                            style={{ cursor: 'move' }}
-                            cx={point[0]}
-                            cy={point[1]}
-                            r={
-                              4 /
-                              Math.max(
-                                0.02,
-                                zoom * parentScale * placement.scale,
-                              )
-                            }
-                            vectorEffect="non-scaling-stroke"
-                            onPointerDown={(event) =>
-                              beginEdgeEdit(event, 'point', point, at + 1)
-                            }
-                          />
-                        ))}
-                        {points.slice(1).map((point, at) => {
-                          const previous = points[at],
-                            middle: Point = [
-                              (point[0] + previous[0]) / 2,
-                              (point[1] + previous[1]) / 2,
-                            ],
-                            size =
-                              6 /
-                              Math.max(
-                                0.02,
-                                zoom * parentScale * placement.scale,
-                              );
-                          let cursor = 'move';
-                          if (
-                            cell.route.mode === 'auto' ||
-                            cell.route.mode === 'orthogonal'
-                          ) {
-                            cursor =
-                              previous[1] === point[1]
-                                ? 'ns-resize'
-                                : 'ew-resize';
-                          }
-                          return (
-                            <rect
-                              key={at}
-                              data-edge-segment={at}
-                              style={{ cursor }}
-                              x={middle[0] - size / 2}
-                              y={middle[1] - size / 2}
-                              width={size}
-                              height={size}
-                              vectorEffect="non-scaling-stroke"
-                              onPointerDown={(event) =>
-                                beginEdgeEdit(event, 'segment', middle, at)
-                              }
-                            />
-                          );
-                        })}
-                      </g>
-                    )}
-                  />
-                )}
             </g>
           );
         }
@@ -6601,7 +7311,16 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
                 )
                   cameraStore.setHovered(cellId);
               }}
-              onPointerLeave={() => cameraStore.leave(cellId)}
+              onPointerLeave={(event) => {
+                const next = event.relatedTarget;
+                if (
+                  !(next instanceof Element) ||
+                  next
+                    .closest('[data-port-node-id]')
+                    ?.getAttribute('data-port-node-id') !== cellId
+                )
+                  cameraStore.leave(cellId);
+              }}
               transform={
                 bounds.rotation
                   ? `rotate(${(bounds.rotation * 180) / Math.PI} ${bounds.x + bounds.width / 2} ${bounds.y + bounds.height / 2})`
@@ -6752,153 +7471,6 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
                         onStart={beginGeometryEdit}
                       />
                     )}
-                  />
-                )}
-              {!drawingPreview &&
-                renderEditable &&
-                !cell.locked &&
-                !lockedByAncestor(store, cell.id) && (
-                  <FrameScaleContent
-                    camera={cameraStore}
-                    cellId={cell.id}
-                    render={() =>
-                      selected ||
-                      cameraStore.isHovered(cell.id) ||
-                      snapTerminals.some(
-                        (t) => 'cellId' in t && t.cellId === cell.id,
-                      ) ? (
-                        <g data-frame-export-exclude>
-                          {cell.ports?.map((port) => {
-                            const point = portAnchor(
-                              { ...bounds, rotation: 0 },
-                              port,
-                            ).point;
-                            return (
-                              <circle
-                                key={port.id}
-                                data-port-id={port.id}
-                                cx={point[0]}
-                                cy={point[1]}
-                                r={5}
-                                data-port-active={
-                                  snapTerminals.some(
-                                    (terminal) =>
-                                      'cellId' in terminal &&
-                                      terminal.cellId === cell.id &&
-                                      terminal.portId === port.id,
-                                  )
-                                    ? 'true'
-                                    : undefined
-                                }
-                                fill={
-                                  snapTerminals.some(
-                                    (terminal) =>
-                                      'cellId' in terminal &&
-                                      terminal.cellId === cell.id &&
-                                      terminal.portId === port.id,
-                                  )
-                                    ? '#6366f1'
-                                    : '#fff'
-                                }
-                                stroke="#6366f1"
-                                onPointerDown={(event) => {
-                                  event.stopPropagation();
-                                  if (
-                                    !renderEditable ||
-                                    cell.locked ||
-                                    event.button !== 0
-                                  )
-                                    return;
-                                  if (pendingRef.current) return;
-                                  const start = connectingRef.current;
-                                  if (!start) {
-                                    if (
-                                      !availableEdgePorts(
-                                        store,
-                                        cell,
-                                        'source',
-                                      ).includes(port)
-                                    )
-                                      return;
-                                    const source = portAnchor(
-                                      bounds,
-                                      port,
-                                    ).point;
-                                    connectingRef.current = {
-                                      cellId: cell.id,
-                                      portId: port.id,
-                                      frameId: id,
-                                      key: activeToolKey,
-                                      id: transactionId(),
-                                      kind:
-                                        frameCellUI(props.extensions, cell.kind)
-                                          .edgeKind ?? '',
-                                      point: source,
-                                      target: { point: source },
-                                      scale: parentScale * placement.scale,
-                                    };
-                                    sceneActions.scheduleDraftPaint();
-                                    return;
-                                  }
-                                  if (
-                                    id !== start.frameId ||
-                                    !availableEdgePorts(
-                                      store,
-                                      cell,
-                                      'target',
-                                    ).includes(port) ||
-                                    (cell.id === start.cellId &&
-                                      port.id === start.portId)
-                                  )
-                                    return;
-                                  const edge = sceneActions.makeConnectionEdge(
-                                    start,
-                                    {
-                                      cellId: cell.id,
-                                      portId: port.id,
-                                    },
-                                  );
-                                  try {
-                                    const operations: CellOperation[] = [
-                                      {
-                                        type: 'insert_cell',
-                                        parentId: id,
-                                        cell: edge,
-                                      },
-                                    ];
-                                    applyCellOperations(
-                                      runtime.store,
-                                      operations,
-                                      runtime.registry,
-                                    );
-                                    connectingRef.current = null;
-                                    sceneActions.clearDraftPaint();
-                                    void sceneActions.dispatch({
-                                      id: transactionId(),
-                                      operations,
-                                    });
-                                  } catch (error) {
-                                    // An explicit invalid terminal ends this gesture, so other
-                                    // nodes remain selectable after the rejection.
-                                    connectingRef.current = null;
-                                    sceneActions.clearDraftPaint();
-                                    const result = {
-                                      status: 'rejected' as const,
-                                      message:
-                                        error instanceof Error
-                                          ? error.message
-                                          : String(error),
-                                    };
-                                    setFailure(result.message);
-                                    propsRef.current.onReject?.(result);
-                                  }
-                                }}
-                              />
-                            );
-                          })}
-                        </g>
-                      ) : null
-                    }
                   />
                 )}
               {!staticScene && !drawingPreview && editing === cellId && (
@@ -7338,30 +7910,47 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
               </g>
             )}
           {!staticScene && !drawingPreview && (
-            <FrameVirtualLayer
-              camera={cameraStore}
-              svg={svgRef}
-              ids={frame.children}
-              query={base.query}
-              pinned={[
-                editing ?? '',
-                labelEditing?.id ?? '',
-                edgePreview?.id ?? '',
-                activeReferenceId ?? '',
-              ]}
-              enabled={
-                id === frameId &&
-                !props.exporting &&
-                frame.children.length >= 1000 &&
-                !props.extensions?.some(
-                  (extension) =>
-                    extension.visible &&
-                    !extension.virtualizable?.(runtime.store, frameId),
-                )
-              }
-            >
-              {(cellId) => renderCell(cellId, 'controls')}
-            </FrameVirtualLayer>
+            <FrameControlLayer>
+              <FrameVirtualLayer
+                camera={cameraStore}
+                svg={svgRef}
+                ids={[
+                  ...frame.children.filter((cellId) =>
+                    isEdgeCell(laidOut.cells[cellId]),
+                  ),
+                  ...frame.children.filter(
+                    (cellId) => !isEdgeCell(laidOut.cells[cellId]),
+                  ),
+                ]}
+                query={base.query}
+                pinned={[
+                  ...selectedEdges.map((edge) => edge.id),
+                  editing ?? '',
+                  labelEditing?.id ?? '',
+                  edgePreview?.id ?? '',
+                  activeReferenceId ?? '',
+                ]}
+                enabled={
+                  id === frameId &&
+                  !props.exporting &&
+                  frame.children.length >= 1000 &&
+                  !props.extensions?.some(
+                    (extension) =>
+                      extension.visible &&
+                      !extension.virtualizable?.(runtime.store, frameId),
+                  )
+                }
+              >
+                {(cellId) => renderCell(cellId, 'controls')}
+              </FrameVirtualLayer>
+              {controlsEnabled && (
+                <FrameSelectedEndpointLayer
+                  camera={cameraStore}
+                  getPlan={getSelectedEndpointPlan}
+                  renderGroup={renderSelectedEndpoint}
+                />
+              )}
+            </FrameControlLayer>
           )}
           {!drawingPreview &&
             moveGhostScene &&
@@ -7523,6 +8112,34 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
     layoutReadyRef.current = viewProjection;
     layoutWaiters.current.forEach((resolve) => resolve());
   }, [sceneContent, refreshSelectionWorldBounds, viewProjection]);
+  const waypointContextValid = (context: WaypointContext) =>
+    editable &&
+    !pendingRef.current &&
+    !propsRef.current.exporting &&
+    propsRef.current.inputMode !== 'present' &&
+    context.rootFrameId === frameId &&
+    context.store === runtime.store &&
+    runtime.store.cells[context.edge.id] === context.edge &&
+    runtime.selection.ids.includes(context.edge.id) &&
+    !context.edge.hidden &&
+    !context.edge.locked &&
+    !lockedByAncestor(runtime.store, context.edge.id) &&
+    frameCellUI(propsRef.current.extensions, context.edge.kind).editEdge !==
+      false;
+  const waypointMenuValid =
+    !!waypointMenu && waypointContextValid(waypointMenu);
+  const waypointRemoval = waypointMenuValid
+    ? planWaypointRemoval(
+        waypointMenu!.displayStore,
+        waypointMenu!.edge,
+        waypointMenu!.points,
+        waypointMenu!.index,
+        runtime.registry,
+      )
+    : null;
+  useLayoutEffect(() => {
+    if (waypointMenu && !waypointMenuValid) setWaypointMenu(null);
+  }, [waypointMenu, waypointMenuValid]);
   return (
     <FrameCanvasProviders
       theme={resolvedTheme}
@@ -7580,6 +8197,7 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
                   }
                 }}
                 onPointerDownCapture={(event) => {
+                  automaticFitInterrupted.current = true;
                   viewportAnimation.current = viewportIsAnimated();
                   captureViewportRect();
                   if (
@@ -7756,6 +8374,21 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
                     return;
                   }
                   if (event.button === 2) {
+                    const control = (event.target as Element).closest(
+                      '[data-control-hit]',
+                    );
+                    if (control) {
+                      const nodeId = control.getAttribute(
+                        'data-control-node-id',
+                      );
+                      const edgeId = control.getAttribute('data-port-edge-id');
+                      const chosen =
+                        edgeId && runtime.selection.ids.includes(edgeId)
+                          ? edgeId
+                          : (nodeId ?? edgeId);
+                      if (chosen && runtime.store.cells[chosen])
+                        selectContextCell(chosen, runtime.selection.focus);
+                    }
                     rightDragRef.current = {
                       pointerId: event.pointerId,
                       x: event.clientX,
@@ -7768,7 +8401,7 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
                   const tool = props.tool;
                   if (
                     connectingRef.current &&
-                    !(event.target as Element).closest('[data-port-id]')
+                    !(event.target as Element).closest('[data-control-hit]')
                   ) {
                     updateConnection(event);
                     const chosen = (event.target as Element)
@@ -7782,8 +8415,13 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
                         if (owner === frameId) break;
                         owner = runtime.index.parentOf.get(owner);
                       }
-                      if (focus[0] === frameId)
+                      if (focus[0] === frameId) {
+                        if (isEdgeCell(runtime.store.cells[chosen])) {
+                          connectingRef.current = null;
+                          clearDraftPaint();
+                        }
                         selectContextCell(chosen, focus);
+                      }
                     }
                     event.stopPropagation();
                     event.preventDefault();
@@ -7892,12 +8530,6 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
                     ? `${Math.max(4, view.theme.gridSize ?? 20) * zoom}px ${Math.max(4, view.theme.gridSize ?? 20) * zoom}px`
                     : undefined,
                   backgroundPosition: `${-origin[0] * zoom}px ${-origin[1] * zoom}px`,
-                  cursor:
-                    props.tool?.mode === 'hand' || spaceHandRef.current
-                      ? 'grab'
-                      : props.tool?.mode === 'erase'
-                        ? 'crosshair'
-                        : undefined,
                 }}
                 onDragStart={(event) => event.preventDefault()}
                 onPointerDown={(event) => {
@@ -7938,6 +8570,7 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
                 }}
                 onPointerLeave={() => {
                   cameraStore.setHovered(null);
+                  cameraStore.setConnectionTarget(null);
                   if (props.tool?.mode === 'erase' && !gestureRef.current) {
                     eraserHoverRef.current = null;
                     clearDraftPaint();
@@ -8319,11 +8952,20 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
                       !(event.target as Element).closest(
                         '[contenteditable="true"], input, textarea',
                       )
-                    )
-                      propsRef.current.onCanvasContextMenu?.([
-                        event.clientX,
-                        event.clientY,
-                      ]);
+                    ) {
+                      const context = rightDrag.waypoint;
+                      if (context && waypointContextValid(context)) {
+                        propsRef.current.onCanvasContextMenu?.(null);
+                        setWaypointMenu({
+                          ...context,
+                          point: [event.clientX, event.clientY],
+                        });
+                      } else
+                        propsRef.current.onCanvasContextMenu?.([
+                          event.clientX,
+                          event.clientY,
+                        ]);
+                    }
                   }
                   pointersRef.current.delete(event.pointerId);
                   if (blockSinglePointerRef.current) {
@@ -8364,6 +9006,17 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
                       commitGesture();
                     pinchRef.current = null;
                     setDragging(false);
+                  }
+                  const connection = connectingRef.current;
+                  if (connection?.dragged) {
+                    updateConnection(event, true);
+                    if (
+                      'cellId' in connection.target &&
+                      connection.target.portId
+                    )
+                      commitConnection(connection, connection.target);
+                    else cancelInteraction();
+                    return;
                   }
                   if (vectorDraftRef.current) return;
                   if (edgeDragRef.current) {
@@ -8433,7 +9086,7 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
                       props.onSelectionChange?.(runtime.selection);
                     } else if (tool && 'complete' in tool) {
                       try {
-                        const operations = tool.complete(
+                        const proposed = tool.complete(
                           runtime.store,
                           gesture.frameId ?? frameId,
                           gesture.points,
@@ -8444,11 +9097,22 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
                               }
                             : undefined,
                         );
-                        commitCreatedCells(
-                          operations,
-                          gesture.frameId ?? frameId,
-                          tool,
-                        );
+                        const connection =
+                          tool.mode === 'line'
+                            ? prepareDrawingConnections(
+                                proposed,
+                                gesture.frameId ?? frameId,
+                                gesture.points,
+                                cameraRef.current.zoom ?? 1,
+                                true,
+                              )
+                            : undefined;
+                        if (connection !== null)
+                          commitCreatedCells(
+                            connection?.operations ?? proposed,
+                            gesture.frameId ?? frameId,
+                            tool,
+                          );
                       } catch (error) {
                         setFailure(
                           error instanceof Error
@@ -8759,6 +9423,9 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
                   blockSinglePointerRef.current = false;
                   cancelInteraction();
                 }}
+                onKeyDownCapture={() => {
+                  automaticFitInterrupted.current = true;
+                }}
                 onKeyDown={(event) => {
                   if (
                     event.defaultPrevented ||
@@ -8829,6 +9496,7 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
                   ) {
                     event.preventDefault();
                     spaceHandRef.current = true;
+                    canvasCursor.setBase('grab');
                     return;
                   }
                   if (propsRef.current.inputMode === 'present') return;
@@ -9131,7 +9799,10 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
                   );
                 }}
                 onKeyUp={(event) => {
-                  if (event.code === 'Space') spaceHandRef.current = false;
+                  if (event.code === 'Space') {
+                    spaceHandRef.current = false;
+                    canvasCursor.setBase(toolCursor);
+                  }
                 }}
               >
                 <style>{`[data-drawing-preview], [data-drawing-preview] * { pointer-events: none !important; }`}</style>
@@ -9275,6 +9946,41 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
                     ))}
                 </g>
               </svg>
+              {waypointMenu && waypointMenuValid && (
+                <FrameMenu
+                  point={waypointMenu.point}
+                  items={[
+                    {
+                      id: 'delete-waypoint',
+                      label:
+                        props.actionHost?.language === 'en'
+                          ? 'Delete waypoint'
+                          : '删除锚点',
+                      disabled: !waypointRemoval,
+                      run: () => {
+                        if (!waypointContextValid(waypointMenu)) return;
+                        const next = planWaypointRemoval(
+                          waypointMenu.displayStore,
+                          waypointMenu.edge,
+                          waypointMenu.points,
+                          waypointMenu.index,
+                          runtime.registry,
+                        );
+                        if (next)
+                          void actionRuntime.executeAction(
+                            'canvas.apply-operations',
+                            {
+                              operations: [
+                                { type: 'replace_cell', cell: next },
+                              ],
+                            },
+                          );
+                      },
+                    },
+                  ]}
+                  onClose={() => setWaypointMenu(null)}
+                />
+              )}
               {editing &&
                 (isFrameCell(runtime.store.cells[editing]) ||
                   isFrameReferenceCell(runtime.store.cells[editing])) &&
@@ -9355,6 +10061,62 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
                   />
                 )}
               {props.overlays}
+              {!props.readonly && geometryDiagnostics.length > 0 && (
+                <details
+                  data-geometry-diagnostics
+                  style={{
+                    position: 'absolute',
+                    bottom: 8,
+                    left: 8,
+                    maxWidth: 420,
+                    maxHeight: 200,
+                    overflow: 'auto',
+                    background: 'var(--background-color, white)',
+                    padding: 8,
+                  }}
+                >
+                  <summary>
+                    <span role="status">
+                      {props.actionHost?.language === 'en'
+                        ? `${geometryDiagnostics.length} layout/routing issues`
+                        : `${geometryDiagnostics.length} 项布局或连线未完成`}
+                    </span>
+                  </summary>
+                  {geometryDiagnostics.map((diagnostic, index) => (
+                    <div key={index}>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          runtime.select({
+                            focus: [diagnostic.frameId],
+                            ids: [...diagnostic.cellIds].filter(
+                              (id) => !!runtime.store.cells[id],
+                            ),
+                          });
+                          publicController.current?.fitCells([
+                            ...diagnostic.cellIds,
+                          ]);
+                        }}
+                      >
+                        {diagnostic.cellIds.join(', ')}
+                      </button>{' '}
+                      {props.actionHost?.language === 'en'
+                        ? diagnostic.message
+                        : diagnostic.message.includes('retry budget exhausted')
+                          ? '已尝试扩大布局间距，规划预算已用完；请检查锁定对象和操作范围。'
+                          : diagnostic.code === 'routing.budget'
+                            ? '路由搜索预算已用完，已保留原连线。'
+                            : diagnostic.code === 'routing.terminal-blocked'
+                              ? '端点附近空间受限，已保留原连线。'
+                              : diagnostic.code === 'routing.clearance'
+                                ? '本次未找到满足描边净距的路线，已保留原连线。'
+                                : diagnostic.code === 'geometry.domain-managed'
+                                  ? '此图的几何由领域专用布局管理。'
+                                  : '固定对象或操作范围限制了本次布局。'}
+                    </div>
+                  ))}
+                </details>
+              )}
               {failure && (
                 <div
                   role="alert"
@@ -9402,6 +10164,7 @@ function FrameReferenceSurface({
   onActivate,
   onBackgroundTap,
   onSelection,
+  onCanvasContextMenu,
   onExit,
 }: {
   edit?: boolean;
@@ -9435,6 +10198,7 @@ function FrameReferenceSurface({
   ): void;
   onBackgroundTap(): void;
   onSelection(selection: CellSelection): void;
+  onCanvasContextMenu?: FrameCanvasCommon['onCanvasContextMenu'];
   onExit(): void;
 }) {
   const { language } = useFrameI18n();
@@ -9510,9 +10274,17 @@ function FrameReferenceSurface({
     onOpenFrame,
     onActivate,
     onSelection,
+    onCanvasContextMenu,
     onExit,
   });
-  callbacks.current = { onOpen, onOpenFrame, onActivate, onSelection, onExit };
+  callbacks.current = {
+    onOpen,
+    onOpenFrame,
+    onActivate,
+    onSelection,
+    onCanvasContextMenu,
+    onExit,
+  };
   const nestedRuntime = binding?.runtime;
   const occurrenceId = binding?.occurrenceId;
   const contentReadonly = binding?.readonly;
@@ -9585,6 +10357,11 @@ function FrameReferenceSurface({
             }}
             onSelectionChange={(selection) =>
               callbacks.current.onSelection(selection)
+            }
+            onCanvasContextMenu={
+              edit
+                ? (point) => callbacks.current.onCanvasContextMenu?.(point)
+                : undefined
             }
             style={{ width: '100%', height: '100%', minHeight: 0 }}
           />

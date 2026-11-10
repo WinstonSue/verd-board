@@ -1,12 +1,25 @@
 import {
+  anchorFromPoint,
+  availablePorts,
   createCellRuntime,
   createCellStore,
   createEdgeRoutingContext,
   createFrameCell,
   edgeRoutePoints,
   frameContentBounds,
+  portKey,
+  resolveAnchor,
+  resolvePort,
+  resolveTerminal,
   selectionAllows,
+  terminalKey,
+  type Anchor,
   type FrameSnapshot,
+  type NodeCell,
+  type Port,
+  type PortRef,
+  type Terminal,
+  type TerminalRef,
 } from '@sue/board-core';
 import {
   FrameCanvas,
@@ -17,6 +30,51 @@ const value: FrameSnapshot = {
   store: createCellStore(createFrameCell('consumer-root')),
 };
 const runtime = createCellRuntime(value);
+const attachment: Anchor = [0.25, 0];
+const consumerPort: Port = { id: 'out', direction: 'output', side: 'right' };
+const consumerNode: NodeCell = {
+  id: 'connection-node',
+  kind: 'geometry',
+  cellType: 'node',
+  geometry: { x: 0, y: 0, width: 100, height: 100 },
+  ports: [consumerPort],
+};
+const connectionStore = {
+  ...value.store,
+  cells: { ...value.store.cells, [consumerNode.id]: consumerNode },
+};
+const terminal: Terminal = {
+  cellId: consumerNode.id,
+  portId: consumerPort.id,
+  anchor: attachment,
+};
+const portRef: PortRef = {
+  kind: 'node',
+  nodeId: consumerNode.id,
+  portId: consumerPort.id,
+};
+const terminalRef: TerminalRef = {
+  kind: 'edge',
+  edgeId: 'connection',
+  end: 'source',
+};
+const resolved = resolveTerminal(connectionStore, terminal);
+if (
+  !resolved ||
+  resolved.point[0] !== 25 ||
+  resolved.side !== 'right' ||
+  resolvePort(consumerNode.geometry, consumerPort).point[0] !== 100 ||
+  anchorFromPoint(
+    consumerNode.geometry,
+    resolveAnchor(consumerNode.geometry, attachment).point,
+  )[0] !== 0.25 ||
+  availablePorts(connectionStore, consumerNode, 'source').length !== 1 ||
+  portKey(portRef.nodeId, portRef.portId) ===
+    terminalKey(terminalRef.edgeId, terminalRef.end)
+)
+  throw new Error(
+    'Public connection models or attachment resolution are missing',
+  );
 if (
   selectionAllows(
     value.store,

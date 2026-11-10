@@ -183,12 +183,12 @@
         }
       ],
       "content": {
-        "label": "最终校验通过？",
+        "label": "校验通过？",
         "text": {
           "schemaVersion": 1,
           "id": "demo:edit/valid/text",
           "kind": "inline",
-          "plainText": "最终校验通过？",
+          "plainText": "校验通过？",
           "content": {
             "type": "doc",
             "content": [
@@ -197,7 +197,7 @@
                 "content": [
                   {
                     "type": "text",
-                    "text": "最终校验通过？",
+                    "text": "校验通过？",
                     "marks": [
                       {
                         "type": "textStyle",
@@ -218,7 +218,8 @@
         "fill": "#fffbeb",
         "strokeColor": "#d97706",
         "strokeWidth": 1.5
-      }
+      },
+      "name": "最终校验通过？"
     },
     "demo:edit/commit": {
       "id": "demo:edit/commit",
@@ -755,14 +756,12 @@
       "appearance": {
         "fill": "#0f766e",
         "strokeColor": "#0f766e",
-        "strokeWidth": 1.5
+        "strokeWidth": 1.5,
+        "textColor": "#ffffff"
       },
       "data": {
         "graphMode": "process",
-        "origin": [
-          0,
-          0
-        ],
+        "origin": [0, 0],
         "memberIds": [
           "demo:edit/candidate",
           "demo:edit/valid",
@@ -794,7 +793,9 @@
                       {
                         "type": "textStyle",
                         "attrs": {
-                          "fontSize": "20px"
+                          "fontSize": "20px",
+                          "color": "#ffffff",
+                          "colorMode": "custom"
                         }
                       }
                     ]
@@ -804,7 +805,8 @@
             ]
           }
         }
-      }
+      },
+      "name": "Cell 事务与统一历史"
     },
     "project:detail/05/02/invalid": {
       "id": "project:detail/05/02/invalid",
@@ -1009,7 +1011,7 @@
                 "content": [
                   {
                     "type": "text",
-                    "text": "读图：校验通过才整体提交；布局、位置与图文历史的保存边界分开说明。"
+                    "text": "读图：校验后整体提交；布局与图文历史分开说明。"
                   }
                 ]
               },
@@ -1109,13 +1111,14 @@
               }
             ]
           },
-          "plainText": "相关文档：React接入\n读图：校验通过才整体提交；布局、位置与图文历史的保存边界分开说明。\n返回专题总览\n相关细节：宿主意图与外部历史\n相关细节：Actions 与编辑提交屏障\n系统架构 · 模型和事务\n布局、路由与保存边界\n源码入口：packages/engine/core/src/cell/commands.ts；packages/engine/core/src/cell/runtime.ts；packages/product/app/src/session/workspace-session.ts。"
+          "plainText": "相关文档：React接入\n读图：校验后整体提交；布局与图文历史分开说明。\n返回专题总览\n相关细节：宿主意图与外部历史\n相关细节：Actions 与编辑提交屏障\n系统架构 · 模型和事务\n布局、路由与保存边界\n源码入口：packages/engine/core/src/cell/commands.ts；packages/engine/core/src/cell/runtime.ts；packages/product/app/src/session/workspace-session.ts。"
         }
       },
       "appearance": {
         "fill": "none",
         "strokeColor": "none"
-      }
+      },
+      "name": "相关文档：React接入 读图：校验通过才整体提交；布局、位置与图文历史的保存边界分开说明。 返回专题总览 相关细节：宿主意图与外部历史 相关细节：Actions 与编辑提交屏障 系统架构 · 模型和事务 布局、路由与保存边界 源码入口：packages/engine/core/src/cell/commands.ts；packages/engine/core/src/cell/runtime.ts；packages/product/app/src/session/workspace-session.ts。"
     }
   },
   "organization": {

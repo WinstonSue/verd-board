@@ -29,8 +29,15 @@ import {
   createWorkflowStartCell,
   createWorkflowTaskCell,
 } from '@sue/board-workflow';
-import { createVerdFramePluginSet } from '@sue/verd-board-ui';
-import { useMemo, useRef, useState } from 'react';
+import {
+  createVerdFramePluginSet,
+  VerdFrame,
+  DocumentPage,
+  I18nProvider,
+  WorkspaceDesignProvider,
+  useWorkspaceMessage,
+} from '@sue/verd-board-ui';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
 const useExtensions = () => useMemo(() => createVerdFramePluginSet(), []);
 const initialGraph = () => ({
@@ -384,6 +391,8 @@ function ArchitectureHarness() {
   );
 }
 export function ProviderHarness({ kind }: { kind: string }) {
+  if (kind === 'top-actions') return <TopActionsHarness />;
+  if (kind === 'message') return <MessageHarness />;
   if (kind === 'mind') return <MindHarness />;
   if (kind === 'architecture') return <ArchitectureHarness />;
   if (kind.endsWith('-document'))
@@ -393,4 +402,102 @@ export function ProviderHarness({ kind }: { kind: string }) {
       />
     );
   return <WorkflowHarness dual={kind === 'workflow-dual'} />;
+}
+
+/** Component contract harnesses run against both source and bundled builds. */
+function TopActionsHarness() {
+  const browser = window as Window & {
+    __verdLayoutValue?: FrameSnapshot;
+    __showLayoutDocument?: () => void;
+  };
+  const [value, setValue] = useState<FrameSnapshot>(
+    () =>
+      browser.__verdLayoutValue ?? {
+        store: {
+          rootId: 'layout',
+          cells: { layout: createFrameCell('layout') },
+        },
+      },
+  );
+  const [document, setDocument] = useState<
+    Parameters<typeof DocumentPage>[0]['value']
+  >({
+    id: 'layout-doc',
+    schemaVersion: 1,
+    kind: 'block',
+    plainText: 'Body',
+    content: {
+      type: 'doc',
+      content: [
+        { type: 'paragraph', content: [{ type: 'text', text: 'Body' }] },
+      ],
+    },
+  });
+  const [surface, setSurface] = useState('canvas');
+  useEffect(() => {
+    browser.__showLayoutDocument = () => setSurface('document');
+    return () => {
+      delete browser.__showLayoutDocument;
+    };
+  }, [browser]);
+  return (
+    <I18nProvider language="zh" persistLanguage={false}>
+      <div style={{ height: '100vh', width: '100%' }}>
+        {surface === 'canvas' ? (
+          <VerdFrame
+            value={value}
+            frameId={value.store.rootId}
+            showSaveStatus={false}
+            onChange={(change) => setValue(change.snapshot)}
+            onOpenFrame={() => {}}
+          />
+        ) : (
+          <DocumentPage
+            value={document}
+            title="Layout document"
+            showSaveStatus={false}
+            onChange={(change) => setDocument(change.value)}
+            onPresent={async () => ({ status: 'completed' })}
+          />
+        )}
+      </div>
+    </I18nProvider>
+  );
+}
+function MessageContents() {
+  const [message, holder] = useWorkspaceMessage();
+  return (
+    <div
+      data-testid="fullscreen-root"
+      style={{
+        height: '100vh',
+        background: 'var(--vm-background)',
+        color: 'var(--vm-foreground)',
+      }}
+    >
+      {holder}
+      <button
+        onClick={() => message.info({ content: '普通提示', key: 'feedback' })}
+      >
+        提示
+      </button>
+      <button
+        onClick={(event) =>
+          void event.currentTarget.parentElement!.requestFullscreen()
+        }
+      >
+        全屏
+      </button>
+      <button onClick={() => void document.exitFullscreen()}>退出全屏</button>
+    </div>
+  );
+}
+function MessageHarness() {
+  return (
+    <I18nProvider language="zh" persistLanguage={false}>
+      <WorkspaceDesignProvider>
+        <MessageContents />
+      </WorkspaceDesignProvider>
+    </I18nProvider>
+  );
 }

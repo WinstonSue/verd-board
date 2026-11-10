@@ -17,7 +17,7 @@ import {
 } from './workspace-references';
 
 describe('workspace export document dependencies', () => {
-  it('matches actual export closures through references, ownership, cycles and missing targets', () => {
+  it('matches actual export closures through references and cycles while ignoring legacy ownership and missing targets', () => {
     const board = createFrameFile(createFrameCell('board'));
     const child = createFrameFile(createFrameCell('child'));
     child.organization = { kind: 'subgraph', ownerFrameId: 'board' };
@@ -47,7 +47,7 @@ describe('workspace export document dependencies', () => {
       files,
       buildWorkspaceReferenceGraph(files),
     );
-    expect([...roots].sort()).toEqual(['board', 'child', 'doc', 'linked']);
+    expect([...roots].sort()).toEqual(['child', 'doc']);
     for (const file of files) {
       const id = workspaceFileId(file);
       expect(roots.has(id)).toBe(

@@ -1,4 +1,5 @@
-import { expect, test, type Page } from '@playwright/test';
+import { openActiveFile } from './app-actions';
+import { expect, test, type Page } from './service-fixture';
 import path from 'node:path';
 import { openHistoryAction } from './app-actions';
 import { persistedWorkspace } from './workspace-nav';
@@ -11,6 +12,7 @@ test('canvas find temporarily reveals collapsed Mind without changing saved cont
   page,
 }) => {
   await page.goto('/');
+  await openActiveFile(page);
   await page
     .locator('input[accept=".json,.verd.json,.verd-doc.json,.md,.markdown"]')
     .setInputFiles(

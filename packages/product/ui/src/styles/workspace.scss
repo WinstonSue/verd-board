@@ -1,4 +1,5 @@
 @use './primitives';
+@use './git-history-panel';
 @use './surface' as *;
 .workspace-shell {
   --workspace-footer-height: 43px;
@@ -421,6 +422,8 @@ button.workspace-reference-action,
 .workspace-panes {
   position: absolute;
   inset: 0;
+  // Editor popovers stay below workspace-level save and conflict actions.
+  isolation: isolate;
 }
 .workspace-panes[hidden] {
   display: none;
@@ -475,7 +478,7 @@ button.workspace-reference-action,
   display: flex;
   align-items: center;
   flex: none;
-  gap: 6px;
+  gap: 8px;
   height: 36px;
   min-width: 0;
   padding: 0 12px;
@@ -495,20 +498,26 @@ button.workspace-reference-action,
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+.workspace-file-navigation-status {
+  display: flex;
+  align-items: center;
+  flex: none;
+  gap: 8px;
+  > .frame-save-status,
+  > .document-page__save {
+    white-space: nowrap;
+    font-size: var(--vm-text-xs);
+  }
+}
 .workspace-file-navigation-actions {
   display: flex;
   align-items: center;
+  flex: none;
   justify-content: flex-end;
   gap: 6px;
   margin-left: auto;
   min-width: 0;
   max-width: calc(100% - 64px);
-  > .frame-save-status,
-  > .document-page__save {
-    flex: none;
-    white-space: nowrap;
-    font-size: var(--vm-text-xs);
-  }
   .workspace-file-navigation-return {
     flex: 0 1 auto;
     span {

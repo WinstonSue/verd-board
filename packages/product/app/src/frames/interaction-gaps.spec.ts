@@ -6,11 +6,7 @@ import {
   createCanvasSession,
   type CanvasSession,
 } from '../canvas/canvas-session';
-import {
-  assessReferencePlace,
-  organizePreviewIsStale,
-  type FrameFileV2,
-} from '../frames/frame-files';
+import { assessReferencePlace, type FrameFileV2 } from '../frames/frame-files';
 import {
   planReturnToSource,
   rememberEntrySource,
@@ -289,35 +285,6 @@ describe('reference instances, place mode, and return source', () => {
     expect(session.getState().files.get('C')!.file.cells).toEqual(cells);
   });
 
-  it('refreshes a stale organize row and commits one history entry', async () => {
-    const { session } = await sessionFor([
-      file('A', { organization: { kind: 'standalone' } }),
-      file('C', {
-        frame: frameCell('C', 'C', ['topic']),
-        cells: { topic: mindNode('topic') },
-      }),
-    ]);
-    expect(organizePreviewIsStale(['A'], ['A', 'B'], false)).toBe(true);
-    expect(organizePreviewIsStale([], [], false)).toBe(false);
-    expect(organizePreviewIsStale([], [], true)).toBe(true);
-    const undo = session.getState().canUndo;
-    const organized = await session.organize([
-      {
-        fileId: 'C',
-        organization: { kind: 'subgraph', ownerFrameId: 'A' },
-        basisOrganization: null,
-        basisSources: [],
-      },
-    ]);
-    expect(organized.ok).toBe(true);
-    expect(session.getState().canUndo).toBe(true);
-    await session.undo();
-    expect(
-      session.getState().files.get('C')!.file.organization,
-    ).toBeUndefined();
-    expect(session.getState().canUndo).toBe(undo);
-  });
-
   it('keeps return-to-source in memory and drops a deleted source', () => {
     const sources = new Map();
     rememberEntrySource(sources, 'C', {
@@ -362,7 +329,7 @@ describe('reference instances, place mode, and return source', () => {
     expect(JSON.stringify(persisted)).not.toContain('sourceFileId');
   });
 
-  it('reloads a new canvas, its owned mind, and references without a conflict', async () => {
+  it('reloads independent diagrams and shared references without a conflict', async () => {
     const host = createMemoryWorkspaceHost({ now: () => 1_700_000_000_000 });
     const handle = (await host.openWorkspace({ path: 'ws-reload' }))!;
     const session = await openWorkspaceSession(host, handle, {
@@ -421,10 +388,7 @@ describe('reference instances, place mode, and return source', () => {
     expect(files.get('A')?.conflicted).toBeFalsy();
     expect(files.get('B')?.conflicted).toBeFalsy();
     expect(files.get('C')?.conflicted).toBeFalsy();
-    expect(files.get('C')?.file.organization).toEqual({
-      kind: 'subgraph',
-      ownerFrameId: 'A',
-    });
+    expect(files.get('C')?.file.organization).toBeUndefined();
     expect(files.get('B')?.file.cells.r1).toMatchObject({
       data: { targetFrameId: 'C' },
     });

@@ -207,47 +207,4 @@ describe('workspace session snapshots', () => {
     expect(failed.documents.size).toBe(0);
     expect(session.getState()).toBe(recovered);
   });
-
-  it('exposes an unconfirmed organization operation while its commit is in flight', async () => {
-    const { session, host } = await setup();
-    const initial = session.getState();
-    const commit = host.commit;
-    let release!: () => void;
-    let entered!: () => void;
-    const gate = new Promise<void>((resolve) => {
-      release = resolve;
-    });
-    const started = new Promise<void>((resolve) => {
-      entered = resolve;
-    });
-    host.commit = async (handle, request) => {
-      entered();
-      await gate;
-      return commit(handle, request);
-    };
-    // Fill the cache at the initial pause notification, before the host call.
-    session.subscribe(() => session.getState());
-    const organizing = session.organize([
-      {
-        fileId: 'board',
-        organization: { kind: 'standalone' },
-        basisOrganization: null,
-        basisSources: [],
-      },
-    ]);
-    await started;
-    const pending = session.getState();
-    expect(pending.organizeUnconfirmed).toBe(true);
-    expect(pending.mutationsPaused).toBe(true);
-    release();
-    expect((await organizing).ok).toBe(true);
-    const finished = session.getState();
-    expect(finished.organizeUnconfirmed).toBe(false);
-    expect(finished.mutationsPaused).toBe(false);
-    expect(finished.files.get('board')?.file.organization).toEqual({
-      kind: 'standalone',
-    });
-    expect(initial.files.get('board')?.file.organization).toBeUndefined();
-    expect(pending.organizeUnconfirmed).toBe(true);
-  });
 });

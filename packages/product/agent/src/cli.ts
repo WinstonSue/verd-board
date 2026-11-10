@@ -6,7 +6,12 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
 import { createRequire } from 'node:module';
-import { patterns, patternRules } from '@sue/verd-board-agent-patterns';
+import {
+  patterns,
+  patternRules,
+  patternWorkspaceUrl,
+  commonSkillPath,
+} from '@sue/verd-board-agent-patterns/agent';
 import {
   isWorkspaceFile,
   isFrameFileV2,
@@ -108,10 +113,7 @@ export async function runCli(
   if (command === 'skill')
     return {
       result: {
-        path: path.resolve(
-          path.dirname(fileURLToPath(import.meta.url)),
-          '../skills/verd-authoring/SKILL.md',
-        ),
+        path: fileURLToPath(new URL(commonSkillPath, patternWorkspaceUrl)),
       },
     };
   if (command === 'describe') return { result: describeAuthoring() };
@@ -151,7 +153,11 @@ export async function runCli(
   }
   if (command === 'doctor') {
     const root = await discoverWorkspace(process.cwd(), workspace);
-    return { result: { root, ...(await inspectWorkspaceAgent(root)) } };
+    const diagnostic = await inspectWorkspaceAgent(root);
+    return {
+      result: { root, ...diagnostic },
+      exitCode: diagnostic.ready ? 0 : 1,
+    };
   }
   if (
     ![

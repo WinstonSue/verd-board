@@ -1043,14 +1043,12 @@
       "appearance": {
         "fill": "#0f766e",
         "strokeColor": "#0f766e",
-        "strokeWidth": 1.5
+        "strokeWidth": 1.5,
+        "textColor": "#ffffff"
       },
       "data": {
         "graphMode": "process",
-        "origin": [
-          0,
-          0
-        ],
+        "origin": [0, 0],
         "memberIds": [
           "demo:load/v1",
           "demo:load/legacy",
@@ -1085,7 +1083,9 @@
                       {
                         "type": "textStyle",
                         "attrs": {
-                          "fontSize": "20px"
+                          "fontSize": "20px",
+                          "color": "#ffffff",
+                          "colorMode": "custom"
                         }
                       }
                     ]
@@ -1095,7 +1095,8 @@
             ]
           }
         }
-      }
+      },
+      "name": "旧资料迁移与失败恢复"
     },
     "project:detail/04/02/diagnostic": {
       "id": "project:detail/04/02/diagnostic",

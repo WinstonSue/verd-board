@@ -1,9 +1,10 @@
+import { openActiveFile } from './app-actions';
 import { openHistoryAction } from './app-actions';
 import { selectHistoryAction } from './app-actions';
 import { editBody } from './body-editor';
 import { selectAppAction, setAppLanguage } from './app-actions';
 import { readFileSync } from 'node:fs';
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test, type Page } from './service-fixture';
 import { selectDrawingTool } from './drawing-tools';
 import {
   activateBoardTab,
@@ -89,6 +90,7 @@ const draw = async (
 
 test.beforeEach(async ({ page }) => {
   await page.goto('/');
+  await openActiveFile(page);
   const skip = page.getByRole('button', { name: '跳过', exact: true });
   if (await skip.isVisible().catch(() => false)) await skip.click();
 });
@@ -317,7 +319,7 @@ test('Frame title stays inside a stable enclosing shell and preserves edits, mar
 }) => {
   await draw(page, '容器');
   const external = title(page);
-  await expect(external).toHaveText('Frame');
+  await expect(external).toHaveText('未命名画布');
   const referenceId = await external.getAttribute('data-frame-title-id');
   const shell = canvas(page).locator(
     '[data-cell-kind="frame"] > [data-frame-shell], [data-cell-kind="frame-reference"] > [data-frame-shell]',

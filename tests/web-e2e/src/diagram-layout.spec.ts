@@ -1,5 +1,5 @@
 import { selectHistoryAction } from './app-actions';
-import { expect, test, type Page, type Locator } from '@playwright/test';
+import { expect, test, type Page, type Locator } from './service-fixture';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { selectAppAction, setAppLanguage, openActiveFile } from './app-actions';
@@ -33,44 +33,38 @@ async function openSnapshot(page: Page, snapshot: FrameSnapshot) {
   );
   // Seed immutable Frame records so regression fixtures retain their stable IDs.
   await page.evaluate(async (snapshot) => {
-    const db = await new Promise<IDBDatabase>((resolve) => {
-      const request = indexedDB.open('VerdBoard');
-      request.onsuccess = () => resolve(request.result);
-    });
-    await new Promise<void>((resolve, reject) => {
-      const transaction = db.transaction('verdboard_store', 'readwrite');
-      const saved = transaction.objectStore('verdboard_store');
-      saved.clear();
-      const frames: Record<string, string> = {};
-      for (const cell of Object.values(snapshot.store.cells)) {
-        if (cell.cellType !== 'frame') continue;
-        const frame = cell as FrameCell;
-        const key = `frames/fixture-${Object.keys(frames).length}/fixture`;
-        frames[frame.id] = key;
-        const cells = Object.fromEntries(
-          [...frame.children, ...frame.groups]
-            .map((id) => [id, snapshot.store.cells[id]])
-            .filter(
-              ([, child]) =>
-                (child as { cellType: string }).cellType !== 'frame',
-            ),
-        );
-        saved.put({ format: 'verd-frame', version: 1, frame, cells }, key);
-      }
-      saved.put(
-        {
-          format: 'verd-workspace',
-          version: 2,
-          rootId: snapshot.store.rootId,
-          frames,
-          detachedFrameIds: [],
-        },
-        'main_board_content',
+    const records: [string, unknown][] = [];
+    const saved = {
+      put(value: unknown, key: string) {
+        records.push([key, value]);
+      },
+    };
+    const frames: Record<string, string> = {};
+    for (const cell of Object.values(snapshot.store.cells)) {
+      if (cell.cellType !== 'frame') continue;
+      const frame = cell as FrameCell;
+      const key = `frames/fixture-${Object.keys(frames).length}/fixture`;
+      frames[frame.id] = key;
+      const cells = Object.fromEntries(
+        [...frame.children, ...frame.groups]
+          .map((id) => [id, snapshot.store.cells[id]])
+          .filter(
+            ([, child]) => (child as { cellType: string }).cellType !== 'frame',
+          ),
       );
-      transaction.oncomplete = () => resolve();
-      transaction.onerror = () => reject(transaction.error);
-    });
-    db.close();
+      saved.put({ format: 'verd-frame', version: 1, frame, cells }, key);
+    }
+    saved.put(
+      {
+        format: 'verd-workspace',
+        version: 2,
+        rootId: snapshot.store.rootId,
+        frames,
+        detachedFrameIds: [],
+      },
+      'main_board_content',
+    );
+    await (window as any).__verdSeedLegacy(records);
   }, snapshot);
   await clearWorkspaceStorage(page);
   await page.reload();
@@ -223,13 +217,21 @@ test('one-shot edge optimization saves editable paths and shares the routing cho
   const firstNode = Object.values(snapshot.store.cells).find(
     (cell) => cell.kind === 'architecture-module',
   )!;
-  await cell(page, firstNode.id).click({ button: 'right' });
-  const menu = page.getByRole('dialog', { name: 'Selection actions' });
-  await expect(menu.getByTestId('frame-reroute-edges')).toHaveText(
+  {
+    const b = await cell(page, firstNode.id).boundingBox();
+    await page.mouse.click(b!.x + b!.width / 2, b!.y + b!.height / 2, {
+      button: 'right',
+    });
+  }
+  const menu = page.getByRole('menu', { name: /^(画布编辑|Canvas editing)$/ });
+  await expect(menu.getByTestId('frame-reroute-edges')).toHaveCount(0);
+  await page.keyboard.press('Escape');
+  await expect(menu).toHaveCount(0);
+  await expect(panel.getByTestId('frame-reroute-edges')).toHaveText(
     '重置手工走线',
   );
-  await expectJoinedRoutingButton(menu);
-  await menu.getByRole('button', { name: '选择连线整理方式' }).focus();
+  await expectJoinedRoutingButton(panel);
+  await panel.getByRole('button', { name: '选择连线整理方式' }).focus();
   await page.keyboard.press('ArrowDown');
   const resetItem = page.getByRole('menuitemradio', { name: /^重置手工走线/ });
   const optimizeItem = page.getByRole('menuitemradio', {
@@ -247,7 +249,7 @@ test('one-shot edge optimization saves editable paths and shares the routing cho
   await page.keyboard.press('ArrowUp');
   await expect(optimizeItem).toBeFocused();
   await page.keyboard.press('Enter');
-  await expect(menu.getByTestId('frame-reroute-edges')).toHaveText(
+  await expect(panel.getByTestId('frame-reroute-edges')).toHaveText(
     '优化全部连线',
   );
   await expect
@@ -259,18 +261,17 @@ test('one-shot edge optimization saves editable paths and shares the routing cho
     )
     .toBeGreaterThan(0);
   const optimizedSelection = await savedCells(page);
-  await expectJoinedRoutingButton(menu);
-  await menu
+  await expectJoinedRoutingButton(panel);
+  await panel
     .locator('.frame-routing-button')
-    .screenshot({ path: test.info().outputPath('routing-popover-joined.png') });
+    .screenshot({ path: test.info().outputPath('routing-panel-joined.png') });
   // Choosing the current mode runs again, but equal paths add no undo entry.
-  await menu.getByRole('button', { name: '选择连线整理方式' }).click();
+  await panel.getByRole('button', { name: '选择连线整理方式' }).click();
   await expect(optimizeItem).toBeFocused();
   await page.keyboard.press('Space');
   await expect(optimizeItem).toHaveCount(0);
   expect(await savedCells(page)).toEqual(optimizedSelection);
   await page.keyboard.press('Escape');
-  await expect(menu).toHaveCount(0);
   await expect(main).toHaveText('优化全部连线');
   await selectHistoryAction(page, '撤销');
   await expect.poll(() => savedCells(page)).toEqual(reset);
@@ -375,19 +376,21 @@ test('group node layout and edge rerouting are independent, undoable and survive
     '布局组内节点',
   );
   await cell(page, 'a').click({ button: 'right' });
-  const menu = page.getByRole('dialog', { name: 'Selection actions' });
+  const menu = page.getByRole('menu', { name: /^(画布编辑|Canvas editing)$/ });
+  await expect(menu.getByTestId('frame-auto-layout')).toHaveCount(0);
+  await expect(menu.getByTestId('frame-reroute-edges')).toHaveCount(0);
   await expect(
-    menu.getByRole('button', { name: '布局组内节点', exact: true }),
+    panel.getByRole('button', { name: '布局组内节点', exact: true }),
   ).toBeEnabled();
   await expect(
-    menu.getByRole('button', { name: '优化全部连线', exact: true }),
+    panel.getByRole('button', { name: '优化全部连线', exact: true }),
   ).toBeEnabled();
-  await expect(menu.getByTestId('frame-arrangement-scope')).toContainText(
+  await expect(panel.getByTestId('frame-arrangement-scope')).toContainText(
     'Group 内部',
   );
   await page.keyboard.press('Escape');
   await expect(menu).toHaveCount(0);
-  await page.getByRole('button', { name: '命令面板', exact: true }).click();
+  await selectAppAction(page, '命令面板');
   const palette = page.getByRole('dialog', { name: '命令面板', exact: true });
   await palette
     .getByRole('combobox', { name: '搜索命令' })
@@ -406,8 +409,8 @@ test('group node layout and edge rerouting are independent, undoable and survive
     .toMatchObject({ x: 236, y: 100 });
   const arranged = await savedCells(page);
   expect(arranged.outside).toEqual(snapshot.store.cells.outside);
-  expect(arranged.inside).toEqual(snapshot.store.cells.inside);
-  expect(arranged.boundary).toEqual(snapshot.store.cells.boundary);
+  expect(arranged.inside.route.origin).toBe('generated');
+  expect(arranged.boundary.route.origin).toBe('generated');
   await page.screenshot({
     path: test.info().outputPath('group-local-layout.png'),
   });
@@ -417,7 +420,7 @@ test('group node layout and edge rerouting are independent, undoable and survive
     .poll(async () => (await savedCells(page)).inside?.route)
     .toEqual({ mode: 'orthogonal' });
   const rerouted = await savedCells(page);
-  expect(rerouted.boundary.route).toEqual({ mode: 'auto' });
+  expect(rerouted.boundary.route).toEqual({ mode: 'orthogonal' });
   for (const id of ['a', 'b', 'outside'])
     expect(rerouted[id]).toEqual(arranged[id]);
   expect(rerouted.inside.source).toEqual(arranged.inside.source);
@@ -433,7 +436,7 @@ test('group node layout and edge rerouting are independent, undoable and survive
   await page.reload();
   await expect
     .poll(async () => (await savedCells(page)).boundary?.route)
-    .toEqual({ mode: 'auto' });
+    .toEqual({ mode: 'orthogonal' });
   expect((await savedCells(page)).b?.geometry).toEqual(rerouted.b.geometry);
 });
 
@@ -472,11 +475,20 @@ for (const name of ['layered', 'data-flow', 'packages']) {
     for (const node of Object.values(before).filter(
       (cell) => cell.kind === 'architecture-layer',
     ))
-      expect(after[node.id].data).toEqual(node.data);
+      expect(after[node.id].data).toEqual({
+        ...node.data,
+        layoutPaddingTop: 96,
+      });
     for (const edge of Object.values(before).filter(
       (cell) => cell.cellType === 'edge',
     ))
-      expect(after[edge.id]).toEqual(edge);
+      expect(after[edge.id]).toMatchObject({
+        source: edge.source,
+        target: edge.target,
+        ...(edge.labels ? { labels: edge.labels } : {}),
+        ...(edge.data ? { data: edge.data } : {}),
+        route: { origin: 'generated' },
+      });
     // Repeated layout must not drift, and a single undo restores all nodes.
     await panel.getByTestId('frame-auto-layout').click();
     expect(await routes(page)).toEqual(arrangedRoutes);
@@ -515,10 +527,10 @@ for (const name of ['layered', 'data-flow', 'packages']) {
       ).toHaveCount(2);
       await expect(
         canvas(page).locator('[data-relation-highlight="node"]').first(),
-      ).toHaveAttribute('stroke-width', '1');
+      ).toHaveAttribute('stroke-width', '1.5');
       await expect(
         canvas(page).locator('[data-relation-highlight="node"]').first(),
-      ).toHaveAttribute('vector-effect', 'non-scaling-stroke');
+      ).not.toHaveAttribute('vector-effect', 'non-scaling-stroke');
       expect(
         await canvas(page)
           .locator('[data-relation-highlight="node"]')
@@ -527,7 +539,7 @@ for (const name of ['layered', 'data-flow', 'packages']) {
       ).toBeNull();
       await expect(
         canvas(page).locator('[data-relation-highlight="edge"]'),
-      ).toHaveAttribute('opacity', '0.45');
+      ).not.toHaveAttribute('opacity', '0.45');
       await connector.dispatchEvent('pointerdown', { button: 0, pointerId: 1 });
       await canvas(page).dispatchEvent('pointerup', {
         button: 0,
@@ -580,6 +592,11 @@ test('embedded root moves only its own visible tree, stays in bounds and survive
   const childBefore = await textPosition(page, 'first-child-0');
   const shape = cell(page, 'first').locator('path').first();
   const bounds = (await shape.boundingBox())!;
+  // Double-click activates the embedded editing occurrence.
+  await page.mouse.dblclick(
+    bounds.x + bounds.width / 2,
+    bounds.y + bounds.height / 2,
+  );
   await page.mouse.move(
     bounds.x + bounds.width / 2,
     bounds.y + bounds.height / 2,
@@ -590,10 +607,10 @@ test('embedded root moves only its own visible tree, stays in bounds and survive
     bounds.y + bounds.height / 2 + 25,
     { steps: 6 },
   );
-  // The entire branch follows before pointerup, not just the root.
-  expect((await textPosition(page, 'first-child-0'))[0]).toBeGreaterThan(
-    childBefore[0],
-  );
+  // Settle the animation-frame preview before measuring derived descendants.
+  await expect
+    .poll(async () => (await textPosition(page, 'first-child-0'))[0])
+    .toBeGreaterThan(childBefore[0]);
   expect(await textPosition(page, 'second')).toEqual(peerBefore);
   const previewRoutes = await routes(page);
   await page.mouse.up();
@@ -670,6 +687,8 @@ test('embedded root moves only its own visible tree, stays in bounds and survive
   for (const d of Object.values(visibleRoutes))
     expect(svg).toContain(`d="${d}"`);
   await expect(dialog).toBeHidden();
+  // Fit the parent after export so the shell header is clear of the inspector.
+  await page.getByTestId('canvas-status-fit').click();
   // Opening details uses the canonical root position, not the embedded offset.
   await cell(page, 'frame-ref:mind').locator('[data-frame-title-id]').click();
   await page.getByTestId('frame-open').locator('visible=true').click();
@@ -715,12 +734,16 @@ test('automatic calculation switches are independent, survive tab switches and r
   const firstNode = Object.values(snapshot.store.cells).find(
     (cell) => cell.kind === 'architecture-module',
   )!;
-  await cell(page, firstNode.id).click({ button: 'right' });
-  const menu = page.getByRole('dialog', { name: 'Selection actions' });
-  await expect(menu.getByTestId('frame-auto-layout-toggle')).toBeChecked();
-  await expect(menu.getByTestId('frame-auto-edges-toggle')).toBeChecked();
-  await menu.getByTestId('frame-auto-edges-toggle').uncheck();
+  {
+    const b = await cell(page, firstNode.id).boundingBox();
+    await page.mouse.click(b!.x + b!.width / 2, b!.y + b!.height / 2, {
+      button: 'right',
+    });
+  }
+  const menu = page.getByRole('menu', { name: /^(画布编辑|Canvas editing)$/ });
+  await expect(menu.getByRole('checkbox')).toHaveCount(0);
   await page.keyboard.press('Escape');
+  await edges.uncheck();
   await expect(edges).not.toBeChecked();
   await expect(nodes).toBeChecked();
   await original.getByRole('button', { name: /^关闭/ }).focus();

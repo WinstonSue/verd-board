@@ -44,6 +44,122 @@
     "name": "09.1 作用范围与提交边界"
   },
   "cells": {
+    "demo:algorithms/layer/0": {
+      "id": "demo:algorithms/layer/0",
+      "kind": "architecture-layer",
+      "cellType": "node",
+      "geometry": {
+        "x": 0,
+        "y": 0,
+        "width": 1640,
+        "height": 230,
+        "derived": true
+      },
+      "content": {
+        "label": "范围与候选 · 从用户操作到可提交计划",
+        "text": {
+          "schemaVersion": 1,
+          "id": "demo:algorithms/layer/0/text",
+          "kind": "inline",
+          "plainText": "范围与候选 · 从用户操作到可提交计划",
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "范围与候选 · 从用户操作到可提交计划",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "24px",
+                          "color": "#1e293b"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "data": {
+        "order": "00000000",
+        "fontSize": 24,
+        "memberIds": [
+          "demo:algorithms/scope",
+          "demo:algorithms/plan",
+          "demo:algorithms/switches"
+        ]
+      },
+      "appearance": {
+        "fill": "#f8fafc",
+        "strokeColor": "#e2e8f0",
+        "strokeWidth": 1
+      }
+    },
+    "demo:algorithms/layer/3": {
+      "id": "demo:algorithms/layer/3",
+      "kind": "architecture-layer",
+      "cellType": "node",
+      "geometry": {
+        "x": 0,
+        "y": 280,
+        "width": 1640,
+        "height": 230,
+        "derived": true
+      },
+      "content": {
+        "label": "三种结果 · 持久化与撤销边界",
+        "text": {
+          "schemaVersion": 1,
+          "id": "demo:algorithms/layer/3/text",
+          "kind": "inline",
+          "plainText": "三种结果 · 持久化与撤销边界",
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "三种结果 · 持久化与撤销边界",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "24px",
+                          "color": "#1e293b"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "data": {
+        "order": "00000001",
+        "fontSize": 24,
+        "memberIds": [
+          "demo:algorithms/persist",
+          "demo:algorithms/runtime",
+          "demo:algorithms/session"
+        ]
+      },
+      "appearance": {
+        "fill": "#f8fafc",
+        "strokeColor": "#e2e8f0",
+        "strokeWidth": 1
+      }
+    },
     "demo:algorithms/scope": {
       "id": "demo:algorithms/scope",
       "kind": "architecture-module",
@@ -806,122 +922,6 @@
         "strokeWidth": 1.5
       }
     },
-    "demo:algorithms/layer/0": {
-      "id": "demo:algorithms/layer/0",
-      "kind": "architecture-layer",
-      "cellType": "node",
-      "geometry": {
-        "x": 0,
-        "y": 0,
-        "width": 1640,
-        "height": 230,
-        "derived": true
-      },
-      "content": {
-        "label": "范围与候选 · 从用户操作到可提交计划",
-        "text": {
-          "schemaVersion": 1,
-          "id": "demo:algorithms/layer/0/text",
-          "kind": "inline",
-          "plainText": "范围与候选 · 从用户操作到可提交计划",
-          "content": {
-            "type": "doc",
-            "content": [
-              {
-                "type": "paragraph",
-                "content": [
-                  {
-                    "type": "text",
-                    "text": "范围与候选 · 从用户操作到可提交计划",
-                    "marks": [
-                      {
-                        "type": "textStyle",
-                        "attrs": {
-                          "fontSize": "24px",
-                          "color": "#1e293b"
-                        }
-                      }
-                    ]
-                  }
-                ]
-              }
-            ]
-          }
-        }
-      },
-      "data": {
-        "order": "00000000",
-        "fontSize": 24,
-        "memberIds": [
-          "demo:algorithms/scope",
-          "demo:algorithms/plan",
-          "demo:algorithms/switches"
-        ]
-      },
-      "appearance": {
-        "fill": "#f8fafc",
-        "strokeColor": "#e2e8f0",
-        "strokeWidth": 1
-      }
-    },
-    "demo:algorithms/layer/3": {
-      "id": "demo:algorithms/layer/3",
-      "kind": "architecture-layer",
-      "cellType": "node",
-      "geometry": {
-        "x": 0,
-        "y": 280,
-        "width": 1640,
-        "height": 230,
-        "derived": true
-      },
-      "content": {
-        "label": "三种结果 · 持久化与撤销边界",
-        "text": {
-          "schemaVersion": 1,
-          "id": "demo:algorithms/layer/3/text",
-          "kind": "inline",
-          "plainText": "三种结果 · 持久化与撤销边界",
-          "content": {
-            "type": "doc",
-            "content": [
-              {
-                "type": "paragraph",
-                "content": [
-                  {
-                    "type": "text",
-                    "text": "三种结果 · 持久化与撤销边界",
-                    "marks": [
-                      {
-                        "type": "textStyle",
-                        "attrs": {
-                          "fontSize": "24px",
-                          "color": "#1e293b"
-                        }
-                      }
-                    ]
-                  }
-                ]
-              }
-            ]
-          }
-        }
-      },
-      "data": {
-        "order": "00000001",
-        "fontSize": 24,
-        "memberIds": [
-          "demo:algorithms/persist",
-          "demo:algorithms/runtime",
-          "demo:algorithms/session"
-        ]
-      },
-      "appearance": {
-        "fill": "#f8fafc",
-        "strokeColor": "#e2e8f0",
-        "strokeWidth": 1
-      }
-    },
     "project:detail/09/01/document": {
       "id": "project:detail/09/01/document",
       "cellType": "node",
@@ -965,7 +965,7 @@
                 "content": [
                   {
                     "type": "text",
-                    "text": "读图：范围固定、锁定对象不动；两个自动开关默认关闭，自动结果合入原事务。"
+                    "text": "读图：范围固定、锁定不动；自动开关默认关闭，结果合入原事务。"
                   }
                 ]
               },
@@ -1114,13 +1114,14 @@
               }
             ]
           },
-          "plainText": "相关文档：排列与组合\n读图：范围固定、锁定对象不动；两个自动开关默认关闭，自动结果合入原事务。\n保存边界与典型场景\n相关细节：连线路由与优化\n相关细节：各场景节点布局\n返回专题总览\n自动布局算法 · 连线路由算法\n自动开关 · 三种结果与典型场景\n源码入口：packages/engine/core/src/cell/layout-plan.ts；packages/react/board/src/frame-editor-properties.tsx；packages/product/app/src/canvas/canvas-session.ts。"
+          "plainText": "相关文档：排列与组合\n读图：范围固定、锁定不动；自动开关默认关闭，结果合入原事务。\n保存边界与典型场景\n相关细节：连线路由与优化\n相关细节：各场景节点布局\n返回专题总览\n自动布局算法 · 连线路由算法\n自动开关 · 三种结果与典型场景\n源码入口：packages/engine/core/src/cell/layout-plan.ts；packages/react/board/src/frame-editor-properties.tsx；packages/product/app/src/canvas/canvas-session.ts。"
         }
       },
       "appearance": {
         "fill": "none",
         "strokeColor": "none"
-      }
+      },
+      "name": "相关文档：排列与组合 读图：范围固定、锁定对象不动；两个自动开关默认关闭，自动结果合入原事务。 保存边界与典型场景 相关细节：连线路由与优化 相关细节：各场景节点布局 返回专题总览 自动布局算法 · 连线路由算法 自动开关 · 三种结果与典型场景 源码入口：packages/engine/core/src/cell/layout-plan.ts；packages/react/board/src/frame-editor-properties.tsx；packages/product/app/src/canvas/canvas-session.ts。"
     }
   },
   "organization": {

@@ -631,9 +631,7 @@
       "data": {
         "order": "00000001",
         "fontSize": 24,
-        "memberIds": [
-          "project:detail/09/03/cost"
-        ]
+        "memberIds": ["project:detail/09/03/cost"]
       }
     },
     "project:detail/09/03/document": {

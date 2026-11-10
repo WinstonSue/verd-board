@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from './service-fixture';
 
 for (const mode of ['light', 'dark'] as const) {
   for (const locale of ['zh', 'en'] as const) {
@@ -93,15 +93,23 @@ for (const mode of ['light', 'dark'] as const) {
         ).toBe(baseline.family);
         const lefts = await settings.evaluate((el) =>
           [
-            '.settings-search .vm-search__icon',
-            '.settings-scope-heading',
-            '.settings-sections-nav .settings-nav-label',
-          ].map(
-            (selector) =>
-              el.querySelector(selector)!.getBoundingClientRect().left,
-          ),
+            '.settings-search .sue-input-prefix svg',
+            '.settings-sections-nav .sue-menu-item-group-title',
+            '.settings-sections-nav .sue-menu-title-content',
+          ].map((selector) => {
+            const element = el.querySelector(selector)!;
+            if (selector.includes('menu-item-group-title')) {
+              const range = document.createRange();
+              range.selectNodeContents(element);
+              return range.getBoundingClientRect().left;
+            }
+            return element.getBoundingClientRect().left;
+          }),
         );
-        expect(Math.max(...lefts) - Math.min(...lefts)).toBeLessThanOrEqual(1);
+        expect(
+          Math.max(...lefts) - Math.min(...lefts),
+          JSON.stringify(lefts),
+        ).toBeLessThanOrEqual(1);
         const contentLefts = await settings
           .locator('.settings-sections-panel')
           .evaluate((el) =>

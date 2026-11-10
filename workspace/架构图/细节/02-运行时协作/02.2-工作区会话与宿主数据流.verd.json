@@ -53,6 +53,264 @@
     "name": "02.2 工作区会话与宿主数据流"
   },
   "cells": {
+    "project:detail/02/02/layer/0": {
+      "id": "project:detail/02/02/layer/0",
+      "kind": "architecture-layer",
+      "cellType": "node",
+      "geometry": {
+        "x": 0,
+        "y": 0,
+        "width": 1980,
+        "height": 170,
+        "derived": true
+      },
+      "content": {
+        "label": "产品入口 · 图文文件与 Schema 设置",
+        "text": {
+          "schemaVersion": 1,
+          "id": "project:detail/02/02/layer/0/text",
+          "kind": "inline",
+          "plainText": "产品入口 · 图文文件与 Schema 设置",
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "产品入口 · 图文文件与 Schema 设置",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "24px",
+                          "color": "#1e293b"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "data": {
+        "order": "00000000",
+        "fontSize": 24,
+        "memberIds": ["demo:runtime/module/app"]
+      },
+      "appearance": {
+        "fill": "#f8fafc",
+        "strokeColor": "#e2e8f0",
+        "strokeWidth": 1
+      }
+    },
+    "demo:runtime/layer/3": {
+      "id": "demo:runtime/layer/3",
+      "kind": "architecture-layer",
+      "cellType": "node",
+      "geometry": {
+        "x": 0,
+        "y": 280,
+        "width": 1980,
+        "height": 170,
+        "derived": true
+      },
+      "content": {
+        "label": "会话与数据 · 文件身份和引用独立管理",
+        "text": {
+          "schemaVersion": 1,
+          "id": "demo:runtime/layer/3/text",
+          "kind": "inline",
+          "plainText": "会话与数据 · 文件身份和引用独立管理",
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "会话与数据 · 文件身份和引用独立管理",
+                    "marks": [
+                      {
+                        "type": "bold"
+                      },
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "16px",
+                          "color": "#475569"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "data": {
+        "order": "00000001",
+        "fontSize": 24,
+        "memberIds": [
+          "demo:runtime/module/store",
+          "demo:runtime/module/host",
+          "demo:runtime/module/queue",
+          "demo:runtime/module/document-file"
+        ]
+      },
+      "appearance": {
+        "fill": "#f8fafc",
+        "strokeColor": "#e2e8f0",
+        "strokeWidth": 1
+      }
+    },
+    "demo:runtime/layer/4": {
+      "id": "demo:runtime/layer/4",
+      "kind": "architecture-layer",
+      "cellType": "node",
+      "geometry": {
+        "x": 0,
+        "y": 560,
+        "width": 1980,
+        "height": 170,
+        "derived": true
+      },
+      "content": {
+        "label": "宿主边界 · expectedVersion + transactionId",
+        "text": {
+          "schemaVersion": 1,
+          "id": "demo:runtime/layer/4/text",
+          "kind": "inline",
+          "plainText": "宿主边界 · expectedVersion + transactionId",
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "宿主边界 · expectedVersion + transactionId",
+                    "marks": [
+                      {
+                        "type": "bold"
+                      },
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "16px",
+                          "color": "#475569"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "data": {
+        "order": "00000002",
+        "fontSize": 24,
+        "memberIds": [
+          "demo:runtime/module/adapter",
+          "demo:runtime/module/desktop",
+          "demo:runtime/module/web"
+        ]
+      },
+      "appearance": {
+        "fill": "#f8fafc",
+        "strokeColor": "#e2e8f0",
+        "strokeWidth": 1
+      }
+    },
+    "project:detail/02/02/explanation-layer": {
+      "id": "project:detail/02/02/explanation-layer",
+      "kind": "architecture-layer",
+      "cellType": "node",
+      "geometry": {
+        "x": 0,
+        "y": 840,
+        "width": 1500,
+        "height": 200,
+        "derived": true,
+        "outline": "roundRectangle"
+      },
+      "ports": [
+        {
+          "id": "top",
+          "side": "top",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "right",
+          "side": "right",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "bottom",
+          "side": "bottom",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "left",
+          "side": "left",
+          "direction": "both",
+          "offset": 0.5
+        }
+      ],
+      "appearance": {
+        "fill": "#f0fdfa",
+        "strokeColor": "#94a3b8",
+        "strokeWidth": 1.5
+      },
+      "content": {
+        "label": "关键机制与边界",
+        "text": {
+          "schemaVersion": 1,
+          "id": "project:detail/02/02/explanation-layer/text",
+          "kind": "inline",
+          "plainText": "关键机制与边界",
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "关键机制与边界",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "20px",
+                          "color": "#1e293b"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "data": {
+        "order": "00000003",
+        "fontSize": 24,
+        "memberIds": ["project:detail/02/02/sync"]
+      }
+    },
     "demo:runtime/module/app": {
       "id": "demo:runtime/module/app",
       "kind": "architecture-module",
@@ -969,185 +1227,6 @@
         "strokeWidth": 1.5
       }
     },
-    "project:detail/02/02/layer/0": {
-      "id": "project:detail/02/02/layer/0",
-      "kind": "architecture-layer",
-      "cellType": "node",
-      "geometry": {
-        "x": 0,
-        "y": 0,
-        "width": 1980,
-        "height": 170,
-        "derived": true
-      },
-      "content": {
-        "label": "产品入口 · 图文文件与 Schema 设置",
-        "text": {
-          "schemaVersion": 1,
-          "id": "project:detail/02/02/layer/0/text",
-          "kind": "inline",
-          "plainText": "产品入口 · 图文文件与 Schema 设置",
-          "content": {
-            "type": "doc",
-            "content": [
-              {
-                "type": "paragraph",
-                "content": [
-                  {
-                    "type": "text",
-                    "text": "产品入口 · 图文文件与 Schema 设置",
-                    "marks": [
-                      {
-                        "type": "textStyle",
-                        "attrs": {
-                          "fontSize": "24px",
-                          "color": "#1e293b"
-                        }
-                      }
-                    ]
-                  }
-                ]
-              }
-            ]
-          }
-        }
-      },
-      "data": {
-        "order": "00000000",
-        "fontSize": 24,
-        "memberIds": [
-          "demo:runtime/module/app"
-        ]
-      },
-      "appearance": {
-        "fill": "#f8fafc",
-        "strokeColor": "#e2e8f0",
-        "strokeWidth": 1
-      }
-    },
-    "demo:runtime/layer/3": {
-      "id": "demo:runtime/layer/3",
-      "kind": "architecture-layer",
-      "cellType": "node",
-      "geometry": {
-        "x": 0,
-        "y": 280,
-        "width": 1980,
-        "height": 170,
-        "derived": true
-      },
-      "content": {
-        "label": "会话与数据 · 文件身份和引用独立管理",
-        "text": {
-          "schemaVersion": 1,
-          "id": "demo:runtime/layer/3/text",
-          "kind": "inline",
-          "plainText": "会话与数据 · 文件身份和引用独立管理",
-          "content": {
-            "type": "doc",
-            "content": [
-              {
-                "type": "paragraph",
-                "content": [
-                  {
-                    "type": "text",
-                    "text": "会话与数据 · 文件身份和引用独立管理",
-                    "marks": [
-                      {
-                        "type": "bold"
-                      },
-                      {
-                        "type": "textStyle",
-                        "attrs": {
-                          "fontSize": "16px",
-                          "color": "#475569"
-                        }
-                      }
-                    ]
-                  }
-                ]
-              }
-            ]
-          }
-        }
-      },
-      "data": {
-        "order": "00000001",
-        "fontSize": 24,
-        "memberIds": [
-          "demo:runtime/module/store",
-          "demo:runtime/module/host",
-          "demo:runtime/module/queue",
-          "demo:runtime/module/document-file"
-        ]
-      },
-      "appearance": {
-        "fill": "#f8fafc",
-        "strokeColor": "#e2e8f0",
-        "strokeWidth": 1
-      }
-    },
-    "demo:runtime/layer/4": {
-      "id": "demo:runtime/layer/4",
-      "kind": "architecture-layer",
-      "cellType": "node",
-      "geometry": {
-        "x": 0,
-        "y": 560,
-        "width": 1980,
-        "height": 170,
-        "derived": true
-      },
-      "content": {
-        "label": "宿主边界 · expectedVersion + transactionId",
-        "text": {
-          "schemaVersion": 1,
-          "id": "demo:runtime/layer/4/text",
-          "kind": "inline",
-          "plainText": "宿主边界 · expectedVersion + transactionId",
-          "content": {
-            "type": "doc",
-            "content": [
-              {
-                "type": "paragraph",
-                "content": [
-                  {
-                    "type": "text",
-                    "text": "宿主边界 · expectedVersion + transactionId",
-                    "marks": [
-                      {
-                        "type": "bold"
-                      },
-                      {
-                        "type": "textStyle",
-                        "attrs": {
-                          "fontSize": "16px",
-                          "color": "#475569"
-                        }
-                      }
-                    ]
-                  }
-                ]
-              }
-            ]
-          }
-        }
-      },
-      "data": {
-        "order": "00000002",
-        "fontSize": 24,
-        "memberIds": [
-          "demo:runtime/module/adapter",
-          "demo:runtime/module/desktop",
-          "demo:runtime/module/web"
-        ]
-      },
-      "appearance": {
-        "fill": "#f8fafc",
-        "strokeColor": "#e2e8f0",
-        "strokeWidth": 1
-      }
-    },
     "project:detail/02/02/sync": {
       "id": "project:detail/02/02/sync",
       "kind": "architecture-module",
@@ -1246,89 +1325,6 @@
         }
       }
     },
-    "project:detail/02/02/explanation-layer": {
-      "id": "project:detail/02/02/explanation-layer",
-      "kind": "architecture-layer",
-      "cellType": "node",
-      "geometry": {
-        "x": 0,
-        "y": 840,
-        "width": 1500,
-        "height": 200,
-        "derived": true,
-        "outline": "roundRectangle"
-      },
-      "ports": [
-        {
-          "id": "top",
-          "side": "top",
-          "direction": "both",
-          "offset": 0.5
-        },
-        {
-          "id": "right",
-          "side": "right",
-          "direction": "both",
-          "offset": 0.5
-        },
-        {
-          "id": "bottom",
-          "side": "bottom",
-          "direction": "both",
-          "offset": 0.5
-        },
-        {
-          "id": "left",
-          "side": "left",
-          "direction": "both",
-          "offset": 0.5
-        }
-      ],
-      "appearance": {
-        "fill": "#f0fdfa",
-        "strokeColor": "#94a3b8",
-        "strokeWidth": 1.5
-      },
-      "content": {
-        "label": "关键机制与边界",
-        "text": {
-          "schemaVersion": 1,
-          "id": "project:detail/02/02/explanation-layer/text",
-          "kind": "inline",
-          "plainText": "关键机制与边界",
-          "content": {
-            "type": "doc",
-            "content": [
-              {
-                "type": "paragraph",
-                "content": [
-                  {
-                    "type": "text",
-                    "text": "关键机制与边界",
-                    "marks": [
-                      {
-                        "type": "textStyle",
-                        "attrs": {
-                          "fontSize": "20px",
-                          "color": "#1e293b"
-                        }
-                      }
-                    ]
-                  }
-                ]
-              }
-            ]
-          }
-        }
-      },
-      "data": {
-        "order": "00000003",
-        "fontSize": 24,
-        "memberIds": [
-          "project:detail/02/02/sync"
-        ]
-      }
-    },
     "project:detail/02/02/document": {
       "id": "project:detail/02/02/document",
       "cellType": "node",
@@ -1372,7 +1368,7 @@
                 "content": [
                   {
                     "type": "text",
-                    "text": "读图：WorkspaceSession 是工作区唯一写入口；外部宿主意图详见⑤.3。"
+                    "text": "读图：WorkspaceSession 统一写入；宿主意图见⑤.3。"
                   }
                 ]
               },
@@ -1472,13 +1468,14 @@
               }
             ]
           },
-          "plainText": "相关文档：系统架构\n读图：WorkspaceSession 是工作区唯一写入口；外部宿主意图详见⑤.3。\n返回专题总览\n相关细节：编辑器与插件运行时\nReact接入 · 标准模式\nReact接入 · 第三方宿主模式\n布局、路由与保存边界\n源码入口：packages/product/app/src/session/workspace-session.ts；packages/product/app/src/host/workspace-host.ts；apps/desktop/electron/workspace-startup.ts。"
+          "plainText": "相关文档：系统架构\n读图：WorkspaceSession 统一写入；宿主意图见⑤.3。\n返回专题总览\n相关细节：编辑器与插件运行时\nReact接入 · 标准模式\nReact接入 · 第三方宿主模式\n布局、路由与保存边界\n源码入口：packages/product/app/src/session/workspace-session.ts；packages/product/app/src/host/workspace-host.ts；apps/desktop/electron/workspace-startup.ts。"
         }
       },
       "appearance": {
         "fill": "none",
         "strokeColor": "none"
-      }
+      },
+      "name": "相关文档：系统架构 读图：WorkspaceSession 是工作区唯一写入口；外部宿主意图详见⑤.3。 返回专题总览 相关细节：编辑器与插件运行时 React接入 · 标准模式 React接入 · 第三方宿主模式 布局、路由与保存边界 源码入口：packages/product/app/src/session/workspace-session.ts；packages/product/app/src/host/workspace-host.ts；apps/desktop/electron/workspace-startup.ts。"
     }
   },
   "organization": {

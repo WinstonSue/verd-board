@@ -1,6 +1,8 @@
+import { cellBodyPoint } from '../../helpers/port-controls';
+import { openActiveFile } from './app-actions';
 import { openHistoryAction } from './app-actions';
 import { selectHistoryAction } from './app-actions';
-import { expect, test, type Locator, type Page } from '@playwright/test';
+import { expect, test, type Locator, type Page } from './service-fixture';
 import {
   addArchitectureModule,
   createArchitectureFrameSnapshot,
@@ -46,6 +48,12 @@ const testCellRegistry = createFixtureRegistry();
 
 test.use({ actionTimeout: 6000 });
 
+async function doubleClickBody(page: Page, target: Locator) {
+  const select = await cellBodyPoint(target);
+  await page.mouse.click(select.x, select.y);
+  const point = await cellBodyPoint(target);
+  await page.mouse.dblclick(point.x, point.y);
+}
 const canvas = (page: Page) =>
   page.locator('svg[aria-label="Frame canvas"][data-surface="root"]:visible');
 const cell = (page: Page, id: string) =>
@@ -210,45 +218,41 @@ const drawingFixture = (): FrameSnapshot => {
 const open = async (page: Page, snapshot: FrameSnapshot) => {
   await page.setViewportSize({ width: 1440, height: 1000 });
   await page.goto('/');
+  await openActiveFile(page);
   if (!(await canvas(page).isVisible())) await activateBoardTab(page);
   await expect(canvas(page)).toBeVisible();
   await waitForWorkspacePersisted(page);
   await page.evaluate(async (snapshot) => {
-    const db = await new Promise<IDBDatabase>((resolve) => {
-      const r = indexedDB.open('VerdBoard');
-      r.onsuccess = () => resolve(r.result);
-    });
-    await new Promise<void>((resolve, reject) => {
-      const transaction = db.transaction('verdboard_store', 'readwrite'),
-        saved = transaction.objectStore('verdboard_store');
-      saved.clear();
-      const frames: Record<string, string> = {};
-      for (const cell of Object.values(snapshot.store.cells))
-        if (cell.cellType === 'frame') {
-          const frame = cell as FrameCell,
-            key = `frames/${frame.id}/fixture`;
-          frames[frame.id] = key;
-          const cells = Object.fromEntries(
-            [...frame.children, ...frame.groups]
-              .map((id) => [id, snapshot.store.cells[id]])
-              .filter(([, cell]) => (cell as any).cellType !== 'frame'),
-          );
-          saved.put({ format: 'verd-frame', version: 1, frame, cells }, key);
-        }
-      saved.put(
-        {
-          format: 'verd-workspace',
-          version: 2,
-          rootId: snapshot.store.rootId,
-          frames,
-          detachedFrameIds: [],
-        },
-        'main_board_content',
-      );
-      transaction.oncomplete = () => resolve();
-      transaction.onerror = () => reject(transaction.error);
-    });
-    db.close();
+    const records: [string, unknown][] = [];
+    const saved = {
+      put(value: unknown, key: string) {
+        records.push([key, value]);
+      },
+    };
+    const frames: Record<string, string> = {};
+    for (const cell of Object.values(snapshot.store.cells))
+      if (cell.cellType === 'frame') {
+        const frame = cell as FrameCell,
+          key = `frames/${frame.id}/fixture`;
+        frames[frame.id] = key;
+        const cells = Object.fromEntries(
+          [...frame.children, ...frame.groups]
+            .map((id) => [id, snapshot.store.cells[id]])
+            .filter(([, cell]) => (cell as any).cellType !== 'frame'),
+        );
+        saved.put({ format: 'verd-frame', version: 1, frame, cells }, key);
+      }
+    saved.put(
+      {
+        format: 'verd-workspace',
+        version: 2,
+        rootId: snapshot.store.rootId,
+        frames,
+        detachedFrameIds: [],
+      },
+      'main_board_content',
+    );
+    await (window as any).__verdSeedLegacy(records);
   }, snapshot);
   await clearWorkspaceStorage(page);
   await page.reload();
@@ -382,7 +386,7 @@ test('all drawing text, block content, labels and rotated table titles keep iden
     await canvas(page).press('Escape');
     const target = cell(page, id);
     await target.click();
-    await parity(page, target, () => target.dblclick());
+    await parity(page, target, () => doubleClickBody(page, target));
   }
   const table = cell(page, 'table').locator('[data-table-entry]').first();
   await table.click();
@@ -392,7 +396,9 @@ test('all drawing text, block content, labels and rotated table titles keep iden
   await parity(page, title, () => title.dblclick());
   const edge = cell(page, 'edge');
   await edge.locator('[data-edge-label]').click();
-  await parity(page, edge, () => edge.locator('[data-edge-label]').dblclick());
+  await parity(page, edge, () =>
+    edge.locator('[data-edge-label]').dblclick({ position: { x: 4, y: 4 } }),
+  );
   await expect(await openHistoryAction(page, '撤销')).toBeDisabled();
   await page.keyboard.press('Escape');
 });
@@ -445,14 +451,15 @@ test('Mind root, child and note keep their font, color and media text regions in
         .locator('foreignObject')
         .filter({ has: page.locator('[data-frame-rich-text]') })
         .last();
-      await target.click();
+      if (detail) await target.click();
+      else await expect(target).toBeVisible();
       // The editor is a sibling of the topic foreignObject, while the note editor
       // lives inside its own region. Restrict the preview to the topic itself.
       const before = await metrics(topicText.locator('.board-text-content'));
       // Embedded previews render the same cells but are view-only; the detail
       // canvas is where the shared file is edited.
       if (detail) {
-        await target.dblclick();
+        await doubleClickBody(page, target);
         const editor = target.locator('[data-frame-text-editor] .ProseMirror');
         await expect(editor).toBeFocused();
         sameMetrics(before, await metrics(editor));
@@ -685,7 +692,7 @@ for (const domain of ['workflow', 'architecture'] as const) {
     await open(page, snapshot);
     const target = cell(page, 'task');
     await target.click();
-    await parity(page, target, () => target.dblclick());
+    await parity(page, target, () => doubleClickBody(page, target));
   });
 }
 
@@ -694,7 +701,7 @@ test('portal formatting retains selection and input, tracks zoom, survives IME E
 }) => {
   await open(page, drawingFixture());
   const target = cell(page, 'plain');
-  await target.dblclick();
+  await doubleClickBody(page, target);
   const editor = target.locator('.ProseMirror');
   await expect(editor).toBeFocused();
   await editor.press('ControlOrMeta+a');
@@ -751,7 +758,7 @@ test('portal formatting retains selection and input, tracks zoom, survives IME E
     .toBe(true);
   await page.reload();
   await expect(target).toContainText('labelZ');
-  await target.dblclick();
+  await doubleClickBody(page, target);
   await expect(editor.locator('a strong, strong a')).toHaveCount(1);
   await canvas(page).evaluate((svg) => {
     const rect = svg.getBoundingClientRect();
@@ -894,8 +901,8 @@ test('Frame names share glyph metrics, truncation and placeholder geometry at fr
   await expect(
     canvas(page).locator('[data-frame-title-id="frame-ref:deep"]'),
   ).toHaveText('Frame');
-  // A restored session has no pending writes; the status resets to idle.
+  // Restoring normalized navigation saves session metadata and settles successfully.
   await expect(
     page.getByTestId('save-status').locator('visible=true'),
-  ).toHaveAttribute('data-save-state', 'idle');
+  ).toHaveAttribute('data-save-state', 'saved');
 });

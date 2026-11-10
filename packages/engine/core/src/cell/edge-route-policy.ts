@@ -33,8 +33,17 @@ export function normalizeEdgeRoute(
   )
     return edge;
   if (route.mode === 'fixed' && isOrthogonalPolyline(route.points))
-    return { ...edge, route: { mode: 'orthogonal', points: route.points } };
-  return { ...edge, route: { mode: 'orthogonal' } };
+    return {
+      ...edge,
+      route: { ...route, mode: 'orthogonal', points: route.points },
+    };
+  return {
+    ...edge,
+    route: {
+      mode: 'orthogonal',
+      ...(route.origin ? { origin: route.origin } : {}),
+    },
+  };
 }
 
 export function normalizeCellRoutes(

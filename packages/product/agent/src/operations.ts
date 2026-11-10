@@ -9,7 +9,8 @@ import {
   createFrameCell,
   isNodeCell,
   isEdgeCell,
-  planCellLayout,
+  planGeometryLayout,
+  type GeometryDiagnostic,
   type Cell,
   type CellOperation,
   frameLaneScene,
@@ -45,6 +46,7 @@ export function runOperations(
     input.map((e) => [workspaceFileId(e.file), clone(e)]),
   );
   const idMap: Record<string, string> = {};
+  const geometryDiagnostics: GeometryDiagnostic[] = [];
   const allocate = (hint?: string) => {
     const id = hint ?? makeId();
     idMap[hint ?? id] = id;
@@ -91,7 +93,6 @@ export function runOperations(
             snapshot.store.cells[anchor] as NodeCell<workflow.WorkflowStartData>
           ).data!.graphMode = op.mode;
         const file = frameFileFor(snapshot.store, id);
-        file.organization = { kind: 'standalone' };
         entries.set(id, { path: op.path, file });
       }
       continue;
@@ -100,7 +101,9 @@ export function runOperations(
       const id = workspaceFileId(op.file);
       if (entries.has(id))
         throw new Error('Imported file identity already exists: ' + id);
-      entries.set(id, { path: op.path, file: clone(op.file) });
+      const imported = clone(op.file);
+      if (imported.format === 'verd-frame') delete imported.organization;
+      entries.set(id, { path: op.path, file: imported });
       continue;
     }
     const e = entry(op.fileId);
@@ -111,6 +114,7 @@ export function runOperations(
       )
         throw new Error('Replacement must preserve file identity and kind');
       e.file = clone(op.file);
+      if (e.file.format === 'verd-frame') delete e.file.organization;
       continue;
     }
     if (op.type === 'file.move') {
@@ -134,7 +138,7 @@ export function runOperations(
         workspaceFileClosure(originals, op.fileId),
         (id) => claimed.has(id),
         makeId,
-        { rootId: op.fileId, mode: 'retarget' },
+        { rootId: op.fileId },
         registry(),
       );
       for (const [oldId, newId] of remapped.idMap) idMap[oldId] = newId;
@@ -616,32 +620,18 @@ export function runOperations(
       }
       target.file = targetFile;
     } else if (op.type === 'layout.apply') {
-      if (first('uml-sequence-root')) {
-        if (op.style !== 'domain')
-          throw new Error('Sequence positions are derived from event order');
-      } else if (op.style === 'domain') {
-        if (first('workflow-start'))
-          apply(
-            workflow.autoLayoutWorkflow(
-              store,
-              first('workflow-start')!,
-              registry(),
-            ),
-          );
-        // Mind/architecture/UML derive geometry at render time.
-      } else
-        apply(
-          planCellLayout(
-            store,
-            { focus: [store.rootId], ids: op.ids ?? frame.children },
-            op.style,
-            registry(),
-          ),
-        );
+      const plan = planGeometryLayout(
+        store,
+        { focus: [store.rootId], ids: op.ids ?? frame.children },
+        op.style,
+        registry(),
+      );
+      geometryDiagnostics.push(...plan.diagnostics);
+      apply(plan.operations);
     }
     file = frameFileFor(store, store.rootId);
-    file.organization = e.file.organization;
+    delete file.organization;
     e.file = file;
   }
-  return { entries: [...entries.values()], idMap };
+  return { entries: [...entries.values()], idMap, geometryDiagnostics };
 }

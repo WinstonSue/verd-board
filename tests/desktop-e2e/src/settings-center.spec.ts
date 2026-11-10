@@ -1,5 +1,9 @@
 import { selectSetting } from '../../helpers/settings-controls';
-import { electron, writeDesktopLauncher } from './desktop-launcher';
+import {
+  desktopMode,
+  electron,
+  writeDesktopLauncher,
+} from './desktop-launcher';
 import { test, expect, type ElectronApplication } from '@playwright/test';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -23,7 +27,9 @@ test('Desktop unified settings keeps personal and project configuration in one d
     await expect(page.getByTestId('workspace-my')).toBeVisible({
       timeout: 60000,
     });
-    await expect(page).toHaveURL(/^http:\/\/127\.0\.0\.1:7310\//);
+    await expect(page).toHaveURL(
+      desktopMode === 'prod' ? /^file:\/\// : /^http:\/\/127\.0\.0\.1:7310\//,
+    );
     await expect(page.getByTestId('workspace-menu-trigger')).toContainText(
       'project',
     );

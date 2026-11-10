@@ -216,15 +216,33 @@ export function createFrameActions(options: {
     'middle',
     'bottom',
   ] as const)
-    selectionAction(`canvas.align.${axis}`, `对齐：${axis}`, `Align ${axis}`, {
-      type: 'align',
-      axis,
-    });
+    selectionAction(
+      `canvas.align.${axis}`,
+      {
+        left: '左对齐',
+        center: '水平居中',
+        right: '右对齐',
+        top: '顶对齐',
+        middle: '垂直居中',
+        bottom: '底对齐',
+      }[axis],
+      {
+        left: 'Align left',
+        center: 'Align horizontal centers',
+        right: 'Align right',
+        top: 'Align top',
+        middle: 'Align vertical centers',
+        bottom: 'Align bottom',
+      }[axis],
+      { type: 'align', axis },
+    );
   for (const axis of ['horizontal', 'vertical'] as const)
     selectionAction(
       `canvas.distribute.${axis}`,
-      `等距分布：${axis}`,
-      `Distribute ${axis}`,
+      axis === 'horizontal' ? '水平等距分布' : '垂直等距分布',
+      axis === 'horizontal'
+        ? 'Distribute horizontally'
+        : 'Distribute vertically',
       { type: 'distribute', axis },
     );
   for (const style of [
@@ -292,7 +310,7 @@ export function createFrameActions(options: {
       id: `canvas.clipboard.${kind}`,
       label: {
         zh: { copy: '复制', cut: '剪切', paste: '粘贴' }[kind],
-        en: kind,
+        en: { copy: 'Copy', cut: 'Cut', paste: 'Paste' }[kind],
       },
       category: 'canvas',
       effect: kind === 'copy' ? 'external' : 'content',

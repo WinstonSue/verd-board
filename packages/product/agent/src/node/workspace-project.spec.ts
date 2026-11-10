@@ -97,6 +97,7 @@ describe('automatic project context and resources', () => {
       agent: { ready: true },
       resourceId: 'test-v1',
     });
+    expect((await runCli(['doctor', '--workspace', root])).exitCode).toBe(0);
     const text = await fs.readFile(path.join(root, 'AGENTS.md'), 'utf8'),
       stat = await fs.stat(path.join(root, 'AGENTS.md'));
     expect(text.startsWith('# Existing rules\nKeep this exactly.\n')).toBe(
@@ -169,9 +170,9 @@ describe('automatic project context and resources', () => {
   });
   it('keeps read-only commands from initializing metadata, guides or recovering logs', async () => {
     const root = await directory();
-    expect(
-      (await runCli(['doctor', '--workspace', root])).result,
-    ).toMatchObject({ ready: false });
+    const diagnostic = await runCli(['doctor', '--workspace', root]);
+    expect(diagnostic.result).toMatchObject({ ready: false });
+    expect(diagnostic.exitCode).toBe(1);
     await expect(fs.access(path.join(root, '.verdscrolls'))).rejects.toThrow();
     await expect(fs.access(path.join(root, 'AGENTS.md'))).rejects.toThrow();
     await expect(runCli(['context', '--workspace', root])).rejects.toThrow();

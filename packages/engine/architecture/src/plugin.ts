@@ -1,4 +1,13 @@
-import { isNodeCell, type Cell, type CellPlugin } from '@sue/board-core';
+import {
+  applyCellOperations,
+  resolveCellArrangementScope,
+  lockedByAncestor,
+  planNodeLayout,
+  isNodeCell,
+  type Cell,
+  type CellPlugin,
+} from '@sue/board-core';
+import { layoutArchitectureCells } from './cell-utils';
 import { layerRows } from './arrangement';
 import { registerArchitectureCells } from './cell-utils';
 import { ArchitectureKind } from './kinds';
@@ -6,6 +15,120 @@ export const createArchitecturePlugin = (): CellPlugin => ({
   id: 'architecture',
   scenes: [
     {
+      geometry: {
+        version: 1,
+        nodeLayout: 'domain',
+        edgeRouting: 'orthogonal',
+        defaultStyle: 'layers',
+        project: layoutArchitectureCells,
+        fixedNodeIds: (context) =>
+          Object.values(context.store.cells).flatMap((cell) =>
+            isNodeCell(cell) &&
+            cell.kind === 'architecture-layer' &&
+            (cell.locked || lockedByAncestor(context.store, cell.id))
+              ? (cell.data as { memberIds: string[] }).memberIds
+              : [],
+          ),
+        planLayout(context) {
+          const scope = resolveCellArrangementScope(
+            context.store,
+            context.selection,
+          );
+          const padding = scope.ids.flatMap((id) => {
+            const c = context.store.cells[id];
+            return isNodeCell(c) &&
+              c.kind === 'architecture-layer' &&
+              !c.locked &&
+              !lockedByAncestor(context.store, id)
+              ? [
+                  {
+                    type: 'replace_cell' as const,
+                    cell: {
+                      ...c,
+                      data: {
+                        ...(c.data as object),
+                        layoutPaddingTop: Math.max(
+                          96,
+                          (c.data as { layoutPaddingTop?: number })
+                            ?.layoutPaddingTop ?? 0,
+                        ),
+                      },
+                    },
+                  },
+                ]
+              : [];
+          });
+          const candidate = applyCellOperations(
+            context.store,
+            padding,
+            context.registry,
+          );
+          return [
+            ...padding,
+            ...planNodeLayout(
+              candidate,
+              context.selection,
+              'layers',
+              context.registry,
+              context.spacing.nodeGap,
+              context.spacing.rankGap,
+              true,
+            ).filter(
+              (op) =>
+                op.type !== 'replace_cell' ||
+                !Object.values(context.store.cells).some(
+                  (owner) =>
+                    isNodeCell(owner) &&
+                    owner.kind === 'architecture-layer' &&
+                    (owner.locked ||
+                      lockedByAncestor(context.store, owner.id)) &&
+                    (owner.data as { memberIds: string[] }).memberIds.includes(
+                      op.cell.id,
+                    ),
+                ),
+            ),
+          ];
+        },
+        obstacles(store, frameId, geometry) {
+          const projected = geometry ?? layoutArchitectureCells(store, frameId);
+          return [...projected].flatMap(([id, g]) =>
+            store.cells[id]?.kind === 'architecture-layer' &&
+            !store.cells[id].hidden &&
+            !!(store.cells[id] as import('@sue/board-core').NodeCell).content
+              ?.label
+              ? [
+                  {
+                    id: `${id}:header`,
+                    x: g.x + 12,
+                    y: g.y + 4,
+                    width: Math.max(
+                      0,
+                      Math.min(
+                        g.width - 24,
+                        Math.max(
+                          48,
+                          16 +
+                            [
+                              ...((
+                                store.cells[
+                                  id
+                                ] as import('@sue/board-core').NodeCell
+                              ).content?.label ?? ''),
+                            ].reduce(
+                              (sum, c) =>
+                                sum + (c.charCodeAt(0) > 255 ? 16 : 8),
+                              0,
+                            ),
+                        ),
+                      ),
+                    ),
+                    height: 32,
+                  },
+                ]
+              : [],
+          );
+        },
+      },
       layouts: [
         { id: 'layers', edgeKind: 'architecture-edge', rows: layerRows },
       ],

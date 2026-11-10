@@ -1,5 +1,6 @@
+import { openActiveFile } from './app-actions';
 import { selectHistoryAction } from './app-actions';
-import { expect, test, type Locator, type Page } from '@playwright/test';
+import { expect, test, type Locator, type Page } from './service-fixture';
 import {
   createBlockText,
   createInlineText,
@@ -55,6 +56,7 @@ async function selectRoot(page: Page) {
 }
 async function open(page: Page, snapshot: FrameSnapshot) {
   await page.goto('/');
+  await openActiveFile(page);
   await page
     .locator('input[type="file"][accept^="application/json"]')
     .nth(1)

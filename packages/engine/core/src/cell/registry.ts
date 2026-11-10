@@ -15,6 +15,7 @@ import {
 
 /** A scene is discovered from registered anchors, never from a kind naming convention. */
 export interface CellScene {
+  geometry?: import('./geometry-policy').SceneGeometryPolicy;
   id: string;
   anchorKinds: readonly string[];
   kinds: readonly string[];

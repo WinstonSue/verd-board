@@ -15,6 +15,7 @@ import {
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { runGate } from './quality-gate.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const desktop = path.join(root, 'apps/desktop');
@@ -146,7 +147,7 @@ async function validateMacDmg(file, config, staging) {
   }
 }
 
-run('pnpm', ['build:desktop']);
+await runGate('release');
 const staging = await mkdtemp(path.join(tmpdir(), 'verd-desktop-package-'));
 try {
   const require = createRequire(import.meta.url);

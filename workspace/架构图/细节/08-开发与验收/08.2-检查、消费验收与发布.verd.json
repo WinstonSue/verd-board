@@ -103,7 +103,9 @@
                       {
                         "type": "textStyle",
                         "attrs": {
-                          "fontSize": "24px"
+                          "fontSize": "24px",
+                          "color": "#ffffff",
+                          "colorMode": "custom"
                         }
                       }
                     ]
@@ -116,12 +118,15 @@
       },
       "appearance": {
         "fill": "#0f766e",
-        "strokeColor": "#0f766e"
+        "strokeColor": "#0f766e",
+        "textColor": "#ffffff"
       },
       "data": {
         "layout": "standard",
-        "rightNodeCount": 20
-      }
+        "rightNodeCount": 20,
+        "maxNodeWidth": 320
+      },
+      "name": "检查、消费验收与发布"
     },
     "demo:development/node/2-0": {
       "id": "demo:development/node/2-0",
@@ -1477,7 +1482,7 @@
                 "content": [
                   {
                     "type": "text",
-                    "text": "读图：区分开发服务验收与生产构建验收；正式打包和发布由维护者执行。"
+                    "text": "读图：开发与生产构建分别验收；正式发布由维护者执行。"
                   }
                 ]
               },
@@ -1560,13 +1565,14 @@
               }
             ]
           },
-          "plainText": "相关文档：开发指南\n读图：区分开发服务验收与生产构建验收；正式打包和发布由维护者执行。\n返回专题总览\n相关细节：环境、源码与文档维护\n配置与源码索引 · 迁移边界与验收\n文档维护指南 · 更新与验收\n源码入口：package.json；tests/desktop-e2e/playwright.config.ts；tests/desktop-e2e/playwright.prod.config.ts。"
+          "plainText": "相关文档：开发指南\n读图：开发与生产构建分别验收；正式发布由维护者执行。\n返回专题总览\n相关细节：环境、源码与文档维护\n配置与源码索引 · 迁移边界与验收\n文档维护指南 · 更新与验收\n源码入口：package.json；tests/desktop-e2e/playwright.config.ts；tests/desktop-e2e/playwright.prod.config.ts。"
         }
       },
       "appearance": {
         "fill": "none",
         "strokeColor": "none"
-      }
+      },
+      "name": "相关文档：开发指南 读图：区分开发服务验收与生产构建验收；正式打包和发布由维护者执行。 返回专题总览 相关细节：环境、源码与文档维护 配置与源码索引 · 迁移边界与验收 文档维护指南 · 更新与验收 源码入口：package.json；tests/desktop-e2e/playwright.config.ts；tests/desktop-e2e/playwright.prod.config.ts。"
     },
     "project:content-release/node/4-4": {
       "id": "project:content-release/node/4-4",

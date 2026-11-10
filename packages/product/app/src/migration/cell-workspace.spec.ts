@@ -4,7 +4,7 @@ import {
   isEdgeCell,
   isGroupCell,
   isNodeCell,
-  relativeAnchor,
+  resolveAnchor,
   type NodeCell,
 } from '@sue/board-core';
 import {
@@ -347,7 +347,7 @@ describe('legacy cell workspace migration', () => {
     if (!('cellId' in edge.source)) throw new Error('Missing binding');
     const node = result.store.cells[edge.source.cellId];
     if (!('geometry' in node)) throw new Error('Missing geometry');
-    const point = relativeAnchor(node.geometry, edge.source.anchor!);
+    const point = resolveAnchor(node.geometry, edge.source.anchor!).point;
     expect(point[0]).toBeCloseTo(60);
     expect(point[1]).toBeCloseTo(95);
     expect(await migrateLegacyCellWorkspace(adapter)).toEqual(result);

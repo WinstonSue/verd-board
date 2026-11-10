@@ -105,7 +105,13 @@ async function setup(exporting = false) {
   const renderDocument = vi.fn(() => <div>Full inner document</div>);
   const open = vi.fn();
   const paint = vi.fn(() => undefined);
-  const extensions = [{ kind: 'geometry', presentation: paint }];
+  const extensions = [
+    {
+      kind: 'geometry',
+      presentation: paint,
+      renderControls: () => <g data-test-subject-control />,
+    },
+  ];
   await act(async () =>
     root.render(
       <FrameCanvas
@@ -214,6 +220,26 @@ it('renders source subjects and nested reference cards without acquiring editors
   expect(
     test.container.querySelectorAll('svg[data-surface="nested"]'),
   ).toHaveLength(0);
+});
+it('keeps an activated subject editable while its inner references remain detail cards', async () => {
+  const t = await setup();
+  expect(t.container.querySelector('[data-test-subject-control]')).toBeNull();
+  await t.enter('a');
+  const nested = t.container.querySelector('svg[data-surface="nested"]')!;
+  expect(nested.querySelector('[data-test-subject-control]')).not.toBeNull();
+  expect(
+    nested.querySelector('[data-reference-card="source-doc"]'),
+  ).not.toBeNull();
+  expect(t.renderDocument).not.toHaveBeenCalled();
+  await act(async () =>
+    nested.dispatchEvent(
+      new KeyboardEvent('keydown', {
+        key: 'Escape',
+        bubbles: true,
+      }),
+    ),
+  );
+  expect(t.container.querySelector('[data-test-subject-control]')).toBeNull();
 });
 it('exports the same subject as flat SVG without HTML preview boundaries or editing instances', async () => {
   const t = await setup(true);

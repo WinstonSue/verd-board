@@ -1,4 +1,6 @@
-import { expect, test } from '@playwright/test';
+import { chooseLocalDirectory } from './service-actions';
+import { serviceFixture } from './service-fixture';
+import { expect, test } from './service-fixture';
 test('home, content, favorites, search and restoration share the workspace', async ({
   page,
 }) => {
@@ -47,6 +49,7 @@ test('creates a separate web workspace and switches back without deleting data',
   await dialog.getByRole('button', { name: '新建工作区', exact: true }).click();
   await dialog.getByRole('textbox').fill('测试资料库');
   await dialog.getByRole('button', { name: '创建', exact: true }).click();
+  await chooseLocalDirectory(page, serviceFixture(page).root);
   await expect(page.getByTestId('workspace-menu-trigger')).toContainText(
     '测试资料库',
   );
@@ -55,7 +58,9 @@ test('creates a separate web workspace and switches back without deleting data',
     '测试资料库',
   );
   await page.getByTestId('workspace-menu-trigger').click();
-  await dialog.getByRole('button', { name: 'default', exact: true }).click();
+  await dialog
+    .getByRole('button', { name: '打开系统介绍', exact: true })
+    .click();
   await expect(page.getByTestId('workspace-menu-trigger')).not.toContainText(
     '测试资料库',
   );

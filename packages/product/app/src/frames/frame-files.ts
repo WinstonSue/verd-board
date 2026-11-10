@@ -18,43 +18,23 @@ import {
   type CellId,
   type CellRegistry,
   type CellStore,
-  type EdgeTerminal,
+  type Terminal,
   type FrameCell,
   type FrameReferenceCell,
   type Point,
 } from '@sue/board-core';
 import type { WorkspaceFile } from '../documents/document-files';
-import {
-  organizationForCopy,
-  ownedSubgraphIds,
-  settleImportedOrganization,
-  stampPartitionOrganization,
-  type CopyOwnershipMode,
-  type FrameOrganization,
-} from './frame-organization';
+import type { FrameOrganization } from './frame-organization';
 
 export {
-  buildOrganizationIndex,
   diagramKindOf,
   isRegularCanvas,
   isSpecializedDiagram,
-  organizationChangeError,
-  organizationForCopy,
-  organizePreviewIsStale,
-  parseFrameOrganization,
-  recommendOrganization,
-  referenceSourceKey,
   referenceSourcesOf,
   sameFrameContent,
   sameFrameFile,
-  settleImportedOrganization,
 } from './frame-organization';
-export type {
-  DiagramKind,
-  FrameOrganization,
-  FrameOrganizationIndex,
-  OrganizeRecommendation,
-} from './frame-organization';
+export type { DiagramKind, FrameOrganization } from './frame-organization';
 
 /**
  * One file holds exactly one root Frame plus the non-Frame cells it directly
@@ -65,11 +45,7 @@ export interface FrameFileV2 {
   properties?: import('../documents/document-files').ContentProperties;
   format: 'verd-frame';
   version: 2;
-  /**
-   * Optional workspace organization. Absent on legacy files, which stay
-   * independent entries until the user organizes them. Never inferred from
-   * the reference graph on read.
-   */
+  /** @deprecated Accepted as inert legacy data; never written by new edits. */
   organization?: FrameOrganization;
   frame: FrameCell;
   cells: Record<CellId, Cell>;
@@ -149,8 +125,7 @@ export interface ExternalizeResult {
   references: Map<CellId, CellId>;
   /**
    * Externalized frame -> the file root that owned it, including frames
-   * created inside a group. This is structural context for an explicit
-   * creation owner; it is not written as organization by itself.
+   * created inside a group. This is structural placement context only.
    */
   owners: Map<CellId, CellId>;
 }
@@ -164,10 +139,10 @@ const compact = <T extends object>(value: T): T => {
 };
 
 const retargetTerminal = (
-  terminal: EdgeTerminal,
+  terminal: Terminal,
   from: CellId,
   to: CellId,
-): EdgeTerminal =>
+): Terminal =>
   'cellId' in terminal && terminal.cellId === from
     ? { ...terminal, cellId: to }
     : terminal;
@@ -333,13 +308,7 @@ const frameOrder = (store: CellStore): CellId[] => {
  * valid v2 partitions for both canonical and legacy-shaped input.
  */
 export interface PartitionOptions {
-  /** Files already in the workspace. Their organization is kept by stable id. */
   existing?: ReadonlyMap<CellId, FrameFileV2>;
-  /**
-   * Explicit owner for specialized diagrams created by this edit.
-   * Omitted for import and legacy partition, which must not auto-own.
-   */
-  creationOwnerId?: CellId;
 }
 
 export const partitionCellStore = (
@@ -362,7 +331,11 @@ export const partitionCellStore = (
   return {
     files: frameOrder(flat)
       .filter((id) => id !== WORKSPACE_ROOT_ID)
-      .map((id) => stampPartitionOrganization(frameFileFor(flat, id), options)),
+      .map((id) => {
+        const file = frameFileFor(flat, id);
+        const properties = options?.existing?.get(id)?.properties;
+        return properties ? { ...file, properties } : file;
+      }),
     references,
     owners,
   };
@@ -534,8 +507,7 @@ export const findFrameReferenceCycles = (
  * cell are not. File-reference cycles are legal; preview paths avoid recursive expansion.
  */
 /**
- * Reference dependencies plus subgraphs owned by visited files.
- * Ownership is not walked backward, so a parent canvas is not pulled in.
+ * Actual embedded reference dependencies; repeated targets and cycles are visited once.
  */
 export const frameClosure = (
   files: FrameFileV2[],
@@ -550,7 +522,6 @@ export const frameClosure = (
     Object.values(file.cells)
       .filter(isFrameReferenceCell)
       .forEach((ref) => visit(ref.data.targetFrameId));
-    ownedSubgraphIds(files, id).forEach(visit);
   };
   visit(rootId);
   return order;
@@ -583,7 +554,7 @@ export const remapFrameFileIds = (
       options.targetOwnerOf ??
       ((id: CellId) => (owned.has(id) ? remap(file.frame.id) : undefined)),
   };
-  const remapTerminal = (terminal: EdgeTerminal): EdgeTerminal =>
+  const remapTerminal = (terminal: Terminal): Terminal =>
     'cellId' in terminal
       ? { ...terminal, cellId: remap(terminal.cellId) }
       : terminal;
@@ -666,19 +637,9 @@ export const remapFrameFileIds = (
     },
     linkContext,
   ) as FrameCell;
-  const organization = file.organization
-    ? file.organization.kind === 'subgraph' && file.organization.ownerFrameId
-      ? {
-          kind: 'subgraph' as const,
-          ownerFrameId:
-            idMap.get(file.organization.ownerFrameId) ??
-            file.organization.ownerFrameId,
-        }
-      : file.organization
-    : undefined;
-  return organization
-    ? { ...file, frame, cells, organization }
-    : { ...file, frame, cells };
+  const result = { ...file, frame, cells };
+  delete result.organization;
+  return result;
 };
 
 /**
@@ -690,11 +651,6 @@ export const duplicateFrameClosure = (
   files: FrameFileV2[],
   rootId: CellId,
   createId: () => string,
-  ownership: {
-    mode?: CopyOwnershipMode;
-    /** Canvas that should own the new root when copying a reference into it. */
-    assignOwnerId?: CellId;
-  } = {},
 ): { files: FrameFileV2[]; rootId: CellId } => {
   const order = frameClosure(files, rootId);
   const byId = new Map(files.map((file) => [file.frame.id, file]));
@@ -709,7 +665,6 @@ export const duplicateFrameClosure = (
     idMap.set(fileId, allocate());
     Object.keys(file.cells).forEach((id) => idMap.set(id, allocate()));
   });
-  const mode = ownership.mode ?? 'retarget';
   const copiedOwners = new Map(
     order.flatMap((id) => {
       const file = byId.get(id)!;
@@ -725,17 +680,7 @@ export const duplicateFrameClosure = (
       const mapped = remapFrameFileIds(original, idMap, {
         targetOwnerOf: (id) => copiedOwners.get(id),
       });
-      const organization = organizationForCopy(original, idMap, {
-        mode,
-        isRoot: fileId === rootId,
-        assignOwnerId: ownership.assignOwnerId,
-      });
-      if (!organization) {
-        const next = { ...mapped };
-        delete next.organization;
-        return next;
-      }
-      return { ...mapped, organization };
+      return mapped;
     }),
     rootId: idMap.get(rootId)!,
   };
@@ -775,12 +720,10 @@ export const remapImportedFiles = (
       );
     }),
   );
-  return settleImportedOrganization(
-    files.map((file) =>
-      remapFrameFileIds(file, idMap, {
-        targetOwnerOf: (id) => importedOwners.get(id),
-      }),
-    ),
+  return files.map((file) =>
+    remapFrameFileIds(file, idMap, {
+      targetOwnerOf: (id) => importedOwners.get(id),
+    }),
   );
 };
 

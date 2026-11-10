@@ -1,5 +1,6 @@
+import { openActiveFile } from './app-actions';
 import { setAppLanguage } from './app-actions';
-import { expect, test, type Locator, type Page } from '@playwright/test';
+import { expect, test, type Locator, type Page } from './service-fixture';
 import { selectDrawingTool } from './drawing-tools';
 import { persistedWorkspace } from './workspace-nav';
 
@@ -57,6 +58,7 @@ for (const locale of [
     page,
   }) => {
     await page.goto('/');
+    await openActiveFile(page);
     await setAppLanguage(page, locale.language);
     const diagrams = toolbar(page).getByRole('button', {
       name: locale.diagrams,
@@ -151,6 +153,7 @@ test('drawing menus support keyboard navigation, selection, Escape and outside d
   page,
 }) => {
   await page.goto('/');
+  await openActiveFile(page);
   const diagrams = toolbar(page).getByRole('button', {
     name: '图表',
     exact: true,
@@ -198,6 +201,7 @@ test('shape polylines persist as nodes and connectors retain edge kinds with app
   page,
 }) => {
   await page.goto('/');
+  await openActiveFile(page);
   await selectDrawingTool(page, '折线');
   await expect(
     toolbar(page).getByRole('button', { name: '形状', exact: true }),

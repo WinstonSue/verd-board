@@ -38,6 +38,64 @@
     "name": "09.2 各场景节点布局"
   },
   "cells": {
+    "demo:algorithms/layer/1": {
+      "id": "demo:algorithms/layer/1",
+      "kind": "architecture-layer",
+      "cellType": "node",
+      "geometry": {
+        "x": 0,
+        "y": 0,
+        "width": 1640,
+        "height": 230,
+        "derived": true
+      },
+      "content": {
+        "label": "节点布局 · 按场景处理结构",
+        "text": {
+          "schemaVersion": 1,
+          "id": "demo:algorithms/layer/1/text",
+          "kind": "inline",
+          "plainText": "节点布局 · 按场景处理结构",
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "节点布局 · 按场景处理结构",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "24px",
+                          "color": "#1e293b"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "data": {
+        "order": "00000000",
+        "fontSize": 24,
+        "memberIds": [
+          "demo:algorithms/relationships",
+          "demo:algorithms/domains",
+          "demo:algorithms/derived"
+        ]
+      },
+      "appearance": {
+        "fill": "#f8fafc",
+        "strokeColor": "#e2e8f0",
+        "strokeWidth": 1
+      }
+    },
     "demo:algorithms/relationships": {
       "id": "demo:algorithms/relationships",
       "kind": "architecture-module",
@@ -395,64 +453,6 @@
         "strokeWidth": 1.5
       }
     },
-    "demo:algorithms/layer/1": {
-      "id": "demo:algorithms/layer/1",
-      "kind": "architecture-layer",
-      "cellType": "node",
-      "geometry": {
-        "x": 0,
-        "y": 0,
-        "width": 1640,
-        "height": 230,
-        "derived": true
-      },
-      "content": {
-        "label": "节点布局 · 按场景处理结构",
-        "text": {
-          "schemaVersion": 1,
-          "id": "demo:algorithms/layer/1/text",
-          "kind": "inline",
-          "plainText": "节点布局 · 按场景处理结构",
-          "content": {
-            "type": "doc",
-            "content": [
-              {
-                "type": "paragraph",
-                "content": [
-                  {
-                    "type": "text",
-                    "text": "节点布局 · 按场景处理结构",
-                    "marks": [
-                      {
-                        "type": "textStyle",
-                        "attrs": {
-                          "fontSize": "24px",
-                          "color": "#1e293b"
-                        }
-                      }
-                    ]
-                  }
-                ]
-              }
-            ]
-          }
-        }
-      },
-      "data": {
-        "order": "00000000",
-        "fontSize": 24,
-        "memberIds": [
-          "demo:algorithms/relationships",
-          "demo:algorithms/domains",
-          "demo:algorithms/derived"
-        ]
-      },
-      "appearance": {
-        "fill": "#f8fafc",
-        "strokeColor": "#e2e8f0",
-        "strokeWidth": 1
-      }
-    },
     "project:detail/09/02/document": {
       "id": "project:detail/09/02/document",
       "cellType": "node",
@@ -496,7 +496,7 @@
                 "content": [
                   {
                     "type": "text",
-                    "text": "读图：白板循环支持不代表所有领域允许循环；Mind 与 UML 时序采用派生几何。"
+                    "text": "读图：白板可含循环；各领域遵循自身约束，Mind 与时序几何派生。"
                   }
                 ]
               },
@@ -645,13 +645,14 @@
               }
             ]
           },
-          "plainText": "相关文档：排列与组合\n读图：白板循环支持不代表所有领域允许循环；Mind 与 UML 时序采用派生几何。\n自动布局算法\n相关细节：连线路由与优化\n相关细节：作用范围与提交边界\n返回专题总览\n自动布局算法 · 连线路由算法\n自动开关 · 三种结果与典型场景\n源码入口：packages/engine/core/src/cell/relationship-layout.ts；packages/engine/workflow/src；packages/engine/architecture/src；packages/engine/mind/src。"
+          "plainText": "相关文档：排列与组合\n读图：白板可含循环；各领域遵循自身约束，Mind 与时序几何派生。\n自动布局算法\n相关细节：连线路由与优化\n相关细节：作用范围与提交边界\n返回专题总览\n自动布局算法 · 连线路由算法\n自动开关 · 三种结果与典型场景\n源码入口：packages/engine/core/src/cell/relationship-layout.ts；packages/engine/workflow/src；packages/engine/architecture/src；packages/engine/mind/src。"
         }
       },
       "appearance": {
         "fill": "none",
         "strokeColor": "none"
-      }
+      },
+      "name": "相关文档：排列与组合 读图：白板循环支持不代表所有领域允许循环；Mind 与 UML 时序采用派生几何。 自动布局算法 相关细节：连线路由与优化 相关细节：作用范围与提交边界 返回专题总览 自动布局算法 · 连线路由算法 自动开关 · 三种结果与典型场景 源码入口：packages/engine/core/src/cell/relationship-layout.ts；packages/engine/workflow/src；packages/engine/architecture/src；packages/engine/mind/src。"
     }
   },
   "organization": {

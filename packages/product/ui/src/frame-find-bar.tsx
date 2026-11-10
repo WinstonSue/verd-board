@@ -59,7 +59,7 @@ export function FrameFindBar({
       locale={language}
       label={language === 'zh' ? '查找画布' : 'Find in canvas'}
       className="frame-findbar"
-      placement="floating"
+      placement="inline"
       query={query}
       matchCase={matchCase}
       index={index}

@@ -1,4 +1,9 @@
-import { parseWorkspaceExport } from './workspace-references';
+import {
+  parseWorkspacePackage,
+  collectWorkspaceAssetIds,
+  workspaceAssetPath,
+  type WorkspaceResource,
+} from './workspace-package';
 import { unzip, zip, zipSync, strToU8, strFromU8 } from 'fflate';
 import {
   parseMarkdownToTextDocument,
@@ -7,6 +12,7 @@ import {
 import { createDocumentHeadingSlugger } from '@sue/board-react-text';
 import { createWorkspaceLink, type BoardTextNode } from '@sue/board-common';
 import { normalizeWorkspacePath } from '../host/workspace-host';
+import { isSkillDocumentPath } from '../workspace-skills';
 import type { DocumentFileV1, WorkspaceFile } from './document-files';
 import { workspaceFileId, isWorkspaceFile } from './document-files';
 const MAX = 256 * 1024 * 1024;
@@ -132,15 +138,33 @@ export async function importMarkdownCollection(input: readonly File[]) {
       if (digest !== name.split('.')[0])
         throw new Error('Attachment digest mismatch');
     }
+    if (manifest.version === 2) {
+      const paths = new Set(resources.map((resource) => resource.path));
+      for (const assetId of collectWorkspaceAssetIds(
+        files.map((item) => item.file),
+      ))
+        if (!paths.has(workspaceAssetPath(assetId)))
+          throw new Error('Missing package resource: ' + assetId);
+    }
     return { files, warnings, resources };
   }
 
   const nativeFiles: { file: WorkspaceFile; path: string }[] = [];
+  const nativeResources = new Map<string, WorkspaceResource>();
   for (const [path, bytes] of entries) {
     if (/\.csv$/i.test(path)) warnings.push(`CSV 数据库暂不转换：${path}`);
     if (!/\.json$/i.test(path)) continue;
+    let parsed: unknown;
     try {
-      const native = parseWorkspaceExport(JSON.parse(strFromU8(bytes)));
+      parsed = JSON.parse(strFromU8(bytes));
+    } catch {
+      continue;
+    }
+    {
+      const prepared = await parseWorkspacePackage(parsed);
+      for (const resource of prepared?.resources ?? [])
+        nativeResources.set(resource.assetId, resource);
+      const native = prepared?.files;
       if (native)
         native.forEach((file, index) => {
           const stem = path.replace(/(?:\.verd(?:-doc)?)?\.json$/i, '');
@@ -153,12 +177,10 @@ export async function importMarkdownCollection(input: readonly File[]) {
             ),
           });
         });
-    } catch {
-      /* Non-native vault configuration is not a document. */
     }
   }
-  const markdown = [...entries.keys()].filter((path) =>
-    /\.(md|markdown)$/i.test(path),
+  const markdown = [...entries.keys()].filter(
+    (path) => /\.(md|markdown)$/i.test(path) && !isSkillDocumentPath(path),
   );
   const ids = new Map(markdown.map((path) => [path, crypto.randomUUID()]));
   const resolveNote = (source: string, target: string) => {
@@ -250,7 +272,15 @@ export async function importMarkdownCollection(input: readonly File[]) {
   });
   if (!files.length && !nativeFiles.length)
     throw new Error('No supported documents found');
-  return { files: [...files, ...nativeFiles], warnings };
+  return {
+    files: [...files, ...nativeFiles],
+    warnings,
+    resources: [...nativeResources.values()].map((resource) => ({
+      path: workspaceAssetPath(resource.assetId),
+      content: resource.content,
+      expectedVersion: null,
+    })),
+  };
 }
 function preparePortableEntries(
   files: readonly WorkspaceFile[],

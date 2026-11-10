@@ -6,6 +6,8 @@ Next-major source navigation also preserves an embedded document editing view th
 
 文件工作区与会话。VerdBoardApp 改为 WorkspaceApp({host})；WorkspaceHost、WorkspaceSession 统一保存/历史/冲突，支持 FrameFileV2 与 DocumentFileV1。旧 StorageAdapter 仍作为迁移边界保留。
 
+版本通过可选 WorkspaceHost.versions 与 WorkspaceSession.versions 接入统一保存屏障，接口使用不透明版本 ID、显式文件/目录/工作区范围和能力声明。当前 Git 适配器负责底层仓库；旧 git 接口保留兼容与专属配置。文件、资源和目录菜单统一显示“版本历史”，Git 路径、作者、远端与维护移入工作区设置 → 版本管理。目录依据 folderId 跟随改名移动，恢复到当前位置；从首次带身份的目录版本起保证历史连续。IndexedDB 宿主保持本地历史，Desktop 与本地 Web service 支持远端快进同步。旧快照可读可恢复，自动恢复点和自动创建版本均已关闭。
+
 在项目 `.npmrc` 配置两个 scope：
 
 ```ini
@@ -64,3 +66,9 @@ Workspace navigation captures its source, waits for `DocumentEditorController.fl
 These next-major source APIs accompany major Changesets only; do not infer availability from the still-2.0.0 package version.
 
 File navigation shows the current source file, its latest successful entry, and grouped direct embed locations across canvases and documents. Ownership is displayed separately in file information. Direct opens clear that file’s return context; tab activation preserves it. Document embed locations include a body revision and are revalidated before selection; ordinary text links and repeated nested preview appearances are excluded from embed counts.
+
+`createServiceWorkspaceHost(options)` connects the shared application to the local filesystem service. It preserves binary payloads, conditional commits, errors and change subscriptions across HTTP/SSE. `WorkspaceHost.storageKind` optionally declares `filesystem` or `browser`; existing third-party hosts remain compatible. Browser storage remains an SDK and migration facility.
+
+`exportBrowserBackup()` reads the source databases without changing them. After the service confirms a complete, validated import, the Web migration entry calls `clearMigratedBrowserData(backup)` to clear the matching source records. Cleanup checks the original origin and compares records inside each write transaction; changed source data is retained for a fresh backup and migration. Importing a backup file does not clear the current browser's data.
+
+`WorkspaceApp.onMigrateBrowserData` optionally exposes a host migration action under Settings → Data and maintenance. The local Web application uses this action to import its previous browser workspaces.

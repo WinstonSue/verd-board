@@ -10,6 +10,7 @@ import {
   type ReactNode,
 } from 'react';
 import {
+  History,
   Boxes,
   Plus,
   ChevronDown,
@@ -69,17 +70,6 @@ export interface FileTreeCanvas {
     | 'uml-sequence';
 }
 
-export interface FileTreeSubgraph {
-  frameId: string;
-  name: string;
-  path: string;
-  diagram: 'mind' | 'workflow' | 'architecture' | 'uml-class' | 'uml-sequence';
-  placement: 'owned' | 'unorganized' | 'standalone' | 'legacy';
-  ownerFrameId?: string;
-  dirty?: boolean;
-  conflicted?: boolean;
-}
-
 export interface FileTreeDocument {
   fileId: string;
   path: string;
@@ -100,6 +90,11 @@ interface TreeFile {
 }
 
 export interface FileTreeProps {
+  onVersions?(
+    scope:
+      | { kind: 'file'; fileId?: string; path: string }
+      | { kind: 'directory'; path: string; folderId?: string },
+  ): void;
   selectedPaths?: readonly string[];
   dropTarget?: { path: string; side: 'before' | 'after' | 'inside' } | null;
   headerOptions?: import('react').ReactNode;
@@ -115,6 +110,8 @@ export interface FileTreeProps {
   failedFiles?: readonly { path: string }[];
   activeFailedPath?: string | null;
   onOpenFailedFile?(path: string): void;
+  onOpenResource?(path: string): void;
+  onTrashResource?(path: string): void;
   activeFileId?: string | null;
   expandedDirs: string[];
   locale?: 'zh' | 'en';
@@ -138,15 +135,10 @@ export interface FileTreeProps {
   onImport?(): void;
   /** Hides every control that would write to the workspace. */
   readonly?: boolean;
-  /** Organization metadata used to derive navigation-only shortcuts. */
-  subgraphs?: FileTreeSubgraph[];
-  expandedOwners?: string[];
-  onToggleOwner?(frameId: string): void;
   onOpenLibrary?(): void;
   libraryActive?: boolean;
   /** Reveal the canonical row after the host expands its ancestor directories. */
   revealFile?: { fileId: string; nonce: number };
-  onRevealFile?(fileId: string): void;
   revealDirectory?: { path: string; nonce: number };
 }
 
@@ -156,6 +148,7 @@ interface TreeDir {
   dirs: TreeDir[];
   files: TreeFile[];
   failures: { path: string }[];
+  resources: { path: string }[];
 }
 
 const labels = {
@@ -163,13 +156,9 @@ const labels = {
     library: '图表库',
     actions: (name: string) => `「${name}」的操作`,
     open: '打开',
-    reveal: '在文件夹中显示',
-    shortcut: '快捷入口',
     newCanvasHere: '在此新建画布',
     newDocumentHere: '在此新建文档',
     newFolderHere: '在此新建文件夹…',
-    expandSubgraphs: '展开图表快捷入口',
-    collapseSubgraphs: '收起图表快捷入口',
     unsaved: '未保存',
     files: '文件',
     newCanvas: '新建画布',
@@ -193,13 +182,9 @@ const labels = {
     library: 'Chart library',
     actions: (name: string) => `Actions for ${name}`,
     open: 'Open',
-    reveal: 'Show in folder',
-    shortcut: 'Shortcut',
     newCanvasHere: 'New canvas here',
     newDocumentHere: 'New document here',
     newFolderHere: 'New folder here…',
-    expandSubgraphs: 'Expand chart shortcuts',
-    collapseSubgraphs: 'Collapse chart shortcuts',
     unsaved: 'Unsaved',
     files: 'Files',
     newCanvas: 'New canvas',
@@ -227,6 +212,7 @@ const buildTree = (
   dirPaths: string[],
   files: TreeFile[],
   failures: readonly { path: string }[],
+  resources: readonly { path: string }[],
 ): TreeDir => {
   const root: TreeDir = {
     path: '',
@@ -234,6 +220,7 @@ const buildTree = (
     dirs: [],
     files: [],
     failures: [],
+    resources: [],
   };
   const dirFor = (path: string): TreeDir => {
     if (!path) return root;
@@ -250,6 +237,7 @@ const buildTree = (
           dirs: [],
           files: [],
           failures: [],
+          resources: [],
         };
         cursor.dirs.push(next);
       }
@@ -269,6 +257,12 @@ const buildTree = (
       ? failure.path.slice(0, failure.path.lastIndexOf('/'))
       : '';
     dirFor(dir).failures.push(failure);
+  });
+  resources.forEach((resource) => {
+    const parent = resource.path.includes('/')
+      ? resource.path.slice(0, resource.path.lastIndexOf('/'))
+      : '';
+    dirFor(parent).resources.push(resource);
   });
   const sort = (dir: TreeDir) => {
     dir.dirs.sort((a, b) => a.name.localeCompare(b.name));
@@ -368,12 +362,15 @@ export function FileTree({
   manualOrder,
   hideLibraryNavigation,
   onOrganize,
+  onVersions,
   entries,
   canvases,
   documents = [],
   failedFiles = [],
   activeFailedPath,
   onOpenFailedFile,
+  onOpenResource,
+  onTrashResource,
   activeFileId,
   expandedDirs,
   locale = 'zh',
@@ -390,9 +387,6 @@ export function FileTree({
   onCopyLink,
   onImport,
   readonly = false,
-  subgraphs = [],
-  expandedOwners = [],
-  onToggleOwner,
   onOpenLibrary,
   libraryActive = false,
   headerOptions,
@@ -400,7 +394,6 @@ export function FileTree({
   dropTarget,
   revealFile,
   revealDirectory,
-  onRevealFile,
 }: FileTreeProps) {
   useActionSource(actionSource);
   const t = labels[locale];
@@ -465,25 +458,6 @@ export function FileTree({
     anchor: HTMLElement | { x: number; y: number };
     items: FileTreeMenuItem[];
   } | null>(null);
-  const ownedBy = useMemo(() => {
-    const map = new Map<string, FileTreeSubgraph[]>();
-    const byId = new Map(canvases.map((file) => [file.frameId, file]));
-    subgraphs.forEach((item) => {
-      const source = byId.get(item.frameId);
-      if (
-        !source ||
-        item.placement !== 'owned' ||
-        !item.ownerFrameId ||
-        !byId.has(item.ownerFrameId)
-      )
-        return;
-      const list = map.get(item.ownerFrameId) ?? [];
-      list.push({ ...item, ...source, diagram: item.diagram });
-      map.set(item.ownerFrameId, list);
-    });
-    map.forEach((list) => list.sort((a, b) => a.name.localeCompare(b.name)));
-    return map;
-  }, [subgraphs, canvases]);
   const tree = useMemo(
     () =>
       buildTree(
@@ -509,6 +483,15 @@ export function FileTree({
             .map((item) => ({ ...item, kind: 'document' as const })),
         ],
         failedFiles,
+        entries.filter(
+          (entry) =>
+            entry.kind === 'file' &&
+            !entry.canvas &&
+            !entry.document &&
+            !/\.verd(?:-doc)?\.json$/.test(entry.path) &&
+            !canvases.some((file) => file.path === entry.path) &&
+            !documents.some((file) => file.path === entry.path),
+        ),
       ),
     [entries, canvases, documents, failedFiles],
   );
@@ -600,7 +583,7 @@ export function FileTree({
           : event.currentTarget,
     });
   };
-  const fileItems = (file: TreeFile, shortcut = false): FileTreeMenuItem[] => {
+  const fileItems = (file: TreeFile): FileTreeMenuItem[] => {
     const id = file.fileId;
     const copyItems =
       actionSource || onCopyLink
@@ -640,31 +623,6 @@ export function FileTree({
             ),
           ]
         : [];
-    if (shortcut)
-      return [
-        ...favoriteItems,
-        ...copyItems,
-        actionItem(
-          'open',
-          'workspace.file.open',
-          { fileId: id },
-          t.open,
-          ExternalLink,
-          () => onOpenFile(id),
-        ),
-        ...(onRevealFile
-          ? [
-              actionItem(
-                'reveal',
-                'workspace.file.reveal',
-                { fileId: id },
-                t.reveal,
-                FolderOpen,
-                () => onRevealFile(id),
-              ),
-            ]
-          : []),
-      ];
     const result: FileTreeMenuItem[] = [];
     if (actionSource || !readonly) {
       if (onMove)
@@ -702,6 +660,22 @@ export function FileTree({
         );
     }
     result.push(...favoriteItems, ...copyItems);
+    if (onVersions)
+      result.push(
+        actionItem(
+          'versions',
+          'workspace.file.versions',
+          {
+            fileId: id,
+            present: () =>
+              onVersions({ kind: 'file', fileId: id, path: file.path }),
+          },
+          locale === 'zh' ? '版本历史' : 'Version history',
+          History,
+          () => onVersions({ kind: 'file', fileId: id, path: file.path }),
+        ),
+      );
+
     if (onExport)
       result.push(
         actionItem(
@@ -747,75 +721,39 @@ export function FileTree({
       </button>
     ) : null;
   };
-  const fileRow = (
-    file: TreeFile,
-    depth: number,
-    subgraph?: FileTreeSubgraph,
-  ): ReactNode => {
-    const children = subgraph ? [] : (ownedBy.get(file.fileId) ?? []);
-    const open = expandedOwners.includes(file.fileId);
+  const fileRow = (file: TreeFile, depth: number): ReactNode => {
     const active = file.fileId === activeFileId;
-    const items = fileItems(file, !!subgraph);
-    const rowKey = JSON.stringify(
-      subgraph
-        ? ['shortcut', subgraph.ownerFrameId, file.fileId]
-        : ['file', file.fileId],
-    );
-    const label = subgraph ? `${file.name} (${t.shortcut})` : file.name;
+    const items = fileItems(file);
+    const key = JSON.stringify(['file', file.fileId]);
     const Icon =
       file.kind === 'document'
         ? FileText
         : diagramIcons[file.diagram ?? 'canvas'];
     return (
-      <div key={rowKey} className="file-tree-block">
+      <div key={key} className="file-tree-block">
         <div
-          className={`file-tree-row file-tree-file${subgraph ? ' file-tree-subgraph' : ''}${active ? ' is-active' : ''}${selectedPaths.includes(file.path ?? '') ? ' is-selected' : ''}${file.conflicted ? ' is-conflicted' : ''}${menu?.key === rowKey ? ' is-menu-open' : ''}`}
-          draggable={!readonly && !subgraph}
-          data-entry-path={subgraph ? undefined : file.path}
-          aria-selected={
-            (!subgraph && selectedPaths.includes(file.path ?? '')) || undefined
-          }
-          data-drop-side={
-            !subgraph && dropTarget?.path === file.path
-              ? dropTarget?.side
-              : undefined
-          }
+          className={`file-tree-row file-tree-file${active ? ' is-active' : ''}${selectedPaths.includes(file.path) ? ' is-selected' : ''}${file.conflicted ? ' is-conflicted' : ''}${menu?.key === key ? ' is-menu-open' : ''}`}
+          draggable={!readonly}
+          data-entry-path={file.path}
+          data-entry-kind="file"
           data-file-id={file.fileId}
-          data-entry-kind={subgraph ? 'shortcut' : 'file'}
+          aria-selected={selectedPaths.includes(file.path) || undefined}
+          data-drop-side={
+            dropTarget?.path === file.path ? dropTarget.side : undefined
+          }
           style={{ '--depth': depth } as CSSProperties}
-          onContextMenu={(event) => openMenu(event, rowKey, label, items)}
+          onContextMenu={(event) => openMenu(event, key, file.name, items)}
         >
-          {children.length ? (
-            <button
-              type="button"
-              className="file-tree-twisty"
-              aria-expanded={open}
-              aria-label={open ? t.collapseSubgraphs : t.expandSubgraphs}
-              onClick={() => onToggleOwner?.(file.fileId)}
-            >
-              {open ? (
-                <ChevronDown strokeWidth={1.75} size={14} />
-              ) : (
-                <ChevronRight strokeWidth={1.75} size={14} />
-              )}
-            </button>
-          ) : (
-            <span className="file-tree-twisty" aria-hidden />
-          )}
+          <span className="file-tree-twisty" aria-hidden />
           <button
             type="button"
             className="file-tree-main file-tree-name"
+            title={file.path}
             aria-current={active ? 'page' : undefined}
-            title={subgraph ? `${t.shortcut}: ${file.path}` : file.path}
-            aria-label={subgraph ? label : undefined}
-            ref={
-              subgraph
-                ? undefined
-                : (node) => {
-                    if (node) fileButtons.current.set(file.fileId, node);
-                    else fileButtons.current.delete(file.fileId);
-                  }
-            }
+            ref={(node) => {
+              if (node) fileButtons.current.set(file.fileId, node);
+              else fileButtons.current.delete(file.fileId);
+            }}
             onClick={() =>
               execute('workspace.file.open', { fileId: file.fileId }, () =>
                 onOpenFile(file.fileId),
@@ -823,18 +761,9 @@ export function FileTree({
             }
           >
             <Icon className="file-tree-icon" size={16} aria-hidden />
-            {subgraph && (
-              <ExternalLink
-                strokeWidth={1.75}
-                className="file-tree-shortcut-icon"
-                size={11}
-                aria-hidden
-              />
-            )}
             <span className="file-tree-label">{file.name}</span>
             {file.conflicted ? (
               <TriangleAlert
-                strokeWidth={1.75}
                 className="file-tree-conflict"
                 size={13}
                 role="img"
@@ -848,17 +777,102 @@ export function FileTree({
               />
             ) : null}
           </button>
-          {moreButton(rowKey, label, items)}
+          {moreButton(key, file.name, items)}
         </div>
-        {open
-          ? children.map((child) =>
-              fileRow(
-                { ...child, fileId: child.frameId, kind: 'canvas' },
-                depth + 1,
-                child,
-              ),
+      </div>
+    );
+  };
+  const resourceRow = (
+    resource: { path: string },
+    depth: number,
+  ): ReactNode => {
+    const { path } = resource;
+    const name = path.split('/').pop()!;
+    const key = JSON.stringify(['resource', path]);
+    const items: FileTreeMenuItem[] = [
+      ...(onVersions
+        ? [
+            actionItem(
+              'versions',
+              'workspace.resource.versions',
+              { path, present: () => onVersions({ kind: 'file', path }) },
+              locale === 'zh' ? '版本历史' : 'Version history',
+              History,
+              () => onVersions({ kind: 'file', path }),
+            ),
+          ]
+        : []),
+      actionItem(
+        'open',
+        'workspace.resource.open',
+        { path, present: () => onOpenResource?.(path) },
+        t.open,
+        ExternalLink,
+        () => onOpenResource?.(path),
+      ),
+      ...(!readonly && onOrganize
+        ? [
+            actionItem(
+              'rename',
+              'workspace.resource.rename-dialog',
+              { path, present: () => onOrganize(path, 'rename') },
+              locale === 'zh' ? '重命名' : 'Rename',
+              Pencil,
+              () => onOrganize(path, 'rename'),
+            ),
+            actionItem(
+              'move',
+              'workspace.resource.move-dialog',
+              { path, present: () => onOrganize(path, 'move') },
+              locale === 'zh' ? '移动到…' : 'Move to…',
+              FolderOpen,
+              () => onOrganize(path, 'move'),
+            ),
+          ]
+        : []),
+      ...(!readonly && onTrashResource
+        ? [
+            actionItem(
+              'trash',
+              'workspace.resource.trash',
+              { path },
+              t.remove,
+              Trash2,
+              () => onTrashResource(path),
+              { danger: true },
+            ),
+          ]
+        : []),
+    ];
+    return (
+      <div
+        key={key}
+        className={`file-tree-row file-tree-file${selectedPaths.includes(path) ? ' is-selected' : ''}${menu?.key === key ? ' is-menu-open' : ''}`}
+        data-entry-path={path}
+        data-entry-kind="resource"
+        draggable={!readonly}
+        aria-selected={selectedPaths.includes(path) || undefined}
+        data-drop-side={dropTarget?.path === path ? dropTarget.side : undefined}
+        style={{ '--depth': depth } as CSSProperties}
+        onContextMenu={(event) => openMenu(event, key, name, items)}
+      >
+        <span className="file-tree-twisty" aria-hidden />
+        <button
+          type="button"
+          className="file-tree-main file-tree-name"
+          title={path}
+          onClick={() =>
+            execute(
+              'workspace.resource.open',
+              { path, present: () => onOpenResource?.(path) },
+              () => onOpenResource?.(path),
             )
-          : null}
+          }
+        >
+          <FileText className="file-tree-icon" size={16} aria-hidden />
+          <span className="file-tree-label">{name}</span>
+        </button>
+        {moreButton(key, name, items)}
       </div>
     );
   };
@@ -950,6 +964,30 @@ export function FileTree({
                 ]
               : []),
           ];
+    if (dir.path && onVersions)
+      items.unshift(
+        actionItem(
+          'versions',
+          'workspace.directory.versions',
+          {
+            path: dir.path,
+            present: () =>
+              onVersions({
+                kind: 'directory',
+                path: dir.path,
+                folderId: entries.find((e) => e.path === dir.path)?.folderId,
+              }),
+          },
+          locale === 'zh' ? '版本历史' : 'Version history',
+          History,
+          () =>
+            onVersions({
+              kind: 'directory',
+              path: dir.path,
+              folderId: entries.find((e) => e.path === dir.path)?.folderId,
+            }),
+        ),
+      );
     if (dir.path && actionSource)
       items.unshift(
         actionItem(
@@ -1043,6 +1081,12 @@ export function FileTree({
                 name: child.name,
                 directory: true,
               })),
+              ...dir.resources.map((resource) => ({
+                ref: 'path:' + resource.path,
+                node: resourceRow(resource, dir.path ? depth + 1 : 0),
+                name: resource.path.split('/').pop()!,
+                directory: false,
+              })),
               ...dir.files.map((file) => ({
                 ref: 'file:' + file.fileId,
                 node: fileRow(file, dir.path ? depth + 1 : 0),
@@ -1070,6 +1114,9 @@ export function FileTree({
                 key={failure.path}
                 className={`file-tree-row file-tree-file${failure.path === activeFailedPath ? ' is-active' : ''}`}
                 data-failed-path={failure.path}
+                data-entry-path={failure.path}
+                data-entry-kind="failed"
+                draggable={!readonly}
                 style={{ '--depth': dir.path ? depth + 1 : 0 } as CSSProperties}
               >
                 <span className="file-tree-twisty" aria-hidden />
@@ -1202,7 +1249,10 @@ export function FileTree({
         </div>
       </div>
       <div className="file-tree-body">
-        {tree.dirs.length + tree.files.length + tree.failures.length ? (
+        {tree.dirs.length +
+        tree.files.length +
+        tree.resources.length +
+        tree.failures.length ? (
           dirRows(tree, 0)
         ) : (
           <div className="file-tree-empty">{t.empty}</div>

@@ -124,17 +124,23 @@ test('Desktop remembers a selected folder, recovers a missing folder and returns
     );
     let menu = await openWorkspaceMenu(page);
     await expect(
-      menu.getByRole('button', { name: 'selected', exact: true }),
+      menu.locator(
+        '.workspace-switcher-name:has(.workspace-switcher-text[title="selected"])',
+      ),
     ).toBeDisabled();
     await expect(
-      menu.getByRole('button', { name: 'initial', exact: true }),
+      menu.locator(
+        '.workspace-switcher-name:has(.workspace-switcher-text[title="initial"])',
+      ),
     ).toBeVisible();
     await page.screenshot({
       path: test.info().outputPath('workspace-history.png'),
     });
     await menu.getByRole('searchbox').press('ArrowDown');
     await expect(
-      menu.getByRole('button', { name: 'initial', exact: true }),
+      menu.locator(
+        '.workspace-switcher-name:has(.workspace-switcher-text[title="initial"])',
+      ),
     ).toBeFocused();
     await page.keyboard.press('Enter');
     await expect(page.locator('.workspace-sidebar-header')).toHaveText(
@@ -147,7 +153,11 @@ test('Desktop remembers a selected folder, recovers a missing folder and returns
       initialFrame!,
     );
     menu = await openWorkspaceMenu(page);
-    await menu.getByRole('button', { name: 'selected', exact: true }).click();
+    await menu
+      .locator(
+        '.workspace-switcher-name:has(.workspace-switcher-text[title="selected"])',
+      )
+      .click();
     await expect(page.locator('.workspace-sidebar-header')).toHaveText(
       'selected',
     );
@@ -224,7 +234,11 @@ test('Desktop remembers a selected folder, recovers a missing folder and returns
       { timeout: 60000 },
     );
     menu = await openWorkspaceMenu(page);
-    await menu.getByRole('button', { name: 'selected', exact: true }).click();
+    await menu
+      .locator(
+        '.workspace-switcher-name:has(.workspace-switcher-text[title="selected"])',
+      )
+      .click();
     await expect(page.locator('.workspace-banners')).toContainText(
       'unavailable',
     );

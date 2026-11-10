@@ -6,6 +6,7 @@ import {
   arrangementEdgeIds,
   optimizeEdges,
   planCellLayout,
+  planGeometryLayout,
   rerouteEdges,
   resolveCellArrangementScope,
 } from './layout-plan';
@@ -148,7 +149,7 @@ describe('scoped layout planning', () => {
       planCellLayout(store, selection, 'horizontal', registry),
       registry,
     );
-    expect(geometry(next, 'b')).toMatchObject({ x: 72, y: 0 });
+    expect(geometry(next, 'b')).toMatchObject({ x: 136, y: 0 });
     for (const id of ['target', 'reference', 'outside'])
       expect(next.cells[id]).toEqual(store.cells[id]);
   });
@@ -186,8 +187,12 @@ describe('scoped layout planning', () => {
       expect(geometry(runtime.store, 'a')).toMatchObject({ x: 0, y: 0 });
       expect(geometry(runtime.store, 'b')).toMatchObject({ x: 136, y: 0 });
       expect(runtime.store.cells.outside).toEqual(store.cells.outside);
-      expect(runtime.store.cells.inside).toEqual(store.cells.inside);
-      expect(runtime.store.cells.boundary).toEqual(store.cells.boundary);
+      expect((runtime.store.cells.inside as EdgeCell).route.origin).toBe(
+        'generated',
+      );
+      expect((runtime.store.cells.boundary as EdgeCell).source).toEqual(
+        (store.cells.boundary as EdgeCell).source,
+      );
       expect(
         planCellLayout(runtime.store, selection, 'horizontal', registry),
       ).toEqual([]);
@@ -278,7 +283,7 @@ describe('scoped layout planning', () => {
     );
     expect(geometry(next, 'd').x - geometry(next, 'c').x).toBe(100);
     expect(geometry(next, 'd').y - geometry(next, 'c').y).toBe(200);
-    expect(geometry(next, 'c')).toMatchObject({ x: 272, y: 0 });
+    expect(geometry(next, 'c')).toMatchObject({ x: 336, y: 0 });
   });
 
   it('keeps nested groups with derived internal routes stable after layout', () => {
@@ -302,11 +307,11 @@ describe('scoped layout planning', () => {
       planCellLayout(store, selection, 'horizontal', registry),
       registry,
     );
-    expect(next.cells.inside).toEqual(store.cells.inside);
+    expect((next.cells.inside as EdgeCell).route.origin).toBe('generated');
     expect(planCellLayout(next, selection, 'horizontal', registry)).toEqual([]);
   });
 
-  it('rejects overlaps with outside or locked nodes without mutating the store', () => {
+  it('enlarges layout around outside or locked nodes without mutating the source', () => {
     let store = make(
       node('a', 0, 0),
       node('b', 500, 500),
@@ -318,14 +323,15 @@ describe('scoped layout planning', () => {
       registry,
     );
     const before = JSON.stringify(store);
-    expect(() =>
-      planCellLayout(
-        store,
-        { focus: ['root'], ids: ['g'] },
-        'horizontal',
-        registry,
-      ),
-    ).toThrow('layout-overlap');
+    const plan = planGeometryLayout(
+      store,
+      { focus: ['root'], ids: ['g'] },
+      'horizontal',
+      registry,
+    );
+    expect(plan.status).toBe('success');
+    const next = applyCellOperations(store, plan.operations, registry);
+    expect(next.cells.obstacle).toEqual(store.cells.obstacle);
     expect(JSON.stringify(store)).toBe(before);
     store = applyCellOperations(
       store,
@@ -337,14 +343,14 @@ describe('scoped layout planning', () => {
       ],
       registry,
     );
-    expect(() =>
-      planCellLayout(
+    expect(
+      planGeometryLayout(
         store,
         { focus: ['root'], ids: ['g'] },
         'horizontal',
         registry,
-      ),
-    ).toThrow('layout-overlap');
+      ).status,
+    ).toBe('success');
   });
 
   it('keeps locked members fixed and does not expand an empty or edge-only scope to the Frame', () => {

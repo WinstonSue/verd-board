@@ -148,13 +148,12 @@ export function FrameInteractiveEdge({
   camera,
   points,
   curve,
-  source,
-  target,
   markerKinds,
   sourceId,
   targetId,
   jumps,
   rounded,
+  safetyBounds,
   relatedSelected,
   interactive = true,
   ...props
@@ -164,18 +163,17 @@ export function FrameInteractiveEdge({
   targetId?: string;
   jumps?: readonly EdgeJump[];
   rounded?: boolean;
+  safetyBounds?: readonly import('@sue/board-core').RectangleClient[];
   relatedSelected?: boolean;
   interactive?: boolean;
   points: Point[];
   curve: boolean;
-  source?: { id: string; visible: boolean; radius: number };
-  target?: { id: string; visible: boolean; radius: number };
   markerKinds: [string, string];
 }) {
   const subscribe = useMemo(
     () => (notify: () => void) => {
-      const a = camera.subscribeCell(sourceId ?? source?.id, notify),
-        b = camera.subscribeCell(targetId ?? target?.id, notify),
+      const a = camera.subscribeCell(sourceId, notify),
+        b = camera.subscribeCell(targetId, notify),
         c = camera.subscribeCell(props.id, notify);
       return () => {
         a();
@@ -183,45 +181,29 @@ export function FrameInteractiveEdge({
         c();
       };
     },
-    [camera, source?.id, target?.id, sourceId, targetId, props.id],
+    [camera, sourceId, targetId, props.id],
   );
   const getSnapshot = () =>
-    Number(!!source && (source.visible || camera.isHovered(source.id))) +
-    2 * Number(!!target && (target.visible || camera.isHovered(target.id))) +
-    4 *
-      Number(
-        interactive &&
-          (!!relatedSelected ||
-            camera.isHovered(props.id) ||
-            camera.isHovered(sourceId) ||
-            camera.isHovered(targetId)),
-      );
+    Number(
+      interactive &&
+        (!!relatedSelected ||
+          camera.isHovered(props.id) ||
+          camera.isHovered(sourceId) ||
+          camera.isHovered(targetId)),
+    );
   const visible = useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
   const geometry = useMemo(
     () =>
       edgeDisplayGeometry(
         points,
         curve,
-        visible & 1
-          ? (source?.radius ?? 0) + (props.appearance?.strokeWidth ?? 2) / 2
-          : 0,
-        visible & 2
-          ? (target?.radius ?? 0) + (props.appearance?.strokeWidth ?? 2) / 2
-          : 0,
+        0,
+        0,
         rounded || jumps?.length
-          ? { jumps, cornerRadius: rounded ? 6 : 0 }
+          ? { jumps, cornerRadius: rounded ? 6 : 0, safetyBounds }
           : undefined,
       ),
-    [
-      points,
-      curve,
-      visible,
-      props.appearance?.strokeWidth,
-      jumps,
-      rounded,
-      source?.radius,
-      target?.radius,
-    ],
+    [points, curve, jumps, rounded, safetyBounds],
   );
   const [sourceMarker, targetMarker] = markerKinds;
   const markers = useMemo(
@@ -242,7 +224,7 @@ export function FrameInteractiveEdge({
       path={geometry.path}
       hitPath={interactive ? hitGeometry.path : geometry.path}
       markers={markers}
-      highlighted={!!(visible & 4)}
+      highlighted={!!visible}
     />
   );
 }
@@ -253,6 +235,7 @@ export function FrameStaticEdge({
   curve,
   jumps,
   rounded,
+  safetyBounds,
   markerKinds,
   ...props
 }: Parameters<typeof FrameInteractiveEdge>[0]) {
@@ -264,10 +247,10 @@ export function FrameStaticEdge({
         0,
         0,
         rounded || jumps?.length
-          ? { jumps, cornerRadius: rounded ? 6 : 0 }
+          ? { jumps, cornerRadius: rounded ? 6 : 0, safetyBounds }
           : undefined,
       ),
-    [points, curve, jumps, rounded],
+    [points, curve, jumps, rounded, safetyBounds],
   );
   const [sourceMarker, targetMarker] = markerKinds;
   const markers = useMemo(

@@ -15,6 +15,7 @@ export function createFrameCameraStore(initial: Viewport, frameId: string) {
   const listeners = new Set<() => void>();
   const viewportListeners = new Set<() => void>();
   let hoveredId: string | null = null;
+  let connectionTargetId: string | null = null;
   const cellListeners = new Map<string, Set<() => void>>();
   return {
     frameId,
@@ -27,6 +28,14 @@ export function createFrameCameraStore(initial: Viewport, frameId: string) {
     },
     getZoom: () => snapshot.zoom ?? 1,
     getHoveredId: () => hoveredId,
+    getConnectionTargetId: () => connectionTargetId,
+    setConnectionTarget(id: string | null) {
+      if (id === connectionTargetId) return;
+      const previous = connectionTargetId;
+      connectionTargetId = id;
+      if (previous) cellListeners.get(previous)?.forEach((notify) => notify());
+      if (id) cellListeners.get(id)?.forEach((notify) => notify());
+    },
     isHovered: (id?: string) => id != null && hoveredId === id,
     setHovered(id: string | null) {
       if (id === hoveredId) return;

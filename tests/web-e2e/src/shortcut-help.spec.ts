@@ -1,4 +1,4 @@
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test, type Page } from './service-fixture';
 import { openActiveFile, selectAppAction, setAppLanguage } from './app-actions';
 import { selectDrawingTool } from './drawing-tools';
 

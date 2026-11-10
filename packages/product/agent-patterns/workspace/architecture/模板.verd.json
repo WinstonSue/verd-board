@@ -44,9 +44,7 @@
       },
       "data": {
         "order": "00000000",
-        "memberIds": [
-          "pattern:architecture/mod-gateway"
-        ]
+        "memberIds": ["pattern:architecture/mod-gateway"]
       }
     },
     "pattern:architecture/layer-service": {
@@ -89,9 +87,7 @@
       },
       "data": {
         "order": "00000002",
-        "memberIds": [
-          "pattern:architecture/mod-db"
-        ]
+        "memberIds": ["pattern:architecture/mod-db"]
       }
     },
     "pattern:architecture/mod-gateway": {

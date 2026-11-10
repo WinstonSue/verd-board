@@ -1,0 +1,209 @@
+{
+  "format": "verd-release-review",
+  "version": 1,
+  "targets": [
+    {
+      "name": "@sue/board-architecture",
+      "version": "2.1.0"
+    },
+    {
+      "name": "@sue/board-common",
+      "version": "2.1.0"
+    },
+    {
+      "name": "@sue/board-core",
+      "version": "2.1.0"
+    },
+    {
+      "name": "@sue/board-draw",
+      "version": "2.1.0"
+    },
+    {
+      "name": "@sue/board-layouts",
+      "version": "2.1.0"
+    },
+    {
+      "name": "@sue/board-markdown-to-board",
+      "version": "2.1.0"
+    },
+    {
+      "name": "@sue/board-markdown-to-text",
+      "version": "2.1.0"
+    },
+    {
+      "name": "@sue/board-mermaid-to-board",
+      "version": "2.1.0"
+    },
+    {
+      "name": "@sue/board-mind",
+      "version": "2.1.0"
+    },
+    {
+      "name": "@sue/board-react",
+      "version": "2.1.0"
+    },
+    {
+      "name": "@sue/board-react-actions",
+      "version": "2.1.0"
+    },
+    {
+      "name": "@sue/board-react-architecture",
+      "version": "2.1.0"
+    },
+    {
+      "name": "@sue/board-react-draw",
+      "version": "2.1.0"
+    },
+    {
+      "name": "@sue/board-react-mind",
+      "version": "2.1.0"
+    },
+    {
+      "name": "@sue/board-react-text",
+      "version": "2.1.0"
+    },
+    {
+      "name": "@sue/board-react-uml",
+      "version": "2.1.0"
+    },
+    {
+      "name": "@sue/board-react-workflow",
+      "version": "2.1.0"
+    },
+    {
+      "name": "@sue/board-text",
+      "version": "2.1.0"
+    },
+    {
+      "name": "@sue/board-uml",
+      "version": "2.1.0"
+    },
+    {
+      "name": "@sue/board-workflow",
+      "version": "2.1.0"
+    },
+    {
+      "name": "@sue/verd-board-agent",
+      "version": "2.1.0"
+    },
+    {
+      "name": "@sue/verd-board-agent-patterns",
+      "version": "2.1.0"
+    },
+    {
+      "name": "@sue/verd-board-app",
+      "version": "2.1.0"
+    },
+    {
+      "name": "@sue/verd-board-docs",
+      "version": "2.1.0"
+    },
+    {
+      "name": "@sue/verd-board-ui",
+      "version": "2.1.0"
+    },
+    {
+      "name": "desktop",
+      "version": "2.1.0"
+    },
+    {
+      "name": "service",
+      "version": "2.1.0"
+    },
+    {
+      "name": "web",
+      "version": "2.1.0"
+    }
+  ],
+  "previous": "baseline",
+  "previousDigest": "e17fceb899b2f2ab8065edc9b006e5c6e0a443f754c26e6a43b4b4f6b463c7e9",
+  "sourceDigest": "ac40a46bfe9c4d9d6eb049c3279eb65b1d13a6af9788067d00a3306e65a4b9a6",
+  "versions": {
+    "@sue/board-architecture": "2.1.0",
+    "@sue/board-common": "2.1.0",
+    "@sue/board-core": "2.1.0",
+    "@sue/board-draw": "2.1.0",
+    "@sue/board-layouts": "2.1.0",
+    "@sue/board-markdown-to-board": "2.1.0",
+    "@sue/board-markdown-to-text": "2.1.0",
+    "@sue/board-mermaid-to-board": "2.1.0",
+    "@sue/board-mind": "2.1.0",
+    "@sue/board-react": "2.1.0",
+    "@sue/board-react-actions": "2.1.0",
+    "@sue/board-react-architecture": "2.1.0",
+    "@sue/board-react-draw": "2.1.0",
+    "@sue/board-react-mind": "2.1.0",
+    "@sue/board-react-text": "2.1.0",
+    "@sue/board-react-uml": "2.1.0",
+    "@sue/board-react-workflow": "2.1.0",
+    "@sue/board-text": "2.1.0",
+    "@sue/board-uml": "2.1.0",
+    "@sue/board-workflow": "2.1.0",
+    "@sue/verd-board-agent": "2.1.0",
+    "@sue/verd-board-agent-patterns": "2.1.0",
+    "@sue/verd-board-app": "2.1.0",
+    "@sue/verd-board-docs": "2.1.0",
+    "@sue/verd-board-source": "0.0.1",
+    "@sue/verd-board-ui": "2.1.0",
+    "consumer-vite": "0.0.1",
+    "desktop": "2.1.0",
+    "service": "2.1.0",
+    "web": "2.1.0",
+    "web-e2e": "0.0.1"
+  },
+  "introduction": {
+    "project-doc:architecture/ARCHITECTURE": "99b19b76be4077ce41bca5dc85408097d4eb9e3703c3877be4413a0c79c959c3",
+    "project-doc:development/README": "95d1ecc8b70596b802ecbd0186a770563ec8fa7f28f6e0ab2ac142275ca9d2db",
+    "project-doc:DOCUMENTATION_GUIDE": "2b9e7552150d5586aa7740fbdaeb1c1d0c5f710c84cd2ae23517440bc5c7a3f3",
+    "project-doc:guides/ai-canvas-data-spec": "db83df173f42d7ce6ff019ced281c09b3b4e21c0928b0e8de47ed8ea729ca564",
+    "project-doc:guides/SETUP": "de3369cb0983372fb401626ac7fb1b838f653bad8b67a3fefaa793d278dd2654",
+    "project-doc:guides/体验回归验收": "a9816ebe4e9337629a5097e88d9c2187a2f786fa897b74d54fbfa0aac93b6173",
+    "project-doc:guides/配置与源码索引": "6f89dc31748aa6be821df9655b74e24699545987cb00029a3c2de3682394c713",
+    "project-doc:packages/board/arrangement": "f5730a7999e8167a41d63471e556f8e601f6d3e5d90127a91fbfe3bc9eef85c1",
+    "project-doc:packages/board/canvas-modes": "502a19bafaf055a546a054801928ebc42eff65a5fa71db889d2f8f634306c3d4",
+    "project-doc:packages/board/CHANGELOG": "667de424eceb440d44771974283be20a554c345b7126a758fa9e34eed18d70e5",
+    "project-doc:packages/board/frame-converters": "dd6b53810195a875154e2823539c1316392e32db7bea5bdd63a6c97c26424b5c",
+    "project-doc:packages/board/mind-features": "bd7ad46c21931664f81cd0105c3473fb08e5818a05fba6a2d3800c16e33efc1b",
+    "project-doc:packages/board/NODE_WIDTH_SPECIFICATION": "55fb35b72a681624fe84a1f3fd316b50a3f90b5ac2d65f5e5fe9c222a38acae1",
+    "project-doc:packages/board/README": "ac14b19d8821f62bb2dded9d4ef47e2f2cd2cf84a36e14fc56563a93c9bb026f",
+    "project-doc:packages/board/README.zh-CN": "a3d7c5250c6a021bf0c463ce5b1f75ce73333c8a6cf71ac404022bdb7d695e0a",
+    "project-doc:packages/react/README": "c159223b21be9a8a1179c9bb1a13d3f09be23dc2906efa56f91f26c8bfbf544a",
+    "project-doc:packages/README": "4d9d7819a6c5a6ba941a6de2928a15928e1c6266f0124930b1f3dc6789686bfb",
+    "project-doc:packages/release-2": "b9fec63d09f6b6731ccdefc0245a8e5d05291f070352f47265f87426abb78410",
+    "project-doc:product/产品概览": "283c3c12168277e2cbcb80024f1bfda2f702d89ee922971adbb07c84a5cf704d",
+    "project-doc:README": "7eff5b160e1a12c6eba9ac42b4d16062497cc5ea76e5b0cd679858dfbadc80ed",
+    "project-doc:README_en": "982800073351895f452bc315475c6763a272e49c44dee5feae7b5923df073f0b"
+  },
+  "reviews": {
+    "agent": {
+      "status": "updated",
+      "reason": "Reviewed the current native authoring/operation interfaces, independently loaded Agent catalog, default Skills and execution templates. Corrected the Agent navigation to distinguish the default resource root from editable user recommendations. This explicitly authorized early-stage release prepares all 28 business packages as 2.1.0 while preserving breaking-change descriptions and future version rules. Re-reviewed after synchronizing the Electron diagnostic unit-test mocks: the change affects test infrastructure only and does not alter the reviewed business behavior or native prose.",
+      "files": [
+        "packages/product/agent/src/authoring.ts",
+        "packages/product/agent/src/cli.ts",
+        "packages/product/agent-patterns/agent/范式导航.verd-doc.json",
+        "packages/product/agent-patterns/agent/skills/verd-authoring/SKILL.md"
+      ]
+    },
+    "recommendations": {
+      "status": "updated",
+      "reason": "Reviewed independent user recommendations against the current template workflow, native graph organization and optional automation. Replaced the unique-Agent-rule claim with user-facing advice, documented direct product editing and optional CLI examples, and retained independence from Agent defaults. Re-reviewed after synchronizing the Electron diagnostic unit-test mocks: the change affects test infrastructure only and does not alter the reviewed business behavior or native prose.",
+      "files": [
+        "packages/product/agent-patterns/workspace/范式导航.verd-doc.json",
+        "packages/product/agent-patterns/workspace/图表编写规范.verd-doc.json",
+        "packages/product/agent-patterns/recommendations.json"
+      ]
+    },
+    "introduction": {
+      "status": "updated",
+      "reason": "Rewrote obsolete graph ownership, copy/export closure, local Web Git and settings descriptions. Synchronized 2.1.0 capabilities and the explicitly authorized version exception, preserved historical 2.0 facts, and updated native heading links and derived text caches. This is substantive business prose work, not a date or version-only update. Local packaging is distinct from npm publication. Re-reviewed after synchronizing the Electron diagnostic unit-test mocks: the change affects test infrastructure only and does not alter the reviewed business behavior or native prose.",
+      "files": [
+        "workspace/文档/产品/产品概览.verd-doc.json",
+        "workspace/文档/架构/系统架构.verd-doc.json",
+        "workspace/文档/指南/桌面安装与使用.verd-doc.json",
+        "workspace/文档/指南/配置与源码索引.verd-doc.json",
+        "workspace/Documentation.verd-doc.json"
+      ]
+    }
+  }
+}

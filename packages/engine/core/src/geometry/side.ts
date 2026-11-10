@@ -3,6 +3,17 @@ import type { RectangleClient } from '../interfaces/rectangle-client';
 
 export type GeometrySide = 'top' | 'right' | 'bottom' | 'left';
 
+/** Routing quantizes a rotated attachment's exit direction to quarter turns. */
+export const rotateGeometrySide = (
+  side: GeometrySide,
+  rotation: number,
+): GeometrySide => {
+  const sides: GeometrySide[] = ['right', 'bottom', 'left', 'top'];
+  const original = sides.indexOf(side),
+    quarter = Math.round(rotation / (Math.PI / 2));
+  return sides[(((original + quarter) % 4) + 4) % 4];
+};
+
 export const rectangleCenter = (rectangle: RectangleClient): Point => [
   rectangle.x + rectangle.width / 2,
   rectangle.y + rectangle.height / 2,

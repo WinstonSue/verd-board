@@ -8,7 +8,6 @@ import {
   WorkspaceAlert,
   WorkspaceButton,
   WorkspaceEmptyState,
-  WorkspaceInput,
   WorkspaceDialogTabs,
 } from '@sue/verd-board-ui';
 import type { BoardTextNode } from '@sue/board-common';
@@ -21,13 +20,13 @@ import {
 import type { WorkspaceSession } from '../session/workspace-session';
 import {
   readRevisions,
-  saveRevision,
   readRevision,
   restoreRevision,
   storeAttachment,
   type Revision,
 } from './workspace-resources';
 import { portableArchiveWithAssets } from './portable-archive';
+import { VersionHistoryPanel } from './version-history-panel';
 const download = (name: string, bytes: Uint8Array) => {
   const url = URL.createObjectURL(new Blob([bytes as BlobPart]));
   const link = document.createElement('a');
@@ -42,6 +41,7 @@ export function ContentTools({
   readonly,
   request,
   onKeepBoth,
+  onVersionSettings,
   locale = 'zh',
 }: {
   locale?: 'zh' | 'en';
@@ -50,14 +50,14 @@ export function ContentTools({
   readonly: boolean;
   request?: { nonce: number; tab: string };
   onKeepBoth(): Promise<void>;
+  onVersionSettings?(): void;
 }) {
   const [shown, setShown] = useState(false),
     [tab, setTab] = useState('properties');
   const [error, setError] = useState(''),
     [busy, setBusy] = useState(false),
     [revisions, setRevisions] = useState<Revision[]>([]),
-    [loadingRevisions, setLoadingRevisions] = useState(false),
-    [name, setName] = useState('');
+    [loadingRevisions, setLoadingRevisions] = useState(false);
   const [comparison, setComparison] = useState<WorkspaceFile | null>(null);
   const lastInteraction = useRef<'pointer' | 'keyboard'>('keyboard');
   const [pointerFocus, setPointerFocus] = useState(false);
@@ -187,42 +187,28 @@ export function ContentTools({
       )}
       {tab === 'history' && (
         <>
+          <VersionHistoryPanel
+            session={session}
+            scope={{ kind: 'file', fileId }}
+            onSettings={
+              onVersionSettings
+                ? () => {
+                    closeTools();
+                    onVersionSettings();
+                  }
+                : undefined
+            }
+            readonly={readonly}
+            locale={locale}
+            onBusyChange={setBusy}
+          />
+          <h3>{t('旧版检查点', 'Legacy checkpoints')}</h3>
           <p>
             {t(
-              '版本保存在当前工作区，重启后仍可查看。恢复前会自动保存当前版本。',
-              'Versions remain in this workspace across restarts. The current version is saved before restoring.',
+              '已有检查点仍可预览和恢复；新版本通过手动创建保存。旧检查点仅保存单个文件。',
+              'Existing checkpoints remain available to preview and restore. New versions are created manually. Legacy checkpoints contain one file only.',
             )}
           </p>
-          <div className="workspace-revision-toolbar">
-            <WorkspaceInput
-              aria-label={t('版本名称', 'Version name')}
-              placeholder={t('版本名称（可选）', 'Version name (optional)')}
-              value={name}
-              onChange={(event) => setName(event.target.value)}
-            />
-            <WorkspaceButton
-              intent="primary"
-              busy={busy}
-
-              disabled={readonly || busy}
-              onClick={() =>
-                void perform(async () => {
-                  await saveRevision(
-                    session,
-                    file,
-                    name.trim() || t('手动版本', 'Manual version'),
-                  );
-                  setRevisions(
-                    (await readRevisions(session)).manifest.revisions.filter(
-                      (item) => item.fileId === fileId,
-                    ),
-                  );
-                })
-              }
-            >
-              {t('保存版本', 'Save version')}
-            </WorkspaceButton>
-          </div>
           <div className="workspace-revision-list" aria-busy={loadingRevisions}>
             {loadingRevisions && (
               <p role="status">{t('正在加载版本…', 'Loading versions…')}</p>
