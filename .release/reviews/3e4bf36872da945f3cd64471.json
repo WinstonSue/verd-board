@@ -57,7 +57,7 @@
   ],
   "previous": "0028504b198add2cde1abec0.json",
   "previousDigest": "9e4dde75e4a67c9d3d6c86db7dcb6c27ac0e2a88b9e6dbc171f9587cd7662d13",
-  "sourceDigest": "c3f085f8925bb76b43711bf91e273d821a225b79e18d8e1025b29dfa27574d69",
+  "sourceDigest": "e2c244b3b2a52fbbdb5540556ff428fbd95b8c85c1ad10a676172d2573b88826",
   "versions": {
     "@sue/board-architecture": "2.1.0",
     "@sue/board-common": "2.1.0",
@@ -117,7 +117,7 @@
   "reviews": {
     "agent": {
       "status": "updated",
-      "reason": "Reviewed the standalone Agent API/CLI after extracting WorkspaceSession, Host contracts, filesystem/Git support and native models into the shared workspace SDK. Agent production dependencies exclude product app/ui. Default instructions now use Markdown SKILL.md and self-contained references; native execution templates and user recommendations remain separate. Existing public entrypoints, validation, conditional writes and resource upgrade requirements are retained. Re-reviewed after wiring the existing Aliyun registry secrets into CI; this changes authentication setup only and does not change the reviewed business behavior or native content.",
+      "reason": "Reviewed the standalone Agent API/CLI after extracting WorkspaceSession, Host contracts, filesystem/Git support and native models into the shared workspace SDK. Agent production dependencies exclude product app/ui. Default instructions now use Markdown SKILL.md and self-contained references; native execution templates and user recommendations remain separate. Existing public entrypoints, validation, conditional writes and resource upgrade requirements are retained. Re-reviewed after wiring the existing Aliyun registry secrets into CI; this changes authentication setup only and does not change the reviewed business behavior or native content. Latest re-review covers Markdown spacing in the managed workspace guide; instruction meaning and business behavior are unchanged.",
       "files": [
         "packages/agent/runtime/src/authoring.ts",
         "packages/agent/runtime/src/cli.ts",
@@ -129,7 +129,7 @@
     },
     "recommendations": {
       "status": "reviewed",
-      "reason": "Reviewed the user-facing navigation and diagram advice against the independent Agent rules and template workflow. The recommendation library explicitly does not inject Agent defaults or Skills; users can edit native content directly and optionally use the separate CLI. This release changes package location and integration boundaries without requiring additional advice-body changes. Re-reviewed after wiring the existing Aliyun registry secrets into CI; this changes authentication setup only and does not change the reviewed business behavior or native content.",
+      "reason": "Reviewed the user-facing navigation and diagram advice against the independent Agent rules and template workflow. The recommendation library explicitly does not inject Agent defaults or Skills; users can edit native content directly and optionally use the separate CLI. This release changes package location and integration boundaries without requiring additional advice-body changes. Re-reviewed after wiring the existing Aliyun registry secrets into CI; this changes authentication setup only and does not change the reviewed business behavior or native content. Latest re-review covers Markdown spacing in the managed workspace guide; instruction meaning and business behavior are unchanged.",
       "files": [
         "packages/agent/patterns/workspace/范式导航.verd-doc.json",
         "packages/agent/patterns/workspace/图表编写规范.verd-doc.json",
@@ -138,7 +138,7 @@
     },
     "introduction": {
       "status": "updated",
-      "reason": "Reorganized the native system introduction around product scope, shared workspace/Agent boundaries, host data flows, stable references and scoped development validation. Updated eight native documents and bilingual entries for product 2.1.1 and Workspace SDK/board-react 2.2.0, including independent Agent consumption and explicit-plugin read-only preview. Historical 2.1.0 contracts and 2.0 migration evidence remain; file/block identities and heading targets are preserved. All eight changed documents were rendered and their edited paragraphs reviewed. This is substantive business prose, not just versions, dates or cache changes; registry publication is verified separately. Re-reviewed after wiring the existing Aliyun registry secrets into CI; this changes authentication setup only and does not change the reviewed business behavior or native content.",
+      "reason": "Reorganized the native system introduction around product scope, shared workspace/Agent boundaries, host data flows, stable references and scoped development validation. Updated eight native documents and bilingual entries for product 2.1.1 and Workspace SDK/board-react 2.2.0, including independent Agent consumption and explicit-plugin read-only preview. Historical 2.1.0 contracts and 2.0 migration evidence remain; file/block identities and heading targets are preserved. All eight changed documents were rendered and their edited paragraphs reviewed. This is substantive business prose, not just versions, dates or cache changes; registry publication is verified separately. Re-reviewed after wiring the existing Aliyun registry secrets into CI; this changes authentication setup only and does not change the reviewed business behavior or native content. Latest re-review covers Markdown spacing in the managed workspace guide; instruction meaning and business behavior are unchanged.",
       "files": [
         "workspace/文档/产品/产品概览.verd-doc.json",
         "workspace/文档/架构/系统架构.verd-doc.json",

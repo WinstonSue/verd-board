@@ -1,4 +1,5 @@
 <!-- verdscrolls:agent:start -->
+
 ## VerdScrolls workspace
 
 Read `.verdscrolls/shared/skills/verd-authoring/SKILL.md` before editing native content.
