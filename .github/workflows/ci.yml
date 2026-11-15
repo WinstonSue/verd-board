@@ -14,6 +14,9 @@ permissions:
 jobs:
   main:
     runs-on: ubuntu-latest
+    env:
+      NODE_AUTH_TOKEN: ${{ secrets.ALIYUN_SUE_NPM_TOKEN }}
+      YLIB_NPM_TOKEN: ${{ secrets.ALIYUN_YLIB_NPM_TOKEN }}
     steps:
       - uses: actions/checkout@v4
 
@@ -25,6 +28,12 @@ jobs:
         with:
           node-version: 22
           cache: 'pnpm'
+          registry-url: 'https://packages.aliyun.com/69f800449b7ce0afb00bda0e/npm/npm-registry/'
+          scope: '@sue'
+
+      - name: Configure @ylib authentication
+        run: |
+          printf '%s\n' '//packages.aliyun.com/6141c43fdd62cdb60fbbdbda/npm/npm-registry/:_authToken=${YLIB_NPM_TOKEN}' >> "$NPM_CONFIG_USERCONFIG"
 
       - run: pnpm install --frozen-lockfile
 
