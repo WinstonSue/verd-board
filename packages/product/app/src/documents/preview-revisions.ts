@@ -1,6 +1,6 @@
-import type { WorkspaceSessionSnapshot } from '../session/workspace-session';
-import type { WorkspaceFile } from './document-files';
-import { workspaceReferences } from './workspace-references';
+import type { WorkspaceSessionSnapshot } from '@sue/verd-board-workspace';
+import type { WorkspaceFile } from '@sue/verd-board-workspace';
+import { workspaceReferences } from '@sue/verd-board-workspace';
 
 interface CachedRevision {
   dependencies: ReadonlyMap<string, unknown>;

@@ -48,7 +48,7 @@ async function prepareResources() {
     ...publicPackages.map(({ pkg }) => `--filter=${pkg.name}`),
   ]);
   const { readAgentResources } = await import(
-    pathToFileURL(path.join(root, 'packages/product/agent/dist/node.js')).href
+    pathToFileURL(path.join(root, 'packages/agent/runtime/dist/node.js')).href
   );
   if (explicitResources) {
     await readAgentResources(explicitResources, true);

@@ -284,12 +284,12 @@
         "strokeWidth": 1.5
       },
       "content": {
-        "label": "导出闭包与格式能力\n闭包按显式引用和拥有子图遍历；普通文字链接不扩大导出闭包。",
+        "label": "导出闭包与格式能力\n按实际嵌入引用收集依赖；普通文字链接不扩大闭包。",
         "text": {
           "schemaVersion": 1,
           "id": "project:overview/07/summary/2/text",
           "kind": "inline",
-          "plainText": "导出闭包与格式能力\n闭包按显式引用和拥有子图遍历；普通文字链接不扩大导出闭包。",
+          "plainText": "导出闭包与格式能力\n按实际嵌入引用收集依赖；普通文字链接不扩大闭包。",
           "content": {
             "type": "doc",
             "content": [
@@ -316,7 +316,7 @@
                 "content": [
                   {
                     "type": "text",
-                    "text": "闭包按显式引用和拥有子图遍历；普通文字链接不扩大导出闭包。",
+                    "text": "按实际嵌入引用收集依赖；普通文字链接不扩大闭包。",
                     "marks": [
                       {
                         "type": "textStyle",
@@ -332,7 +332,8 @@
             ]
           }
         }
-      }
+      },
+      "name": "导出闭包与格式能力 闭包按显式引用和拥有子图遍历；普通文字链接不扩大导出闭包。"
     },
     "project:overview/07/detail/1": {
       "id": "project:overview/07/detail/1",
@@ -469,8 +470,5 @@
         "strokeWidth": 1.5
       }
     }
-  },
-  "organization": {
-    "kind": "standalone"
   }
 }

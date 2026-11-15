@@ -1,4 +1,4 @@
-import type { WorkspaceEntryMeta } from '../host/workspace-host';
+import type { WorkspaceEntryMeta } from '@sue/verd-board-workspace';
 import {
   createWorkspaceLink,
   parseWorkspaceLink,
@@ -7,7 +7,7 @@ import {
 } from '@sue/board-common';
 import { createDocumentHeadingSlugger } from '@sue/board-react-text';
 import { isEdgeCell, isNodeCell, nodeContentName } from '@sue/board-core';
-import { workspaceFileId, type WorkspaceFile } from './document-files';
+import { workspaceFileId, type WorkspaceFile } from '@sue/verd-board-workspace';
 import {
   buildReferenceLocations,
   type ReferenceLocation,

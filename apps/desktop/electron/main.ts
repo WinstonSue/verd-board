@@ -126,7 +126,7 @@ const contentSource = (kind: 'project' | 'agent-patterns') =>
           __dirname,
           kind === 'project'
             ? '../../../workspace'
-            : '../../../packages/product/agent-patterns/workspace',
+            : '../../../packages/agent/patterns/workspace',
         );
 const productVersion = JSON.parse(
   readFileSync(path.resolve(__dirname, '../package.json'), 'utf8'),
@@ -241,7 +241,7 @@ function registerWorkspaceHostIpc() {
               ? path.join(process.resourcesPath, 'agent-patterns')
               : path.resolve(
                   __dirname,
-                  '../../../packages/product/agent-patterns/workspace',
+                  '../../../packages/agent/patterns/workspace',
                 ),
           },
         ).then((result) =>

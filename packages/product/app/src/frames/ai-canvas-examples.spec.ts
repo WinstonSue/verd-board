@@ -15,7 +15,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { createTestCellRegistry } from '../../../../../tests/fixtures/plugins/registry';
-import { isDocumentFileV1 } from '../documents/document-files';
+import { isDocumentFileV1 } from '@sue/verd-board-workspace';
 import {
   assembleWorkspaceStore,
   isFrameFileV2,
@@ -24,7 +24,7 @@ import {
   remapImportedFiles,
   validateFrameFiles,
   type FrameFileV2,
-} from './frame-files';
+} from '@sue/verd-board-workspace';
 
 /**
  * The native AI specification embeds every import fixture as a real codeBlock.

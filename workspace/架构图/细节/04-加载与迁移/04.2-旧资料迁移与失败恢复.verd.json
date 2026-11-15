@@ -1455,13 +1455,13 @@
                 "content": [
                   {
                     "type": "text",
-                    "text": "源码入口：packages/product/app/src/session/workspace-session.ts；packages/product/app/src/frames/frame-files.ts；apps/desktop/electron/workspace-startup.ts。"
+                    "text": "源码入口：packages/workspace/core/src/session/workspace-session.ts；packages/workspace/core/src/frames/frame-files.ts；apps/desktop/electron/workspace-startup.ts。"
                   }
                 ]
               }
             ]
           },
-          "plainText": "相关文档：系统架构\n读图：迁移前保留备份；区分单文件不可用与宿主读取失败。\n返回专题总览\n相关细节：启动与工作区选择\n桌面安装与使用 · 工作区目录\n源码入口：packages/product/app/src/session/workspace-session.ts；packages/product/app/src/frames/frame-files.ts；apps/desktop/electron/workspace-startup.ts。"
+          "plainText": "相关文档：系统架构\n读图：迁移前保留备份；区分单文件不可用与宿主读取失败。\n返回专题总览\n相关细节：启动与工作区选择\n桌面安装与使用 · 工作区目录\n源码入口：packages/workspace/core/src/session/workspace-session.ts；packages/workspace/core/src/frames/frame-files.ts；apps/desktop/electron/workspace-startup.ts。"
         }
       },
       "appearance": {

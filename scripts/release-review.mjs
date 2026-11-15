@@ -252,12 +252,12 @@ export async function checkReleaseReview(root = ROOT, options = {}) {
   assertReview(record, previous, current, options);
   const groups = {
     agent: (file) =>
-      file.startsWith('packages/product/agent/') ||
-      file.startsWith('packages/product/agent-patterns/agent/') ||
-      /^packages\/product\/agent-patterns\/(catalog|rules)\.json$/.test(file),
+      file.startsWith('packages/agent/runtime/') ||
+      file.startsWith('packages/agent/patterns/agent/') ||
+      /^packages\/agent\/patterns\/(catalog|rules)\.json$/.test(file),
     recommendations: (file) =>
-      file.startsWith('packages/product/agent-patterns/workspace/') ||
-      file === 'packages/product/agent-patterns/recommendations.json',
+      file.startsWith('packages/agent/patterns/workspace/') ||
+      file === 'packages/agent/patterns/recommendations.json',
     introduction: (file) =>
       file.startsWith('workspace/') && file.endsWith('.verd-doc.json'),
   };
@@ -307,7 +307,6 @@ export async function plannedTargets(root = ROOT) {
       for (const name of [
         'desktop',
         'service',
-        '@sue/verd-board-docs',
         '@sue/verd-board-agent-patterns',
       ]) {
         const existing = targets.find((item) => item.name === name);

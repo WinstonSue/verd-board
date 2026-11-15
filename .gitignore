@@ -69,8 +69,8 @@ Thumbs.db
 /apps/desktop/dist-electron-e2e/
 
 # Installed pattern library copies keep device state out of source assets.
-/packages/product/agent-patterns/workspace/.verdboard/
-/packages/product/agent-patterns/workspace/**/*.tmp
+/packages/agent/patterns/workspace/.verdboard/
+/packages/agent/patterns/workspace/**/*.tmp
 
 # Generated, self-contained agent runtime resources (never user data).
 /apps/desktop/build/agent-resources/
@@ -89,3 +89,6 @@ Thumbs.db
 /apps/service/dist-e2e-*/
 /apps/web/dist-e2e/
 /.quality/
+
+# Machine-local remote test target (SSH/npm credentials stay in user config).
+/.remote-test.local.json

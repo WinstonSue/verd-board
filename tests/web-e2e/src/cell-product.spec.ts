@@ -2552,6 +2552,8 @@ test('moving a shape into a native frame frees boundary arrows and persists owne
   ).toHaveCount(1);
   await cells(page, 'frame').locator('[data-frame-title-id]').first().click();
   await page.getByTestId('frame-open').locator('visible=true').click();
+  // Navigation keeps the previous pane mounted; wait for the target canvas.
+  await expect(canvas(page)).toHaveAttribute('data-instance-id', targetId);
   await page.getByRole('button', { name: '适配画布', exact: true }).click();
   await cells(page, 'geometry').click();
   await expandPropertyGroup(page);

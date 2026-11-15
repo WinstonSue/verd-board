@@ -256,12 +256,12 @@
         "outline": "roundRectangle"
       },
       "content": {
-        "label": "pnpm workspace:check：只读校验",
+        "label": "workspace:check 原生内容专项\n在测试机按影响选择范围",
         "text": {
           "schemaVersion": 1,
           "id": "demo:development/node/5-1/text",
           "kind": "inline",
-          "plainText": "pnpm workspace:check：只读校验",
+          "plainText": "workspace:check 原生内容专项\n在测试机按影响选择范围",
           "content": {
             "type": "doc",
             "content": [
@@ -270,7 +270,25 @@
                 "content": [
                   {
                     "type": "text",
-                    "text": "pnpm workspace:check：只读校验",
+                    "text": "workspace:check 原生内容专项",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "18px",
+                          "color": "#334155"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "在测试机按影响选择范围",
                     "marks": [
                       {
                         "type": "textStyle",
@@ -298,7 +316,8 @@
           "strokeColor": "#2563eb",
           "strokeWidth": 2
         }
-      }
+      },
+      "name": "pnpm workspace:check：只读校验"
     },
     "demo:development/node/1-0": {
       "id": "demo:development/node/1-0",
@@ -833,12 +852,12 @@
         "outline": "roundRectangle"
       },
       "content": {
-        "label": "Node ≥ 22 · pnpm ≥ 11.18.0",
+        "label": "Node ≥ 22.12.0 · pnpm ≥ 11.18.0",
         "text": {
           "schemaVersion": 1,
           "id": "demo:development/node/0-0/text",
           "kind": "inline",
-          "plainText": "Node ≥ 22 · pnpm ≥ 11.18.0",
+          "plainText": "Node ≥ 22.12.0 · pnpm ≥ 11.18.0",
           "content": {
             "type": "doc",
             "content": [
@@ -847,7 +866,7 @@
                 "content": [
                   {
                     "type": "text",
-                    "text": "Node ≥ 22 · pnpm ≥ 11.18.0",
+                    "text": "Node ≥ 22.12.0 · pnpm ≥ 11.18.0",
                     "marks": [
                       {
                         "type": "textStyle",
@@ -875,7 +894,8 @@
           "strokeColor": "#0f766e",
           "strokeWidth": 2
         }
-      }
+      },
+      "name": "Node ≥ 22 · pnpm ≥ 11.18.0"
     },
     "demo:development/node/5-0": {
       "id": "demo:development/node/5-0",
@@ -1061,12 +1081,12 @@
         "outline": "roundRectangle"
       },
       "content": {
-        "label": "packages/product/：生命周期与产品工具",
+        "label": "product：宿主与界面\nworkspace / agent：共享核心与独立编写",
         "text": {
           "schemaVersion": 1,
           "id": "demo:development/node/1-1/text",
           "kind": "inline",
-          "plainText": "packages/product/：生命周期与产品工具",
+          "plainText": "product：宿主与界面\nworkspace / agent：共享核心与独立编写",
           "content": {
             "type": "doc",
             "content": [
@@ -1075,7 +1095,25 @@
                 "content": [
                   {
                     "type": "text",
-                    "text": "packages/product/：生命周期与产品工具",
+                    "text": "product：宿主与界面",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "18px",
+                          "color": "#334155"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "workspace / agent：共享核心与独立编写",
                     "marks": [
                       {
                         "type": "textStyle",
@@ -1103,7 +1141,8 @@
           "strokeColor": "#2563eb",
           "strokeWidth": 2
         }
-      }
+      },
+      "name": "packages/product/：生命周期与产品工具"
     },
     "demo:development/branch/0": {
       "id": "demo:development/branch/0",
@@ -1596,8 +1635,5 @@
         "strokeColor": "none"
       }
     }
-  },
-  "organization": {
-    "kind": "standalone"
   }
 }

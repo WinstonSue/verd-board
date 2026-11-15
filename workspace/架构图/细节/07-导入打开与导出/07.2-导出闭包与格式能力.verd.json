@@ -190,12 +190,12 @@
         }
       ],
       "content": {
-        "label": "统一图文文件闭包\n显式嵌入 + 拥有子图，循环只遍历一次",
+        "label": "统一图文文件闭包\n按实际嵌入引用遍历，循环去重",
         "text": {
           "schemaVersion": 1,
           "id": "demo:export/tree/text",
           "kind": "inline",
-          "plainText": "统一图文文件闭包\n显式嵌入 + 拥有子图，循环只遍历一次",
+          "plainText": "统一图文文件闭包\n按实际嵌入引用遍历，循环去重",
           "content": {
             "type": "doc",
             "content": [
@@ -204,7 +204,25 @@
                 "content": [
                   {
                     "type": "text",
-                    "text": "统一图文文件闭包\n显式嵌入 + 拥有子图，循环只遍历一次",
+                    "text": "统一图文文件闭包",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "20px",
+                          "color": "#1e293b"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "按实际嵌入引用遍历，循环去重",
                     "marks": [
                       {
                         "type": "textStyle",
@@ -225,7 +243,8 @@
         "fill": "#f0fdfa",
         "strokeColor": "#94a3b8",
         "strokeWidth": 1.5
-      }
+      },
+      "name": "统一图文文件闭包 显式嵌入 + 拥有子图，循环只遍历一次"
     },
     "demo:export/format": {
       "id": "demo:export/format",
@@ -342,12 +361,12 @@
         }
       ],
       "content": {
-        "label": "原生 JSON / 图文 bundle\n统一重映射文件、Cell、内部引用与链接",
+        "label": "原生 JSON / 图文 bundle\n文件、Cell、引用和链接统一映射",
         "text": {
           "schemaVersion": 1,
           "id": "demo:export/json/text",
           "kind": "inline",
-          "plainText": "原生 JSON / 图文 bundle\n统一重映射文件、Cell、内部引用与链接",
+          "plainText": "原生 JSON / 图文 bundle\n文件、Cell、引用和链接统一映射",
           "content": {
             "type": "doc",
             "content": [
@@ -356,7 +375,25 @@
                 "content": [
                   {
                     "type": "text",
-                    "text": "原生 JSON / 图文 bundle\n统一重映射文件、Cell、内部引用与链接",
+                    "text": "原生 JSON / 图文 bundle",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "20px",
+                          "color": "#1e293b"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "文件、Cell、引用和链接统一映射",
                     "marks": [
                       {
                         "type": "textStyle",
@@ -377,7 +414,8 @@
         "fill": "#f0fdfa",
         "strokeColor": "#94a3b8",
         "strokeWidth": 1.5
-      }
+      },
+      "name": "原生 JSON / 图文 bundle 统一重映射文件、Cell、内部引用与链接"
     },
     "demo:export/md": {
       "id": "demo:export/md",
@@ -945,11 +983,11 @@
       "cellType": "edge",
       "source": {
         "cellId": "demo:export/json",
-        "portId": "right"
+        "portId": "bottom"
       },
       "target": {
         "cellId": "demo:export/download",
-        "portId": "right"
+        "portId": "top"
       },
       "route": {
         "mode": "orthogonal"
@@ -965,11 +1003,11 @@
       "cellType": "edge",
       "source": {
         "cellId": "demo:export/md",
-        "portId": "right"
+        "portId": "bottom"
       },
       "target": {
         "cellId": "demo:export/download",
-        "portId": "right"
+        "portId": "top"
       },
       "route": {
         "mode": "orthogonal"
@@ -1088,7 +1126,7 @@
                 "content": [
                   {
                     "type": "text",
-                    "text": "读图：闭包按显式引用和拥有子图遍历；普通文字链接不扩大导出闭包。"
+                    "text": "读图：闭包按实际嵌入引用遍历；普通文字链接不扩大导出闭包。"
                   }
                 ]
               },
@@ -1148,22 +1186,20 @@
                 "content": [
                   {
                     "type": "text",
-                    "text": "源码入口：packages/product/app/src/documents/workspace-references.ts；packages/react/board/src/frame-export.tsx；packages/converters。"
+                    "text": "源码入口：packages/workspace/core/src/documents/workspace-references.ts；packages/react/board/src/frame-export.tsx；packages/converters。"
                   }
                 ]
               }
             ]
           },
-          "plainText": "相关文档：格式转换器\n读图：闭包按显式引用和拥有子图遍历；普通文字链接不扩大导出闭包。\n返回专题总览\n相关细节：导入解析与内容落地\nAI画布数据规范 · 3. 可导入格式与产品入口\n源码入口：packages/product/app/src/documents/workspace-references.ts；packages/react/board/src/frame-export.tsx；packages/converters。"
+          "plainText": "相关文档：格式转换器\n读图：闭包按实际嵌入引用遍历；普通文字链接不扩大导出闭包。\n返回专题总览\n相关细节：导入解析与内容落地\nAI画布数据规范 · 3. 可导入格式与产品入口\n源码入口：packages/workspace/core/src/documents/workspace-references.ts；packages/react/board/src/frame-export.tsx；packages/converters。"
         }
       },
       "appearance": {
         "fill": "none",
         "strokeColor": "none"
-      }
+      },
+      "name": "相关文档：格式转换器 读图：闭包按显式引用和拥有子图遍历；普通文字链接不扩大导出闭包。 返回专题总览 相关细节：导入解析与内容落地 AI画布数据规范 · 3. 可导入格式与产品入口 源码入口：packages/workspace/core/src/documents/workspace-references.ts；packages/react/board/src/frame-export.tsx；packages/converters。"
     }
-  },
-  "organization": {
-    "kind": "standalone"
   }
 }

@@ -2,7 +2,7 @@ import 'fake-indexeddb/auto';
 import { IDBFactory } from 'fake-indexeddb';
 import { describe, expect, it } from 'vitest';
 import { createWebWorkspaceHost } from './web-workspace-host';
-import { workspaceHostSupports } from './workspace-host';
+import { workspaceHostSupports } from '@sue/verd-board-workspace';
 
 describe('Web workspace capabilities and names', () => {
   const setup = () =>

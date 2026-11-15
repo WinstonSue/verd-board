@@ -1,4 +1,5 @@
 import { exerciseDocumentFormatLayout } from './document-format-layout-actions';
+import { exerciseDocumentBubbleStability } from './document-bubble-stability-actions';
 import { expect, type Locator, type Page } from '@playwright/test';
 
 export async function exerciseDocumentBlockActions(page: Page) {
@@ -309,4 +310,5 @@ export async function exerciseDocumentBlockActions(page: Page) {
     .poll(() => page.evaluate(() => getSelection()?.toString()))
     .toBe('First');
   await exerciseDocumentFormatLayout(page);
+  await exerciseDocumentBubbleStability(page);
 }

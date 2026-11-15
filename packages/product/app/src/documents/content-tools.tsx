@@ -11,20 +11,20 @@ import {
   WorkspaceDialogTabs,
 } from '@sue/verd-board-ui';
 import type { BoardTextNode } from '@sue/board-common';
-import { assembleWorkspaceStore } from '../frames/frame-files';
+import { assembleWorkspaceStore } from '@sue/verd-board-workspace';
 import {
   workspaceFileId,
   isWorkspaceFile,
   type WorkspaceFile,
-} from './document-files';
-import type { WorkspaceSession } from '../session/workspace-session';
+} from '@sue/verd-board-workspace';
+import type { WorkspaceSession } from '@sue/verd-board-workspace';
 import {
   readRevisions,
   readRevision,
   restoreRevision,
   storeAttachment,
   type Revision,
-} from './workspace-resources';
+} from '@sue/verd-board-workspace';
 import { portableArchiveWithAssets } from './portable-archive';
 import { VersionHistoryPanel } from './version-history-panel';
 const download = (name: string, bytes: Uint8Array) => {

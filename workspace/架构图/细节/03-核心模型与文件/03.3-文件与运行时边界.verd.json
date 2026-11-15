@@ -1110,13 +1110,13 @@
                 "content": [
                   {
                     "type": "text",
-                    "text": "源码入口：packages/product/app/src/frames/frame-files.ts；packages/product/app/src/documents/document-files.ts；packages/engine/core/src/cell/runtime.ts。"
+                    "text": "源码入口：packages/workspace/core/src/frames/frame-files.ts；packages/workspace/core/src/documents/document-files.ts；packages/engine/core/src/cell/runtime.ts。"
                   }
                 ]
               }
             ]
           },
-          "plainText": "相关文档：画布模式\n读图：解释持久化边界和复制闭包；事务步骤进入⑤，保存步骤进入⑥。\n返回专题总览\n相关细节：领域场景与图文引用\n相关细节：CellStore 与 Frame 所有权\nAI画布数据规范 · 2. 数据模型速览\nAI画布数据规范 · 4. 通用字段表\n源码入口：packages/product/app/src/frames/frame-files.ts；packages/product/app/src/documents/document-files.ts；packages/engine/core/src/cell/runtime.ts。"
+          "plainText": "相关文档：画布模式\n读图：解释持久化边界和复制闭包；事务步骤进入⑤，保存步骤进入⑥。\n返回专题总览\n相关细节：领域场景与图文引用\n相关细节：CellStore 与 Frame 所有权\nAI画布数据规范 · 2. 数据模型速览\nAI画布数据规范 · 4. 通用字段表\n源码入口：packages/workspace/core/src/frames/frame-files.ts；packages/workspace/core/src/documents/document-files.ts；packages/engine/core/src/cell/runtime.ts。"
         }
       },
       "appearance": {

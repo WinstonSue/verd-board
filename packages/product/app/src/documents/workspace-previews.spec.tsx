@@ -7,13 +7,13 @@ import type {
 } from '@sue/verd-board-ui';
 import { createFrameCell } from '@sue/board-core';
 import { parseMarkdownToTextDocument } from '@sue/board-markdown-to-text';
-import { createDocumentFile } from './document-files';
-import { createFrameFile } from '../frames/frame-files';
-import { createMemoryWorkspaceHost } from '../host/memory-workspace-host';
+import { createDocumentFile } from '@sue/verd-board-workspace';
+import { createFrameFile } from '@sue/verd-board-workspace';
+import { createMemoryWorkspaceHost } from '@sue/verd-board-workspace';
 import {
   openWorkspaceSession,
   type WorkspaceSession,
-} from '../session/workspace-session';
+} from '@sue/verd-board-workspace';
 import {
   createWorkspaceDocumentPreviewCache,
   workspaceDocumentPreviews,

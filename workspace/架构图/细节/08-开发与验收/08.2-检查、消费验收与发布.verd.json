@@ -141,12 +141,12 @@
         "outline": "roundRectangle"
       },
       "content": {
-        "label": "pnpm typecheck",
+        "label": "内容专项\nworkspace:check 与必要预览",
         "text": {
           "schemaVersion": 1,
           "id": "demo:development/node/2-0/text",
           "kind": "inline",
-          "plainText": "pnpm typecheck",
+          "plainText": "内容专项\nworkspace:check 与必要预览",
           "content": {
             "type": "doc",
             "content": [
@@ -155,7 +155,25 @@
                 "content": [
                   {
                     "type": "text",
-                    "text": "pnpm typecheck",
+                    "text": "内容专项",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "18px",
+                          "color": "#334155"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "workspace:check 与必要预览",
                     "marks": [
                       {
                         "type": "textStyle",
@@ -183,7 +201,8 @@
           "strokeColor": "#7c3aed",
           "strokeWidth": 2
         }
-      }
+      },
+      "name": "pnpm typecheck"
     },
     "demo:development/node/4-3": {
       "id": "demo:development/node/4-3",
@@ -255,12 +274,12 @@
         "outline": "roundRectangle"
       },
       "content": {
-        "label": "pnpm release → pnpm pub：版本与发布",
+        "label": "release:review → release → pub\n发布前核对 Agent、推荐库和系统介绍",
         "text": {
           "schemaVersion": 1,
           "id": "demo:development/node/4-2/text",
           "kind": "inline",
-          "plainText": "pnpm release → pnpm pub：版本与发布",
+          "plainText": "release:review → release → pub\n发布前核对 Agent、推荐库和系统介绍",
           "content": {
             "type": "doc",
             "content": [
@@ -269,7 +288,25 @@
                 "content": [
                   {
                     "type": "text",
-                    "text": "pnpm release → pnpm pub：版本与发布",
+                    "text": "release:review → release → pub",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "18px",
+                          "color": "#334155"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "发布前核对 Agent、推荐库和系统介绍",
                     "marks": [
                       {
                         "type": "textStyle",
@@ -297,7 +334,8 @@
           "strokeColor": "#0f766e",
           "strokeWidth": 2
         }
-      }
+      },
+      "name": "pnpm release → pnpm pub：版本与发布"
     },
     "demo:development/node/4-0": {
       "id": "demo:development/node/4-0",
@@ -369,12 +407,12 @@
         "outline": "roundRectangle"
       },
       "content": {
-        "label": "基础检查",
+        "label": "按影响选择远程验收\n内容专项或功能定向",
         "text": {
           "schemaVersion": 1,
           "id": "demo:development/node/2/text",
           "kind": "inline",
-          "plainText": "基础检查",
+          "plainText": "按影响选择远程验收\n内容专项或功能定向",
           "content": {
             "type": "doc",
             "content": [
@@ -383,7 +421,28 @@
                 "content": [
                   {
                     "type": "text",
-                    "text": "基础检查",
+                    "text": "按影响选择远程验收",
+                    "marks": [
+                      {
+                        "type": "bold"
+                      },
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "20px",
+                          "color": "#7c3aed"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "内容专项或功能定向",
                     "marks": [
                       {
                         "type": "bold"
@@ -414,7 +473,8 @@
           "strokeColor": "#7c3aed",
           "strokeWidth": 2
         }
-      }
+      },
+      "name": "基础检查"
     },
     "demo:development/node/3-0": {
       "id": "demo:development/node/3-0",
@@ -429,12 +489,12 @@
         "outline": "roundRectangle"
       },
       "content": {
-        "label": "生产验收先构建\npnpm build:web · pnpm build:desktop",
+        "label": "完整门禁按触发条件执行\n生产验收先构建当前产物",
         "text": {
           "schemaVersion": 1,
           "id": "demo:development/node/3-0/text",
           "kind": "inline",
-          "plainText": "生产验收先构建\npnpm build:web · pnpm build:desktop",
+          "plainText": "完整门禁按触发条件执行\n生产验收先构建当前产物",
           "content": {
             "type": "doc",
             "content": [
@@ -443,7 +503,7 @@
                 "content": [
                   {
                     "type": "text",
-                    "text": "生产验收先构建",
+                    "text": "完整门禁按触发条件执行",
                     "marks": [
                       {
                         "type": "textStyle",
@@ -461,7 +521,7 @@
                 "content": [
                   {
                     "type": "text",
-                    "text": "pnpm build:web · pnpm build:desktop",
+                    "text": "生产验收先构建当前产物",
                     "marks": [
                       {
                         "type": "textStyle",
@@ -489,7 +549,8 @@
           "strokeColor": "#b45309",
           "strokeWidth": 2
         }
-      }
+      },
+      "name": "生产验收先构建 pnpm build:web · pnpm build:desktop"
     },
     "demo:development/node/3-1": {
       "id": "demo:development/node/3-1",
@@ -561,12 +622,12 @@
         "outline": "roundRectangle"
       },
       "content": {
-        "label": "产品与消费验收",
+        "label": "CI、发布与消费者验收",
         "text": {
           "schemaVersion": 1,
           "id": "demo:development/node/3/text",
           "kind": "inline",
-          "plainText": "产品与消费验收",
+          "plainText": "CI、发布与消费者验收",
           "content": {
             "type": "doc",
             "content": [
@@ -575,7 +636,7 @@
                 "content": [
                   {
                     "type": "text",
-                    "text": "产品与消费验收",
+                    "text": "CI、发布与消费者验收",
                     "marks": [
                       {
                         "type": "bold"
@@ -606,7 +667,8 @@
           "strokeColor": "#b45309",
           "strokeWidth": 2
         }
-      }
+      },
+      "name": "产品与消费验收"
     },
     "demo:development/node/3-4": {
       "id": "demo:development/node/3-4",
@@ -813,12 +875,12 @@
         "outline": "roundRectangle"
       },
       "content": {
-        "label": "pnpm build：公开包与 Web",
+        "label": "功能定向固定准备\n公开包构建与 Agent 资源",
         "text": {
           "schemaVersion": 1,
           "id": "demo:development/node/2-3/text",
           "kind": "inline",
-          "plainText": "pnpm build：公开包与 Web",
+          "plainText": "功能定向固定准备\n公开包构建与 Agent 资源",
           "content": {
             "type": "doc",
             "content": [
@@ -827,7 +889,25 @@
                 "content": [
                   {
                     "type": "text",
-                    "text": "pnpm build：公开包与 Web",
+                    "text": "功能定向固定准备",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "18px",
+                          "color": "#334155"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "公开包构建与 Agent 资源",
                     "marks": [
                       {
                         "type": "textStyle",
@@ -855,7 +935,8 @@
           "strokeColor": "#7c3aed",
           "strokeWidth": 2
         }
-      }
+      },
+      "name": "pnpm build：公开包与 Web"
     },
     "demo:development/node/2-1": {
       "id": "demo:development/node/2-1",
@@ -870,12 +951,12 @@
         "outline": "roundRectangle"
       },
       "content": {
-        "label": "pnpm test：Vitest",
+        "label": "功能定向\n相关单测与开发态 E2E",
         "text": {
           "schemaVersion": 1,
           "id": "demo:development/node/2-1/text",
           "kind": "inline",
-          "plainText": "pnpm test：Vitest",
+          "plainText": "功能定向\n相关单测与开发态 E2E",
           "content": {
             "type": "doc",
             "content": [
@@ -884,7 +965,25 @@
                 "content": [
                   {
                     "type": "text",
-                    "text": "pnpm test：Vitest",
+                    "text": "功能定向",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "18px",
+                          "color": "#334155"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "相关单测与开发态 E2E",
                     "marks": [
                       {
                         "type": "textStyle",
@@ -912,7 +1011,8 @@
           "strokeColor": "#7c3aed",
           "strokeWidth": 2
         }
-      }
+      },
+      "name": "pnpm test：Vitest"
     },
     "demo:development/node/3-3": {
       "id": "demo:development/node/3-3",
@@ -984,12 +1084,12 @@
         "outline": "roundRectangle"
       },
       "content": {
-        "label": "开发：test:e2e:desktop\n生产：build:desktop → test:e2e:desktop:prod",
+        "label": "测试机：Desktop 开发态与生产态\n分别使用本轮源码和构建",
         "text": {
           "schemaVersion": 1,
           "id": "demo:development/node/3-2/text",
           "kind": "inline",
-          "plainText": "开发：test:e2e:desktop\n生产：build:desktop → test:e2e:desktop:prod",
+          "plainText": "测试机：Desktop 开发态与生产态\n分别使用本轮源码和构建",
           "content": {
             "type": "doc",
             "content": [
@@ -998,7 +1098,7 @@
                 "content": [
                   {
                     "type": "text",
-                    "text": "开发：test:e2e:desktop",
+                    "text": "测试机：Desktop 开发态与生产态",
                     "marks": [
                       {
                         "type": "textStyle",
@@ -1016,7 +1116,7 @@
                 "content": [
                   {
                     "type": "text",
-                    "text": "生产：build:desktop → test:e2e:desktop:prod",
+                    "text": "分别使用本轮源码和构建",
                     "marks": [
                       {
                         "type": "textStyle",
@@ -1044,7 +1144,8 @@
           "strokeColor": "#b45309",
           "strokeWidth": 2
         }
-      }
+      },
+      "name": "开发：test:e2e:desktop 生产：build:desktop → test:e2e:desktop:prod"
     },
     "demo:development/node/2-2": {
       "id": "demo:development/node/2-2",
@@ -1059,12 +1160,12 @@
         "outline": "roundRectangle"
       },
       "content": {
-        "label": "pnpm lint · pnpm check:plugins",
+        "label": "功能定向固定检查\nlint、格式、类型与边界",
         "text": {
           "schemaVersion": 1,
           "id": "demo:development/node/2-2/text",
           "kind": "inline",
-          "plainText": "pnpm lint · pnpm check:plugins",
+          "plainText": "功能定向固定检查\nlint、格式、类型与边界",
           "content": {
             "type": "doc",
             "content": [
@@ -1073,7 +1174,25 @@
                 "content": [
                   {
                     "type": "text",
-                    "text": "pnpm lint · pnpm check:plugins",
+                    "text": "功能定向固定检查",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "18px",
+                          "color": "#334155"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "lint、格式、类型与边界",
                     "marks": [
                       {
                         "type": "textStyle",
@@ -1101,7 +1220,8 @@
           "strokeColor": "#7c3aed",
           "strokeWidth": 2
         }
-      }
+      },
+      "name": "pnpm lint · pnpm check:plugins"
     },
     "demo:development/branch/2": {
       "id": "demo:development/branch/2",
@@ -1721,8 +1841,5 @@
         "strokeWidth": 2
       }
     }
-  },
-  "organization": {
-    "kind": "standalone"
   }
 }

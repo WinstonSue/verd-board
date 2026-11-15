@@ -53,7 +53,7 @@ const service = await createLocalService({
   patternSource: path.join(
     repoRoot,
     dev
-      ? 'packages/product/agent-patterns/workspace'
+      ? 'packages/agent/patterns/workspace'
       : 'apps/service/build/builtin-workspaces/agent-patterns',
   ),
   productVersion: product.version,

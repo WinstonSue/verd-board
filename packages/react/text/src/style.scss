@@ -1,7 +1,7 @@
-@use './styles/content.scss';
+@use './styles/content';
 @use './components/line/line-text.css';
-@use './components/paragraph/paragraph-text.scss';
-@use './components/document/document-editor.scss';
+@use './components/paragraph/paragraph-text';
+@use './components/document/document-editor';
 
 @use 'katex/dist/katex.min.css';
 .document-list-fold {

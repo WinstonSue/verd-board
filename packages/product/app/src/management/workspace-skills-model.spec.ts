@@ -1,15 +1,19 @@
-import { afterEach, expect, it } from 'vitest';
-import { createMemoryWorkspaceHost } from '../host/memory-workspace-host';
+import { afterEach, expect, it, vi } from 'vitest';
+import * as agentPatterns from '@sue/verd-board-agent-patterns/agent';
+import { createMemoryWorkspaceHost } from '@sue/verd-board-workspace';
 import {
   openWorkspaceSession,
   type WorkspaceSession,
-} from '../session/workspace-session';
+} from '@sue/verd-board-workspace';
 import { createWorkspaceActionRegistry } from '../session/workspace-actions';
 import { createWorkspaceSurfaceActions } from '../session/workspace-surface-actions';
 import { createWorkspaceSkillsModel } from './workspace-skills-model';
 
 const sessions: WorkspaceSession[] = [];
-afterEach(() => sessions.splice(0).forEach((session) => session.dispose()));
+afterEach(() => {
+  sessions.splice(0).forEach((session) => session.dispose());
+  vi.restoreAllMocks();
+});
 async function setup() {
   const host = createMemoryWorkspaceHost();
   const handle = (await host.openWorkspace({ path: crypto.randomUUID() }))!;
@@ -101,6 +105,52 @@ it('creates independent Skills, preserves metadata and resources, rejects duplic
   expect(model().customItems?.[0].name).toBe('domain-writing');
   actions.dispose();
 });
+
+it('renders Markdown structure and external links while keeping package references out of workspace navigation', async () => {
+  const { model, actions, session } = await setup();
+  const source = [
+    '# Integration guidance',
+    '',
+    '- Read the current context.',
+    '',
+    '| State | Evidence |',
+    '| --- | --- |',
+    '| Done | Saved locally |',
+    '',
+    '```json',
+    '{"type":"pattern.instantiate"}',
+    '```',
+    '',
+    '[Package rule](other.md) and [external source](https://example.com/source)',
+  ].join('\n');
+  vi.spyOn(agentPatterns, 'loadPatternGuides').mockResolvedValue([
+    {
+      path: 'references/integration.md',
+      title: 'Integration guidance',
+      source,
+    },
+  ]);
+  const before = session.getState().entries;
+  const value = await model().readDefault('');
+  if (typeof value === 'string') throw new Error('Expected default documents');
+  const rule = value.rules[0];
+  expect(rule.source).toBe(source);
+  const types: string[] = [];
+  const visit = (node: typeof rule.document.content) => {
+    types.push(node.type);
+    node.content?.forEach(visit);
+  };
+  visit(rule.document.content);
+  expect(types).toEqual(
+    expect.arrayContaining(['heading', 'bulletList', 'table', 'codeBlock']),
+  );
+  const rendered = JSON.stringify(rule.document.content);
+  expect(rendered).toContain('https://example.com/source');
+  expect(rendered).not.toContain('other.md');
+  expect(rule.document.plainText).toContain('Saved locally');
+  expect(session.getState().entries).toEqual(before);
+  actions.dispose();
+});
 it('rejects reserved names and exposes corrupt source without overwriting it', async () => {
   const { host, handle, session, model, actions } = await setup();
   for (const name of [
@@ -138,8 +188,9 @@ it('rejects reserved names and exposes corrupt source without overwriting it', a
   ).toBe('Broken original source');
   actions.dispose();
 });
-it('loads the actual default Skill source and corresponding native rule documents', async () => {
-  const { model, actions } = await setup();
+it('loads the actual default Skill source and Markdown rules rendered without persisting native copies', async () => {
+  const { model, actions, session } = await setup();
+  const entriesBefore = session.getState().entries;
   const value = await model().readDefault(
     '.agents/skills/verd-pattern-architecture/SKILL.md',
   );
@@ -149,13 +200,32 @@ it('loads the actual default Skill source and corresponding native rule document
     'verd-authoring',
     'verd-architecture',
   ]);
-  expect(value.skills[1].source).toContain(
-    '../../architecture/规则说明.verd-doc.json',
-  );
-  expect(value.rules[0].title).toBe('分层架构 · 编写规则');
+  expect(value.skills[1].source).toContain('references/guide.md');
+  expect(value.rules.map((rule) => rule.title)).toEqual([
+    '内容编写规范',
+    '汇报与讲解场景',
+    '图表编写规范',
+    '分层架构 · 编写规则',
+  ]);
+  expect(value.rules[0].source).toMatch(/^# 内容编写规范/);
+  expect(value.rules[0].document.content.type).toBe('doc');
+  expect(
+    value.rules
+      .at(-1)
+      ?.document.content.content?.some((node) => node.type === 'codeBlock'),
+  ).toBe(true);
+  for (const rule of value.rules) {
+    const marks = JSON.stringify(rule.document.content);
+    expect(marks).not.toContain('verd://file/pattern-guide');
+    expect(marks).not.toContain('\"type\":\"link\"');
+  }
+  expect(session.getState().entries).toEqual(entriesBefore);
   const common = await model().readDefault('');
   expect(
     typeof common !== 'string' && common.skills.map((skill) => skill.name),
   ).toEqual(['verd-authoring']);
+  expect(
+    typeof common !== 'string' && common.rules.map((rule) => rule.title),
+  ).toEqual(['内容编写规范', '汇报与讲解场景', '图表编写规范']);
   actions.dispose();
 });

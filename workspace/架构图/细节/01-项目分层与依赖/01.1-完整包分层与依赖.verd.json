@@ -83,15 +83,28 @@
       "demo:packages/edge/%40sue%2Fboard-react-draw>%40sue%2Fboard-react",
       "demo:packages/edge/%40sue%2Fboard-react-actions>%40sue%2Fboard-common",
       "demo:packages/edge/%40sue%2Fboard-react-text>%40sue%2Fboard-react-actions",
-      "project:detail/01/01/document",
+      "demo:packages/layer/6",
       "demo:packages/module/@sue/verd-board-agent",
       "demo:packages/module/@sue/verd-board-agent-patterns",
       "demo:packages/edge/desktop>%40sue%2Fverd-board-agent",
-      "demo:packages/edge/%40sue%2Fverd-board-agent>%40sue%2Fverd-board-app",
-      "demo:packages/edge/%40sue%2Fverd-board-app>%40sue%2Fverd-board-agent-patterns",
-      "demo:packages/module/@sue/verd-board-docs",
       "demo:packages/module/service",
-      "demo:packages/edge/service>%40sue%2Fverd-board-agent"
+      "demo:packages/edge/service>%40sue%2Fverd-board-agent",
+      "demo:packages/layer/7",
+      "demo:packages/module/@sue/verd-board-workspace",
+      "demo:packages/edge/desktop>%40sue%2Fverd-board-app",
+      "demo:packages/edge/service>%40sue%2Fverd-board-app",
+      "demo:packages/edge/%40sue%2Fverd-board-app>%40sue%2Fverd-board-workspace",
+      "demo:packages/edge/%40sue%2Fverd-board-agent>%40sue%2Fboard-markdown-to-text",
+      "demo:packages/edge/%40sue%2Fverd-board-agent>%40sue%2Fboard-mermaid-to-board",
+      "demo:packages/edge/%40sue%2Fverd-board-agent>%40sue%2Fverd-board-workspace",
+      "demo:packages/edge/%40sue%2Fverd-board-workspace>%40sue%2Fboard-architecture",
+      "demo:packages/edge/%40sue%2Fverd-board-workspace>%40sue%2Fboard-draw",
+      "demo:packages/edge/%40sue%2Fverd-board-workspace>%40sue%2Fboard-mind",
+      "demo:packages/edge/%40sue%2Fverd-board-workspace>%40sue%2Fboard-react-text",
+      "demo:packages/edge/%40sue%2Fverd-board-workspace>%40sue%2Fboard-uml",
+      "demo:packages/edge/%40sue%2Fverd-board-workspace>%40sue%2Fboard-workflow",
+      "demo:packages/edge/%40sue%2Fverd-board-workspace>%40sue%2Fverd-board-agent-patterns",
+      "project:detail/01/01/document"
     ],
     "groups": [],
     "data": {},
@@ -3566,7 +3579,7 @@
       },
       "data": {
         "order": "00000000",
-        "fontSize": 24,
+        "fontSize": 16,
         "memberIds": [
           "demo:packages/module/desktop",
           "demo:packages/module/service",
@@ -3627,12 +3640,9 @@
       },
       "data": {
         "order": "00000001",
-        "fontSize": 24,
+        "fontSize": 16,
         "memberIds": [
-          "demo:packages/module/@sue/verd-board-agent",
-          "demo:packages/module/@sue/verd-board-agent-patterns",
           "demo:packages/module/@sue/verd-board-app",
-          "demo:packages/module/@sue/verd-board-docs",
           "demo:packages/module/@sue/verd-board-ui"
         ]
       },
@@ -3690,7 +3700,7 @@
       },
       "data": {
         "order": "00000002",
-        "fontSize": 24,
+        "fontSize": 16,
         "memberIds": [
           "demo:packages/module/@sue/board-react-actions",
           "demo:packages/module/@sue/board-react-architecture",
@@ -3756,7 +3766,7 @@
       },
       "data": {
         "order": "00000003",
-        "fontSize": 24,
+        "fontSize": 16,
         "memberIds": [
           "demo:packages/module/@sue/board-common",
           "demo:packages/module/@sue/board-core",
@@ -3818,7 +3828,7 @@
       },
       "data": {
         "order": "00000004",
-        "fontSize": 24,
+        "fontSize": 16,
         "memberIds": [
           "demo:packages/module/@sue/board-architecture",
           "demo:packages/module/@sue/board-draw",
@@ -3881,7 +3891,7 @@
       },
       "data": {
         "order": "00000005",
-        "fontSize": 24,
+        "fontSize": 16,
         "memberIds": [
           "demo:packages/module/@sue/board-markdown-to-board",
           "demo:packages/module/@sue/board-markdown-to-text",
@@ -4016,8 +4026,8 @@
       "kind": "architecture-module",
       "cellType": "node",
       "geometry": {
-        "x": 2305,
-        "y": 312,
+        "x": 488,
+        "y": 2098,
         "width": 372,
         "height": 98,
         "derived": false,
@@ -4062,12 +4072,12 @@
         }
       ],
       "content": {
-        "label": "@sue/verd-board-agent\npackages/product/agent",
+        "label": "@sue/verd-board-agent\npackages/agent/runtime",
         "text": {
           "schemaVersion": 1,
           "id": "demo:packages/module/@sue/verd-board-agent/text",
           "kind": "inline",
-          "plainText": "@sue/verd-board-agent\npackages/product/agent",
+          "plainText": "@sue/verd-board-agent\npackages/agent/runtime",
           "content": {
             "type": "doc",
             "content": [
@@ -4085,7 +4095,7 @@
                 "content": [
                   {
                     "type": "text",
-                    "text": "packages/product/agent"
+                    "text": "packages/agent/runtime"
                   }
                 ]
               }
@@ -4099,8 +4109,8 @@
       "kind": "architecture-module",
       "cellType": "node",
       "geometry": {
-        "x": 2773,
-        "y": 312,
+        "x": 20,
+        "y": 2098,
         "width": 372,
         "height": 98,
         "derived": false,
@@ -4145,12 +4155,12 @@
         }
       ],
       "content": {
-        "label": "@sue/verd-board-agent-patterns\npackages/product/agent-patterns",
+        "label": "@sue/verd-board-agent-patterns\npackages/agent/patterns",
         "text": {
           "schemaVersion": 1,
           "id": "demo:packages/module/@sue/verd-board-agent-patterns/text",
           "kind": "inline",
-          "plainText": "@sue/verd-board-agent-patterns\npackages/product/agent-patterns",
+          "plainText": "@sue/verd-board-agent-patterns\npackages/agent/patterns",
           "content": {
             "type": "doc",
             "content": [
@@ -4168,7 +4178,7 @@
                 "content": [
                   {
                     "type": "text",
-                    "text": "packages/product/agent-patterns"
+                    "text": "packages/agent/patterns"
                   }
                 ]
               }
@@ -4193,125 +4203,6 @@
       "appearance": {
         "strokeColor": "#64748b",
         "strokeWidth": 1.5
-      }
-    },
-    "demo:packages/edge/%40sue%2Fverd-board-agent>%40sue%2Fverd-board-app": {
-      "id": "demo:packages/edge/%40sue%2Fverd-board-agent>%40sue%2Fverd-board-app",
-      "kind": "architecture-edge",
-      "cellType": "edge",
-      "source": {
-        "cellId": "demo:packages/module/@sue/verd-board-agent"
-      },
-      "target": {
-        "cellId": "demo:packages/module/@sue/verd-board-app"
-      },
-      "route": {
-        "mode": "orthogonal"
-      },
-      "appearance": {
-        "strokeColor": "#64748b",
-        "strokeWidth": 1.5
-      }
-    },
-    "demo:packages/edge/%40sue%2Fverd-board-app>%40sue%2Fverd-board-agent-patterns": {
-      "id": "demo:packages/edge/%40sue%2Fverd-board-app>%40sue%2Fverd-board-agent-patterns",
-      "kind": "architecture-edge",
-      "cellType": "edge",
-      "source": {
-        "cellId": "demo:packages/module/@sue/verd-board-app"
-      },
-      "target": {
-        "cellId": "demo:packages/module/@sue/verd-board-agent-patterns"
-      },
-      "route": {
-        "mode": "orthogonal"
-      },
-      "appearance": {
-        "strokeColor": "#64748b",
-        "strokeWidth": 1.5
-      }
-    },
-    "demo:packages/module/@sue/verd-board-docs": {
-      "id": "demo:packages/module/@sue/verd-board-docs",
-      "kind": "architecture-module",
-      "cellType": "node",
-      "geometry": {
-        "x": 3241,
-        "y": 312,
-        "width": 372,
-        "height": 98,
-        "derived": false,
-        "outline": {
-          "kind": "roundRectangle",
-          "radius": 8
-        }
-      },
-      "data": {
-        "shape": "box",
-        "placed": true
-      },
-      "appearance": {
-        "fill": "#f0fdfa",
-        "strokeColor": "#94a3b8",
-        "strokeWidth": 1.5
-      },
-      "ports": [
-        {
-          "id": "top",
-          "side": "top",
-          "offset": 0.5,
-          "direction": "both"
-        },
-        {
-          "id": "right",
-          "side": "right",
-          "offset": 0.5,
-          "direction": "both"
-        },
-        {
-          "id": "bottom",
-          "side": "bottom",
-          "offset": 0.5,
-          "direction": "both"
-        },
-        {
-          "id": "left",
-          "side": "left",
-          "offset": 0.5,
-          "direction": "both"
-        }
-      ],
-      "content": {
-        "label": "@sue/verd-board-docs\npackages/product/docs",
-        "text": {
-          "schemaVersion": 1,
-          "id": "demo:packages/module/@sue/verd-board-docs/text",
-          "kind": "inline",
-          "plainText": "@sue/verd-board-docs\npackages/product/docs",
-          "content": {
-            "type": "doc",
-            "content": [
-              {
-                "type": "paragraph",
-                "content": [
-                  {
-                    "type": "text",
-                    "text": "@sue/verd-board-docs"
-                  }
-                ]
-              },
-              {
-                "type": "paragraph",
-                "content": [
-                  {
-                    "type": "text",
-                    "text": "packages/product/docs"
-                  }
-                ]
-              }
-            ]
-          }
-        }
       }
     },
     "demo:packages/module/service": {
@@ -4406,6 +4297,440 @@
       },
       "target": {
         "cellId": "demo:packages/module/@sue/verd-board-agent"
+      },
+      "route": {
+        "mode": "orthogonal"
+      },
+      "appearance": {
+        "strokeColor": "#64748b",
+        "strokeWidth": 1.5
+      }
+    },
+    "demo:packages/layer/6": {
+      "id": "demo:packages/layer/6",
+      "kind": "architecture-layer",
+      "cellType": "node",
+      "geometry": {
+        "x": 0,
+        "y": 1320,
+        "width": 1980,
+        "height": 170,
+        "derived": true
+      },
+      "appearance": {
+        "fill": "#f8fafc",
+        "strokeColor": "#e2e8f0",
+        "strokeWidth": 1
+      },
+      "data": {
+        "order": "00000006",
+        "fontSize": 16,
+        "memberIds": [
+          "demo:packages/module/@sue/verd-board-agent-patterns",
+          "demo:packages/module/@sue/verd-board-agent"
+        ]
+      },
+      "content": {
+        "label": "Agent",
+        "text": {
+          "schemaVersion": 1,
+          "id": "demo:packages/layer/6/text",
+          "kind": "inline",
+          "plainText": "Agent",
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Agent",
+                    "marks": [
+                      {
+                        "type": "bold"
+                      },
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "16px",
+                          "color": "#475569"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      }
+    },
+    "demo:packages/module/@sue/verd-board-workspace": {
+      "id": "demo:packages/module/@sue/verd-board-workspace",
+      "kind": "architecture-module",
+      "cellType": "node",
+      "geometry": {
+        "x": 20,
+        "y": 2352,
+        "width": 372,
+        "height": 98,
+        "derived": false,
+        "outline": {
+          "kind": "roundRectangle",
+          "radius": 8
+        }
+      },
+      "data": {
+        "shape": "box",
+        "placed": true
+      },
+      "appearance": {
+        "fill": "#f0fdfa",
+        "strokeColor": "#94a3b8",
+        "strokeWidth": 1.5
+      },
+      "ports": [
+        {
+          "id": "top",
+          "side": "top",
+          "offset": 0.5,
+          "direction": "both"
+        },
+        {
+          "id": "right",
+          "side": "right",
+          "offset": 0.5,
+          "direction": "both"
+        },
+        {
+          "id": "bottom",
+          "side": "bottom",
+          "offset": 0.5,
+          "direction": "both"
+        },
+        {
+          "id": "left",
+          "side": "left",
+          "offset": 0.5,
+          "direction": "both"
+        }
+      ],
+      "content": {
+        "label": "@sue/verd-board-workspace\npackages/workspace/core",
+        "text": {
+          "schemaVersion": 1,
+          "id": "demo:packages/module/@sue/verd-board-workspace/text",
+          "kind": "inline",
+          "plainText": "@sue/verd-board-workspace\npackages/workspace/core",
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "@sue/verd-board-workspace"
+                  }
+                ]
+              },
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "packages/workspace/core"
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      }
+    },
+    "demo:packages/layer/7": {
+      "id": "demo:packages/layer/7",
+      "kind": "architecture-layer",
+      "cellType": "node",
+      "geometry": {
+        "x": 0,
+        "y": 1540,
+        "width": 1980,
+        "height": 170,
+        "derived": true
+      },
+      "appearance": {
+        "fill": "#f8fafc",
+        "strokeColor": "#e2e8f0",
+        "strokeWidth": 1
+      },
+      "data": {
+        "order": "00000007",
+        "fontSize": 16,
+        "memberIds": ["demo:packages/module/@sue/verd-board-workspace"]
+      },
+      "content": {
+        "label": "工作区核心",
+        "text": {
+          "schemaVersion": 1,
+          "id": "demo:packages/layer/7/text",
+          "kind": "inline",
+          "plainText": "工作区核心",
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "工作区核心",
+                    "marks": [
+                      {
+                        "type": "bold"
+                      },
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "16px",
+                          "color": "#475569"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      }
+    },
+    "demo:packages/edge/desktop>%40sue%2Fverd-board-app": {
+      "id": "demo:packages/edge/desktop>%40sue%2Fverd-board-app",
+      "kind": "architecture-edge",
+      "cellType": "edge",
+      "source": {
+        "cellId": "demo:packages/module/desktop"
+      },
+      "target": {
+        "cellId": "demo:packages/module/@sue/verd-board-app"
+      },
+      "route": {
+        "mode": "orthogonal"
+      },
+      "appearance": {
+        "strokeColor": "#64748b",
+        "strokeWidth": 1.5
+      }
+    },
+    "demo:packages/edge/service>%40sue%2Fverd-board-app": {
+      "id": "demo:packages/edge/service>%40sue%2Fverd-board-app",
+      "kind": "architecture-edge",
+      "cellType": "edge",
+      "source": {
+        "cellId": "demo:packages/module/service"
+      },
+      "target": {
+        "cellId": "demo:packages/module/@sue/verd-board-app"
+      },
+      "route": {
+        "mode": "orthogonal"
+      },
+      "appearance": {
+        "strokeColor": "#64748b",
+        "strokeWidth": 1.5
+      }
+    },
+    "demo:packages/edge/%40sue%2Fverd-board-app>%40sue%2Fverd-board-workspace": {
+      "id": "demo:packages/edge/%40sue%2Fverd-board-app>%40sue%2Fverd-board-workspace",
+      "kind": "architecture-edge",
+      "cellType": "edge",
+      "source": {
+        "cellId": "demo:packages/module/@sue/verd-board-app"
+      },
+      "target": {
+        "cellId": "demo:packages/module/@sue/verd-board-workspace"
+      },
+      "route": {
+        "mode": "orthogonal"
+      },
+      "appearance": {
+        "strokeColor": "#64748b",
+        "strokeWidth": 1.5
+      }
+    },
+    "demo:packages/edge/%40sue%2Fverd-board-agent>%40sue%2Fboard-markdown-to-text": {
+      "id": "demo:packages/edge/%40sue%2Fverd-board-agent>%40sue%2Fboard-markdown-to-text",
+      "kind": "architecture-edge",
+      "cellType": "edge",
+      "source": {
+        "cellId": "demo:packages/module/@sue/verd-board-agent"
+      },
+      "target": {
+        "cellId": "demo:packages/module/@sue/board-markdown-to-text"
+      },
+      "route": {
+        "mode": "orthogonal"
+      },
+      "appearance": {
+        "strokeColor": "#64748b",
+        "strokeWidth": 1.5
+      }
+    },
+    "demo:packages/edge/%40sue%2Fverd-board-agent>%40sue%2Fboard-mermaid-to-board": {
+      "id": "demo:packages/edge/%40sue%2Fverd-board-agent>%40sue%2Fboard-mermaid-to-board",
+      "kind": "architecture-edge",
+      "cellType": "edge",
+      "source": {
+        "cellId": "demo:packages/module/@sue/verd-board-agent"
+      },
+      "target": {
+        "cellId": "demo:packages/module/@sue/board-mermaid-to-board"
+      },
+      "route": {
+        "mode": "orthogonal"
+      },
+      "appearance": {
+        "strokeColor": "#64748b",
+        "strokeWidth": 1.5
+      }
+    },
+    "demo:packages/edge/%40sue%2Fverd-board-agent>%40sue%2Fverd-board-workspace": {
+      "id": "demo:packages/edge/%40sue%2Fverd-board-agent>%40sue%2Fverd-board-workspace",
+      "kind": "architecture-edge",
+      "cellType": "edge",
+      "source": {
+        "cellId": "demo:packages/module/@sue/verd-board-agent"
+      },
+      "target": {
+        "cellId": "demo:packages/module/@sue/verd-board-workspace"
+      },
+      "route": {
+        "mode": "orthogonal"
+      },
+      "appearance": {
+        "strokeColor": "#64748b",
+        "strokeWidth": 1.5
+      }
+    },
+    "demo:packages/edge/%40sue%2Fverd-board-workspace>%40sue%2Fboard-architecture": {
+      "id": "demo:packages/edge/%40sue%2Fverd-board-workspace>%40sue%2Fboard-architecture",
+      "kind": "architecture-edge",
+      "cellType": "edge",
+      "source": {
+        "cellId": "demo:packages/module/@sue/verd-board-workspace"
+      },
+      "target": {
+        "cellId": "demo:packages/module/@sue/board-architecture"
+      },
+      "route": {
+        "mode": "orthogonal"
+      },
+      "appearance": {
+        "strokeColor": "#64748b",
+        "strokeWidth": 1.5
+      }
+    },
+    "demo:packages/edge/%40sue%2Fverd-board-workspace>%40sue%2Fboard-draw": {
+      "id": "demo:packages/edge/%40sue%2Fverd-board-workspace>%40sue%2Fboard-draw",
+      "kind": "architecture-edge",
+      "cellType": "edge",
+      "source": {
+        "cellId": "demo:packages/module/@sue/verd-board-workspace"
+      },
+      "target": {
+        "cellId": "demo:packages/module/@sue/board-draw"
+      },
+      "route": {
+        "mode": "orthogonal"
+      },
+      "appearance": {
+        "strokeColor": "#64748b",
+        "strokeWidth": 1.5
+      }
+    },
+    "demo:packages/edge/%40sue%2Fverd-board-workspace>%40sue%2Fboard-mind": {
+      "id": "demo:packages/edge/%40sue%2Fverd-board-workspace>%40sue%2Fboard-mind",
+      "kind": "architecture-edge",
+      "cellType": "edge",
+      "source": {
+        "cellId": "demo:packages/module/@sue/verd-board-workspace"
+      },
+      "target": {
+        "cellId": "demo:packages/module/@sue/board-mind"
+      },
+      "route": {
+        "mode": "orthogonal"
+      },
+      "appearance": {
+        "strokeColor": "#64748b",
+        "strokeWidth": 1.5
+      }
+    },
+    "demo:packages/edge/%40sue%2Fverd-board-workspace>%40sue%2Fboard-react-text": {
+      "id": "demo:packages/edge/%40sue%2Fverd-board-workspace>%40sue%2Fboard-react-text",
+      "kind": "architecture-edge",
+      "cellType": "edge",
+      "source": {
+        "cellId": "demo:packages/module/@sue/verd-board-workspace"
+      },
+      "target": {
+        "cellId": "demo:packages/module/@sue/board-react-text"
+      },
+      "route": {
+        "mode": "orthogonal"
+      },
+      "appearance": {
+        "strokeColor": "#64748b",
+        "strokeWidth": 1.5
+      }
+    },
+    "demo:packages/edge/%40sue%2Fverd-board-workspace>%40sue%2Fboard-uml": {
+      "id": "demo:packages/edge/%40sue%2Fverd-board-workspace>%40sue%2Fboard-uml",
+      "kind": "architecture-edge",
+      "cellType": "edge",
+      "source": {
+        "cellId": "demo:packages/module/@sue/verd-board-workspace"
+      },
+      "target": {
+        "cellId": "demo:packages/module/@sue/board-uml"
+      },
+      "route": {
+        "mode": "orthogonal"
+      },
+      "appearance": {
+        "strokeColor": "#64748b",
+        "strokeWidth": 1.5
+      }
+    },
+    "demo:packages/edge/%40sue%2Fverd-board-workspace>%40sue%2Fboard-workflow": {
+      "id": "demo:packages/edge/%40sue%2Fverd-board-workspace>%40sue%2Fboard-workflow",
+      "kind": "architecture-edge",
+      "cellType": "edge",
+      "source": {
+        "cellId": "demo:packages/module/@sue/verd-board-workspace"
+      },
+      "target": {
+        "cellId": "demo:packages/module/@sue/board-workflow"
+      },
+      "route": {
+        "mode": "orthogonal"
+      },
+      "appearance": {
+        "strokeColor": "#64748b",
+        "strokeWidth": 1.5
+      }
+    },
+    "demo:packages/edge/%40sue%2Fverd-board-workspace>%40sue%2Fverd-board-agent-patterns": {
+      "id": "demo:packages/edge/%40sue%2Fverd-board-workspace>%40sue%2Fverd-board-agent-patterns",
+      "kind": "architecture-edge",
+      "cellType": "edge",
+      "source": {
+        "cellId": "demo:packages/module/@sue/verd-board-workspace"
+      },
+      "target": {
+        "cellId": "demo:packages/module/@sue/verd-board-agent-patterns"
       },
       "route": {
         "mode": "orthogonal"

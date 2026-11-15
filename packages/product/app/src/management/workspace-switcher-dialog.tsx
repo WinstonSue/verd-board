@@ -10,7 +10,7 @@ import {
   Star,
   X,
 } from 'lucide-react';
-import type { WorkspaceHistoryEntry } from '../host/workspace-host';
+import type { WorkspaceHistoryEntry } from '@sue/verd-board-workspace';
 export interface WorkspaceSwitcherDialogProps {
   locale: 'zh' | 'en';
   isDefault?: boolean;

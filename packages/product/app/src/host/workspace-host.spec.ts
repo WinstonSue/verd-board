@@ -1,7 +1,7 @@
 import 'fake-indexeddb/auto';
 import { IDBFactory } from 'fake-indexeddb';
 import { describeWorkspaceHostContract } from './workspace-host.contract';
-import { createMemoryWorkspaceHost } from './memory-workspace-host';
+import { createMemoryWorkspaceHost } from '@sue/verd-board-workspace';
 import { createWebWorkspaceHost } from './web-workspace-host';
 
 let counter = 0;

@@ -2,11 +2,11 @@ import {
   createWorkspaceGitEngine,
   type GitWorkspaceData,
   type GitWorkspaceStorage,
-} from './workspace-git-engine';
+} from '@sue/verd-board-workspace';
 import type {
   WorkspaceGitRequest,
   WorkspaceGitResult,
-} from '../host/workspace-git';
+} from '@sue/verd-board-workspace';
 
 type Engine = ((
   request: WorkspaceGitRequest,

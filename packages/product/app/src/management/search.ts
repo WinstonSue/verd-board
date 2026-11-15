@@ -1,5 +1,5 @@
 import { cellSearchTexts } from '@sue/board-core';
-import type { WorkspaceFile } from '../documents/document-files';
+import type { WorkspaceFile } from '@sue/verd-board-workspace';
 export interface SearchFragment {
   text: string;
   normalized?: string;

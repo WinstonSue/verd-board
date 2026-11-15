@@ -2,7 +2,7 @@ import { useRef, useState } from 'react';
 import { WorkspaceButton } from '@sue/verd-board-ui';
 import { VersionHistoryPanel } from './version-history-panel';
 import { GitHistoryPanel } from './git-history-panel';
-import type { WorkspaceSession } from '../session/workspace-session';
+import type { WorkspaceSession } from '@sue/verd-board-workspace';
 
 export function VersionSettingsPanel({
   session,

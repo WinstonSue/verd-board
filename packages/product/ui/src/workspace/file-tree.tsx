@@ -1,0 +1,1324 @@
+import { VmDialog } from '../shared/components/vm-dialog';
+import { IconButton } from '../shared/components/icon-button';
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type CSSProperties,
+  type MouseEvent,
+  type ReactNode,
+} from 'react';
+import {
+  History,
+  Boxes,
+  Plus,
+  ChevronDown,
+  ChevronRight,
+  CopyPlus,
+  Link as LinkIcon,
+  Download,
+  Ellipsis,
+  ExternalLink,
+  FilePlus2,
+  FileText,
+  Folder,
+  FolderOpen,
+  FolderPlus,
+  LayoutTemplate,
+  LibraryBig,
+  Network,
+  Pencil,
+  Star,
+  StarOff,
+  Trash2,
+  TriangleAlert,
+  Upload,
+  Workflow,
+  type LucideIcon,
+} from 'lucide-react';
+import { useActionSource, type ActionSource } from '@sue/board-react-actions';
+import {
+  bindWorkspaceAction,
+  type WorkspaceActionBinding,
+} from './workspace-action-bindings';
+import { WorkspaceActionConfirmation } from './workspace-action-confirmation';
+import { FileTreeMenu, type FileTreeMenuItem } from './file-tree-menu';
+
+export interface FileTreeEntry {
+  path: string;
+  kind: 'file' | 'directory';
+  folderId?: string;
+  canvas?: boolean;
+  /** `*.verd-doc.json` payload files. */
+  document?: boolean;
+}
+
+export interface FileTreeCanvas {
+  frameId: string;
+  path: string;
+  name: string;
+  dirty?: boolean;
+  conflicted?: boolean;
+  /** Diagram icon; every file remains visible at its real path. */
+  diagram?:
+    | 'canvas'
+    | 'mind'
+    | 'workflow'
+    | 'architecture'
+    | 'uml-class'
+    | 'uml-sequence';
+}
+
+export interface FileTreeDocument {
+  fileId: string;
+  path: string;
+  name: string;
+  dirty?: boolean;
+  conflicted?: boolean;
+}
+
+/** One row in the tree — a canvas or an independent document. */
+interface TreeFile {
+  fileId: string;
+  path: string;
+  name: string;
+  kind: 'canvas' | 'document';
+  diagram?: FileTreeCanvas['diagram'];
+  dirty?: boolean;
+  conflicted?: boolean;
+}
+
+export interface FileTreeProps {
+  onVersions?(
+    scope:
+      | { kind: 'file'; fileId?: string; path: string }
+      | { kind: 'directory'; path: string; folderId?: string },
+  ): void;
+  selectedPaths?: readonly string[];
+  dropTarget?: { path: string; side: 'before' | 'after' | 'inside' } | null;
+  headerOptions?: import('react').ReactNode;
+  manualOrder?: Record<string, string[]>;
+  hideLibraryNavigation?: boolean;
+  onOrganize?(path: string, kind: 'rename' | 'move'): void;
+  actionSource?: ActionSource;
+  entries: FileTreeEntry[];
+  canvases: FileTreeCanvas[];
+  /** Independent `*.verd-doc.json` documents. */
+  documents?: FileTreeDocument[];
+  /** Files unavailable for editing remain navigable by their real path. */
+  failedFiles?: readonly { path: string }[];
+  activeFailedPath?: string | null;
+  onOpenFailedFile?(path: string): void;
+  onOpenResource?(path: string): void;
+  onTrashResource?(path: string): void;
+  activeFileId?: string | null;
+  expandedDirs: string[];
+  locale?: 'zh' | 'en';
+  /** Opens any file identity — canvas root or document id. */
+  onOpenFile(fileId: string): void;
+  onToggleDir(path: string): void;
+  onCreateCanvas(dirPath: string): void;
+  /** Creates an independent document inside `dirPath`. */
+  onCreateDocument?(dirPath: string): void;
+  /** Create a directory `name` inside `dirPath`. */
+  onCreateFolder?(dirPath: string, name: string): void;
+  onTrash(frameId: string): void;
+  onTrashDirectory?(path: string): Promise<void>;
+  onMove?(frameId: string, toPath: string): void;
+  /** Independent copy of the file plus its dependency closure. */
+  onDuplicate?(frameId: string): void;
+  /** Exports the file plus its dependency closure as a bundle. */
+  onExport?(frameId: string): void;
+  onCopyLink?(fileId: string): void | Promise<void>;
+  /** Imports a `.verd.json` file or canvas bundle into the workspace. */
+  onImport?(): void;
+  /** Hides every control that would write to the workspace. */
+  readonly?: boolean;
+  onOpenLibrary?(): void;
+  libraryActive?: boolean;
+  /** Reveal the canonical row after the host expands its ancestor directories. */
+  revealFile?: { fileId: string; nonce: number };
+  revealDirectory?: { path: string; nonce: number };
+}
+
+interface TreeDir {
+  path: string;
+  name: string;
+  dirs: TreeDir[];
+  files: TreeFile[];
+  failures: { path: string }[];
+  resources: { path: string }[];
+}
+
+const labels = {
+  zh: {
+    library: '图表库',
+    actions: (name: string) => `「${name}」的操作`,
+    open: '打开',
+    newCanvasHere: '在此新建画布',
+    newDocumentHere: '在此新建文档',
+    newFolderHere: '在此新建文件夹…',
+    unsaved: '未保存',
+    files: '文件',
+    newCanvas: '新建画布',
+    newDocument: '新建文档',
+    newFolder: '新建文件夹',
+    rename: '重命名/移动',
+    remove: '移入回收站',
+    trashDirectory: '文件夹及全部内容将整体移入回收站，可以还原。',
+    processing: '处理中…',
+    empty: '工作区为空',
+    renamePrompt: '输入新的工作区相对路径',
+    conflicted: '存在冲突',
+    duplicate: '创建独立副本',
+    export: '导出(含依赖)',
+    folderName: '文件夹名称',
+    confirm: '确定',
+    cancel: '取消',
+    import: '导入画布/包',
+  },
+  en: {
+    library: 'Chart library',
+    actions: (name: string) => `Actions for ${name}`,
+    open: 'Open',
+    newCanvasHere: 'New canvas here',
+    newDocumentHere: 'New document here',
+    newFolderHere: 'New folder here…',
+    unsaved: 'Unsaved',
+    files: 'Files',
+    newCanvas: 'New canvas',
+    newDocument: 'New document',
+    newFolder: 'New folder',
+    rename: 'Rename/move',
+    remove: 'Move to trash',
+    trashDirectory:
+      'The folder and all its contents will move to trash together and can be restored.',
+    processing: 'Processing…',
+    empty: 'Workspace is empty',
+    renamePrompt: 'Enter a new workspace-relative path',
+    conflicted: 'Conflicted',
+    duplicate: 'Duplicate independently',
+    export: 'Export (with closure)',
+    folderName: 'Folder name',
+    confirm: 'OK',
+    cancel: 'Cancel',
+    import: 'Import canvas/bundle',
+  },
+};
+
+/** Builds the directory hierarchy from flat workspace paths. */
+const buildTree = (
+  dirPaths: string[],
+  files: TreeFile[],
+  failures: readonly { path: string }[],
+  resources: readonly { path: string }[],
+): TreeDir => {
+  const root: TreeDir = {
+    path: '',
+    name: '',
+    dirs: [],
+    files: [],
+    failures: [],
+    resources: [],
+  };
+  const dirFor = (path: string): TreeDir => {
+    if (!path) return root;
+    const segments = path.split('/');
+    let cursor = root;
+    let current = '';
+    segments.forEach((segment) => {
+      current = current ? `${current}/${segment}` : segment;
+      let next = cursor.dirs.find((dir) => dir.path === current);
+      if (!next) {
+        next = {
+          path: current,
+          name: segment,
+          dirs: [],
+          files: [],
+          failures: [],
+          resources: [],
+        };
+        cursor.dirs.push(next);
+      }
+      cursor = next;
+    });
+    return cursor;
+  };
+  dirPaths.forEach(dirFor);
+  files.forEach((file) => {
+    const dir = file.path.includes('/')
+      ? file.path.slice(0, file.path.lastIndexOf('/'))
+      : '';
+    dirFor(dir).files.push(file);
+  });
+  failures.forEach((failure) => {
+    const dir = failure.path.includes('/')
+      ? failure.path.slice(0, failure.path.lastIndexOf('/'))
+      : '';
+    dirFor(dir).failures.push(failure);
+  });
+  resources.forEach((resource) => {
+    const parent = resource.path.includes('/')
+      ? resource.path.slice(0, resource.path.lastIndexOf('/'))
+      : '';
+    dirFor(parent).resources.push(resource);
+  });
+  const sort = (dir: TreeDir) => {
+    dir.dirs.sort((a, b) => a.name.localeCompare(b.name));
+    dir.files.sort((a, b) => a.name.localeCompare(b.name));
+    dir.dirs.forEach(sort);
+  };
+  sort(root);
+  return root;
+};
+
+/** Native dialogs also work in Electron, where window.prompt is unavailable. */
+function FileTreePrompt({
+  title,
+  initialValue,
+  confirm,
+  cancel,
+  rename,
+  onSubmit,
+  onClose,
+}: {
+  title: string;
+  initialValue: string;
+  confirm: string;
+  cancel: string;
+  rename?: boolean;
+  onSubmit(value: string): void;
+  onClose(): void;
+}) {
+  const input = useRef<HTMLInputElement>(null);
+  const [value, setValue] = useState(initialValue);
+  useEffect(() => {
+    input.current?.focus();
+    if (rename) {
+      const start = initialValue.lastIndexOf('/') + 1;
+      const suffix = initialValue.match(/\.verd(?:-doc)?\.json$/)?.[0] ?? '';
+      input.current?.setSelectionRange(
+        start,
+        initialValue.length - suffix.length,
+      );
+    }
+    // Removing the dialog releases the top layer. Closing it in effect cleanup
+    // queues a close event during StrictMode's replay and dismisses the new mount.
+  }, [initialValue, rename]);
+  return (
+    <VmDialog
+      title={title}
+      closeLabel={cancel === '取消' ? '关闭' : 'Close'}
+      className="file-tree-prompt"
+      onClose={onClose}
+    >
+      <form
+        onSubmit={(event) => {
+          event.preventDefault();
+          if (value.trim() && value.trim() !== initialValue) {
+            onSubmit(value.trim());
+            onClose();
+          }
+        }}
+      >
+        <input
+          ref={input}
+          aria-label={title}
+          value={value}
+          onChange={(event) => setValue(event.target.value)}
+        />
+        <div className="file-tree-prompt__actions">
+          <button
+            className="workspace-button-ghost"
+            type="button"
+            onClick={onClose}
+          >
+            {cancel}
+          </button>
+          <button
+            className="workspace-button-primary"
+            type="submit"
+            disabled={!value.trim() || value.trim() === initialValue}
+          >
+            {confirm}
+          </button>
+        </div>
+      </form>
+    </VmDialog>
+  );
+}
+const diagramIcons = {
+  canvas: LayoutTemplate,
+  mind: Network,
+  workflow: Workflow,
+  architecture: Boxes,
+  'uml-class': Boxes,
+  'uml-sequence': Workflow,
+};
+
+export function FileTree({
+  actionSource,
+  manualOrder,
+  hideLibraryNavigation,
+  onOrganize,
+  onVersions,
+  entries,
+  canvases,
+  documents = [],
+  failedFiles = [],
+  activeFailedPath,
+  onOpenFailedFile,
+  onOpenResource,
+  onTrashResource,
+  activeFileId,
+  expandedDirs,
+  locale = 'zh',
+  onOpenFile,
+  onToggleDir,
+  onCreateCanvas,
+  onCreateDocument,
+  onCreateFolder,
+  onTrash,
+  onTrashDirectory,
+  onMove,
+  onDuplicate,
+  onExport,
+  onCopyLink,
+  onImport,
+  readonly = false,
+  onOpenLibrary,
+  libraryActive = false,
+  headerOptions,
+  selectedPaths = [],
+  dropTarget,
+  revealFile,
+  revealDirectory,
+}: FileTreeProps) {
+  useActionSource(actionSource);
+  const t = labels[locale];
+  const [confirmation, setConfirmation] = useState<{
+    title: string;
+    message: string;
+    action(): void | Promise<void>;
+  } | null>(null);
+  const [busy, setBusy] = useState(false);
+  const busyRef = useRef(false);
+  const [operationError, setOperationError] = useState('');
+  const perform = async (action: () => void | Promise<void>, close = false) => {
+    if (busyRef.current) return;
+    busyRef.current = true;
+    setBusy(true);
+    setOperationError('');
+    try {
+      await action();
+      if (close) setConfirmation(null);
+    } catch (error) {
+      setOperationError(error instanceof Error ? error.message : String(error));
+    } finally {
+      busyRef.current = false;
+      setBusy(false);
+    }
+  };
+  const [prompt, setPrompt] = useState<
+    | { kind: 'rename'; file: TreeFile; commit?: WorkspaceActionBinding }
+    | { kind: 'newFolder'; dirPath: string; commit?: WorkspaceActionBinding }
+    | null
+  >(null);
+  const requestRename = (file: TreeFile) => {
+    if (onOrganize) {
+      onOrganize(file.path, 'rename');
+      return;
+    }
+    setPrompt({
+      kind: 'rename',
+      file,
+      commit: bindWorkspaceAction(actionSource, 'workspace.file.move', {
+        fileId: file.fileId,
+      }),
+    });
+  };
+  const requestFolder = (dirPath: string) => {
+    const disclosure = bindWorkspaceAction(
+      actionSource,
+      'workspace.directory.toggle',
+      { path: dirPath },
+    );
+    if (dirPath && disclosure && !disclosure.getState().checked)
+      void disclosure.execute();
+    setPrompt({
+      kind: 'newFolder',
+      dirPath,
+      commit: bindWorkspaceAction(actionSource, 'workspace.mkdir'),
+    });
+  };
+  const [menu, setMenu] = useState<{
+    key: string;
+    label: string;
+    anchor: HTMLElement | { x: number; y: number };
+    items: FileTreeMenuItem[];
+  } | null>(null);
+  const tree = useMemo(
+    () =>
+      buildTree(
+        entries
+          .filter((entry) => entry.kind === 'directory')
+          .map((entry) => entry.path),
+        [
+          ...canvases
+            .filter(
+              (item) =>
+                !failedFiles.some((failure) => failure.path === item.path),
+            )
+            .map((item) => ({
+              ...item,
+              fileId: item.frameId,
+              kind: 'canvas' as const,
+            })),
+          ...documents
+            .filter(
+              (item) =>
+                !failedFiles.some((failure) => failure.path === item.path),
+            )
+            .map((item) => ({ ...item, kind: 'document' as const })),
+        ],
+        failedFiles,
+        entries.filter(
+          (entry) =>
+            entry.kind === 'file' &&
+            !entry.canvas &&
+            !entry.document &&
+            !/\.verd(?:-doc)?\.json$/.test(entry.path) &&
+            !canvases.some((file) => file.path === entry.path) &&
+            !documents.some((file) => file.path === entry.path),
+        ),
+      ),
+    [entries, canvases, documents, failedFiles],
+  );
+  const fileButtons = useRef(new Map<string, HTMLButtonElement>());
+  const revealed = useRef<typeof revealFile>(undefined);
+  useEffect(() => {
+    if (!revealFile || revealed.current === revealFile) return;
+    // Floating menus restore their trigger in a microtask when they unmount.
+    // Reveal afterwards, once the canonical row and its directories are ready.
+    const frame = requestAnimationFrame(() => {
+      const button = fileButtons.current.get(revealFile.fileId);
+      if (!button) return;
+      revealed.current = revealFile;
+      button.scrollIntoView?.({ block: 'nearest' });
+      button.focus({ preventScroll: true });
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [revealFile, expandedDirs, tree]);
+  const directoryButtons = useRef(new Map<string, HTMLButtonElement>());
+  useEffect(() => {
+    if (!revealDirectory) return;
+    const frame = requestAnimationFrame(() => {
+      const button = directoryButtons.current.get(revealDirectory.path);
+      button?.scrollIntoView?.({ block: 'nearest' });
+      button?.focus({ preventScroll: true });
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [revealDirectory?.path, revealDirectory?.nonce]);
+  const expanded = new Set(expandedDirs);
+  const item = (
+    id: string,
+    label: string,
+    icon: LucideIcon,
+    onSelect: () => void,
+    extra: Partial<FileTreeMenuItem> = {},
+  ): FileTreeMenuItem => ({ id, label, icon, onSelect, ...extra });
+  const actionItem = (
+    id: string,
+    actionId: string,
+    args: unknown,
+    label: string,
+    icon: LucideIcon,
+    fallback: () => void,
+    extra: Partial<FileTreeMenuItem> = {},
+  ) =>
+    item(id, label, icon, fallback, {
+      ...extra,
+      action: bindWorkspaceAction(actionSource, actionId, args),
+      disabled:
+        actionSource &&
+        !actionSource.actions().some((action) => action.id === actionId)
+          ? true
+          : extra.disabled,
+    });
+  const execute = (id: string, args: unknown, fallback: () => void) => {
+    if (!actionSource) {
+      fallback();
+      return;
+    }
+    void bindWorkspaceAction(actionSource, id, args)
+      ?.execute()
+      .then((result) => {
+        if ('code' in result) setOperationError(result.message ?? result.code);
+      });
+  };
+  const openMenu = (
+    event: MouseEvent<HTMLElement>,
+    key: string,
+    name: string,
+    items: FileTreeMenuItem[],
+  ) => {
+    event.preventDefault();
+    items = items.filter((item) =>
+      item.action ? item.action.getState().visible : !actionSource,
+    );
+    if (!items.length) return;
+    if (event.type === 'contextmenu') {
+      const trigger =
+        event.currentTarget.querySelector<HTMLButtonElement>('.file-tree-more');
+      trigger?.focus();
+    }
+    setMenu({
+      key,
+      label: t.actions(name),
+      items,
+      anchor:
+        event.type === 'contextmenu'
+          ? { x: event.clientX, y: event.clientY }
+          : event.currentTarget,
+    });
+  };
+  const fileItems = (file: TreeFile): FileTreeMenuItem[] => {
+    const id = file.fileId;
+    const copyItems =
+      actionSource || onCopyLink
+        ? [
+            actionItem(
+              'copy-link',
+              'workspace.file.copy-link',
+              { fileId: id },
+              locale === 'en' ? 'Copy link' : '复制链接',
+              LinkIcon,
+              () => {
+                void Promise.resolve()
+                  .then(() => onCopyLink?.(id))
+                  .catch((error) => setOperationError(String(error)));
+              },
+            ),
+          ]
+        : [];
+    const favoriteItems =
+      actionSource && !readonly
+        ? [
+            actionItem(
+              'favorite',
+              'workspace.file.favorite',
+              { fileId: id },
+              '',
+              Star,
+              () => {},
+            ),
+            actionItem(
+              'unfavorite',
+              'workspace.file.unfavorite',
+              { fileId: id },
+              '',
+              StarOff,
+              () => {},
+            ),
+          ]
+        : [];
+    const result: FileTreeMenuItem[] = [];
+    if (actionSource || !readonly) {
+      if (onMove)
+        result.push(
+          actionItem(
+            'rename',
+            'workspace.file.rename',
+            { fileId: id, present: () => requestRename(file) },
+            onOrganize ? (locale === 'zh' ? '重命名' : 'Rename') : t.rename,
+            Pencil,
+            () => requestRename(file),
+          ),
+        );
+      if (onOrganize)
+        result.push(
+          actionItem(
+            'move-to',
+            'workspace.file.move-dialog',
+            { fileId: id, present: () => onOrganize(file.path, 'move') },
+            locale === 'zh' ? '移动到…' : 'Move to…',
+            FolderOpen,
+            () => onOrganize(file.path, 'move'),
+          ),
+        );
+      if (onDuplicate)
+        result.push(
+          actionItem(
+            'duplicate',
+            'workspace.file.duplicate',
+            { fileId: id },
+            t.duplicate,
+            CopyPlus,
+            () => onDuplicate(id),
+          ),
+        );
+    }
+    result.push(...favoriteItems, ...copyItems);
+    if (onVersions)
+      result.push(
+        actionItem(
+          'versions',
+          'workspace.file.versions',
+          {
+            fileId: id,
+            present: () =>
+              onVersions({ kind: 'file', fileId: id, path: file.path }),
+          },
+          locale === 'zh' ? '版本历史' : 'Version history',
+          History,
+          () => onVersions({ kind: 'file', fileId: id, path: file.path }),
+        ),
+      );
+
+    if (onExport)
+      result.push(
+        actionItem(
+          'export',
+          'workspace.file.export',
+          { fileId: id },
+          t.export,
+          Download,
+          () => onExport(id),
+        ),
+      );
+    if (actionSource || !readonly)
+      result.push(
+        actionItem(
+          'trash',
+          'workspace.file.trash',
+          { fileId: id },
+          t.remove,
+          Trash2,
+          () => onTrash(id),
+          {
+            danger: true,
+            groupStart: true,
+          },
+        ),
+      );
+    return result;
+  };
+  const moreButton = (key: string, name: string, items: FileTreeMenuItem[]) => {
+    const visible = items.filter((item) =>
+      item.action ? item.action.getState().visible : !actionSource,
+    );
+    return visible.length ? (
+      <button
+        type="button"
+        className="file-tree-more"
+        aria-label={t.actions(name)}
+        aria-haspopup="menu"
+        aria-expanded={menu?.key === key}
+        onClick={(event) => openMenu(event, key, name, visible)}
+      >
+        <Ellipsis strokeWidth={1.75} size={14} aria-hidden />
+      </button>
+    ) : null;
+  };
+  const fileRow = (file: TreeFile, depth: number): ReactNode => {
+    const active = file.fileId === activeFileId;
+    const items = fileItems(file);
+    const key = JSON.stringify(['file', file.fileId]);
+    const Icon =
+      file.kind === 'document'
+        ? FileText
+        : diagramIcons[file.diagram ?? 'canvas'];
+    return (
+      <div key={key} className="file-tree-block">
+        <div
+          className={`file-tree-row file-tree-file${active ? ' is-active' : ''}${selectedPaths.includes(file.path) ? ' is-selected' : ''}${file.conflicted ? ' is-conflicted' : ''}${menu?.key === key ? ' is-menu-open' : ''}`}
+          draggable={!readonly}
+          data-entry-path={file.path}
+          data-entry-kind="file"
+          data-file-id={file.fileId}
+          aria-selected={selectedPaths.includes(file.path) || undefined}
+          data-drop-side={
+            dropTarget?.path === file.path ? dropTarget.side : undefined
+          }
+          style={{ '--depth': depth } as CSSProperties}
+          onContextMenu={(event) => openMenu(event, key, file.name, items)}
+        >
+          <span className="file-tree-twisty" aria-hidden />
+          <button
+            type="button"
+            className="file-tree-main file-tree-name"
+            title={file.path}
+            aria-current={active ? 'page' : undefined}
+            ref={(node) => {
+              if (node) fileButtons.current.set(file.fileId, node);
+              else fileButtons.current.delete(file.fileId);
+            }}
+            onClick={() =>
+              execute('workspace.file.open', { fileId: file.fileId }, () =>
+                onOpenFile(file.fileId),
+              )
+            }
+          >
+            <Icon className="file-tree-icon" size={16} aria-hidden />
+            <span className="file-tree-label">{file.name}</span>
+            {file.conflicted ? (
+              <TriangleAlert
+                className="file-tree-conflict"
+                size={13}
+                role="img"
+                aria-label={t.conflicted}
+              />
+            ) : file.dirty ? (
+              <span
+                className="file-tree-dirty"
+                role="img"
+                aria-label={t.unsaved}
+              />
+            ) : null}
+          </button>
+          {moreButton(key, file.name, items)}
+        </div>
+      </div>
+    );
+  };
+  const resourceRow = (
+    resource: { path: string },
+    depth: number,
+  ): ReactNode => {
+    const { path } = resource;
+    const name = path.split('/').pop()!;
+    const key = JSON.stringify(['resource', path]);
+    const items: FileTreeMenuItem[] = [
+      ...(onVersions
+        ? [
+            actionItem(
+              'versions',
+              'workspace.resource.versions',
+              { path, present: () => onVersions({ kind: 'file', path }) },
+              locale === 'zh' ? '版本历史' : 'Version history',
+              History,
+              () => onVersions({ kind: 'file', path }),
+            ),
+          ]
+        : []),
+      actionItem(
+        'open',
+        'workspace.resource.open',
+        { path, present: () => onOpenResource?.(path) },
+        t.open,
+        ExternalLink,
+        () => onOpenResource?.(path),
+      ),
+      ...(!readonly && onOrganize
+        ? [
+            actionItem(
+              'rename',
+              'workspace.resource.rename-dialog',
+              { path, present: () => onOrganize(path, 'rename') },
+              locale === 'zh' ? '重命名' : 'Rename',
+              Pencil,
+              () => onOrganize(path, 'rename'),
+            ),
+            actionItem(
+              'move',
+              'workspace.resource.move-dialog',
+              { path, present: () => onOrganize(path, 'move') },
+              locale === 'zh' ? '移动到…' : 'Move to…',
+              FolderOpen,
+              () => onOrganize(path, 'move'),
+            ),
+          ]
+        : []),
+      ...(!readonly && onTrashResource
+        ? [
+            actionItem(
+              'trash',
+              'workspace.resource.trash',
+              { path },
+              t.remove,
+              Trash2,
+              () => onTrashResource(path),
+              { danger: true },
+            ),
+          ]
+        : []),
+    ];
+    return (
+      <div
+        key={key}
+        className={`file-tree-row file-tree-file${selectedPaths.includes(path) ? ' is-selected' : ''}${menu?.key === key ? ' is-menu-open' : ''}`}
+        data-entry-path={path}
+        data-entry-kind="resource"
+        draggable={!readonly}
+        aria-selected={selectedPaths.includes(path) || undefined}
+        data-drop-side={dropTarget?.path === path ? dropTarget.side : undefined}
+        style={{ '--depth': depth } as CSSProperties}
+        onContextMenu={(event) => openMenu(event, key, name, items)}
+      >
+        <span className="file-tree-twisty" aria-hidden />
+        <button
+          type="button"
+          className="file-tree-main file-tree-name"
+          title={path}
+          onClick={() =>
+            execute(
+              'workspace.resource.open',
+              { path, present: () => onOpenResource?.(path) },
+              () => onOpenResource?.(path),
+            )
+          }
+        >
+          <FileText className="file-tree-icon" size={16} aria-hidden />
+          <span className="file-tree-label">{name}</span>
+        </button>
+        {moreButton(key, name, items)}
+      </div>
+    );
+  };
+  const dirRows = (dir: TreeDir, depth: number): ReactNode => {
+    const open = expanded.has(dir.path);
+    const dirKey = JSON.stringify(['directory', dir.path]);
+    const inDir = (action: () => void) => () => {
+      if (!open)
+        execute('workspace.directory.toggle', { path: dir.path }, () =>
+          onToggleDir(dir.path),
+        );
+      action();
+    };
+    const items =
+      !actionSource && readonly
+        ? []
+        : [
+            actionItem(
+              'canvas',
+              'workspace.directory.create-canvas',
+              { dirPath: dir.path },
+              t.newCanvasHere,
+              FilePlus2,
+              inDir(() => onCreateCanvas(dir.path)),
+            ),
+            ...(onCreateDocument
+              ? [
+                  actionItem(
+                    'document',
+                    'workspace.directory.create-document',
+                    { dirPath: dir.path },
+                    t.newDocumentHere,
+                    FileText,
+                    inDir(() => onCreateDocument(dir.path)),
+                  ),
+                ]
+              : []),
+            ...(onCreateFolder
+              ? [
+                  actionItem(
+                    'folder',
+                    'workspace.directory.new-here',
+                    {
+                      dirPath: dir.path,
+                      present: () => requestFolder(dir.path),
+                    },
+                    t.newFolderHere,
+                    FolderPlus,
+                    inDir(() => requestFolder(dir.path)),
+                  ),
+                ]
+              : []),
+            ...(onTrashDirectory && dir.path
+              ? [
+                  actionItem(
+                    'trash-directory',
+                    'workspace.directory.confirm-trash',
+                    {
+                      path: dir.path,
+                      present: () => {
+                        setOperationError('');
+                        setConfirmation({
+                          title: `${t.remove} ${dir.name}`,
+                          message: t.trashDirectory,
+                          action: async () => {
+                            const result = await bindWorkspaceAction(
+                              actionSource,
+                              'workspace.directory.trash',
+                              { path: dir.path },
+                            )?.execute();
+                            if (result && 'code' in result)
+                              throw new Error(result.message ?? result.code);
+                          },
+                        });
+                      },
+                    },
+                    t.remove,
+                    Trash2,
+                    () => {
+                      setOperationError('');
+                      setConfirmation({
+                        title: `${t.remove} ${dir.name}`,
+                        message: t.trashDirectory,
+                        action: () => onTrashDirectory(dir.path),
+                      });
+                    },
+                    { danger: true, groupStart: true },
+                  ),
+                ]
+              : []),
+          ];
+    if (dir.path && onVersions)
+      items.unshift(
+        actionItem(
+          'versions',
+          'workspace.directory.versions',
+          {
+            path: dir.path,
+            present: () =>
+              onVersions({
+                kind: 'directory',
+                path: dir.path,
+                folderId: entries.find((e) => e.path === dir.path)?.folderId,
+              }),
+          },
+          locale === 'zh' ? '版本历史' : 'Version history',
+          History,
+          () =>
+            onVersions({
+              kind: 'directory',
+              path: dir.path,
+              folderId: entries.find((e) => e.path === dir.path)?.folderId,
+            }),
+        ),
+      );
+    if (dir.path && actionSource)
+      items.unshift(
+        actionItem(
+          'copy-directory-link',
+          'workspace.directory.copy-link',
+          { path: dir.path },
+          readonly &&
+            !entries.find((entry) => entry.path === dir.path)?.folderId
+            ? locale === 'zh'
+              ? '复制链接（需先在可编辑工作区生成）'
+              : 'Copy link (generate it in an editable workspace first)'
+            : locale === 'zh'
+              ? '复制链接'
+              : 'Copy link',
+          LinkIcon,
+          () => {},
+        ),
+      );
+    if (onOrganize && dir.path && !readonly)
+      items.push(
+        actionItem(
+          'rename-directory',
+          'workspace.directory.rename',
+          { dirPath: dir.path, present: () => onOrganize(dir.path, 'rename') },
+          locale === 'zh' ? '重命名' : 'Rename',
+          Pencil,
+          () => onOrganize(dir.path, 'rename'),
+        ),
+        actionItem(
+          'move-directory',
+          'workspace.directory.move',
+          { dirPath: dir.path, present: () => onOrganize(dir.path, 'move') },
+          locale === 'zh' ? '移动到…' : 'Move to…',
+          FolderOpen,
+          () => onOrganize(dir.path, 'move'),
+        ),
+      );
+    const selected =
+      selectedPaths.includes(dir.path) || revealDirectory?.path === dir.path;
+    return (
+      <div key={dir.path || '__root'}>
+        {dir.path ? (
+          <div
+            draggable={!readonly}
+            data-entry-path={dir.path}
+            aria-selected={selected || undefined}
+            data-drop-side={
+              dropTarget?.path === dir.path ? dropTarget.side : undefined
+            }
+            className={`file-tree-row file-tree-dir${selected ? ' is-selected' : ''}${menu?.key === dirKey ? ' is-menu-open' : ''}`}
+            style={{ '--depth': depth } as CSSProperties}
+            onContextMenu={(event) => openMenu(event, dirKey, dir.name, items)}
+          >
+            <button
+              type="button"
+              ref={(node) => {
+                if (node) directoryButtons.current.set(dir.path, node);
+                else directoryButtons.current.delete(dir.path);
+              }}
+              className="file-tree-main file-tree-dir-toggle"
+              aria-expanded={open}
+              onClick={() =>
+                execute('workspace.directory.toggle', { path: dir.path }, () =>
+                  onToggleDir(dir.path),
+                )
+              }
+            >
+              <span className="file-tree-twisty" aria-hidden>
+                {open ? (
+                  <ChevronDown strokeWidth={1.75} size={14} />
+                ) : (
+                  <ChevronRight strokeWidth={1.75} size={14} />
+                )}
+              </span>
+              {open ? (
+                <FolderOpen strokeWidth={1.75} size={16} aria-hidden />
+              ) : (
+                <Folder strokeWidth={1.75} size={16} aria-hidden />
+              )}
+              <span className="file-tree-label">{dir.name}</span>
+            </button>
+            {moreButton(dirKey, dir.name, items)}
+          </div>
+        ) : null}
+        {open || !dir.path ? (
+          <div className={dir.path ? 'file-tree-children' : undefined}>
+            {[
+              ...dir.dirs.map((child) => ({
+                ref: 'path:' + child.path,
+                node: dirRows(child, dir.path ? depth + 1 : 0),
+                name: child.name,
+                directory: true,
+              })),
+              ...dir.resources.map((resource) => ({
+                ref: 'path:' + resource.path,
+                node: resourceRow(resource, dir.path ? depth + 1 : 0),
+                name: resource.path.split('/').pop()!,
+                directory: false,
+              })),
+              ...dir.files.map((file) => ({
+                ref: 'file:' + file.fileId,
+                node: fileRow(file, dir.path ? depth + 1 : 0),
+                name: file.name,
+                directory: false,
+              })),
+            ]
+              .sort((a, b) => {
+                if (!manualOrder)
+                  return (
+                    Number(b.directory) - Number(a.directory) ||
+                    a.name.localeCompare(b.name)
+                  );
+                const order = manualOrder[dir.path] ?? [];
+                const ai = order.indexOf(a.ref),
+                  bi = order.indexOf(b.ref);
+                return (
+                  (ai < 0 ? Infinity : ai) - (bi < 0 ? Infinity : bi) ||
+                  a.name.localeCompare(b.name)
+                );
+              })
+              .map((item) => item.node)}
+            {dir.failures.map((failure) => (
+              <div
+                key={failure.path}
+                className={`file-tree-row file-tree-file${failure.path === activeFailedPath ? ' is-active' : ''}`}
+                data-failed-path={failure.path}
+                data-entry-path={failure.path}
+                data-entry-kind="failed"
+                draggable={!readonly}
+                style={{ '--depth': dir.path ? depth + 1 : 0 } as CSSProperties}
+              >
+                <span className="file-tree-twisty" aria-hidden />
+                <button
+                  type="button"
+                  className="file-tree-main file-tree-name"
+                  title={failure.path}
+                  aria-current={
+                    failure.path === activeFailedPath ? 'page' : undefined
+                  }
+                  onClick={() => onOpenFailedFile?.(failure.path)}
+                >
+                  <TriangleAlert
+                    strokeWidth={1.75}
+                    size={16}
+                    aria-label={locale === 'zh' ? '加载失败' : 'Unable to load'}
+                  />
+                  <span className="file-tree-label">
+                    {failure.path
+                      .split('/')
+                      .pop()
+                      ?.replace(/\.verd(?:-doc)?\.json$/, '')}
+                  </span>
+                </button>
+              </div>
+            ))}
+          </div>
+        ) : null}
+      </div>
+    );
+  };
+  const headerItems: FileTreeMenuItem[] = [
+    {
+      id: 'canvas',
+      label: t.newCanvas,
+      icon: FilePlus2,
+      action: bindWorkspaceAction(actionSource, 'workspace.create-canvas', {
+        dirPath: '',
+      }),
+      onSelect: () => onCreateCanvas(''),
+    },
+    ...(onCreateDocument
+      ? [
+          {
+            id: 'document',
+            label: t.newDocument,
+            icon: FileText,
+            action: bindWorkspaceAction(
+              actionSource,
+              'workspace.create-document',
+              { dirPath: '' },
+            ),
+            onSelect: () => onCreateDocument(''),
+          },
+        ]
+      : []),
+    ...(onCreateFolder
+      ? [
+          {
+            id: 'folder',
+            label: t.newFolder,
+            icon: FolderPlus,
+            action: bindWorkspaceAction(
+              actionSource,
+              'workspace.directory.new',
+              { dirPath: '', present: () => requestFolder('') },
+            ),
+            onSelect: () => requestFolder(''),
+          },
+        ]
+      : []),
+    ...(onImport
+      ? [
+          {
+            id: 'import',
+            label: t.import,
+            icon: Upload,
+            action: bindWorkspaceAction(actionSource, 'workspace.import'),
+            onSelect: onImport,
+          },
+        ]
+      : []),
+  ];
+  return (
+    <div className="file-tree">
+      {onOpenLibrary && !hideLibraryNavigation ? (
+        <button
+          type="button"
+          className={`file-tree-nav${libraryActive ? ' is-active' : ''}`}
+          aria-current={libraryActive ? 'page' : undefined}
+          disabled={
+            actionSource
+              ? !bindWorkspaceAction(
+                  actionSource,
+                  'workspace.library',
+                )?.getState().enabled
+              : false
+          }
+          data-action-id={actionSource ? 'workspace.library' : undefined}
+          onClick={() =>
+            execute('workspace.library', undefined, () => onOpenLibrary?.())
+          }
+        >
+          <LibraryBig strokeWidth={1.75} size={16} aria-hidden />
+          {bindWorkspaceAction(actionSource, 'workspace.library')?.label(
+            locale,
+          ) ?? t.library}
+        </button>
+      ) : null}
+      <div className="file-tree-header">
+        <span>{t.files}</span>
+        <div className="file-tree-header-actions">
+          {actionSource || !readonly ? (
+            <IconButton
+              icon={Plus}
+              data-testid="file-tree-new"
+              aria-label={locale === 'zh' ? '新建' : 'New'}
+              aria-haspopup="menu"
+              onClick={(e) =>
+                setMenu({
+                  key: 'header-new',
+                  label: locale === 'zh' ? '新建' : 'New',
+                  anchor: e.currentTarget,
+                  items: headerItems,
+                })
+              }
+            />
+          ) : null}
+          {headerOptions}
+        </div>
+      </div>
+      <div className="file-tree-body">
+        {tree.dirs.length +
+        tree.files.length +
+        tree.resources.length +
+        tree.failures.length ? (
+          dirRows(tree, 0)
+        ) : (
+          <div className="file-tree-empty">{t.empty}</div>
+        )}
+      </div>
+      {operationError && !confirmation && (
+        <p className="file-tree-operation-error" role="alert">
+          {operationError}
+        </p>
+      )}
+      {confirmation && (
+        <WorkspaceActionConfirmation
+          title={confirmation.title}
+          message={confirmation.message}
+          confirm={busy ? t.processing : t.confirm}
+          cancel={t.cancel}
+          busy={busy}
+          error={operationError}
+          onClose={() => {
+            setConfirmation(null);
+            setOperationError('');
+          }}
+          onConfirm={() => void perform(confirmation.action, true)}
+        />
+      )}
+      {menu ? (
+        <FileTreeMenu
+          key={menu.key}
+          label={menu.label}
+          anchor={menu.anchor}
+          items={menu.items}
+          actionSource={actionSource}
+          locale={locale}
+          onError={setOperationError}
+          onClose={() => setMenu(null)}
+        />
+      ) : null}
+      {prompt ? (
+        <FileTreePrompt
+          title={prompt.kind === 'rename' ? t.renamePrompt : t.folderName}
+          initialValue={prompt.kind === 'rename' ? prompt.file.path : ''}
+          rename={prompt.kind === 'rename'}
+          confirm={t.confirm}
+          cancel={t.cancel}
+          onClose={() => setPrompt(null)}
+          onSubmit={(value) => {
+            if (prompt.commit) {
+              const draft =
+                prompt.kind === 'rename'
+                  ? { toPath: value }
+                  : {
+                      path: prompt.dirPath
+                        ? `${prompt.dirPath}/${value}`
+                        : value,
+                    };
+              void prompt.commit.execute(draft).then((result) => {
+                if ('code' in result)
+                  setOperationError(result.message ?? result.code);
+              });
+            } else if (!actionSource) {
+              if (prompt.kind === 'rename') onMove?.(prompt.file.fileId, value);
+              else onCreateFolder?.(prompt.dirPath, value);
+            }
+          }}
+        />
+      ) : null}
+    </div>
+  );
+}

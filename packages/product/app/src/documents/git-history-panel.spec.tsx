@@ -4,13 +4,13 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import type {
   WorkspaceSession,
   WorkspaceSessionSnapshot,
-} from '../session/workspace-session';
+} from '@sue/verd-board-workspace';
 import type {
   WorkspaceGitRequest,
   WorkspaceGitResult,
   WorkspaceGitStatus,
-} from '../host/workspace-git';
-import { createDocumentFile } from './document-files';
+} from '@sue/verd-board-workspace';
+import { createDocumentFile } from '@sue/verd-board-workspace';
 import { GitHistoryPanel, gitVersionSnapshot } from './git-history-panel';
 
 vi.mock(import('@sue/verd-board-ui'), async (original) => ({

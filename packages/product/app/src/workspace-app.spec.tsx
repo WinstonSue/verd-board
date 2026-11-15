@@ -3,9 +3,9 @@ import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { I18nProvider } from '@sue/verd-board-ui';
 import type { FrameCell, NodeCell } from '@sue/board-core';
-import { createMemoryWorkspaceHost } from './host/memory-workspace-host';
+import { createMemoryWorkspaceHost } from '@sue/verd-board-workspace';
 import { WorkspaceApp } from './workspace-app';
-import { createDocumentFile } from './documents/document-files';
+import { createDocumentFile } from '@sue/verd-board-workspace';
 import type { WorkspaceSnapshot } from './frames/workspace-storage';
 
 HTMLDialogElement.prototype.showModal ??= function (this: HTMLDialogElement) {
@@ -27,7 +27,7 @@ class TestResizeObserver {
 
 // The menu primitive has its own UI/browser tests. App tests exercise host
 // lifecycle and page navigation without jsdom's floating-layout observers.
-vi.mock('../../ui/src/file-tree-menu', () => ({
+vi.mock('../../ui/src/workspace/file-tree-menu', () => ({
   FileTreeMenu: ({
     items,
     label,
@@ -37,7 +37,7 @@ vi.mock('../../ui/src/file-tree-menu', () => ({
   }: {
     preserveItemLabels?: boolean;
     locale?: 'zh' | 'en';
-    items: import('../../ui/src/file-tree-menu').FileTreeMenuItem[];
+    items: import('../../ui/src/workspace/file-tree-menu').FileTreeMenuItem[];
     label: string;
     onClose(): void;
   }) => (

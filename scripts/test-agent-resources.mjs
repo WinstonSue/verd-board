@@ -11,6 +11,12 @@ if (!process.argv[2])
   throw new Error(
     'Usage: node scripts/test-agent-resources.mjs RESOURCE_DIRECTORY [--skip-preview]',
   );
+for (const name of ['verd-board-app', 'verd-board-ui']) {
+  await assert.rejects(
+    fs.access(path.join(resourceRoot, 'app/node_modules/@sue', name)),
+    { code: 'ENOENT' },
+  );
+}
 const { deployAgentResources } = await import(
   pathToFileURL(
     path.join(
@@ -131,21 +137,79 @@ for (const pattern of run(['patterns', '--json'])) {
     'utf8',
   );
   assert.ok(entrance.includes(`name: verd-${pattern.id}`));
-  assert.ok(entrance.includes(pattern.guidePath));
+  assert.ok(
+    entrance.includes(
+      path.posix.relative(
+        path.posix.dirname(pattern.skillPath),
+        pattern.guidePath,
+      ),
+    ),
+  );
+  assert.match(
+    await fs.readFile(
+      path.join(deployed, 'patterns', pattern.guidePath),
+      'utf8',
+    ),
+    /^# /,
+  );
 }
-const qualityGuidePath = skill.match(
-  /shared\/patterns\/([^`]+\.verd-doc\.json)/,
-)?.[1];
+const patternRoot = run(['describe', '--json']).patternWorkspace;
+const { loadPatternGuides } = await import(
+  pathToFileURL(
+    path.join(
+      deployed,
+      'app/node_modules/@sue/verd-board-agent-patterns/dist/agent.js',
+    ),
+  ).href
+);
+const guides = await loadPatternGuides();
+assert.deepEqual(
+  guides.map((guide) => guide.title),
+  ['内容编写规范', '汇报与讲解场景', '图表编写规范'],
+);
+for (const guide of guides) {
+  assert.equal(
+    guide.source,
+    await fs.readFile(path.join(patternRoot, guide.path), 'utf8'),
+  );
+  assert.equal(
+    guide.source,
+    await fs.readFile(path.join(deployed, 'patterns', guide.path), 'utf8'),
+  );
+}
+const commonRoot = path.join(deployed, 'skills/verd-authoring');
+const visited = new Set();
+async function checkCommonReferences(relative) {
+  if (visited.has(relative)) return;
+  visited.add(relative);
+  const source = await fs.readFile(path.join(commonRoot, relative), 'utf8');
+  for (const [, bracketed, bare] of source.matchAll(
+    /\]\((?:<([^>]+)>|([^\s)]+))\)/g,
+  )) {
+    const target = bracketed ?? bare;
+    if (/^https?:/.test(target)) continue;
+    const resolved = path.resolve(commonRoot, path.dirname(relative), target);
+    const nested = path.relative(commonRoot, resolved);
+    assert.ok(
+      !nested.startsWith('..'),
+      'Common Skill reference must be self-contained',
+    );
+    assert.ok((await fs.stat(resolved)).isFile());
+    if (resolved.endsWith('.md')) await checkCommonReferences(nested);
+  }
+}
+await checkCommonReferences('SKILL.md');
+assert.ok(visited.has(path.join('references', 'writing.md')));
+assert.ok(visited.has(path.join('references', 'reports.md')));
+assert.ok(visited.has(path.join('references', 'diagram-quality.md')));
 assert.ok(
-  qualityGuidePath,
-  'Installed skill must point to the native quality guide',
+  (
+    await fs.readFile(
+      path.join(commonRoot, 'references/plain-report-skills.LICENSE.txt'),
+      'utf8',
+    )
+  ).includes('Copyright (c) 2026 45degreeYouthLee'),
 );
-const qualityGuide = JSON.parse(
-  await fs.readFile(path.join(deployed, 'patterns', qualityGuidePath), 'utf8'),
-);
-assert.equal(qualityGuide.id, 'pattern-guide:diagram-quality');
-assert.ok(skill.includes('workflow.port-direction'));
-assert.ok(qualityGuide.text.plainText.includes('workflow.port-direction'));
 assert.ok(
   (await fs.readFile(path.join(project, 'AGENTS.md'), 'utf8')).startsWith(
     '# User rules\nKeep this text.\n',
@@ -182,6 +246,37 @@ if (!process.argv.includes('--skip-preview')) {
   const output = path.join(dir, 'preview.png');
   run(['preview', 'acceptance-doc', '--plan', plan, '--out', output]);
   assert.ok((await fs.stat(output)).size > 1000);
+  // Exercise the independent bundled renderer for every supported canvas domain.
+  const canvasPatterns = new Set([
+    'whiteboard',
+    'mind-map',
+    'workflow-dag',
+    'workflow-process',
+    'architecture',
+    'uml-class',
+    'uml-sequence',
+  ]);
+  const installedPatterns = run(['patterns', '--json']).filter((pattern) =>
+    canvasPatterns.has(pattern.id),
+  );
+  assert.equal(installedPatterns.length, canvasPatterns.size);
+  for (const pattern of installedPatterns) {
+    for (const format of ['png', 'svg']) {
+      const rendered = path.join(dir, `pattern-${pattern.id}.${format}`);
+      run([
+        'preview',
+        pattern.rootFileId,
+        '--workspace',
+        path.join(deployed, 'patterns'),
+        '--out',
+        rendered,
+      ]);
+      assert.ok(
+        (await fs.stat(rendered)).size > 1000,
+        pattern.id + ' ' + format,
+      );
+    }
+  }
   const previewOperations = path.join(dir, 'preview-operations.json');
   const previewPlan = path.join(dir, 'preview-plan.json');
   const create = [
@@ -249,6 +344,35 @@ if (!process.argv.includes('--skip-preview')) {
       geometry: { x: 0, y: 0, width: 220, height: 140 },
     },
   ];
+  create.push(
+    {
+      type: 'file.create',
+      kind: 'architecture',
+      id: 'preview-architecture',
+      title: 'SDK layer titles',
+      path: 'preview-architecture.verd.json',
+    },
+    ...['Agent', 'React 适配'].flatMap((label, index) => [
+      {
+        type: 'node.upsert',
+        fileId: 'preview-architecture',
+        id: 'preview-layer-' + index,
+        kind: 'architecture-layer',
+        label,
+        geometry: { x: 0, y: index * 240, width: 500, height: 170 },
+        data: { fontSize: 16 },
+      },
+      {
+        type: 'node.upsert',
+        fileId: 'preview-architecture',
+        id: 'preview-module-' + index,
+        kind: 'architecture-module',
+        parentId: 'preview-layer-' + index,
+        label: 'Shared SDK',
+        geometry: { x: 20, y: index * 240 + 44, width: 372, height: 98 },
+      },
+    ]),
+  );
   const makePreviewPlan = async (edit = []) => {
     await fs.writeFile(previewOperations, JSON.stringify([...create, ...edit]));
     run(['plan', '--input', previewOperations, '--out', previewPlan]);
@@ -269,6 +393,10 @@ if (!process.argv.includes('--skip-preview')) {
     );
   await makePreviewPlan();
   for (const format of ['png', 'svg']) {
+    assert.deepEqual(
+      textWarnings(preview('preview-architecture', 'layer-titles', format)),
+      [],
+    );
     const warnings = textWarnings(preview('preview-flow', 'clipped', format));
     assert.equal(warnings.length, 1);
     assert.equal(warnings[0].cellId, 'preview-decision');

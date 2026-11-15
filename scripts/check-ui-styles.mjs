@@ -37,7 +37,7 @@ const paintExceptions = new Map([
       '.frame-note-content',
     ]),
   ],
-  ['presentation/presentation.scss', new Set(['.presentation-mode'])],
+  ['canvas/presentation/presentation.scss', new Set(['.presentation-mode'])],
 ]);
 for (const file of files) {
   const source = readFileSync(file, 'utf8');

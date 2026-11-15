@@ -9,4 +9,4 @@ export interface StorageAdapter {
   /** Archives the current host data, then installs an app-validated workspace. */
   resetWorkspace?(record: Record<string, unknown>): Promise<void>;
 }
-export type SaveStatus = 'idle' | 'saving' | 'saved' | 'error';
+export type { SaveStatus } from '@sue/verd-board-workspace';

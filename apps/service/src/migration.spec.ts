@@ -8,7 +8,7 @@ import { IDBFactory } from 'fake-indexeddb';
 import { createWebWorkspaceHost } from '../../../packages/product/app/src/host/web-workspace-host';
 import { exportBrowserBackup } from '../../../packages/product/app/src/host/browser-backup';
 import { encodeServiceValue } from '../../../packages/product/app/src/host/service-protocol';
-import { folderIdentityWrite } from '../../../packages/product/app/src/host/folder-identity';
+import { folderIdentityWrite } from '../../../packages/workspace/core/src/host/folder-identity';
 import { createServiceWorkspaceHost } from '../../../packages/product/app/src/host/service-workspace-host';
 import { createLocalService } from './service';
 
@@ -24,9 +24,7 @@ async function setup() {
     dataRoot,
     defaultRoot: path.join(root, 'default'),
     builtinSource: path.resolve('../../workspace'),
-    patternSource: path.resolve(
-      '../../packages/product/agent-patterns/workspace',
-    ),
+    patternSource: path.resolve('../../packages/agent/patterns/workspace'),
     productVersion: '2.0.1',
   });
   const port = await service.listen(0);

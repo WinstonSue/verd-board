@@ -1,12 +1,15 @@
 import { describe, expect, it } from 'vitest';
 import type { FrameCell, NodeCell } from '@sue/board-core';
-import { createMemoryWorkspaceHost } from '../host/memory-workspace-host';
-import { openWorkspaceSession } from '../session/workspace-session';
+import { createMemoryWorkspaceHost } from '@sue/verd-board-workspace';
+import { openWorkspaceSession } from '@sue/verd-board-workspace';
 import {
   createCanvasSession,
   type CanvasSession,
 } from '../canvas/canvas-session';
-import { assessReferencePlace, type FrameFileV2 } from '../frames/frame-files';
+import {
+  assessReferencePlace,
+  type FrameFileV2,
+} from '@sue/verd-board-workspace';
 import {
   planReturnToSource,
   rememberEntrySource,

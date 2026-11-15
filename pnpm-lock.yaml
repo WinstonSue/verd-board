@@ -118,7 +118,7 @@ importers:
         version: link:../../packages/engine/workflow
       '@sue/verd-board-agent':
         specifier: workspace:*
-        version: link:../../packages/product/agent
+        version: link:../../packages/agent/runtime
       '@sue/verd-board-app':
         specifier: workspace:*
         version: link:../../packages/product/app
@@ -170,7 +170,7 @@ importers:
     dependencies:
       '@sue/verd-board-agent':
         specifier: workspace:*
-        version: link:../../packages/product/agent
+        version: link:../../packages/agent/runtime
       '@sue/verd-board-app':
         specifier: workspace:*
         version: link:../../packages/product/app
@@ -245,6 +245,103 @@ importers:
       typescript:
         specifier: ^6.0.3
         version: 6.0.3
+      vite:
+        specifier: ^6.2.2
+        version: 6.4.3(@types/node@22.20.2)(sass@1.104.1)(yaml@2.9.1)
+      vitest:
+        specifier: ^3.0.8
+        version: 3.2.7(@types/debug@4.1.13)(@types/node@22.20.2)(@vitest/ui@3.2.7)(happy-dom@20.14.5)(jsdom@22.1.0(supports-color@8.1.1))(sass@1.104.1)(supports-color@8.1.1)(yaml@2.9.1)
+
+  packages/agent/patterns:
+    devDependencies:
+      eslint:
+        specifier: ^9.22.0
+        version: 9.39.5(supports-color@8.1.1)
+      vite:
+        specifier: ^6.2.2
+        version: 6.4.3(@types/node@22.20.2)(sass@1.104.1)(yaml@2.9.1)
+      vitest:
+        specifier: ^3.0.8
+        version: 3.2.7(@types/debug@4.1.13)(@types/node@22.20.2)(@vitest/ui@3.2.7)(happy-dom@20.14.5)(jsdom@22.1.0(supports-color@8.1.1))(sass@1.104.1)(supports-color@8.1.1)(yaml@2.9.1)
+
+  packages/agent/runtime:
+    dependencies:
+      '@sue/board-architecture':
+        specifier: workspace:*
+        version: link:../../engine/architecture
+      '@sue/board-common':
+        specifier: workspace:*
+        version: link:../../engine/common
+      '@sue/board-core':
+        specifier: workspace:*
+        version: link:../../engine/core
+      '@sue/board-draw':
+        specifier: workspace:*
+        version: link:../../engine/draw
+      '@sue/board-layouts':
+        specifier: workspace:*
+        version: link:../../engine/layouts
+      '@sue/board-markdown-to-text':
+        specifier: workspace:*
+        version: link:../../converters/markdown-to-text
+      '@sue/board-mermaid-to-board':
+        specifier: workspace:*
+        version: link:../../converters/mermaid-to-board
+      '@sue/board-mind':
+        specifier: workspace:*
+        version: link:../../engine/mind
+      '@sue/board-react-text':
+        specifier: workspace:*
+        version: link:../../react/text
+      '@sue/board-uml':
+        specifier: workspace:*
+        version: link:../../engine/uml
+      '@sue/board-workflow':
+        specifier: workspace:*
+        version: link:../../engine/workflow
+      '@sue/verd-board-agent-patterns':
+        specifier: workspace:*
+        version: link:../patterns
+      '@sue/verd-board-workspace':
+        specifier: workspace:*
+        version: link:../../workspace/core
+      jsdom:
+        specifier: 22.1.0
+        version: 22.1.0(supports-color@8.1.1)
+      playwright:
+        specifier: 1.58.2
+        version: 1.58.2
+      react:
+        specifier: 19.2.0
+        version: 19.2.0
+      react-dom:
+        specifier: 19.2.0
+        version: 19.2.0(react@19.2.0)
+    devDependencies:
+      '@sue/board-react':
+        specifier: workspace:*
+        version: link:../../react/board
+      '@sue/board-react-architecture':
+        specifier: workspace:*
+        version: link:../../react/architecture
+      '@sue/board-react-draw':
+        specifier: workspace:*
+        version: link:../../react/draw
+      '@sue/board-react-mind':
+        specifier: workspace:*
+        version: link:../../react/mind
+      '@sue/board-react-uml':
+        specifier: workspace:*
+        version: link:../../react/uml
+      '@sue/board-react-workflow':
+        specifier: workspace:*
+        version: link:../../react/workflow
+      '@vitejs/plugin-react':
+        specifier: ^4.2.0
+        version: 4.7.0(supports-color@8.1.1)(vite@6.4.3(@types/node@22.20.2)(sass@1.104.1)(yaml@2.9.1))
+      eslint:
+        specifier: ^9.22.0
+        version: 9.39.5(supports-color@8.1.1)
       vite:
         specifier: ^6.2.2
         version: 6.4.3(@types/node@22.20.2)(sass@1.104.1)(yaml@2.9.1)
@@ -502,91 +599,6 @@ importers:
         specifier: ^3.0.8
         version: 3.2.7(@types/debug@4.1.13)(@types/node@22.20.2)(@vitest/ui@3.2.7)(happy-dom@20.14.5)(jsdom@22.1.0(supports-color@8.1.1))(sass@1.104.1)(supports-color@8.1.1)(yaml@2.9.1)
 
-  packages/product/agent:
-    dependencies:
-      '@sue/board-architecture':
-        specifier: workspace:*
-        version: link:../../engine/architecture
-      '@sue/board-common':
-        specifier: workspace:*
-        version: link:../../engine/common
-      '@sue/board-core':
-        specifier: workspace:*
-        version: link:../../engine/core
-      '@sue/board-draw':
-        specifier: workspace:*
-        version: link:../../engine/draw
-      '@sue/board-layouts':
-        specifier: workspace:*
-        version: link:../../engine/layouts
-      '@sue/board-markdown-to-text':
-        specifier: workspace:*
-        version: link:../../converters/markdown-to-text
-      '@sue/board-mermaid-to-board':
-        specifier: workspace:*
-        version: link:../../converters/mermaid-to-board
-      '@sue/board-mind':
-        specifier: workspace:*
-        version: link:../../engine/mind
-      '@sue/board-react':
-        specifier: workspace:*
-        version: link:../../react/board
-      '@sue/board-react-text':
-        specifier: workspace:*
-        version: link:../../react/text
-      '@sue/board-uml':
-        specifier: workspace:*
-        version: link:../../engine/uml
-      '@sue/board-workflow':
-        specifier: workspace:*
-        version: link:../../engine/workflow
-      '@sue/verd-board-agent-patterns':
-        specifier: workspace:*
-        version: link:../agent-patterns
-      '@sue/verd-board-app':
-        specifier: workspace:*
-        version: link:../app
-      '@sue/verd-board-ui':
-        specifier: workspace:*
-        version: link:../ui
-      jsdom:
-        specifier: 22.1.0
-        version: 22.1.0(supports-color@8.1.1)
-      playwright:
-        specifier: 1.58.2
-        version: 1.58.2
-      react:
-        specifier: 19.2.0
-        version: 19.2.0
-      react-dom:
-        specifier: 19.2.0
-        version: 19.2.0(react@19.2.0)
-    devDependencies:
-      '@vitejs/plugin-react':
-        specifier: ^4.2.0
-        version: 4.7.0(supports-color@8.1.1)(vite@6.4.3(@types/node@22.20.2)(sass@1.104.1)(yaml@2.9.1))
-      eslint:
-        specifier: ^9.22.0
-        version: 9.39.5(supports-color@8.1.1)
-      vite:
-        specifier: ^6.2.2
-        version: 6.4.3(@types/node@22.20.2)(sass@1.104.1)(yaml@2.9.1)
-      vitest:
-        specifier: ^3.0.8
-        version: 3.2.7(@types/debug@4.1.13)(@types/node@22.20.2)(@vitest/ui@3.2.7)(happy-dom@20.14.5)(jsdom@22.1.0(supports-color@8.1.1))(sass@1.104.1)(supports-color@8.1.1)(yaml@2.9.1)
-
-  packages/product/agent-patterns:
-    devDependencies:
-      eslint:
-        specifier: ^9.22.0
-        version: 9.39.5(supports-color@8.1.1)
-      vite:
-        specifier: ^6.2.2
-        version: 6.4.3(@types/node@22.20.2)(sass@1.104.1)(yaml@2.9.1)
-      vitest:
-        specifier: ^3.0.8
-        version: 3.2.7(@types/debug@4.1.13)(@types/node@22.20.2)(@vitest/ui@3.2.7)(happy-dom@20.14.5)(jsdom@22.1.0(supports-color@8.1.1))(sass@1.104.1)(supports-color@8.1.1)(yaml@2.9.1)
-
   packages/product/app:
     dependencies:
       '@sue/board-architecture':
@@ -627,19 +639,16 @@ importers:
         version: link:../../engine/workflow
       '@sue/verd-board-agent-patterns':
         specifier: workspace:*
-        version: link:../agent-patterns
+        version: link:../../agent/patterns
       '@sue/verd-board-ui':
         specifier: workspace:*
         version: link:../ui
-      buffer:
-        specifier: ^6.0.3
-        version: 6.0.3
+      '@sue/verd-board-workspace':
+        specifier: workspace:*
+        version: link:../../workspace/core
       fflate:
         specifier: 0.8.3
         version: 0.8.3
-      isomorphic-git:
-        specifier: ^1.44.11
-        version: 1.44.11
       localforage:
         specifier: ^1.10.0
         version: 1.10.0
@@ -655,9 +664,6 @@ importers:
       react-dom:
         specifier: 19.2.0
         version: 19.2.0(react@19.2.0)
-      yaml:
-        specifier: 2.9.1
-        version: 2.9.1
     devDependencies:
       '@sue/board-markdown-to-board':
         specifier: workspace:*
@@ -671,11 +677,12 @@ importers:
       fake-indexeddb:
         specifier: 6.2.5
         version: 6.2.5
+      isomorphic-git:
+        specifier: ^1.44.11
+        version: 1.44.11
       vitest:
         specifier: ^3.0.8
         version: 3.2.7(@types/debug@4.1.13)(@types/node@22.20.2)(@vitest/ui@3.2.7)(happy-dom@20.14.5)(jsdom@22.1.0(supports-color@8.1.1))(sass@1.104.1)(supports-color@8.1.1)(yaml@2.9.1)
-
-  packages/product/docs: {}
 
   packages/product/ui:
     dependencies:
@@ -1083,6 +1090,58 @@ importers:
       react-dom:
         specifier: 19.2.0
         version: 19.2.0(react@19.2.0)
+    devDependencies:
+      eslint:
+        specifier: ^9.22.0
+        version: 9.39.5(supports-color@8.1.1)
+      vite:
+        specifier: ^6.2.2
+        version: 6.4.3(@types/node@22.20.2)(sass@1.104.1)(yaml@2.9.1)
+      vitest:
+        specifier: ^3.0.8
+        version: 3.2.7(@types/debug@4.1.13)(@types/node@22.20.2)(@vitest/ui@3.2.7)(happy-dom@20.14.5)(jsdom@22.1.0(supports-color@8.1.1))(sass@1.104.1)(supports-color@8.1.1)(yaml@2.9.1)
+
+  packages/workspace/core:
+    dependencies:
+      '@sue/board-architecture':
+        specifier: workspace:*
+        version: link:../../engine/architecture
+      '@sue/board-common':
+        specifier: workspace:*
+        version: link:../../engine/common
+      '@sue/board-core':
+        specifier: workspace:*
+        version: link:../../engine/core
+      '@sue/board-draw':
+        specifier: workspace:*
+        version: link:../../engine/draw
+      '@sue/board-layouts':
+        specifier: workspace:*
+        version: link:../../engine/layouts
+      '@sue/board-mind':
+        specifier: workspace:*
+        version: link:../../engine/mind
+      '@sue/board-react-text':
+        specifier: workspace:*
+        version: link:../../react/text
+      '@sue/board-uml':
+        specifier: workspace:*
+        version: link:../../engine/uml
+      '@sue/board-workflow':
+        specifier: workspace:*
+        version: link:../../engine/workflow
+      '@sue/verd-board-agent-patterns':
+        specifier: workspace:*
+        version: link:../../agent/patterns
+      buffer:
+        specifier: ^6.0.3
+        version: 6.0.3
+      isomorphic-git:
+        specifier: ^1.44.11
+        version: 1.44.11
+      yaml:
+        specifier: 2.9.1
+        version: 2.9.1
     devDependencies:
       eslint:
         specifier: ^9.22.0

@@ -1,9 +1,9 @@
 import { VersionHistoryPanel } from './documents/version-history-panel';
-import type { VersionScope } from './host/workspace-versions';
+import type { VersionScope } from '@sue/verd-board-workspace';
 import { enterDocumentPresentation } from './documents/presentation-entry';
-import { isWorkspaceContentPath } from './workspace-skills';
+import { isWorkspaceContentPath } from '@sue/verd-board-workspace';
 import { createWorkspaceSkillsModel } from './management/workspace-skills-model';
-import { findFoldersById } from './host/folder-identity';
+import { findFoldersById } from '@sue/verd-board-workspace';
 import {
   WorkspaceManagementMenu,
   WorkspaceManagementResize,
@@ -14,17 +14,14 @@ import {
   OrdinaryResourceReader,
   ordinaryResourceMime,
 } from './documents/ordinary-resources';
-import {
-  storeAttachment,
-  inlineFileAssets,
-} from './documents/workspace-resources';
+import { storeAttachment, inlineFileAssets } from '@sue/verd-board-workspace';
 import { ContentTools } from './documents/content-tools';
 import {
   createWorkspacePackage,
   parseWorkspacePackage,
   WORKSPACE_PACKAGE_MAX_JSON_BYTES,
   type WorkspaceResource,
-} from './documents/workspace-package';
+} from '@sue/verd-board-workspace';
 import { importMarkdownCollection } from './documents/portable-archive';
 import { createKnowledgeIndexer } from './documents/knowledge-index';
 import { KnowledgePanel } from './documents/knowledge-panel';
@@ -33,7 +30,7 @@ import {
   WorkspaceManagementSidebar,
   WorkspaceManagementMain,
 } from './management/workspace-management';
-import { readOrganization } from './management/organization';
+import { readOrganization } from '@sue/verd-board-workspace';
 import { searchRevision, type SearchHit } from './management/search';
 import { useInteractionPreferences } from '@sue/verd-board-ui';
 import {
@@ -69,7 +66,7 @@ import {
   createWorkspaceSurfaceActions,
   workspaceActionArgument,
 } from './session/workspace-surface-actions';
-import type { WorkspaceCommand } from './session/workspace-session';
+import type { WorkspaceCommand } from '@sue/verd-board-workspace';
 import {
   actionLabel,
   createWorkspaceLink,
@@ -84,7 +81,7 @@ import {
   resolveWorkspaceTarget,
   type NavigationOrigin,
   type WorkspaceNavigationRequest,
-} from './session/target-navigation';
+} from '@sue/verd-board-workspace';
 import { createArchitecturePlugin } from '@sue/board-architecture';
 import type { FrameSnapshot } from '@sue/board-core';
 import {
@@ -164,7 +161,7 @@ import {
   documentPathFor,
   isDocumentFileV1,
   type DocumentFileV1,
-} from './documents/document-files';
+} from '@sue/verd-board-workspace';
 import {
   createWorkspaceDocumentPreviewCache,
   type PreviewOptions,
@@ -172,7 +169,7 @@ import {
 import {
   remapWorkspaceFiles,
   workspaceDocumentDependents,
-} from './documents/workspace-references';
+} from '@sue/verd-board-workspace';
 import {
   assessReferencePlace,
   createFrameFile,
@@ -182,15 +179,15 @@ import {
   referenceSourcesOf,
   sameFrameContent,
   type FrameFileV2,
-} from './frames/frame-files';
+} from '@sue/verd-board-workspace';
 import type { WorkspaceSnapshot } from './frames/workspace-storage';
-import { workspaceHostSupports } from './host/workspace-host';
+import { workspaceHostSupports } from '@sue/verd-board-workspace';
 import type {
   OpenWorkspaceRequest,
   WorkspaceHandle,
   WorkspaceHost,
   WorkspaceHistoryEntry,
-} from './host/workspace-host';
+} from '@sue/verd-board-workspace';
 import {
   buildReferenceLocations,
   referenceLocationKey,
@@ -205,7 +202,7 @@ import {
   workspaceFileDirectories,
   workspaceTabGroups,
   type TabCloseScope,
-} from './session/workspace-navigation';
+} from '@sue/verd-board-workspace';
 import {
   canvasDisplayName,
   documentDisplayName,
@@ -213,7 +210,7 @@ import {
   type WorkspaceFileEntry,
   type WorkspaceSession,
   type WorkspaceSessionSnapshot,
-} from './session/workspace-session';
+} from '@sue/verd-board-workspace';
 
 export interface WorkspaceAppProps {
   host: WorkspaceHost;
@@ -752,7 +749,7 @@ function WorkspaceAppShell({
   }, [presenting]);
   const listOrigins = useRef(new Map<string, 'all' | 'library'>());
   const [builtinInfo, setBuiltinInfo] = useState<
-    import('./host/workspace-host').BuiltinWorkspaceUpdateInfo | null
+    import('@sue/verd-board-workspace').BuiltinWorkspaceUpdateInfo | null
   >(null);
   const [workspaceLocation, setWorkspaceLocation] = useState('');
   const handleKey = activeWorkspace.current?.handle.key;

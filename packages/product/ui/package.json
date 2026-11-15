@@ -1,6 +1,6 @@
 {
   "name": "@sue/verd-board-ui",
-  "version": "2.1.0",
+  "version": "2.1.1",
   "main": "./dist/index.cjs",
   "types": "./src/index.ts",
   "private": false,
@@ -54,7 +54,7 @@
       "default": "./dist/index.js"
     },
     "./style.css": {
-      "development": "./src/styles/frame.scss",
+      "development": "./src/styles/index.scss",
       "default": "./dist/style.css"
     }
   },

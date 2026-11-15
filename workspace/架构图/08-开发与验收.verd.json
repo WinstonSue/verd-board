@@ -189,12 +189,12 @@
         "strokeWidth": 1.5
       },
       "content": {
-        "label": "环境、源码与文档维护\n日常开发使用隔离 Dev 身份；长期图文直接维护在原生工作区。",
+        "label": "环境、源码与文档维护\n源码编辑与远程验证分开；长期图文直接维护原生文件。",
         "text": {
           "schemaVersion": 1,
           "id": "project:overview/08/summary/1/text",
           "kind": "inline",
-          "plainText": "环境、源码与文档维护\n日常开发使用隔离 Dev 身份；长期图文直接维护在原生工作区。",
+          "plainText": "环境、源码与文档维护\n源码编辑与远程验证分开；长期图文直接维护原生文件。",
           "content": {
             "type": "doc",
             "content": [
@@ -221,7 +221,7 @@
                 "content": [
                   {
                     "type": "text",
-                    "text": "日常开发使用隔离 Dev 身份；长期图文直接维护在原生工作区。",
+                    "text": "源码编辑与远程验证分开；长期图文直接维护原生文件。",
                     "marks": [
                       {
                         "type": "textStyle",
@@ -237,7 +237,8 @@
             ]
           }
         }
-      }
+      },
+      "name": "环境、源码与文档维护 日常开发使用隔离 Dev 身份；长期图文直接维护在原生工作区。"
     },
     "project:overview/08/summary/2": {
       "id": "project:overview/08/summary/2",
@@ -283,12 +284,12 @@
         "strokeWidth": 1.5
       },
       "content": {
-        "label": "检查、消费验收与发布\n开发与生产构建分别验收；正式发布由维护者执行。",
+        "label": "按影响选择检查与验收\nCI、发布执行对应完整门禁。",
         "text": {
           "schemaVersion": 1,
           "id": "project:overview/08/summary/2/text",
           "kind": "inline",
-          "plainText": "检查、消费验收与发布\n开发与生产构建分别验收；正式发布由维护者执行。",
+          "plainText": "按影响选择检查与验收\nCI、发布执行对应完整门禁。",
           "content": {
             "type": "doc",
             "content": [
@@ -297,7 +298,7 @@
                 "content": [
                   {
                     "type": "text",
-                    "text": "检查、消费验收与发布",
+                    "text": "按影响选择检查与验收",
                     "marks": [
                       {
                         "type": "textStyle",
@@ -315,7 +316,7 @@
                 "content": [
                   {
                     "type": "text",
-                    "text": "开发与生产构建分别验收；正式发布由维护者执行。",
+                    "text": "CI、发布执行对应完整门禁。",
                     "marks": [
                       {
                         "type": "textStyle",
@@ -332,7 +333,7 @@
           }
         }
       },
-      "name": "检查、消费验收与发布 区分开发服务验收与生产构建验收；正式打包和发布由维护者执行。"
+      "name": "检查、消费验收与发布"
     },
     "project:overview/08/detail/1": {
       "id": "project:overview/08/detail/1",
@@ -486,8 +487,5 @@
         "strokeWidth": 1.5
       }
     }
-  },
-  "organization": {
-    "kind": "standalone"
   }
 }

@@ -4,7 +4,7 @@ import {
   type DocumentAttachment,
 } from '@sue/board-react-text';
 import { parseAssetLink } from '@sue/board-common';
-import { storeAttachment } from './workspace-resources';
+import { storeAttachment } from '@sue/verd-board-workspace';
 import { AttachmentCard, ResourceReader, WebResource } from './resource-reader';
 import {
   useEffect,
@@ -14,7 +14,7 @@ import {
   type ReactNode,
 } from 'react';
 import { DocumentAssetContext } from '@sue/board-react-text';
-import type { WorkspaceSession } from '../session/workspace-session';
+import type { WorkspaceSession } from '@sue/verd-board-workspace';
 export function WorkspaceAssetScope({
   session,
   children,

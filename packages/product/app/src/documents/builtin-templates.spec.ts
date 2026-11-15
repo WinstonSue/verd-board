@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { builtinTemplates, instantiateTemplate } from './builtin-templates';
-import { validateWorkspaceReferences } from './workspace-references';
-import { workspaceFileId } from './document-files';
+import { validateWorkspaceReferences } from '@sue/verd-board-workspace';
+import { workspaceFileId } from '@sue/verd-board-workspace';
 describe('native template library', () => {
   it('includes the four writing workflows and instantiates independent identities', async () => {
     for (const id of [

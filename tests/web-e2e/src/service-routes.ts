@@ -4,7 +4,7 @@ import {
   encodeServiceValue,
   type ServiceValue,
 } from '../../../packages/product/app/src/host/service-protocol';
-import type { CommitRequest } from '../../../packages/product/app/src/host/workspace-host';
+import type { CommitRequest } from '../../../packages/workspace/core/src/host/workspace-host';
 
 type Rpc = { method: string; args: unknown[] };
 const documentDetached = (error: unknown) =>

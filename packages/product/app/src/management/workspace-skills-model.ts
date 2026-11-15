@@ -1,14 +1,13 @@
 import {
   patterns,
   loadBuiltinSkill,
-  loadPatternGuide,
+  loadPatternGuides,
 } from '@sue/verd-board-agent-patterns/agent';
 import { parseMarkdownToTextDocument } from '@sue/board-markdown-to-text';
 import type { createWorkspaceActionRegistry } from '../session/workspace-actions';
 import type { WorkspaceSkillsSettingsProps } from '@sue/verd-board-ui';
-import { isDocumentFileV1 } from '../documents/document-files';
 import { localizePatterns } from '../documents/pattern-labels';
-import type { WorkspaceSession } from '../session/workspace-session';
+import type { WorkspaceSession } from '@sue/verd-board-workspace';
 import {
   workspaceSkillDefinitions,
   workspaceSkillDefinition,
@@ -18,7 +17,7 @@ import {
   parseSkillDocument,
   serializeWorkspaceSkill,
   type WorkspaceSkillCommit,
-} from '../workspace-skills';
+} from '@sue/verd-board-workspace';
 
 export function createWorkspaceSkillsModel(
   session: WorkspaceSession,
@@ -164,30 +163,39 @@ export function createWorkspaceSkillsModel(
         undefined,
         ...(definition?.patternId ? [definition.patternId] : []),
       ];
+      const readingDocument = (source: string, id: string) => {
+        const document = parseMarkdownToTextDocument(source, { id }).document;
+        // Package references are read through the rule selector or by Agent tools,
+        // never as links into the user's native workspace.
+        const visit = (node: typeof document.content) => {
+          node.marks = node.marks?.filter(
+            (mark) =>
+              mark.type !== 'link' ||
+              /^https?:/.test(String(mark.attrs?.['href'])),
+          );
+          node.content?.forEach(visit);
+        };
+        visit(document.content);
+        return document;
+      };
       const skills = await Promise.all(
         ids.map(async (id) => {
           const name = id ? `verd-${id}` : 'verd-authoring';
           const parsed = parseSkillDocument(await loadBuiltinSkill(id), name);
-          const document = parseMarkdownToTextDocument(parsed.body, {
-            id: 'builtin-skill:' + name,
-          }).document;
-          // Bundled file references are presented in the related-rules view.
-          const visit = (node: typeof document.content) => {
-            node.marks = node.marks?.filter(
-              (mark) =>
-                mark.type !== 'link' ||
-                /^https?:/.test(String(mark.attrs?.['href'])),
-            );
-            node.content?.forEach(visit);
-          };
-          visit(document.content);
+          const document = readingDocument(
+            parsed.body,
+            'builtin-skill:' + name,
+          );
           return { ...parsed, document };
         }),
       );
-      const guide = await loadPatternGuide(definition?.patternId);
-      if (!isDocumentFileV1(guide))
-        throw new Error('Invalid default pattern guide');
-      return { skills, rules: [{ title: guide.title, document: guide.text }] };
+      const guides = await loadPatternGuides(definition?.patternId);
+      const rules = guides.map((guide) => ({
+        title: guide.title,
+        source: guide.source,
+        document: readingDocument(guide.source, 'builtin-guide:' + guide.path),
+      }));
+      return { skills, rules };
     },
   };
 }

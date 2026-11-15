@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import type { FrameCell } from '@sue/board-core';
-import type { FrameFileV2 } from '../frames/frame-files';
-import { createMemoryWorkspaceHost } from '../host/memory-workspace-host';
-import { openWorkspaceSession } from '../session/workspace-session';
+import type { FrameFileV2 } from '@sue/verd-board-workspace';
+import { createMemoryWorkspaceHost } from '@sue/verd-board-workspace';
+import { openWorkspaceSession } from '@sue/verd-board-workspace';
 import {
   createCanvasSession,
   refOccurrenceId,

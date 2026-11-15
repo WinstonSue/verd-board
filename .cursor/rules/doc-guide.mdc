@@ -5,7 +5,11 @@ alwaysApply: true
 
 # 原生文档引导
 
+仓库开发约束和验证范围统一读取根 `AGENTS.md`；本引导和原生开发说明不增加全量门禁。产品 Agent 的默认编写 Skills 与仓库开发指令分别维护。
+
 中英文导航文档位于根 `workspace/`，分类正文位于 `workspace/文档/`，图解位于 `workspace/架构图/`。导航组织阅读、正文维护说明、图解表达关系；说明图使用文档和章节链接，不贴嵌整份正文。根 README 和包 README 只保留工程入口，不另建 Markdown 正文或导出兼容树。
+
+Agent 执行规范与产品、工程说明分别维护：`agent/skills/` 下的 `SKILL.md` 和 `references/*.md` 是指令的单一维护源，设置页只在内存中转换阅读模型。用户文档、推荐库和原生执行模板继续使用原生格式；不为 Agent 规范维护 JSON 镜像，也不为原生产品正文维护 Markdown 镜像。
 
 ## 阅读入口
 
@@ -26,5 +30,5 @@ alwaysApply: true
 - 工程行为以现行源码和原生架构/开发文档为准；旧验收日期与数量只说明对应历史运行。
 - 修改功能同步相应原生文档与图。新增文档登记导航；重大入口同步中文导航、英文 Documentation 与根 README。
 - AI 数据规范 codeBlock 与 `tests/fixtures/ai-canvas/` 逐字匹配，测试直接读取原生文件。
-- 执行 `pnpm workspace:check` 校验身份、内部目标与锚点；包依赖变化执行 `pnpm workspace:refresh`。
+- 按根 `AGENTS.md` 的范围和执行位置要求，以 `pnpm workspace:check` 校验身份、内部目标与锚点；包依赖变化执行 `pnpm workspace:refresh`。
 - 通用质量规则保留在 `.cursor/rules`，任务流程保留在 `.agents/skills`。

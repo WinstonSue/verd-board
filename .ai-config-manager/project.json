@@ -1,20 +1,15 @@
 {
   "schemaVersion": 1,
-  "skills": [
-    {
-      "name": "verd-board-dev",
-      "source": "local"
-    }
-  ],
+  "skills": [],
   "agents": [
     {
       "name": "cursor",
       "link": ".cursor",
-      "skills": ["verd-board-dev"]
+      "skills": []
     },
     {
       "name": "agent",
-      "link": "packages/product/agent",
+      "link": "packages/agent/runtime",
       "skills": []
     }
   ]

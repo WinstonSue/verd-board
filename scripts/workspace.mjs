@@ -58,14 +58,14 @@ export async function withWorkspaceRuntime(task) {
       load('packages/engine/workflow/src/public-api.ts'),
       load('packages/engine/architecture/src/public-api.ts'),
       load('packages/engine/uml/src/public-api.ts'),
-      load('packages/product/app/src/frames/frame-files.ts'),
-      load('packages/product/app/src/documents/document-files.ts'),
+      load('packages/workspace/core/src/frames/frame-files.ts'),
+      load('packages/workspace/core/src/documents/document-files.ts'),
       load('packages/engine/common/src/public-api.ts'),
       load('packages/engine/common/src/workspace-links.ts'),
       load('packages/react/text/src/utils/heading-slug.ts'),
       load('packages/react/text/src/constants/editor-config.ts'),
-      load('packages/product/app/src/documents/workspace-references.ts'),
-      load('packages/product/app/src/workspace-validation.ts'),
+      load('packages/workspace/core/src/documents/workspace-references.ts'),
+      load('packages/workspace/core/src/workspace-validation.ts'),
     ]);
     const textRequire = createRequire(
       path.join(REPO_ROOT, 'packages/react/text/package.json'),
@@ -99,7 +99,7 @@ export async function withWorkspaceRuntime(task) {
       references,
       validation,
       builtin: await load(
-        'packages/product/agent/src/node/builtin-workspace.ts',
+        'packages/agent/runtime/src/node/builtin-workspace.ts',
       ),
     });
   } finally {
@@ -148,10 +148,14 @@ export async function readPackageModel() {
     ['基础引擎', 'packages/engine'],
     ['领域引擎', null],
     ['导入导出边界', 'packages/converters'],
+    ['Agent', 'packages/agent'],
+    ['工作区核心', 'packages/workspace'],
   ].map(([label, directory]) => ({ label, directory, nodes: [] }));
   for (const parent of [
     'apps',
     'packages/product',
+    'packages/agent',
+    'packages/workspace',
     'packages/react',
     'packages/engine',
     'packages/converters',
@@ -177,7 +181,7 @@ export async function readPackageModel() {
       const group =
         parent === 'packages/engine' &&
         ['draw', 'mind', 'workflow', 'architecture', 'uml'].includes(entry.name)
-          ? groups[4]
+          ? groups.find((g) => g.label === '领域引擎')
           : groups.find((g) => g.directory === parent);
       group.nodes.push({
         id: manifest.name,
@@ -220,7 +224,14 @@ function setLabel(cell, label) {
   if (cell.content?.label === label && cell.content?.text?.plainText === label)
     return;
   const previous = cell.content?.text;
-  const marks = previous?.content?.content?.[0]?.content?.[0]?.marks;
+  const marks =
+    previous?.content?.content?.[0]?.content?.[0]?.marks ??
+    (cell.kind === 'architecture-layer'
+      ? [
+          { type: 'bold' },
+          { type: 'textStyle', attrs: { fontSize: '16px', color: '#475569' } },
+        ]
+      : undefined);
   cell.content = {
     ...cell.content,
     label,
@@ -247,6 +258,26 @@ export function refreshPackageFile(input, model) {
     next = {};
   const managed = (id) => id.startsWith(PREFIX);
   const desired = new Set();
+  // New responsibility layers must clear existing content, including authored notes.
+  let nextLayerY =
+    Math.max(
+      0,
+      ...Object.values(old)
+        .filter(
+          (cell) =>
+            cell.cellType === 'node' &&
+            cell.kind !== 'architecture-layer' &&
+            cell.geometry,
+        )
+        .map((cell) => cell.geometry.y + cell.geometry.height),
+    ) + 156;
+  const previousLayer = new Map(
+    Object.values(old)
+      .filter((cell) => managed(cell.id) && cell.kind === 'architecture-layer')
+      .flatMap((layer) =>
+        (layer.data.memberIds ?? []).map((id) => [id, layer.id]),
+      ),
+  );
   for (const [index, layer] of model.layers.entries()) {
     const layerId = PREFIX + 'layer/' + index;
     desired.add(layerId);
@@ -254,7 +285,14 @@ export function refreshPackageFile(input, model) {
     const members = [];
     const occupied = (existing?.data?.memberIds ?? [])
       .map((key) => old[key])
-      .filter((cell) => cell?.geometry);
+      .filter(
+        (cell) =>
+          cell?.geometry &&
+          layer.nodes.some((node) => PREFIX + 'module/' + node.id === cell.id),
+      );
+    const rowY = occupied.length
+      ? Math.min(...occupied.map((cell) => cell.geometry.y))
+      : nextLayerY;
     let right = occupied.length
       ? Math.max(
           ...occupied.map((cell) => cell.geometry.x + cell.geometry.width),
@@ -291,8 +329,11 @@ export function refreshPackageFile(input, model) {
               direction: 'both',
             })),
           };
-      if (!old[id]) {
-        if (right !== undefined) cell.geometry.x = right + 96;
+      if (!old[id] || previousLayer.get(id) !== layerId) {
+        // A package changing responsibilities keeps its identity and styling,
+        // but must leave its former layer instead of overlapping its siblings.
+        cell.geometry.x = right === undefined ? 20 : right + 96;
+        cell.geometry.y = rowY;
         right = cell.geometry.x + cell.geometry.width;
       }
       setLabel(cell, node.label);
@@ -316,14 +357,28 @@ export function refreshPackageFile(input, model) {
             strokeColor: '#e2e8f0',
             strokeWidth: 1,
           },
-          data: { order: String(index).padStart(8, '0'), fontSize: 24 },
+          data: { order: String(index).padStart(8, '0'), fontSize: 16 },
         };
+    // Historic generated titles use 16px text marks over a 24px paragraph default.
+    // Align the line box with the existing painted text so the fixed header does not clip.
+    const textSize =
+      cell.content?.text?.content?.content?.[0]?.content?.[0]?.marks?.find(
+        (mark) => mark.type === 'textStyle',
+      )?.attrs?.fontSize;
+    if (cell.data.fontSize === 24 && textSize === '16px')
+      cell.data.fontSize = 16;
     cell.data.memberIds = [
       ...members,
       ...(existing?.data?.memberIds ?? []).filter((id) => !managed(id)),
     ];
     setLabel(cell, layer.label);
     next[layerId] = cell;
+    nextLayerY = Math.max(
+      nextLayerY,
+      rowY +
+        Math.max(0, ...members.map((id) => next[id].geometry.height)) +
+        156,
+    );
   }
   const edges = new Map(
     Object.values(old)
@@ -383,6 +438,27 @@ export function refreshPackageFile(input, model) {
       (id) =>
         !result.frame.children.includes(id) && next[id].cellType !== 'group',
     ),
+  ];
+  // New layers may own existing modules; paint their background before all members.
+  for (const layer of Object.values(next).filter(
+    (cell) => cell.kind === 'architecture-layer',
+  )) {
+    const firstMember = Math.min(
+      ...layer.data.memberIds
+        .map((id) => result.frame.children.indexOf(id))
+        .filter((index) => index >= 0),
+    );
+    const position = result.frame.children.indexOf(layer.id);
+    if (position > firstMember) {
+      result.frame.children.splice(position, 1);
+      result.frame.children.splice(firstMember, 0, layer.id);
+    }
+  }
+  // Authored notes and their links must remain above newly generated dependency hits.
+  const annotations = result.frame.children.filter((id) => !managed(id));
+  result.frame.children = [
+    ...result.frame.children.filter(managed),
+    ...annotations,
   ];
   return result;
 }

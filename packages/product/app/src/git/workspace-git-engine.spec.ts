@@ -15,14 +15,14 @@ import * as git from 'isomorphic-git';
 import {
   createMemoryWorkspaceHost,
   digestBytes,
-} from '../host/memory-workspace-host';
+} from '@sue/verd-board-workspace';
 import { createWebWorkspaceHost } from '../host/web-workspace-host';
-import { createDocumentFile } from '../documents/document-files';
-import type { WorkspaceHandle, WorkspaceHost } from '../host/workspace-host';
-import { GitMemoryFs } from './memory-fs';
-import { planGitPurge, rewriteGitPurge } from './purge';
-import { openWorkspaceSession } from '../session/workspace-session';
-import { gitAssetReferences } from './tree';
+import { createDocumentFile } from '@sue/verd-board-workspace';
+import type { WorkspaceHandle, WorkspaceHost } from '@sue/verd-board-workspace';
+import { GitMemoryFs } from '@sue/verd-board-workspace';
+import { planGitPurge, rewriteGitPurge } from '@sue/verd-board-workspace';
+import { openWorkspaceSession } from '@sue/verd-board-workspace';
+import { gitAssetReferences } from '@sue/verd-board-workspace';
 
 const scratch: string[] = [];
 afterEach(async () => {

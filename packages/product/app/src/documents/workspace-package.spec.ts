@@ -3,21 +3,21 @@ import { IDBFactory } from 'fake-indexeddb';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createAssetLink } from '@sue/board-common';
 import { createFrameCell } from '@sue/board-core';
-import { createDocumentFile, isWorkspaceFile } from './document-files';
+import { createDocumentFile, isWorkspaceFile } from '@sue/verd-board-workspace';
 import {
   createWorkspacePackage,
   parseWorkspacePackage,
   workspaceAssetPath,
   type WorkspaceExportBundleV2,
-} from './workspace-package';
-import { parseWorkspaceExport } from './workspace-references';
-import { createMemoryWorkspaceHost } from '../host/memory-workspace-host';
+} from '@sue/verd-board-workspace';
+import { parseWorkspaceExport } from '@sue/verd-board-workspace';
+import { createMemoryWorkspaceHost } from '@sue/verd-board-workspace';
 import { createWebWorkspaceHost } from '../host/web-workspace-host';
 import {
   openWorkspaceSession,
   type WorkspaceSession,
-} from '../session/workspace-session';
-import type { CommitRequest, WorkspaceHost } from '../host/workspace-host';
+} from '@sue/verd-board-workspace';
+import type { CommitRequest, WorkspaceHost } from '@sue/verd-board-workspace';
 
 const sessions: WorkspaceSession[] = [];
 afterEach(() => {

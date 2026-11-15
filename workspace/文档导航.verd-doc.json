@@ -28,6 +28,24 @@
           "content": [
             {
               "type": "text",
+              "text": "这是青编系统介绍的主入口。先选择产品、实现或开发路径，遇到具体问题再进入专项手册；项目导览负责图解，不维护另一套正文。"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "内容核对：2026-11-13。依据为当前仓库源码、包清单与锁文件；具体机制和源码入口见本篇及配置与源码索引。历史记录保留原日期与适用范围。"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
               "text": "从这里开始阅读青编项目。正文按主题分类维护，画布用于图解；所有文件都可以直接编辑。"
             }
           ]
@@ -53,6 +71,18 @@
           "type": "heading",
           "attrs": {
             "level": 2
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "按阅读目标进入"
+            }
+          ]
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 3
           },
           "content": [
             {
@@ -136,7 +166,7 @@
           "type": "heading",
           "attrs": {
             "textAlign": null,
-            "level": 2
+            "level": 3
           },
           "content": [
             {
@@ -286,7 +316,7 @@
           "type": "heading",
           "attrs": {
             "textAlign": null,
-            "level": 2
+            "level": 3
           },
           "content": [
             {
@@ -435,8 +465,20 @@
         {
           "type": "heading",
           "attrs": {
-            "textAlign": null,
             "level": 2
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "专项手册与图解"
+            }
+          ]
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "textAlign": null,
+            "level": 3
           },
           "content": [
             {
@@ -744,7 +786,7 @@
         {
           "type": "heading",
           "attrs": {
-            "level": 2
+            "level": 3
           },
           "content": [
             {
@@ -778,6 +820,115 @@
           "type": "heading",
           "attrs": {
             "level": 2
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "开始开发与验收"
+            }
+          ]
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "textAlign": null,
+            "level": 3
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "快速开始"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "attrs": {
+            "textAlign": null
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "要求 Node.js >= 22.12.0、pnpm >= 11.18.0；具体版本与命令以根 package.json 和 pnpm-lock.yaml 为准。"
+            }
+          ]
+        },
+        {
+          "type": "codeBlock",
+          "attrs": {
+            "language": "bash"
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "pnpm install\n# 经用户明确要求，在当前机器预览\npnpm dev:desktop\n# 或预览 Web\npnpm dev:web\n# 验证前检查测试机连接\npnpm test:remote doctor"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "工作区界面：侧栏「所有内容」下的「全部内容」和「图表」页签用于浏览文件。Cmd/Ctrl+P 快速打开文件，「搜索」可查找文件名、路径和正文。底部“设置”管理个人偏好和当前项目，工作区名称打开切换器。"
+            }
+          ]
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 3
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "开发与发布验收"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "功能开发按仓库根 AGENTS.md 选择相关验证；原生内容整理检查身份、结构、缓存、链接和必要预览，执行工作区专项。PR CI 执行完整技术回归。任何版本发布前还须核对 Agent 工程、文档编写推荐库和系统介绍，系统介绍正文每版更新。详细命令和核对流程见开发指南。"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "日常验收按仓库根 AGENTS.md 选择内容专项或功能定向，在另一台 Mac 的固定源码快照上执行。配置、断线恢复和报告口径见开发指南的“Tailscale 远程开发验收”。"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "防打扰：开发机执行 check:dev、check:ci 默认转入远程验收；直接 Desktop E2E 在未授权的执行上下文中不会启动 Electron。显式本机调试方式见开发指南。"
+            }
+          ]
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 2
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "Agent 与独立 SDK"
+            }
+          ]
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 3
           },
           "content": [
             {
@@ -822,37 +973,12 @@
         {
           "type": "heading",
           "attrs": {
-            "textAlign": null,
-            "level": 2
+            "level": 3
           },
           "content": [
             {
               "type": "text",
-              "text": "快速开始"
-            }
-          ]
-        },
-        {
-          "type": "paragraph",
-          "attrs": {
-            "textAlign": null
-          },
-          "content": [
-            {
-              "type": "text",
-              "text": "要求 Node.js >= 22.12.0、pnpm >= 11.18.0；具体版本与命令以根 package.json 和 pnpm-lock.yaml 为准。"
-            }
-          ]
-        },
-        {
-          "type": "codeBlock",
-          "attrs": {
-            "language": "bash"
-          },
-          "content": [
-            {
-              "type": "text",
-              "text": "pnpm install\npnpm dev:desktop\n# Web 开发\npnpm dev:web\n# 公开包和 Web（根 build 排除 Desktop）\npnpm build\n# Desktop 前端、主进程与 preload\npnpm build:desktop\n# 正式安装包（macOS 默认 DMG）\npnpm package:desktop\n# 类型检查与单测\npnpm typecheck\npnpm test"
+              "text": "共享 SDK 与独立 Agent"
             }
           ]
         },
@@ -861,7 +987,16 @@
           "content": [
             {
               "type": "text",
-              "text": "工作区界面：侧栏「所有内容」下的「全部内容」和「图表」页签用于浏览文件。Cmd/Ctrl+P 快速打开文件，「搜索」可查找文件名、路径和正文。底部“设置”管理个人偏好和当前项目，工作区名称打开切换器。"
+              "text": "包分层现包含共享 workspace 核心和独立 Agent：第三方通过 Node API 或 verd CLI 使用 Agent 编写文档与画布，无需安装产品 app/ui。工作区会话与文件模型由 @sue/verd-board-workspace 统一提供，产品保留原公开入口。具体包职责与源码位置见包索引和配置与源码索引。"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "文档编写推荐库面向用户；真正 Agent 规范使用独立资源来源。推荐正文不产生默认 Agent 提示或约束。"
             }
           ]
         },
@@ -869,6 +1004,18 @@
           "type": "heading",
           "attrs": {
             "level": 2
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "按能力查阅"
+            }
+          ]
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 3
           },
           "content": [
             {
@@ -882,14 +1029,26 @@
           "content": [
             {
               "type": "text",
-              "text": "文档支持斜杠菜单、段落操作、稳定段落链接与只读摘录。首页可从原生模板创建技术方案、ADR、系统设计和需求梳理；内容管理提供属性、版本、冲突与附件，首页支持文件夹和 ZIP 迁入。能力与数据边界见产品概览及系统架构。"
+              "text": "斜杠插入、段落操作、只读摘录、模板和资料迁入见"
+            },
+            {
+              "type": "text",
+              "text": "产品概览",
+              "marks": [
+                {
+                  "type": "link",
+                  "attrs": {
+                    "href": "verd://file/project-doc%3Aproduct%2F%E4%BA%A7%E5%93%81%E6%A6%82%E8%A7%88"
+                  }
+                }
+              ]
             }
           ]
         },
         {
           "type": "heading",
           "attrs": {
-            "level": 2
+            "level": 3
           },
           "content": [
             {
@@ -903,14 +1062,153 @@
           "content": [
             {
               "type": "text",
-              "text": "文档新增折叠、LaTeX、通用附件、PDF 页码引用与 HTTPS 页面嵌入，使用与边界见产品概览和系统架构。待办、数据库与剪藏后置。"
+              "text": "折叠、LaTeX、附件、PDF 和 HTTPS 嵌入的能力与限制见"
+            },
+            {
+              "type": "text",
+              "text": "产品概览",
+              "marks": [
+                {
+                  "type": "link",
+                  "attrs": {
+                    "href": "verd://file/project-doc%3Aproduct%2F%E4%BA%A7%E5%93%81%E6%A6%82%E8%A7%88"
+                  }
+                }
+              ]
             }
           ]
         },
         {
           "type": "heading",
           "attrs": {
+            "level": 3
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "Git 版本管理"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "实时保存、手动版本、恢复、远端同步及宿主差异见"
+            },
+            {
+              "type": "text",
+              "text": "产品概览：Git 版本与恢复",
+              "marks": [
+                {
+                  "type": "link",
+                  "attrs": {
+                    "href": "verd://file/project-doc%3Aproduct%2F%E4%BA%A7%E5%93%81%E6%A6%82%E8%A7%88#git-%E7%89%88%E6%9C%AC%E4%B8%8E%E6%81%A2%E5%A4%8D"
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "文件、普通资源和目录的版本历史操作及恢复冲突见"
+            },
+            {
+              "type": "text",
+              "text": "桌面安装与使用",
+              "marks": [
+                {
+                  "type": "link",
+                  "attrs": {
+                    "href": "verd://file/project-doc%3Aguides%2FSETUP#git-%E7%89%88%E6%9C%AC%E4%B8%8E%E8%BF%9C%E7%AB%AF%E5%90%8C%E6%AD%A5"
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 3,
+            "blockId": "183140fe-8a14-4140-9464-6ab4c995cd00"
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "Web 本地服务"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "Web 与本地 service 的启动、构建、数据隔离和源码入口见"
+            },
+            {
+              "type": "text",
+              "text": "开发指南",
+              "marks": [
+                {
+                  "type": "link",
+                  "attrs": {
+                    "href": "verd://file/project-doc%3Adevelopment%2FREADME#web-%E4%B8%8E%E6%9C%AC%E5%9C%B0-service-%E5%BC%80%E5%8F%91"
+                  }
+                }
+              ]
+            }
+          ],
+          "attrs": {
+            "blockId": "e9a07784-e36a-4b3a-9c62-7540c46fb04c"
+          }
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "浏览器迁移的备份、成功后源数据清理和失败保留边界见"
+            },
+            {
+              "type": "text",
+              "text": "系统架构：Web 本地 Service",
+              "marks": [
+                {
+                  "type": "link",
+                  "attrs": {
+                    "href": "verd://file/project-doc%3Aarchitecture%2FARCHITECTURE#web-%E6%9C%AC%E5%9C%B0-service"
+                  }
+                }
+              ]
+            }
+          ],
+          "attrs": {
+            "blockId": "9f7428cd-6aa8-415c-ab8c-f7bb9ad13bcc"
+          }
+        },
+        {
+          "type": "heading",
+          "attrs": {
             "level": 2
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "内置内容与版本说明"
+            }
+          ]
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 3
           },
           "content": [
             {
@@ -933,7 +1231,7 @@
           "content": [
             {
               "type": "text",
-              "text": "版本阅读：本次应用、SDK、UI、Agent 与内置内容统一定为 2.1.0，包含已标记的破坏性 API 变更；历史 2.0 接入者按迁移章节调整。本次为明确的前期版本例外，后续版本规则保持不变。本地产物不代表 registry 已发布。Agent 规范维护在 packages/product/agent-patterns/agent/，用户推荐库独立维护。"
+              "text": "本次发布按包独立升版：产品应用、UI、Agent 与内置内容为 2.1.1，共享工作区 SDK 与 board-react 为 2.2.0，其余包以 manifest 为准。独立 Agent 通过共享核心访问工作区，生产依赖不再包含产品 app/ui；SDK 新增显式传入插件的只读画布预览。2.1.0 的插件、Actions 等破坏性契约保留为迁移基线，历史 2.0 接入者仍需调整。Agent 默认规范与用户推荐库分别维护；本地产物不代表 registry 已发布。"
             }
           ]
         },
@@ -945,107 +1243,10 @@
               "text": "目录与资源：普通资源按真实路径可见，内部配置、附件、历史和缓存统一位于不参与解析的 .verdscrolls/；领域图均为独立源文件，画布引用共享内容，目录只显示一次。详见系统架构与开发指南。"
             }
           ]
-        },
-        {
-          "type": "heading",
-          "attrs": {
-            "level": 2
-          },
-          "content": [
-            {
-              "type": "text",
-              "text": "Git 版本管理"
-            }
-          ]
-        },
-        {
-          "type": "paragraph",
-          "content": [
-            {
-              "type": "text",
-              "text": "工作区版本支持手动提交当前文件或全部内容、历史预览、文件和整工作区恢复。Desktop 与本地 Web service 支持远端同步，IndexedDB 宿主提供本地 Git 历史；实时保存继续使用，自动恢复点和自动提交关闭。使用与边界见产品概览和系统架构。"
-            }
-          ]
-        },
-        {
-          "type": "paragraph",
-          "content": [
-            {
-              "type": "text",
-              "text": "文件、普通资源和目录菜单提供“版本历史”，使用“创建版本、版本说明、恢复版本”，不暴露底层存储术语。工作区设置 → 版本管理集中提供整个工作区的历史与存储配置。当前 Git 适配器实现中立版本接口，后续可替换。目录包括子目录和空目录，以稳定身份跟随改名移动并恢复到当前位置；旧目录从首次带身份的目录版本起保证连续，更早记录仍保留在工作区和文件历史中。创建计划只读，执行时才写入目录身份；恢复先确认范围，范围外同一身份或占位冲突会阻止恢复。"
-            }
-          ]
-        },
-        {
-          "type": "heading",
-          "attrs": {
-            "level": 2,
-            "blockId": "183140fe-8a14-4140-9464-6ab4c995cd00"
-          },
-          "content": [
-            {
-              "type": "text",
-              "text": "Web 本地服务"
-            }
-          ]
-        },
-        {
-          "type": "paragraph",
-          "attrs": {
-            "blockId": "e9a07784-e36a-4b3a-9c62-7540c46fb04c"
-          },
-          "content": [
-            {
-              "type": "text",
-              "text": "pnpm dev:web 在 http://localhost:7200 同时启动 Web 和本机 service。pnpm build:web 构建完整资源，pnpm start:web 由 Node 托管页面与 API。Web 使用真实磁盘工作区，支持目录选择、Agent CLI、内置内容更新及 Git 远端同步；开发、生产和测试数据相互隔离。"
-            }
-          ]
-        },
-        {
-          "type": "paragraph",
-          "attrs": {
-            "blockId": "9f7428cd-6aa8-415c-ab8c-f7bb9ad13bcc"
-          },
-          "content": [
-            {
-              "type": "text",
-              "text": "原浏览器工作区可通过“设置 → 数据与维护 → 迁移浏览器数据”完整备份后迁入新目录，包括附件、Skills、会话、回收站和 Git 历史。导入和校验成功后清理源 IndexedDB 数据，完整备份保留；导入失败或源数据出现新修改时保留对应数据。检测需使用原访问地址，备份文件导入不清理当前浏览器数据。"
-            }
-          ]
-        },
-        {
-          "type": "heading",
-          "attrs": {
-            "level": 2
-          },
-          "content": [
-            {
-              "type": "text",
-              "text": "开发与发布验收"
-            }
-          ]
-        },
-        {
-          "type": "paragraph",
-          "content": [
-            {
-              "type": "text",
-              "text": "开发完成执行全量 ESLint、Prettier 和相关功能单测/E2E；PR CI 执行完整技术回归。任何版本发布前还须核对 Agent 工程、文档编写推荐库和系统介绍，系统介绍正文每版更新。详细命令和核对流程见开发指南。"
-            }
-          ]
-        },
-        {
-          "type": "paragraph",
-          "content": [
-            {
-              "type": "text",
-              "text": "文档编写推荐库面向用户；真正 Agent 规范使用独立资源来源。推荐正文不产生默认 Agent 提示或约束。"
-            }
-          ]
         }
       ]
     },
-    "plainText": "青编（VerdBoard）文档导航\n从这里开始阅读青编项目。正文按主题分类维护，画布用于图解；所有文件都可以直接编辑。\nEnglish\n从哪里开始\n了解产品：产品概览\n理解实现：系统架构\n参与开发：开发指南\n产品与架构\n产品概览：用户、能力、工作区和交付边界。\n系统架构：文件工作区、会话、画布、文档与宿主的数据流。\n包索引：产品、引擎、React 适配和三个转换器包。\nReact 接入：FrameCanvas、DocumentEditor、控制器与宿主 API。\n开发与维护\n开发指南：安装、构建、测试、提交和 Changesets 发布。\n文档维护指南：原生文件真源、链接、样例和更新约定。\n配置与源码索引：按功能定位具体源码。\n桌面安装与使用：开发和打包运行、目录选择、保存与故障排查。\n使用与规范\nAI 画布数据规范：完整字段、元素、格式约束及 配套真实导入样例。\n体验回归验收：带日期的历史验收记录；不作为当前提交自动通过的证明。\n画布模式：白板、领域图、嵌入、演示与持久化。\n格式转换器：FrameSnapshot 与独立文档的 Markdown/Mermaid 边界。\n排列与组合：对齐、分布、Group、锁定与布局。\nMind 特性、节点宽度规范：树关系、配色、笔记和内容适配。\nMind 引擎概览 / English、Board 变更说明。\n图解入口\n项目导览（画布）：九张专题总览与二十一张机制细节图，按需查看关系、流程与保存边界。\nAgent 编写与工作区\nAgent 工具与范式库 · 工作区使用与手动更新\n快速开始\n要求 Node.js >= 22.12.0、pnpm >= 11.18.0；具体版本与命令以根 package.json 和 pnpm-lock.yaml 为准。\npnpm install\npnpm dev:desktop\n# Web 开发\npnpm dev:web\n# 公开包和 Web（根 build 排除 Desktop）\npnpm build\n# Desktop 前端、主进程与 preload\npnpm build:desktop\n# 正式安装包（macOS 默认 DMG）\npnpm package:desktop\n# 类型检查与单测\npnpm typecheck\npnpm test\n工作区界面：侧栏「所有内容」下的「全部内容」和「图表」页签用于浏览文件。Cmd/Ctrl+P 快速打开文件，「搜索」可查找文件名、路径和正文。底部“设置”管理个人偏好和当前项目，工作区名称打开切换器。\n知识工作区能力\n文档支持斜杠菜单、段落操作、稳定段落链接与只读摘录。首页可从原生模板创建技术方案、ADR、系统设计和需求梳理；内容管理提供属性、版本、冲突与附件，首页支持文件夹和 ZIP 迁入。能力与数据边界见产品概览及系统架构。\n文档与资料阅读\n文档新增折叠、LaTeX、通用附件、PDF 页码引用与 HTTPS 页面嵌入，使用与边界见产品概览和系统架构。待办、数据库与剪藏后置。\n系统内置内容与 AI 接入\n工作区通过 AGENTS.md、.verdscrolls/config.json 与共享 CLI 接入 AI。在 Desktop 工作区切换器中选择「打开系统介绍」。系统介绍和范式库随应用内置，版本与产品一致，更新时可选择备份。使用与维护流程见开发指南和桌面安装与使用。\n版本阅读：本次应用、SDK、UI、Agent 与内置内容统一定为 2.1.0，包含已标记的破坏性 API 变更；历史 2.0 接入者按迁移章节调整。本次为明确的前期版本例外，后续版本规则保持不变。本地产物不代表 registry 已发布。Agent 规范维护在 packages/product/agent-patterns/agent/，用户推荐库独立维护。\n目录与资源：普通资源按真实路径可见，内部配置、附件、历史和缓存统一位于不参与解析的 .verdscrolls/；领域图均为独立源文件，画布引用共享内容，目录只显示一次。详见系统架构与开发指南。\nGit 版本管理\n工作区版本支持手动提交当前文件或全部内容、历史预览、文件和整工作区恢复。Desktop 与本地 Web service 支持远端同步，IndexedDB 宿主提供本地 Git 历史；实时保存继续使用，自动恢复点和自动提交关闭。使用与边界见产品概览和系统架构。\n文件、普通资源和目录菜单提供“版本历史”，使用“创建版本、版本说明、恢复版本”，不暴露底层存储术语。工作区设置 → 版本管理集中提供整个工作区的历史与存储配置。当前 Git 适配器实现中立版本接口，后续可替换。目录包括子目录和空目录，以稳定身份跟随改名移动并恢复到当前位置；旧目录从首次带身份的目录版本起保证连续，更早记录仍保留在工作区和文件历史中。创建计划只读，执行时才写入目录身份；恢复先确认范围，范围外同一身份或占位冲突会阻止恢复。\nWeb 本地服务\npnpm dev:web 在 http://localhost:7200 同时启动 Web 和本机 service。pnpm build:web 构建完整资源，pnpm start:web 由 Node 托管页面与 API。Web 使用真实磁盘工作区，支持目录选择、Agent CLI、内置内容更新及 Git 远端同步；开发、生产和测试数据相互隔离。\n原浏览器工作区可通过“设置 → 数据与维护 → 迁移浏览器数据”完整备份后迁入新目录，包括附件、Skills、会话、回收站和 Git 历史。导入和校验成功后清理源 IndexedDB 数据，完整备份保留；导入失败或源数据出现新修改时保留对应数据。检测需使用原访问地址，备份文件导入不清理当前浏览器数据。\n开发与发布验收\n开发完成执行全量 ESLint、Prettier 和相关功能单测/E2E；PR CI 执行完整技术回归。任何版本发布前还须核对 Agent 工程、文档编写推荐库和系统介绍，系统介绍正文每版更新。详细命令和核对流程见开发指南。\n文档编写推荐库面向用户；真正 Agent 规范使用独立资源来源。推荐正文不产生默认 Agent 提示或约束。",
+    "plainText": "青编（VerdBoard）文档导航\n这是青编系统介绍的主入口。先选择产品、实现或开发路径，遇到具体问题再进入专项手册；项目导览负责图解，不维护另一套正文。\n内容核对：2026-11-13。依据为当前仓库源码、包清单与锁文件；具体机制和源码入口见本篇及配置与源码索引。历史记录保留原日期与适用范围。\n从这里开始阅读青编项目。正文按主题分类维护，画布用于图解；所有文件都可以直接编辑。\nEnglish\n按阅读目标进入\n从哪里开始\n了解产品：产品概览\n理解实现：系统架构\n参与开发：开发指南\n产品与架构\n产品概览：用户、能力、工作区和交付边界。\n系统架构：文件工作区、会话、画布、文档与宿主的数据流。\n包索引：产品、引擎、React 适配和三个转换器包。\nReact 接入：FrameCanvas、DocumentEditor、控制器与宿主 API。\n开发与维护\n开发指南：安装、构建、测试、提交和 Changesets 发布。\n文档维护指南：原生文件真源、链接、样例和更新约定。\n配置与源码索引：按功能定位具体源码。\n桌面安装与使用：开发和打包运行、目录选择、保存与故障排查。\n专项手册与图解\n使用与规范\nAI 画布数据规范：完整字段、元素、格式约束及 配套真实导入样例。\n体验回归验收：带日期的历史验收记录；不作为当前提交自动通过的证明。\n画布模式：白板、领域图、嵌入、演示与持久化。\n格式转换器：FrameSnapshot 与独立文档的 Markdown/Mermaid 边界。\n排列与组合：对齐、分布、Group、锁定与布局。\nMind 特性、节点宽度规范：树关系、配色、笔记和内容适配。\nMind 引擎概览 / English、Board 变更说明。\n图解入口\n项目导览（画布）：九张专题总览与二十一张机制细节图，按需查看关系、流程与保存边界。\n开始开发与验收\n快速开始\n要求 Node.js >= 22.12.0、pnpm >= 11.18.0；具体版本与命令以根 package.json 和 pnpm-lock.yaml 为准。\npnpm install\n# 经用户明确要求，在当前机器预览\npnpm dev:desktop\n# 或预览 Web\npnpm dev:web\n# 验证前检查测试机连接\npnpm test:remote doctor\n工作区界面：侧栏「所有内容」下的「全部内容」和「图表」页签用于浏览文件。Cmd/Ctrl+P 快速打开文件，「搜索」可查找文件名、路径和正文。底部“设置”管理个人偏好和当前项目，工作区名称打开切换器。\n开发与发布验收\n功能开发按仓库根 AGENTS.md 选择相关验证；原生内容整理检查身份、结构、缓存、链接和必要预览，执行工作区专项。PR CI 执行完整技术回归。任何版本发布前还须核对 Agent 工程、文档编写推荐库和系统介绍，系统介绍正文每版更新。详细命令和核对流程见开发指南。\n日常验收按仓库根 AGENTS.md 选择内容专项或功能定向，在另一台 Mac 的固定源码快照上执行。配置、断线恢复和报告口径见开发指南的“Tailscale 远程开发验收”。\n防打扰：开发机执行 check:dev、check:ci 默认转入远程验收；直接 Desktop E2E 在未授权的执行上下文中不会启动 Electron。显式本机调试方式见开发指南。\nAgent 与独立 SDK\nAgent 编写与工作区\nAgent 工具与范式库 · 工作区使用与手动更新\n共享 SDK 与独立 Agent\n包分层现包含共享 workspace 核心和独立 Agent：第三方通过 Node API 或 verd CLI 使用 Agent 编写文档与画布，无需安装产品 app/ui。工作区会话与文件模型由 @sue/verd-board-workspace 统一提供，产品保留原公开入口。具体包职责与源码位置见包索引和配置与源码索引。\n文档编写推荐库面向用户；真正 Agent 规范使用独立资源来源。推荐正文不产生默认 Agent 提示或约束。\n按能力查阅\n知识工作区能力\n斜杠插入、段落操作、只读摘录、模板和资料迁入见产品概览\n文档与资料阅读\n折叠、LaTeX、附件、PDF 和 HTTPS 嵌入的能力与限制见产品概览\nGit 版本管理\n实时保存、手动版本、恢复、远端同步及宿主差异见产品概览：Git 版本与恢复\n文件、普通资源和目录的版本历史操作及恢复冲突见桌面安装与使用\nWeb 本地服务\nWeb 与本地 service 的启动、构建、数据隔离和源码入口见开发指南\n浏览器迁移的备份、成功后源数据清理和失败保留边界见系统架构：Web 本地 Service\n内置内容与版本说明\n系统内置内容与 AI 接入\n工作区通过 AGENTS.md、.verdscrolls/config.json 与共享 CLI 接入 AI。在 Desktop 工作区切换器中选择「打开系统介绍」。系统介绍和范式库随应用内置，版本与产品一致，更新时可选择备份。使用与维护流程见开发指南和桌面安装与使用。\n本次发布按包独立升版：产品应用、UI、Agent 与内置内容为 2.1.1，共享工作区 SDK 与 board-react 为 2.2.0，其余包以 manifest 为准。独立 Agent 通过共享核心访问工作区，生产依赖不再包含产品 app/ui；SDK 新增显式传入插件的只读画布预览。2.1.0 的插件、Actions 等破坏性契约保留为迁移基线，历史 2.0 接入者仍需调整。Agent 默认规范与用户推荐库分别维护；本地产物不代表 registry 已发布。\n目录与资源：普通资源按真实路径可见，内部配置、附件、历史和缓存统一位于不参与解析的 .verdscrolls/；领域图均为独立源文件，画布引用共享内容，目录只显示一次。详见系统架构与开发指南。",
     "align": "left"
   }
 }

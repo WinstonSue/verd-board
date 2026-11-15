@@ -18,3 +18,6 @@ apps/service/build/
 **/playwright-report/
 .turbo/
 .quality/
+# Workspace machine state, deployed tools and content-addressed bytes.
+**/.verdscrolls/**
+!**/.verdscrolls/config.json

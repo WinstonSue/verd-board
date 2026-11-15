@@ -1,0 +1,177 @@
+{
+  "format": "verd-document",
+  "version": 1,
+  "id": "pattern:requirements",
+  "title": "需求梳理",
+  "text": {
+    "schemaVersion": 1,
+    "id": "pattern:requirements",
+    "kind": "block",
+    "align": "left",
+    "content": {
+      "type": "doc",
+      "content": [
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 1
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "需求梳理"
+            }
+          ]
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 2
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "结论与阅读对象"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "先写本篇结论、读者和要回答的问题；区分当前事实与建议。"
+            }
+          ]
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 2
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "用户与问题"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "明确谁在什么情境下遇到什么问题。"
+            }
+          ]
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 2
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "使用流程"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "描述触发条件、关键步骤、成功和失败分支。"
+            }
+          ]
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 2
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "需求清单"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "按优先级列出行为与约束，避免把方案假设当作需求。"
+            }
+          ]
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 2
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "验收场景"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "给出输入、操作、预期结果与边界情况。"
+            }
+          ]
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 2
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "开放问题"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "记录尚未确认的假设、负责人及后续决策链接。"
+            }
+          ]
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 2
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "依据与未确定事项"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "填写可定位的来源和更新时间，区分实测、推断与未知；记录仍需验证的假设或决定，无相关事项时删除本节。"
+            }
+          ]
+        }
+      ]
+    },
+    "plainText": "需求梳理\n结论与阅读对象\n先写本篇结论、读者和要回答的问题；区分当前事实与建议。\n用户与问题\n明确谁在什么情境下遇到什么问题。\n使用流程\n描述触发条件、关键步骤、成功和失败分支。\n需求清单\n按优先级列出行为与约束，避免把方案假设当作需求。\n验收场景\n给出输入、操作、预期结果与边界情况。\n开放问题\n记录尚未确认的假设、负责人及后续决策链接。\n依据与未确定事项\n填写可定位的来源和更新时间，区分实测、推断与未知；记录仍需验证的假设或决定，无相关事项时删除本节。"
+  }
+}

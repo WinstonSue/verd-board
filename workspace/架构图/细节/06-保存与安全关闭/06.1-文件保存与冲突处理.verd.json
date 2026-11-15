@@ -570,12 +570,12 @@
         }
       ],
       "content": {
-        "label": "Desktop：暂存文件与 prepared 日志\nWeb：准备 IndexedDB 原子事务",
+        "label": "文件宿主：暂存与 prepared 日志\n独立 IndexedDB 宿主：原子事务",
         "text": {
           "schemaVersion": 1,
           "id": "demo:save/write/text",
           "kind": "inline",
-          "plainText": "Desktop：暂存文件与 prepared 日志\nWeb：准备 IndexedDB 原子事务",
+          "plainText": "文件宿主：暂存与 prepared 日志\n独立 IndexedDB 宿主：原子事务",
           "content": {
             "type": "doc",
             "content": [
@@ -584,7 +584,7 @@
                 "content": [
                   {
                     "type": "text",
-                    "text": "Desktop：暂存文件与 prepared 日志",
+                    "text": "文件宿主：暂存与 prepared 日志",
                     "marks": [
                       {
                         "type": "textStyle",
@@ -602,7 +602,7 @@
                 "content": [
                   {
                     "type": "text",
-                    "text": "Web：准备 IndexedDB 原子事务",
+                    "text": "独立 IndexedDB 宿主：原子事务",
                     "marks": [
                       {
                         "type": "textStyle",
@@ -623,7 +623,8 @@
         "fill": "#f0fdfa",
         "strokeColor": "#94a3b8",
         "strokeWidth": 1.5
-      }
+      },
+      "name": "Desktop：暂存文件与 prepared 日志 Web：准备 IndexedDB 原子事务"
     },
     "demo:save/verify": {
       "id": "demo:save/verify",
@@ -741,12 +742,12 @@
         }
       ],
       "content": {
-        "label": "Desktop：applying → applied\nWeb：一次原子提交全部文件",
+        "label": "文件宿主：applying → applied\n独立 IndexedDB：原子提交",
         "text": {
           "schemaVersion": 1,
           "id": "demo:save/manifest/text",
           "kind": "inline",
-          "plainText": "Desktop：applying → applied\nWeb：一次原子提交全部文件",
+          "plainText": "文件宿主：applying → applied\n独立 IndexedDB：原子提交",
           "content": {
             "type": "doc",
             "content": [
@@ -755,7 +756,7 @@
                 "content": [
                   {
                     "type": "text",
-                    "text": "Desktop：applying → applied",
+                    "text": "文件宿主：applying → applied",
                     "marks": [
                       {
                         "type": "textStyle",
@@ -773,7 +774,7 @@
                 "content": [
                   {
                     "type": "text",
-                    "text": "Web：一次原子提交全部文件",
+                    "text": "独立 IndexedDB：原子提交",
                     "marks": [
                       {
                         "type": "textStyle",
@@ -794,7 +795,8 @@
         "fill": "#f0fdfa",
         "strokeColor": "#94a3b8",
         "strokeWidth": 1.5
-      }
+      },
+      "name": "Desktop：applying → applied Web：一次原子提交全部文件"
     },
     "demo:save/saved": {
       "id": "demo:save/saved",
@@ -1100,12 +1102,12 @@
         }
       ],
       "content": {
-        "label": "提交拒绝或 I/O 失败\n保留脏内容，flush 返回 false",
+        "label": "保存失败：保留脏内容与请求\n按回执区分拒绝和结果未知",
         "text": {
           "schemaVersion": 1,
           "id": "demo:save/fail/text",
           "kind": "inline",
-          "plainText": "提交拒绝或 I/O 失败\n保留脏内容，flush 返回 false",
+          "plainText": "保存失败：保留脏内容与请求\n按回执区分拒绝和结果未知",
           "content": {
             "type": "doc",
             "content": [
@@ -1114,7 +1116,7 @@
                 "content": [
                   {
                     "type": "text",
-                    "text": "提交拒绝或 I/O 失败",
+                    "text": "保存失败：保留脏内容与请求",
                     "marks": [
                       {
                         "type": "textStyle",
@@ -1132,7 +1134,7 @@
                 "content": [
                   {
                     "type": "text",
-                    "text": "保留脏内容，flush 返回 false",
+                    "text": "按回执区分拒绝和结果未知",
                     "marks": [
                       {
                         "type": "textStyle",
@@ -1153,7 +1155,8 @@
         "fill": "#fff1f2",
         "strokeColor": "#94a3b8",
         "strokeWidth": 1.5
-      }
+      },
+      "name": "提交拒绝或 I/O 失败 保留脏内容，flush 返回 false"
     },
     "demo:save/retry": {
       "id": "demo:save/retry",
@@ -1194,12 +1197,12 @@
         }
       ],
       "content": {
-        "label": "用户重试 flush",
+        "label": "用户明确重试\n未知结果沿用原 transactionId",
         "text": {
           "schemaVersion": 1,
           "id": "demo:save/retry/text",
           "kind": "inline",
-          "plainText": "用户重试 flush",
+          "plainText": "用户明确重试\n未知结果沿用原 transactionId",
           "content": {
             "type": "doc",
             "content": [
@@ -1208,7 +1211,25 @@
                 "content": [
                   {
                     "type": "text",
-                    "text": "用户重试 flush",
+                    "text": "用户明确重试",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "20px",
+                          "color": "#1e293b"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "未知结果沿用原 transactionId",
                     "marks": [
                       {
                         "type": "textStyle",
@@ -1229,7 +1250,8 @@
         "fill": "#f0fdfa",
         "strokeColor": "#94a3b8",
         "strokeWidth": 1.5
-      }
+      },
+      "name": "用户重试 flush"
     },
     "demo:save/gc": {
       "id": "demo:save/gc",
@@ -1421,7 +1443,7 @@
       },
       "target": {
         "cellId": "demo:save/write",
-        "portId": "right"
+        "portId": "top"
       },
       "route": {
         "mode": "orthogonal"
@@ -1509,19 +1531,19 @@
       "cellType": "edge",
       "source": {
         "cellId": "demo:save/verify",
-        "portId": "left"
+        "portId": "bottom"
       },
       "target": {
-        "cellId": "demo:save/fail",
-        "portId": "right"
+        "cellId": "demo:save/gc",
+        "portId": "left"
       },
       "route": {
         "mode": "orthogonal"
       },
       "labels": [
         {
-          "text": "否",
-          "position": 0.5
+          "text": "否：版本冲突",
+          "position": 0.2
         }
       ],
       "appearance": {
@@ -1599,7 +1621,13 @@
       "appearance": {
         "strokeColor": "#64748b",
         "strokeWidth": 1.5
-      }
+      },
+      "labels": [
+        {
+          "text": "明确拒绝后，用户重试",
+          "position": 0.5
+        }
+      ]
     },
     "demo:save/edge/12": {
       "id": "demo:save/edge/12",
@@ -1724,8 +1752,8 @@
       "kind": "workflow-edge",
       "cellType": "edge",
       "source": {
-        "cellId": "demo:save/saved",
-        "portId": "bottom"
+        "cellId": "demo:save/fail",
+        "portId": "right"
       },
       "target": {
         "cellId": "demo:save/gc",
@@ -1736,7 +1764,7 @@
       },
       "labels": [
         {
-          "text": "后续冲突",
+          "text": "冲突回执",
           "position": 0.5
         }
       ],
@@ -1860,7 +1888,7 @@
       },
       "labels": [
         {
-          "text": "未知结果",
+          "text": "结果未知",
           "position": 0.5
         }
       ]
@@ -1886,7 +1914,7 @@
       },
       "labels": [
         {
-          "text": "同请求重放",
+          "text": "用户重试原请求",
           "position": 0.5
         }
       ]
@@ -2011,13 +2039,13 @@
                 "content": [
                   {
                     "type": "text",
-                    "text": "源码入口：packages/product/app/src/session/workspace-session.ts；packages/product/app/src/host/workspace-host.ts；packages/product/app/src/host/desktop-workspace-host.ts。"
+                    "text": "源码入口：packages/workspace/core/src/session/workspace-session.ts；packages/workspace/core/src/host/workspace-host.ts；packages/product/app/src/host/desktop-workspace-host.ts。"
                   }
                 ]
               }
             ]
           },
-          "plainText": "相关文档：桌面安装与使用\n读图：expectedVersion 防止覆盖外部变更；transactionId 确保未知结果可安全重放。\n返回专题总览\n相关细节：关闭与工作区切换屏障\n系统架构 · 持久化和迁移\n布局、路由与保存边界\n源码入口：packages/product/app/src/session/workspace-session.ts；packages/product/app/src/host/workspace-host.ts；packages/product/app/src/host/desktop-workspace-host.ts。"
+          "plainText": "相关文档：桌面安装与使用\n读图：expectedVersion 防止覆盖外部变更；transactionId 确保未知结果可安全重放。\n返回专题总览\n相关细节：关闭与工作区切换屏障\n系统架构 · 持久化和迁移\n布局、路由与保存边界\n源码入口：packages/workspace/core/src/session/workspace-session.ts；packages/workspace/core/src/host/workspace-host.ts；packages/product/app/src/host/desktop-workspace-host.ts。"
         }
       },
       "appearance": {
@@ -2025,8 +2053,5 @@
         "strokeColor": "none"
       }
     }
-  },
-  "organization": {
-    "kind": "standalone"
   }
 }

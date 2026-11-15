@@ -1,11 +1,14 @@
-import { withGitVersioning } from '../git/version-provider';
-import { isWorkspaceContentPath } from '../workspace-skills';
-import { type GitWorkspaceData } from '../git/workspace-git-engine';
+import { withGitVersioning } from '@sue/verd-board-workspace';
+import { isWorkspaceContentPath } from '@sue/verd-board-workspace';
+import { type GitWorkspaceData } from '@sue/verd-board-workspace';
 import { createBrowserGitEngine } from '../git/browser-git-engine';
-import { isFolderIdentityPath, readFolderIdentity } from './folder-identity';
-import { isFrameFileV2 } from '../frames/frame-files';
-import { isDocumentFileV1 } from '../documents/document-files';
-import { digestBytes } from './memory-workspace-host';
+import {
+  isFolderIdentityPath,
+  readFolderIdentity,
+} from '@sue/verd-board-workspace';
+import { isFrameFileV2 } from '@sue/verd-board-workspace';
+import { isDocumentFileV1 } from '@sue/verd-board-workspace';
+import { digestBytes } from '@sue/verd-board-workspace';
 import {
   baseName,
   isProjectInternalPath,
@@ -36,7 +39,7 @@ import {
   type WorkspaceHost,
   type WorkspaceSessionState,
   type WorkspaceHostSnapshot,
-} from './workspace-host';
+} from '@sue/verd-board-workspace';
 
 const DB_NAME = 'verdboard-host';
 const DB_VERSION = 2;

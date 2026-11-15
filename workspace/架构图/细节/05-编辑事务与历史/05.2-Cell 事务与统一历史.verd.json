@@ -623,11 +623,11 @@
       "cellType": "edge",
       "source": {
         "cellId": "demo:edit/valid",
-        "portId": "top"
+        "portId": "right"
       },
       "target": {
         "cellId": "demo:edit/commit",
-        "portId": "bottom"
+        "portId": "left"
       },
       "route": {
         "mode": "orthogonal"
@@ -699,7 +699,7 @@
       },
       "target": {
         "cellId": "demo:edit/change",
-        "portId": "right"
+        "portId": "left"
       },
       "route": {
         "mode": "orthogonal"
@@ -1105,23 +1105,20 @@
                 "content": [
                   {
                     "type": "text",
-                    "text": "源码入口：packages/engine/core/src/cell/commands.ts；packages/engine/core/src/cell/runtime.ts；packages/product/app/src/session/workspace-session.ts。"
+                    "text": "源码入口：packages/engine/core/src/cell/commands.ts；packages/engine/core/src/cell/runtime.ts；packages/workspace/core/src/session/workspace-session.ts。"
                   }
                 ]
               }
             ]
           },
-          "plainText": "相关文档：React接入\n读图：校验后整体提交；布局与图文历史分开说明。\n返回专题总览\n相关细节：宿主意图与外部历史\n相关细节：Actions 与编辑提交屏障\n系统架构 · 模型和事务\n布局、路由与保存边界\n源码入口：packages/engine/core/src/cell/commands.ts；packages/engine/core/src/cell/runtime.ts；packages/product/app/src/session/workspace-session.ts。"
+          "plainText": "相关文档：React接入\n读图：校验后整体提交；布局与图文历史分开说明。\n返回专题总览\n相关细节：宿主意图与外部历史\n相关细节：Actions 与编辑提交屏障\n系统架构 · 模型和事务\n布局、路由与保存边界\n源码入口：packages/engine/core/src/cell/commands.ts；packages/engine/core/src/cell/runtime.ts；packages/workspace/core/src/session/workspace-session.ts。"
         }
       },
       "appearance": {
         "fill": "none",
         "strokeColor": "none"
       },
-      "name": "相关文档：React接入 读图：校验通过才整体提交；布局、位置与图文历史的保存边界分开说明。 返回专题总览 相关细节：宿主意图与外部历史 相关细节：Actions 与编辑提交屏障 系统架构 · 模型和事务 布局、路由与保存边界 源码入口：packages/engine/core/src/cell/commands.ts；packages/engine/core/src/cell/runtime.ts；packages/product/app/src/session/workspace-session.ts。"
+      "name": "相关文档：React接入 读图：校验通过才整体提交；布局、位置与图文历史的保存边界分开说明。 返回专题总览 相关细节：宿主意图与外部历史 相关细节：Actions 与编辑提交屏障 系统架构 · 模型和事务 布局、路由与保存边界 源码入口：packages/engine/core/src/cell/commands.ts；packages/engine/core/src/cell/runtime.ts；packages/workspace/core/src/session/workspace-session.ts。"
     }
-  },
-  "organization": {
-    "kind": "standalone"
   }
 }

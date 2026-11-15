@@ -3,7 +3,7 @@ import {
   searchRecords,
   type SearchRecord,
 } from './search';
-import type { WorkspaceFile } from '../documents/document-files';
+import type { WorkspaceFile } from '@sue/verd-board-workspace';
 const records = new Map<string, SearchRecord>();
 let sequence = 0;
 let updates = Promise.resolve();

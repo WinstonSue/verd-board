@@ -1,12 +1,12 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { actionLabel } from '@sue/board-common';
-import { createDocumentFile } from '../documents/document-files';
-import { createMemoryWorkspaceHost } from '../host/memory-workspace-host';
-import { deleteWorkspaceTabGroup } from './workspace-navigation';
+import { createDocumentFile } from '@sue/verd-board-workspace';
+import { createMemoryWorkspaceHost } from '@sue/verd-board-workspace';
+import { deleteWorkspaceTabGroup } from '@sue/verd-board-workspace';
 import {
   openWorkspaceSession,
   type WorkspaceSession,
-} from './workspace-session';
+} from '@sue/verd-board-workspace';
 import { createWorkspaceActionRegistry } from './workspace-actions';
 import {
   createWorkspaceSurfaceActions,

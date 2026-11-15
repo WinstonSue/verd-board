@@ -408,7 +408,7 @@
     },
     "demo:edit/mode": {
       "id": "demo:edit/mode",
-      "kind": "workflow-decision",
+      "kind": "workflow-task",
       "cellType": "node",
       "geometry": {
         "x": 1350,
@@ -416,7 +416,7 @@
         "width": 300,
         "height": 132,
         "derived": false,
-        "outline": "diamond"
+        "outline": "roundRectangle"
       },
       "ports": [
         {
@@ -445,12 +445,12 @@
         }
       ],
       "content": {
-        "label": "接入模式？",
+        "label": "确定接入模式",
         "text": {
           "schemaVersion": 1,
           "id": "demo:edit/mode/text",
           "kind": "inline",
-          "plainText": "接入模式？",
+          "plainText": "确定接入模式",
           "content": {
             "type": "doc",
             "content": [
@@ -459,7 +459,7 @@
                 "content": [
                   {
                     "type": "text",
-                    "text": "接入模式？",
+                    "text": "确定接入模式",
                     "marks": [
                       {
                         "type": "textStyle",
@@ -477,10 +477,11 @@
         }
       },
       "appearance": {
-        "fill": "#fffbeb",
-        "strokeColor": "#d97706",
+        "fill": "#f0fdfa",
+        "strokeColor": "#94a3b8",
         "strokeWidth": 1.5
-      }
+      },
+      "name": "接入模式？"
     },
     "demo:edit/document": {
       "id": "demo:edit/document",
@@ -959,8 +960,5 @@
         "strokeColor": "none"
       }
     }
-  },
-  "organization": {
-    "kind": "standalone"
   }
 }

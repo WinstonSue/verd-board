@@ -68,7 +68,10 @@ export default defineConfig(({ command, mode }) => {
         {
           find: /^(?:node:)?buffer$/,
           replacement: createRequire(
-            path.resolve(__dirname, '../../packages/product/app/package.json'),
+            path.resolve(
+              __dirname,
+              '../../packages/workspace/core/package.json',
+            ),
           ).resolve('buffer/'),
         },
       ],

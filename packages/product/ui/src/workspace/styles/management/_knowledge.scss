@@ -1,0 +1,177 @@
+@use '../../../styles/surface' as *;
+
+// Modal cleanup restores focus to its opener. Pointer dismissal should not
+// inherit the input's focus ring; subsequent keyboard focus still has one.
+.workspace-content-tools-trigger[data-pointer-focus='true']:focus {
+  outline: none;
+  box-shadow: none;
+}
+
+.workspace-knowledge-dialog {
+  @include surface;
+  width: min(1000px, calc(100vw - 32px));
+  max-height: 88dvh;
+  padding: 0;
+  border: 1px solid var(--vm-border-strong);
+  border-radius: var(--workspace-control-radius, 8px);
+  background: var(--vm-background);
+  color: var(--vm-foreground);
+
+  small,
+  time {
+    display: block;
+    color: var(--vm-foreground-secondary);
+    overflow-wrap: anywhere;
+  }
+
+  h3 {
+    margin: 0 0 8px;
+    overflow-wrap: anywhere;
+  }
+}
+
+.workspace-content-dialog {
+  width: min(760px, calc(100vw - 32px));
+
+  .settings-draft-field :is(input, textarea) {
+    width: 100%;
+    min-height: var(--workspace-control-height, 34px);
+    box-sizing: border-box;
+    border: 1px solid var(--vm-border-strong);
+    border-radius: var(--workspace-control-radius, 8px);
+    background: var(--vm-background);
+    color: inherit;
+    padding: 6px 10px;
+  }
+
+  fieldset {
+    border: 1px solid var(--vm-border);
+    border-radius: var(--workspace-control-radius, 8px);
+    margin: 12px 0;
+    padding: 12px;
+  }
+}
+
+.workspace-knowledge-columns {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr);
+  gap: 20px;
+
+  > section {
+    max-height: 66dvh;
+    overflow: auto;
+    min-width: 0;
+    padding: 3px;
+  }
+}
+
+.workspace-knowledge-list {
+  > section {
+    margin-top: 18px;
+  }
+}
+
+.workspace-knowledge-dialog .workspace-knowledge-result,
+.workspace-knowledge-dialog .workspace-knowledge-relation > button:first-child {
+  min-width: 0;
+  height: auto;
+  min-height: var(--workspace-control-height, 34px);
+  padding: 8px 10px;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 3px;
+  text-align: start;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.workspace-knowledge-result {
+  width: 100%;
+  margin-top: 6px;
+}
+
+.workspace-knowledge-relation {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 8px;
+  margin-bottom: 8px;
+
+  small {
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+}
+
+.workspace-knowledge-preview {
+  border-inline-start: 1px solid var(--vm-border);
+  padding-inline-start: 16px !important;
+}
+
+.workspace-knowledge-actions,
+.workspace-revision-toolbar,
+.workspace-revision-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--workspace-gap, 8px);
+  margin-bottom: 12px;
+}
+
+.workspace-revision-toolbar > input {
+  flex: 1 1 160px;
+}
+
+.workspace-revision-list {
+  max-height: 42dvh;
+  overflow: auto;
+  border-block: 1px solid var(--vm-border);
+  margin-bottom: 12px;
+}
+
+.workspace-revision-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 4px;
+  border-bottom: 1px solid var(--vm-border);
+}
+
+.workspace-revision-title {
+  overflow-wrap: anywhere;
+}
+
+.workspace-revision-actions {
+  margin: 0;
+}
+
+@media (max-width: 640px) {
+  .workspace-knowledge-columns,
+  .workspace-revision-row {
+    grid-template-columns: 1fr;
+  }
+
+  .workspace-knowledge-columns > section {
+    max-height: 40dvh;
+  }
+
+  .workspace-knowledge-preview {
+    border-inline-start: 0;
+    border-block-start: 1px solid var(--vm-border);
+    padding-inline-start: 3px !important;
+  }
+}
+
+.workspace-knowledge-navigation {
+  min-width: 0;
+}
+
+.workspace-excerpt {
+  border-left: 3px solid var(--board-border);
+  padding: 12px;
+  margin: 12px 0;
+  background: var(--board-surface);
+}

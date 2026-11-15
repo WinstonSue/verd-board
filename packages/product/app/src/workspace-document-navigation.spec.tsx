@@ -7,11 +7,11 @@ import { WorkspaceApp } from './workspace-app';
 import {
   createDocumentFile,
   type DocumentFileV1,
-} from './documents/document-files';
+} from '@sue/verd-board-workspace';
 import { createWorkspaceLink, parseWorkspaceLink } from '@sue/board-common';
-import { createFrameFile } from './frames/frame-files';
-import { createMemoryWorkspaceHost } from './host/memory-workspace-host';
-import { openWorkspaceSession } from './session/workspace-session';
+import { createFrameFile } from '@sue/verd-board-workspace';
+import { createMemoryWorkspaceHost } from '@sue/verd-board-workspace';
+import { openWorkspaceSession } from '@sue/verd-board-workspace';
 const createDocumentLink = (fileId: string, slug?: string) =>
   createWorkspaceLink(
     slug ? { kind: 'heading', fileId, slug } : { kind: 'file', fileId },

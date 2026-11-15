@@ -15,7 +15,7 @@ import {
   type NodeOutline,
 } from '@sue/board-core';
 import { workflowCellPorts } from '@sue/board-workflow';
-import { createWorkspaceCellRegistry } from '../frames/plugins';
+import { createWorkspaceCellRegistry } from '@sue/verd-board-workspace';
 import {
   isWorkspaceManifest,
   loadCellWorkspace,

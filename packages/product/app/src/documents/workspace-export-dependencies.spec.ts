@@ -4,17 +4,17 @@ import {
   createFrameCell,
   createFrameReferenceCell,
 } from '@sue/board-core';
-import { createFrameFile } from '../frames/frame-files';
+import { createFrameFile } from '@sue/verd-board-workspace';
 import {
   createDocumentFile,
   workspaceFileId,
   type WorkspaceFile,
-} from './document-files';
+} from '@sue/verd-board-workspace';
 import {
   buildWorkspaceReferenceGraph,
   workspaceDocumentDependents,
   workspaceFileClosure,
-} from './workspace-references';
+} from '@sue/verd-board-workspace';
 
 describe('workspace export document dependencies', () => {
   it('matches actual export closures through references and cycles while ignoring legacy ownership and missing targets', () => {

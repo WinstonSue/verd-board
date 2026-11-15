@@ -145,6 +145,17 @@ import { LineText } from '@sue/board-react-text';
 import { createVerdFramePluginSet, VerdFrame, MyPage, WorkspaceSettings, FileTree, ChartLibrary, type VerdFrameProps, type MyPageProps, type WorkspaceSettingsProps, type FileTreeProps, type ChartLibraryProps } from '@sue/verd-board-ui';
 import '@sue/verd-board-ui/style.css';
 import { WorkspaceApp, type StorageAdapter } from '@sue/verd-board-app';
+import { openWorkspaceSession as productSession, createDocumentFile as productDocument } from '@sue/verd-board-app';
+import { openWorkspaceSession as headlessSession, createDocumentFile as headlessDocument } from '@sue/verd-board-app/headless';
+import { openWorkspaceSession as sharedSession, createDocumentFile as sharedDocument } from '@sue/verd-board-workspace';
+import type { GitFs } from '@sue/verd-board-workspace';
+type AssertGitFs<T extends true> = T;
+// Preserve the existing untyped callback/promise adapter contract on TS 5.6.
+type LegacyGitFsCallbacks = { [K in 'readFile' | 'writeFile' | 'unlink' | 'readdir' | 'mkdir' | 'rmdir' | 'stat' | 'lstat']: Function };
+export type CallbackGitFsCompatibility = AssertGitFs<LegacyGitFsCallbacks extends GitFs ? true : false>;
+export type PromiseGitFsCompatibility = AssertGitFs<{ promises: LegacyGitFsCallbacks } extends GitFs ? true : false>;
+
+if (productSession !== headlessSession || productSession !== sharedSession || productDocument !== headlessDocument || productDocument !== sharedDocument) throw new Error('Workspace compatibility exports diverged');
 import { parseMarkdownToFrameSnapshot } from '@sue/board-markdown-to-board';
 import { parseMermaidToFrameSnapshot } from '@sue/board-mermaid-to-board';
 import { FrameCanvas, frameSnapshotToImage, type FrameCanvasController, type FrameImageOptions, type FrameCanvasProps } from '@sue/board-react';

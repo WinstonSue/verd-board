@@ -1,5 +1,7 @@
 # @sue/verd-board-app
 
+Shared file models, `WorkspaceHost` contracts, `createMemoryWorkspaceHost`, `WorkspaceSession`, validation and common Git implementations live in `@sue/verd-board-workspace`. This package retains browser/service hosts, legacy storage migration and application composition. Both its root entry and `/headless` continue re-exporting the shared APIs for existing consumers; new headless integrations can depend directly on the workspace SDK without installing product app/ui.
+
 Next-major source navigation also preserves an embedded document editing view through optional canvas adapter hooks. The workspace preview cache keeps canonical document identity, content revision, selection and scroll in opaque JSON; it waits for editor-ready before restoration, checks the revision before restoring a caret, and cancels on abort, source deletion or cache release. Returning through a different occurrence resolves the stable cell again. View restoration changes no file content or history.
 
 ## 2.0.0 接入与变更

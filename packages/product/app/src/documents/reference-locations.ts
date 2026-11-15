@@ -1,6 +1,6 @@
 import type { BoardTextNode } from '@sue/board-common';
 import { isDocumentCell, isFrameReferenceCell } from '@sue/board-core';
-import { workspaceFileId, type WorkspaceFile } from './document-files';
+import { workspaceFileId, type WorkspaceFile } from '@sue/verd-board-workspace';
 
 /** Runtime addresses of direct embeds. Never written into files or verd:// links. */
 export type ReferenceLocation = {

@@ -18,13 +18,31 @@ export function useDocumentBubble(
     ? 'bottom-start'
     : 'top',
 ) {
-  const [host] = useState(() => {
+  const [content] = useState(() => {
     const element = document.createElement('div');
-    element.className = 'document-block-popover-host';
+    element.className = 'document-block-popover-content';
     return element;
   });
   useEffect(() => {
     if (!visible || editor.isDestroyed) return;
+    // TipTap shows the element before its asynchronous position calculation.
+    // A fresh shell also isolates late calculations from an old plugin.
+    const host = document.createElement('div');
+    host.className = 'document-block-popover-host';
+    Object.assign(host.style, {
+      position: 'fixed',
+      left: '0px',
+      top: '0px',
+      width: 'max-content',
+    });
+    host.append(content);
+    let disposed = false;
+    const resetPosition = () => {
+      delete host.dataset['positioned'];
+      host.inert = true;
+      host.setAttribute('aria-hidden', 'true');
+    };
+    resetPosition();
     editor.registerPlugin(
       BubbleMenuPlugin({
         editor,
@@ -44,7 +62,20 @@ export function useDocumentBubble(
           flip: true,
           shift: { padding: 8 },
           hide: { strategy: 'referenceHidden' },
-          onUpdate: () => onPositioned?.(host),
+          onShow: () => {
+            resetPosition();
+            // TipTap's deferred focus handler may outlive the plugin view.
+            if (disposed) host.remove();
+          },
+          onHide: resetPosition,
+          onDestroy: resetPosition,
+          onUpdate: () => {
+            if (disposed || !host.isConnected) return;
+            host.dataset['positioned'] = '';
+            host.inert = false;
+            host.removeAttribute('aria-hidden');
+            onPositioned?.(host);
+          },
         },
       }),
     );
@@ -63,12 +94,14 @@ export function useDocumentBubble(
     resize?.observe(host);
     window.addEventListener('scroll', reposition, true);
     return () => {
+      disposed = true;
+      resetPosition();
       window.removeEventListener('scroll', reposition, true);
       resize?.disconnect();
       cancelAnimationFrame(frame);
       if (!editor.isDestroyed) editor.unregisterPlugin(key);
       host.remove();
     };
-  }, [anchor, editor, host, key, onPositioned, placement, visible]);
-  return host;
+  }, [anchor, content, editor, key, onPositioned, placement, visible]);
+  return content;
 }

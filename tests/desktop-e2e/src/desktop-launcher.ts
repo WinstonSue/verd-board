@@ -45,6 +45,16 @@ let traceSequence = 0;
 /** Vite owns the compiler; Playwright owns only the Electron children it launches. */
 export const electron = {
   async launch(options: DesktopLaunchOptions): Promise<ElectronApplication> {
+    if (
+      !['remote', 'ci', 'local', 'release'].includes(
+        process.env['VERD_TEST_EXECUTION'] ?? '',
+      ) &&
+      process.env['GITHUB_ACTIONS'] !== 'true'
+    ) {
+      throw new Error(
+        'Desktop E2E is disabled on the development computer. Use pnpm test:remote or pnpm check:dev. Only explicit user-requested local debugging may set VERD_TEST_EXECUTION=local.',
+      );
+    }
     if (launching || active) {
       throw new Error(
         'Close the previous test Electron instance before launching another.',

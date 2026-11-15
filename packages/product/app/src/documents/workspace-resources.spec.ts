@@ -3,24 +3,24 @@ import {
   workspaceActionCommandResult,
 } from '../session/workspace-actions';
 import { afterEach, describe, expect, it } from 'vitest';
-import { createMemoryWorkspaceHost } from '../host/memory-workspace-host';
+import { createMemoryWorkspaceHost } from '@sue/verd-board-workspace';
 import {
   openWorkspaceSession,
   type WorkspaceSession,
-} from '../session/workspace-session';
-import { createDocumentFile } from './document-files';
+} from '@sue/verd-board-workspace';
+import { createDocumentFile } from '@sue/verd-board-workspace';
 import {
   readRevisions,
   readRevision,
   restoreRevision,
   inlineFileAssets,
   type Revision,
-} from './workspace-resources';
+} from '@sue/verd-board-workspace';
 import {
   workspaceFileId,
   workspaceFileTitle,
   type WorkspaceFile,
-} from './document-files';
+} from '@sue/verd-board-workspace';
 /** Seed a pre-Git archive; production never creates legacy snapshots anymore. */
 async function seedLegacyRevision(
   session: WorkspaceSession,

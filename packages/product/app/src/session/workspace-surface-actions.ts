@@ -1,14 +1,14 @@
-import { isWorkspaceContentPath } from '../workspace-skills';
-import { readOrganization } from '../management/organization';
-import type { WorkspaceHostCapabilities } from '../host/workspace-host';
+import { isWorkspaceContentPath } from '@sue/verd-board-workspace';
+import { readOrganization } from '@sue/verd-board-workspace';
+import type { WorkspaceHostCapabilities } from '@sue/verd-board-workspace';
 import type { ActionResult } from '@sue/board-common';
-import { workspaceTabGroups } from './workspace-navigation';
+import { workspaceTabGroups } from '@sue/verd-board-workspace';
 import { isReferenceLocation } from '../documents/reference-locations';
 import {
   customSkillDefinition,
   workspaceSkillDefinition,
   type WorkspaceSkillCommit,
-} from '../workspace-skills';
+} from '@sue/verd-board-workspace';
 import {
   workspaceCommandActionResult,
   type WorkspaceActionContext,

@@ -1,0 +1,17 @@
+@use 'sass:meta';
+@use './app-menu' as *;
+@use './surface' as *;
+@use './appearance.scss';
+@use './primitives.scss';
+@use '../workspace/workspace.scss';
+@use '../workspace/workspace-management.scss';
+@use '../workspace/chart-library.scss';
+@use '../canvas/properties/frame-properties.scss';
+@import '@sue/board-react/style.css';
+@import '@sue/board-react-draw/style.css';
+@import '@sue/board-react-mind/style.css';
+@import '@sue/board-react-workflow/style.css';
+@import '@sue/board-react-architecture/style.css';
+@import '@sue/board-react-uml/style.css';
+
+@include meta.load-css('../canvas/frame');

@@ -1,4 +1,7 @@
-import { folderIdentityWrite, isFolderIdentityPath } from './folder-identity';
+import {
+  folderIdentityWrite,
+  isFolderIdentityPath,
+} from '@sue/verd-board-workspace';
 import { describe, expect, it } from 'vitest';
 import type {
   CommitReceipt,
@@ -6,8 +9,8 @@ import type {
   WorkspaceHandle,
   WorkspaceHost,
   WorkspaceHostSnapshot,
-} from './workspace-host';
-import { CANVAS_FILE_SUFFIX } from './workspace-host';
+} from '@sue/verd-board-workspace';
+import { CANVAS_FILE_SUFFIX } from '@sue/verd-board-workspace';
 
 export interface WorkspaceHostContractContext {
   host: WorkspaceHost;

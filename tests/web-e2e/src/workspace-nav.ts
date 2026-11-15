@@ -1,6 +1,6 @@
 import { serviceFixture } from './service-fixture';
 import { expect, type Page } from '@playwright/test';
-import type { WorkspaceSessionState } from '../../../packages/product/app/src/host/workspace-host';
+import type { WorkspaceSessionState } from '../../../packages/workspace/core/src/host/workspace-host';
 
 /**
  * Detail canvases open as workspace tabs (frameId is the tab identity), and

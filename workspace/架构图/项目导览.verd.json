@@ -157,12 +157,12 @@
         "derived": false
       },
       "content": {
-        "label": "一体化画布与文档 · 本地优先 · Desktop 内置项目工作区",
+        "label": "画布与文档共存 · 本地优先 · Desktop / 本机 Web",
         "text": {
           "schemaVersion": 1,
           "id": "r:sub/text",
           "kind": "inline",
-          "plainText": "一体化画布与文档 · 本地优先 · Desktop 内置项目工作区",
+          "plainText": "画布与文档共存 · 本地优先 · Desktop / 本机 Web",
           "content": {
             "type": "doc",
             "content": [
@@ -171,7 +171,7 @@
                 "content": [
                   {
                     "type": "text",
-                    "text": "一体化画布与文档 · 本地优先 · Desktop 内置项目工作区",
+                    "text": "画布与文档共存 · 本地优先 · Desktop / 本机 Web",
                     "marks": [
                       {
                         "type": "textStyle",
@@ -218,7 +218,8 @@
           "direction": "both",
           "offset": 0.5
         }
-      ]
+      ],
+      "name": "一体化画布与文档 · 本地优先 · Desktop 内置项目工作区"
     },
     "demo:home/intro": {
       "id": "demo:home/intro",
@@ -233,12 +234,12 @@
         "derived": false
       },
       "content": {
-        "label": "用原生画布表达关系，用原生文档落地文字。当前源码；Desktop 产品版本与 SDK 待发布契约分别说明。",
+        "label": "从文档导航理解产品与实现，再按需查看图解。当前源码能力与历史验收、registry 发布记录分别核对。",
         "text": {
           "schemaVersion": 1,
           "id": "demo:home/intro/text",
           "kind": "inline",
-          "plainText": "用原生画布表达关系，用原生文档落地文字。当前源码；Desktop 产品版本与 SDK 待发布契约分别说明。",
+          "plainText": "从文档导航理解产品与实现，再按需查看图解。当前源码能力与历史验收、registry 发布记录分别核对。",
           "content": {
             "type": "doc",
             "content": [
@@ -247,7 +248,7 @@
                 "content": [
                   {
                     "type": "text",
-                    "text": "用原生画布表达关系，用原生文档落地文字。当前源码；Desktop 产品版本与 SDK 待发布契约分别说明。",
+                    "text": "从文档导航理解产品与实现，再按需查看图解。当前源码能力与历史验收、registry 发布记录分别核对。",
                     "marks": [
                       {
                         "type": "textStyle",
@@ -295,7 +296,7 @@
           "offset": 0.5
         }
       ],
-      "name": "用原生画布表达关系，用原生文档落地文字。当前源码 · 2026-10-28；历史发布与待发布迁移分别标明。"
+      "name": "从文档导航理解产品与实现，再按需查看图解。当前源码能力与历史验收、registry 发布记录分别核对。"
     },
     "demo:home/guide": {
       "id": "demo:home/guide",
@@ -882,12 +883,12 @@
         "derived": false
       },
       "content": {
-        "label": "应用入口 · 产品、引擎、React 与转换器包",
+        "label": "产品、共享核心、独立 Agent、引擎与适配层",
         "text": {
           "schemaVersion": 1,
           "id": "demo:home/summary/0/text",
           "kind": "inline",
-          "plainText": "应用入口 · 产品、引擎、React 与转换器包",
+          "plainText": "产品、共享核心、独立 Agent、引擎与适配层",
           "content": {
             "type": "doc",
             "content": [
@@ -896,7 +897,8 @@
                 "content": [
                   {
                     "type": "text",
-                    "text": "应用入口 · 产品、引擎、React 与转换器包"
+                    "text": "产品、共享核心、独立 Agent、引擎与适配层",
+                    "marks": []
                   }
                 ]
               }
@@ -934,7 +936,8 @@
           "direction": "both",
           "offset": 0.5
         }
-      ]
+      ],
+      "name": "应用入口 · 产品、引擎、React 与转换器包"
     },
     "demo:home/title/1": {
       "id": "demo:home/title/1",
@@ -1183,12 +1186,12 @@
         "derived": false
       },
       "content": {
-        "label": "Cell、文件、引用、归属与运行时边界",
+        "label": "Cell、独立源文件、稳定引用与运行时边界",
         "text": {
           "schemaVersion": 1,
           "id": "demo:home/summary/2/text",
           "kind": "inline",
-          "plainText": "Cell、文件、引用、归属与运行时边界",
+          "plainText": "Cell、独立源文件、稳定引用与运行时边界",
           "content": {
             "type": "doc",
             "content": [
@@ -1197,7 +1200,7 @@
                 "content": [
                   {
                     "type": "text",
-                    "text": "Cell、文件、引用、归属与运行时边界",
+                    "text": "Cell、独立源文件、稳定引用与运行时边界",
                     "marks": [
                       {
                         "type": "textStyle",
@@ -1244,7 +1247,8 @@
           "direction": "both",
           "offset": 0.5
         }
-      ]
+      ],
+      "name": "Cell、文件、引用、归属与运行时边界"
     },
     "demo:home/title/3": {
       "id": "demo:home/title/3",
@@ -1958,12 +1962,12 @@
         "derived": false
       },
       "content": {
-        "label": "源码入口、开发命令、质量检查和发布流程",
+        "label": "按影响选择远程验收与发布门禁",
         "text": {
           "schemaVersion": 1,
           "id": "demo:home/summary/7/text",
           "kind": "inline",
-          "plainText": "源码入口、开发命令、质量检查和发布流程",
+          "plainText": "按影响选择远程验收与发布门禁",
           "content": {
             "type": "doc",
             "content": [
@@ -1972,7 +1976,7 @@
                 "content": [
                   {
                     "type": "text",
-                    "text": "源码入口、开发命令、质量检查和发布流程",
+                    "text": "按影响选择远程验收与发布门禁",
                     "marks": [
                       {
                         "type": "textStyle",
@@ -2019,7 +2023,8 @@
           "direction": "both",
           "offset": 0.5
         }
-      ]
+      ],
+      "name": "源码入口、开发命令、质量检查和发布流程"
     },
     "frame-ref:board/20:architecture-layered": {
       "id": "frame-ref:board/20:architecture-layered",

@@ -27,6 +27,24 @@
           "content": [
             {
               "type": "text",
+              "text": "Use this English entry to choose a reading path through the maintained native documents. The Chinese navigation is the primary directory; diagrams explain relationships and mechanisms alongside the same source documents."
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "Content reviewed: 2026-11-13, against current repository source, package manifests and the lockfile. Dated acceptance records retain their original scope."
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
               "text": "Start with the project documents; follow diagram links when you need a visual explanation. Native documents and diagrams are the maintained editable sources."
             }
           ]
@@ -52,6 +70,18 @@
           "type": "heading",
           "attrs": {
             "level": 2
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "Reading paths"
+            }
+          ]
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 3
           },
           "content": [
             {
@@ -134,7 +164,7 @@
         {
           "type": "heading",
           "attrs": {
-            "level": 2
+            "level": 3
           },
           "content": [
             {
@@ -471,7 +501,7 @@
         {
           "type": "heading",
           "attrs": {
-            "level": 2
+            "level": 3
           },
           "content": [
             {
@@ -509,6 +539,18 @@
           "content": [
             {
               "type": "text",
+              "text": "Development and validation"
+            }
+          ]
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 3
+          },
+          "content": [
+            {
+              "type": "text",
               "text": "Quick Start"
             }
           ]
@@ -530,7 +572,7 @@
           "content": [
             {
               "type": "text",
-              "text": "pnpm install\npnpm dev:desktop\n# Web development\npnpm dev:web\n# Public packages and Web; excludes Desktop\npnpm build\n# Desktop frontend, main process and preload\npnpm build:desktop\n# Validated installer; macOS defaults to DMG, add --with-zip for ZIP\npnpm package:desktop\npnpm typecheck\npnpm test"
+              "text": "pnpm install\n# Local preview only when explicitly requested\npnpm dev:desktop\n# Or preview the Web application\npnpm dev:web\n# Check the remote test host before choosing validation scope\npnpm test:remote doctor"
             }
           ]
         },
@@ -546,12 +588,12 @@
         {
           "type": "heading",
           "attrs": {
-            "level": 2
+            "level": 3
           },
           "content": [
             {
               "type": "text",
-              "text": "Knowledge authoring and reusable content"
+              "text": "Development and release validation"
             }
           ]
         },
@@ -560,7 +602,25 @@
           "content": [
             {
               "type": "text",
-              "text": "Documents offer slash insertion, paragraph actions, stable block links and live read-only excerpts. Native templates cover technical proposals, ADRs, system design and requirements. Content management adds portable properties, saved filters, persistent checkpoints, conflict comparison, independent recovery copies and managed images. Folder/ZIP migration preserves linked notes and assets; portable archives include native sources, Markdown and conversion reports."
+              "text": "Feature completion requires repository-wide ESLint and Prettier checks plus relevant unit and end-to-end tests. Pull requests run the full validation suite. Every product or standalone package release reviews the Agent tooling, user authoring recommendations, and system introduction; the introduction must receive a substantive prose update each time."
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "Use the repository root AGENTS.md to choose content-specific checks or feature-scoped validation on the test Mac. Fixed snapshots include uncommitted changes, jobs survive disconnects, and reports remain bound to their source. Setup and reconnect commands are documented in the development guide under Tailscale 远程开发验收。"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "Development-machine check:dev and check:ci commands delegate remotely by default. Direct Desktop E2E rejects an unmarked local session before launching Electron; explicit local debugging and CI contexts are documented in the development guide."
             }
           ]
         },
@@ -572,23 +632,14 @@
           "content": [
             {
               "type": "text",
-              "text": "Document and resource reading"
-            }
-          ]
-        },
-        {
-          "type": "paragraph",
-          "content": [
-            {
-              "type": "text",
-              "text": "Standalone documents add nested-list folding, details, inline/block LaTeX, binary attachments, local media and PDF reading with stable page links. HTTPS embeds are click-to-load and retain external navigation. Portable v2 preserves original resources; task lists, databases and clipping are deferred."
+              "text": "Agent and SDK integration"
             }
           ]
         },
         {
           "type": "heading",
           "attrs": {
-            "level": 2
+            "level": 3
           },
           "content": [
             {
@@ -611,14 +662,14 @@
           "content": [
             {
               "type": "text",
-              "text": "Version context: application, SDK, UI and Agent packages are prepared as 2.1.0 for this explicitly authorized early-stage release. Breaking API changes remain documented and require migration from historical 2.0 consumers. Future releases follow the existing version rules. Local artifacts do not establish registry publication. Agent defaults are maintained in packages/product/agent-patterns/agent/; user recommendations have an independent source."
+              "text": "This release versions packages independently: the product application, UI, Agent and bundled content use 2.1.1; the shared workspace SDK and board-react use 2.2.0. Other versions follow their manifests. Standalone Agent consumers use the shared workspace core without product app/ui dependencies, and SDK consumers gain a read-only canvas preview with explicit plugins. The breaking 2.1.0 plugin and Actions contracts remain the migration baseline for historical 2.0 consumers. Agent defaults and user recommendations remain separate. Local artifacts do not establish registry publication."
             }
           ]
         },
         {
           "type": "heading",
           "attrs": {
-            "level": 2
+            "level": 3
           },
           "content": [
             {
@@ -632,14 +683,14 @@
           "content": [
             {
               "type": "text",
-              "text": "Settings → Skills edits common workspace instructions and pattern supplements as standard .agents/skills/<name>/SKILL.md files, with YAML metadata and Markdown bodies. Default patterns and native validation continue to apply. verd context lists workspaceSkills for agents to read on demand; Skill changes invalidate pending plans. File-version conflicts preserve drafts, and bundled workspace updates preserve user Skills and referenced resources."
+              "text": "Settings → Prompts edits common workspace instructions and pattern supplements as standard .agents/skills/<name>/SKILL.md files, with YAML metadata and Markdown bodies. Default patterns and native validation continue to apply. verd context lists workspaceSkills for agents to read on demand; Skill changes invalidate pending plans. File-version conflicts preserve drafts, and bundled workspace updates preserve user Skills and referenced resources."
             }
           ]
         },
         {
           "type": "heading",
           "attrs": {
-            "level": 2
+            "level": 3
           },
           "content": [
             {
@@ -662,7 +713,46 @@
           "content": [
             {
               "type": "text",
-              "text": "The Prompts page offers View default Skill beside the scope selector. The read-only viewer shows the common authoring Skill, the selected pattern Skill and its native rule document, with full Markdown source available. Default Skill entrances and the common authoring Skill are maintained in the content package; rules and templates retain their native source. The shared authoring path remains compatible."
+              "text": "View default Skill on the Prompts page reads the common authoring Skill, selected pattern Skill and Markdown references. Markdown is the sole source of Agent instructions; executable templates remain native JSON. The viewer offers a read-only model and original Markdown source. Custom Skills provide only the common default entry."
+            }
+          ]
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 3
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "Shared workspace SDK and standalone Agent"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "The shared @sue/verd-board-workspace package owns native file models, host contracts, sessions, conditional commits, validation and common Git support. Product applications and the standalone Node Agent use the same implementation. Agent API and CLI consumers do not install product app/ui packages; existing product exports remain compatible."
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "Agent code and content live under packages/agent; the shared workspace core lives under packages/workspace. Product UI source is grouped into canvas, documents, workspace, settings and shared modules. Native system documentation remains in the root workspace folder, and existing application build scripts generate bundled resources directly."
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "User authoring recommendations provide advice and examples. They are maintained independently from executable Agent defaults and never become default Agent instructions."
             }
           ]
         },
@@ -670,6 +760,84 @@
           "type": "heading",
           "attrs": {
             "level": 2
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "Capability references"
+            }
+          ]
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 3
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "Knowledge authoring and reusable content"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "For slash insertion, reusable paragraphs, templates, content properties, manual versions and folder/ZIP migration, see "
+            },
+            {
+              "type": "text",
+              "text": "Product overview",
+              "marks": [
+                {
+                  "type": "link",
+                  "attrs": {
+                    "href": "verd://file/project-doc%3Aproduct%2F%E4%BA%A7%E5%93%81%E6%A6%82%E8%A7%88"
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 3
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "Document and resource reading"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "For folding, LaTeX, attachments, PDF/media reading, HTTPS embeds and current limitations, see "
+            },
+            {
+              "type": "text",
+              "text": "Product overview",
+              "marks": [
+                {
+                  "type": "link",
+                  "attrs": {
+                    "href": "verd://file/project-doc%3Aproduct%2F%E4%BA%A7%E5%93%81%E6%A6%82%E8%A7%88"
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 3
           },
           "content": [
             {
@@ -683,7 +851,7 @@
           "content": [
             {
               "type": "text",
-              "text": "Native JSON exports with managed images or attachments use verd-canvas-bundle v2, carrying the file closure and original resource bytes. Import validates hashes and commits files and resources together; native/v1 input remains supported. Web exposes virtual workspace creation and history, while Desktop additionally provides directory selection, system introduction and the Document authoring recommendations. Saved workspace names remain consistent with history and search."
+              "text": "Native exports with managed resources use verd-canvas-bundle v2 and validate hashes before a single conditional commit. The Desktop application and local Web service both use real filesystem workspaces and provide directory selection, bundled-content updates and Agent tools. The standalone IndexedDB SDK host provides a browser virtual workspace. Source files, resources and saved names retain the same identities across supported hosts."
             }
           ]
         },
@@ -708,7 +876,7 @@
         {
           "type": "heading",
           "attrs": {
-            "level": 2
+            "level": 3
           },
           "content": [
             {
@@ -747,7 +915,7 @@
         {
           "type": "heading",
           "attrs": {
-            "level": 2,
+            "level": 3,
             "blockId": "3a70e7b8-63b2-4948-a31e-c4e94549024d"
           },
           "content": [
@@ -780,40 +948,10 @@
               "text": "Use Settings → Data and maintenance → Migrate browser data to back up and import existing IndexedDB workspaces, including files, resources, Skills, sessions, trash and Git history. After a successful validated import, the source IndexedDB records are cleared and the complete backup is retained. Failed imports and changed source records are kept. Detection requires the original browser origin; importing a backup file does not clear current browser data."
             }
           ]
-        },
-        {
-          "type": "heading",
-          "attrs": {
-            "level": 2
-          },
-          "content": [
-            {
-              "type": "text",
-              "text": "Development and release validation"
-            }
-          ]
-        },
-        {
-          "type": "paragraph",
-          "content": [
-            {
-              "type": "text",
-              "text": "Feature completion requires repository-wide ESLint and Prettier checks plus relevant unit and end-to-end tests. Pull requests run the full validation suite. Every product or standalone package release reviews the Agent tooling, user authoring recommendations, and system introduction; the introduction must receive a substantive prose update each time."
-            }
-          ]
-        },
-        {
-          "type": "paragraph",
-          "content": [
-            {
-              "type": "text",
-              "text": "User authoring recommendations provide advice and examples. They are maintained independently from executable Agent defaults and never become default Agent instructions."
-            }
-          ]
         }
       ]
     },
-    "plainText": "VerdBoard Documentation\nStart with the project documents; follow diagram links when you need a visual explanation. Native documents and diagrams are the maintained editable sources.\n中文导航\nStart here\nProduct overview\nSystem architecture\nDevelopment guide\nDocumentation\nProduct overview\nSystem architecture\nDevelopment guide\nDesktop setup\nPackage index and React APIs\nDocumentation maintenance and Source index\nCanvas modes, Converters, Arrangement and groups\nMind features, Node sizing, Mind engine\nAI canvas data specification: complete fields, kinds, import rules and matching validated examples under tests/fixtures/ai-canvas/.\nDated acceptance records\nDiagrams\nProject overview canvas: nine topic overviews and twenty-one mechanism diagrams.\nQuick Start\nRequirements: Node.js >= 22.12.0 and pnpm >= 11.18.0. Root package.json, package manifests and pnpm-lock.yaml define the actual commands and dependency versions.\npnpm install\npnpm dev:desktop\n# Web development\npnpm dev:web\n# Public packages and Web; excludes Desktop\npnpm build\n# Desktop frontend, main process and preload\npnpm build:desktop\n# Validated installer; macOS defaults to DMG, add --with-zip for ZIP\npnpm package:desktop\npnpm typecheck\npnpm test\nWorkspace navigation uses Home, Search and All content, with Charts available as an All content tab. Cmd/Ctrl+P opens a cancellable quick file picker. Settings combines personal and workspace preferences in a bounded dialog; text and numeric drafts save when editing finishes. The workspace name opens the switcher, with creation separated from filtering.\nKnowledge authoring and reusable content\nDocuments offer slash insertion, paragraph actions, stable block links and live read-only excerpts. Native templates cover technical proposals, ADRs, system design and requirements. Content management adds portable properties, saved filters, persistent checkpoints, conflict comparison, independent recovery copies and managed images. Folder/ZIP migration preserves linked notes and assets; portable archives include native sources, Markdown and conversion reports.\nDocument and resource reading\nStandalone documents add nested-list folding, details, inline/block LaTeX, binary attachments, local media and PDF reading with stable page links. HTTPS embeds are click-to-load and retain external navigation. Portable v2 preserves original resources; task lists, databases and clipping are deferred.\nAgent integration and independent content updates\nWorkspaces expose AGENTS.md, portable project configuration and a shared verd CLI for AI authoring. System introduction and the Document authoring recommendations ship with Desktop and share the product version. In the workspace switcher, choose Open system introduction. An update marker appears inside the corresponding workspace when the bundled content differs from the installed copy. Backups are optional; choosing a backup folder creates a copy in the normal workspace list. See the development and desktop guides for details.\nVersion context: application, SDK, UI and Agent packages are prepared as 2.1.0 for this explicitly authorized early-stage release. Breaking API changes remain documented and require migration from historical 2.0 consumers. Future releases follow the existing version rules. Local artifacts do not establish registry publication. Agent defaults are maintained in packages/product/agent-patterns/agent/; user recommendations have an independent source.\nWorkspace prompts and standard Skills\nSettings → Skills edits common workspace instructions and pattern supplements as standard .agents/skills/<name>/SKILL.md files, with YAML metadata and Markdown bodies. Default patterns and native validation continue to apply. verd context lists workspaceSkills for agents to read on demand; Skill changes invalidate pending plans. File-version conflicts preserve drafts, and bundled workspace updates preserve user Skills and referenced resources.\nIndependent custom Skills and default Skill viewing\nSettings → Custom Skills provides creation, editing and recycling of independently named workspace Skills. Standard SKILL.md files under .agents/skills are discovered automatically. Names are fixed after creation; descriptions and Markdown bodies remain editable, while optional metadata and reference resources are preserved. Custom Skills have no pattern association and agents activate them only when their descriptions match the task.\nThe Prompts page offers View default Skill beside the scope selector. The read-only viewer shows the common authoring Skill, the selected pattern Skill and its native rule document, with full Markdown source available. Default Skill entrances and the common authoring Skill are maintained in the content package; rules and templates retain their native source. The shared authoring path remains compatible.\nPortable resources and host capabilities\nNative JSON exports with managed images or attachments use verd-canvas-bundle v2, carrying the file closure and original resource bytes. Import validates hashes and commits files and resources together; native/v1 input remains supported. Web exposes virtual workspace creation and history, while Desktop additionally provides directory selection, system introduction and the Document authoring recommendations. Saved workspace names remain consistent with history and search.\nRegression verification covers unit tests, Web and Desktop development and production builds, real package consumers and fresh Agent resources. Doctor exits 0 when ready and 1 when unready without initializing the project.\nOrdinary resources appear at their real paths and open in a read-only preview or the system application (download on Web). Project data, assets, history and cache live under the excluded .verdscrolls/ directory. Every diagram is an independent source file, shown once in the directory tree; canvases share it through stable references. Existing resource stores migrate without rewriting attachment addresses.\nGit versions\nWorkspace versions use a root Git repository. Commit one complete file or all workspace changes, preview content and dependencies from the same commit, and restore one file or the workspace. Editing still saves automatically, while recovery snapshots and automatic commits are disabled.\nDesktop and the local Web service use system Git and existing credentials for manual remote synchronization. Diverged histories require an external Git tool. The standalone IndexedDB SDK host provides local Git history in the browser. Legacy snapshots remain readable and restorable. Permanent deletion reviews a history rewrite plan and reports local cleanup, remote reference updates and pending provider cleanup separately.\nFile and directory menus provide Version history with explicit creation, preview and restore. Workspace settings → Version management contains workspace history and storage configuration. Git is the current adapter behind a provider-independent service. Directory identity follows moves and renames from its first identified version; restore targets its current location.\nLocal Web service\nRun pnpm dev:web to start the Web UI and local service at http://localhost:7200. Build with pnpm build:web and serve the production UI and API with pnpm start:web. The Web application uses filesystem workspaces and supports directory selection, Git remote sync, shared Agent tools and bundled-content updates. Development, production and tests use separate data directories.\nUse Settings → Data and maintenance → Migrate browser data to back up and import existing IndexedDB workspaces, including files, resources, Skills, sessions, trash and Git history. After a successful validated import, the source IndexedDB records are cleared and the complete backup is retained. Failed imports and changed source records are kept. Detection requires the original browser origin; importing a backup file does not clear current browser data.\nDevelopment and release validation\nFeature completion requires repository-wide ESLint and Prettier checks plus relevant unit and end-to-end tests. Pull requests run the full validation suite. Every product or standalone package release reviews the Agent tooling, user authoring recommendations, and system introduction; the introduction must receive a substantive prose update each time.\nUser authoring recommendations provide advice and examples. They are maintained independently from executable Agent defaults and never become default Agent instructions.",
+    "plainText": "VerdBoard Documentation\nUse this English entry to choose a reading path through the maintained native documents. The Chinese navigation is the primary directory; diagrams explain relationships and mechanisms alongside the same source documents.\nContent reviewed: 2026-11-13, against current repository source, package manifests and the lockfile. Dated acceptance records retain their original scope.\nStart with the project documents; follow diagram links when you need a visual explanation. Native documents and diagrams are the maintained editable sources.\n中文导航\nReading paths\nStart here\nProduct overview\nSystem architecture\nDevelopment guide\nDocumentation\nProduct overview\nSystem architecture\nDevelopment guide\nDesktop setup\nPackage index and React APIs\nDocumentation maintenance and Source index\nCanvas modes, Converters, Arrangement and groups\nMind features, Node sizing, Mind engine\nAI canvas data specification: complete fields, kinds, import rules and matching validated examples under tests/fixtures/ai-canvas/.\nDated acceptance records\nDiagrams\nProject overview canvas: nine topic overviews and twenty-one mechanism diagrams.\nDevelopment and validation\nQuick Start\nRequirements: Node.js >= 22.12.0 and pnpm >= 11.18.0. Root package.json, package manifests and pnpm-lock.yaml define the actual commands and dependency versions.\npnpm install\n# Local preview only when explicitly requested\npnpm dev:desktop\n# Or preview the Web application\npnpm dev:web\n# Check the remote test host before choosing validation scope\npnpm test:remote doctor\nWorkspace navigation uses Home, Search and All content, with Charts available as an All content tab. Cmd/Ctrl+P opens a cancellable quick file picker. Settings combines personal and workspace preferences in a bounded dialog; text and numeric drafts save when editing finishes. The workspace name opens the switcher, with creation separated from filtering.\nDevelopment and release validation\nFeature completion requires repository-wide ESLint and Prettier checks plus relevant unit and end-to-end tests. Pull requests run the full validation suite. Every product or standalone package release reviews the Agent tooling, user authoring recommendations, and system introduction; the introduction must receive a substantive prose update each time.\nUse the repository root AGENTS.md to choose content-specific checks or feature-scoped validation on the test Mac. Fixed snapshots include uncommitted changes, jobs survive disconnects, and reports remain bound to their source. Setup and reconnect commands are documented in the development guide under Tailscale 远程开发验收。\nDevelopment-machine check:dev and check:ci commands delegate remotely by default. Direct Desktop E2E rejects an unmarked local session before launching Electron; explicit local debugging and CI contexts are documented in the development guide.\nAgent and SDK integration\nAgent integration and independent content updates\nWorkspaces expose AGENTS.md, portable project configuration and a shared verd CLI for AI authoring. System introduction and the Document authoring recommendations ship with Desktop and share the product version. In the workspace switcher, choose Open system introduction. An update marker appears inside the corresponding workspace when the bundled content differs from the installed copy. Backups are optional; choosing a backup folder creates a copy in the normal workspace list. See the development and desktop guides for details.\nThis release versions packages independently: the product application, UI, Agent and bundled content use 2.1.1; the shared workspace SDK and board-react use 2.2.0. Other versions follow their manifests. Standalone Agent consumers use the shared workspace core without product app/ui dependencies, and SDK consumers gain a read-only canvas preview with explicit plugins. The breaking 2.1.0 plugin and Actions contracts remain the migration baseline for historical 2.0 consumers. Agent defaults and user recommendations remain separate. Local artifacts do not establish registry publication.\nWorkspace prompts and standard Skills\nSettings → Prompts edits common workspace instructions and pattern supplements as standard .agents/skills/<name>/SKILL.md files, with YAML metadata and Markdown bodies. Default patterns and native validation continue to apply. verd context lists workspaceSkills for agents to read on demand; Skill changes invalidate pending plans. File-version conflicts preserve drafts, and bundled workspace updates preserve user Skills and referenced resources.\nIndependent custom Skills and default Skill viewing\nSettings → Custom Skills provides creation, editing and recycling of independently named workspace Skills. Standard SKILL.md files under .agents/skills are discovered automatically. Names are fixed after creation; descriptions and Markdown bodies remain editable, while optional metadata and reference resources are preserved. Custom Skills have no pattern association and agents activate them only when their descriptions match the task.\nView default Skill on the Prompts page reads the common authoring Skill, selected pattern Skill and Markdown references. Markdown is the sole source of Agent instructions; executable templates remain native JSON. The viewer offers a read-only model and original Markdown source. Custom Skills provide only the common default entry.\nShared workspace SDK and standalone Agent\nThe shared @sue/verd-board-workspace package owns native file models, host contracts, sessions, conditional commits, validation and common Git support. Product applications and the standalone Node Agent use the same implementation. Agent API and CLI consumers do not install product app/ui packages; existing product exports remain compatible.\nAgent code and content live under packages/agent; the shared workspace core lives under packages/workspace. Product UI source is grouped into canvas, documents, workspace, settings and shared modules. Native system documentation remains in the root workspace folder, and existing application build scripts generate bundled resources directly.\nUser authoring recommendations provide advice and examples. They are maintained independently from executable Agent defaults and never become default Agent instructions.\nCapability references\nKnowledge authoring and reusable content\nFor slash insertion, reusable paragraphs, templates, content properties, manual versions and folder/ZIP migration, see Product overview\nDocument and resource reading\nFor folding, LaTeX, attachments, PDF/media reading, HTTPS embeds and current limitations, see Product overview\nPortable resources and host capabilities\nNative exports with managed resources use verd-canvas-bundle v2 and validate hashes before a single conditional commit. The Desktop application and local Web service both use real filesystem workspaces and provide directory selection, bundled-content updates and Agent tools. The standalone IndexedDB SDK host provides a browser virtual workspace. Source files, resources and saved names retain the same identities across supported hosts.\nRegression verification covers unit tests, Web and Desktop development and production builds, real package consumers and fresh Agent resources. Doctor exits 0 when ready and 1 when unready without initializing the project.\nOrdinary resources appear at their real paths and open in a read-only preview or the system application (download on Web). Project data, assets, history and cache live under the excluded .verdscrolls/ directory. Every diagram is an independent source file, shown once in the directory tree; canvases share it through stable references. Existing resource stores migrate without rewriting attachment addresses.\nGit versions\nWorkspace versions use a root Git repository. Commit one complete file or all workspace changes, preview content and dependencies from the same commit, and restore one file or the workspace. Editing still saves automatically, while recovery snapshots and automatic commits are disabled.\nDesktop and the local Web service use system Git and existing credentials for manual remote synchronization. Diverged histories require an external Git tool. The standalone IndexedDB SDK host provides local Git history in the browser. Legacy snapshots remain readable and restorable. Permanent deletion reviews a history rewrite plan and reports local cleanup, remote reference updates and pending provider cleanup separately.\nFile and directory menus provide Version history with explicit creation, preview and restore. Workspace settings → Version management contains workspace history and storage configuration. Git is the current adapter behind a provider-independent service. Directory identity follows moves and renames from its first identified version; restore targets its current location.\nLocal Web service\nRun pnpm dev:web to start the Web UI and local service at http://localhost:7200. Build with pnpm build:web and serve the production UI and API with pnpm start:web. The Web application uses filesystem workspaces and supports directory selection, Git remote sync, shared Agent tools and bundled-content updates. Development, production and tests use separate data directories.\nUse Settings → Data and maintenance → Migrate browser data to back up and import existing IndexedDB workspaces, including files, resources, Skills, sessions, trash and Git history. After a successful validated import, the source IndexedDB records are cleared and the complete backup is retained. Failed imports and changed source records are kept. Detection requires the original browser origin; importing a backup file does not clear current browser data.",
     "align": "left"
   }
 }

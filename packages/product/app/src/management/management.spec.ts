@@ -2,14 +2,14 @@ import 'fake-indexeddb/auto';
 import { IDBFactory } from 'fake-indexeddb';
 import { describe, it, expect } from 'vitest';
 import { createWebWorkspaceHost } from '../host/web-workspace-host';
-import { createDocumentFile } from '../documents/document-files';
-import { openWorkspaceSession } from '../session/workspace-session';
+import { createDocumentFile } from '@sue/verd-board-workspace';
+import { openWorkspaceSession } from '@sue/verd-board-workspace';
 import { extractSearchRecord, searchRecords } from './search';
 import {
   readOrganization,
   remapOrganization,
   topLevelPaths,
-} from './organization';
+} from '@sue/verd-board-workspace';
 const doc = (id: string, text = '知识管理') => {
   const file = createDocumentFile(id, id);
   file.text.content = {
@@ -218,7 +218,7 @@ describe('workspace full text search', () => {
           },
         ]),
       ),
-    } as unknown as import('../frames/frame-files').FrameFileV2;
+    } as unknown as import('@sue/verd-board-workspace').FrameFileV2;
     records.push(extractSearchRecord(graph, 'diagram.verd.json'));
     const timings = Array.from({ length: 10 }, () => {
       const start = performance.now();
@@ -269,7 +269,7 @@ it('indexes visible diagram text and fields without expanding reference addresse
       hidden: { id: 'hidden', hidden: true, name: 'secret' },
       reference: { id: 'reference', data: { targetFrameId: 'internal-id' } },
     },
-  } as unknown as import('../frames/frame-files').FrameFileV2;
+  } as unknown as import('@sue/verd-board-workspace').FrameFileV2;
   const record = extractSearchRecord(file, 'board.verd.json');
   expect(searchRecords([record], 'customer ready')[0].fragment.cellId).toBe(
     'node',

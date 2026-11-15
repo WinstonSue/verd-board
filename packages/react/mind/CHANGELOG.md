@@ -1,5 +1,12 @@
 # @sue/board-react-mind
 
+## 2.1.1
+
+### Patch Changes
+
+- Updated dependencies
+  - @sue/board-react@2.2.0
+
 ## 2.1.0
 
 ### Major Changes

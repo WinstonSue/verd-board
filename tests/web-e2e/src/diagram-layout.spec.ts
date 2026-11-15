@@ -692,6 +692,7 @@ test('embedded root moves only its own visible tree, stays in bounds and survive
   // Opening details uses the canonical root position, not the embedded offset.
   await cell(page, 'frame-ref:mind').locator('[data-frame-title-id]').click();
   await page.getByTestId('frame-open').locator('visible=true').click();
+  await expect(canvas(page)).toHaveAttribute('data-instance-id', 'mind');
   expect((await textPosition(page, 'first'))[0]).toBe(
     (snapshot.store.cells.first as NodeCell).geometry.x + 8,
   );

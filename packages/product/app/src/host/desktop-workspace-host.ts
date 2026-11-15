@@ -1,4 +1,4 @@
-import { VersionError, type VersionResult } from './workspace-versions';
+import { VersionError, type VersionResult } from '@sue/verd-board-workspace';
 import type {
   ChangeHint,
   CommitReceipt,
@@ -11,7 +11,7 @@ import type {
   WorkspaceHost,
   WorkspaceHostSnapshot,
   WorkspaceHistoryEntry,
-} from './workspace-host';
+} from '@sue/verd-board-workspace';
 
 interface DesktopBridge {
   git: NonNullable<WorkspaceHost['git']>;

@@ -2,7 +2,7 @@ import {
   applyCellOperations,
   planGeometryLayout,
 } from '../../../packages/engine/core/src/cell/index';
-import { createWorkspaceCellRegistry } from '../../../packages/product/app/src/frames/plugins';
+import { createWorkspaceCellRegistry } from '../../../packages/workspace/core/src/frames/plugins';
 import { electron, writeDesktopLauncher } from './desktop-launcher';
 import { expect, test, type ElectronApplication } from '@playwright/test';
 import {

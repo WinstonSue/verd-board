@@ -54,13 +54,20 @@ test('project content validates, package facts are current, refresh is idempoten
     31,
   );
   const home = entries.find((e) => e.file.frame?.id === 'board-root').file;
+  // Native writes omit ownership metadata; untouched legacy sources can keep
+  // their inert standalone marker. The reference-closure test below owns the
+  // actual navigation hierarchy.
   assert.equal(
     entries
       .filter(
         (e) =>
           e.file.format === 'verd-frame' && e.file.frame.id !== 'board-root',
       )
-      .every((e) => e.file.organization?.kind === 'standalone'),
+      .every(
+        (e) =>
+          e.file.organization === undefined ||
+          e.file.organization.kind === 'standalone',
+      ),
     true,
   );
   assert.equal(
@@ -267,7 +274,11 @@ test('nine overviews reach exactly twenty-one standalone details without changin
       const detail = byId.get(detailRef.data.targetFrameId);
       assert.ok(detail, overview.path);
       assert.match(detail.path, /^架构图\/细节\/[^/]+\/[^/]+\.verd\.json$/);
-      assert.equal(detail.file.organization.kind, 'standalone');
+      assert.equal(
+        detail.file.organization?.kind ?? 'standalone',
+        'standalone',
+        'independent sources may retain the legacy standalone marker, but not owner-canvas metadata',
+      );
       assert.equal(reached.has(detail.file.frame.id), false, detail.path);
       reached.add(detail.file.frame.id);
       for (const layer of Object.values(detail.file.cells).filter(
@@ -404,4 +415,73 @@ test('new packages append contiguously without moving existing modules', async (
     );
   assert.deepEqual(refreshPackageFile(next, changed), next);
   assert.deepEqual(file, before);
+});
+
+test('a package changing layers keeps its identity and style while leaving its old layer', async () => {
+  const entries = await readWorkspace();
+  const file = entries.find(
+    (entry) => entry.file.frame?.id === PACKAGE_FRAME_ID,
+  ).file;
+  const model = await readPackageModel();
+  const changed = structuredClone(model);
+  const source = changed.layers.find(
+    (layer) => layer.directory === 'packages/react',
+  );
+  const destination = changed.layers.find(
+    (layer) => layer.directory === 'packages/agent',
+  );
+  const moved = source.nodes.pop();
+  destination.nodes.push(moved);
+  const moduleId = 'demo:packages/module/' + moved.id;
+  const old = file.cells[moduleId];
+  const next = refreshPackageFile(file, changed);
+  assert.equal(next.cells[moduleId].id, old.id);
+  assert.deepEqual(next.cells[moduleId].appearance, old.appearance);
+  assert.notDeepEqual(next.cells[moduleId].geometry, old.geometry);
+  for (const layer of Object.values(next.cells).filter(
+    (cell) => cell.kind === 'architecture-layer',
+  )) {
+    for (const id of layer.data.memberIds)
+      assert.ok(
+        next.frame.children.indexOf(layer.id) < next.frame.children.indexOf(id),
+      );
+  }
+  for (const layer of model.layers)
+    for (const node of layer.nodes)
+      if (node.id !== moved.id)
+        assert.deepEqual(
+          next.cells['demo:packages/module/' + node.id],
+          file.cells['demo:packages/module/' + node.id],
+        );
+  assert.deepEqual(refreshPackageFile(next, changed), next);
+});
+
+test('new dependency hit paths stay behind authored navigation notes', async () => {
+  const entries = await readWorkspace();
+  const file = entries.find(
+    (entry) => entry.file.frame?.id === PACKAGE_FRAME_ID,
+  ).file;
+  const model = await readPackageModel();
+  const changed = structuredClone(model);
+  changed.layers
+    .find((layer) => layer.directory === 'packages/agent')
+    .nodes.push({ id: 'test:external-agent', label: 'External Agent' });
+  changed.edges.push(['test:external-agent', '@sue/verd-board-workspace']);
+  const next = refreshPackageFile(file, changed);
+  const annotations = file.frame.children.filter(
+    (id) => !id.startsWith('demo:packages/'),
+  );
+  assert.ok(annotations.length);
+  for (const id of annotations) {
+    assert.deepEqual(next.cells[id], file.cells[id]);
+    for (const generated of next.frame.children.filter((id) =>
+      id.startsWith('demo:packages/'),
+    ))
+      assert.ok(
+        next.frame.children.indexOf(id) >
+          next.frame.children.indexOf(generated),
+        'generated hits must not intercept authored links',
+      );
+  }
+  assert.deepEqual(refreshPackageFile(next, changed), next);
 });

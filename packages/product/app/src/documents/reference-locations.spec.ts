@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { createFrameCell } from '@sue/board-core';
-import { createDocumentFile } from './document-files';
-import { createFrameFile } from '../frames/frame-files';
+import { createDocumentFile } from '@sue/verd-board-workspace';
+import { createFrameFile } from '@sue/verd-board-workspace';
 import {
   buildReferenceLocations,
   referenceLocationKey,

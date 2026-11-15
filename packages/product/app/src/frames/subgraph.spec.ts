@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import type { CellStore, FrameCell, NodeCell } from '@sue/board-core';
-import { createMemoryWorkspaceHost } from '../host/memory-workspace-host';
+import { createMemoryWorkspaceHost } from '@sue/verd-board-workspace';
 import { createCanvasSession } from '../canvas/canvas-session';
-import { openWorkspaceSession } from '../session/workspace-session';
+import { openWorkspaceSession } from '@sue/verd-board-workspace';
 import {
   duplicateFrameClosure,
   frameClosure,
@@ -12,7 +12,7 @@ import {
   sameFrameContent,
   sameFrameFile,
   type FrameFileV2,
-} from './frame-files';
+} from '@sue/verd-board-workspace';
 
 const frameCell = (id: string, name = id, children: string[] = []): FrameCell =>
   ({

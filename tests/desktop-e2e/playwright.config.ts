@@ -4,6 +4,9 @@ import path from 'node:path';
 process.env['VERDBOARD_E2E_MODE'] = 'dev';
 
 export default defineConfig({
+  reporter: process.env.REMOTE_TEST_REPORTER
+    ? [['dot'], [process.env.REMOTE_TEST_REPORTER]]
+    : undefined,
   retries: 0,
   maxFailures: 0,
   testDir: './src',
@@ -14,7 +17,9 @@ export default defineConfig({
   // Fresh profiles load the Vite source graph and install bundled agent tools.
   expect: { timeout: 30_000 },
   outputDir: '../../test-results/desktop-dev',
-  use: { trace: 'retain-on-failure' },
+  use: {
+    trace: process.env.REMOTE_TEST_TRACE === 'all' ? 'on' : 'retain-on-failure',
+  },
   webServer: {
     command: 'pnpm --filter desktop exec vite --mode e2e',
     cwd: path.resolve(__dirname, '../..'),

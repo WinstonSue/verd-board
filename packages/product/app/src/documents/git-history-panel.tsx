@@ -14,9 +14,9 @@ import type {
   WorkspaceGitRequest,
   WorkspaceGitResult,
   WorkspaceGitStatus,
-} from '../host/workspace-git';
-import { isGitRuntimePath } from '../host/workspace-git';
-import type { WorkspaceSession } from '../session/workspace-session';
+} from '@sue/verd-board-workspace';
+import { isGitRuntimePath } from '@sue/verd-board-workspace';
+import type { WorkspaceSession } from '@sue/verd-board-workspace';
 
 import {
   versionSnapshot as gitVersionSnapshot,

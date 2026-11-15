@@ -1,0 +1,152 @@
+{
+  "format": "verd-release-review",
+  "version": 1,
+  "targets": [
+    {
+      "name": "@sue/board-react",
+      "version": "2.2.0"
+    },
+    {
+      "name": "@sue/board-react-architecture",
+      "version": "2.1.1"
+    },
+    {
+      "name": "@sue/board-react-draw",
+      "version": "2.1.1"
+    },
+    {
+      "name": "@sue/board-react-mind",
+      "version": "2.1.1"
+    },
+    {
+      "name": "@sue/board-react-uml",
+      "version": "2.1.1"
+    },
+    {
+      "name": "@sue/board-react-workflow",
+      "version": "2.1.1"
+    },
+    {
+      "name": "@sue/verd-board-agent",
+      "version": "2.1.1"
+    },
+    {
+      "name": "@sue/verd-board-agent-patterns",
+      "version": "2.1.1"
+    },
+    {
+      "name": "@sue/verd-board-app",
+      "version": "2.1.1"
+    },
+    {
+      "name": "@sue/verd-board-ui",
+      "version": "2.1.1"
+    },
+    {
+      "name": "@sue/verd-board-workspace",
+      "version": "2.2.0"
+    },
+    {
+      "name": "desktop",
+      "version": "2.1.1"
+    },
+    {
+      "name": "service",
+      "version": "2.1.1"
+    }
+  ],
+  "previous": "0028504b198add2cde1abec0.json",
+  "previousDigest": "9e4dde75e4a67c9d3d6c86db7dcb6c27ac0e2a88b9e6dbc171f9587cd7662d13",
+  "sourceDigest": "2da015982bcba6e7d3f1708172584e2d0e0eef72c54fc660074e75da1bf68036",
+  "versions": {
+    "@sue/board-architecture": "2.1.0",
+    "@sue/board-common": "2.1.0",
+    "@sue/board-core": "2.1.0",
+    "@sue/board-draw": "2.1.0",
+    "@sue/board-layouts": "2.1.0",
+    "@sue/board-markdown-to-board": "2.1.0",
+    "@sue/board-markdown-to-text": "2.1.0",
+    "@sue/board-mermaid-to-board": "2.1.0",
+    "@sue/board-mind": "2.1.0",
+    "@sue/board-react": "2.2.0",
+    "@sue/board-react-actions": "2.1.0",
+    "@sue/board-react-architecture": "2.1.1",
+    "@sue/board-react-draw": "2.1.1",
+    "@sue/board-react-mind": "2.1.1",
+    "@sue/board-react-text": "2.1.0",
+    "@sue/board-react-uml": "2.1.1",
+    "@sue/board-react-workflow": "2.1.1",
+    "@sue/board-text": "2.1.0",
+    "@sue/board-uml": "2.1.0",
+    "@sue/board-workflow": "2.1.0",
+    "@sue/verd-board-agent": "2.1.1",
+    "@sue/verd-board-agent-patterns": "2.1.1",
+    "@sue/verd-board-app": "2.1.1",
+    "@sue/verd-board-source": "0.0.1",
+    "@sue/verd-board-ui": "2.1.1",
+    "@sue/verd-board-workspace": "2.2.0",
+    "consumer-vite": "0.0.1",
+    "desktop": "2.1.1",
+    "service": "2.1.1",
+    "web": "2.1.0",
+    "web-e2e": "0.0.1"
+  },
+  "introduction": {
+    "project-doc:architecture/ARCHITECTURE": "88dd28e00a8f45cefbba8863f2faf90e8a57a17dd5530607865a9d8b6e36523f",
+    "project-doc:development/README": "10e8d2f96866e9751f4a25d2f5418f7d2760c1fb46343a21e5d12e8c2f292f2a",
+    "project-doc:DOCUMENTATION_GUIDE": "9e11f8c4a89e4704f25fa415482f72548fd2f0feae2349fa72404433985d25e6",
+    "project-doc:guides/ai-canvas-data-spec": "125dcd661cb52530f6f33d41c8b565ccdf17e493ef3513dba4096b8e3a5f5496",
+    "project-doc:guides/SETUP": "d5f59bfd82d43fb5181a2b2160fc7ff7297e69f5597a1661e766a893125aa08d",
+    "project-doc:guides/体验回归验收": "a9816ebe4e9337629a5097e88d9c2187a2f786fa897b74d54fbfa0aac93b6173",
+    "project-doc:guides/配置与源码索引": "33a2c8ad950ae5c794ee5511bc3db90d80dbbacff84b3656439821ff40cb960a",
+    "project-doc:packages/board/arrangement": "248fa9cb489d4ba835713ca6b57d5ea042c42d48d07aeb38f66c62cc5a187e45",
+    "project-doc:packages/board/canvas-modes": "07a11223f6dbf5fcad7e11943edb43be66da03349d2affb83e1617793fb6abee",
+    "project-doc:packages/board/CHANGELOG": "667de424eceb440d44771974283be20a554c345b7126a758fa9e34eed18d70e5",
+    "project-doc:packages/board/frame-converters": "dd6b53810195a875154e2823539c1316392e32db7bea5bdd63a6c97c26424b5c",
+    "project-doc:packages/board/mind-features": "24e3d04f3f31cd88db70ad1d0f22385e8a24feeead28ef7233a3a443b64a8abe",
+    "project-doc:packages/board/NODE_WIDTH_SPECIFICATION": "a2ad80a9948531eac2ac4e57d4b03c18e15022e76136253f5ea011497da4674b",
+    "project-doc:packages/board/README": "ac14b19d8821f62bb2dded9d4ef47e2f2cd2cf84a36e14fc56563a93c9bb026f",
+    "project-doc:packages/board/README.zh-CN": "a3d7c5250c6a021bf0c463ce5b1f75ce73333c8a6cf71ac404022bdb7d695e0a",
+    "project-doc:packages/react/README": "6fc95c51cdf1e84c41962c19c4c8f83a20ea45345dc1630a820026ff8794dc33",
+    "project-doc:packages/README": "c13f523229a13e38593ef85381d2f0da4ca5a997e4ac0c7ae1f0419384cfeab8",
+    "project-doc:packages/release-2": "5ea6cfa06605c346fa19eba7da3f13eb3b00ad9c3cb9f06980d79a135986480d",
+    "project-doc:product/产品概览": "f96a5a5ea21bca90dd20263b52ffeea5d8d5dcf7d2797b77fc4e2571a51c374a",
+    "project-doc:README": "eb79cbaf20d2074f4555bb337957150048bd6b8eef589a145a4c1430953f452c",
+    "project-doc:README_en": "c7427d942dfd288990a7ddea65f38adb3f3f0bd644e31bcae8a7bcfc801c3a6b"
+  },
+  "reviews": {
+    "agent": {
+      "status": "updated",
+      "reason": "Reviewed the standalone Agent API/CLI after extracting WorkspaceSession, Host contracts, filesystem/Git support and native models into the shared workspace SDK. Agent production dependencies exclude product app/ui. Default instructions now use Markdown SKILL.md and self-contained references; native execution templates and user recommendations remain separate. Existing public entrypoints, validation, conditional writes and resource upgrade requirements are retained.",
+      "files": [
+        "packages/agent/runtime/src/authoring.ts",
+        "packages/agent/runtime/src/cli.ts",
+        "packages/agent/runtime/README.md",
+        "packages/agent/patterns/agent/skills/verd-authoring/SKILL.md",
+        "packages/agent/patterns/agent/skills/verd-authoring/references/writing.md",
+        "packages/agent/patterns/catalog.json"
+      ]
+    },
+    "recommendations": {
+      "status": "reviewed",
+      "reason": "Reviewed the user-facing navigation and diagram advice against the independent Agent rules and template workflow. The recommendation library explicitly does not inject Agent defaults or Skills; users can edit native content directly and optionally use the separate CLI. This release changes package location and integration boundaries without requiring additional advice-body changes.",
+      "files": [
+        "packages/agent/patterns/workspace/范式导航.verd-doc.json",
+        "packages/agent/patterns/workspace/图表编写规范.verd-doc.json",
+        "packages/agent/patterns/recommendations.json"
+      ]
+    },
+    "introduction": {
+      "status": "updated",
+      "reason": "Reorganized the native system introduction around product scope, shared workspace/Agent boundaries, host data flows, stable references and scoped development validation. Updated eight native documents and bilingual entries for product 2.1.1 and Workspace SDK/board-react 2.2.0, including independent Agent consumption and explicit-plugin read-only preview. Historical 2.1.0 contracts and 2.0 migration evidence remain; file/block identities and heading targets are preserved. All eight changed documents were rendered and their edited paragraphs reviewed. This is substantive business prose, not just versions, dates or cache changes; registry publication is verified separately.",
+      "files": [
+        "workspace/文档/产品/产品概览.verd-doc.json",
+        "workspace/文档/架构/系统架构.verd-doc.json",
+        "workspace/文档/包/React接入.verd-doc.json",
+        "workspace/文档/开发/文档维护指南.verd-doc.json",
+        "workspace/文档导航.verd-doc.json",
+        "workspace/Documentation.verd-doc.json"
+      ]
+    }
+  }
+}

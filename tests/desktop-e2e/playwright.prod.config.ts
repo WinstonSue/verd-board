@@ -4,6 +4,9 @@ process.env['VERDBOARD_E2E_MODE'] = 'prod';
 
 /** Requires pnpm build:desktop. Never starts a dev server or builds implicitly. */
 export default defineConfig({
+  reporter: process.env.REMOTE_TEST_REPORTER
+    ? [['dot'], [process.env.REMOTE_TEST_REPORTER]]
+    : undefined,
   retries: 0,
   maxFailures: 0,
   testDir: './src',
@@ -13,5 +16,7 @@ export default defineConfig({
   // Fresh profiles install and verify bundled agent tools before showing UI.
   expect: { timeout: 30_000 },
   outputDir: '../../test-results/desktop-prod',
-  use: { trace: 'retain-on-failure' },
+  use: {
+    trace: process.env.REMOTE_TEST_TRACE === 'all' ? 'on' : 'retain-on-failure',
+  },
 });

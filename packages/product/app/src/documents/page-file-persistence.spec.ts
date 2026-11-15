@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { createPageFilePersistence } from './page-file-persistence';
-import type { FilePersistenceState } from '../session/file-persistence';
+import type { FilePersistenceState } from '@sue/verd-board-workspace';
 
 describe('page persistence scope', () => {
   it('includes referenced editable sources, handles cycles and excludes unrelated failures', () => {

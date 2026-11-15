@@ -27,32 +27,16 @@
       "outputs": [],
       "cache": false
     },
-    "@sue/verd-board-docs#build": {
-      "inputs": [
-        "$TURBO_DEFAULT$",
-        "$TURBO_ROOT$/scripts/**",
-        "$TURBO_ROOT$/packages/engine/**/src/**",
-        "$TURBO_ROOT$/packages/react/**/src/**",
-        "$TURBO_ROOT$/packages/product/app/src/**",
-        "$TURBO_ROOT$/packages/product/agent/src/**",
-        "$TURBO_ROOT$/workspace/**/*.verd.json",
-        "$TURBO_ROOT$/workspace/**/*.verd-doc.json",
-        "$TURBO_ROOT$/workspace/AGENTS.md",
-        "$TURBO_ROOT$/workspace/.verdscrolls/config.json",
-        "$TURBO_ROOT$/workspace/.verdscrolls/.gitignore"
-      ],
-      "outputs": ["dist/**"]
-    },
     "@sue/verd-board-agent-patterns#build": {
       "inputs": [
         "$TURBO_DEFAULT$",
         "$TURBO_ROOT$/scripts/**",
         "$TURBO_ROOT$/packages/engine/**/src/**",
         "$TURBO_ROOT$/packages/react/**/src/**",
-        "$TURBO_ROOT$/packages/product/app/src/**",
-        "$TURBO_ROOT$/packages/product/agent/src/**",
+        "$TURBO_ROOT$/packages/agent/runtime/src/**",
         "workspace/.verdscrolls/config.json",
-        "workspace/.verdscrolls/.gitignore"
+        "workspace/.verdscrolls/.gitignore",
+        "$TURBO_ROOT$/packages/workspace/core/src/**"
       ],
       "outputs": ["dist/**"]
     },
@@ -62,7 +46,7 @@
       "inputs": [
         "$TURBO_DEFAULT$",
         "$TURBO_ROOT$/workspace/**",
-        "$TURBO_ROOT$/packages/product/agent-patterns/workspace/**",
+        "$TURBO_ROOT$/packages/agent/patterns/workspace/**",
         "$TURBO_ROOT$/scripts/**"
       ]
     }

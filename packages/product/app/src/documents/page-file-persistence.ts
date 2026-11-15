@@ -1,5 +1,5 @@
-import type { FilePersistenceState } from '../session/file-persistence';
-import type { WorkspaceReferenceGraph } from './workspace-references';
+import type { FilePersistenceState } from '@sue/verd-board-workspace';
+import type { WorkspaceReferenceGraph } from '@sue/verd-board-workspace';
 
 /** A page includes its referenced sources, but never unrelated workspace files. */
 export function createPageFilePersistence(

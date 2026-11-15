@@ -15,7 +15,7 @@ import {
 } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import type { WorkspaceHistoryEntry } from '../../../packages/product/app/src/host/workspace-host';
+import type { WorkspaceHistoryEntry } from '../../../packages/workspace/core/src/host/workspace-host';
 import { openWorkspaceMenu } from '../../web-e2e/src/app-actions';
 import { activeTabTitle } from '../../web-e2e/src/tab-actions';
 

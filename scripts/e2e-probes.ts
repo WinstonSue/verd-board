@@ -24,7 +24,7 @@ export function workspaceE2EProbes(): Plugin {
           throw new Error(`E2E probe marker missing: ${file}: ${marker}`);
         source = source.replace(marker, replacement);
       };
-      if (file.endsWith('/product/ui/src/document-page.tsx')) {
+      if (file.endsWith('/product/ui/src/documents/document-page.tsx')) {
         injected.add('document-page');
         const marker = 'const t = labels[locale];';
         insert(

@@ -76,8 +76,10 @@ export const createArchitectureFrameExtensions = (
         const fontSize = (node?.data as { fontSize?: number })?.fontSize ?? 16;
         // Keep the title at the start of the header, clear of the central
         // connection corridor used by single-module layers.
+        // FrameCanvas reserves another 16px inside these bounds. Leave room
+        // for that padding and proportional bold glyphs in short Latin titles.
         const titleWidth =
-          16 +
+          32 +
           [...(node?.content?.label ?? '')].reduce(
             (width, char) =>
               width + (char.charCodeAt(0) > 255 ? fontSize : fontSize / 2),

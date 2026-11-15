@@ -10,8 +10,8 @@ import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createTestCellRegistry as createFixtureRegistry } from '../../../../tests/fixtures/plugins/registry';
-import { createFrameFile } from './frames/frame-files';
-import { createMemoryWorkspaceHost } from './host/memory-workspace-host';
+import { createFrameFile } from '@sue/verd-board-workspace';
+import { createMemoryWorkspaceHost } from '@sue/verd-board-workspace';
 import { WorkspaceApp } from './workspace-app';
 const testCellRegistry = createFixtureRegistry();
 

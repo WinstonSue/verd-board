@@ -1,8 +1,8 @@
 import {
   createWorkspaceGitEngine,
   type GitWorkspaceData,
-} from './workspace-git-engine';
-import type { WorkspaceGitRequest } from '../host/workspace-git';
+} from '@sue/verd-board-workspace';
+import type { WorkspaceGitRequest } from '@sue/verd-board-workspace';
 
 // Git graph traversal, hashing, compression and validation stay off the UI thread.
 // The host retains the only authority to publish the resulting overlay.

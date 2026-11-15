@@ -56,9 +56,7 @@ async function context() {
     workspaceBoundary: root,
     defaultRoot: path.join(root, 'workspace'),
     builtinSource: path.resolve('../../workspace'),
-    patternSource: path.resolve(
-      '../../packages/product/agent-patterns/workspace',
-    ),
+    patternSource: path.resolve('../../packages/agent/patterns/workspace'),
     productVersion: '2.0.1',
     openPath: async () => {},
   };

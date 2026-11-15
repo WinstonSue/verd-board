@@ -668,12 +668,12 @@
         "outline": "roundRectangle"
       },
       "content": {
-        "label": "归属 organization 独立于引用图",
+        "label": "图表独立保存；引用不声明归属\n旧 organization 仅兼容读取",
         "text": {
           "schemaVersion": 1,
           "id": "demo:model/node/1-3/text",
           "kind": "inline",
-          "plainText": "归属 organization 独立于引用图",
+          "plainText": "图表独立保存；引用不声明归属\n旧 organization 仅兼容读取",
           "content": {
             "type": "doc",
             "content": [
@@ -682,7 +682,25 @@
                 "content": [
                   {
                     "type": "text",
-                    "text": "归属 organization 独立于引用图",
+                    "text": "图表独立保存；引用不声明归属",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "18px",
+                          "color": "#334155"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "旧 organization 仅兼容读取",
                     "marks": [
                       {
                         "type": "textStyle",
@@ -710,7 +728,8 @@
           "strokeColor": "#2563eb",
           "strokeWidth": 2
         }
-      }
+      },
+      "name": "归属 organization 独立于引用图"
     },
     "demo:model/node/0": {
       "id": "demo:model/node/0",
@@ -1513,13 +1532,13 @@
                 "content": [
                   {
                     "type": "text",
-                    "text": "源码入口：packages/engine/core/src/cell/types.ts；packages/product/app/src/frames/frame-files.ts。"
+                    "text": "源码入口：packages/engine/core/src/cell/types.ts；packages/workspace/core/src/frames/frame-files.ts。"
                   }
                 ]
               }
             ]
           },
-          "plainText": "相关文档：画布模式\n读图：扁平 CellStore 保存内容；children 与 groups 表达不同关系。\n返回专题总览\n相关细节：文件与运行时边界\n相关细节：领域场景与图文引用\nAI画布数据规范 · 2. 数据模型速览\nAI画布数据规范 · 4. 通用字段表\n源码入口：packages/engine/core/src/cell/types.ts；packages/product/app/src/frames/frame-files.ts。"
+          "plainText": "相关文档：画布模式\n读图：扁平 CellStore 保存内容；children 与 groups 表达不同关系。\n返回专题总览\n相关细节：文件与运行时边界\n相关细节：领域场景与图文引用\nAI画布数据规范 · 2. 数据模型速览\nAI画布数据规范 · 4. 通用字段表\n源码入口：packages/engine/core/src/cell/types.ts；packages/workspace/core/src/frames/frame-files.ts。"
         }
       },
       "appearance": {
@@ -1527,8 +1546,5 @@
         "strokeColor": "none"
       }
     }
-  },
-  "organization": {
-    "kind": "standalone"
   }
 }

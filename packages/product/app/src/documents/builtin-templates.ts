@@ -3,8 +3,8 @@ import {
   loadRecommendationTemplates,
 } from '@sue/verd-board-agent-patterns/recommendations';
 import { localizePatterns } from './pattern-labels';
-import { remapWorkspaceFiles } from './workspace-references';
-import { workspaceFileId, type WorkspaceFile } from './document-files';
+import { remapWorkspaceFiles } from '@sue/verd-board-workspace';
+import { workspaceFileId, type WorkspaceFile } from '@sue/verd-board-workspace';
 export const builtinTemplates = catalog;
 export async function instantiateTemplate(patternId: string, title?: string) {
   const pattern = catalog.find((item) => item.id === patternId);

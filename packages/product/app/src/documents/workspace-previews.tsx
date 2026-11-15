@@ -29,7 +29,7 @@ import {
 import type {
   DocumentEditOrigin,
   WorkspaceSessionSnapshot,
-} from '../session/workspace-session';
+} from '@sue/verd-board-workspace';
 import { parseWorkspaceLink, type ActionResult } from '@sue/board-common';
 import { createPreviewRevisions } from './preview-revisions';
 

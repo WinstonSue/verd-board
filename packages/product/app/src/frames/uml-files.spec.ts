@@ -18,7 +18,7 @@ import {
   partitionCellStore,
   remapFrameFileIds,
   remapImportedFiles,
-} from './frame-files';
+} from '@sue/verd-board-workspace';
 it('remaps all UML identities in independent file copies and collision imports', () => {
   const registry = createTestCellRegistry();
 

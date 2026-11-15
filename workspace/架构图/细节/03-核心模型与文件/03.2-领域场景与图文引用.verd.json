@@ -1167,12 +1167,12 @@
         "collapsed": false
       },
       "content": {
-        "label": "归属最多普通画布 → 领域子图\n细节文件 standalone，专题引用可继续进入",
+        "label": "源图独立；导航层级由引用表达\n不通过 organization 声明多层归属",
         "text": {
           "schemaVersion": 1,
           "id": "project:detail/03/02/levels/text",
           "kind": "inline",
-          "plainText": "归属最多普通画布 → 领域子图\n细节文件 standalone，专题引用可继续进入",
+          "plainText": "源图独立；导航层级由引用表达\n不通过 organization 声明多层归属",
           "content": {
             "type": "doc",
             "content": [
@@ -1181,7 +1181,7 @@
                 "content": [
                   {
                     "type": "text",
-                    "text": "归属最多普通画布 → 领域子图",
+                    "text": "源图独立；导航层级由引用表达",
                     "marks": [
                       {
                         "type": "textStyle",
@@ -1199,7 +1199,7 @@
                 "content": [
                   {
                     "type": "text",
-                    "text": "细节文件 standalone，专题引用可继续进入",
+                    "text": "不通过 organization 声明多层归属",
                     "marks": [
                       {
                         "type": "textStyle",
@@ -1215,7 +1215,8 @@
             ]
           }
         }
-      }
+      },
+      "name": "归属最多普通画布 → 领域子图 细节文件 standalone，专题引用可继续进入"
     },
     "project:detail/03/02/branch/0": {
       "id": "project:detail/03/02/branch/0",
@@ -1375,13 +1376,13 @@
                 "content": [
                   {
                     "type": "text",
-                    "text": "源码入口：packages/product/app/src/frames/frame-organization.ts；packages/product/app/src/documents/workspace-references.ts；packages/engine/core/src/cell/types.ts。"
+                    "text": "源码入口：packages/workspace/core/src/frames/frame-organization.ts；packages/workspace/core/src/documents/workspace-references.ts；packages/engine/core/src/cell/types.ts。"
                   }
                 ]
               }
             ]
           },
-          "plainText": "相关文档：画布模式\n读图：场景、归属与引用是三套关系；介绍层次由引用表达。\n返回专题总览\n相关细节：文件与运行时边界\n相关细节：CellStore 与 Frame 所有权\nAI画布数据规范 · 2. 数据模型速览\nAI画布数据规范 · 4. 通用字段表\n源码入口：packages/product/app/src/frames/frame-organization.ts；packages/product/app/src/documents/workspace-references.ts；packages/engine/core/src/cell/types.ts。"
+          "plainText": "相关文档：画布模式\n读图：场景、归属与引用是三套关系；介绍层次由引用表达。\n返回专题总览\n相关细节：文件与运行时边界\n相关细节：CellStore 与 Frame 所有权\nAI画布数据规范 · 2. 数据模型速览\nAI画布数据规范 · 4. 通用字段表\n源码入口：packages/workspace/core/src/frames/frame-organization.ts；packages/workspace/core/src/documents/workspace-references.ts；packages/engine/core/src/cell/types.ts。"
         }
       },
       "appearance": {
@@ -1389,8 +1390,5 @@
         "strokeColor": "none"
       }
     }
-  },
-  "organization": {
-    "kind": "standalone"
   }
 }

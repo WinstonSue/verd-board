@@ -52,7 +52,7 @@ async function focusDesktopWindow(desktop: ElectronApplication, page: Page) {
     .toBe(true);
 }
 
-async function observeNativeCursor(desktop: ElectronApplication) {
+async function observeNativeCursor(desktop: ElectronApplication, page: Page) {
   await desktop.evaluate(({ BrowserWindow, screen }) => {
     const window = BrowserWindow.getAllWindows()[0];
     const state: NativeCursorProbe = { events: [] };
@@ -77,20 +77,21 @@ async function observeNativeCursor(desktop: ElectronApplication) {
       },
     );
   });
-  return async () => {
-    expect(
-      await desktop.evaluate(({ BrowserWindow }) =>
-        BrowserWindow.getAllWindows()[0].isFocused(),
-      ),
-    ).toBe(true);
+  return async (point: { x: number; y: number }) => {
+    // Native cursor samples require the test window to own OS focus, including
+    // after history-menu interactions. Refresh the cursor at the same point.
+    await focusDesktopWindow(desktop, page);
+    await page.mouse.move(point.x, point.y);
     await expect
       .poll(() =>
-        desktop.evaluate(
-          () =>
-            (globalThis as ProbeGlobal).portCursorProbe?.events.at(-1)?.type,
-        ),
+        desktop.evaluate(() => {
+          const sample = (globalThis as ProbeGlobal).portCursorProbe?.events.at(
+            -1,
+          );
+          return { type: sample?.type, focused: sample?.focused };
+        }),
       )
-      .toBe('custom');
+      .toEqual({ type: 'custom', focused: true });
     const native = await desktop.evaluate(() =>
       (globalThis as ProbeGlobal).portCursorProbe!.events.at(-1)!,
     );
@@ -149,7 +150,7 @@ async function runDesktopPorts(
       'data-frame-cursor-mode',
       'tool',
     );
-    const nativeCursor = await observeNativeCursor(desktop!);
+    const nativeCursor = await observeNativeCursor(desktop!, page);
     await portCanvas(page).evaluate((svg) => {
       const state: Record<string, unknown>[] = [];
       (

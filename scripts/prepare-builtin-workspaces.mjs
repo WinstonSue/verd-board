@@ -19,7 +19,7 @@ export async function prepareBuiltinWorkspaces(
           REPO_ROOT,
           kind === 'project'
             ? 'workspace'
-            : 'packages/product/agent-patterns/workspace',
+            : 'packages/agent/patterns/workspace',
         );
       const product = JSON.parse(
         await fs.readFile(
@@ -35,7 +35,7 @@ export async function prepareBuiltinWorkspaces(
       );
       const patterns = JSON.parse(
         await fs.readFile(
-          path.join(REPO_ROOT, 'packages/product/agent-patterns/package.json'),
+          path.join(REPO_ROOT, 'packages/agent/patterns/package.json'),
           'utf8',
         ),
       );

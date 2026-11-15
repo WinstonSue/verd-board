@@ -602,11 +602,11 @@
       "cellType": "edge",
       "source": {
         "cellId": "demo:edit/project",
-        "portId": "top"
+        "portId": "bottom"
       },
       "target": {
         "cellId": "demo:edit/replace",
-        "portId": "bottom"
+        "portId": "top"
       },
       "route": {
         "mode": "orthogonal"
@@ -879,8 +879,5 @@
       },
       "name": "相关文档：React接入 读图：宿主持有业务 value；编辑器等待回执后重新投影，不擅自持久化业务数据。 返回专题总览 相关细节：Cell 事务与统一历史 相关细节：Actions 与编辑提交屏障 系统架构 · 模型和事务 布局、路由与保存边界 源码入口：packages/react/board/src/frame-canvas.tsx；packages/react/board/src/frame-canvas.tsx；packages/react/board/src/frame-editor.tsx。"
     }
-  },
-  "organization": {
-    "kind": "standalone"
   }
 }

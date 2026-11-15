@@ -11,7 +11,7 @@ test('Document authoring recommendations follows template links and preserves ed
   const directory = await mkdtemp(path.join(tmpdir(), 'verd-patterns-e2e-'));
   const source = path.resolve(
     __dirname,
-    '../../../packages/product/agent-patterns/workspace/范式导航.verd-doc.json',
+    '../../../packages/agent/patterns/workspace/范式导航.verd-doc.json',
   );
   const original = await readFile(source, 'utf8');
   let desktop: ElectronApplication | undefined;

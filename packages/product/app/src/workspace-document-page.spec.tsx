@@ -3,8 +3,8 @@ import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { DocumentPageProps } from '@sue/verd-board-ui';
 import type { PreviewOptions } from './documents/workspace-previews';
-import type { WorkspaceSessionSnapshot } from './session/workspace-session';
-import { createDocumentFile } from './documents/document-files';
+import type { WorkspaceSessionSnapshot } from '@sue/verd-board-workspace';
+import { createDocumentFile } from '@sue/verd-board-workspace';
 import { WorkspaceDocumentPage } from './workspace-document-page';
 
 const rendered = vi.hoisted(() => ({ page: vi.fn(), preview: vi.fn() }));

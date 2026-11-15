@@ -10,12 +10,12 @@ import {
 import {
   normalizeWorkspaceSessionState,
   type WorkspaceSessionState,
-} from '../host/workspace-host';
+} from '@sue/verd-board-workspace';
 import type {
   CommandResult,
   WorkspaceCommand,
   WorkspaceSession,
-} from './workspace-session';
+} from '@sue/verd-board-workspace';
 
 export interface WorkspaceActionContext {
   session: WorkspaceSession | null;

@@ -1,0 +1,442 @@
+import { act, useState } from 'react';
+import { createRoot } from 'react-dom/client';
+import { describe, expect, it, vi } from 'vitest';
+import { createMindFrameSnapshot } from '@sue/board-mind';
+import { createFrameCell } from '@sue/board-core';
+import { I18nProvider } from '../i18n';
+import { VerdFrame } from '../canvas/verd-frame';
+
+vi.mock('@floating-ui/react', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@floating-ui/react')>();
+  return { ...actual, autoUpdate: () => () => {} };
+});
+
+(
+  globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }
+).IS_REACT_ACT_ENVIRONMENT = true;
+window.matchMedia = (query: string) =>
+  ({
+    matches: false,
+    media: query,
+    addEventListener() {},
+    removeEventListener() {},
+    addListener() {},
+    removeListener() {},
+    dispatchEvent() {
+      return false;
+    },
+    onchange: null,
+  }) as MediaQueryList;
+
+describe('tool shortcuts and real focus', () => {
+  it('transfers menu focus to shared help and restores the logical menu opener on close', async () => {
+    const container = document.createElement('div');
+    document.body.append(container);
+    const root = createRoot(container);
+    await act(async () =>
+      root.render(
+        <I18nProvider language="zh" persistLanguage={false}>
+          <VerdFrame
+            value={createMindFrameSnapshot('frame', 'topic')}
+            frameId="frame"
+            onChange={() => {}}
+          />
+        </I18nProvider>,
+      ),
+    );
+    const opener = container.querySelector<HTMLButtonElement>(
+      '[data-testid="app-menu-trigger"]',
+    )!;
+    await act(async () => opener.click());
+    const menuItem = [
+      ...document.querySelectorAll<HTMLButtonElement>('[role="menuitem"]'),
+    ].find((item) => item.textContent === '快捷键')!;
+    await act(async () => menuItem.click());
+    const search = document.querySelector<HTMLInputElement>(
+      '.verd-actions-help input',
+    )!;
+    expect(search).toBeTruthy();
+    expect(document.activeElement).toBe(search);
+    await act(async () => {
+      search.dispatchEvent(
+        new KeyboardEvent('keydown', {
+          key: 'Escape',
+          bubbles: true,
+          cancelable: true,
+        }),
+      );
+    });
+    expect(document.querySelector('.verd-actions-help')).toBeNull();
+    expect(document.activeElement).toBe(opener);
+    await act(async () => root.unmount());
+    container.remove();
+  });
+
+  it('reflects action-created drawing tools in the product toolbar', async () => {
+    const container = document.createElement('div');
+    document.body.append(container);
+    const root = createRoot(container);
+    await act(async () =>
+      root.render(
+        <I18nProvider language="zh" persistLanguage={false}>
+          <VerdFrame
+            value={{
+              store: {
+                rootId: 'frame',
+                cells: { frame: createFrameCell('frame') },
+              },
+            }}
+            frameId="frame"
+            onChange={() => {}}
+          />
+        </I18nProvider>,
+      ),
+    );
+    const canvas = container.querySelector('svg[aria-label="Frame canvas"]')!;
+    for (const [key, label] of [
+      ['p', '画笔'],
+      ['o', '形状'],
+      ['v', '选择'],
+      ['h', '手型'],
+    ] as const) {
+      await act(async () => {
+        canvas.dispatchEvent(
+          new KeyboardEvent('keydown', {
+            key,
+            bubbles: true,
+            cancelable: true,
+          }),
+        );
+      });
+      expect(
+        container
+          .querySelector(`[aria-label="${label}"]`)
+          ?.getAttribute('aria-pressed'),
+      ).toBe('true');
+    }
+    await act(async () => root.unmount());
+    container.remove();
+  });
+
+  it('opens preferences directly in standalone My and closes once without remounting the canvas', async () => {
+    HTMLDialogElement.prototype.showModal ??= function (
+      this: HTMLDialogElement,
+    ) {
+      this.open = true;
+    };
+    HTMLDialogElement.prototype.close ??= function (this: HTMLDialogElement) {
+      this.open = false;
+    };
+    const container = document.createElement('div');
+    document.body.append(container);
+    const root = createRoot(container);
+    await act(async () =>
+      root.render(
+        <I18nProvider defaultLanguage="zh" persistLanguage={false}>
+          <VerdFrame
+            value={createMindFrameSnapshot('frame', 'topic')}
+            frameId="frame"
+            onChange={() => {}}
+            onOpenFrame={() => {}}
+          />
+        </I18nProvider>,
+      ),
+    );
+    const canvas = container.querySelector('svg[aria-label="Frame canvas"]');
+    const trigger = container.querySelector<HTMLButtonElement>(
+      '[data-testid="app-menu-trigger"]',
+    )!;
+    await act(async () => trigger.click());
+    await act(async () =>
+      [...document.querySelectorAll<HTMLButtonElement>('[role="menuitem"]')]
+        .find((item) => item.textContent === '设置')!
+        .click(),
+    );
+    expect(
+      container.querySelector(
+        '[data-testid="my-page"] [data-testid="settings-language"]',
+      ),
+    ).toBeTruthy();
+    expect(container.querySelector('[data-testid="settings-page"]')).toBeNull();
+    await act(async () =>
+      container
+        .querySelector<HTMLDialogElement>('[data-testid="my-page"]')!
+        .dispatchEvent(new Event('cancel', { cancelable: true })),
+    );
+    await new Promise<void>((resolve) =>
+      requestAnimationFrame(() => resolve()),
+    );
+    expect(container.querySelector('dialog')).toBeNull();
+    expect(container.querySelector('svg[aria-label="Frame canvas"]')).toBe(
+      canvas,
+    );
+    expect(document.activeElement).toBe(trigger);
+    await act(async () => root.unmount());
+    container.remove();
+  });
+
+  it('does not rename a topic when H or V is sent to the focused element after the autofocus window', async () => {
+    const container = document.createElement('div');
+    document.body.append(container);
+    const root = createRoot(container);
+    const value = createMindFrameSnapshot('frame', 'topic');
+    await act(async () =>
+      root.render(
+        <I18nProvider defaultLanguage="zh" persistLanguage={false}>
+          <div style={{ width: 800, height: 600 }}>
+            <VerdFrame value={value} frameId="frame" onChange={() => {}} />
+          </div>
+        </I18nProvider>,
+      ),
+    );
+    const topic = container.querySelector('[data-cell-id="topic"]')!;
+    await act(async () => {
+      topic.dispatchEvent(
+        new MouseEvent('pointerdown', {
+          bubbles: true,
+          button: 0,
+          clientX: 30,
+          clientY: 30,
+        }),
+      );
+      topic.dispatchEvent(
+        new MouseEvent('pointerup', {
+          bubbles: true,
+          button: 0,
+          clientX: 30,
+          clientY: 30,
+        }),
+      );
+    });
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 200));
+    });
+    const active = document.activeElement as HTMLElement;
+    expect(active?.closest?.('[contenteditable="true"], input, textarea')).toBe(
+      null,
+    );
+    for (const key of ['h', 'v']) {
+      await act(async () => {
+        active.dispatchEvent(
+          new KeyboardEvent('keydown', {
+            key,
+            bubbles: true,
+            cancelable: true,
+          }),
+        );
+      });
+    }
+    expect(container.textContent).not.toContain('h中心');
+    expect(
+      container.querySelector('[data-cell-id="topic"]')?.textContent,
+    ).not.toMatch(/^[hv]/);
+    await act(async () => root.unmount());
+    container.remove();
+  });
+
+  it('edits in place with a real key, Tab, Enter, and leaves IME and inputs alone', async () => {
+    const container = document.createElement('div');
+    document.body.append(container);
+    const root = createRoot(container);
+    let current = createMindFrameSnapshot('frame', 'topic');
+    function Harness() {
+      const [value, setValue] = useState(current);
+      return (
+        <I18nProvider defaultLanguage="zh" persistLanguage={false}>
+          <div style={{ width: 900, height: 640 }}>
+            <VerdFrame
+              value={value}
+              frameId="frame"
+              onOpenFrame={() => {}}
+              onChange={(change) => {
+                current = change.snapshot;
+                setValue(change.snapshot);
+              }}
+            />
+          </div>
+        </I18nProvider>
+      );
+    }
+    await act(async () => root.render(<Harness />));
+    const topic = () => container.querySelector('[data-cell-id="topic"]')!;
+    const keyOn = async (
+      target: EventTarget,
+      key: string,
+      init: KeyboardEventInit = {},
+    ) => {
+      await act(async () => {
+        target.dispatchEvent(
+          new KeyboardEvent('keydown', {
+            key,
+            bubbles: true,
+            cancelable: true,
+            ...init,
+          }),
+        );
+      });
+    };
+    await act(async () => {
+      topic().dispatchEvent(
+        new MouseEvent('pointerdown', { bubbles: true, button: 0 }),
+      );
+      topic().dispatchEvent(
+        new MouseEvent('pointerup', { bubbles: true, button: 0 }),
+      );
+    });
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 200));
+    });
+    const canvas = document.activeElement as HTMLElement;
+    expect(canvas.closest('[contenteditable="true"], input, textarea')).toBe(
+      null,
+    );
+    await keyOn(canvas, 'x');
+    expect(topic().textContent).toContain('x');
+    expect(topic().textContent).not.toContain('Central topic');
+    const editor = container.querySelector(
+      '[data-frame-text-editor] [contenteditable="true"]',
+    ) as HTMLElement;
+    expect(editor).toBeTruthy();
+    await keyOn(editor, 'Tab');
+    expect(
+      container.querySelectorAll('[data-cell-kind="mind-child"]'),
+    ).toHaveLength(1);
+    const childEditor = container.querySelector(
+      '[data-frame-text-editor] [contenteditable="true"]',
+    ) as HTMLElement;
+    expect(childEditor).toBeTruthy();
+    await keyOn(childEditor, 'Enter');
+    expect(container.querySelector('[data-frame-text-editor]')).toBeNull();
+    expect(
+      container.querySelectorAll('[data-cell-kind="mind-child"]'),
+    ).toHaveLength(1);
+    expect(document.activeElement?.tagName.toLowerCase()).toBe('svg');
+    const child = container.querySelector('[data-cell-kind="mind-child"]')!;
+    await act(async () => {
+      child.dispatchEvent(
+        new MouseEvent('pointerdown', { bubbles: true, button: 0 }),
+      );
+      child.dispatchEvent(
+        new MouseEvent('pointerup', { bubbles: true, button: 0 }),
+      );
+    });
+    await keyOn(document.activeElement!, 'Enter');
+    expect(
+      container.querySelectorAll('[data-cell-kind="mind-child"]'),
+    ).toHaveLength(2);
+
+    await act(async () => {
+      topic().dispatchEvent(
+        new MouseEvent('pointerdown', { bubbles: true, button: 0 }),
+      );
+      topic().dispatchEvent(
+        new MouseEvent('pointerup', { bubbles: true, button: 0 }),
+      );
+    });
+    const beforeIme = topic().textContent;
+    const beforeTool = container
+      .querySelector('[aria-label="选择"]')
+      ?.getAttribute('aria-pressed');
+    expect(beforeTool).toBe('true');
+    await keyOn(document.activeElement!, 'h', { isComposing: true });
+    expect(topic().textContent).toBe(beforeIme);
+    expect(
+      container
+        .querySelector('[aria-label="选择"]')
+        ?.getAttribute('aria-pressed'),
+    ).toBe(beforeTool);
+
+    const field = container.querySelector(
+      '[data-testid="inspector-name"]',
+    ) as HTMLElement;
+    field.focus();
+    const tab = new KeyboardEvent('keydown', {
+      key: 'Tab',
+      bubbles: true,
+      cancelable: true,
+    });
+    await act(async () => {
+      field.dispatchEvent(tab);
+    });
+    expect(tab.defaultPrevented).toBe(false);
+    await keyOn(field, 'h');
+    expect(topic().textContent).toBe(beforeIme);
+    await act(async () => root.unmount());
+    container.remove();
+  });
+
+  it('keeps undo disabled on a readonly canvas that already has history', async () => {
+    const container = document.createElement('div');
+    document.body.append(container);
+    const root = createRoot(container);
+    const initial = createMindFrameSnapshot('frame', 'topic');
+    function Harness() {
+      const [value, setValue] = useState(initial);
+      const [locked, setLocked] = useState(false);
+      return (
+        <I18nProvider defaultLanguage="zh" persistLanguage={false}>
+          <button type="button" onClick={() => setLocked(true)}>
+            lock canvas
+          </button>
+          <div style={{ width: 900, height: 640 }}>
+            <VerdFrame
+              value={value}
+              frameId="frame"
+              readonly={locked}
+              onOpenFrame={() => undefined}
+              onChange={(change) => setValue(change.snapshot)}
+            />
+          </div>
+        </I18nProvider>
+      );
+    }
+    await act(async () => root.render(<Harness />));
+    const menu = () =>
+      container.querySelector<HTMLButtonElement>(
+        '[data-testid="app-menu-trigger"]',
+      )!;
+    const undo = () =>
+      document.querySelector(
+        '[role="menuitem"][aria-label="撤销"]',
+      ) as HTMLButtonElement;
+    await act(async () => menu().click());
+    expect(undo().disabled).toBe(true);
+    await act(async () => menu().click());
+    const topic = container.querySelector('[data-cell-id="topic"]')!;
+    await act(async () => {
+      topic.dispatchEvent(
+        new MouseEvent('pointerdown', { bubbles: true, button: 0 }),
+      );
+      topic.dispatchEvent(
+        new MouseEvent('pointerup', { bubbles: true, button: 0 }),
+      );
+    });
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 200));
+    });
+    await act(async () => {
+      (document.activeElement as HTMLElement).dispatchEvent(
+        new KeyboardEvent('keydown', {
+          key: 'x',
+          bubbles: true,
+          cancelable: true,
+        }),
+      );
+    });
+    await act(async () => menu().click());
+    expect(undo().disabled).toBe(false);
+    await act(async () => {
+      (
+        [...container.querySelectorAll('button')].find(
+          (button) => button.textContent === 'lock canvas',
+        ) as HTMLButtonElement
+      ).click();
+    });
+    expect(undo().disabled).toBe(true);
+    undo().click();
+    expect(container.textContent).toContain('x');
+    expect(container.textContent).not.toContain('Central topic');
+    await act(async () => root.unmount());
+    container.remove();
+  });
+});

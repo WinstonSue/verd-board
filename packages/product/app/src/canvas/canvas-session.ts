@@ -13,12 +13,12 @@ import {
   isRegularCanvas,
   sameFrameContent,
   type FrameFileV2,
-} from '../frames/frame-files';
-import { createWorkspaceCellRegistry } from '../frames/plugins';
+} from '@sue/verd-board-workspace';
+import { createWorkspaceCellRegistry } from '@sue/verd-board-workspace';
 import type {
   CommandResult,
   WorkspaceSession,
-} from '../session/workspace-session';
+} from '@sue/verd-board-workspace';
 
 /**
  * An occurrence is one editing context over a canvas file: a top-level file

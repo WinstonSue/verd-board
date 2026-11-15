@@ -5,6 +5,9 @@ const rootDir = path.resolve(__dirname, '../..');
 const baseURL = process.env['BASE_URL'] || 'http://127.0.0.1:7320';
 
 export default defineConfig({
+  reporter: process.env.REMOTE_TEST_REPORTER
+    ? [['dot'], [process.env.REMOTE_TEST_REPORTER]]
+    : undefined,
   retries: 0,
   maxFailures: 0,
   testDir: './src',
@@ -13,7 +16,7 @@ export default defineConfig({
   outputDir: process.env.VERDBOARD_E2E_OUTPUT ?? 'test-results',
   use: {
     baseURL,
-    trace: 'retain-on-failure',
+    trace: process.env.REMOTE_TEST_TRACE === 'all' ? 'on' : 'retain-on-failure',
   },
   webServer: {
     command: 'node scripts/web-e2e.mjs dev',

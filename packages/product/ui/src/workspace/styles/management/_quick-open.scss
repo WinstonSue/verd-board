@@ -1,0 +1,72 @@
+@use '../../../styles/surface' as *;
+.workspace-quick-open {
+  @include surface;
+  box-sizing: border-box;
+  width: min(620px, calc(100vw - 32px));
+  max-height: 70dvh;
+  margin: 12dvh auto auto;
+  padding: 12px;
+  border: 1px solid var(--vm-border);
+  border-radius: var(--vm-radius-lg);
+  box-shadow: var(--vm-shadow-dialog);
+  &::backdrop {
+    background: var(--vm-backdrop);
+  }
+}
+.workspace-quick-open input {
+  width: 100%;
+  box-sizing: border-box;
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid var(--vm-border);
+  padding: 12px;
+  color: inherit;
+  font: inherit;
+}
+.workspace-quick-open [role='listbox'] {
+  overflow: auto;
+  max-height: 45dvh;
+}
+.workspace-quick-open button {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  justify-content: flex-start;
+  width: 100%;
+  min-height: var(--vm-list-row-detail);
+  text-align: left;
+  border: 0;
+  border-radius: var(--vm-radius-sm);
+  padding: 8px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  &[aria-selected='true'],
+  &:hover {
+    background: var(--vm-fill-hover);
+  }
+}
+.workspace-quick-open button > span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.workspace-quick-open small {
+  display: block;
+  font-size: var(--vm-text-xs);
+  color: var(--vm-foreground-secondary);
+}
+.workspace-quick-open footer {
+  display: flex;
+  gap: 6px;
+  padding: 8px;
+  color: var(--vm-foreground-secondary);
+  font-size: var(--vm-text-xs);
+}
+.workspace-quick-open kbd {
+  font: var(--vm-text-2xs)/var(--vm-leading) var(--vm-font);
+  padding: 0 4px;
+  border: 1px solid var(--vm-border-strong);
+  border-radius: var(--vm-radius-badge);
+}

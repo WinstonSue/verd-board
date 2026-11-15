@@ -6,8 +6,7 @@ const product = JSON.parse(
 for (const file of [
   'apps/desktop/package.json',
   'apps/service/package.json',
-  'packages/product/docs/package.json',
-  'packages/product/agent-patterns/package.json',
+  'packages/agent/patterns/package.json',
 ]) {
   const url = new URL(file, root);
   const pkg = JSON.parse(await fs.readFile(url, 'utf8'));

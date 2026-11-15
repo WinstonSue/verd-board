@@ -13,7 +13,7 @@
     "dev:web": "node scripts/web.mjs dev",
     "build": "turbo run build --filter=!desktop",
     "lint": "eslint . && node scripts/check-ui-styles.mjs",
-    "typecheck": "tsc --noEmit -p apps/desktop/tsconfig.typecheck.json && tsc --noEmit -p packages/product/app/tsconfig.json && tsc --noEmit -p tsconfig.cells.json && tsc --noEmit -p apps/service/tsconfig.json && tsc --noEmit -p apps/web/tsconfig.app.json",
+    "typecheck": "tsc --noEmit -p apps/desktop/tsconfig.typecheck.json && tsc --noEmit -p packages/product/app/tsconfig.json && tsc --noEmit -p tsconfig.cells.json && tsc --noEmit -p apps/service/tsconfig.json && tsc --noEmit -p apps/web/tsconfig.app.json && tsc --noEmit -p packages/workspace/core/tsconfig.json",
     "build:web": "node scripts/web.mjs build",
     "build:web:e2e": "node scripts/web.mjs build-e2e",
     "build:desktop": "turbo run build --filter=desktop",
@@ -40,7 +40,7 @@
     "test:e2e:desktop:prod": "playwright test --config tests/desktop-e2e/playwright.prod.config.ts",
     "test:e2e:desktop:packaged": "playwright test --config tests/desktop-e2e/playwright.packaged.config.ts",
     "test:agent-consumer": "node scripts/test-agent-consumer.mjs",
-    "agent": "node packages/product/agent/dist/cli.js",
+    "agent": "node packages/agent/runtime/dist/cli.js",
     "prepare:agent-resources": "node scripts/prepare-agent-resources.mjs",
     "build:content": "node scripts/prepare-builtin-workspaces.mjs",
     "start:web": "node scripts/web.mjs start",
@@ -49,7 +49,8 @@
     "check:dev": "node scripts/quality-gate.mjs dev",
     "check:ci": "node scripts/quality-gate.mjs ci",
     "check:release": "node scripts/quality-gate.mjs release",
-    "release:review": "node scripts/release-review.mjs draft"
+    "release:review": "node scripts/release-review.mjs draft",
+    "test:remote": "node scripts/remote-test.mjs"
   },
   "devDependencies": {
     "@eslint/js": "^9.22.0",

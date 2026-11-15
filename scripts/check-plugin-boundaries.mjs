@@ -1,3 +1,8 @@
+import { publicPackages } from './pack-public.mjs';
+import {
+  agentWorkspaceDependencyProblems,
+  productSourceImportProblems,
+} from './package-boundaries.mjs';
 import { readFile, readdir } from 'node:fs/promises';
 import path from 'node:path';
 import assert from 'node:assert/strict';
@@ -90,11 +95,34 @@ for (const layer of ['engine', 'react']) {
     await scan(path.join(folder, 'src'));
   }
 }
+errors.push(...agentWorkspaceDependencyProblems(publicPackages));
+for (const { directory } of publicPackages) {
+  if (!/packages\/(?:agent|workspace)\//.test(directory.replaceAll('\\', '/')))
+    continue;
+  const scan = async (folder) => {
+    for (const entry of await readdir(folder, { withFileTypes: true })) {
+      const file = path.join(folder, entry.name);
+      if (entry.isDirectory()) await scan(file);
+      else if (
+        /\.[cm]?[jt]sx?$/.test(file) &&
+        !/\.(?:spec|test|contract)\./.test(file)
+      )
+        errors.push(
+          ...productSourceImportProblems(
+            await readFile(file, 'utf8'),
+            file,
+            root,
+          ),
+        );
+    }
+  };
+  await scan(path.join(directory, 'src'));
+}
 assert.equal(
   errors.length,
   0,
   `Plugin dependency boundaries failed:\n${errors.join('\n')}`,
 );
 console.log(
-  'Plugin dependency boundaries passed for core and all five domains.',
+  'Plugin dependency boundaries passed for core, all five domains, Agent and workspace.',
 );

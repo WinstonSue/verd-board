@@ -189,12 +189,12 @@
         "strokeWidth": 1.5
       },
       "content": {
-        "label": "完整包分层与依赖\n按六层理解实际包依赖；依赖关系由源码清单维护。",
+        "label": "完整包分层与依赖\n按八类职责理解实际包依赖；关系由源码清单维护。",
         "text": {
           "schemaVersion": 1,
           "id": "project:overview/01/summary/1/text",
           "kind": "inline",
-          "plainText": "完整包分层与依赖\n按六层理解实际包依赖；依赖关系由源码清单维护。",
+          "plainText": "完整包分层与依赖\n按八类职责理解实际包依赖；关系由源码清单维护。",
           "content": {
             "type": "doc",
             "content": [
@@ -221,7 +221,7 @@
                 "content": [
                   {
                     "type": "text",
-                    "text": "按六层理解实际包依赖；依赖关系由源码清单维护。",
+                    "text": "按八类职责理解实际包依赖；关系由源码清单维护。",
                     "marks": [
                       {
                         "type": "textStyle",
@@ -237,7 +237,8 @@
             ]
           }
         }
-      }
+      },
+      "name": "完整包分层与依赖 按六层理解实际包依赖；依赖关系由源码清单维护。"
     },
     "project:overview/01/summary/2": {
       "id": "project:overview/01/summary/2",
@@ -468,8 +469,5 @@
         "strokeWidth": 1.5
       }
     }
-  },
-  "organization": {
-    "kind": "standalone"
   }
 }

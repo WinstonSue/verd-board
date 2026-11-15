@@ -2,7 +2,7 @@
 import { describe, expect, it } from 'vitest';
 import { zipSync, strToU8, unzipSync, strFromU8 } from 'fflate';
 import { importMarkdownCollection, portableArchive } from './portable-archive';
-import { createDocumentFile } from './document-files';
+import { createDocumentFile } from '@sue/verd-board-workspace';
 const file = (name: string, content: string | Uint8Array) =>
   new File(
     [typeof content === 'string' ? content : (content as BlobPart)],

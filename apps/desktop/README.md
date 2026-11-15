@@ -8,6 +8,8 @@
 
 从仓库根目录运行：
 
+日常正式验收优先使用 `pnpm test:remote`，在另一台保持桌面登录的 Mac 执行构建、单测及 Web/Desktop E2E；`pnpm test:remote doctor` 检查连接与运行时。开发机上的 `check:dev`、`check:ci` 同样默认走远程；直接 Desktop E2E 缺少执行上下文时会在启动 Electron 前拒绝。未提交修改随独立快照传输，断连后可用 `status`、`logs`、`fetch` 和任务 ID 恢复操作。统一配置位于 `~/.config/remote-test/config.json`，主机 `cacheDir` 可指定远端缓存位置；完整过程 trace 保留三轮，`artifacts` 查看、`fetch <任务ID> --raw` 按需回收。配置与 SSH 密钥接入见[原生开发指南](../../workspace/文档/开发/开发指南.verd-doc.json)的“Tailscale 远程开发验收”；下面的原始验证命令由测试 worker、CI 执行，用户明确要求本机调试时可使用 `VERD_TEST_EXECUTION=local`。
+
 ```bash
 pnpm install
 pnpm dev:desktop # dev / start 为别名；源码热更新

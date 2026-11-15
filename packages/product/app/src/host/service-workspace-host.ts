@@ -1,4 +1,4 @@
-import { VersionError } from './workspace-versions';
+import { VersionError } from '@sue/verd-board-workspace';
 import {
   decodeServiceValue,
   encodeServiceValue,
@@ -12,7 +12,7 @@ import type {
   OpenWorkspaceRequest,
   WorkspaceHandle,
   WorkspaceHost,
-} from './workspace-host';
+} from '@sue/verd-board-workspace';
 
 export interface ServiceHostOptions {
   baseUrl?: string;

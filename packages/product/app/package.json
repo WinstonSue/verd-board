@@ -1,6 +1,6 @@
 {
   "name": "@sue/verd-board-app",
-  "version": "2.1.0",
+  "version": "2.1.1",
   "private": false,
   "main": "./dist/index.cjs",
   "types": "./src/index.ts",
@@ -25,13 +25,11 @@
     "@sue/board-workflow": "workspace:*",
     "@sue/verd-board-agent-patterns": "workspace:*",
     "@sue/verd-board-ui": "workspace:*",
-    "buffer": "^6.0.3",
     "fflate": "0.8.3",
-    "isomorphic-git": "^1.44.11",
     "localforage": "^1.10.0",
     "lucide-react": "1.47.0",
     "pdfjs-dist": "5.7.284",
-    "yaml": "2.9.1"
+    "@sue/verd-board-workspace": "workspace:*"
   },
   "peerDependencies": {
     "react": ">=18",
@@ -42,7 +40,8 @@
     "@sue/board-mermaid-to-board": "workspace:*",
     "eslint": "^9.22.0",
     "fake-indexeddb": "6.2.5",
-    "vitest": "^3.0.8"
+    "vitest": "^3.0.8",
+    "isomorphic-git": "^1.44.11"
   },
   "exports": {
     ".": {

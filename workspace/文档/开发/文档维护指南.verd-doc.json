@@ -23,9 +23,30 @@
           ]
         },
         {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "系统介绍只维护原生正文和独立图表；按读者问题组织现有文件，修改事实时同步正文、图和入口。Agent 执行规范单独维护，不能把工作区介绍或推荐内容当作默认指令。"
+            }
+          ]
+        },
+        {
           "type": "heading",
           "attrs": {
             "level": 2
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "正文来源与阅读组织"
+            }
+          ]
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 3
           },
           "content": [
             {
@@ -39,7 +60,7 @@
           "content": [
             {
               "type": "text",
-              "text": "项目知识保存在仓库根 workspace/文档/ 的 .verd-doc.json 原生文档中，架构图保存在同一工作区的 .verd.json 文件中。直接在桌面端编辑后保存，或修改对应 JSON；不维护第二份 Markdown 或正文生成脚本，不导出兼容文档树。"
+              "text": "项目知识保存在仓库根 workspace/文档/ 的 .verd-doc.json 原生文档中，架构图保存在同一工作区的 .verd.json 文件中。直接在桌面端编辑后保存，或修改对应 JSON；产品与工程说明不维护第二份 Markdown 或正文生成脚本，不导出兼容文档树。Agent 执行指令与这些内容分别维护，使用 SKILL.md 和 references/*.md 作为单一维护源，不保存规范的原生 JSON 镜像。"
             }
           ]
         },
@@ -55,7 +76,7 @@
         {
           "type": "heading",
           "attrs": {
-            "level": 2
+            "level": 3
           },
           "content": [
             {
@@ -149,7 +170,7 @@
         {
           "type": "heading",
           "attrs": {
-            "level": 2
+            "level": 3
           },
           "content": [
             {
@@ -184,6 +205,18 @@
           "content": [
             {
               "type": "text",
+              "text": "稳定身份、链接与图文引用"
+            }
+          ]
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 3
+          },
+          "content": [
+            {
+              "type": "text",
               "text": "文档链接"
             }
           ]
@@ -207,9 +240,339 @@
           ]
         },
         {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "图文预览使用稳定身份：文档 frameReference.attrs.targetFrameId 引用画布，画布 document-reference.data.targetDocumentId 引用独立文档。正文不复制进引用壳。四类画布都能放文档卡片，正文只读滚动；源文件统一维护。图文循环引用合法，预览仅避免在同一路径无限重复展开；普通文字链接不扩大独立复制与原生导出闭包。不要为图文预览维护图片或 Markdown 正文镜像。"
+            }
+          ]
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 3
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "文档 Frame 与只读引用"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "导航组织阅读，正文维护说明，图解表达关系。根目录保留中文文档导航与英文 Documentation，分类正文位于文档/，项目导览和专题、细节图位于架构图/。说明图只使用普通富文本链接，不贴嵌文档正文；文档中按语境嵌入的专题图块及范式示例继续保留。"
+            }
+          ]
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 3
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "图元链接与 API 迁移维护"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "图元链接以工作区全局 Cell ID 为目标，fileId 是生成时所属提示及目标缺失回退；跨 Frame 移动无需更新旧链接。复制/导入必须用统一 idMap 和最终 owner 映射标准富文本、边标签、表格和笔记，集合外目标仍指原源。普通文字链接不扩展原生导出闭包。"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "API 文档以各包当前 manifest 与公开类型为准，接入继续使用 Actions 和 revealTarget。产品 2.1.1、共享工作区 SDK 与 board-react 2.2.0 分别说明宿主组合、独立 Agent 依赖边界和只读预览；2.1.0 章节保留破坏性契约与迁移基线，历史 2.0 记录保留日期和适用范围。正文同步源码行为与实际验收事实，不将本地定版或 tarball 验证写成 registry 发布证明。"
+            }
+          ]
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 3
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "稳定段落与摘录"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "稳定段落链接使用 verd://file/<编码文件身份>#<编码 block:段落身份>，block: 与 cell: 都是保留片段前缀。已有标题 slug 继续兼容。段落身份由正文事务维护，不从文字或物理位置生成。摘录保存源文档及目标段落身份，不复制预览内容作为第二份维护真源。"
+            }
+          ]
+        },
+        {
           "type": "heading",
           "attrs": {
             "level": 2
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "图解层级与派生内容"
+            }
+          ]
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 3
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "专题总览与机制细节"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "工作区包含项目导览、九张专题总览与二十一张细节图；细节按专题分目录。总览使用普通画布承载 frame-reference，细节使用适合内容的领域场景。总览与细节都是独立源文件，通过引用表达阅读层次，不组织为多层 subgraph。旧 organization 仅兼容读取；原生 CLI 保存不再输出该字段，独立性由真实文件及引用结构保证。"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "保留原首页、九张专题、文档与迁移内容 Cell 的稳定身份。跨图拆分需重新维护场景成员和连线；图元链接通过全局 Cell ID 跟随归属，不复制正文。每张总览及细节以紧凑富文本保留关联文档和章节链接，细节另说明阅读范围、源码入口和返回专题链接。"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "完整包依赖图维护在“01.1 完整包分层与依赖”，自动刷新目标 PACKAGE_FRAME_ID 为 project:detail/01/01。仅该图的 demo:packages/ Cell 由脚本维护；总览、细节入口和注释使用独立命名空间。workspace:refresh 必须保持总览不变并且可重复执行。"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "新增机制说明需核对当前源码，区分文件级诊断与工作区级失败，以及开发服务验收、生产构建验收和正式打包发布。文档的 text.content 与 plainText 一起更新；导航验收使用临时工作区，不更新用户已有工作区。"
+            }
+          ]
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 3
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "规则职责与审图"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "本仓开发约定与验证门禁统一维护于仓库根 AGENTS.md；产品 Agent 的通用入口维护于 packages/agent/patterns/agent/skills/verd-authoring/SKILL.md，写作、汇报和图表质量细则位于该 Skill 的 references/。各范式细则位于相应 Skill 的 references/guide.md，五类文档范式共享富文本文档细则。Markdown 规范使用相对文件引用，原生模板与产物继续使用稳定身份链接；跨库不生成悬空 verd://file 链接。"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "审图需覆盖单图、总览引用和正文嵌入。validate 只证明机器规则通过；判断语义、失败出口、文字留白及连线可读性须结合当前计划 preview 后实际看图。全量审阅不要求每张图产生变更。"
+            }
+          ]
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 2
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "Agent 与用户推荐的来源边界"
+            }
+          ]
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 3
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "独立范式 package 的正文来源"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "Agent 执行规则和模板独立维护在 packages/agent/patterns/agent/；面向用户的编写推荐内容维护在同包 workspace/。主项目文档维护入口与工程说明，两类内容分别审阅。"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "catalog.json 关联范式身份、参数、模板闭包及真实规则 ID。模板实例化必须通过同一编写计划、校验和渲染契约；不要在 CLI 中复制一套规则算法。"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "已安装应用里的范式工作区为可编辑副本，不自动覆盖、不回写源包；更新源包仍通过仓库提交与评审。"
+            }
+          ]
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 3
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "独立自定义 Skill 与默认 Skill 查看"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "在「设置 → 自定义 Skills」维护独立命名的 Skill，可新建、编辑用途描述和 Markdown 正文、删除及从回收站恢复。标准文件位于 .agents/skills/<name>/SKILL.md，外部新增的 Skill 自动进入列表。创建后名称固定；已有 YAML 可选元信息和引用资源保留，删除只回收 SKILL.md。自定义 Skill 不绑定默认范式，Agent 根据名称和描述按需读取，不一次性注入所有正文。"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "「设置 → 提示词」仍维护工作区通用与各范式的自定义补充要求；范围选择器旁的「查看默认 Skill」在首屏显示。只读查看器可阅读通用编写 Skill、所选范式 Skill 与关联规则说明，并查看完整 Markdown 源码。自定义 Skills 页面只提供通用编写 Skill 查看。"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "默认 Skill 统一维护在 packages/agent/patterns/agent/skills/<name>/SKILL.md。范式使用 verd-<patternId> 名称，通过相对路径引用现有规则正文和模板，catalog.skillPath 登记入口。通用 verd-authoring 正文同样以内容包为唯一来源；verd skill 返回真实文档路径，运行时资源继续提供 .verdscrolls/shared/skills/verd-authoring/SKILL.md。内置白名单与发布摘要纳入这些入口，工作区内容导航隐藏已登记的默认资源目录。"
+            }
+          ]
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 3
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "用户编写建议与 Agent 规范的职责边界"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "文档编写推荐库面向用户，提供组织内容、选择图形、编排图文的建议和可编辑示例。建议可以包含 Agent 规范中的知识，但不向 Agent 注入提示或产生默认约束。推荐库维护在 packages/agent/patterns/workspace/，使用独立 recommendations.json 目录索引。"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "Agent 工程的文字执行规范和默认 Skills 维护在同包 agent/skills/，Markdown 是唯一维护源；原生执行模板按 catalog.json 定位，机器索引及结构规则保留 JSON。默认查看器读取 Markdown，在应用内转换为只读模型并可查看源码；不会落盘派生 JSON。用户模板创建和推荐库浏览读取独立用户来源。两类内容分别审阅，不生成彼此的正文镜像。"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "工作区 AGENTS.md 是普通 AI 接入工程文件，用户显式配置的 .agents/skills 仍按适用范围生效；这不使推荐正文成为默认指令。已有用户副本保留编辑，通过手动全量更新升级。整体共享资源升级继续校验完整性，并要求重新生成未提交计划。"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "每次发布任何产品或独立 SDK/npm 包版本，都必须对照最新业务分别核对 Agent 工程、用户推荐库和系统介绍。系统介绍必须更新相应原生正文；Agent 工程与推荐库允许说明已经审阅且无需变更。同步检查包括入口、能力、边界、命令和限制，避免保留过时介绍。"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "系统介绍的首次基线取本次落地内容，后续发布核对记录关联前一基线和当前摘要。日期、版本号、缓存和格式变化不满足正文更新要求；核对记录须引用实际更新的原生文档。内容摘要保证审阅对象一致，业务正确性由开发者或 Agent 对照源码和需求审阅。"
+            }
+          ]
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 2
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "样例契约与维护验收"
+            }
+          ]
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 3
           },
           "content": [
             {
@@ -251,7 +614,7 @@
         {
           "type": "heading",
           "attrs": {
-            "level": 2
+            "level": 3
           },
           "content": [
             {
@@ -340,7 +703,7 @@
           "content": [
             {
               "type": "text",
-              "text": "最后更新：2026-11-06。"
+              "text": "内容核对：2026-11-13。改写保留事实、条件和历史上下文；结构校验、视觉审阅和本轮测试分别提供证据。"
             }
           ]
         },
@@ -349,298 +712,13 @@
           "content": [
             {
               "type": "text",
-              "text": "图文预览使用稳定身份：文档 frameReference.attrs.targetFrameId 引用画布，画布 document-reference.data.targetDocumentId 引用独立文档。正文不复制进引用壳。四类画布都能放文档卡片，正文只读滚动；源文件统一维护。图文循环引用合法，预览仅避免在同一路径无限重复展开；普通文字链接不扩大独立复制与原生导出闭包。不要为图文预览维护图片或 Markdown 正文镜像。"
-            }
-          ]
-        },
-        {
-          "type": "heading",
-          "attrs": {
-            "level": 2
-          },
-          "content": [
-            {
-              "type": "text",
-              "text": "文档 Frame 与只读引用"
-            }
-          ]
-        },
-        {
-          "type": "paragraph",
-          "content": [
-            {
-              "type": "text",
-              "text": "导航组织阅读，正文维护说明，图解表达关系。根目录保留中文文档导航与英文 Documentation，分类正文位于文档/，项目导览和专题、细节图位于架构图/。说明图只使用普通富文本链接，不贴嵌文档正文；文档中按语境嵌入的专题图块及范式示例继续保留。"
-            }
-          ]
-        },
-        {
-          "type": "heading",
-          "attrs": {
-            "level": 2
-          },
-          "content": [
-            {
-              "type": "text",
-              "text": "图元链接与 API 迁移维护"
-            }
-          ]
-        },
-        {
-          "type": "paragraph",
-          "content": [
-            {
-              "type": "text",
-              "text": "图元链接以工作区全局 Cell ID 为目标，fileId 是生成时所属提示及目标缺失回退；跨 Frame 移动无需更新旧链接。复制/导入必须用统一 idMap 和最终 owner 映射标准富文本、边标签、表格和笔记，集合外目标仍指原源。普通文字链接不扩展原生导出闭包。"
-            }
-          ]
-        },
-        {
-          "type": "paragraph",
-          "content": [
-            {
-              "type": "text",
-              "text": "API 文档以当前 2.1.0 源码为准，接入使用 Actions 和 revealTarget；历史 2.0 发布章节保留日期与迁移上下文。本次前期版本统一为 2.1.0，包含已标记的破坏性接口变更，后续遵循原版本规则。文档同步源码行为与本地验收事实，不将本地定版或 tarball 验证写成 registry 发布证明。"
-            }
-          ]
-        },
-        {
-          "type": "heading",
-          "attrs": {
-            "level": 2
-          },
-          "content": [
-            {
-              "type": "text",
-              "text": "专题总览与机制细节"
-            }
-          ]
-        },
-        {
-          "type": "paragraph",
-          "content": [
-            {
-              "type": "text",
-              "text": "工作区包含项目导览、九张专题总览与二十一张细节图；细节按专题分目录。总览使用普通画布承载 frame-reference，细节使用适合内容的领域场景。总览与细节都显式设为 standalone，通过引用表达阅读层次，不把它们组织为多层 subgraph。"
-            }
-          ]
-        },
-        {
-          "type": "paragraph",
-          "content": [
-            {
-              "type": "text",
-              "text": "保留原首页、九张专题、文档与迁移内容 Cell 的稳定身份。跨图拆分需重新维护场景成员和连线；图元链接通过全局 Cell ID 跟随归属，不复制正文。每张总览及细节以紧凑富文本保留关联文档和章节链接，细节另说明阅读范围、源码入口和返回专题链接。"
-            }
-          ]
-        },
-        {
-          "type": "paragraph",
-          "content": [
-            {
-              "type": "text",
-              "text": "完整包依赖图维护在“01.1 完整包分层与依赖”，自动刷新目标 PACKAGE_FRAME_ID 为 project:detail/01/01。仅该图的 demo:packages/ Cell 由脚本维护；总览、细节入口和注释使用独立命名空间。workspace:refresh 必须保持总览不变并且可重复执行。"
-            }
-          ]
-        },
-        {
-          "type": "paragraph",
-          "content": [
-            {
-              "type": "text",
-              "text": "新增机制说明需核对当前源码，区分文件级诊断与工作区级失败，以及开发服务验收、生产构建验收和正式打包发布。文档的 text.content 与 plainText 一起更新；导航验收使用临时工作区，不更新用户已有工作区。"
-            }
-          ]
-        },
-        {
-          "type": "heading",
-          "attrs": {
-            "level": 2
-          },
-          "content": [
-            {
-              "type": "text",
-              "text": "独立范式 package 的正文来源"
-            }
-          ]
-        },
-        {
-          "type": "paragraph",
-          "content": [
-            {
-              "type": "text",
-              "text": "Agent 执行规则和模板独立维护在 packages/product/agent-patterns/agent/；面向用户的编写推荐内容维护在同包 workspace/。主项目文档维护入口与工程说明，两类内容分别审阅。"
-            }
-          ]
-        },
-        {
-          "type": "paragraph",
-          "content": [
-            {
-              "type": "text",
-              "text": "catalog.json 关联范式身份、参数、模板闭包及真实规则 ID。模板实例化必须通过同一编写计划、校验和渲染契约；不要在 CLI 中复制一套规则算法。"
-            }
-          ]
-        },
-        {
-          "type": "paragraph",
-          "content": [
-            {
-              "type": "text",
-              "text": "已安装应用里的范式工作区为可编辑副本，不自动覆盖、不回写源包；更新源包仍通过仓库提交与评审。"
-            }
-          ]
-        },
-        {
-          "type": "heading",
-          "attrs": {
-            "level": 2
-          },
-          "content": [
-            {
-              "type": "text",
-              "text": "稳定段落与摘录"
-            }
-          ]
-        },
-        {
-          "type": "paragraph",
-          "content": [
-            {
-              "type": "text",
-              "text": "稳定段落链接使用 verd://file/<编码文件身份>#<编码 block:段落身份>，block: 与 cell: 都是保留片段前缀。已有标题 slug 继续兼容。段落身份由正文事务维护，不从文字或物理位置生成。摘录保存源文档及目标段落身份，不复制预览内容作为第二份维护真源。"
-            }
-          ]
-        },
-        {
-          "type": "heading",
-          "attrs": {
-            "level": 2
-          },
-          "content": [
-            {
-              "type": "text",
-              "text": "规则职责与审图"
-            }
-          ]
-        },
-        {
-          "type": "paragraph",
-          "content": [
-            {
-              "type": "text",
-              "text": "本仓开发约定维护于 verd-board-dev Skill；原生编写执行流程维护于 packages/product/agent-patterns/agent/skills/verd-authoring/SKILL.md；Agent 图表质量规范正文维护于 packages/product/agent-patterns/agent/图表编写规范.verd-doc.json。用户推荐库可包含相同知识，但不作为 Agent 默认指令来源，也不与 Agent 规范自动生成正文镜像。系统介绍、用户推荐库和 Agent 资源各自保持稳定链接闭包，跨库使用明确的包与源文件定位，不生成指向另一工作区的悬空 verd://file 链接。"
-            }
-          ]
-        },
-        {
-          "type": "paragraph",
-          "content": [
-            {
-              "type": "text",
-              "text": "审图需覆盖单图、总览引用和正文嵌入。validate 只证明机器规则通过；判断语义、失败出口、文字留白及连线可读性须结合当前计划 preview 后实际看图。全量审阅不要求每张图产生变更。"
-            }
-          ]
-        },
-        {
-          "type": "heading",
-          "attrs": {
-            "level": 2
-          },
-          "content": [
-            {
-              "type": "text",
-              "text": "独立自定义 Skill 与默认 Skill 查看"
-            }
-          ]
-        },
-        {
-          "type": "paragraph",
-          "content": [
-            {
-              "type": "text",
-              "text": "在「设置 → 自定义 Skills」维护独立命名的 Skill，可新建、编辑用途描述和 Markdown 正文、删除及从回收站恢复。标准文件位于 .agents/skills/<name>/SKILL.md，外部新增的 Skill 自动进入列表。创建后名称固定；已有 YAML 可选元信息和引用资源保留，删除只回收 SKILL.md。自定义 Skill 不绑定默认范式，Agent 根据名称和描述按需读取，不一次性注入所有正文。"
-            }
-          ]
-        },
-        {
-          "type": "paragraph",
-          "content": [
-            {
-              "type": "text",
-              "text": "「设置 → 提示词」仍维护工作区通用与各范式的自定义补充要求；范围选择器旁的「查看默认 Skill」在首屏显示。只读查看器可阅读通用编写 Skill、所选范式 Skill 与关联规则说明，并查看完整 Markdown 源码。自定义 Skills 页面只提供通用编写 Skill 查看。"
-            }
-          ]
-        },
-        {
-          "type": "paragraph",
-          "content": [
-            {
-              "type": "text",
-              "text": "默认 Skill 统一维护在 packages/product/agent-patterns/agent/skills/<name>/SKILL.md。范式使用 verd-<patternId> 名称，通过相对路径引用现有规则正文和模板，catalog.skillPath 登记入口。通用 verd-authoring 正文同样以内容包为唯一来源；verd skill 返回真实文档路径，运行时资源继续提供 .verdscrolls/shared/skills/verd-authoring/SKILL.md。内置白名单与发布摘要纳入这些入口，工作区内容导航隐藏已登记的默认资源目录。"
-            }
-          ]
-        },
-        {
-          "type": "heading",
-          "attrs": {
-            "level": 2
-          },
-          "content": [
-            {
-              "type": "text",
-              "text": "用户编写建议与 Agent 规范的职责边界"
-            }
-          ]
-        },
-        {
-          "type": "paragraph",
-          "content": [
-            {
-              "type": "text",
-              "text": "文档编写推荐库面向用户，提供组织内容、选择图形、编排图文的建议和可编辑示例。建议可以包含 Agent 规范中的知识，但不向 Agent 注入提示或产生默认约束。推荐库维护在 packages/product/agent-patterns/workspace/，使用独立 recommendations.json 目录索引。"
-            }
-          ]
-        },
-        {
-          "type": "paragraph",
-          "content": [
-            {
-              "type": "text",
-              "text": "Agent 工程的执行规范、默认 Skills 与模板维护在同包 agent/，由独立 catalog.json、rules.json 和 Agent 加载入口提供。默认 Skill 查看器读取真正 Agent 来源；用户模板创建和推荐库浏览读取用户来源。两类内容独立审阅维护，不生成彼此的正文镜像。"
-            }
-          ]
-        },
-        {
-          "type": "paragraph",
-          "content": [
-            {
-              "type": "text",
-              "text": "工作区 AGENTS.md 是普通 AI 接入工程文件，用户显式配置的 .agents/skills 仍按适用范围生效；这不使推荐正文成为默认指令。已有用户副本保留编辑，通过手动全量更新升级。整体共享资源升级继续校验完整性，并要求重新生成未提交计划。"
-            }
-          ]
-        },
-        {
-          "type": "paragraph",
-          "content": [
-            {
-              "type": "text",
-              "text": "每次发布任何产品或独立 SDK/npm 包版本，都必须对照最新业务分别核对 Agent 工程、用户推荐库和系统介绍。系统介绍必须更新相应原生正文；Agent 工程与推荐库允许说明已经审阅且无需变更。同步检查包括入口、能力、边界、命令和限制，避免保留过时介绍。"
-            }
-          ]
-        },
-        {
-          "type": "paragraph",
-          "content": [
-            {
-              "type": "text",
-              "text": "系统介绍的首次基线取本次落地内容，后续发布核对记录关联前一基线和当前摘要。日期、版本号、缓存和格式变化不满足正文更新要求；核对记录须引用实际更新的原生文档。内容摘要保证审阅对象一致，业务正确性由开发者或 Agent 对照源码和需求审阅。"
+              "text": "整体整理沿用现有文件、Frame 和块身份，优先移动原生块而非重新导入 Markdown。每个主题保留一处详细说明，产品摘要、架构机制与源码索引各负其责；合并时逐项迁入独有事实、数字、例外和限定条件。旧标题与已引用段落保留定位或同步更新全部已知入链。原生结构校验之外另核对 block: 链接和摘录目标，再实际查看文档及单图、总览引用和正文嵌入。"
             }
           ]
         }
       ]
     },
-    "plainText": "文档维护指南\n唯一正文来源\n项目知识保存在仓库根 workspace/文档/ 的 .verd-doc.json 原生文档中，架构图保存在同一工作区的 .verd.json 文件中。直接在桌面端编辑后保存，或修改对应 JSON；不维护第二份 Markdown 或正文生成脚本，不导出兼容文档树。\n文档文件格式为 DocumentFileV1：format 为 verd-document、version 为 1，id 与 text.id 一致，text.kind 为 block。文件名和 title 使用可读名称；文件移动、重命名保持身份不变，复制时生成新身份。现有项目文档使用 project-doc: 命名空间，后缀是迁移前的逻辑分类标识；这个标识用于稳定引用，不表示文件系统路径。\n导航与分类\n主入口是中文“文档导航”和英文 Documentation；项目导览画布提供图解导航。正文按产品、架构、开发、指南、包分类，新增内容写入最合适的现有文档；需要独立成篇时创建原生文档，并登记到导航。\n产品能力摘要维护在 产品概览；设计、数据流与持久化边界维护在 系统架构；命令与发布维护在 开发指南；细节维护在包说明与 配置与源码索引。不再新建按月变更目录；各包 CHANGELOG 仍用于发布说明。\n语言与事实来源\n中文导航、英文 Documentation 与根 README 的产品定位、启动入口和重大能力同步更新；其他正文以中文为主，Mind 引擎英文概览按需同步。包名与代码标识保持原名。中文产品名为青编，英文产品名为 VerdBoard。\n技术栈版本以 package.json 和 pnpm-lock.yaml 为准；命令以根与应用/包 scripts 为准。不要使用旧图中的日期、固定测试数量或过去的通过记录推断当前提交已验收。\n文档链接\n原生工作区链接统一使用 common 的 createWorkspaceLink/parseWorkspaceLink。文件为 verd://file/<encodeURIComponent(fileId)>，标题追加编码后的 GitHub slug；图元追加 #<encodeURIComponent(\"cell:\" + cellId)>。同文档 #slug 继续可读，cell: 是图元片段的保留前缀。不得把物理路径、occurrence、坐标或展开状态编码进内部链接。\n标题 slug 由 github-slugger 生成，同一文档按标题顺序计算；重复标题依次带 -1、-2 后缀。编辑标题后检查已有锚点。外部资料使用 HTTP/HTTPS。源码位置与夹具路径作为可复制的仓库相对路径文字呈现。\n数据样例契约\nAI 画布数据规范 保存完整字段表、约束和 与输入夹具逐项对应的代码块样例，配套输入位于 tests/fixtures/ai-canvas/。测试直接读取原生规范 JSON，递归查找 codeBlock，逐字核对每个样例后，再运行真实格式校验、转换器、组装和导入路径测试。示例不依赖 Markdown fence 的隐藏 metadata。\n调整样例时同时更新正文代码块和夹具，保留合法 ID、端口、所有权和引用闭包。夹具保持原字节排版，由 .prettierignore 保护。导入样例中的 .md/.mmd 属于测试数据，不是另一份知识文档。\n更新与验收\n变更产品入口、文件模型或包职责时，同步修改系统架构、包索引、产品摘要、源码索引与相关架构图。\n变更命令或发布流程时，同步检查根 README、开发指南、安装指南和双语入口。\n保持代码块、列表、表格、链接、图片与关键说明完整。CommonMark/GFM 导入可作为一次性迁移手段；HTML 版式应改成原生结构，任务清单应明确显示状态。\n验证原生文件身份和结构、全部内部目标及锚点；运行相关单测与 E2E。历史验收保留原日期和上下文，新结果另注明日期，不覆盖历史事实。\n根 README、包 README 和开发规则只做入口或工程约定；长期产品正文写在原生文档中。\n最后更新：2026-11-06。\n图文预览使用稳定身份：文档 frameReference.attrs.targetFrameId 引用画布，画布 document-reference.data.targetDocumentId 引用独立文档。正文不复制进引用壳。四类画布都能放文档卡片，正文只读滚动；源文件统一维护。图文循环引用合法，预览仅避免在同一路径无限重复展开；普通文字链接不扩大独立复制与原生导出闭包。不要为图文预览维护图片或 Markdown 正文镜像。\n文档 Frame 与只读引用\n导航组织阅读，正文维护说明，图解表达关系。根目录保留中文文档导航与英文 Documentation，分类正文位于文档/，项目导览和专题、细节图位于架构图/。说明图只使用普通富文本链接，不贴嵌文档正文；文档中按语境嵌入的专题图块及范式示例继续保留。\n图元链接与 API 迁移维护\n图元链接以工作区全局 Cell ID 为目标，fileId 是生成时所属提示及目标缺失回退；跨 Frame 移动无需更新旧链接。复制/导入必须用统一 idMap 和最终 owner 映射标准富文本、边标签、表格和笔记，集合外目标仍指原源。普通文字链接不扩展原生导出闭包。\nAPI 文档以当前 2.1.0 源码为准，接入使用 Actions 和 revealTarget；历史 2.0 发布章节保留日期与迁移上下文。本次前期版本统一为 2.1.0，包含已标记的破坏性接口变更，后续遵循原版本规则。文档同步源码行为与本地验收事实，不将本地定版或 tarball 验证写成 registry 发布证明。\n专题总览与机制细节\n工作区包含项目导览、九张专题总览与二十一张细节图；细节按专题分目录。总览使用普通画布承载 frame-reference，细节使用适合内容的领域场景。总览与细节都显式设为 standalone，通过引用表达阅读层次，不把它们组织为多层 subgraph。\n保留原首页、九张专题、文档与迁移内容 Cell 的稳定身份。跨图拆分需重新维护场景成员和连线；图元链接通过全局 Cell ID 跟随归属，不复制正文。每张总览及细节以紧凑富文本保留关联文档和章节链接，细节另说明阅读范围、源码入口和返回专题链接。\n完整包依赖图维护在“01.1 完整包分层与依赖”，自动刷新目标 PACKAGE_FRAME_ID 为 project:detail/01/01。仅该图的 demo:packages/ Cell 由脚本维护；总览、细节入口和注释使用独立命名空间。workspace:refresh 必须保持总览不变并且可重复执行。\n新增机制说明需核对当前源码，区分文件级诊断与工作区级失败，以及开发服务验收、生产构建验收和正式打包发布。文档的 text.content 与 plainText 一起更新；导航验收使用临时工作区，不更新用户已有工作区。\n独立范式 package 的正文来源\nAgent 执行规则和模板独立维护在 packages/product/agent-patterns/agent/；面向用户的编写推荐内容维护在同包 workspace/。主项目文档维护入口与工程说明，两类内容分别审阅。\ncatalog.json 关联范式身份、参数、模板闭包及真实规则 ID。模板实例化必须通过同一编写计划、校验和渲染契约；不要在 CLI 中复制一套规则算法。\n已安装应用里的范式工作区为可编辑副本，不自动覆盖、不回写源包；更新源包仍通过仓库提交与评审。\n稳定段落与摘录\n稳定段落链接使用 verd://file/<编码文件身份>#<编码 block:段落身份>，block: 与 cell: 都是保留片段前缀。已有标题 slug 继续兼容。段落身份由正文事务维护，不从文字或物理位置生成。摘录保存源文档及目标段落身份，不复制预览内容作为第二份维护真源。\n规则职责与审图\n本仓开发约定维护于 verd-board-dev Skill；原生编写执行流程维护于 packages/product/agent-patterns/agent/skills/verd-authoring/SKILL.md；Agent 图表质量规范正文维护于 packages/product/agent-patterns/agent/图表编写规范.verd-doc.json。用户推荐库可包含相同知识，但不作为 Agent 默认指令来源，也不与 Agent 规范自动生成正文镜像。系统介绍、用户推荐库和 Agent 资源各自保持稳定链接闭包，跨库使用明确的包与源文件定位，不生成指向另一工作区的悬空 verd://file 链接。\n审图需覆盖单图、总览引用和正文嵌入。validate 只证明机器规则通过；判断语义、失败出口、文字留白及连线可读性须结合当前计划 preview 后实际看图。全量审阅不要求每张图产生变更。\n独立自定义 Skill 与默认 Skill 查看\n在「设置 → 自定义 Skills」维护独立命名的 Skill，可新建、编辑用途描述和 Markdown 正文、删除及从回收站恢复。标准文件位于 .agents/skills/<name>/SKILL.md，外部新增的 Skill 自动进入列表。创建后名称固定；已有 YAML 可选元信息和引用资源保留，删除只回收 SKILL.md。自定义 Skill 不绑定默认范式，Agent 根据名称和描述按需读取，不一次性注入所有正文。\n「设置 → 提示词」仍维护工作区通用与各范式的自定义补充要求；范围选择器旁的「查看默认 Skill」在首屏显示。只读查看器可阅读通用编写 Skill、所选范式 Skill 与关联规则说明，并查看完整 Markdown 源码。自定义 Skills 页面只提供通用编写 Skill 查看。\n默认 Skill 统一维护在 packages/product/agent-patterns/agent/skills/<name>/SKILL.md。范式使用 verd-<patternId> 名称，通过相对路径引用现有规则正文和模板，catalog.skillPath 登记入口。通用 verd-authoring 正文同样以内容包为唯一来源；verd skill 返回真实文档路径，运行时资源继续提供 .verdscrolls/shared/skills/verd-authoring/SKILL.md。内置白名单与发布摘要纳入这些入口，工作区内容导航隐藏已登记的默认资源目录。\n用户编写建议与 Agent 规范的职责边界\n文档编写推荐库面向用户，提供组织内容、选择图形、编排图文的建议和可编辑示例。建议可以包含 Agent 规范中的知识，但不向 Agent 注入提示或产生默认约束。推荐库维护在 packages/product/agent-patterns/workspace/，使用独立 recommendations.json 目录索引。\nAgent 工程的执行规范、默认 Skills 与模板维护在同包 agent/，由独立 catalog.json、rules.json 和 Agent 加载入口提供。默认 Skill 查看器读取真正 Agent 来源；用户模板创建和推荐库浏览读取用户来源。两类内容独立审阅维护，不生成彼此的正文镜像。\n工作区 AGENTS.md 是普通 AI 接入工程文件，用户显式配置的 .agents/skills 仍按适用范围生效；这不使推荐正文成为默认指令。已有用户副本保留编辑，通过手动全量更新升级。整体共享资源升级继续校验完整性，并要求重新生成未提交计划。\n每次发布任何产品或独立 SDK/npm 包版本，都必须对照最新业务分别核对 Agent 工程、用户推荐库和系统介绍。系统介绍必须更新相应原生正文；Agent 工程与推荐库允许说明已经审阅且无需变更。同步检查包括入口、能力、边界、命令和限制，避免保留过时介绍。\n系统介绍的首次基线取本次落地内容，后续发布核对记录关联前一基线和当前摘要。日期、版本号、缓存和格式变化不满足正文更新要求；核对记录须引用实际更新的原生文档。内容摘要保证审阅对象一致，业务正确性由开发者或 Agent 对照源码和需求审阅。",
+    "plainText": "文档维护指南\n系统介绍只维护原生正文和独立图表；按读者问题组织现有文件，修改事实时同步正文、图和入口。Agent 执行规范单独维护，不能把工作区介绍或推荐内容当作默认指令。\n正文来源与阅读组织\n唯一正文来源\n项目知识保存在仓库根 workspace/文档/ 的 .verd-doc.json 原生文档中，架构图保存在同一工作区的 .verd.json 文件中。直接在桌面端编辑后保存，或修改对应 JSON；产品与工程说明不维护第二份 Markdown 或正文生成脚本，不导出兼容文档树。Agent 执行指令与这些内容分别维护，使用 SKILL.md 和 references/*.md 作为单一维护源，不保存规范的原生 JSON 镜像。\n文档文件格式为 DocumentFileV1：format 为 verd-document、version 为 1，id 与 text.id 一致，text.kind 为 block。文件名和 title 使用可读名称；文件移动、重命名保持身份不变，复制时生成新身份。现有项目文档使用 project-doc: 命名空间，后缀是迁移前的逻辑分类标识；这个标识用于稳定引用，不表示文件系统路径。\n导航与分类\n主入口是中文“文档导航”和英文 Documentation；项目导览画布提供图解导航。正文按产品、架构、开发、指南、包分类，新增内容写入最合适的现有文档；需要独立成篇时创建原生文档，并登记到导航。\n产品能力摘要维护在 产品概览；设计、数据流与持久化边界维护在 系统架构；命令与发布维护在 开发指南；细节维护在包说明与 配置与源码索引。不再新建按月变更目录；各包 CHANGELOG 仍用于发布说明。\n语言与事实来源\n中文导航、英文 Documentation 与根 README 的产品定位、启动入口和重大能力同步更新；其他正文以中文为主，Mind 引擎英文概览按需同步。包名与代码标识保持原名。中文产品名为青编，英文产品名为 VerdBoard。\n技术栈版本以 package.json 和 pnpm-lock.yaml 为准；命令以根与应用/包 scripts 为准。不要使用旧图中的日期、固定测试数量或过去的通过记录推断当前提交已验收。\n稳定身份、链接与图文引用\n文档链接\n原生工作区链接统一使用 common 的 createWorkspaceLink/parseWorkspaceLink。文件为 verd://file/<encodeURIComponent(fileId)>，标题追加编码后的 GitHub slug；图元追加 #<encodeURIComponent(\"cell:\" + cellId)>。同文档 #slug 继续可读，cell: 是图元片段的保留前缀。不得把物理路径、occurrence、坐标或展开状态编码进内部链接。\n标题 slug 由 github-slugger 生成，同一文档按标题顺序计算；重复标题依次带 -1、-2 后缀。编辑标题后检查已有锚点。外部资料使用 HTTP/HTTPS。源码位置与夹具路径作为可复制的仓库相对路径文字呈现。\n图文预览使用稳定身份：文档 frameReference.attrs.targetFrameId 引用画布，画布 document-reference.data.targetDocumentId 引用独立文档。正文不复制进引用壳。四类画布都能放文档卡片，正文只读滚动；源文件统一维护。图文循环引用合法，预览仅避免在同一路径无限重复展开；普通文字链接不扩大独立复制与原生导出闭包。不要为图文预览维护图片或 Markdown 正文镜像。\n文档 Frame 与只读引用\n导航组织阅读，正文维护说明，图解表达关系。根目录保留中文文档导航与英文 Documentation，分类正文位于文档/，项目导览和专题、细节图位于架构图/。说明图只使用普通富文本链接，不贴嵌文档正文；文档中按语境嵌入的专题图块及范式示例继续保留。\n图元链接与 API 迁移维护\n图元链接以工作区全局 Cell ID 为目标，fileId 是生成时所属提示及目标缺失回退；跨 Frame 移动无需更新旧链接。复制/导入必须用统一 idMap 和最终 owner 映射标准富文本、边标签、表格和笔记，集合外目标仍指原源。普通文字链接不扩展原生导出闭包。\nAPI 文档以各包当前 manifest 与公开类型为准，接入继续使用 Actions 和 revealTarget。产品 2.1.1、共享工作区 SDK 与 board-react 2.2.0 分别说明宿主组合、独立 Agent 依赖边界和只读预览；2.1.0 章节保留破坏性契约与迁移基线，历史 2.0 记录保留日期和适用范围。正文同步源码行为与实际验收事实，不将本地定版或 tarball 验证写成 registry 发布证明。\n稳定段落与摘录\n稳定段落链接使用 verd://file/<编码文件身份>#<编码 block:段落身份>，block: 与 cell: 都是保留片段前缀。已有标题 slug 继续兼容。段落身份由正文事务维护，不从文字或物理位置生成。摘录保存源文档及目标段落身份，不复制预览内容作为第二份维护真源。\n图解层级与派生内容\n专题总览与机制细节\n工作区包含项目导览、九张专题总览与二十一张细节图；细节按专题分目录。总览使用普通画布承载 frame-reference，细节使用适合内容的领域场景。总览与细节都是独立源文件，通过引用表达阅读层次，不组织为多层 subgraph。旧 organization 仅兼容读取；原生 CLI 保存不再输出该字段，独立性由真实文件及引用结构保证。\n保留原首页、九张专题、文档与迁移内容 Cell 的稳定身份。跨图拆分需重新维护场景成员和连线；图元链接通过全局 Cell ID 跟随归属，不复制正文。每张总览及细节以紧凑富文本保留关联文档和章节链接，细节另说明阅读范围、源码入口和返回专题链接。\n完整包依赖图维护在“01.1 完整包分层与依赖”，自动刷新目标 PACKAGE_FRAME_ID 为 project:detail/01/01。仅该图的 demo:packages/ Cell 由脚本维护；总览、细节入口和注释使用独立命名空间。workspace:refresh 必须保持总览不变并且可重复执行。\n新增机制说明需核对当前源码，区分文件级诊断与工作区级失败，以及开发服务验收、生产构建验收和正式打包发布。文档的 text.content 与 plainText 一起更新；导航验收使用临时工作区，不更新用户已有工作区。\n规则职责与审图\n本仓开发约定与验证门禁统一维护于仓库根 AGENTS.md；产品 Agent 的通用入口维护于 packages/agent/patterns/agent/skills/verd-authoring/SKILL.md，写作、汇报和图表质量细则位于该 Skill 的 references/。各范式细则位于相应 Skill 的 references/guide.md，五类文档范式共享富文本文档细则。Markdown 规范使用相对文件引用，原生模板与产物继续使用稳定身份链接；跨库不生成悬空 verd://file 链接。\n审图需覆盖单图、总览引用和正文嵌入。validate 只证明机器规则通过；判断语义、失败出口、文字留白及连线可读性须结合当前计划 preview 后实际看图。全量审阅不要求每张图产生变更。\nAgent 与用户推荐的来源边界\n独立范式 package 的正文来源\nAgent 执行规则和模板独立维护在 packages/agent/patterns/agent/；面向用户的编写推荐内容维护在同包 workspace/。主项目文档维护入口与工程说明，两类内容分别审阅。\ncatalog.json 关联范式身份、参数、模板闭包及真实规则 ID。模板实例化必须通过同一编写计划、校验和渲染契约；不要在 CLI 中复制一套规则算法。\n已安装应用里的范式工作区为可编辑副本，不自动覆盖、不回写源包；更新源包仍通过仓库提交与评审。\n独立自定义 Skill 与默认 Skill 查看\n在「设置 → 自定义 Skills」维护独立命名的 Skill，可新建、编辑用途描述和 Markdown 正文、删除及从回收站恢复。标准文件位于 .agents/skills/<name>/SKILL.md，外部新增的 Skill 自动进入列表。创建后名称固定；已有 YAML 可选元信息和引用资源保留，删除只回收 SKILL.md。自定义 Skill 不绑定默认范式，Agent 根据名称和描述按需读取，不一次性注入所有正文。\n「设置 → 提示词」仍维护工作区通用与各范式的自定义补充要求；范围选择器旁的「查看默认 Skill」在首屏显示。只读查看器可阅读通用编写 Skill、所选范式 Skill 与关联规则说明，并查看完整 Markdown 源码。自定义 Skills 页面只提供通用编写 Skill 查看。\n默认 Skill 统一维护在 packages/agent/patterns/agent/skills/<name>/SKILL.md。范式使用 verd-<patternId> 名称，通过相对路径引用现有规则正文和模板，catalog.skillPath 登记入口。通用 verd-authoring 正文同样以内容包为唯一来源；verd skill 返回真实文档路径，运行时资源继续提供 .verdscrolls/shared/skills/verd-authoring/SKILL.md。内置白名单与发布摘要纳入这些入口，工作区内容导航隐藏已登记的默认资源目录。\n用户编写建议与 Agent 规范的职责边界\n文档编写推荐库面向用户，提供组织内容、选择图形、编排图文的建议和可编辑示例。建议可以包含 Agent 规范中的知识，但不向 Agent 注入提示或产生默认约束。推荐库维护在 packages/agent/patterns/workspace/，使用独立 recommendations.json 目录索引。\nAgent 工程的文字执行规范和默认 Skills 维护在同包 agent/skills/，Markdown 是唯一维护源；原生执行模板按 catalog.json 定位，机器索引及结构规则保留 JSON。默认查看器读取 Markdown，在应用内转换为只读模型并可查看源码；不会落盘派生 JSON。用户模板创建和推荐库浏览读取独立用户来源。两类内容分别审阅，不生成彼此的正文镜像。\n工作区 AGENTS.md 是普通 AI 接入工程文件，用户显式配置的 .agents/skills 仍按适用范围生效；这不使推荐正文成为默认指令。已有用户副本保留编辑，通过手动全量更新升级。整体共享资源升级继续校验完整性，并要求重新生成未提交计划。\n每次发布任何产品或独立 SDK/npm 包版本，都必须对照最新业务分别核对 Agent 工程、用户推荐库和系统介绍。系统介绍必须更新相应原生正文；Agent 工程与推荐库允许说明已经审阅且无需变更。同步检查包括入口、能力、边界、命令和限制，避免保留过时介绍。\n系统介绍的首次基线取本次落地内容，后续发布核对记录关联前一基线和当前摘要。日期、版本号、缓存和格式变化不满足正文更新要求；核对记录须引用实际更新的原生文档。内容摘要保证审阅对象一致，业务正确性由开发者或 Agent 对照源码和需求审阅。\n样例契约与维护验收\n数据样例契约\nAI 画布数据规范 保存完整字段表、约束和 与输入夹具逐项对应的代码块样例，配套输入位于 tests/fixtures/ai-canvas/。测试直接读取原生规范 JSON，递归查找 codeBlock，逐字核对每个样例后，再运行真实格式校验、转换器、组装和导入路径测试。示例不依赖 Markdown fence 的隐藏 metadata。\n调整样例时同时更新正文代码块和夹具，保留合法 ID、端口、所有权和引用闭包。夹具保持原字节排版，由 .prettierignore 保护。导入样例中的 .md/.mmd 属于测试数据，不是另一份知识文档。\n更新与验收\n变更产品入口、文件模型或包职责时，同步修改系统架构、包索引、产品摘要、源码索引与相关架构图。\n变更命令或发布流程时，同步检查根 README、开发指南、安装指南和双语入口。\n保持代码块、列表、表格、链接、图片与关键说明完整。CommonMark/GFM 导入可作为一次性迁移手段；HTML 版式应改成原生结构，任务清单应明确显示状态。\n验证原生文件身份和结构、全部内部目标及锚点；运行相关单测与 E2E。历史验收保留原日期和上下文，新结果另注明日期，不覆盖历史事实。\n根 README、包 README 和开发规则只做入口或工程约定；长期产品正文写在原生文档中。\n内容核对：2026-11-13。改写保留事实、条件和历史上下文；结构校验、视觉审阅和本轮测试分别提供证据。\n整体整理沿用现有文件、Frame 和块身份，优先移动原生块而非重新导入 Markdown。每个主题保留一处详细说明，产品摘要、架构机制与源码索引各负其责；合并时逐项迁入独有事实、数字、例外和限定条件。旧标题与已引用段落保留定位或同步更新全部已知入链。原生结构校验之外另核对 block: 链接和摘录目标，再实际查看文档及单图、总览引用和正文嵌入。",
     "align": "left"
   }
 }

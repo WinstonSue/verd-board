@@ -8,7 +8,7 @@ import {
   type FrameSnapshot,
 } from '@sue/board-core';
 import type { StorageAdapter } from '../storage-adapter';
-import { createWorkspaceCellRegistry } from './plugins';
+import { createWorkspaceCellRegistry } from '@sue/verd-board-workspace';
 
 export const WORKSPACE_KEY = 'main_board_content';
 export const MIGRATION_BACKUP_KEY = 'legacy_workspace_backup';

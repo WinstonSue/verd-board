@@ -19,13 +19,17 @@ vi.mock('@playwright/test', () => ({
 }));
 
 beforeEach(() => {
+  vi.stubEnv('VERD_TEST_EXECUTION', 'ci');
   vi.resetModules();
   launch.mockReset();
   info.errors = [];
   info.status = 'passed';
   info.attach.mockReset();
 });
-afterEach(() => vi.useRealTimers());
+afterEach(() => {
+  vi.useRealTimers();
+  vi.unstubAllEnvs();
+});
 
 function application(blockClose = false) {
   const child = Object.assign(new EventEmitter(), {
@@ -63,6 +67,29 @@ function application(blockClose = false) {
     desktop: { process: () => child, context: () => context, close },
   };
 }
+
+it('rejects an unmarked local run before starting Electron, even with CI=1', async () => {
+  vi.stubEnv('VERD_TEST_EXECUTION', '');
+  vi.stubEnv('GITHUB_ACTIONS', '');
+  vi.stubEnv('CI', '1');
+  const { electron } =
+    await import('../../../tests/desktop-e2e/src/desktop-launcher');
+  await expect(electron.launch({ args: ['test.cjs'] })).rejects.toThrow(
+    'pnpm test:remote',
+  );
+  expect(launch).not.toHaveBeenCalled();
+});
+
+it('allows an explicit local debugging session', async () => {
+  vi.stubEnv('VERD_TEST_EXECUTION', 'local');
+  vi.stubEnv('GITHUB_ACTIONS', '');
+  const { electron } =
+    await import('../../../tests/desktop-e2e/src/desktop-launcher');
+  const instance = application();
+  launch.mockResolvedValueOnce(instance.desktop);
+  await (await electron.launch({ args: ['test.cjs'] })).close();
+  expect(launch).toHaveBeenCalledTimes(1);
+});
 
 it('allows a restart only after the previous owned process exits', async () => {
   const { electron } =

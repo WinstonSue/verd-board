@@ -3,7 +3,7 @@ import { ResourceReader } from './resource-reader';
 import type {
   WorkspaceSession,
   WorkspaceSessionSnapshot,
-} from '../session/workspace-session';
+} from '@sue/verd-board-workspace';
 
 export function ordinaryResourceMime(path: string) {
   const extension = path.split('.').pop()?.toLowerCase() ?? '';

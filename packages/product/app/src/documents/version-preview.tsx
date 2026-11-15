@@ -11,23 +11,23 @@ import {
   type DocumentAttachment,
 } from '@sue/board-react-text';
 import { parseAssetLink, parseWorkspaceLink } from '@sue/board-common';
-import type { VersionFile } from '../host/workspace-versions';
+import type { VersionFile } from '@sue/verd-board-workspace';
 import type {
   WorkspaceFileEntry,
   WorkspaceSession,
   WorkspaceSessionSnapshot,
-} from '../session/workspace-session';
+} from '@sue/verd-board-workspace';
 import {
   assembleWorkspaceStore,
   buildFrameReferenceGraph,
   type FrameFileV2,
-} from '../frames/frame-files';
+} from '@sue/verd-board-workspace';
 import {
   isWorkspaceFile,
   workspaceFileId,
   type DocumentFileV1,
-} from './document-files';
-import { buildWorkspaceReferenceGraph } from './workspace-references';
+} from '@sue/verd-board-workspace';
+import { buildWorkspaceReferenceGraph } from '@sue/verd-board-workspace';
 import { AttachmentCard, ResourceReader } from './resource-reader';
 import {
   WorkspaceCanvasReference,

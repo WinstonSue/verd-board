@@ -61,9 +61,44 @@ export async function runCommand(
     child.once('exit', (code, signal) =>
       code === 0
         ? resolve()
-        : reject(new Error(`${program} exited ${code ?? signal}`)),
+        : reject(
+            Object.assign(new Error(`${program} exited ${code ?? signal}`), {
+              exitCode: code ?? 1,
+            }),
+          ),
     );
   });
+}
+
+export function localTestExecutionAllowed(env = process.env) {
+  return (
+    ['remote', 'ci', 'local', 'release'].includes(
+      env.VERD_TEST_EXECUTION ?? '',
+    ) || env.GITHUB_ACTIONS === 'true'
+  );
+}
+
+/** Old development commands also default to the remote test host. */
+export async function runQualityCli(
+  mode,
+  args = [],
+  { env = process.env, execute = runCommand, gate = runGate } = {},
+) {
+  if (['dev', 'ci'].includes(mode) && !localTestExecutionAllowed(env)) {
+    try {
+      await execute(
+        process.execPath,
+        [path.join(ROOT, 'scripts/remote-test.mjs'), mode, ...args],
+        { env },
+      );
+      return 0;
+    } catch (error) {
+      if (Number.isInteger(error.exitCode)) return error.exitCode;
+      throw error;
+    }
+  }
+  await gate(mode, args);
+  return 0;
 }
 
 async function validateSelection(selection) {
@@ -96,6 +131,10 @@ export async function runGate(mode, args = []) {
     throw new Error('Unknown gate: ' + mode);
   if (mode !== 'dev' && args.length)
     throw new Error('Full CI/release gates do not accept test filters');
+  if (mode !== 'release' && !localTestExecutionAllowed())
+    throw new Error(
+      'Development validation runs on the test host. Use pnpm check:dev, pnpm check:ci or pnpm test:remote. Explicit user-requested local debugging requires VERD_TEST_EXECUTION=local.',
+    );
   const selection = mode === 'dev' ? parseSelection(args) : null;
   await validateSelection(selection);
   if (mode === 'release') await checkReleaseReview();
@@ -105,12 +144,19 @@ export async function runGate(mode, args = []) {
   const resources = path.join(scratch, 'agent-resources');
   const env = {
     ...process.env,
+    VERD_TEST_EXECUTION:
+      mode === 'release'
+        ? 'release'
+        : (process.env.VERD_TEST_EXECUTION ?? 'ci'),
     VERD_AGENT_RESOURCES: resources,
     VERD_AGENT_RESOURCE_TEST_PATH: resources,
   };
   // Unit and standalone consumer tests provide their own fixtures/packages.
   // Injecting the shared bundle would alter their workspace initialization.
-  const unitEnv = { ...process.env };
+  const unitEnv = {
+    ...process.env,
+    VERD_TEST_EXECUTION: env.VERD_TEST_EXECUTION,
+  };
   delete unitEnv.VERD_AGENT_RESOURCES;
   delete unitEnv.VERD_AGENT_RESOURCE_TEST_PATH;
   const run = async (program, argv, options) => {
@@ -239,7 +285,7 @@ if (
   process.argv[1] &&
   import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href
 )
-  await runGate(
+  process.exitCode = await runQualityCli(
     process.argv[2],
     process.argv.slice(3).filter((arg) => arg !== '--'),
   );

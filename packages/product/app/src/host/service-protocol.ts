@@ -1,4 +1,4 @@
-import type { WorkspaceHost } from './workspace-host';
+import type { WorkspaceHost } from '@sue/verd-board-workspace';
 
 /** Every container is tagged so document objects cannot collide with byte tags. */
 export type ServiceValue =

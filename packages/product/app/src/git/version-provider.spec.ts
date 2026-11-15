@@ -1,11 +1,11 @@
 import { describe, expect, it, vi } from 'vitest';
 import { IDBFactory } from 'fake-indexeddb';
-import { createMemoryWorkspaceHost } from '../host/memory-workspace-host';
+import { createMemoryWorkspaceHost } from '@sue/verd-board-workspace';
 import { createWebWorkspaceHost } from '../host/web-workspace-host';
-import type { WorkspaceHost } from '../host/workspace-host';
-import { createDocumentFile } from '../documents/document-files';
-import { openWorkspaceSession } from '../session/workspace-session';
-import type { VersionScope, VersionStatus } from '../host/workspace-versions';
+import type { WorkspaceHost } from '@sue/verd-board-workspace';
+import { createDocumentFile } from '@sue/verd-board-workspace';
+import { openWorkspaceSession } from '@sue/verd-board-workspace';
+import type { VersionScope, VersionStatus } from '@sue/verd-board-workspace';
 
 const text = (bytes: Uint8Array) => new TextDecoder().decode(bytes);
 for (const storage of ['memory', 'browser'])

@@ -2,8 +2,8 @@ import { act } from 'react';
 import { createRoot } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ContentTools } from './content-tools';
-import { createDocumentFile } from './document-files';
-import type { WorkspaceSession } from '../session/workspace-session';
+import { createDocumentFile } from '@sue/verd-board-workspace';
+import type { WorkspaceSession } from '@sue/verd-board-workspace';
 
 vi.mock(import('@sue/verd-board-ui'), async (importOriginal) => ({
   ...(await importOriginal()),

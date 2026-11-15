@@ -8,6 +8,8 @@ import {
   parseSelection,
   assertProductionWeb,
   runCommand,
+  runQualityCli,
+  localTestExecutionAllowed,
 } from './quality-gate.mjs';
 import {
   assertReview,
@@ -19,6 +21,78 @@ import {
   readCurrentReview,
   checkReleaseReview,
 } from './release-review.mjs';
+
+test('ordinary development gate commands delegate remotely without invoking a local gate', async () => {
+  const args = [
+    '--unit',
+    'scripts/remote-test.test.mjs',
+    '--desktop-e2e',
+    'tests/desktop-e2e/src/dev-runtime.spec.ts',
+  ];
+  const calls = [];
+  for (const mode of ['dev', 'ci']) {
+    const selection = mode === 'dev' ? args : [];
+    assert.equal(
+      await runQualityCli(mode, selection, {
+        env: { CI: '1' },
+        execute: async (program, argv, options) =>
+          calls.push({ program, argv, options }),
+        gate: async () =>
+          assert.fail(
+            'Must not run lint/build/Electron on the development machine',
+          ),
+      }),
+      0,
+    );
+    const call = calls.at(-1);
+    assert.equal(call.program, process.execPath);
+    assert.ok(call.argv[0].endsWith('/scripts/remote-test.mjs'));
+    assert.deepEqual(call.argv.slice(1), [mode, ...selection]);
+  }
+  assert.equal(
+    await runQualityCli('ci', [], {
+      env: {},
+      execute: async () => {
+        throw Object.assign(new Error('stale source'), { exitCode: 2 });
+      },
+    }),
+    2,
+  );
+});
+
+test('test workers, CI, explicit local debugging and publishing retain direct gates', async () => {
+  for (const env of [
+    { VERD_TEST_EXECUTION: 'remote' },
+    { GITHUB_ACTIONS: 'true' },
+    { VERD_TEST_EXECUTION: 'local' },
+    { VERD_TEST_EXECUTION: 'ci' },
+  ]) {
+    assert.equal(localTestExecutionAllowed(env), true);
+    let executed = false;
+    await runQualityCli('ci', [], {
+      env,
+      execute: async () =>
+        assert.fail('Must not recursively SSH from a worker'),
+      gate: async (mode, args) => {
+        assert.equal(mode, 'ci');
+        assert.deepEqual(args, []);
+        executed = true;
+      },
+    });
+    assert.equal(executed, true);
+  }
+  assert.equal(localTestExecutionAllowed({ CI: 'true' }), false);
+  let release = false;
+  await runQualityCli('release', [], {
+    env: {},
+    execute: async () =>
+      assert.fail('Publishing must retain its existing local gate'),
+    gate: async () => {
+      release = true;
+    },
+  });
+  assert.equal(release, true);
+});
 
 test('feature filters require existing repository-relative unit and E2E selections without accepting full-gate flags', () => {
   assert.equal(parseSelection([]), null);
@@ -48,7 +122,7 @@ test('feature filters require existing repository-relative unit and E2E selectio
 test('failed checks propagate and production output rejects actual regression probes', async () => {
   await assert.rejects(
     runCommand(process.execPath, ['-e', 'process.exit(9)']),
-    /exited 9/,
+    (error) => error.exitCode === 9 && /exited 9/.test(error.message),
   );
   const root = await fs.mkdtemp(path.join(os.tmpdir(), 'verd-probe-check-'));
   try {
@@ -215,13 +289,14 @@ test('baseline initialization is create-only, drafts never claim approval, and s
     await write('package.json', { name: 'sdk', version: '1.0.1' });
     await write('workspace/intro.verd-doc.json', doc('Previous behavior'));
     await write(
-      'packages/product/agent/src/cli.ts',
+      'packages/agent/runtime/src/cli.ts',
       'export const ready = true;',
     );
     await write(
-      'packages/product/agent-patterns/workspace/recommendation.verd-doc.json',
+      'packages/agent/patterns/workspace/recommendation.verd-doc.json',
       doc('User advice'),
     );
+    await write('packages/agent/patterns/catalog.json', []);
     await write('pnpm-lock.yaml', 'lockfileVersion: 9');
     await initializeBaseline(root);
     await assert.rejects(initializeBaseline(root), /EEXIST/);
@@ -237,13 +312,16 @@ test('baseline initialization is create-only, drafts never claim approval, and s
       agent: {
         status: 'reviewed',
         reason: 'The CLI contract is unchanged',
-        files: ['packages/product/agent/src/cli.ts'],
+        files: [
+          'packages/agent/runtime/src/cli.ts',
+          'packages/agent/patterns/catalog.json',
+        ],
       },
       recommendations: {
         status: 'reviewed',
         reason: 'The advice already covers the behavior',
         files: [
-          'packages/product/agent-patterns/workspace/recommendation.verd-doc.json',
+          'packages/agent/patterns/workspace/recommendation.verd-doc.json',
         ],
       },
       introduction: {

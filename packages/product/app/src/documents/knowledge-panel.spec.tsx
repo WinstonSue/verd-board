@@ -3,7 +3,7 @@ import { createRoot } from 'react-dom/client';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { KnowledgePanel } from './knowledge-panel';
 import { createKnowledgeIndexer } from './knowledge-index';
-import { createDocumentFile } from './document-files';
+import { createDocumentFile } from '@sue/verd-board-workspace';
 import type { PreviewOptions } from './workspace-previews';
 vi.mock('@sue/verd-board-ui', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@sue/verd-board-ui')>()),

@@ -12,8 +12,8 @@ import {
   type VersionPlan,
   type ContentVersion,
   type VersionFile,
-} from '../host/workspace-versions';
-import type { WorkspaceSession } from '../session/workspace-session';
+} from '@sue/verd-board-workspace';
+import type { WorkspaceSession } from '@sue/verd-board-workspace';
 import { ContentVersionPreview } from './version-preview';
 
 export interface VersionHistoryPanelProps {

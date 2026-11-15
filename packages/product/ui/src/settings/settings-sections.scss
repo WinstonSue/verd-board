@@ -1,0 +1,296 @@
+@use '../styles/appearance-tokens' as tokens;
+
+.frame-settings-page.settings-sections {
+  inset: 0;
+  margin: auto;
+  width: min(1040px, calc(100vw - 64px));
+  height: min(760px, calc(100dvh - 64px));
+  max-width: none;
+  max-height: none;
+  border: 1px solid var(--vm-border);
+  border-radius: 12px;
+  background: var(--vm-background);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  font-size: var(--vm-text-md);
+  box-shadow: var(--vm-shadow-dialog);
+  &::backdrop {
+    background: var(--vm-backdrop);
+  }
+  > .settings-shell-header {
+    height: 48px;
+    box-sizing: border-box;
+    padding: 12px 20px;
+    border: 0;
+    background: transparent;
+    flex-direction: row-reverse;
+    justify-content: space-between;
+    flex: none;
+    h1 {
+      font-size: var(--vm-text-lg);
+    }
+  }
+  .settings-sections-layout {
+    display: flex;
+    flex: 1;
+    min-height: 0;
+    width: 100%;
+    margin: 0;
+  }
+  .settings-sections-nav {
+    width: 220px;
+    flex: none;
+    overflow: auto;
+    padding: 8px 12px 24px;
+    background: var(--vm-background-subtle);
+    border-right: 1px solid var(--vm-border);
+    box-sizing: border-box;
+  }
+  .settings-sections-main {
+    flex: 1;
+    min-width: 0;
+    overflow: auto;
+    padding: 16px 40px 32px;
+  }
+  .settings-sections-panel {
+    width: 100%;
+    max-width: 680px;
+    margin: 0 auto;
+    outline: none;
+    .vm-settings-section {
+      padding: 20px 0;
+      margin: 0;
+      background: transparent;
+      border-radius: 0;
+    }
+    .vm-settings-section + .vm-settings-section {
+      border-top: 1px solid var(--vm-border);
+    }
+    p:where(:not(.board-document-content *)) {
+      font-size: var(--vm-text-sm);
+      line-height: var(--vm-leading-prose);
+    }
+  }
+  .frame-settings-row,
+  .settings-form-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 24px;
+    min-height: 40px;
+    margin-top: 12px;
+  }
+  .settings-full-row {
+    display: block;
+  }
+  .frame-settings-control {
+    margin-block: 16px;
+  }
+  .frame-settings-control label {
+    margin-bottom: 8px;
+  }
+  .settings-workspace-fields {
+    border: 0;
+    padding: 0;
+    margin: 0;
+    min-width: 0;
+  }
+  .settings-select {
+    min-width: 148px;
+    max-width: 100%;
+  }
+  .settings-draft-field {
+    min-width: 0;
+    max-width: 100%;
+  }
+  .settings-full-row .settings-draft-field {
+    width: 100%;
+  }
+  .settings-search {
+    margin: 0;
+    color: var(--vm-foreground-secondary);
+  }
+  .settings-search-result {
+    display: block;
+    width: 100%;
+    text-align: left;
+    margin-bottom: 4px;
+    small {
+      display: block;
+      color: var(--vm-foreground-secondary);
+    }
+  }
+  [data-testid='settings-workspace-save'] {
+    font-size: var(--vm-text-xs);
+    color: var(--vm-foreground-secondary);
+    padding-block: 8px;
+  }
+  [data-testid='workspace-entry-documents'] {
+    position: relative;
+    ol {
+      list-style: none;
+      padding: 0;
+    }
+    li {
+      display: flex;
+      gap: 4px;
+      align-items: center;
+      min-height: 48px;
+      border-bottom: 1px solid var(--vm-border);
+      > span {
+        flex: 1;
+        min-width: 0;
+      }
+      small {
+        display: block;
+        color: var(--vm-foreground-secondary);
+        overflow-wrap: anywhere;
+      }
+    }
+  }
+  .settings-entry-heading {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 16px;
+  }
+  .settings-entry-picker {
+    border: 1px solid var(--vm-border);
+    border-radius: 8px;
+    padding: 12px;
+    box-shadow: var(--vm-shadow-menu);
+    header {
+      display: flex;
+      padding: 0;
+      gap: 8px;
+    }
+    > header > :first-child {
+      flex: 1;
+      min-width: 0;
+    }
+  }
+  .settings-entry-choices {
+    max-height: 220px;
+    overflow: auto;
+    button {
+      display: block;
+      width: 100%;
+      text-align: left;
+    }
+    small {
+      display: block;
+      color: var(--vm-foreground-secondary);
+    }
+  }
+  .settings-mobile-back {
+    display: none;
+  }
+}
+@media (max-width: 759px) {
+  .frame-settings-page.settings-sections {
+    width: 100%;
+    height: 100dvh;
+    border: 0;
+    border-radius: 0;
+    .settings-sections-nav {
+      width: 100%;
+      border: 0;
+    }
+    .settings-sections-main {
+      display: none;
+      padding: 16px 24px;
+    }
+    .settings-mobile-back {
+      display: inline-flex;
+      margin-bottom: 16px;
+    }
+    &.settings-show-content {
+      .settings-sections-nav {
+        display: none;
+      }
+      .settings-sections-main {
+        display: block;
+      }
+    }
+    .settings-form-row,
+    .frame-settings-row {
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    .settings-draft-field {
+      width: 100%;
+    }
+  }
+}
+.settings-search-anchor {
+  position: relative;
+  margin: 8px 0 12px;
+}
+.settings-search-results {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  z-index: 30;
+  background: var(--vm-background);
+  box-shadow: var(--vm-shadow-menu);
+  border: 1px solid var(--vm-border);
+  border-radius: 8px;
+  max-height: 400px;
+  overflow: auto;
+}
+.settings-kv-group {
+  display: contents;
+}
+
+.settings-result-content {
+  display: block;
+  white-space: normal;
+}
+
+.workspace-skill-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 16px;
+}
+.workspace-skill-scope {
+  box-sizing: border-box;
+  width: 100%;
+  height: var(--vm-control-height);
+  padding: 0 10px;
+  border: 1px solid var(--vm-border-strong);
+  border-radius: var(--vm-radius-sm);
+  background: var(--vm-background);
+  color: inherit;
+  font: inherit;
+}
+.workspace-skill-guide {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font: inherit;
+  max-height: 50vh;
+  overflow: auto;
+}
+.workspace-skill-toolbar,
+.workspace-default-skill-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 12px 0 20px;
+}
+.workspace-default-skill-dialog {
+  width: min(860px, calc(100vw - 32px));
+  max-height: calc(100dvh - 32px);
+}
+.workspace-default-skill-content {
+  @include tokens.document;
+  overflow: auto;
+  max-height: 60dvh;
+  > pre {
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    font-family: var(--vm-font-mono);
+  }
+}

@@ -1,10 +1,10 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { createDocumentFile } from '../documents/document-files';
-import { createMemoryWorkspaceHost } from '../host/memory-workspace-host';
+import { createDocumentFile } from '@sue/verd-board-workspace';
+import { createMemoryWorkspaceHost } from '@sue/verd-board-workspace';
 import {
   openWorkspaceSession,
   type WorkspaceSession,
-} from './workspace-session';
+} from '@sue/verd-board-workspace';
 import {
   createWorkspaceActionRegistry,
   workspaceActionCommandResult,

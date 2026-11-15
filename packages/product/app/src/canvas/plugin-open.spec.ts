@@ -4,9 +4,9 @@ import {
   createUmlSequenceFrameSnapshot,
 } from '@sue/board-uml';
 import { expect, it, vi } from 'vitest';
-import { frameFileFor } from '../frames/frame-files';
-import { createMemoryWorkspaceHost } from '../host/memory-workspace-host';
-import { openWorkspaceSession } from '../session/workspace-session';
+import { frameFileFor } from '@sue/verd-board-workspace';
+import { createMemoryWorkspaceHost } from '@sue/verd-board-workspace';
+import { openWorkspaceSession } from '@sue/verd-board-workspace';
 import { createCanvasSession } from './canvas-session';
 it('refuses a missing domain with diagnostics and zero writes, then opens the same native bytes after installation', async () => {
   const host = createMemoryWorkspaceHost(),

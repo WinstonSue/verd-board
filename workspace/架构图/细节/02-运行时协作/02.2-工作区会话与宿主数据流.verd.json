@@ -638,12 +638,12 @@
         }
       ],
       "content": {
-        "label": "WorkspaceSession\n统一历史 · 文件状态 · 条件保存",
+        "label": "WorkspaceSession · 共享核心\n统一历史 · 文件状态 · 条件保存",
         "text": {
           "schemaVersion": 1,
           "id": "demo:runtime/module/queue/text",
           "kind": "inline",
-          "plainText": "WorkspaceSession\n统一历史 · 文件状态 · 条件保存",
+          "plainText": "WorkspaceSession · 共享核心\n统一历史 · 文件状态 · 条件保存",
           "content": {
             "type": "doc",
             "content": [
@@ -652,7 +652,7 @@
                 "content": [
                   {
                     "type": "text",
-                    "text": "WorkspaceSession",
+                    "text": "WorkspaceSession · 共享核心",
                     "marks": [
                       {
                         "type": "textStyle",
@@ -695,7 +695,8 @@
         "fill": "#fffbeb",
         "strokeColor": "#94a3b8",
         "strokeWidth": 1.5
-      }
+      },
+      "name": "WorkspaceSession 统一历史 · 文件状态 · 条件保存"
     },
     "demo:runtime/module/document-file": {
       "id": "demo:runtime/module/document-file",
@@ -840,12 +841,12 @@
         }
       ],
       "content": {
-        "label": "WorkspaceHost\nreadSnapshot / commit / subscribe",
+        "label": "WorkspaceHost · 共享契约\nreadSnapshot / commit / subscribe",
         "text": {
           "schemaVersion": 1,
           "id": "demo:runtime/module/adapter/text",
           "kind": "inline",
-          "plainText": "WorkspaceHost\nreadSnapshot / commit / subscribe",
+          "plainText": "WorkspaceHost · 共享契约\nreadSnapshot / commit / subscribe",
           "content": {
             "type": "doc",
             "content": [
@@ -854,7 +855,7 @@
                 "content": [
                   {
                     "type": "text",
-                    "text": "WorkspaceHost",
+                    "text": "WorkspaceHost · 共享契约",
                     "marks": [
                       {
                         "type": "textStyle",
@@ -897,7 +898,8 @@
         "fill": "#f0fdfa",
         "strokeColor": "#94a3b8",
         "strokeWidth": 1.5
-      }
+      },
+      "name": "WorkspaceHost readSnapshot / commit / subscribe"
     },
     "demo:runtime/module/desktop": {
       "id": "demo:runtime/module/desktop",
@@ -1036,12 +1038,12 @@
         }
       ],
       "content": {
-        "label": "Web · IndexedDB\n虚拟文件目录 · 原子事务",
+        "label": "Web · 本机 service\nHTTP/SSE → 真实文件与条件提交",
         "text": {
           "schemaVersion": 1,
           "id": "demo:runtime/module/web/text",
           "kind": "inline",
-          "plainText": "Web · IndexedDB\n虚拟文件目录 · 原子事务",
+          "plainText": "Web · 本机 service\nHTTP/SSE → 真实文件与条件提交",
           "content": {
             "type": "doc",
             "content": [
@@ -1050,7 +1052,7 @@
                 "content": [
                   {
                     "type": "text",
-                    "text": "Web · IndexedDB",
+                    "text": "Web · 本机 service",
                     "marks": [
                       {
                         "type": "textStyle",
@@ -1068,7 +1070,7 @@
                 "content": [
                   {
                     "type": "text",
-                    "text": "虚拟文件目录 · 原子事务",
+                    "text": "HTTP/SSE → 真实文件与条件提交",
                     "marks": [
                       {
                         "type": "textStyle",
@@ -1093,7 +1095,8 @@
         "fill": "#f0fdfa",
         "strokeColor": "#94a3b8",
         "strokeWidth": 1.5
-      }
+      },
+      "name": "Web · IndexedDB 虚拟文件目录 · 原子事务"
     },
     "demo:runtime/edge/10": {
       "id": "demo:runtime/edge/10",
@@ -1462,23 +1465,20 @@
                 "content": [
                   {
                     "type": "text",
-                    "text": "源码入口：packages/product/app/src/session/workspace-session.ts；packages/product/app/src/host/workspace-host.ts；apps/desktop/electron/workspace-startup.ts。"
+                    "text": "源码入口：packages/workspace/core/src/session/workspace-session.ts；packages/workspace/core/src/host/workspace-host.ts；apps/desktop/electron/workspace-startup.ts。"
                   }
                 ]
               }
             ]
           },
-          "plainText": "相关文档：系统架构\n读图：WorkspaceSession 统一写入；宿主意图见⑤.3。\n返回专题总览\n相关细节：编辑器与插件运行时\nReact接入 · 标准模式\nReact接入 · 第三方宿主模式\n布局、路由与保存边界\n源码入口：packages/product/app/src/session/workspace-session.ts；packages/product/app/src/host/workspace-host.ts；apps/desktop/electron/workspace-startup.ts。"
+          "plainText": "相关文档：系统架构\n读图：WorkspaceSession 统一写入；宿主意图见⑤.3。\n返回专题总览\n相关细节：编辑器与插件运行时\nReact接入 · 标准模式\nReact接入 · 第三方宿主模式\n布局、路由与保存边界\n源码入口：packages/workspace/core/src/session/workspace-session.ts；packages/workspace/core/src/host/workspace-host.ts；apps/desktop/electron/workspace-startup.ts。"
         }
       },
       "appearance": {
         "fill": "none",
         "strokeColor": "none"
       },
-      "name": "相关文档：系统架构 读图：WorkspaceSession 是工作区唯一写入口；外部宿主意图详见⑤.3。 返回专题总览 相关细节：编辑器与插件运行时 React接入 · 标准模式 React接入 · 第三方宿主模式 布局、路由与保存边界 源码入口：packages/product/app/src/session/workspace-session.ts；packages/product/app/src/host/workspace-host.ts；apps/desktop/electron/workspace-startup.ts。"
+      "name": "相关文档：系统架构 读图：WorkspaceSession 是工作区唯一写入口；外部宿主意图详见⑤.3。 返回专题总览 相关细节：编辑器与插件运行时 React接入 · 标准模式 React接入 · 第三方宿主模式 布局、路由与保存边界 源码入口：packages/workspace/core/src/session/workspace-session.ts；packages/workspace/core/src/host/workspace-host.ts；apps/desktop/electron/workspace-startup.ts。"
     }
-  },
-  "organization": {
-    "kind": "standalone"
   }
 }

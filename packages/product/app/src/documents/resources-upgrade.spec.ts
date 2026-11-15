@@ -1,6 +1,6 @@
 import { it, expect } from 'vitest';
 import { webcrypto } from 'node:crypto';
-import { createDocumentFile } from './document-files';
+import { createDocumentFile } from '@sue/verd-board-workspace';
 import {
   portableArchiveWithAssets,
   importMarkdownCollection,

@@ -11,15 +11,15 @@ import {
   FileTreeMenu,
   type FileTreeMenuItem,
 } from '@sue/verd-board-ui';
-import { assembleWorkspaceStore } from '../frames/frame-files';
-import { isWorkspaceContentPath } from '../workspace-skills';
+import { assembleWorkspaceStore } from '@sue/verd-board-workspace';
+import { isWorkspaceContentPath } from '@sue/verd-board-workspace';
 import {
   localizedTemplates,
   instantiateTemplate,
 } from '../documents/builtin-templates';
 import { ManagementContext } from './workspace-management-slots';
 import { QuickOpen, ManagementDialog } from './workspace-management-dialogs';
-import { diagramKindOf } from '../frames/frame-organization';
+import { diagramKindOf } from '@sue/verd-board-workspace';
 import SearchWorker from './search.worker?worker&inline';
 import {
   cloneElement,
@@ -61,17 +61,14 @@ import type {
   WorkspaceHost,
   WorkspaceHistoryEntry,
   WorkspaceHandle,
-} from '../host/workspace-host';
+} from '@sue/verd-board-workspace';
 import type {
   WorkspaceSession,
   WorkspaceSessionSnapshot,
   WorkspaceCommand,
-} from '../session/workspace-session';
-import {
-  workspaceFileId,
-  workspaceFileTitle,
-} from '../documents/document-files';
-import { readOrganization, topLevelPaths } from './organization';
+} from '@sue/verd-board-workspace';
+import { workspaceFileId, workspaceFileTitle } from '@sue/verd-board-workspace';
+import { readOrganization, topLevelPaths } from '@sue/verd-board-workspace';
 import { searchRecords, extractSearchRecord, type SearchHit } from './search';
 export {
   WorkspaceManagementSidebar,
@@ -1178,7 +1175,7 @@ export function WorkspaceManagement(p: Props) {
                                       templatePreview.files.filter(
                                         (
                                           file,
-                                        ): file is import('../frames/frame-files').FrameFileV2 =>
+                                        ): file is import('@sue/verd-board-workspace').FrameFileV2 =>
                                           file.format === 'verd-frame',
                                       ),
                                     ).store,

@@ -4,6 +4,35 @@ import { openSettings } from '../../web-e2e/src/app-actions';
 import { mkdtemp, mkdir, readFile, writeFile, rm } from 'node:fs/promises';
 import path from 'node:path';
 import { tmpdir } from 'node:os';
+import { exerciseDefaultSkillViewer } from '../../web-e2e/src/default-skill-viewer-actions';
+
+test('Desktop default Skills use the readonly document editor in light and dark appearance', async () => {
+  const directory = await mkdtemp(path.join(tmpdir(), 'verd-skill-viewer-'));
+  let desktop: ElectronApplication | undefined;
+  try {
+    const userData = path.join(directory, 'user-data');
+    await mkdir(userData);
+    const launcher = path.join(directory, 'launch.cjs');
+    await writeDesktopLauncher(launcher, userData);
+    desktop = await electron.launch({
+      args: [launcher],
+      env: {
+        ...process.env,
+        VERDBOARD_WORKSPACE_PATH: path.join(directory, 'workspace'),
+      },
+    });
+    const page = await desktop.firstWindow();
+    await expect(page.locator('.workspace-shell')).toBeVisible({
+      timeout: 60000,
+    });
+    await exerciseDefaultSkillViewer(page, () =>
+      desktop!.evaluate(({ clipboard }) => clipboard.readText()),
+    );
+  } finally {
+    await desktop?.close();
+    await rm(directory, { recursive: true, force: true });
+  }
+});
 
 test('Desktop edits standard workspace Skills and preserves an external edit over a stale draft', async () => {
   const directory = await mkdtemp(path.join(tmpdir(), 'verd-skills-e2e-'));
@@ -30,6 +59,31 @@ test('Desktop edits standard workspace Skills and preserves an external edit ove
     const viewer = page.getByTestId('workspace-default-skill-viewer');
     await viewer.getByTestId('workspace-default-skill-source').click();
     await expect(viewer).toContainText('name: verd-authoring');
+    await viewer
+      .getByRole('button', { name: '内容编写规范', exact: true })
+      .click();
+    await expect(viewer.getByTestId('workspace-skill-guide')).toContainText(
+      '通用表达与事实',
+    );
+    await viewer.screenshot({
+      path: test.info().outputPath('content-guide.png'),
+    });
+    await viewer.getByTestId('workspace-default-skill-source').click();
+    await expect(viewer.getByTestId('workspace-skill-guide')).toContainText(
+      '# 内容编写规范',
+    );
+    await viewer
+      .getByRole('button', { name: '汇报与讲解场景', exact: true })
+      .click();
+    await expect(viewer.getByTestId('workspace-skill-guide')).toContainText(
+      '事故与失败复盘',
+    );
+    await viewer
+      .getByRole('button', { name: '图表编写规范', exact: true })
+      .click();
+    await expect(viewer.getByTestId('workspace-skill-guide')).toContainText(
+      '图表的信息价值与表达',
+    );
     await viewer
       .getByRole('button', { name: '关闭默认 Skill', exact: true })
       .click();

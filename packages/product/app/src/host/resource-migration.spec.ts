@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { IDBFactory } from 'fake-indexeddb';
 import { createWebWorkspaceHost } from './web-workspace-host';
-import { digestBytes } from './memory-workspace-host';
+import { digestBytes } from '@sue/verd-board-workspace';
 
 async function legacyWorkspace(conflict = false) {
   const factory = new IDBFactory();

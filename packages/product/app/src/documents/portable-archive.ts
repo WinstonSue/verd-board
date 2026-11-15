@@ -3,7 +3,7 @@ import {
   collectWorkspaceAssetIds,
   workspaceAssetPath,
   type WorkspaceResource,
-} from './workspace-package';
+} from '@sue/verd-board-workspace';
 import { unzip, zip, zipSync, strToU8, strFromU8 } from 'fflate';
 import {
   parseMarkdownToTextDocument,
@@ -11,10 +11,10 @@ import {
 } from '@sue/board-markdown-to-text';
 import { createDocumentHeadingSlugger } from '@sue/board-react-text';
 import { createWorkspaceLink, type BoardTextNode } from '@sue/board-common';
-import { normalizeWorkspacePath } from '../host/workspace-host';
-import { isSkillDocumentPath } from '../workspace-skills';
-import type { DocumentFileV1, WorkspaceFile } from './document-files';
-import { workspaceFileId, isWorkspaceFile } from './document-files';
+import { normalizeWorkspacePath } from '@sue/verd-board-workspace';
+import { isSkillDocumentPath } from '@sue/verd-board-workspace';
+import type { DocumentFileV1, WorkspaceFile } from '@sue/verd-board-workspace';
+import { workspaceFileId, isWorkspaceFile } from '@sue/verd-board-workspace';
 const MAX = 256 * 1024 * 1024;
 const decodePath = (value: string) => {
   try {

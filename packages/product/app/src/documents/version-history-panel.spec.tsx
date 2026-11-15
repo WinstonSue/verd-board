@@ -2,9 +2,9 @@ import { act } from 'react';
 import { createRoot } from 'react-dom/client';
 import { describe, expect, it, vi } from 'vitest';
 import { VersionHistoryPanel } from './version-history-panel';
-import type { WorkspaceSession } from '../session/workspace-session';
-import type { VersionRequest, VersionStatus } from '../host/workspace-versions';
-import { VersionError } from '../host/workspace-versions';
+import type { WorkspaceSession } from '@sue/verd-board-workspace';
+import type { VersionRequest, VersionStatus } from '@sue/verd-board-workspace';
+import { VersionError } from '@sue/verd-board-workspace';
 
 (
   globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }

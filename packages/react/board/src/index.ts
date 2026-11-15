@@ -42,3 +42,8 @@ export {
 } from './frame-appearance-settings';
 
 export * from './frame-auto-calculation';
+
+export {
+  FrameCanvasPreview,
+  type FrameCanvasPreviewProps,
+} from './frame-canvas-preview';

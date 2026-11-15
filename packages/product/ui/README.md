@@ -47,3 +47,9 @@ export function Editor() {
 ## 主题外观
 
 经典、缤纷、柔和、复古、清新、海洋均随应用外观选择深浅变体，画布只需选择一次主题。所有图元的未标记颜色（包括旧固定色）均跟随主题，只有明确标记的手动颜色保持固定；可逐字段恢复主题，Mind 分支也可恢复继承。画布背景保留独立来源规则；图像导出可选当前外观、浅色和深色。主题内部 ID 保持兼容，切换应用外观不修改文件或撤销历史。
+
+## Source organization
+
+`src/canvas` owns the product canvas composition, tools, properties, dialogs and presentation; `documents` owns document pages; `workspace` owns navigation and file management; `settings` owns settings pages. Cross-feature views, design primitives, drafts and preferences live in `shared`, with translations in `i18n`. Tests and feature styles live beside their implementation. The public API remains `src/index.ts`, and `style.css` resolves to the aggregate `src/styles/index.scss` during source development.
+
+`CanvasPreview` keeps product plugin and appearance defaults while delegating the read-only runtime to `FrameCanvasPreview` from `@sue/board-react`.

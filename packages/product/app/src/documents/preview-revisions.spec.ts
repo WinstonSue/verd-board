@@ -5,18 +5,18 @@ import {
   createFrameReferenceCell,
 } from '@sue/board-core';
 import { beforeAll, describe, expect, it } from 'vitest';
-import { createFrameFile, type FrameFileV2 } from '../frames/frame-files';
-import { createMemoryWorkspaceHost } from '../host/memory-workspace-host';
+import { createFrameFile, type FrameFileV2 } from '@sue/verd-board-workspace';
+import { createMemoryWorkspaceHost } from '@sue/verd-board-workspace';
 import {
   openWorkspaceSession,
   type WorkspaceFileEntry,
   type WorkspaceSessionSnapshot,
-} from '../session/workspace-session';
+} from '@sue/verd-board-workspace';
 import {
   createDocumentFile,
   type DocumentFileV1,
   type WorkspaceFile,
-} from './document-files';
+} from '@sue/verd-board-workspace';
 import { createPreviewRevisions } from './preview-revisions';
 
 let empty: WorkspaceSessionSnapshot;

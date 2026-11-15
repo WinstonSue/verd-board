@@ -27,7 +27,25 @@
           "content": [
             {
               "type": "text",
-              "text": "当前源码说明 · 2026-10-28。先读产品交互，再看算法、自动计算与保存边界；2.0 发布及过往验收仍保留原上下文。"
+              "text": "先明确当前 Frame、选择范围、Group 和锁定对象，再执行对齐、节点布局或连线整理。普通路由只在运行时派生；显式优化保存折点，自动计算并入触发编辑的一次事务。"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "内容核对：2026-11-13。依据为当前仓库源码、包清单与锁文件；具体机制和源码入口见本篇及配置与源码索引。历史记录保留原日期与适用范围。"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "原排列说明 · 2026-10-28。先读产品交互，再看算法、自动计算与保存边界；2.0 发布及过往验收仍保留原上下文。"
             }
           ]
         },
@@ -50,6 +68,18 @@
           "type": "heading",
           "attrs": {
             "level": 2
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "操作范围与用户交互"
+            }
+          ]
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 3
           },
           "content": [
             {
@@ -106,7 +136,7 @@
         {
           "type": "heading",
           "attrs": {
-            "level": 2
+            "level": 3
           },
           "content": [
             {
@@ -169,7 +199,7 @@
             }
           ],
           "attrs": {
-            "level": 2
+            "level": 3
           }
         },
         {
@@ -229,7 +259,67 @@
         {
           "type": "heading",
           "attrs": {
+            "level": 3
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "一次操作与自动计算"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "节点与连线分别有「自动布局节点」「自动优化连线」开关，默认关闭。开启只影响后续变化，不立即计算；关闭保留已有位置和路径。配置以文件 ID / Frame ID 存在工作区会话内，切换标签保留，关闭最后一个对应标签或重启后清除，不写入文件或撤销历史。开启时固定 Frame、Group 或选区，选择变化不改变范围；容器包含新增直属成员，固定选区只剔除已删除对象，不扩大到整个画布。"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "节点自动布局仅在范围内增删对象、连接关系或尺寸变化时执行，手动移动和旋转保留位置。改变布局下拉选项只更新下次自动计算的方式。连线自动优化在所在 Frame 的几何、端口、连接关系或线宽变化后重算固定范围目标；直接编辑折点不立即触发。后台只接管 generated 或尚无折点的路线，旧文件有折点且未标来源时视为手工路径；关闭时保存折线只调整端点邻接段。"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "两个开关同时开启时，先布局节点再优化连线；派生修改在提交前合并到原编辑事务和同一宿主回显预测中，一次撤销恢复整次编辑。派生规划失败保留原编辑并报告诊断，宿主拒绝则整笔不提交。加载、回显、撤销、重做不再次触发计算。拖动、调整尺寸和旋转按动画帧合并，预览只跟随关联端点，复用其他路径，暂停全图优化、交叉桥和标签避让，松手后按开关完成最终计算，取消则恢复。"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "2026-10-28 路由阶段诊断（每类连续 3 个预览帧的平均值，不代表完整 UI 帧率）：包架构图夹具 41 条边，完整计算 69.02ms/帧，轻量预览 0.44ms/帧；60 节点 120 边密集图，107.84ms/帧 降至 0.26ms/帧。复现入口为 Core geometry/routing-preview.spec.ts；时间随机器与并行负载变化，自动回归主要约束计算调用次数。"
+            }
+          ]
+        },
+        {
+          "type": "heading",
+          "attrs": {
             "level": 2
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "布局与连线计算机制"
+            }
+          ]
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 3
           },
           "content": [
             {
@@ -268,7 +358,7 @@
         {
           "type": "heading",
           "attrs": {
-            "level": 2
+            "level": 3
           },
           "content": [
             {
@@ -316,7 +406,103 @@
         {
           "type": "heading",
           "attrs": {
+            "level": 3
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "核心规则与领域几何策略（2026-11-06）"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "CellScene.geometry 是几何能力与领域策略的统一入口：nodeLayout、edgeRouting 区分 core/domain/none，defaultStyle 选择领域默认方式；领域可提供布局单元、节点投影、障碍、校验与候选位置。core 不依赖具体领域包。Frame 原生领域继续唯一，混合场景通过嵌套 Frame 外壳展示。"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "规划顺序是测量真实尺寸和原始描边、识别领域单元与连接密度、布置节点、严格避障、扩大间距及可扩展泳道后重试、压缩合法路径、最后一次事务提交。上限由 maxAttempts 和路由搜索预算控制；预算耗尽不表示数学上不可达。锁定与范围外对象始终是固定约束。"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "路由障碍采用包含原始描边的旋转 AABB；连线半宽和箭头横向包络加入安全预留，默认描边外缘净距不少于 12。首末法向段仅对自己的节点豁免，转弯必须在安全包络之外。初始规划、拥堵重排、分道、压缩、缓存与写入前检查使用同一底线；低层 clearance 仍保留旧的中心线扩张含义，新 visualGap 表示视觉净距。圆角与跨线桥靠近障碍时局部缩小或取消，端点和箭头语义不变。"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "Workflow 按 owner 独立处理，DAG 禁环，process 支持 SCC 回路。Architecture 保持层 order 和模块归属，显式整图布局为标题区预留额外空间，旧文件缺省不变；可扩展泳道只增长、不缩小。UML 类图按继承与实现关系布局，关联环合法；Mind 和时序图保留树样式、事件序列、激活及 fragment 派生几何，通用正交优化从 core 排除它们。"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "planGeometryLayout 与 planOptimizeEdges 返回 status、operations、diagnostics；旧 planCellLayout 和 optimizeEdges 继续返回操作数组。布局只发布完整安全候选；仅优化连线时节点和已解析端点固定，成功线可提交，失败线保留并报告 cellIds、Frame 和原因。原始有限回退折线只供编辑显示，不能当作安全发布结果。"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "EdgeRoute.origin 可选 manual 或 generated。手工折点及线段拖动标 manual；显式优化和布局生成的折点标 generated。旧文件已有折点且未标来源视为 manual；后台布局和优化保留它们。复制、保存及重开保留来源，不因加载或缩放自动改写。"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "节点和连线原始描边、手工点及策略版本进入路由缓存与后台签名。hover、选中、port 显隐及缩放不改变路线。显式命令的诊断在画布显示数量、详情及图元定位；后台只显示状态，不弹窗。诊断不写入原生文件、撤销记录或导出。"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "验收入口新增 Core cell/geometry-plan.spec.ts，覆盖 3/8 条线共用真实端口、部分成功、旋转粗描边、手工来源、process 环、领域投影及独立图单元；既有路由、React、Web 和隔离 Desktop 回归继续执行。"
+            }
+          ]
+        },
+        {
+          "type": "heading",
+          "attrs": {
             "level": 2
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "保存、兼容与公共 API"
+            }
+          ]
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 3
           },
           "content": [
             {
@@ -417,7 +603,7 @@
         {
           "type": "heading",
           "attrs": {
-            "level": 2
+            "level": 3
           },
           "content": [
             {
@@ -496,55 +682,7 @@
         {
           "type": "heading",
           "attrs": {
-            "level": 2
-          },
-          "content": [
-            {
-              "type": "text",
-              "text": "一次操作与自动计算"
-            }
-          ]
-        },
-        {
-          "type": "paragraph",
-          "content": [
-            {
-              "type": "text",
-              "text": "节点与连线分别有「自动布局节点」「自动优化连线」开关，默认关闭。开启只影响后续变化，不立即计算；关闭保留已有位置和路径。配置以文件 ID / Frame ID 存在工作区会话内，切换标签保留，关闭最后一个对应标签或重启后清除，不写入文件或撤销历史。开启时固定 Frame、Group 或选区，选择变化不改变范围；容器包含新增直属成员，固定选区只剔除已删除对象，不扩大到整个画布。"
-            }
-          ]
-        },
-        {
-          "type": "paragraph",
-          "content": [
-            {
-              "type": "text",
-              "text": "节点自动布局仅在范围内增删对象、连接关系或尺寸变化时执行，手动移动和旋转保留位置。改变布局下拉选项只更新下次自动计算的方式。连线自动优化在所在 Frame 的几何、端口、连接关系或线宽变化后重算固定范围目标；直接编辑折点不立即触发。后台只接管 generated 或尚无折点的路线，旧文件有折点且未标来源时视为手工路径；关闭时保存折线只调整端点邻接段。"
-            }
-          ]
-        },
-        {
-          "type": "paragraph",
-          "content": [
-            {
-              "type": "text",
-              "text": "两个开关同时开启时，先布局节点再优化连线；派生修改在提交前合并到原编辑事务和同一宿主回显预测中，一次撤销恢复整次编辑。派生规划失败保留原编辑并报告诊断，宿主拒绝则整笔不提交。加载、回显、撤销、重做不再次触发计算。拖动、调整尺寸和旋转按动画帧合并，预览只跟随关联端点，复用其他路径，暂停全图优化、交叉桥和标签避让，松手后按开关完成最终计算，取消则恢复。"
-            }
-          ]
-        },
-        {
-          "type": "paragraph",
-          "content": [
-            {
-              "type": "text",
-              "text": "2026-10-28 路由阶段诊断（每类连续 3 个预览帧的平均值，不代表完整 UI 帧率）：包架构图夹具 41 条边，完整计算 69.02ms/帧，轻量预览 0.44ms/帧；60 节点 120 边密集图，107.84ms/帧 降至 0.26ms/帧。复现入口为 Core geometry/routing-preview.spec.ts；时间随机器与并行负载变化，自动回归主要约束计算调用次数。"
-            }
-          ]
-        },
-        {
-          "type": "heading",
-          "attrs": {
-            "level": 2
+            "level": 3
           },
           "content": [
             {
@@ -793,7 +931,7 @@
         {
           "type": "heading",
           "attrs": {
-            "level": 2
+            "level": 3
           },
           "content": [
             {
@@ -950,7 +1088,7 @@
         {
           "type": "heading",
           "attrs": {
-            "level": 2
+            "level": 3
           },
           "content": [
             {
@@ -967,94 +1105,10 @@
               "text": "CellIndex.membersOf 已删除：组成员使用 groupOf，领域归属使用 domainOwnerOf；需要兼容旧归属查找顺序时使用 parentOf → domainOwnerOf → groupOf。legacyThemeColors 已删除；resolveThemeColor 仅接收 value、source、fallback、theme 四个参数，固定颜色通过 colorSources 标注 custom。UI 类型 WorkspaceId 已删除，请改用 EditorKind。文件格式与持久化迁移入口继续有效。"
             }
           ]
-        },
-        {
-          "type": "heading",
-          "attrs": {
-            "level": 2
-          },
-          "content": [
-            {
-              "type": "text",
-              "text": "核心规则与领域几何策略（2026-11-06）"
-            }
-          ]
-        },
-        {
-          "type": "paragraph",
-          "content": [
-            {
-              "type": "text",
-              "text": "CellScene.geometry 是几何能力与领域策略的统一入口：nodeLayout、edgeRouting 区分 core/domain/none，defaultStyle 选择领域默认方式；领域可提供布局单元、节点投影、障碍、校验与候选位置。core 不依赖具体领域包。Frame 原生领域继续唯一，混合场景通过嵌套 Frame 外壳展示。"
-            }
-          ]
-        },
-        {
-          "type": "paragraph",
-          "content": [
-            {
-              "type": "text",
-              "text": "规划顺序是测量真实尺寸和原始描边、识别领域单元与连接密度、布置节点、严格避障、扩大间距及可扩展泳道后重试、压缩合法路径、最后一次事务提交。上限由 maxAttempts 和路由搜索预算控制；预算耗尽不表示数学上不可达。锁定与范围外对象始终是固定约束。"
-            }
-          ]
-        },
-        {
-          "type": "paragraph",
-          "content": [
-            {
-              "type": "text",
-              "text": "路由障碍采用包含原始描边的旋转 AABB；连线半宽和箭头横向包络加入安全预留，默认描边外缘净距不少于 12。首末法向段仅对自己的节点豁免，转弯必须在安全包络之外。初始规划、拥堵重排、分道、压缩、缓存与写入前检查使用同一底线；低层 clearance 仍保留旧的中心线扩张含义，新 visualGap 表示视觉净距。圆角与跨线桥靠近障碍时局部缩小或取消，端点和箭头语义不变。"
-            }
-          ]
-        },
-        {
-          "type": "paragraph",
-          "content": [
-            {
-              "type": "text",
-              "text": "Workflow 按 owner 独立处理，DAG 禁环，process 支持 SCC 回路。Architecture 保持层 order 和模块归属，显式整图布局为标题区预留额外空间，旧文件缺省不变；可扩展泳道只增长、不缩小。UML 类图按继承与实现关系布局，关联环合法；Mind 和时序图保留树样式、事件序列、激活及 fragment 派生几何，通用正交优化从 core 排除它们。"
-            }
-          ]
-        },
-        {
-          "type": "paragraph",
-          "content": [
-            {
-              "type": "text",
-              "text": "planGeometryLayout 与 planOptimizeEdges 返回 status、operations、diagnostics；旧 planCellLayout 和 optimizeEdges 继续返回操作数组。布局只发布完整安全候选；仅优化连线时节点和已解析端点固定，成功线可提交，失败线保留并报告 cellIds、Frame 和原因。原始有限回退折线只供编辑显示，不能当作安全发布结果。"
-            }
-          ]
-        },
-        {
-          "type": "paragraph",
-          "content": [
-            {
-              "type": "text",
-              "text": "EdgeRoute.origin 可选 manual 或 generated。手工折点及线段拖动标 manual；显式优化和布局生成的折点标 generated。旧文件已有折点且未标来源视为 manual；后台布局和优化保留它们。复制、保存及重开保留来源，不因加载或缩放自动改写。"
-            }
-          ]
-        },
-        {
-          "type": "paragraph",
-          "content": [
-            {
-              "type": "text",
-              "text": "节点和连线原始描边、手工点及策略版本进入路由缓存与后台签名。hover、选中、port 显隐及缩放不改变路线。显式命令的诊断在画布显示数量、详情及图元定位；后台只显示状态，不弹窗。诊断不写入原生文件、撤销记录或导出。"
-            }
-          ]
-        },
-        {
-          "type": "paragraph",
-          "content": [
-            {
-              "type": "text",
-              "text": "验收入口新增 Core cell/geometry-plan.spec.ts，覆盖 3/8 条线共用真实端口、部分成功、旋转粗描边、手工来源、process 环、领域投影及独立图单元；既有路由、React、Web 和隔离 Desktop 回归继续执行。"
-            }
-          ]
         }
       ]
     },
-    "plainText": "对齐、自动排列与组合\n当前源码说明 · 2026-10-28。先读产品交互，再看算法、自动计算与保存边界；2.0 发布及过往验收仍保留原上下文。\n打开画布 verd://file/demo%3Alayout-routing\n白板、Workflow 节点和 Architecture 模块使用已保存的位置。Mind 内部继续由树布局约束；它的 Frame 外壳可以在父画布中排列。Architecture 层框继续包围自己的模块，不作为自由排列对象。\n产品交互\n右侧「排列」区域、右键菜单和命令面板共用 Action 定义及可用性判断：六向对齐、水平/垂直等距分布、组合、解组、锁定、解锁，以及独立的「布局节点」「整理连线」。组合快捷键为 Ctrl/Cmd+G，解组为 Ctrl/Cmd+Shift+G。\n对齐以选区联合边界为基准；分布固定两端，在对象边缘间分配等距空隙。至少两个对象才能对齐，至少三个才能分布。锁定对象会阻止整次对齐或分布。\n「布局节点」提供网格、横向、纵向，普通白板另有「按连接关系」；Workflow 默认按连线层级排列，Architecture 默认按层排列，均须显式执行才修改位置。无选择时处理当前焦点 Frame 或 Group 的可见、未锁定直接对象；单选 Group 时显示「布局组内节点」，展开直属成员；多选 Group 与嵌套子组作为整体。仅选连线不会回退为排列全画布。显式联合规划默认节点间距 96，并按连接密度提高；网格列数为 ceil(sqrt(n))，从原范围左上角展开。嵌套 Frame 只移动外壳。\n按层和按连线层级排列使用长边虚拟节点、双向重心排序及相邻交换减少交叉，按实际节点尺寸压紧，并向上下游中心对齐。默认节点净距至少 96、层间净距至少 160，并按连接密度扩展通道；层顺序、模块归属与流程拓扑保持不变。虚拟节点仅用于计算，不写入文档。结果不依赖对象插入顺序；在相同输入和范围下重复执行保持稳定。关闭自动布局时，普通拖动、加载及刷新不触发重排。\n拖动时匹配同 Frame 对象的边缘及中心，显示蓝色参考线。吸附阈值为 6 个屏幕像素，包含画布缩放和嵌套 Frame 的内容比例。Alt 临时关闭；设置中的「智能参考线」是默认开启的本地偏好，恢复操作速度不会重置它。参考线、组选择边框和预览不保存、不导出。\nGroup\nGroupCell.members 表达同一 Frame 的交互组合，不改变 Frame 所有权或领域归属。可嵌套，也可跨流程、跨架构层组合；白板箭头可入组，领域结构边由端点关系维护。白板组合保持连续图层块和成员原有绘制顺序；领域组合不强制重排图层。\n单击选择当前层级的整组，双击逐级进入，Esc 逐级退出并选中退出的组。解组只去掉当前层级，成员提升到父组或 Frame，位置不变。Frame 成员仍是外壳单位，内部通过打开详情编辑。\n锁定组可选择、复制和解锁；禁止移动、排列、删除、解组和组内编辑。锁定/解锁只改组自身的标记，保留成员原有锁定状态。含锁定成员的组合不能整体修改；未锁定的组仍可进入，以选择和解锁其中的成员。\n排列将 Group 当成刚性块，递归平移节点与组内自由端点/手工路径，每个成员只移动一次。Frame 内部不展开。第一版不提供整体缩放或旋转。DAG 组合收缩后形成循环时，按流程层级排列禁用；process 循环使用强连通分量布局；组跨架构层时，按层排列禁用。通用网格、横向和纵向排列仍可使用。\n节点布局与连线整理\n局部布局以原节点和子组范围左上角为原点，Group 边界随内容变化，组外和锁定节点保持原位。布局先在内存生成完整候选，并根据路由失败扩大间距重试。组外及固定对象保持原位；架构层正文透明，标题文字区作为障碍。只有固定约束或搜索预算仍阻止安全结果时，才不提交并报告原因。嵌套组内部已有重叠不因整体平移而改变。\n普通白板的 relationships 关系布局按稳定 ID 排序，以强连通分量容纳循环，再对凝聚 DAG 按最长路径分层；每个断开分量独立使用现有交叉减少算法，从上到下布局。节点净距 96、层间净距至少 160，分量按最小 ID 稳定网格打包，无连接时退化为网格。只使用布局块之间的内部关系，忽略自环和范围外连线；流程与架构专用规则保持。\n「整理连线」是主按钮与下拉箭头共用连续外框的拆分按钮，默认「优化全部连线」。点击箭头只展开菜单；点击可用菜单项立即执行一次，并将主按钮切换为该方式，侧栏和右键菜单共享本次会话的选择。再次选择当前方式也执行一次。不可用项可聚焦查看原因，但不执行、不切换；主按钮禁用时箭头仍可打开。处理中共享拦截重复执行，失败保留所选方式以便重试。两种操作都不移动节点，也不改变实时开关。优化会重新计算当前范围路线，尝试减少交叉、绕行和折点，并保存为 orthogonal + points 可编辑折线；重置清除所有已有折点（包括优化生成的折点），恢复普通自动走线。显式端口、锚点、自由端点、标签与外观保持；无显式绑定的自动端点按当前显示位置固定为既有相对 anchor；直线、曲线、隐藏、锁定、祖先锁定和插件专用边跳过。范围包含跨边界关联线，非目标线不写入。方式切换不进入历史，实际内容变化对应一次撤销，无变化不产生空历史。\n公开纯规划 API：planCellLayout(store, selection, style, registry)、rerouteEdges(store, edgeIds, registry) 和 optimizeEdges(store, edgeIds, registry) 返回 CellOperation[]，由宿主一次事务提交。稳定 Action 为 canvas.edges.reroute、canvas.edges.optimize、canvas.layout.auto.toggle 和 canvas.edges.auto.toggle。FrameCanvas 可选 autoCalculation / onAutoCalculationChange 接入会话配置；FrameAutoCalculationProvider 和 createFrameAutoCalculationSession 共享同画布多实例的内存状态。旧 route.strategy: optimized 兼容读取但不再隐式开启持续优化，无文件迁移。\n验证入口：Core layout-plan.spec.ts、React frame-interactions.spec.tsx、产品 frame-arrangement.spec.tsx 和 Web diagram-layout.spec.ts，覆盖组范围、循环关系、锁定/冲突、单步历史、宿主拒绝及保存重载。\n禁用理由使用组件 Tooltip，支持悬停、键盘聚焦、Escape 关闭与滚动容器外显示。按钮状态使用轻量检查，不运行完整布局或优化；候选布局和冲突在提交前验证。显式优化仍采用稳定的有界候选搜索，仅接受安全且评分改善的结果；旧策略字段不触发后台计算。\n自动布局算法\n先确定当前 Frame、Group 或选区，再收集可见且可移动的直接布局块。嵌套 Group 是刚性块，嵌套 Frame 只移动外壳；锁定对象、范围外节点及它们已有位置不动。先生成完整候选并检查固定对象与路由净距，扩大范围内未锁定布局块之间的间距后重试，不移动范围外对象。\n普通白板的「按连接关系」先按稳定 ID 建图，使用 Tarjan 强连通分量收拢循环关系，再对凝聚 DAG 按最长路径分层。每个断开分量独立处理长边虚拟节点、双向重心排序和相邻交换，以减少层间交叉；之后按实际宽高与最小间距排列，向相邻层节点中心对齐。最后按分量最小 ID 稳定打包。只读取范围内布局块之间的连接，自环和范围外连线不参与分层；没有连接时退化为网格。算法追求稳定、少交叉和可读间距，不保证交叉数的全局最优。\nWorkflow DAG 按拓扑层级排列；process 模式使用 SCC 凝聚图分层，分量内部按稳定 ID 排列，回边绕外侧通道，保留全部关系。默认从左到右，vertical 或 flow-vertical 参数选择纵向。Architecture 按层归属和层 order 排列，跨层 Group 禁用按层布局。通用网格、横向和纵向可独立选择。Mind 根据主题树、分支顺序、折叠与文字尺寸计算九种树布局；UML 时序图根据参与者及嵌套事件顺序派生消息、激活条和位置，类图按继承与实现关系分层，同时保留自由放置、关联环、箭头语义和多重性。这些领域规则不能替换为白板的 SCC 布局。\n连线路由算法\n普通自动路由先解析显式端口与相对锚点；没有明确端点时结合对端位置、领域方向及同侧连接分配出口。把当前 Frame 内可见节点的几何包围盒扩展为障碍，旋转节点按包围盒处理；架构层和逻辑组是透明容器，内部成员各自参与避障，嵌套 Frame 以外壳参与。已保存的手工折点、直线、曲线与领域专用边保留各自语义；显式节点布局及连线优化可以重算范围内符合能力声明的手工正交折点。\n正交寻路在压缩的可见网格上以方向作为搜索状态，使用曼哈顿距离启发；评分综合路线长度、转弯、共线重叠、相邻通道拥挤与交叉代价。同一 Frame 按稳定顺序规划，随后做有界拥堵重排、共线分道和短台阶压缩。交叉是软代价，因此路线可能保留交叉，不能承诺所有线不相交或绝对最短。连线描边外缘与节点描边外缘的净距至少为 12 个局部画布单位；狭窄通道仍保持此底线，端口被完全封堵或节点重叠时返回 blocked 并保留可编辑的回退路线，不移动节点，也不中断渲染。\n「优化连线」在普通路由基础上额外尝试有界候选，只接受安全且评分改善的结果，结果保存为 orthogonal + points。「重置连线」删除已有折点，包括优化生成的折点，回到普通自动路由。两种操作保持节点、端口、锚点、自由端点、标签与外观；直线、曲线、隐藏、锁定及插件不支持的边跳过。普通自动路由的派生折点只在运行时，显式优化后的折点则是可编辑、可保存和可撤销的内容。\n箭头、标签、命中、边界适配和导出读取同一份显示几何。自动标签尝试避开节点、其它标签和连线；显式 label.position 保留用户位置。交叉桥是在相交处增加的显示弧线，不新增连接点、不改变连线关系，也不保存为手工折点。\n保存边界与典型场景\n写文件并可撤销：显式布局后的节点位置、优化保存的折点，以及自动开关触发后合入原编辑事务的布局和优化结果。一次操作只提交一次，宿主拒绝或候选冲突时整笔不提交。\n仅运行时派生：普通自动路由、Mind 与 UML 的派生几何、标签避让、交叉桥、预览及缓存。相机平移缩放复用几何，不触发布局事务。\n仅会话配置：自动布局节点、自动优化连线及其固定范围。两个开关默认关闭，开启不立即计算；切换标签保留，关闭最后一个对应标签或重启后清除。\n循环与断开关系：白板和 process 流程通过 SCC 处理循环；Workflow DAG 继续禁止环。不同流程 owner 分别布局并按布局单元打包。\n局部分组与固定障碍：选中一个 Group 布局直属成员，嵌套组保持整体；组外或锁定对象保持原位，先扩大布局间距重试，固定约束或预算耗尽时才返回诊断。\n手工折点与阻塞：关闭自动优化时保留折点，只跟随端点相邻段；后台仅重算无手工折点或 origin 为 generated 的路线；手工折点保持。blocked 是可诊断回退，不等同于自动移动障碍或保证无碰撞。\n布局与路由源码入口\n范围与事务规划：packages/engine/core/src/cell/layout-plan.ts；关系布局：relationship-layout.ts；交叉减少与按尺寸定位：arrangement-graph.ts。领域策略位于 packages/engine/{workflow,architecture}/src/arrangement.ts，Mind 树布局位于 packages/engine/layouts/src/，UML 派生布局位于 packages/engine/uml/src/layout.ts。\n共享几何入口：packages/engine/core/src/geometry/edge.ts；障碍寻路：obstacle-route.ts；显式优化：route-optimization.ts；路径压缩：route-compaction.ts；交叉桥：edge-crossings.ts；自动触发与合并事务：packages/react/board/src/frame-auto-calculation.tsx。\n画布显示与运行时 · 系统数据流 · 配置与源码索引\n一次操作与自动计算\n节点与连线分别有「自动布局节点」「自动优化连线」开关，默认关闭。开启只影响后续变化，不立即计算；关闭保留已有位置和路径。配置以文件 ID / Frame ID 存在工作区会话内，切换标签保留，关闭最后一个对应标签或重启后清除，不写入文件或撤销历史。开启时固定 Frame、Group 或选区，选择变化不改变范围；容器包含新增直属成员，固定选区只剔除已删除对象，不扩大到整个画布。\n节点自动布局仅在范围内增删对象、连接关系或尺寸变化时执行，手动移动和旋转保留位置。改变布局下拉选项只更新下次自动计算的方式。连线自动优化在所在 Frame 的几何、端口、连接关系或线宽变化后重算固定范围目标；直接编辑折点不立即触发。后台只接管 generated 或尚无折点的路线，旧文件有折点且未标来源时视为手工路径；关闭时保存折线只调整端点邻接段。\n两个开关同时开启时，先布局节点再优化连线；派生修改在提交前合并到原编辑事务和同一宿主回显预测中，一次撤销恢复整次编辑。派生规划失败保留原编辑并报告诊断，宿主拒绝则整笔不提交。加载、回显、撤销、重做不再次触发计算。拖动、调整尺寸和旋转按动画帧合并，预览只跟随关联端点，复用其他路径，暂停全图优化、交叉桥和标签避让，松手后按开关完成最终计算，取消则恢复。\n2026-10-28 路由阶段诊断（每类连续 3 个预览帧的平均值，不代表完整 UI 帧率）：包架构图夹具 41 条边，完整计算 69.02ms/帧，轻量预览 0.44ms/帧；60 节点 120 边密集图，107.84ms/帧 降至 0.26ms/帧。复现入口为 Core geometry/routing-preview.spec.ts；时间随机器与并行负载变化，自动回归主要约束计算调用次数。\n引擎与宿主 API\ncollectArrangementBlocks(store, frameId, ids?) 返回当前作用域内的节点/Group 边界，采用旋转后的几何包围盒。\nalignCells(store, ids, axis)、distributeCells(store, ids, axis)、arrangeCells(store, frameId, ids, style) 返回纯 CellOperation[]，由一次事务提交；排列不改变领域关系或扩大选择。\nungroupCells(store, ids) 和 setCellsLocked(store, ids, locked) 提供逐层解组与批量锁定。\nCellIndex.groupOf 只表示直接组成员；domainOwnerOf 表示流程起点/架构层归属。旧 membersOf 已弃用，兼容值优先取领域归属。\nReact 接入使用 controller.getActionState(actionId,args?) / executeAction(actionId,args?)。frameSelectionActionId(FrameSelectionOperation) 将排列、Group、锁定和内容适配映射到稳定 canvas.* ID，菜单、面板、快捷键、帮助和命令面板共用定义。旧 selectionCommandState/executeSelectionCommand 已删除；领域纯 planner 与一次事务/撤销语义保持。\n流程起点作为排列对象时只修改自身位置和原点，不隐式移动未选成员。普通拖动起点只移动自身，不更新旧派生布局原点，也不带动其他任务或泳道；整体移动通过框选或组合完成。Architecture 排列保留模块所属层，层框作为派生结果更新。属性面板显式切换所属层时，仅将该模块放入目标层；moveArchitectureModuleToLayer 的可选 position: inside-layer 用于这一行为，默认 preserve 保留既有位置，指针拖动继续使用实际落点。\n兼容与保存\nmaterializeWorkflowPositions(store) 和 materializeArchitecturePositions(store) 将旧派生节点的显示坐标幂等转换为已保存坐标。已有手动位置不变，Mind 不转换，Architecture 层框继续派生。产品在加载和导入边界调用并使用原保存队列持久化，不进入用户撤销历史，不升级文件版本。第三方宿主在提供旧快照前调用同一 helper；渲染器不替宿主提交保存。\n新建 Workflow/Architecture 对象只计算自身初始位置，不移动已有节点。显式布局、对齐、分布和完整拖动各只提交一次事务，因此可一步撤销并在刷新后恢复。\n剪贴板的可选 CellFragment.source 记录来源 root/Frame 与节点领域归属，必须在剪切删除前捕获。同 Frame 粘贴保留各自归属并校验原 owner；跨 Frame 或旧片段要求明确目标，歧义原子拒绝。片段内已有的锚点及成员使用重映射后的内部归属。\n验收入口：Core arrangement.spec.ts、各领域 cell-arrangement.spec.ts、React frame-alignment.spec.ts / frame-interactions.spec.tsx，以及产品 arrangement.spec.ts 与既有交互回归。\n2026-10-14 实际验收通过：610 项单测、127 项生产 Web E2E、7 项 Desktop E2E、类型检查、lint、两端构建及隔离 consumer（严格类型、构建、浏览器运行时）。\n2.1.0：废弃 API 清理（2026-11-02）\nCellIndex.membersOf 已删除：组成员使用 groupOf，领域归属使用 domainOwnerOf；需要兼容旧归属查找顺序时使用 parentOf → domainOwnerOf → groupOf。legacyThemeColors 已删除；resolveThemeColor 仅接收 value、source、fallback、theme 四个参数，固定颜色通过 colorSources 标注 custom。UI 类型 WorkspaceId 已删除，请改用 EditorKind。文件格式与持久化迁移入口继续有效。\n核心规则与领域几何策略（2026-11-06）\nCellScene.geometry 是几何能力与领域策略的统一入口：nodeLayout、edgeRouting 区分 core/domain/none，defaultStyle 选择领域默认方式；领域可提供布局单元、节点投影、障碍、校验与候选位置。core 不依赖具体领域包。Frame 原生领域继续唯一，混合场景通过嵌套 Frame 外壳展示。\n规划顺序是测量真实尺寸和原始描边、识别领域单元与连接密度、布置节点、严格避障、扩大间距及可扩展泳道后重试、压缩合法路径、最后一次事务提交。上限由 maxAttempts 和路由搜索预算控制；预算耗尽不表示数学上不可达。锁定与范围外对象始终是固定约束。\n路由障碍采用包含原始描边的旋转 AABB；连线半宽和箭头横向包络加入安全预留，默认描边外缘净距不少于 12。首末法向段仅对自己的节点豁免，转弯必须在安全包络之外。初始规划、拥堵重排、分道、压缩、缓存与写入前检查使用同一底线；低层 clearance 仍保留旧的中心线扩张含义，新 visualGap 表示视觉净距。圆角与跨线桥靠近障碍时局部缩小或取消，端点和箭头语义不变。\nWorkflow 按 owner 独立处理，DAG 禁环，process 支持 SCC 回路。Architecture 保持层 order 和模块归属，显式整图布局为标题区预留额外空间，旧文件缺省不变；可扩展泳道只增长、不缩小。UML 类图按继承与实现关系布局，关联环合法；Mind 和时序图保留树样式、事件序列、激活及 fragment 派生几何，通用正交优化从 core 排除它们。\nplanGeometryLayout 与 planOptimizeEdges 返回 status、operations、diagnostics；旧 planCellLayout 和 optimizeEdges 继续返回操作数组。布局只发布完整安全候选；仅优化连线时节点和已解析端点固定，成功线可提交，失败线保留并报告 cellIds、Frame 和原因。原始有限回退折线只供编辑显示，不能当作安全发布结果。\nEdgeRoute.origin 可选 manual 或 generated。手工折点及线段拖动标 manual；显式优化和布局生成的折点标 generated。旧文件已有折点且未标来源视为 manual；后台布局和优化保留它们。复制、保存及重开保留来源，不因加载或缩放自动改写。\n节点和连线原始描边、手工点及策略版本进入路由缓存与后台签名。hover、选中、port 显隐及缩放不改变路线。显式命令的诊断在画布显示数量、详情及图元定位；后台只显示状态，不弹窗。诊断不写入原生文件、撤销记录或导出。\n验收入口新增 Core cell/geometry-plan.spec.ts，覆盖 3/8 条线共用真实端口、部分成功、旋转粗描边、手工来源、process 环、领域投影及独立图单元；既有路由、React、Web 和隔离 Desktop 回归继续执行。",
+    "plainText": "对齐、自动排列与组合\n先明确当前 Frame、选择范围、Group 和锁定对象，再执行对齐、节点布局或连线整理。普通路由只在运行时派生；显式优化保存折点，自动计算并入触发编辑的一次事务。\n内容核对：2026-11-13。依据为当前仓库源码、包清单与锁文件；具体机制和源码入口见本篇及配置与源码索引。历史记录保留原日期与适用范围。\n原排列说明 · 2026-10-28。先读产品交互，再看算法、自动计算与保存边界；2.0 发布及过往验收仍保留原上下文。\n打开画布 verd://file/demo%3Alayout-routing\n白板、Workflow 节点和 Architecture 模块使用已保存的位置。Mind 内部继续由树布局约束；它的 Frame 外壳可以在父画布中排列。Architecture 层框继续包围自己的模块，不作为自由排列对象。\n操作范围与用户交互\n产品交互\n右侧「排列」区域、右键菜单和命令面板共用 Action 定义及可用性判断：六向对齐、水平/垂直等距分布、组合、解组、锁定、解锁，以及独立的「布局节点」「整理连线」。组合快捷键为 Ctrl/Cmd+G，解组为 Ctrl/Cmd+Shift+G。\n对齐以选区联合边界为基准；分布固定两端，在对象边缘间分配等距空隙。至少两个对象才能对齐，至少三个才能分布。锁定对象会阻止整次对齐或分布。\n「布局节点」提供网格、横向、纵向，普通白板另有「按连接关系」；Workflow 默认按连线层级排列，Architecture 默认按层排列，均须显式执行才修改位置。无选择时处理当前焦点 Frame 或 Group 的可见、未锁定直接对象；单选 Group 时显示「布局组内节点」，展开直属成员；多选 Group 与嵌套子组作为整体。仅选连线不会回退为排列全画布。显式联合规划默认节点间距 96，并按连接密度提高；网格列数为 ceil(sqrt(n))，从原范围左上角展开。嵌套 Frame 只移动外壳。\n按层和按连线层级排列使用长边虚拟节点、双向重心排序及相邻交换减少交叉，按实际节点尺寸压紧，并向上下游中心对齐。默认节点净距至少 96、层间净距至少 160，并按连接密度扩展通道；层顺序、模块归属与流程拓扑保持不变。虚拟节点仅用于计算，不写入文档。结果不依赖对象插入顺序；在相同输入和范围下重复执行保持稳定。关闭自动布局时，普通拖动、加载及刷新不触发重排。\n拖动时匹配同 Frame 对象的边缘及中心，显示蓝色参考线。吸附阈值为 6 个屏幕像素，包含画布缩放和嵌套 Frame 的内容比例。Alt 临时关闭；设置中的「智能参考线」是默认开启的本地偏好，恢复操作速度不会重置它。参考线、组选择边框和预览不保存、不导出。\nGroup\nGroupCell.members 表达同一 Frame 的交互组合，不改变 Frame 所有权或领域归属。可嵌套，也可跨流程、跨架构层组合；白板箭头可入组，领域结构边由端点关系维护。白板组合保持连续图层块和成员原有绘制顺序；领域组合不强制重排图层。\n单击选择当前层级的整组，双击逐级进入，Esc 逐级退出并选中退出的组。解组只去掉当前层级，成员提升到父组或 Frame，位置不变。Frame 成员仍是外壳单位，内部通过打开详情编辑。\n锁定组可选择、复制和解锁；禁止移动、排列、删除、解组和组内编辑。锁定/解锁只改组自身的标记，保留成员原有锁定状态。含锁定成员的组合不能整体修改；未锁定的组仍可进入，以选择和解锁其中的成员。\n排列将 Group 当成刚性块，递归平移节点与组内自由端点/手工路径，每个成员只移动一次。Frame 内部不展开。第一版不提供整体缩放或旋转。DAG 组合收缩后形成循环时，按流程层级排列禁用；process 循环使用强连通分量布局；组跨架构层时，按层排列禁用。通用网格、横向和纵向排列仍可使用。\n节点布局与连线整理\n局部布局以原节点和子组范围左上角为原点，Group 边界随内容变化，组外和锁定节点保持原位。布局先在内存生成完整候选，并根据路由失败扩大间距重试。组外及固定对象保持原位；架构层正文透明，标题文字区作为障碍。只有固定约束或搜索预算仍阻止安全结果时，才不提交并报告原因。嵌套组内部已有重叠不因整体平移而改变。\n普通白板的 relationships 关系布局按稳定 ID 排序，以强连通分量容纳循环，再对凝聚 DAG 按最长路径分层；每个断开分量独立使用现有交叉减少算法，从上到下布局。节点净距 96、层间净距至少 160，分量按最小 ID 稳定网格打包，无连接时退化为网格。只使用布局块之间的内部关系，忽略自环和范围外连线；流程与架构专用规则保持。\n「整理连线」是主按钮与下拉箭头共用连续外框的拆分按钮，默认「优化全部连线」。点击箭头只展开菜单；点击可用菜单项立即执行一次，并将主按钮切换为该方式，侧栏和右键菜单共享本次会话的选择。再次选择当前方式也执行一次。不可用项可聚焦查看原因，但不执行、不切换；主按钮禁用时箭头仍可打开。处理中共享拦截重复执行，失败保留所选方式以便重试。两种操作都不移动节点，也不改变实时开关。优化会重新计算当前范围路线，尝试减少交叉、绕行和折点，并保存为 orthogonal + points 可编辑折线；重置清除所有已有折点（包括优化生成的折点），恢复普通自动走线。显式端口、锚点、自由端点、标签与外观保持；无显式绑定的自动端点按当前显示位置固定为既有相对 anchor；直线、曲线、隐藏、锁定、祖先锁定和插件专用边跳过。范围包含跨边界关联线，非目标线不写入。方式切换不进入历史，实际内容变化对应一次撤销，无变化不产生空历史。\n公开纯规划 API：planCellLayout(store, selection, style, registry)、rerouteEdges(store, edgeIds, registry) 和 optimizeEdges(store, edgeIds, registry) 返回 CellOperation[]，由宿主一次事务提交。稳定 Action 为 canvas.edges.reroute、canvas.edges.optimize、canvas.layout.auto.toggle 和 canvas.edges.auto.toggle。FrameCanvas 可选 autoCalculation / onAutoCalculationChange 接入会话配置；FrameAutoCalculationProvider 和 createFrameAutoCalculationSession 共享同画布多实例的内存状态。旧 route.strategy: optimized 兼容读取但不再隐式开启持续优化，无文件迁移。\n验证入口：Core layout-plan.spec.ts、React frame-interactions.spec.tsx、产品 frame-arrangement.spec.tsx 和 Web diagram-layout.spec.ts，覆盖组范围、循环关系、锁定/冲突、单步历史、宿主拒绝及保存重载。\n禁用理由使用组件 Tooltip，支持悬停、键盘聚焦、Escape 关闭与滚动容器外显示。按钮状态使用轻量检查，不运行完整布局或优化；候选布局和冲突在提交前验证。显式优化仍采用稳定的有界候选搜索，仅接受安全且评分改善的结果；旧策略字段不触发后台计算。\n一次操作与自动计算\n节点与连线分别有「自动布局节点」「自动优化连线」开关，默认关闭。开启只影响后续变化，不立即计算；关闭保留已有位置和路径。配置以文件 ID / Frame ID 存在工作区会话内，切换标签保留，关闭最后一个对应标签或重启后清除，不写入文件或撤销历史。开启时固定 Frame、Group 或选区，选择变化不改变范围；容器包含新增直属成员，固定选区只剔除已删除对象，不扩大到整个画布。\n节点自动布局仅在范围内增删对象、连接关系或尺寸变化时执行，手动移动和旋转保留位置。改变布局下拉选项只更新下次自动计算的方式。连线自动优化在所在 Frame 的几何、端口、连接关系或线宽变化后重算固定范围目标；直接编辑折点不立即触发。后台只接管 generated 或尚无折点的路线，旧文件有折点且未标来源时视为手工路径；关闭时保存折线只调整端点邻接段。\n两个开关同时开启时，先布局节点再优化连线；派生修改在提交前合并到原编辑事务和同一宿主回显预测中，一次撤销恢复整次编辑。派生规划失败保留原编辑并报告诊断，宿主拒绝则整笔不提交。加载、回显、撤销、重做不再次触发计算。拖动、调整尺寸和旋转按动画帧合并，预览只跟随关联端点，复用其他路径，暂停全图优化、交叉桥和标签避让，松手后按开关完成最终计算，取消则恢复。\n2026-10-28 路由阶段诊断（每类连续 3 个预览帧的平均值，不代表完整 UI 帧率）：包架构图夹具 41 条边，完整计算 69.02ms/帧，轻量预览 0.44ms/帧；60 节点 120 边密集图，107.84ms/帧 降至 0.26ms/帧。复现入口为 Core geometry/routing-preview.spec.ts；时间随机器与并行负载变化，自动回归主要约束计算调用次数。\n布局与连线计算机制\n自动布局算法\n先确定当前 Frame、Group 或选区，再收集可见且可移动的直接布局块。嵌套 Group 是刚性块，嵌套 Frame 只移动外壳；锁定对象、范围外节点及它们已有位置不动。先生成完整候选并检查固定对象与路由净距，扩大范围内未锁定布局块之间的间距后重试，不移动范围外对象。\n普通白板的「按连接关系」先按稳定 ID 建图，使用 Tarjan 强连通分量收拢循环关系，再对凝聚 DAG 按最长路径分层。每个断开分量独立处理长边虚拟节点、双向重心排序和相邻交换，以减少层间交叉；之后按实际宽高与最小间距排列，向相邻层节点中心对齐。最后按分量最小 ID 稳定打包。只读取范围内布局块之间的连接，自环和范围外连线不参与分层；没有连接时退化为网格。算法追求稳定、少交叉和可读间距，不保证交叉数的全局最优。\nWorkflow DAG 按拓扑层级排列；process 模式使用 SCC 凝聚图分层，分量内部按稳定 ID 排列，回边绕外侧通道，保留全部关系。默认从左到右，vertical 或 flow-vertical 参数选择纵向。Architecture 按层归属和层 order 排列，跨层 Group 禁用按层布局。通用网格、横向和纵向可独立选择。Mind 根据主题树、分支顺序、折叠与文字尺寸计算九种树布局；UML 时序图根据参与者及嵌套事件顺序派生消息、激活条和位置，类图按继承与实现关系分层，同时保留自由放置、关联环、箭头语义和多重性。这些领域规则不能替换为白板的 SCC 布局。\n连线路由算法\n普通自动路由先解析显式端口与相对锚点；没有明确端点时结合对端位置、领域方向及同侧连接分配出口。把当前 Frame 内可见节点的几何包围盒扩展为障碍，旋转节点按包围盒处理；架构层和逻辑组是透明容器，内部成员各自参与避障，嵌套 Frame 以外壳参与。已保存的手工折点、直线、曲线与领域专用边保留各自语义；显式节点布局及连线优化可以重算范围内符合能力声明的手工正交折点。\n正交寻路在压缩的可见网格上以方向作为搜索状态，使用曼哈顿距离启发；评分综合路线长度、转弯、共线重叠、相邻通道拥挤与交叉代价。同一 Frame 按稳定顺序规划，随后做有界拥堵重排、共线分道和短台阶压缩。交叉是软代价，因此路线可能保留交叉，不能承诺所有线不相交或绝对最短。连线描边外缘与节点描边外缘的净距至少为 12 个局部画布单位；狭窄通道仍保持此底线，端口被完全封堵或节点重叠时返回 blocked 并保留可编辑的回退路线，不移动节点，也不中断渲染。\n「优化连线」在普通路由基础上额外尝试有界候选，只接受安全且评分改善的结果，结果保存为 orthogonal + points。「重置连线」删除已有折点，包括优化生成的折点，回到普通自动路由。两种操作保持节点、端口、锚点、自由端点、标签与外观；直线、曲线、隐藏、锁定及插件不支持的边跳过。普通自动路由的派生折点只在运行时，显式优化后的折点则是可编辑、可保存和可撤销的内容。\n箭头、标签、命中、边界适配和导出读取同一份显示几何。自动标签尝试避开节点、其它标签和连线；显式 label.position 保留用户位置。交叉桥是在相交处增加的显示弧线，不新增连接点、不改变连线关系，也不保存为手工折点。\n核心规则与领域几何策略（2026-11-06）\nCellScene.geometry 是几何能力与领域策略的统一入口：nodeLayout、edgeRouting 区分 core/domain/none，defaultStyle 选择领域默认方式；领域可提供布局单元、节点投影、障碍、校验与候选位置。core 不依赖具体领域包。Frame 原生领域继续唯一，混合场景通过嵌套 Frame 外壳展示。\n规划顺序是测量真实尺寸和原始描边、识别领域单元与连接密度、布置节点、严格避障、扩大间距及可扩展泳道后重试、压缩合法路径、最后一次事务提交。上限由 maxAttempts 和路由搜索预算控制；预算耗尽不表示数学上不可达。锁定与范围外对象始终是固定约束。\n路由障碍采用包含原始描边的旋转 AABB；连线半宽和箭头横向包络加入安全预留，默认描边外缘净距不少于 12。首末法向段仅对自己的节点豁免，转弯必须在安全包络之外。初始规划、拥堵重排、分道、压缩、缓存与写入前检查使用同一底线；低层 clearance 仍保留旧的中心线扩张含义，新 visualGap 表示视觉净距。圆角与跨线桥靠近障碍时局部缩小或取消，端点和箭头语义不变。\nWorkflow 按 owner 独立处理，DAG 禁环，process 支持 SCC 回路。Architecture 保持层 order 和模块归属，显式整图布局为标题区预留额外空间，旧文件缺省不变；可扩展泳道只增长、不缩小。UML 类图按继承与实现关系布局，关联环合法；Mind 和时序图保留树样式、事件序列、激活及 fragment 派生几何，通用正交优化从 core 排除它们。\nplanGeometryLayout 与 planOptimizeEdges 返回 status、operations、diagnostics；旧 planCellLayout 和 optimizeEdges 继续返回操作数组。布局只发布完整安全候选；仅优化连线时节点和已解析端点固定，成功线可提交，失败线保留并报告 cellIds、Frame 和原因。原始有限回退折线只供编辑显示，不能当作安全发布结果。\nEdgeRoute.origin 可选 manual 或 generated。手工折点及线段拖动标 manual；显式优化和布局生成的折点标 generated。旧文件已有折点且未标来源视为 manual；后台布局和优化保留它们。复制、保存及重开保留来源，不因加载或缩放自动改写。\n节点和连线原始描边、手工点及策略版本进入路由缓存与后台签名。hover、选中、port 显隐及缩放不改变路线。显式命令的诊断在画布显示数量、详情及图元定位；后台只显示状态，不弹窗。诊断不写入原生文件、撤销记录或导出。\n验收入口新增 Core cell/geometry-plan.spec.ts，覆盖 3/8 条线共用真实端口、部分成功、旋转粗描边、手工来源、process 环、领域投影及独立图单元；既有路由、React、Web 和隔离 Desktop 回归继续执行。\n保存、兼容与公共 API\n保存边界与典型场景\n写文件并可撤销：显式布局后的节点位置、优化保存的折点，以及自动开关触发后合入原编辑事务的布局和优化结果。一次操作只提交一次，宿主拒绝或候选冲突时整笔不提交。\n仅运行时派生：普通自动路由、Mind 与 UML 的派生几何、标签避让、交叉桥、预览及缓存。相机平移缩放复用几何，不触发布局事务。\n仅会话配置：自动布局节点、自动优化连线及其固定范围。两个开关默认关闭，开启不立即计算；切换标签保留，关闭最后一个对应标签或重启后清除。\n循环与断开关系：白板和 process 流程通过 SCC 处理循环；Workflow DAG 继续禁止环。不同流程 owner 分别布局并按布局单元打包。\n局部分组与固定障碍：选中一个 Group 布局直属成员，嵌套组保持整体；组外或锁定对象保持原位，先扩大布局间距重试，固定约束或预算耗尽时才返回诊断。\n手工折点与阻塞：关闭自动优化时保留折点，只跟随端点相邻段；后台仅重算无手工折点或 origin 为 generated 的路线；手工折点保持。blocked 是可诊断回退，不等同于自动移动障碍或保证无碰撞。\n布局与路由源码入口\n范围与事务规划：packages/engine/core/src/cell/layout-plan.ts；关系布局：relationship-layout.ts；交叉减少与按尺寸定位：arrangement-graph.ts。领域策略位于 packages/engine/{workflow,architecture}/src/arrangement.ts，Mind 树布局位于 packages/engine/layouts/src/，UML 派生布局位于 packages/engine/uml/src/layout.ts。\n共享几何入口：packages/engine/core/src/geometry/edge.ts；障碍寻路：obstacle-route.ts；显式优化：route-optimization.ts；路径压缩：route-compaction.ts；交叉桥：edge-crossings.ts；自动触发与合并事务：packages/react/board/src/frame-auto-calculation.tsx。\n画布显示与运行时 · 系统数据流 · 配置与源码索引\n引擎与宿主 API\ncollectArrangementBlocks(store, frameId, ids?) 返回当前作用域内的节点/Group 边界，采用旋转后的几何包围盒。\nalignCells(store, ids, axis)、distributeCells(store, ids, axis)、arrangeCells(store, frameId, ids, style) 返回纯 CellOperation[]，由一次事务提交；排列不改变领域关系或扩大选择。\nungroupCells(store, ids) 和 setCellsLocked(store, ids, locked) 提供逐层解组与批量锁定。\nCellIndex.groupOf 只表示直接组成员；domainOwnerOf 表示流程起点/架构层归属。旧 membersOf 已弃用，兼容值优先取领域归属。\nReact 接入使用 controller.getActionState(actionId,args?) / executeAction(actionId,args?)。frameSelectionActionId(FrameSelectionOperation) 将排列、Group、锁定和内容适配映射到稳定 canvas.* ID，菜单、面板、快捷键、帮助和命令面板共用定义。旧 selectionCommandState/executeSelectionCommand 已删除；领域纯 planner 与一次事务/撤销语义保持。\n流程起点作为排列对象时只修改自身位置和原点，不隐式移动未选成员。普通拖动起点只移动自身，不更新旧派生布局原点，也不带动其他任务或泳道；整体移动通过框选或组合完成。Architecture 排列保留模块所属层，层框作为派生结果更新。属性面板显式切换所属层时，仅将该模块放入目标层；moveArchitectureModuleToLayer 的可选 position: inside-layer 用于这一行为，默认 preserve 保留既有位置，指针拖动继续使用实际落点。\n兼容与保存\nmaterializeWorkflowPositions(store) 和 materializeArchitecturePositions(store) 将旧派生节点的显示坐标幂等转换为已保存坐标。已有手动位置不变，Mind 不转换，Architecture 层框继续派生。产品在加载和导入边界调用并使用原保存队列持久化，不进入用户撤销历史，不升级文件版本。第三方宿主在提供旧快照前调用同一 helper；渲染器不替宿主提交保存。\n新建 Workflow/Architecture 对象只计算自身初始位置，不移动已有节点。显式布局、对齐、分布和完整拖动各只提交一次事务，因此可一步撤销并在刷新后恢复。\n剪贴板的可选 CellFragment.source 记录来源 root/Frame 与节点领域归属，必须在剪切删除前捕获。同 Frame 粘贴保留各自归属并校验原 owner；跨 Frame 或旧片段要求明确目标，歧义原子拒绝。片段内已有的锚点及成员使用重映射后的内部归属。\n验收入口：Core arrangement.spec.ts、各领域 cell-arrangement.spec.ts、React frame-alignment.spec.ts / frame-interactions.spec.tsx，以及产品 arrangement.spec.ts 与既有交互回归。\n2026-10-14 实际验收通过：610 项单测、127 项生产 Web E2E、7 项 Desktop E2E、类型检查、lint、两端构建及隔离 consumer（严格类型、构建、浏览器运行时）。\n2.1.0：废弃 API 清理（2026-11-02）\nCellIndex.membersOf 已删除：组成员使用 groupOf，领域归属使用 domainOwnerOf；需要兼容旧归属查找顺序时使用 parentOf → domainOwnerOf → groupOf。legacyThemeColors 已删除；resolveThemeColor 仅接收 value、source、fallback、theme 四个参数，固定颜色通过 colorSources 标注 custom。UI 类型 WorkspaceId 已删除，请改用 EditorKind。文件格式与持久化迁移入口继续有效。",
     "align": "left"
   }
 }

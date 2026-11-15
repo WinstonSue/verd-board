@@ -26,10 +26,10 @@ import {
   createUmlClassFrameSnapshot,
 } from '@sue/board-uml';
 import { describe, expect, it } from 'vitest';
-import { createFrameFile } from '../frames/frame-files';
-import { createWorkspaceCellRegistry } from '../frames/plugins';
-import { createDocumentFile } from './document-files';
-import { remapWorkspaceFiles } from './workspace-references';
+import { createFrameFile } from '@sue/verd-board-workspace';
+import { createWorkspaceCellRegistry } from '@sue/verd-board-workspace';
+import { createDocumentFile } from '@sue/verd-board-workspace';
+import { remapWorkspaceFiles } from '@sue/verd-board-workspace';
 
 const link = (fileId: string, cellId: string) =>
   createWorkspaceLink({ kind: 'cell', fileId, cellId });

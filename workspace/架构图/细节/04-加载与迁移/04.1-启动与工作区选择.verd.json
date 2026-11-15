@@ -29,7 +29,9 @@
       "project:detail/04/01/migration",
       "project:detail/04/01/bridge/0",
       "project:detail/04/01/bridge/2",
-      "project:detail/04/01/document"
+      "project:detail/04/01/document",
+      "project:detail/04/01/legacy-check",
+      "project:detail/04/01/native-absent"
     ],
     "groups": [],
     "data": {},
@@ -141,7 +143,8 @@
           "demo:load/v2",
           "demo:load/materialize",
           "demo:load/mount",
-          "project:detail/04/01/migration"
+          "project:detail/04/01/migration",
+          "project:detail/04/01/legacy-check"
         ]
       },
       "name": "启动应用"
@@ -151,10 +154,10 @@
       "kind": "workflow-task",
       "cellType": "node",
       "geometry": {
-        "x": 0,
-        "y": 200,
+        "x": 460,
+        "y": 0,
         "width": 360,
-        "height": 106,
+        "height": 120,
         "derived": false,
         "outline": "roundRectangle"
       },
@@ -245,10 +248,10 @@
       "kind": "workflow-decision",
       "cellType": "node",
       "geometry": {
-        "x": 450,
-        "y": 200,
-        "width": 300,
-        "height": 132,
+        "x": 920,
+        "y": 0,
+        "width": 360,
+        "height": 180,
         "derived": false,
         "outline": "diamond"
       },
@@ -279,12 +282,12 @@
         }
       ],
       "content": {
-        "label": "已有工作区或旧资料？",
+        "label": "已有原生工作区？",
         "text": {
           "schemaVersion": 1,
           "id": "demo:load/format/text",
           "kind": "inline",
-          "plainText": "已有工作区或旧资料？",
+          "plainText": "已有原生工作区？",
           "content": {
             "type": "doc",
             "content": [
@@ -293,7 +296,7 @@
                 "content": [
                   {
                     "type": "text",
-                    "text": "已有工作区或旧资料？",
+                    "text": "已有原生工作区？",
                     "marks": [
                       {
                         "type": "textStyle",
@@ -321,10 +324,10 @@
       "kind": "workflow-task",
       "cellType": "node",
       "geometry": {
-        "x": 450,
-        "y": 0,
-        "width": 360,
-        "height": 106,
+        "x": 920,
+        "y": 620,
+        "width": 400,
+        "height": 140,
         "derived": false,
         "outline": "roundRectangle"
       },
@@ -355,12 +358,12 @@
         }
       ],
       "content": {
-        "label": "首次默认工作区：内置项目副本\n开发与正式隔离；已有内容或运行记录不覆盖",
+        "label": "首次默认工作区：内置项目副本\n已有内容不覆盖；开发与正式隔离",
         "text": {
           "schemaVersion": 1,
           "id": "demo:load/new/text",
           "kind": "inline",
-          "plainText": "首次默认工作区：内置项目副本\n开发与正式隔离；已有内容或运行记录不覆盖",
+          "plainText": "首次默认工作区：内置项目副本\n已有内容不覆盖；开发与正式隔离",
           "content": {
             "type": "doc",
             "content": [
@@ -387,7 +390,7 @@
                 "content": [
                   {
                     "type": "text",
-                    "text": "开发与正式隔离；已有内容或运行记录不覆盖",
+                    "text": "已有内容不覆盖；开发与正式隔离",
                     "marks": [
                       {
                         "type": "textStyle",
@@ -415,10 +418,10 @@
       "kind": "workflow-task",
       "cellType": "node",
       "geometry": {
-        "x": 900,
+        "x": 1420,
         "y": 0,
-        "width": 360,
-        "height": 106,
+        "width": 400,
+        "height": 120,
         "derived": false,
         "outline": "roundRectangle"
       },
@@ -509,10 +512,10 @@
       "kind": "workflow-task",
       "cellType": "node",
       "geometry": {
-        "x": 1350,
+        "x": 1920,
         "y": 0,
-        "width": 360,
-        "height": 106,
+        "width": 400,
+        "height": 120,
         "derived": false,
         "outline": "roundRectangle"
       },
@@ -603,10 +606,10 @@
       "kind": "workflow-task",
       "cellType": "node",
       "geometry": {
-        "x": 1350,
-        "y": 200,
-        "width": 360,
-        "height": 106,
+        "x": 2420,
+        "y": 0,
+        "width": 400,
+        "height": 120,
         "derived": false,
         "outline": "roundRectangle"
       },
@@ -698,11 +701,11 @@
       "cellType": "edge",
       "source": {
         "cellId": "demo:load/start",
-        "portId": "bottom"
+        "portId": "right"
       },
       "target": {
         "cellId": "demo:load/adapter",
-        "portId": "top"
+        "portId": "left"
       },
       "route": {
         "mode": "orthogonal"
@@ -710,7 +713,8 @@
       "appearance": {
         "strokeColor": "#64748b",
         "strokeWidth": 1.5
-      }
+      },
+      "labels": []
     },
     "demo:load/edge/1": {
       "id": "demo:load/edge/1",
@@ -718,11 +722,11 @@
       "cellType": "edge",
       "source": {
         "cellId": "demo:load/adapter",
-        "portId": "bottom"
+        "portId": "right"
       },
       "target": {
         "cellId": "demo:load/format",
-        "portId": "top"
+        "portId": "left"
       },
       "route": {
         "mode": "orthogonal"
@@ -730,14 +734,15 @@
       "appearance": {
         "strokeColor": "#64748b",
         "strokeWidth": 1.5
-      }
+      },
+      "labels": []
     },
     "demo:load/edge/2": {
       "id": "demo:load/edge/2",
       "kind": "workflow-edge",
       "cellType": "edge",
       "source": {
-        "cellId": "demo:load/format",
+        "cellId": "project:detail/04/01/legacy-check",
         "portId": "bottom"
       },
       "target": {
@@ -749,7 +754,7 @@
       },
       "labels": [
         {
-          "text": "无数据",
+          "text": "否",
           "position": 0.5
         }
       ],
@@ -775,7 +780,7 @@
       },
       "labels": [
         {
-          "text": "原生文件",
+          "text": "是",
           "position": 0.5
         }
       ],
@@ -790,10 +795,31 @@
       "cellType": "edge",
       "source": {
         "cellId": "demo:load/new",
-        "portId": "bottom"
+        "portId": "right"
       },
       "target": {
         "cellId": "demo:load/v2",
+        "portId": "bottom"
+      },
+      "route": {
+        "mode": "orthogonal"
+      },
+      "appearance": {
+        "strokeColor": "#64748b",
+        "strokeWidth": 1.5
+      },
+      "labels": []
+    },
+    "demo:load/edge/14": {
+      "id": "demo:load/edge/14",
+      "kind": "workflow-edge",
+      "cellType": "edge",
+      "source": {
+        "cellId": "demo:load/materialize",
+        "portId": "right"
+      },
+      "target": {
+        "cellId": "demo:load/mount",
         "portId": "left"
       },
       "route": {
@@ -802,37 +828,18 @@
       "appearance": {
         "strokeColor": "#64748b",
         "strokeWidth": 1.5
-      }
-    },
-    "demo:load/edge/14": {
-      "id": "demo:load/edge/14",
-      "kind": "workflow-edge",
-      "cellType": "edge",
-      "source": {
-        "cellId": "demo:load/materialize",
-        "portId": "top"
       },
-      "target": {
-        "cellId": "demo:load/mount",
-        "portId": "bottom"
-      },
-      "route": {
-        "mode": "orthogonal"
-      },
-      "appearance": {
-        "strokeColor": "#64748b",
-        "strokeWidth": 1.5
-      }
+      "labels": []
     },
     "project:detail/04/01/migration": {
       "id": "project:detail/04/01/migration",
       "kind": "workflow-task",
       "cellType": "node",
       "geometry": {
-        "x": 900,
-        "y": 400,
-        "width": 400,
-        "height": 120,
+        "x": 1420,
+        "y": 330,
+        "width": 420,
+        "height": 140,
         "derived": false,
         "outline": "roundRectangle"
       },
@@ -923,12 +930,12 @@
       "kind": "workflow-edge",
       "cellType": "edge",
       "source": {
-        "cellId": "demo:load/format",
-        "portId": "bottom"
+        "cellId": "project:detail/04/01/legacy-check",
+        "portId": "right"
       },
       "target": {
         "cellId": "project:detail/04/01/migration",
-        "portId": "top"
+        "portId": "left"
       },
       "route": {
         "mode": "orthogonal"
@@ -939,7 +946,7 @@
       },
       "labels": [
         {
-          "text": "旧资料",
+          "text": "是",
           "position": 0.5
         }
       ]
@@ -950,11 +957,11 @@
       "cellType": "edge",
       "source": {
         "cellId": "demo:load/v2",
-        "portId": "bottom"
+        "portId": "right"
       },
       "target": {
         "cellId": "demo:load/materialize",
-        "portId": "top"
+        "portId": "left"
       },
       "route": {
         "mode": "orthogonal"
@@ -963,12 +970,7 @@
         "strokeColor": "#64748b",
         "strokeWidth": 1.5
       },
-      "labels": [
-        {
-          "text": "打开会话",
-          "position": 0.5
-        }
-      ]
+      "labels": []
     },
     "project:detail/04/01/document": {
       "id": "project:detail/04/01/document",
@@ -976,9 +978,9 @@
       "kind": "geometry",
       "geometry": {
         "x": 0,
-        "y": 700,
-        "width": 1000,
-        "height": 220,
+        "y": 880,
+        "width": 1200,
+        "height": 270,
         "outline": "text"
       },
       "data": {},
@@ -1076,19 +1078,127 @@
                     "text": "源码入口：apps/desktop/electron/workspace-startup.ts；packages/product/app/src/workspace-app.tsx。"
                   }
                 ]
+              },
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "首次复制不覆盖已有内容和运行记录。"
+                  }
+                ]
               }
             ]
           },
-          "plainText": "相关文档：系统架构\n读图：启动身份、目录选择与首次复制；旧资料转换进入下一张。\n返回专题总览\n相关细节：旧资料迁移与失败恢复\n桌面安装与使用 · 工作区目录\n源码入口：apps/desktop/electron/workspace-startup.ts；packages/product/app/src/workspace-app.tsx。"
+          "plainText": "相关文档：系统架构\n读图：启动身份、目录选择与首次复制；旧资料转换进入下一张。\n返回专题总览\n相关细节：旧资料迁移与失败恢复\n桌面安装与使用 · 工作区目录\n源码入口：apps/desktop/electron/workspace-startup.ts；packages/product/app/src/workspace-app.tsx。\n首次复制不覆盖已有内容和运行记录。"
         }
       },
       "appearance": {
         "fill": "none",
         "strokeColor": "none"
       }
+    },
+    "project:detail/04/01/legacy-check": {
+      "id": "project:detail/04/01/legacy-check",
+      "kind": "workflow-decision",
+      "cellType": "node",
+      "geometry": {
+        "x": 920,
+        "y": 300,
+        "width": 360,
+        "height": 180,
+        "derived": false,
+        "outline": "diamond"
+      },
+      "ports": [
+        {
+          "id": "top",
+          "side": "top",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "right",
+          "side": "right",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "bottom",
+          "side": "bottom",
+          "direction": "both",
+          "offset": 0.5
+        },
+        {
+          "id": "left",
+          "side": "left",
+          "direction": "both",
+          "offset": 0.5
+        }
+      ],
+      "content": {
+        "label": "存在旧资料？",
+        "text": {
+          "schemaVersion": 1,
+          "id": "project:detail/04/01/legacy-check/text",
+          "kind": "inline",
+          "plainText": "存在旧资料？",
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "存在旧资料？",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "fontSize": "20px",
+                          "color": "#1e293b"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "appearance": {
+        "fill": "#fffbeb",
+        "strokeColor": "#d97706",
+        "strokeWidth": 1.5
+      }
+    },
+    "project:detail/04/01/native-absent": {
+      "id": "project:detail/04/01/native-absent",
+      "kind": "workflow-edge",
+      "cellType": "edge",
+      "source": {
+        "cellId": "demo:load/format",
+        "portId": "bottom"
+      },
+      "target": {
+        "cellId": "project:detail/04/01/legacy-check",
+        "portId": "top"
+      },
+      "route": {
+        "mode": "orthogonal"
+      },
+      "labels": [
+        {
+          "text": "否",
+          "position": 0.5
+        }
+      ],
+      "appearance": {
+        "strokeColor": "#64748b",
+        "strokeWidth": 1.5
+      }
     }
-  },
-  "organization": {
-    "kind": "standalone"
   }
 }

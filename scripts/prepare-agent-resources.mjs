@@ -162,7 +162,7 @@ export async function prepareAgentResources(
     );
     const { parseSkillDocument } = await import(
       pathToFileURL(
-        path.join(app, 'node_modules/@sue/verd-board-app/dist/headless.js'),
+        path.join(app, 'node_modules/@sue/verd-board-workspace/dist/index.js'),
       ).href
     );
     const catalog = JSON.parse(

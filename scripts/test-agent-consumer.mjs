@@ -49,7 +49,7 @@ if (reuse < 0) {
           '@sue/verd-board-agent': archives['@sue/verd-board-agent'],
           '@sue/verd-board-agent-patterns':
             archives['@sue/verd-board-agent-patterns'],
-          '@sue/verd-board-app': archives['@sue/verd-board-app'],
+          '@sue/verd-board-workspace': archives['@sue/verd-board-workspace'],
         },
       },
       null,
@@ -63,6 +63,26 @@ if (reuse < 0) {
     ...(process.env.VERD_AGENT_CONSUMER_OFFLINE ? ['--offline'] : []),
   ]);
 }
+// Inspect installed production dependencies, including nested peer/optional branches.
+const installed = JSON.parse(
+  run('pnpm', ['list', '--prod', '--depth', 'Infinity', '--json']),
+);
+const checkInstalled = (entry) => {
+  for (const group of [
+    'dependencies',
+    'optionalDependencies',
+    'peerDependencies',
+  ]) {
+    for (const [name, dependency] of Object.entries(entry[group] ?? {})) {
+      if (['@sue/verd-board-app', '@sue/verd-board-ui'].includes(name))
+        throw new Error(
+          'Standalone Agent installed product dependency: ' + name,
+        );
+      checkInstalled(dependency);
+    }
+  }
+};
+installed.forEach(checkInstalled);
 // Execute inside the outside-repository installation, using only public package entries.
 const verifyPath = path.join(directory, 'verify.mjs');
 fs.writeFileSync(
@@ -73,9 +93,12 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { spawn, spawnSync } from 'node:child_process';
 import { readNativeSnapshot, prepareAuthoringBatch, applyPreparedBatch, validateNativeWorkspace } from '@sue/verd-board-agent';
-import { patterns, patternWorkspaceUrl } from '@sue/verd-board-agent-patterns/agent';
+import { patterns, patternWorkspaceUrl, loadPatternGuide, loadPatternGuides } from '@sue/verd-board-agent-patterns/agent';
 import { recommendationWorkspaceUrl } from '@sue/verd-board-agent-patterns/recommendations';
 import { fileURLToPath } from 'node:url';
+for (const name of ['@sue/verd-board-app', '@sue/verd-board-ui']) {
+  await assert.rejects(fs.access(path.join(process.cwd(), 'node_modules', name)), {code:'ENOENT'});
+}
 const base = process.cwd(), root = path.join(base, 'content-'+Date.now());
 const cli = path.join(base, 'node_modules/.bin/verd');
 const run = args => { const r=spawnSync(cli,args,{encoding:'utf8'}); assert.equal(r.status,0,r.stderr); return JSON.parse(r.stdout); };
@@ -90,7 +113,15 @@ assert.deepEqual(await fs.readdir(root),doctorBefore);
 assert.ok(run(['describe','--json']).document.nodes.frameReference);
 assert.equal(run(['patterns','--json']).length,13);
 assert.ok((await fs.readFile(run(['skill']).path,'utf8')).includes('verd plan'));
-const bundledEntries=(await readNativeSnapshot(fileURLToPath(patternWorkspaceUrl))).entries; assert.ok(bundledEntries.length>20);
+const bundledEntries=(await readNativeSnapshot(fileURLToPath(patternWorkspaceUrl))).entries;
+assert.deepEqual(bundledEntries.map(entry=>entry.path).sort(), [...new Set(patterns.flatMap(pattern=>pattern.templatePaths))].sort());
+assert.equal((await loadPatternGuide()).path,'skills/verd-authoring/references/writing.md');
+for(const pattern of patterns) {
+ const guide=await loadPatternGuide(pattern.id);
+ assert.equal(guide.path,pattern.guidePath);
+ assert.equal(guide.source,await fs.readFile(new URL(guide.path,patternWorkspaceUrl),'utf8'));
+ assert.equal((await loadPatternGuides(pattern.id)).at(-1).path,guide.path);
+}
 const bundledDiagnostics=validateNativeWorkspace(bundledEntries);
 assert.ok(bundledDiagnostics.every(d=>d.code==='workflow.port-direction' && d.severity==='warning'));
 const assertValid = diagnostics => { assert.equal(diagnostics.length,bundledDiagnostics.length); assert.ok(diagnostics.every(d=>d.code==='workflow.port-direction' && d.severity==='warning')); };
@@ -149,7 +180,7 @@ assert.notEqual(spawnSync(cli,['patterns','workspace','--dest',copied]).status,0
 // A live Desktop-style session retains its unsaved draft when the CLI publishes newer bytes.
 const snapshot=await readNativeSnapshot(root),doc=snapshot.entries.find(e=>e.file.format==='verd-document');
 const worker=spawn(process.execPath,['--input-type=module','-e',\
-  "import {createFsWorkspaceHost} from '@sue/verd-board-agent/node';import {openWorkspaceSession} from '@sue/verd-board-app/headless';"+\
+  "import {createFsWorkspaceHost} from '@sue/verd-board-agent/node';import {openWorkspaceSession} from '@sue/verd-board-workspace';"+\
   "const h=createFsWorkspaceHost({defaultRoot:()=>process.env.TEST_ROOT});const key=await h.openWorkspace({path:process.env.TEST_ROOT});const s=await openWorkspaceSession(h,key,{delayMs:60000});"+\
   "const f=structuredClone(s.getState().documents.get(process.env.TEST_DOC).file);f.title='Desktop unsaved';await s.apply({type:'file',file:f});console.log('ready');process.stdin.once('data',async()=>{const saved=await s.flush();console.log(JSON.stringify({saved,dirty:s.getState().dirty}));s.dispose();await h.closeWorkspace(key);process.exit(saved?1:0);});"\
 ],{cwd:base,env:{...process.env,TEST_ROOT:root,TEST_DOC:doc.file.id},stdio:['pipe','pipe','pipe']});

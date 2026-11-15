@@ -21,9 +21,7 @@ async function setup(kind: 'project' | 'agent-patterns' = 'project') {
   const source = (k: typeof kind) =>
     path.join(
       repo,
-      k === 'project'
-        ? 'workspace'
-        : 'packages/product/agent-patterns/workspace',
+      k === 'project' ? 'workspace' : 'packages/agent/patterns/workspace',
     );
   const target = path.join(
     userData,
@@ -185,9 +183,9 @@ it('recovers a crash between the backup and publication before opening', async (
 
 it('rejects a pending authoring plan even when resetting to identical native content', async () => {
   const { prepareAuthoringBatch } =
-    await import('../../../packages/product/agent/src/authoring');
+    await import('../../../packages/agent/runtime/src/authoring');
   const { applyPreparedBatch } =
-    await import('../../../packages/product/agent/src/apply');
+    await import('../../../packages/agent/runtime/src/apply');
   const { target, handle, updater } = await setup();
   const plan = await prepareAuthoringBatch(await readNativeSnapshot(target), [
     {

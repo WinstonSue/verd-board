@@ -1,5 +1,19 @@
 # @sue/verd-board-app
 
+## 2.1.1
+
+### Patch Changes
+
+- Extract the shared workspace SDK so third-party Node Agent consumers do not install product app/ui. Add the generic FrameCanvasPreview API while preserving product defaults and existing headless exports. Move Agent packages out of product and organize product UI source by responsibility without changing public entrypoints.
+
+  Reserve the canvas label padding when sizing architecture layer headings so short Latin SDK names remain visible in standalone previews.
+
+- Updated dependencies
+  - @sue/verd-board-workspace@2.2.0
+  - @sue/verd-board-agent-patterns@2.1.1
+  - @sue/verd-board-ui@2.1.1
+  - @sue/board-react-uml@2.1.1
+
 ## 2.1.0
 
 ### Major Changes

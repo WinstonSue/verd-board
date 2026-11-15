@@ -1,13 +1,13 @@
 import 'fake-indexeddb/auto';
 import { IDBFactory } from 'fake-indexeddb';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { createMemoryWorkspaceHost } from '../host/memory-workspace-host';
+import { createMemoryWorkspaceHost } from '@sue/verd-board-workspace';
 import { createWebWorkspaceHost } from '../host/web-workspace-host';
 import {
   openWorkspaceSession,
   type WorkspaceSession,
-} from './workspace-session';
-import { serializeWorkspaceSkill } from '../workspace-skills';
+} from '@sue/verd-board-workspace';
+import { serializeWorkspaceSkill } from '@sue/verd-board-workspace';
 import { createWorkspaceActionRegistry } from './workspace-actions';
 import { createWorkspaceSurfaceActions } from './workspace-surface-actions';
 
