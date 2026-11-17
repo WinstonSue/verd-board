@@ -41,6 +41,7 @@ import {
 } from 'lucide-react';
 import type { DocumentEditorController } from '../../types/document';
 import { useDocumentBubble } from './document-editor-bubble';
+import { hasDocumentTextSelection } from './document-controls';
 import {
   documentAlignments,
   documentBlockFormats,
@@ -141,27 +142,18 @@ export function DocumentSelectionToolbar({
     focusPanel.current = keyboard;
     setPanel(name);
   };
-  const atCaret = editor.state.selection.empty;
-  const caretAnchor = useCallback(() => {
-    const { view } = editor;
-    return {
-      contextElement: view.dom,
-      getBoundingClientRect: () => {
-        const { top, bottom } = view.coordsAtPos(view.state.selection.head);
-        const right =
-          view.dom.getBoundingClientRect().right -
-          parseFloat(getComputedStyle(view.dom).paddingRight);
-        return new DOMRect(right, top, 0, bottom - top);
-      },
-    };
-  }, [editor]);
+  const canShow = useCallback(
+    () => hasDocumentTextSelection(editor.state.selection),
+    [editor],
+  );
   const host = useDocumentBubble(
     editor,
     selectionToolbarKey,
     true,
-    atCaret ? caretAnchor : undefined,
     undefined,
-    atCaret ? 'top-end' : 'top',
+    undefined,
+    'top',
+    canShow,
   );
   useLayoutEffect(() => {
     if (activePanel && focusPanel.current) {

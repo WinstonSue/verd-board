@@ -22,7 +22,10 @@
       "pattern:architecture/mod-db",
       "pattern:architecture/dep-1",
       "pattern:architecture/dep-2",
-      "pattern:architecture/dep-3"
+      "pattern:architecture/dep-3",
+      "pattern:architecture/canvas-arch:relation-legend",
+      "pattern:architecture/canvas-arch:layer-dependency:0",
+      "pattern:architecture/canvas-arch:layer-dependency:1"
     ],
     "groups": []
   },
@@ -45,7 +48,29 @@
       "data": {
         "order": "00000000",
         "memberIds": ["pattern:architecture/mod-gateway"]
-      }
+      },
+      "ports": [
+        {
+          "id": "top",
+          "side": "top",
+          "direction": "both"
+        },
+        {
+          "id": "right",
+          "side": "right",
+          "direction": "both"
+        },
+        {
+          "id": "bottom",
+          "side": "bottom",
+          "direction": "both"
+        },
+        {
+          "id": "left",
+          "side": "left",
+          "direction": "both"
+        }
+      ]
     },
     "pattern:architecture/layer-service": {
       "id": "pattern:architecture/layer-service",
@@ -68,7 +93,29 @@
           "pattern:architecture/mod-order",
           "pattern:architecture/mod-route"
         ]
-      }
+      },
+      "ports": [
+        {
+          "id": "top",
+          "side": "top",
+          "direction": "both"
+        },
+        {
+          "id": "right",
+          "side": "right",
+          "direction": "both"
+        },
+        {
+          "id": "bottom",
+          "side": "bottom",
+          "direction": "both"
+        },
+        {
+          "id": "left",
+          "side": "left",
+          "direction": "both"
+        }
+      ]
     },
     "pattern:architecture/layer-data": {
       "id": "pattern:architecture/layer-data",
@@ -88,7 +135,29 @@
       "data": {
         "order": "00000002",
         "memberIds": ["pattern:architecture/mod-db"]
-      }
+      },
+      "ports": [
+        {
+          "id": "top",
+          "side": "top",
+          "direction": "both"
+        },
+        {
+          "id": "right",
+          "side": "right",
+          "direction": "both"
+        },
+        {
+          "id": "bottom",
+          "side": "bottom",
+          "direction": "both"
+        },
+        {
+          "id": "left",
+          "side": "left",
+          "direction": "both"
+        }
+      ]
     },
     "pattern:architecture/mod-gateway": {
       "id": "pattern:architecture/mod-gateway",
@@ -179,9 +248,9 @@
       "geometry": {
         "x": 360,
         "y": 198,
-        "width": 160,
-        "height": 88,
-        "outline": "diamond"
+        "width": 240,
+        "height": 60,
+        "outline": "roundRectangle"
       },
       "ports": [
         {
@@ -209,7 +278,7 @@
         "label": "支付路由"
       },
       "data": {
-        "shape": "decision",
+        "shape": "box",
         "placed": true
       }
     },
@@ -268,6 +337,9 @@
       },
       "route": {
         "mode": "orthogonal"
+      },
+      "data": {
+        "relation": "flow"
       }
     },
     "pattern:architecture/dep-2": {
@@ -284,6 +356,9 @@
       },
       "route": {
         "mode": "orthogonal"
+      },
+      "data": {
+        "relation": "flow"
       }
     },
     "pattern:architecture/dep-3": {
@@ -300,6 +375,129 @@
       },
       "route": {
         "mode": "orthogonal"
+      },
+      "data": {
+        "relation": "flow"
+      }
+    },
+    "pattern:architecture/canvas-arch:relation-legend": {
+      "id": "pattern:architecture/canvas-arch:relation-legend",
+      "kind": "card",
+      "cellType": "node",
+      "geometry": {
+        "x": 660,
+        "y": 40,
+        "width": 280,
+        "height": 260,
+        "outline": "roundRectangle"
+      },
+      "content": {
+        "label": "关系图例\n虚线开放箭头：依赖，使用方指向提供方。\n实线实心箭头：数据流，发送方指向接收方。\n层间线较粗并沿外围，模块线连接具体组件。",
+        "text": {
+          "schemaVersion": 1,
+          "id": "pattern:architecture/canvas-arch:relation-legend:text",
+          "kind": "block",
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "heading",
+                "attrs": {
+                  "level": 3
+                },
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "关系图例"
+                  }
+                ]
+              },
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "虚线开放箭头：依赖，使用方指向提供方。"
+                  }
+                ]
+              },
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "实线实心箭头：数据流，发送方指向接收方。"
+                  }
+                ]
+              },
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "层间线较粗并沿外围，模块线连接具体组件。"
+                  }
+                ]
+              }
+            ]
+          },
+          "plainText": "关系图例\n虚线开放箭头：依赖，使用方指向提供方。\n实线实心箭头：数据流，发送方指向接收方。\n层间线较粗并沿外围，模块线连接具体组件。"
+        }
+      },
+      "appearance": {
+        "strokeWidth": 1,
+        "colorSources": {
+          "fill": "theme",
+          "strokeColor": "theme"
+        }
+      }
+    },
+    "pattern:architecture/canvas-arch:layer-dependency:0": {
+      "id": "pattern:architecture/canvas-arch:layer-dependency:0",
+      "kind": "architecture-edge",
+      "cellType": "edge",
+      "source": {
+        "cellId": "pattern:architecture/layer-access",
+        "portId": "right"
+      },
+      "target": {
+        "cellId": "pattern:architecture/layer-service",
+        "portId": "right"
+      },
+      "route": {
+        "mode": "orthogonal"
+      },
+      "labels": [
+        {
+          "text": "依赖下层能力"
+        }
+      ],
+      "data": {
+        "relation": "dependency"
+      }
+    },
+    "pattern:architecture/canvas-arch:layer-dependency:1": {
+      "id": "pattern:architecture/canvas-arch:layer-dependency:1",
+      "kind": "architecture-edge",
+      "cellType": "edge",
+      "source": {
+        "cellId": "pattern:architecture/layer-service",
+        "portId": "right"
+      },
+      "target": {
+        "cellId": "pattern:architecture/layer-data",
+        "portId": "right"
+      },
+      "route": {
+        "mode": "orthogonal"
+      },
+      "labels": [
+        {
+          "text": "依赖下层能力"
+        }
+      ],
+      "data": {
+        "relation": "dependency"
       }
     }
   },

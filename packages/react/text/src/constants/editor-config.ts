@@ -11,6 +11,7 @@ import { InlineMath, BlockMath } from '@tiptap/extension-mathematics';
 import { DocumentFolding } from '../components/document/document-rich-content';
 import { DocumentSearchHighlight } from '../components/document/document-search-highlight';
 import { StableBlocks } from './stable-blocks';
+import { DocumentTableSelection } from '../components/document/document-table';
 import { StarterKit } from '@tiptap/starter-kit';
 import { Heading } from '@tiptap/extension-heading';
 import { BulletList } from '@tiptap/extension-bullet-list';
@@ -132,7 +133,12 @@ export const createDocumentExtensions = ({
     link: { ...linkOptions, protocols: ['verd'] },
     ...(history ? {} : { undoRedo: false as const }),
   }),
-  ...blockContentExtensions,
+  ...blockContentExtensions.map((extension) =>
+    extension.name === 'table'
+      ? extension.configure({ cellMinWidth: 96 })
+      : extension,
+  ),
+  DocumentTableSelection,
   Details.extend({
     addNodeView() {
       const render = this.parent?.();
@@ -175,7 +181,13 @@ export const createDocumentExtensions = ({
   StableBlocks,
   Placeholder.configure({
     includeChildren: true,
-    placeholder: ({ node }) => {
+    placeholder: ({ node, pos, editor }) => {
+      const resolved = editor.state.doc.resolve(pos);
+      for (let depth = resolved.depth; depth > 0; depth--)
+        if (
+          ['tableCell', 'tableHeader'].includes(resolved.node(depth).type.name)
+        )
+          return '';
       const context = placeholderContext?.();
       const english = context?.locale === 'en';
       if (node.type.name === 'heading')

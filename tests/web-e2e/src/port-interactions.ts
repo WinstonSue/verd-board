@@ -1,5 +1,6 @@
 import { expect, type Page, type Locator } from '@playwright/test';
 import { selectHistoryAction } from './app-actions';
+import { expandPropertyGroup } from './property-group';
 
 export type PortCursorCheck = (point: {
   x: number;
@@ -64,6 +65,13 @@ export function portFixture(reverse = false) {
       node('b', 100, 300),
       node('c', 420, 180, true),
       node('d', 420, 400, true),
+      {
+        ...node('blocked', 700, 100, true),
+        ports: node('blocked', 700, 100, true).ports.map((port) => ({
+          ...port,
+          maxConnections: 0,
+        })),
+      },
       edge('e1', 'a'),
       edge('e2', 'b'),
       {
@@ -213,7 +221,15 @@ export async function exerciseWorkflowEndpoints(
     canvas
       .locator('[data-edge-display], [data-arrow-marker]')
       .evaluateAll((elements) =>
-        elements.map((element) => element.getAttribute('d')),
+        elements
+          .map((element) => ({
+            edgeId: element
+              .closest('[data-cell-id]')
+              ?.getAttribute('data-cell-id'),
+            kind: element.hasAttribute('data-edge-display') ? 'path' : 'marker',
+            path: element.getAttribute('d'),
+          }))
+          .sort((a, b) => JSON.stringify(a).localeCompare(JSON.stringify(b))),
       );
   await expect(canvas.locator(`[data-edge-hit="${edgeId}"]`)).toHaveCount(1);
   const before = await geometry();
@@ -383,7 +399,15 @@ export async function exercisePortInteractions(
     canvas
       .locator('[data-edge-display], [data-arrow-marker]')
       .evaluateAll((elements) =>
-        elements.map((element) => element.getAttribute('d')),
+        elements
+          .map((element) => ({
+            edgeId: element
+              .closest('[data-cell-id]')
+              ?.getAttribute('data-cell-id'),
+            kind: element.hasAttribute('data-edge-display') ? 'path' : 'marker',
+            path: element.getAttribute('d'),
+          }))
+          .sort((a, b) => JSON.stringify(a).localeCompare(JSON.stringify(b))),
       );
   const original = await geometry();
   const move = async (point: { x: number; y: number }) =>
@@ -418,6 +442,47 @@ export async function exercisePortInteractions(
     await page.mouse.up();
   };
   const initial = await center(port('a', 'right'));
+  const blockedDrop = await center(body('blocked'));
+  const expectCanceledDrop = async (from: { x: number; y: number }) => {
+    const before = structuredClone(await saved());
+    await drag(from, blockedDrop, 'blocked');
+    const counts = await canvas.evaluate(async (svg) => {
+      const values: number[] = [];
+      for (let index = 0; index < 6; index++) {
+        await new Promise<void>((resolve) =>
+          requestAnimationFrame(() => resolve()),
+        );
+        values.push(svg.querySelectorAll('[data-edge-hit]').length);
+      }
+      return values;
+    });
+    expect(counts).toEqual(Array(6).fill(3));
+    expect(await saved()).toEqual(before);
+  };
+  await expectCanceledDrop(initial);
+  await canvas.press('Escape');
+  const interior = await world(205, 135);
+  for (const point of [
+    interior,
+    initial,
+    interior,
+    { x: initial.x + 16, y: initial.y },
+    interior,
+  ]) {
+    await page.mouse.move(point.x, point.y, { steps: 8 });
+    await expect(canvas.locator('[data-node-highlight="a"]')).toHaveCount(1);
+    const visible = await canvas.evaluate(async (svg) => {
+      const samples: boolean[] = [];
+      for (let frame = 0; frame < 6; frame++) {
+        await new Promise<void>((resolve) =>
+          requestAnimationFrame(() => resolve()),
+        );
+        samples.push(!!svg.querySelector('[data-node-highlight="a"]'));
+      }
+      return samples;
+    });
+    expect(visible).toEqual(Array(6).fill(true));
+  }
   const mark = (node: string, id: string) =>
     port(node, id).locator('..').locator('[data-control-mark]');
   await move(await world(650, 500));
@@ -466,6 +531,7 @@ export async function exercisePortInteractions(
   const hot = (await port('c', 'left').boundingBox())!;
   expect(hot.width).toBeCloseTo(36, 1);
   const target = await center(port('c', 'left'));
+  await expectCanceledDrop(target);
   await checkMoveCursor({ x: target.x + 16, y: target.y });
   await checkMoveCursor(target);
   await page.mouse.click(target.x, target.y);
@@ -622,4 +688,305 @@ export async function exercisePortInteractions(
   await expect
     .poll(async () => (await saved()).e3.route.points)
     .toEqual(simplified);
+}
+
+export async function exerciseWaypointReset(
+  page: Page,
+  saved: () => Promise<Record<string, any>>,
+) {
+  const canvas = portCanvas(page);
+  const original = structuredClone(await saved());
+  const edge = canvas.locator('[data-edge-hit="bend"]');
+  const point = await edge.evaluate((element) => {
+    const path = element as SVGPathElement;
+    const point = path
+      .getPointAtLength(path.getTotalLength() * 0.35)
+      .matrixTransform(path.getScreenCTM()!);
+    return { x: point.x, y: point.y };
+  });
+  await page.mouse.click(point.x, point.y);
+  await canvas
+    .locator('[data-edge-route-point="1"]')
+    .click({ button: 'right' });
+  await page
+    .getByRole('menuitem', { name: '清除所有锚点', exact: true })
+    .click();
+  const expected = {
+    ...original,
+    bend: {
+      ...original.bend,
+      route: { mode: 'orthogonal', strategy: 'optimized' },
+    },
+  };
+  await expect.poll(saved).toEqual(expected);
+  const expand = page.getByRole('button', {
+    name: '展开属性面板',
+    exact: true,
+  });
+  if (await expand.isVisible()) await expand.click();
+  await expandPropertyGroup(page, 'specific');
+  const reset = page.getByTestId('edge-reset-waypoints');
+  await expect(reset).toBeDisabled();
+  await selectHistoryAction(page, '撤销');
+  await expect.poll(saved).toEqual(original);
+  await expect(reset).toBeEnabled();
+  await reset.click();
+  await expect.poll(saved).toEqual(expected);
+  await selectHistoryAction(page, '撤销');
+  await expect.poll(saved).toEqual(original);
+  await selectHistoryAction(page, '重做');
+  await expect.poll(saved).toEqual(expected);
+}
+
+export function architectureSelectionFixture() {
+  const fixture = portFixture();
+  fixture.cells = Object.fromEntries(
+    [
+      ...['a', 'b', 'c'].map((id, index) => ({
+        id,
+        cellType: 'node',
+        kind: 'architecture-module',
+        geometry: {
+          x: 100 + index * 350,
+          y: 300,
+          width: 240,
+          height: 44,
+          outline: 'roundRectangle',
+          derived: false,
+        },
+        content: { label: `Module ${id}` },
+        data: { shape: 'box', placed: true },
+        ports: ['top', 'right', 'bottom', 'left'].map((side) => ({
+          id: side,
+          side,
+          direction: 'both',
+        })),
+      })),
+      {
+        id: 'layer',
+        cellType: 'node',
+        kind: 'architecture-layer',
+        geometry: {
+          x: 60,
+          y: 200,
+          width: 1100,
+          height: 500,
+          derived: false,
+          outline: 'rectangle',
+        },
+        ports: ['top', 'right', 'bottom', 'left'].map((side) => ({
+          id: side,
+          side,
+          direction: 'both',
+        })),
+        content: { label: 'Layer' },
+        data: { order: '0000', memberIds: ['a', 'b', 'c'] },
+      },
+    ].map((cell) => [cell.id, cell]),
+  );
+  // The layer appears last in storage, but must paint behind its modules.
+  fixture.frame.children = Object.keys(fixture.cells);
+  return fixture;
+}
+
+export async function exerciseArchitectureSelectionDrag(
+  page: Page,
+  saved: () => Promise<Record<string, any>>,
+) {
+  const canvas = portCanvas(page);
+  const initial = structuredClone(await saved());
+  const world = (x: number, y: number) =>
+    canvas.locator('[data-frame-content-id="port-fixture"]').evaluate(
+      (element, point) => {
+        const p = new DOMPoint(point.x, point.y).matrixTransform(
+          (element as SVGGraphicsElement).getScreenCTM()!,
+        );
+        return { x: p.x, y: p.y };
+      },
+      { x, y },
+    );
+  const bodyPoint = async (id: string, offsetX = 80) => {
+    const node = (await saved())[id];
+    return world(node.geometry.x + offsetX, node.geometry.y + 22);
+  };
+  for (
+    let n = 0;
+    n < 16 &&
+    parseInt(await page.getByTestId('canvas-zoom-label').innerText(), 10) < 100;
+    n++
+  )
+    await page.getByTestId('canvas-zoom-in').click();
+  const pointA = await bodyPoint('a'),
+    pointB = await bodyPoint('b');
+  await page.mouse.click(pointA.x, pointA.y);
+  await page.keyboard.down('Shift');
+  await page.mouse.click(pointB.x, pointB.y);
+  await page.keyboard.up('Shift');
+  await expect(canvas.locator('[data-selection-handles="a"]')).toHaveCount(1);
+  await expect(canvas.locator('[data-selection-handles="b"]')).toHaveCount(1);
+  const drag = async (id: string, offsetX: number, dx: number, dy: number) => {
+    const before = structuredClone(await saved());
+    const start = await bodyPoint(id, offsetX);
+    await page.mouse.move(start.x, start.y);
+    await page.mouse.down();
+    await page.mouse.move(start.x + dx, start.y + dy, { steps: 12 });
+    await page.mouse.up();
+    await expect
+      .poll(async () => (await saved()).a.geometry)
+      .not.toEqual(before.a.geometry);
+    const after = await saved();
+    const delta = (id: string) => [
+      after[id].geometry.x - before[id].geometry.x,
+      after[id].geometry.y - before[id].geometry.y,
+    ];
+    expect(delta('a')).toEqual(delta('b'));
+    expect(after.c).toEqual(before.c);
+    expect([...after.layer.data.memberIds].sort()).toEqual(['a', 'b', 'c']);
+    await expect(canvas.locator('[data-selection-handles="a"]')).toHaveCount(1);
+    await expect(canvas.locator('[data-selection-handles="b"]')).toHaveCount(1);
+    await expect(
+      canvas.locator('[data-drawing-preview="connection"]'),
+    ).toHaveCount(0);
+  };
+  await drag('a', 80, 35, 25);
+  const firstMove = structuredClone(await saved());
+  await selectHistoryAction(page, '撤销');
+  await expect.poll(saved).toEqual(initial);
+  await selectHistoryAction(page, '重做');
+  await expect.poll(saved).toEqual(firstMove);
+  for (
+    let n = 0;
+    n < 16 &&
+    parseInt(await page.getByTestId('canvas-zoom-label').innerText(), 10) > 30;
+    n++
+  )
+    await page.getByTestId('canvas-zoom-out').click();
+  expect(
+    parseInt(await page.getByTestId('canvas-zoom-label').innerText(), 10),
+  ).toBeLessThanOrEqual(30);
+  // This point falls inside the oversized top/bottom port targets, outside the marks.
+  const padding = await bodyPoint('b', 160);
+  await page.mouse.move(padding.x, padding.y);
+  expect(
+    await page.evaluate(
+      (point) =>
+        document
+          .elementFromPoint(point.x, point.y)
+          ?.hasAttribute('data-control-hit'),
+      padding,
+    ),
+  ).toBe(true);
+  await drag('b', 160, 30, 20);
+  await selectHistoryAction(page, '撤销');
+  await expect.poll(saved).toEqual(firstMove);
+  // Explicit port marks remain usable while both modules stay selected.
+  const port = canvas.locator('[data-port-node-id="a"] [data-port-id="right"]');
+  const center = await port.evaluate((element) => {
+    const p = new DOMPoint(
+      Number(element.getAttribute('cx')),
+      Number(element.getAttribute('cy')),
+    ).matrixTransform((element as SVGGraphicsElement).getScreenCTM()!);
+    return { x: p.x, y: p.y };
+  });
+  await page.mouse.click(center.x, center.y);
+  await expect(
+    canvas.locator('[data-drawing-preview="connection"]'),
+  ).toHaveCount(1);
+  await canvas.press('Escape');
+  await expect(
+    canvas.locator('[data-drawing-preview="connection"]'),
+  ).toHaveCount(0);
+  // A marquee from outside the layer selects just a and b, not the whole background.
+  const b = firstMove.b.geometry;
+  const begin = await world(
+      firstMove.layer.geometry.x - 25,
+      firstMove.layer.geometry.y - 25,
+    ),
+    end = await world(b.x + b.width + 8, b.y + b.height + 8);
+  await page.mouse.move(begin.x, begin.y);
+  await page.mouse.down();
+  await page.mouse.move(end.x, end.y, { steps: 12 });
+  await page.mouse.up();
+  await expect(canvas.locator('[data-selection-handles="a"]')).toHaveCount(1);
+  await expect(canvas.locator('[data-selection-handles="b"]')).toHaveCount(1);
+  await drag('a', 80, 24, 16);
+}
+
+export function paintLayerFixture() {
+  const fixture = portFixture();
+  fixture.cells = {
+    cover: {
+      id: 'cover',
+      cellType: 'node',
+      kind: 'geometry',
+      geometry: {
+        x: 300,
+        y: 220,
+        width: 200,
+        height: 160,
+        outline: 'rectangle',
+      },
+      content: { label: 'Cover' },
+    },
+    line: {
+      id: 'line',
+      cellType: 'edge',
+      kind: 'arrow',
+      source: { point: [100, 300] },
+      target: { point: [700, 300] },
+      route: { mode: 'straight' },
+    },
+  };
+  fixture.frame.children = ['cover', 'line'];
+  return fixture;
+}
+export async function exercisePaintLayers(
+  page: Page,
+  saved: () => Promise<Record<string, any>>,
+) {
+  const canvas = portCanvas(page);
+  const original = structuredClone(await saved());
+  const world = (x: number, y: number) =>
+    canvas.locator('[data-frame-content-id="port-fixture"]').evaluate(
+      (element, point) => {
+        const p = new DOMPoint(point.x, point.y).matrixTransform(
+          (element as SVGGraphicsElement).getScreenCTM()!,
+        );
+        return { x: p.x, y: p.y };
+      },
+      { x, y },
+    );
+  const at = async (x: number, y: number) => {
+    const point = await world(x, y);
+    return page.evaluate(
+      (point) =>
+        document
+          .elementFromPoint(point.x, point.y)
+          ?.closest('[data-cell-id]')
+          ?.getAttribute('data-cell-id'),
+      point,
+    );
+  };
+  expect(await at(450, 300)).toBe('cover');
+  const exposed = await world(200, 300);
+  await page.mouse.click(exposed.x, exposed.y);
+  await expect(
+    canvas.locator('[data-selected-edge-endpoints] [data-port-edge-id="line"]'),
+  ).toHaveCount(2);
+  await expect.poll(() => at(450, 300)).toBe('line');
+  const from = await world(700, 300),
+    to = await world(740, 330);
+  await page.mouse.move(from.x, from.y);
+  await page.mouse.down();
+  await page.mouse.move(to.x, to.y, { steps: 12 });
+  await page.mouse.up();
+  await expect
+    .poll(async () => (await saved()).line.target.point)
+    .toEqual([740, 330]);
+  await selectHistoryAction(page, '撤销');
+  await expect.poll(saved).toEqual(original);
+  const node = await world(350, 250);
+  await page.mouse.click(node.x, node.y);
+  await expect.poll(() => at(450, 300)).toBe('cover');
+  expect(await saved()).toEqual(original);
 }

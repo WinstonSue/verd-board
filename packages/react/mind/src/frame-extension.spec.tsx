@@ -3,16 +3,22 @@ import {
   isFrameCell,
   isNodeCell,
   ThemeColorMode,
+  resolveBoardTheme,
+  resolveThemeFamily,
+  applyCellOperations,
   type NodeCell,
 } from '@sue/board-core';
 import {
   createMindFrameSnapshot,
   mindCellMetrics,
   mindPresentation,
+  createMindChildCell,
+  addMindChild,
   type MindNodeData,
 } from '@sue/board-mind';
 import {
   canonicalFrameProjection,
+  resolveFrameCellAppearance,
   type FrameRenderContext,
 } from '@sue/board-react';
 import { act } from 'react';
@@ -63,6 +69,40 @@ const fixture = () => {
   };
 };
 
+it('shares Mind family metadata with node painting and preserves transparent children', () => {
+  const registry = createTestCellRegistry();
+  const extensions = createMindFrameExtensions(registry);
+  let store = createMindFrameSnapshot('f', 'root').store;
+  store = applyCellOperations(
+    store,
+    addMindChild(store, 'root', createMindChildCell('child'), 'edge'),
+    registry,
+  );
+  const frame = store.cells.f;
+  if (!isFrameCell(frame)) throw new Error('Expected frame');
+  frame.view = { theme: { themeColorMode: ThemeColorMode.colorful } };
+  const child = store.cells.child as NodeCell;
+  child.appearance = { styleColor: 'series-5' };
+  const theme = resolveBoardTheme(frame.view.theme, 'dark');
+  const context = { store, cell: child, frameId: 'f', theme };
+  const result = resolveFrameCellAppearance(context, extensions);
+  expect(result).toMatchObject({
+    fill: 'none',
+    styleFamily: 'series-5',
+    styleLevel: 'node',
+    strokeColor: resolveThemeFamily(theme, 'series-5', 'node').strokeColor,
+  });
+  const root = resolveFrameCellAppearance(
+    { ...context, cell: store.cells.root },
+    extensions,
+  );
+  expect(root).toMatchObject({
+    ...resolveThemeFamily(theme, 'series-1', 'emphasis', 'overlay'),
+    styleFamily: 'series-1',
+    styleLevel: 'emphasis',
+  });
+});
+
 describe('mind content caches', () => {
   it('reuses text metrics and presentation across camera and control changes', () => {
     const { context, extension } = fixture();
@@ -105,7 +145,13 @@ describe('mind content caches', () => {
       },
     };
     const themed = extension.presentation!({ ...context, store });
-    expect(themed?.color).toBe('#FFFFFF');
+    expect(themed?.color).toBe(
+      resolveThemeFamily(
+        resolveBoardTheme({ themeColorMode: ThemeColorMode.colorful }),
+        'series-1',
+        'emphasis',
+      ).textColor,
+    );
     expect(themed).not.toBe(presentation);
     expect(mindPresentation).toHaveBeenCalledTimes(2);
     extension.presentation!({ ...context, frameId: 'other' });
@@ -150,5 +196,38 @@ describe('mind content caches', () => {
     } finally {
       await act(async () => root.unmount());
     }
+  });
+});
+
+it('colors summary brackets from the source family through the shared appearance resolver', () => {
+  const registry = createTestCellRegistry();
+  const { store } = createMindFrameSnapshot('f', 'r');
+  const source = createMindChildCell('s');
+  source.appearance = { styleColor: 'series-5' };
+  store.cells.s = source;
+  const edge = {
+    id: 'summary-edge',
+    cellType: 'edge' as const,
+    kind: 'mind-summary-edge',
+    source: { cellId: 's' },
+    target: { cellId: 'summary' },
+  };
+  const visual = resolveFrameCellAppearance(
+    {
+      store,
+      cell: edge,
+      frameId: 'f',
+      theme: resolveBoardTheme(undefined, 'dark'),
+    },
+    createMindFrameExtensions(registry),
+  );
+  expect(visual).toMatchObject({
+    styleFamily: 'series-5',
+    styleLevel: 'node',
+    strokeColor: resolveThemeFamily(
+      resolveBoardTheme(undefined, 'dark'),
+      'series-5',
+      'node',
+    ).strokeColor,
   });
 });

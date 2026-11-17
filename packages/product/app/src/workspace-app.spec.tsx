@@ -126,6 +126,92 @@ const hostWith = async (path = 'ws-ui') => {
 };
 
 describe('WorkspaceApp', () => {
+  it('clears sidebar multi-selection on ordinary activation and tab switches while preserving range selection', async () => {
+    const { host, handle, path } = await hostWith('sidebar-selection');
+    await host.commit(handle, {
+      transactionId: 'seed-selection',
+      mkdirs: ['A', 'B'],
+      writes: ['alpha', 'beta'].map((id) => ({
+        path: `${id}.verd.json`,
+        expectedVersion: null,
+        content: JSON.stringify({
+          format: 'verd-frame',
+          version: 2,
+          frame: {
+            id,
+            kind: 'frame',
+            cellType: 'frame',
+            name: id,
+            geometry: { x: 0, y: 0, width: 9, height: 9 },
+            children: [],
+            groups: [],
+          },
+          cells: {},
+        }),
+      })),
+      session: {
+        tabs: [{ fileId: 'alpha' }, { fileId: 'beta' }],
+        activeTabId: 'alpha',
+        activeView: 'file',
+        expandedDirs: [],
+      },
+    });
+    await render(<WorkspaceApp host={host} workspace={{ path }} />);
+    const row = (entryPath: string) =>
+      container.querySelector<HTMLElement>(`[data-entry-path="${entryPath}"]`)!;
+    const clickMain = async (entryPath: string, init: MouseEventInit = {}) =>
+      act(async () => {
+        row(entryPath)
+          .querySelector('button')!
+          .dispatchEvent(
+            new MouseEvent('click', {
+              bubbles: true,
+              cancelable: true,
+              ...init,
+            }),
+          );
+      });
+    const selected = () =>
+      [
+        ...container.querySelectorAll<HTMLElement>(
+          '.file-tree-row.is-selected',
+        ),
+      ].map((item) => item.dataset['entryPath']);
+    await clickMain('A', { ctrlKey: true });
+    await clickMain('B', { metaKey: true });
+    expect(selected()).toEqual(['A', 'B']);
+    expect(
+      container
+        .querySelector('[data-testid="verd-frame"]')
+        ?.getAttribute('data-frame'),
+    ).toBe('alpha');
+    await clickMain('alpha.verd.json');
+    expect(selected()).toEqual([]);
+    await clickMain('B', { shiftKey: true });
+    expect(selected()).toEqual(['B', 'alpha.verd.json']);
+    await act(async () => {
+      row('A').querySelector<HTMLButtonElement>('.file-tree-more')!.click();
+    });
+    expect(selected()).toEqual(['B', 'alpha.verd.json']);
+    await act(async () => {
+      container
+        .querySelector('ylib-tabs')!
+        .dispatchEvent(
+          new CustomEvent('tab-activate', { detail: { tabId: 'beta' } }),
+        );
+    });
+    await act(
+      async () =>
+        new Promise<void>((resolve) =>
+          requestAnimationFrame(() => setTimeout(resolve, 0)),
+        ),
+    );
+    expect(
+      container.querySelector('[data-testid="verd-frame"][data-frame="beta"]'),
+    ).not.toBeNull();
+    expect(selected()).toEqual([]);
+  });
+
   it('removes trashed folder files from every tab group while preserving other tabs', async () => {
     const { host, path, handle } = await hostWith('folder-groups');
     let shutdown = async () => {};

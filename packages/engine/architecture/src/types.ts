@@ -1,4 +1,10 @@
 import type { CellId } from '@sue/board-core';
+export interface ArchitectureEdgeData {
+  /** Missing in historical diagrams; never infer semantics from their line style. */
+  relation?: 'dependency' | 'flow';
+  sourceMarker?: string;
+  targetMarker?: string;
+}
 export interface ArchitectureLayerData {
   order: string;
   memberIds: CellId[];

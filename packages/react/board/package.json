@@ -1,6 +1,6 @@
 {
   "name": "@sue/board-react",
-  "version": "2.2.0",
+  "version": "2.2.1",
   "main": "./dist/index.cjs",
   "types": "./src/index.ts",
   "private": false,

@@ -88,6 +88,13 @@ export const createCellRuntime = (
     registry.register(new DocumentFrameUtil());
   if (!registry.get('group')) registry.register(new GroupUtil());
   assertRegisteredCellKinds(snapshot.store, registry);
+  snapshot = {
+    ...snapshot,
+    store: registry.plugins.reduce(
+      (store, plugin) => plugin.prepareSnapshot?.(store) ?? store,
+      snapshot.store,
+    ),
+  };
   const issues = validateCellStore(snapshot.store, registry);
   if (issues.length)
     throw new Error(issues.map((issue) => issue.message).join('; '));
@@ -222,6 +229,13 @@ export const createCellRuntime = (
       return { snapshot: { store }, transaction };
     },
     replace(next: FrameSnapshot) {
+      next = {
+        ...next,
+        store: registry.plugins.reduce(
+          (store, plugin) => plugin.prepareSnapshot?.(store) ?? store,
+          next.store,
+        ),
+      };
       assertRegisteredCellKinds(next.store, registry);
       const errors = validateCellStore(next.store, registry);
       if (errors.length)

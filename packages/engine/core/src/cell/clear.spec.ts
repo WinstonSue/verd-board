@@ -38,9 +38,10 @@ describe('clear mounted frame', () => {
         testCellRegistry,
       );
       const runtime = createCellRuntime({ store }, testCellRegistry);
+      const before = runtime.store;
       runtime.transact({
         id: 'clear',
-        operations: clearFrameCells(store, 'root', testCellRegistry),
+        operations: clearFrameCells(before, 'root', testCellRegistry),
       });
       expect((runtime.store.cells.root as FrameCell).children).toEqual(
         kind === 'workflow-start'
@@ -51,7 +52,7 @@ describe('clear mounted frame', () => {
       );
       expect((runtime.store.cells.root as FrameCell).view).toEqual(root.view);
       runtime.undo();
-      expect(runtime.store).toEqual(store);
+      expect(runtime.store).toEqual(before);
       runtime.redo();
       expect(runtime.store.cells.root).toMatchObject({ view: root.view });
     },

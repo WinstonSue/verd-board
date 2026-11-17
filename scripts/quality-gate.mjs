@@ -125,6 +125,64 @@ async function validateSelection(selection) {
     }
 }
 
+export async function groupUnitTests(files, root = ROOT) {
+  const groups = new Map();
+  for (const file of new Set(files)) {
+    const script = file.startsWith('scripts/');
+    let directory = script ? root : path.dirname(path.join(root, file));
+    while (
+      !(await fs.stat(path.join(directory, 'package.json')).catch(() => null))
+    ) {
+      const parent = path.dirname(directory);
+      if (parent === directory)
+        throw new Error('No package for unit test: ' + file);
+      directory = parent;
+    }
+    const key = (script ? 'node:' : 'vitest:') + directory;
+    if (!groups.has(key))
+      groups.set(key, {
+        program: script ? process.execPath : 'pnpm',
+        args: script
+          ? ['--test']
+          : ['exec', 'vitest', 'run', '--passWithNoTests=false'],
+        cwd: directory,
+      });
+    groups.get(key).args.push(path.relative(directory, path.join(root, file)));
+  }
+  return [...groups.values()];
+}
+
+export async function recordStep(
+  steps,
+  program,
+  args,
+  options,
+  execute = runCommand,
+) {
+  const start = performance.now();
+  const step = {
+    program,
+    args,
+    ...(options?.cwd ? { cwd: options.cwd } : {}),
+    startedAt: new Date().toISOString(),
+  };
+  steps.push(step);
+  try {
+    await execute(program, args, options);
+    step.exitCode = 0;
+  } catch (error) {
+    step.exitCode = error.exitCode ?? 1;
+    step.error = error.message;
+    throw error;
+  } finally {
+    step.finishedAt = new Date().toISOString();
+    step.durationMs = Math.round(performance.now() - start);
+    console.log(
+      `[gate:done] ${program} ${args.join(' ')} (${step.durationMs}ms, exit ${step.exitCode})`,
+    );
+  }
+}
+
 /** One fixed full suite serves CI and publishing; development may select feature tests. */
 export async function runGate(mode, args = []) {
   if (!['dev', 'ci', 'release'].includes(mode))
@@ -142,6 +200,15 @@ export async function runGate(mode, args = []) {
   const steps = [];
   const scratch = await fs.mkdtemp(path.join(os.tmpdir(), 'verd-quality-'));
   const resources = path.join(scratch, 'agent-resources');
+  const webBuild = path.join(
+    ROOT,
+    'apps/service',
+    'dist-e2e-' + path.basename(scratch),
+  );
+  const startedAt = new Date().toISOString();
+  const started = performance.now();
+  let status = 'failed';
+  let failure;
   const env = {
     ...process.env,
     VERD_TEST_EXECUTION:
@@ -150,6 +217,7 @@ export async function runGate(mode, args = []) {
         : (process.env.VERD_TEST_EXECUTION ?? 'ci'),
     VERD_AGENT_RESOURCES: resources,
     VERD_AGENT_RESOURCE_TEST_PATH: resources,
+    VERD_WEB_E2E_BUILD: webBuild,
   };
   // Unit and standalone consumer tests provide their own fixtures/packages.
   // Injecting the shared bundle would alter their workspace initialization.
@@ -159,10 +227,8 @@ export async function runGate(mode, args = []) {
   };
   delete unitEnv.VERD_AGENT_RESOURCES;
   delete unitEnv.VERD_AGENT_RESOURCE_TEST_PATH;
-  const run = async (program, argv, options) => {
-    await runCommand(program, argv, options);
-    steps.push({ program, args: argv, exitCode: 0 });
-  };
+  const run = (program, argv, options) =>
+    recordStep(steps, program, argv, options);
   const pnpm = (...argv) => run('pnpm', argv, { env });
   const e2e = (...argv) =>
     process.platform === 'linux'
@@ -192,30 +258,8 @@ export async function runGate(mode, args = []) {
     if (!selection)
       await pnpm('exec', 'turbo', 'run', 'build', '--filter=!desktop');
     if (selection) {
-      for (const file of selection.unit) {
-        if (file.startsWith('scripts/'))
-          await run(process.execPath, ['--test', file], { env: unitEnv });
-        else {
-          let directory = path.dirname(path.join(ROOT, file));
-          while (
-            !(await fs
-              .stat(path.join(directory, 'package.json'))
-              .catch(() => null))
-          )
-            directory = path.dirname(directory);
-          await run(
-            'pnpm',
-            [
-              'exec',
-              'vitest',
-              'run',
-              '--passWithNoTests=false',
-              path.relative(directory, path.join(ROOT, file)),
-            ],
-            { cwd: directory, env: unitEnv },
-          );
-        }
-      }
+      for (const group of await groupUnitTests(selection.unit))
+        await run(group.program, group.args, { cwd: group.cwd, env: unitEnv });
     } else {
       await run('pnpm', ['test'], { env: unitEnv });
       await pnpm('pack:dry');
@@ -244,24 +288,37 @@ export async function runGate(mode, args = []) {
         'Source changed during validation; rerun the gate against the final source',
       );
     if (mode === 'release') await checkReleaseReview();
-    await fs.mkdir(path.join(ROOT, '.quality'), { recursive: true });
-    await fs.writeFile(
-      path.join(ROOT, '.quality', mode + '.json'),
-      JSON.stringify(
-        {
-          mode,
-          sourceDigest: before,
-          platform: process.platform,
-          node: process.version,
-          selection,
-          steps,
-        },
-        null,
-        2,
-      ) + '\n',
-    );
+    status = 'passed';
+  } catch (error) {
+    failure = error.message;
+    throw error;
   } finally {
-    await fs.rm(scratch, { recursive: true, force: true });
+    try {
+      await fs.mkdir(path.join(ROOT, '.quality'), { recursive: true });
+      await fs.writeFile(
+        path.join(ROOT, '.quality', mode + '.json'),
+        JSON.stringify(
+          {
+            mode,
+            status,
+            sourceDigest: before,
+            platform: process.platform,
+            node: process.version,
+            selection,
+            startedAt,
+            finishedAt: new Date().toISOString(),
+            durationMs: Math.round(performance.now() - started),
+            ...(failure ? { error: failure } : {}),
+            steps,
+          },
+          null,
+          2,
+        ) + '\n',
+      );
+    } finally {
+      await fs.rm(scratch, { recursive: true, force: true });
+      await fs.rm(webBuild, { recursive: true, force: true });
+    }
   }
 }
 

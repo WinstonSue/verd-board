@@ -59,6 +59,51 @@ describe('rich text link activation', () => {
       host.remove();
     }
   });
+  it('prevents native editor focus on navigation presses while keeping ordinary editing presses', async () => {
+    const host = document.createElement('div');
+    document.body.append(host);
+    const root = createRoot(host);
+    const open = vi.fn();
+    function Links() {
+      return (
+        <div {...useRichTextLinks({ onOpenLink: open })}>
+          <a href="verd://folder/target">Target</a>
+        </div>
+      );
+    }
+    try {
+      await act(async () => root.render(<Links />));
+      const anchor = host.querySelector('a')!;
+      const plain = new MouseEvent('pointerdown', {
+        bubbles: true,
+        cancelable: true,
+      });
+      anchor.dispatchEvent(plain);
+      expect(plain.defaultPrevented).toBe(false);
+      for (const key of ['ctrlKey', 'metaKey']) {
+        open.mockClear();
+        const down = new MouseEvent('pointerdown', {
+          bubbles: true,
+          cancelable: true,
+          [key]: true,
+        });
+        anchor.dispatchEvent(down);
+        expect(down.defaultPrevented).toBe(true);
+        expect(open).not.toHaveBeenCalled();
+        anchor.dispatchEvent(
+          new MouseEvent('click', {
+            bubbles: true,
+            cancelable: true,
+            [key]: true,
+          }),
+        );
+        expect(open).toHaveBeenCalledExactlyOnceWith('verd://folder/target');
+      }
+    } finally {
+      await act(async () => root.unmount());
+      host.remove();
+    }
+  });
   it('opens a static canvas link on pointer release once and ignores drags', async () => {
     const host = document.createElement('div');
     document.body.append(host);

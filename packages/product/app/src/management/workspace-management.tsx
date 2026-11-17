@@ -86,7 +86,7 @@ type Props = {
   isDefault?: boolean;
   children: ReactNode;
   tree: ReactNode;
-  revealFolderNonce?: number;
+  revealFolder?: { path: string; nonce: number };
   onOpenResource?(path: string): void;
   onOpenFailedFile?(path: string): void;
   onOpen(id: string, origin?: 'all' | 'library'): void;
@@ -333,8 +333,23 @@ export function WorkspaceManagement(p: Props) {
     return () => clearTimeout(timer);
   }, [query, quick, indexVersion, files]);
   useEffect(() => {
-    if (p.revealFolderNonce !== undefined) setCollapsed(false);
-  }, [p.revealFolderNonce]);
+    setSelected([]);
+  }, [p.snapshot.session.activeTabId]);
+  const revealedFolderNonce = useRef<number | undefined>(undefined);
+  const revealFolderPath = p.revealFolder?.path;
+  const revealFolderNonce = p.revealFolder?.nonce;
+  useEffect(() => {
+    if (
+      revealFolderPath === undefined ||
+      revealFolderNonce === undefined ||
+      revealedFolderNonce.current === revealFolderNonce
+    )
+      return;
+    revealedFolderNonce.current = revealFolderNonce;
+    setCollapsed(false);
+    setSelected([revealFolderPath]);
+    anchor.current = revealFolderPath;
+  }, [revealFolderPath, revealFolderNonce]);
   useEffect(() => {
     const element = root.current?.closest('aside');
     if (element) {
@@ -739,12 +754,16 @@ export function WorkspaceManagement(p: Props) {
             const row = (e.target as HTMLElement).closest<HTMLElement>(
               '[data-entry-path]',
             );
-            if (!row || p.readonly) return;
+            if (!row) return;
             const path = row.dataset['entryPath']!;
-            if (e.metaKey || e.ctrlKey || e.shiftKey) choose(path, e);
             if (e.metaKey || e.ctrlKey || e.shiftKey) {
+              if (p.readonly) return;
+              choose(path, e);
               e.preventDefault();
               e.stopPropagation();
+            } else if ((e.target as HTMLElement).closest('.file-tree-main')) {
+              setSelected([]);
+              anchor.current = path;
             }
           }}
           onKeyDown={(e) => {

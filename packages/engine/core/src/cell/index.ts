@@ -780,6 +780,14 @@ export interface CellUtil {
     points: readonly Point[],
   ) => import('../geometry/edge-label').EdgeLabelLayout | undefined;
   members?: (cell: Cell) => readonly CellId[];
+  /** Spatial containers opt in; domain owners such as workflow starts do not. */
+  moveMembers?: boolean;
+  planDrop?: (
+    store: CellStore,
+    ids: readonly CellId[],
+    operations: readonly CellOperation[],
+    registry: CellRegistry,
+  ) => CellOperation[];
   withMembers?: (cell: Cell, ids: readonly CellId[]) => Cell;
   fitText?: boolean;
   copyWithEndpoints?: boolean;
@@ -823,6 +831,11 @@ export interface CellUtil {
   validateEdge?: (store: CellStore, edge: EdgeCell) => string | undefined;
   /** Domain-owned cells such as a lone task or module need a valid owner. */
   requiresPasteOwner?: (
+    cell: Cell,
+    fragment: { cells: Record<string, Cell> },
+  ) => boolean;
+  /** Spatial members can preserve a captured owner or accept a selected one. */
+  optionalPasteOwner?: (
     cell: Cell,
     fragment: { cells: Record<string, Cell> },
   ) => boolean;

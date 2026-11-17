@@ -1,4 +1,4 @@
-import type { EdgeRoutingContext } from './edge';
+import { edgeRoutingContextFor, type EdgeRoutingContext } from './edge';
 import type { EdgeCell } from '../cell/types';
 import type { Point } from '../interfaces/point';
 import {
@@ -63,7 +63,7 @@ export function optimizeFrameRoutes(
           path.points,
           entry.source.side,
           entry.target.side,
-          context.obstacles,
+          edgeRoutingContextFor(context, edge).obstacles,
           {
             sourceId: 'cellId' in edge.source ? edge.source.cellId : undefined,
             targetId: 'cellId' in edge.target ? edge.target.cellId : undefined,
@@ -143,7 +143,7 @@ export function optimizeFrameRoutes(
           entry.source.side,
           entry.target.point,
           entry.target.side,
-          context.obstacles,
+          edgeRoutingContextFor(context, edge).obstacles,
           options,
         );
         if (routed.status === 'blocked') continue;
@@ -151,7 +151,7 @@ export function optimizeFrameRoutes(
           routed.points,
           entry.source.side,
           entry.target.side,
-          context.obstacles,
+          edgeRoutingContextFor(context, edge).obstacles,
           options,
         );
         const peers = [
@@ -168,7 +168,7 @@ export function optimizeFrameRoutes(
           { id: edge.id, points: separated, bridgeable: true },
           entry.source.side,
           entry.target.side,
-          context.obstacles,
+          edgeRoutingContextFor(context, edge).obstacles,
           peers,
           options,
           0,
@@ -187,7 +187,7 @@ export function optimizeFrameRoutes(
               points,
               entry.source.side,
               entry.target.side,
-              context.obstacles,
+              edgeRoutingContextFor(context, edge).obstacles,
               options,
             )
           )

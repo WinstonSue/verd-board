@@ -29,6 +29,29 @@ const mount = () => {
 };
 
 describe('camera output subscriptions', () => {
+  it('transfers same-cell hover sources without publishing an empty state', () => {
+    const { camera } = mount();
+    const port = {},
+      endpoint = {};
+    const states: (string | null)[] = [];
+    camera.subscribeCell('a', () => states.push(camera.getHoveredId()));
+    const body = document.createElement('div');
+    body.dataset['cellId'] = 'a';
+    const control = document.createElement('div');
+    control.dataset['portNodeId'] = 'a';
+    camera.setHovered('a');
+    camera.leave('a', undefined, control);
+    camera.setHovered('a', port);
+    camera.setHovered('a', endpoint);
+    camera.leave('a', port);
+    camera.leave('a', endpoint, body);
+    camera.setHovered('a');
+    camera.leave('a', endpoint);
+    expect(camera.getHoveredId()).toBe('a');
+    expect(states).toEqual(['a']);
+    camera.leave('a');
+    expect(states).toEqual(['a', null]);
+  });
   it('publishes connection targets only to old/new cells independently of hover', () => {
     const test = mount();
     const a = vi.fn(),

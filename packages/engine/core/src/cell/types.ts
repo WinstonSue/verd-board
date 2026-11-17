@@ -3,13 +3,19 @@ import type { Terminal } from '../terminal/types';
 import type { NodeOutline } from '../geometry/shape';
 import type { Point } from '../interfaces/point';
 import type { RectangleClient } from '../interfaces/rectangle-client';
-import type { BoardTheme, ColorSource } from '../interfaces/theme';
+import type {
+  BoardTheme,
+  BoardStyleColor,
+  ColorSource,
+} from '../interfaces/theme';
 
 export type CellId = string;
 
 export type CellType = 'node' | 'frame' | 'edge' | 'group';
 
 export interface NodeAppearance {
+  /** Omitted means the domain's automatic family. */
+  styleColor?: BoardStyleColor;
   colorSources?: { fill?: ColorSource; strokeColor?: ColorSource };
   fill?: string;
   strokeColor?: string;

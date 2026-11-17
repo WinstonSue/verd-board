@@ -1,3 +1,4 @@
+import { expectPropertyValue } from '../../helpers/property-select';
 import { cellBodyPoint } from '../../helpers/port-controls';
 import { openActiveFile } from './app-actions';
 import { openHistoryAction } from './app-actions';
@@ -582,14 +583,16 @@ test('Mind defaults align left and notes align at the top, preserving explicit b
         .locator('visible=true');
       await expect(editor).toBeFocused();
       await expect(editor.locator('p')).toHaveCSS('text-align', item.expected);
-      await expect(
+      await expectPropertyValue(
         inspector.getByLabel('Text alignment', { exact: true }),
-      ).toHaveValue(item.expected);
+        item.expected,
+      );
       sameMetrics(before, await metrics(editor));
       await editor.press('Escape');
-      await expect(
+      await expectPropertyValue(
         inspector.getByLabel('Selection text alignment'),
-      ).toHaveValue(item.expected);
+        item.expected,
+      );
       await parity(page, note, () => note.dblclick());
     }
     await expect(await openHistoryAction(page, '撤销')).toBeDisabled();
@@ -635,9 +638,10 @@ test('Mind defaults align left and notes align at the top, preserving explicit b
       .locator('[data-frame-text-editor] .ProseMirror')
       .press('Escape');
   await selectHistoryAction(page, '撤销');
-  await expect(
+  await expectPropertyValue(
     page.getByLabel('Selection text alignment').locator('visible=true'),
-  ).toHaveValue('left');
+    'left',
+  );
   await selectHistoryAction(page, '重做');
   // `saved` can precede the redo's write; wait for it to reach storage.
   // Alignment persists as per-block textAlign on the document's paragraphs.

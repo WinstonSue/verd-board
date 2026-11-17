@@ -11,7 +11,7 @@ import {
   useHover,
   useInteractions,
 } from '@floating-ui/react';
-import { Waypoints } from 'lucide-react';
+import { Waypoints, FileText } from 'lucide-react';
 import { createDefaultShapeGeometryRegistry } from '@sue/board-core';
 import { useI18n, type Translations } from '../../i18n';
 
@@ -24,6 +24,8 @@ export function FrameShapePicker({
   onChange,
   pathLabel,
   onSelectPath,
+  cardLabel,
+  onSelectCard,
   floatingRef,
   containerProps,
 }: {
@@ -32,6 +34,8 @@ export function FrameShapePicker({
   onChange(shape: string): void;
   pathLabel?: string;
   onSelectPath?(): void;
+  cardLabel?: string;
+  onSelectCard?(): void;
   floatingRef?: Ref<HTMLDivElement>;
   containerProps?: HTMLAttributes<HTMLDivElement>;
 }) {
@@ -49,6 +53,16 @@ export function FrameShapePicker({
           />
         ))}
       </div>
+      {onSelectCard && (
+        <button
+          type="button"
+          className="frame-shape-path"
+          onClick={onSelectCard}
+        >
+          <FileText strokeWidth={1.75} size={16} aria-hidden />
+          {cardLabel}
+        </button>
+      )}
       {onSelectPath && (
         <button
           type="button"

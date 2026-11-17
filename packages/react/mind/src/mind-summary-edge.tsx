@@ -72,8 +72,10 @@ export function MindSummaryEdge(context: FrameRenderContext) {
     context.selected || selectionIds.includes(cell.target.cellId);
   const writable = !context.readonly && !context.pending && !cell.locked;
   const stroke =
-    resolveCellAppearance(cell, context.theme ?? resolveBoardTheme())
-      .strokeColor ?? '#64748b';
+    (
+      context.resolvedAppearance ??
+      resolveCellAppearance(cell, context.theme ?? resolveBoardTheme())
+    ).strokeColor ?? (context.theme ?? resolveBoardTheme()).stroke;
   const begin = (event: PointerEvent<SVGElement>, end: 'start' | 'end') => {
     if (!writable || event.button !== 0) return;
     const matrix = group.current?.getScreenCTM()?.inverse();
@@ -81,7 +83,6 @@ export function MindSummaryEdge(context: FrameRenderContext) {
     event.stopPropagation();
     event.preventDefault();
     event.currentTarget.focus();
-    context.select();
     const point = new DOMPoint(event.clientX, event.clientY).matrixTransform(
       matrix,
     );
@@ -137,6 +138,9 @@ export function MindSummaryEdge(context: FrameRenderContext) {
     }
     drag.current = undefined;
     setPreview(undefined);
+    // Selecting the edge raises its DOM node and releases pointer capture.
+    // Keep the captured handle in place until the gesture has finished.
+    context.select();
     if (
       next.startSiblingId !== data.startSiblingId ||
       next.endSiblingId !== data.endSiblingId

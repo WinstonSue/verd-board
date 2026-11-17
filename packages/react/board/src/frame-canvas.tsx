@@ -20,7 +20,8 @@ import {
   resolveConnectionDrag,
   type ConnectionDragState,
 } from './frame-connection-drag';
-import { planWaypointRemoval } from './frame-edge-waypoints';
+import { planWaypointRemoval, planWaypointReset } from './frame-edge-waypoints';
+import { framePaintOrder } from './frame-paint-order';
 import { FrameMenu } from './frame-menu';
 import { FrameVirtualLayer } from './frame-virtual-layer';
 import { useFrameCursor } from './frame-control-cursor';
@@ -90,6 +91,7 @@ import {
   createCellRuntime,
   createDefaultShapeGeometryRegistry,
   createEdgeRoutingContext,
+  edgeRoutingContextFor,
   frameEdgeCrossingJumps,
   edgeDecorationSafetyBounds,
   curvePath,
@@ -221,6 +223,7 @@ import { frameSnapshotToImage, type FrameImageOptions } from './frame-export';
 import {
   fitContentCandidates,
   fitContentOperations,
+  fitNodeContent,
 } from './frame-fit-content';
 import {
   normalizeInteractionMultiplier,
@@ -309,6 +312,10 @@ export interface FrameMovePreview {
   ghost?: { parentId: string; cellIds: readonly string[] };
 }
 export interface FrameRenderExtension {
+  /** Supporting container paint, supplied by the owning domain extension. */
+  themeBackground?: (
+    context: FrameThemeAppearanceContext,
+  ) => string | undefined;
   /** Theme defaults for this kind; explicit per-field custom colors still win. */
   themeAppearance?: (
     context: FrameThemeAppearanceContext,
@@ -1261,6 +1268,25 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
     if (pendingRef.current)
       return { status: 'rejected', message: 'A transaction is pending' };
     try {
+      transaction = {
+        ...transaction,
+        operations: transaction.operations.map((operation) => {
+          if (
+            (operation.type === 'insert_cell' ||
+              operation.type === 'replace_cell') &&
+            isNodeCell(operation.cell) &&
+            operation.cell.kind === 'card'
+          )
+            return {
+              ...operation,
+              cell: {
+                ...operation.cell,
+                geometry: fitNodeContent(operation.cell),
+              },
+            };
+          return operation;
+        }),
+      };
       const prepared = prepareAutoCalculation(
         runtime.store,
         transaction.operations,
@@ -2422,6 +2448,31 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
         autoCalculationRef.current = next;
         setAutoCalculation(next);
       },
+      resetWaypointPlan: (edgeId) => {
+        const edge = runtime.store.cells[edgeId];
+        if (
+          !editable ||
+          pendingRef.current ||
+          propsRef.current.exporting ||
+          presenting ||
+          !isEdgeCell(edge) ||
+          !runtime.selection.ids.includes(edgeId) ||
+          edge.hidden ||
+          !runtime.registry.get(edge.kind)?.canConnect ||
+          frameCellUI(propsRef.current.extensions, edge.kind).editEdge ===
+            false ||
+          !selectionAllows(
+            runtime.store,
+            [edgeId],
+            runtime.registry,
+            'edit',
+            runtime.mountedRootId,
+          )
+        )
+          return [];
+        const next = planWaypointReset(edge, runtime.registry);
+        return next ? [{ type: 'replace_cell', cell: next }] : [];
+      },
       selectionState: selectionCommandState,
       selectionExecute: async (command) => {
         const previous = lastIntentPrediction.current;
@@ -2546,10 +2597,21 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
       runtime,
       resolveAppearance: (cellId) => {
         const store = runtime.store;
-        const cell = store.cells[cellId];
+        let cell = store.cells[cellId];
         if (!cell) return undefined;
         const ownerId = runtime.index.parentOf.get(cellId) ?? frameId;
         const owner = store.cells[ownerId];
+        if (isEdgeCell(cell)) {
+          const geometry = new Map<string, NodeGeometry>();
+          for (const extension of propsRef.current.extensions ?? [])
+            extension
+              .layout?.(store, ownerId)
+              ?.forEach((bounds, id) => geometry.set(id, bounds));
+          for (const extension of propsRef.current.extensions ?? [])
+            cell =
+              extension.layoutEdges?.(store, ownerId, geometry)?.get(cellId) ??
+              cell;
+        }
         return resolveFrameCellAppearance(
           {
             cell,
@@ -4241,7 +4303,23 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
         commit,
         registry: runtime.registry,
         state,
-        query: base.query,
+        query: (bounds) => {
+          const frame = base.store.cells[ownerFrameId];
+          if (!isFrameCell(frame)) return [];
+          const order = framePaintOrder(
+            base.store,
+            frame.children,
+            runtime.selection.ids,
+            (cell) =>
+              !!frameCellUI(propsRef.current.extensions, cell.kind)
+                .background ||
+              !!runtime.registry.get(cell.kind)?.lanes?.(cell)?.length,
+          );
+          const rank = new Map(order.ids.map((id, index) => [id, index]));
+          return [...base.query(bounds)].sort(
+            (a, b) => rank.get(a)! - rank.get(b)!,
+          );
+        },
         getGeometry: base.getGeometry,
         locked: (id) => lockedByAncestor(base.store, id),
       });
@@ -5299,7 +5377,6 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
           (member) => member.owner.kind === 'node',
         );
         const nodeOwner = node?.owner.kind === 'node' ? node.owner : undefined;
-        const ownerId = owner.kind === 'edge' ? owner.edgeId : owner.nodeId;
         return (
           <g
             key={group.key}
@@ -5332,8 +5409,6 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
                 'data-edge-endpoint':
                   owner.kind === 'edge' ? owner.end : undefined,
               }}
-              onPointerEnter={() => cameraStore.setHovered(ownerId)}
-              onPointerLeave={() => cameraStore.leave(ownerId)}
               onPointerDown={(event) => {
                 if (group.blocked) {
                   event.stopPropagation();
@@ -5458,7 +5533,6 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
                       { ...bounds, rotation: 0 },
                       port,
                     ).point;
-                    const ownerId = owner?.edgeId ?? cell.id;
                     const primary = resolved.selected;
                     const ambiguous = resolved.blocked;
                     return (
@@ -5482,8 +5556,6 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
                           'data-port-edge-id': owner?.edgeId,
                           'data-edge-endpoint': owner?.end,
                         }}
-                        onPointerEnter={() => cameraStore.setHovered(ownerId)}
-                        onPointerLeave={() => cameraStore.leave(ownerId)}
                         onPointerDown={(event) => {
                           if (ambiguous) {
                             event.stopPropagation();
@@ -5653,8 +5725,6 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
                         'data-port-edge-id': cell.id,
                         'data-port-owner': 'edge',
                       }}
-                      onPointerEnter={() => cameraStore.setHovered(cell.id)}
-                      onPointerLeave={() => cameraStore.leave(cell.id)}
                       onPointerDown={(event) =>
                         startEdgeEdit(event, cell, end, point, points)
                       }
@@ -5665,6 +5735,116 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
             )}
           </FramePortSubscription>
         );
+      };
+      const beginNodeMove = (
+        event: React.PointerEvent<SVGElement>,
+        cellId: string,
+        pointerParent?: SVGGraphicsElement,
+      ) => {
+        const cell = laidOut.cells[cellId];
+        if (!isNodeCell(cell)) return;
+        const bounds = geometry.get(cellId) ?? cell.geometry;
+        event.stopPropagation();
+        if (event.button !== 0) {
+          sceneActions.selectContextCell(cellId, focus);
+          return;
+        }
+        if (event.shiftKey) sceneActions.select(cellId, focus, true);
+        else sceneActions.selectContextCell(cellId, focus);
+        const util = runtime.registry.get(cell.kind);
+        const canMove =
+          frameCellUI(props.extensions, cell.kind).pointerMove === true ||
+          (util && 'capabilities' in util
+            ? (util as import('@sue/board-core').BaseCellUtil).capabilities(
+                store,
+                cell,
+                embedded ? 'embedded' : 'root',
+              ).move
+            : frameCellUI(props.extensions, cell.kind).pointerMove !== false);
+        // Mind topics report move:false, so a multi-selection cannot be
+        // translated. A pointer on one topic still has to collapse that
+        // selection on click and reorder that topic on drag.
+        const selectionCanMove = selectionAllows(
+          runtime.store,
+          runtime.selection.ids,
+          runtime.registry,
+          'move',
+          runtime.mountedRootId,
+        );
+        if (
+          renderEditable &&
+          canMove &&
+          !pendingRef.current &&
+          !cell.locked &&
+          !sceneActions.selectionHasLockedGroup() &&
+          (selectionCanMove ||
+            frameCellUI(props.extensions, cell.kind).pointerMove === true ||
+            (embedded &&
+              frameCellUI(props.extensions, cell.kind).embeddedPan === true)) &&
+          parentScale * placement.scale > 0
+        ) {
+          event.preventDefault();
+          setDragging(true);
+          setPreview(null);
+          dragRef.current = {
+            sessionId: ++dragSequence.current,
+            pointerId: event.pointerId,
+            mode:
+              embedded &&
+              frameCellUI(props.extensions, cell.kind).embeddedPan === true
+                ? 'content-pan'
+                : undefined,
+            panFrameId:
+              embedded &&
+              frameCellUI(props.extensions, cell.kind).embeddedPan === true
+                ? id
+                : undefined,
+            panRefId:
+              embedded &&
+              frameCellUI(props.extensions, cell.kind).embeddedPan === true
+                ? occurrence?.refId
+                : undefined,
+            contentOffset: contentOffsets.get(cellId),
+            collapseId:
+              !event.shiftKey && runtime.selection.ids.length > 1
+                ? cellId
+                : undefined,
+            ids:
+              selectionCanMove &&
+              runtime.selection.ids.length > 1 &&
+              !props.extensions?.some((extension) =>
+                extension.plugin?.fitLayoutBounds?.(store, id),
+              )
+                ? [...runtime.selection.ids]
+                : undefined,
+            id:
+              runtime.selection.ids.length === 1 &&
+              isGroupCell(store.cells[runtime.selection.ids[0]])
+                ? runtime.selection.ids[0]
+                : cellId,
+            start: sceneActions.pointFromEvent(event),
+            original: bounds,
+            focus,
+            scale: parentScale * placement.scale,
+            pointerMatrix: (
+              pointerParent ??
+              (event.currentTarget
+                .parentElement as unknown as SVGGraphicsElement)
+            )
+              ?.getScreenCTM?.()
+              ?.inverse(),
+            geometry: new Map(
+              frame.children.map((id) => {
+                const node = store.cells[id];
+                return [
+                  id,
+                  geometry.get(id) ??
+                    (isNodeCell(node) ? node.geometry : bounds),
+                ];
+              }),
+            ),
+          };
+        }
       };
       const renderCellBody = (
         cellId: string,
@@ -6744,17 +6924,8 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
                   cameraStore.setHovered(cellId);
               }}
               onPointerLeave={(event) => {
-                const next = event.relatedTarget;
-                const control =
-                  next instanceof Element
-                    ? next.closest('[data-port-edge-id], [data-edge-controls]')
-                    : null;
-                if (
-                  readableEdge &&
-                  control?.getAttribute('data-port-edge-id') !== cellId &&
-                  control?.getAttribute('data-edge-controls') !== cellId
-                )
-                  cameraStore.leave(cellId);
+                if (readableEdge)
+                  cameraStore.leave(cellId, undefined, event.relatedTarget);
               }}
               onDoubleClick={(event) => {
                 event.stopPropagation();
@@ -6872,7 +7043,7 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
                               readableEdge
                                 ? edgeDecorationSafetyBounds(
                                     points,
-                                    routing,
+                                    edgeRoutingContextFor(routing, cell),
                                     cell.appearance?.strokeWidth,
                                   )
                                 : undefined
@@ -7142,6 +7313,9 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
         const text = isBoardTextDocument(cell.content?.text)
           ? cell.content.text
           : plainTextDocument(cell.content, label);
+        const textUI = frameCellUI(props.extensions, cell.kind);
+        const paddingX = textUI.textPadding ?? 8,
+          paddingY = textUI.textPadding ?? 4;
         const renderAppearance = ({
           bounds: textBounds,
           fill,
@@ -7162,6 +7336,7 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
                       ? theme.background
                       : (fill ?? visual.fill ?? theme.background),
                     visual.textColor ?? theme.text,
+                    visual.background ?? theme.canvas,
                   )
                 : '#0f172a'),
           };
@@ -7209,15 +7384,20 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
               })()}
               {(staticScene || drawingPreview || editing !== cellId) && (
                 <foreignObject
-                  x={textBounds.x + 8}
-                  y={textBounds.y + 4}
-                  width={Math.max(1, textBounds.width - 16)}
-                  height={Math.max(1, textBounds.height - 8)}
+                  x={textBounds.x + paddingX}
+                  y={textBounds.y + paddingY}
+                  width={Math.max(1, textBounds.width - paddingX * 2)}
+                  height={Math.max(1, textBounds.height - paddingY * 2)}
                   stroke="none"
                 >
                   <FrameRichText
                     text={text}
-                    style={textStyle}
+                    style={{
+                      ...textStyle,
+                      ...(textUI.textVerticalAlignment === 'top'
+                        ? { alignItems: 'flex-start' }
+                        : {}),
+                    }}
                     defaultAlign={
                       frameCellUI(props.extensions, cell.kind)
                         .defaultTextAlignment === 'left'
@@ -7289,6 +7469,7 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
               key={cellId}
               data-cell-id={drawingPreview ? undefined : cellId}
               data-draft-cell-id={drawingPreview ? cellId : undefined}
+              data-frame-export-fill={visual.exportFill}
               data-cell-kind={drawingPreview ? undefined : cell.kind}
               data-draft-cell-kind={drawingPreview ? cell.kind : undefined}
               fill={fill ?? visual.fill ?? '#fff'}
@@ -7311,133 +7492,16 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
                 )
                   cameraStore.setHovered(cellId);
               }}
-              onPointerLeave={(event) => {
-                const next = event.relatedTarget;
-                if (
-                  !(next instanceof Element) ||
-                  next
-                    .closest('[data-port-node-id]')
-                    ?.getAttribute('data-port-node-id') !== cellId
-                )
-                  cameraStore.leave(cellId);
-              }}
+              onPointerLeave={(event) =>
+                cameraStore.leave(cellId, undefined, event.relatedTarget)
+              }
               transform={
                 bounds.rotation
                   ? `rotate(${(bounds.rotation * 180) / Math.PI} ${bounds.x + bounds.width / 2} ${bounds.y + bounds.height / 2})`
                   : undefined
               }
               onDragStart={(event) => event.preventDefault()}
-              onPointerDown={(event) => {
-                event.stopPropagation();
-                if (event.button !== 0) {
-                  sceneActions.selectContextCell(cellId, focus);
-                  return;
-                }
-                if (event.shiftKey) sceneActions.select(cellId, focus, true);
-                else sceneActions.selectContextCell(cellId, focus);
-                const util = runtime.registry.get(cell.kind);
-                const canMove =
-                  frameCellUI(props.extensions, cell.kind).pointerMove ===
-                    true ||
-                  (util && 'capabilities' in util
-                    ? (
-                        util as import('@sue/board-core').BaseCellUtil
-                      ).capabilities(
-                        store,
-                        cell,
-                        embedded ? 'embedded' : 'root',
-                      ).move
-                    : frameCellUI(props.extensions, cell.kind).pointerMove !==
-                      false);
-                // Mind topics report move:false, so a multi-selection cannot be
-                // translated. A pointer on one topic still has to collapse that
-                // selection on click and reorder that topic on drag.
-                const selectionCanMove = selectionAllows(
-                  runtime.store,
-                  runtime.selection.ids,
-                  runtime.registry,
-                  'move',
-                  runtime.mountedRootId,
-                );
-                if (
-                  renderEditable &&
-                  canMove &&
-                  !pendingRef.current &&
-                  !cell.locked &&
-                  !sceneActions.selectionHasLockedGroup() &&
-                  (selectionCanMove ||
-                    frameCellUI(props.extensions, cell.kind).pointerMove ===
-                      true ||
-                    (embedded &&
-                      frameCellUI(props.extensions, cell.kind).embeddedPan ===
-                        true)) &&
-                  parentScale * placement.scale > 0
-                ) {
-                  event.preventDefault();
-                  setDragging(true);
-                  setPreview(null);
-                  dragRef.current = {
-                    sessionId: ++dragSequence.current,
-                    pointerId: event.pointerId,
-                    mode:
-                      embedded &&
-                      frameCellUI(props.extensions, cell.kind).embeddedPan ===
-                        true
-                        ? 'content-pan'
-                        : undefined,
-                    panFrameId:
-                      embedded &&
-                      frameCellUI(props.extensions, cell.kind).embeddedPan ===
-                        true
-                        ? id
-                        : undefined,
-                    panRefId:
-                      embedded &&
-                      frameCellUI(props.extensions, cell.kind).embeddedPan ===
-                        true
-                        ? occurrence?.refId
-                        : undefined,
-                    contentOffset: contentOffsets.get(cellId),
-                    collapseId:
-                      !event.shiftKey && runtime.selection.ids.length > 1
-                        ? cellId
-                        : undefined,
-                    ids:
-                      selectionCanMove &&
-                      runtime.selection.ids.length > 1 &&
-                      !props.extensions?.some((extension) =>
-                        extension.plugin?.fitLayoutBounds?.(store, id),
-                      )
-                        ? [...runtime.selection.ids]
-                        : undefined,
-                    id:
-                      runtime.selection.ids.length === 1 &&
-                      isGroupCell(store.cells[runtime.selection.ids[0]])
-                        ? runtime.selection.ids[0]
-                        : cellId,
-                    start: sceneActions.pointFromEvent(event),
-                    original: bounds,
-                    focus,
-                    scale: parentScale * placement.scale,
-                    pointerMatrix: (
-                      event.currentTarget
-                        .parentElement as unknown as SVGGraphicsElement
-                    )
-                      ?.getScreenCTM?.()
-                      ?.inverse(),
-                    geometry: new Map(
-                      frame.children.map((id) => {
-                        const node = store.cells[id];
-                        return [
-                          id,
-                          geometry.get(id) ??
-                            (isNodeCell(node) ? node.geometry : bounds),
-                        ];
-                      }),
-                    ),
-                  };
-                }
-              }}
+              onPointerDown={(event) => beginNodeMove(event, cellId)}
               onDoubleClick={(event) => {
                 event.stopPropagation();
                 if (sceneActions.enterSelectedGroup(cellId)) return;
@@ -7475,10 +7539,10 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
                 )}
               {!staticScene && !drawingPreview && editing === cellId && (
                 <foreignObject
-                  x={textBounds.x + 8}
-                  y={textBounds.y + 4}
-                  width={Math.max(1, textBounds.width - 16)}
-                  height={Math.max(1, textBounds.height - 8)}
+                  x={textBounds.x + paddingX}
+                  y={textBounds.y + paddingY}
+                  width={Math.max(1, textBounds.width - paddingX * 2)}
+                  height={Math.max(1, textBounds.height - paddingY * 2)}
                   stroke="none"
                   style={{ overflow: 'visible' }}
                   opacity={cell.appearance?.opacity}
@@ -7492,7 +7556,12 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
                         ? Alignment.left
                         : undefined
                     }
-                    style={textStyle}
+                    style={{
+                      ...textStyle,
+                      ...(textUI.textVerticalAlignment === 'top'
+                        ? { alignItems: 'flex-start' }
+                        : {}),
+                    }}
                     readonly={context.readonly || pending}
                     onClose={() => setEditing(null)}
                     onExitKey={() => svgRef.current?.focus()}
@@ -7717,6 +7786,16 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
           />
         );
       };
+      const paintOrder = framePaintOrder(
+        laidOut,
+        scene?.children ?? frame.children,
+        !staticScene && !drawingPreview && !presenting && !props.exporting
+          ? runtime.selection.ids
+          : [],
+        (cell) =>
+          !!frameCellUI(props.extensions, cell.kind).background ||
+          !!runtime.registry.get(cell.kind)?.lanes?.(cell)?.length,
+      );
       return (
         <FrameThemeGroup
           theme={theme}
@@ -7774,22 +7853,7 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
           <FrameVirtualLayer
             camera={cameraStore}
             svg={svgRef}
-            ids={(() => {
-              const children = scene?.children ?? frame.children;
-              const background = children.filter((id) => {
-                const child = laidOut.cells[id];
-                return (
-                  child &&
-                  runtime.registry.get(child.kind)?.lanes?.(child)?.length
-                );
-              });
-              return background.length
-                ? [
-                    ...background,
-                    ...children.filter((id) => !background.includes(id)),
-                  ]
-                : children;
-            })()}
+            ids={paintOrder.ids}
             query={base.query}
             pinned={[
               editing ?? '',
@@ -7824,7 +7888,15 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
             }
           >
             {(cellId) => {
-              const body = renderCell(cellId);
+              const body = (
+                <g
+                  key={cellId}
+                  data-frame-paint-item={cellId}
+                  data-frame-normal-rank={paintOrder.normalRank.get(cellId)}
+                >
+                  {renderCell(cellId)}
+                </g>
+              );
               if (
                 staticScene ||
                 drawingPreview ||
@@ -7910,7 +7982,39 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
               </g>
             )}
           {!staticScene && !drawingPreview && (
-            <FrameControlLayer>
+            <FrameControlLayer
+              camera={cameraStore}
+              onNodeBodyPointerDown={(event, element) => {
+                if (
+                  event.button !== 0 ||
+                  event.shiftKey ||
+                  runtime.selection.ids.length < 2 ||
+                  !selectionAllows(
+                    runtime.store,
+                    runtime.selection.ids,
+                    runtime.registry,
+                    'move',
+                    runtime.mountedRootId,
+                  )
+                )
+                  return false;
+                const cellId = element.getAttribute('data-cell-id');
+                const selected = runtime.selection.ids.some(
+                  (id) =>
+                    id === cellId ||
+                    (isGroupCell(store.cells[id]) &&
+                      groupLeafMembers(store, id).includes(cellId ?? '')),
+                );
+                if (!cellId || !selected || !isNodeCell(laidOut.cells[cellId]))
+                  return false;
+                beginNodeMove(
+                  event,
+                  cellId,
+                  element.parentElement as unknown as SVGGraphicsElement,
+                );
+                return event.defaultPrevented;
+              }}
+            >
               <FrameVirtualLayer
                 camera={cameraStore}
                 svg={svgRef}
@@ -9975,6 +10079,24 @@ export const FrameCanvas = forwardRef(function FrameCanvas<T>(
                               ],
                             },
                           );
+                      },
+                    },
+                    {
+                      id: 'reset-waypoints',
+                      label:
+                        props.actionHost?.language === 'en'
+                          ? 'Reset all waypoints'
+                          : '清除所有锚点',
+                      disabled: !actionRuntime.getActionState(
+                        'canvas.edge.reset-waypoints',
+                        { edgeId: waypointMenu.edge.id },
+                      ).enabled,
+                      run: () => {
+                        if (!waypointContextValid(waypointMenu)) return;
+                        void actionRuntime.executeAction(
+                          'canvas.edge.reset-waypoints',
+                          { edgeId: waypointMenu.edge.id },
+                        );
                       },
                     },
                   ]}

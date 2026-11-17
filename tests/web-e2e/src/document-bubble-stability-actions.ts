@@ -154,9 +154,24 @@ export async function exerciseDocumentBubbleStability(page: Page) {
       for (const blockId of [...ids, ...ids.slice().reverse()]) {
         const paragraph = pane.locator(`.tiptap [data-block-id="${blockId}"]`);
         await paragraph.click();
+        await expect(toolbar).toBeHidden();
+        await page.keyboard.press('ArrowLeft');
+        await expect(toolbar).toBeHidden();
+        await page.keyboard.press('Shift+ArrowLeft');
+        await expect
+          .poll(() => page.evaluate(() => getSelection()?.toString().length))
+          .toBe(1);
+        await expect(toolbar).toBeVisible();
+        await page.keyboard.press('ArrowRight');
+        await expect(toolbar).toBeHidden();
+        await paragraph.dblclick({ position: { x: 30, y: 12 } });
         await expect(toolbar).toBeVisible();
         await expect(toolbar).toBeInViewport({ ratio: 1 });
-        await paragraph.dblclick({ position: { x: 30, y: 12 } });
+        const original = (await toolbar.elementHandle())!;
+        await toolbar
+          .getByRole('button', { name: '下划线', exact: true })
+          .click();
+        expect(await original.evaluate((node) => node.isConnected)).toBe(true);
         await expect(toolbar).toBeVisible();
       }
       await pane

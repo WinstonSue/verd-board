@@ -1,5 +1,13 @@
 # service
 
+## 2.1.2
+
+### Patch Changes
+
+- Updated dependencies
+  - @sue/verd-board-agent@2.1.2
+  - @sue/verd-board-app@2.1.2
+
 ## 2.1.1
 
 ### Patch Changes

@@ -1,3 +1,4 @@
+import { selectPropertyValue } from '../../helpers/property-select';
 import { openActiveFile } from './app-actions';
 import { selectHistoryAction } from './app-actions';
 import { expect, test, type Locator, type Page } from './service-fixture';
@@ -143,7 +144,7 @@ test('Mind width inherits settings, supports a saved map override and keeps long
   await expect.poll(() => width(topic)).toBe(320);
   await fits(topic);
   await selectRoot(page);
-  await page.getByTestId('mind-width-mode').selectOption('custom');
+  await selectPropertyValue(page.getByTestId('mind-width-mode'), 'custom');
   await page.getByTestId('mind-max-width').fill('160');
   await page.getByTestId('mind-max-width').press('Enter');
   await expect.poll(() => width(topic)).toBe(160);
@@ -167,7 +168,7 @@ test('Mind width inherits settings, supports a saved map override and keeps long
   await expect.poll(() => width(node(page, 'topic'))).toBe(160);
   await fits(node(page, 'topic'));
   await selectRoot(page);
-  await page.getByTestId('mind-width-mode').selectOption('default');
+  await selectPropertyValue(page.getByTestId('mind-width-mode'), 'default');
   await expect.poll(() => width(node(page, 'topic'))).toBe(400);
   await fits(node(page, 'topic'));
 });

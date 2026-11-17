@@ -1,3 +1,8 @@
+import {
+  expectPropertyValue,
+  readPropertyValue,
+  selectPropertyValue,
+} from '../../helpers/property-select';
 import { cellBodyPoint } from '../../helpers/port-controls';
 import { openActiveFile } from './app-actions';
 import { selectHistoryAction } from './app-actions';
@@ -153,7 +158,7 @@ test('restores editing, gestures, summaries, and file open', async ({
       if (width === 800) {
         await expect(page.locator('.frame-inspector.is-open')).toBeVisible();
         const theme = page.getByLabel('Theme', { exact: true });
-        await theme.selectOption('dark');
+        await selectPropertyValue(theme, 'dark');
         await expect
           .poll(async () => {
             const data = await persisted(page);
@@ -166,7 +171,9 @@ test('restores editing, gestures, summaries, and file open', async ({
           })
           .toBe('dark');
         await selectHistoryAction(page, '撤销');
-        await expect.poll(async () => theme.inputValue()).not.toBe('dark');
+        await expect
+          .poll(async () => readPropertyValue(theme))
+          .not.toBe('dark');
       }
     }
   }
@@ -253,10 +260,10 @@ test('restores editing, gestures, summaries, and file open', async ({
   await expect(page.locator('.ProseMirror:visible')).toBeFocused();
   await page.keyboard.press('Escape');
   await expect(cells(page, 'mind-child')).toHaveCount(2);
-  await cells(page, 'mind-child').first().click();
   const parentId = await cells(page, 'mind-child')
     .first()
     .getAttribute('data-cell-id');
+  await activeCanvas(page).locator(`[data-cell-id="${parentId}"]`).click();
 
   await page.locator(`[data-mind-fold="${parentId}"]`).click();
   await expect
@@ -307,9 +314,16 @@ test('restores editing, gestures, summaries, and file open', async ({
   await expect(formatting).toBeHidden();
   const topics = cells(page, 'mind-child');
   await expect(topics).toHaveCount(2);
-  const firstTopic = await cellBodyPoint(topics.nth(0));
+  const topicIds = await topics.evaluateAll((elements) =>
+    elements.map((element) => element.getAttribute('data-cell-id')!),
+  );
+  const firstTopic = await cellBodyPoint(
+    activeCanvas(page).locator(`[data-cell-id="${topicIds[0]}"]`),
+  );
   await page.mouse.click(firstTopic.x, firstTopic.y);
-  const secondTopic = await cellBodyPoint(topics.nth(1));
+  const secondTopic = await cellBodyPoint(
+    activeCanvas(page).locator(`[data-cell-id="${topicIds[1]}"]`),
+  );
   await page.keyboard.down('Shift');
   await page.mouse.click(secondTopic.x, secondTopic.y);
   await page.keyboard.up('Shift');
@@ -460,9 +474,9 @@ test('restores editing, gestures, summaries, and file open', async ({
   await selectHistoryAction(page, '撤销');
   await expect(cells(page, 'image')).toHaveCount(0);
 
-  const themeBeforeOpen = await page
-    .getByLabel('Theme', { exact: true })
-    .inputValue();
+  const themeBeforeOpen = await readPropertyValue(
+    page.getByLabel('Theme', { exact: true }),
+  );
   const openInput = page
     .locator('.workspace-pane.is-active')
     .locator('input[accept="application/json,.md,.markdown,.mmd,.mermaid"]');
@@ -472,13 +486,14 @@ test('restores editing, gestures, summaries, and file open', async ({
   await expect(
     cells(page, 'geometry').filter({ hasText: 'Opened node' }),
   ).toHaveCount(1);
-  await expect(page.getByLabel('Theme', { exact: true })).toHaveValue('dark');
+  await expectPropertyValue(page.getByLabel('Theme', { exact: true }), 'dark');
   await expect
     .poll(async () => world(page).getAttribute('transform'))
     .toContain('scale(1)');
   const fittedOpenView = await world(page).getAttribute('transform');
   await selectHistoryAction(page, '撤销');
-  await expect(page.getByLabel('Theme', { exact: true })).toHaveValue(
+  await expectPropertyValue(
+    page.getByLabel('Theme', { exact: true }),
     themeBeforeOpen,
   );
   await expect
@@ -489,11 +504,12 @@ test('restores editing, gestures, summaries, and file open', async ({
   ).toHaveCount(0);
   await page.reload();
   if (await skip.isVisible().catch(() => false)) await skip.click();
-  await expect(
+  await expectPropertyValue(
     page
       .locator('.workspace-pane.is-active')
       .getByLabel('Theme', { exact: true }),
-  ).toHaveValue(themeBeforeOpen);
+    themeBeforeOpen,
+  );
   await expect(
     cells(page, 'geometry').filter({ hasText: 'Opened node' }),
   ).toHaveCount(0);

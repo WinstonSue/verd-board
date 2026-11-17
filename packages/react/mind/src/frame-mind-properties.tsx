@@ -65,7 +65,6 @@ const englishLabels: Record<string, string> = {
   柔和: 'Soft',
   复古: 'Retro',
   清新: 'Fresh',
-  海洋: 'Ocean',
 };
 const localize = (value: string, language: string) =>
   language === 'zh' ? value : (englishLabels[value] ?? value);
@@ -90,7 +89,6 @@ const SCHEME_LABELS: Record<MindColorScheme, string> = {
   soft: '柔和',
   retro: '复古',
   dark: '清新',
-  starry: '海洋',
 };
 
 /** File-level mind scheme picker: name plus a palette swatch preview. */
@@ -105,7 +103,8 @@ export function MindSchemeField({
 }) {
   const { language } = useI18n();
   const explicit = frame?.view?.mind?.colorScheme;
-  const value = explicit && explicit in SCHEME_LABELS ? explicit : 'inherit';
+  const value =
+    explicit === undefined ? 'inherit' : mindFrameColorScheme(frame);
   const appearance = useFrameAppearance();
   const resolved = mindTheme(mindFrameColorScheme(frame), appearance);
   return (
@@ -152,7 +151,7 @@ export function MindSchemeField({
           ? resolved
           : mindTheme(value, appearance)
         ).branches
-          .slice(0, 5)
+          .slice(0, 6)
           .map((color) => (
             <i
               key={color}

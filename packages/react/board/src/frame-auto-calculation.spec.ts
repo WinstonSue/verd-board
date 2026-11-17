@@ -5,6 +5,7 @@ import {
   createFrameCell,
   createCellRuntime,
   groupCells,
+  updateCellAppearance,
   type CellOperation,
   type EdgeCell,
   type NodeCell,
@@ -17,6 +18,7 @@ import {
   pruneAutoCalculationConfig,
   type FrameAutoCalculationConfig,
 } from './frame-auto-calculation';
+import { styleColorWorkspaceFixture } from '../../../../tests/fixtures/style-color-workspace';
 const registry = createTestCellRegistry();
 const node = (id: string, x = 0, y = 0): NodeCell => ({
   id,
@@ -48,6 +50,33 @@ const change = (cell: NodeCell): CellOperation[] => [
 ];
 
 describe('session auto calculation', () => {
+  it('does not plan geometry for a style edit when another file contains legacy containers', () => {
+    const { store } = styleColorWorkspaceFixture();
+    const captured = captureAutoCalculationScope(store, {
+      focus: ['style-board'],
+      ids: ['style-source', 'style-target'],
+    });
+    const operations = updateCellAppearance(store, ['style-source'], {
+      styleColor: 'series-5',
+    });
+    const planned = prepareAutoCalculation(
+      store,
+      operations,
+      {
+        layout: { scope: captured, style: 'horizontal' },
+        edges: { scope: captured },
+      },
+      registry,
+    );
+    expect(planned.operations).toEqual(operations);
+    expect(planned.diagnostics).toEqual([]);
+    for (const [id, cell] of Object.entries(store.cells))
+      if (id !== 'style-source')
+        expect(planned.expected.cells[id]).toEqual(cell);
+    expect(
+      (planned.expected.cells['style-source'] as NodeCell).geometry,
+    ).toEqual((store.cells['style-source'] as NodeCell).geometry);
+  });
   it('replans joint geometry when a painted node stroke changes, even with edge-only automation off', () => {
     const before = fixture(),
       a = before.cells.a as NodeCell;

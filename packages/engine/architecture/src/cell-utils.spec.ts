@@ -125,7 +125,12 @@ describe('native architecture rules', () => {
       ]),
     });
     const geometry = layoutArchitectureCells(r.store, 'frame');
-    expect(geometry.get('other')!.y).toBeLessThan(geometry.get('layer')!.y);
+    expect(architectureLayerIds(r.store, 'frame')).toEqual(['other', 'layer']);
+    expect(geometry.get('layer')).toMatchObject({
+      x: (r.store.cells.layer as NodeCell).geometry.x,
+      y: (r.store.cells.layer as NodeCell).geometry.y,
+      derived: false,
+    });
     const before = structuredClone(r.store);
     const module = r.store.cells.module as NodeCell;
     const bounds = geometry.get('other')!;
@@ -225,17 +230,21 @@ describe('native architecture rules', () => {
       registry,
     );
     const module = createArchitectureModuleCell('module');
-    expect(() =>
-      planCellPaste({
-        store: runtime.store,
-        frameId: 'frame',
-        selectionIds: [],
-        fragment: { cells: { module }, ids: ['module'] },
-        allocateId: (id) => `p-${id}`,
-        registry,
-        intent: 'paste',
-      }),
-    ).toThrow('Select a target first');
+    const free = planCellPaste({
+      store: runtime.store,
+      frameId: 'frame',
+      selectionIds: [],
+      fragment: { cells: { module }, ids: ['module'] },
+      allocateId: (id) => `free-${id}`,
+      registry,
+      intent: 'paste',
+    });
+    runtime.transact({ id: 'free-paste', operations: free.operations });
+    expect(runtime.index.domainOwnerOf.has('free-module')).toBe(false);
+    expect(runtime.store.cells['free-module']).toMatchObject({
+      geometry: { derived: false },
+      data: { placed: true },
+    });
     const planned = planCellPaste({
       store: runtime.store,
       frameId: 'frame',

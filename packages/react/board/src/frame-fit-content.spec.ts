@@ -47,6 +47,22 @@ const measure = (_text: unknown, width: number) => ({
   height: 40,
 });
 describe('fit selection to content', () => {
+  it('grows cards vertically with 16px padding while preserving their chosen width and minimum size', () => {
+    const card = {
+      ...node('card'),
+      kind: 'card',
+      geometry: { ...node('card').geometry, width: 320, height: 120 },
+    };
+    const fitted = fitNodeContent(card, (_text, width) => {
+      if (width !== Infinity) expect(width).toBe(288);
+      return { width: 288, height: 220 };
+    });
+    expect(fitted).toMatchObject({ width: 320, height: 252 });
+    expect(fitNodeContent(card, measure)).toMatchObject({
+      width: 320,
+      height: 120,
+    });
+  });
   it('shrinks short text and preserves position, rotation and content', () => {
     const cell = node('a');
     const fitted = fitNodeContent(cell, measure);

@@ -3,7 +3,12 @@ import type { RoutingObstacle } from '../geometry/obstacle-route';
 import type { CellOperation, CellSelection } from './index';
 import type { CellLayoutStyle } from './arrangement';
 import type { CellRegistry, CellScene } from './registry';
-import { isFrameCell, type CellStore, type NodeGeometry } from './types';
+import {
+  isFrameCell,
+  type CellStore,
+  type NodeGeometry,
+  type EdgeCell,
+} from './types';
 
 export const GEOMETRY_POLICY_VERSION = 1;
 export const DEFAULT_GEOMETRY_SPACING = Object.freeze({
@@ -73,6 +78,14 @@ export interface SceneGeometryPolicy {
   obstacles?(
     store: CellStore,
     frameId: string,
+    geometry?: ReadonlyMap<string, NodeGeometry>,
+  ): readonly RoutingObstacle[];
+  /** Replace the shared obstacle set for an edge at a different abstraction level. */
+  edgeObstacles?(
+    store: CellStore,
+    frameId: string,
+    edge: EdgeCell,
+    obstacles: readonly RoutingObstacle[],
     geometry?: ReadonlyMap<string, NodeGeometry>,
   ): readonly RoutingObstacle[];
   validate?(context: GeometryPlanningContext): readonly GeometryDiagnostic[];

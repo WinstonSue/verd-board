@@ -1,3 +1,5 @@
+import { themeConfig } from './theme-config';
+
 export interface BoardTheme {
   themeColorMode: ThemeColorMode;
   boardBackground?: string;
@@ -22,46 +24,27 @@ export enum ThemeColorMode {
   soft = 'soft',
   retro = 'retro',
   dark = 'dark',
-  starry = 'starry',
 }
 
-export const DEFAULT_COLOR = '#333333';
+export const DEFAULT_COLOR = themeConfig.legacy.defaultText;
 
-export const DefaultThemeColor: ThemeColor = {
-  mode: ThemeColorMode.default,
-  boardBackground: '#ffffff',
-  textColor: DEFAULT_COLOR,
-};
+const legacyThemeColor = (mode: ThemeColorMode): ThemeColor => ({
+  mode,
+  boardBackground: themeConfig.themes[mode].legacy.boardBackground,
+  textColor: themeConfig.themes[mode].legacy.textColor,
+});
 
-export const ColorfulThemeColor: ThemeColor = {
-  mode: ThemeColorMode.colorful,
-  boardBackground: '#ffffff',
-  textColor: DEFAULT_COLOR,
-};
-
-export const SoftThemeColor: ThemeColor = {
-  mode: ThemeColorMode.soft,
-  boardBackground: '#f5f5f5',
-  textColor: DEFAULT_COLOR,
-};
-
-export const RetroThemeColor: ThemeColor = {
-  mode: ThemeColorMode.retro,
-  boardBackground: '#f9f8ed',
-  textColor: DEFAULT_COLOR,
-};
-
-export const DarkThemeColor: ThemeColor = {
-  mode: ThemeColorMode.dark,
-  boardBackground: '#141414',
-  textColor: '#FFFFFF',
-};
-
-export const StarryThemeColor: ThemeColor = {
-  mode: ThemeColorMode.starry,
-  boardBackground: '#0d2537',
-  textColor: '#FFFFFF',
-};
+export const DefaultThemeColor: ThemeColor = legacyThemeColor(
+  ThemeColorMode.default,
+);
+export const ColorfulThemeColor: ThemeColor = legacyThemeColor(
+  ThemeColorMode.colorful,
+);
+export const SoftThemeColor: ThemeColor = legacyThemeColor(ThemeColorMode.soft);
+export const RetroThemeColor: ThemeColor = legacyThemeColor(
+  ThemeColorMode.retro,
+);
+export const DarkThemeColor: ThemeColor = legacyThemeColor(ThemeColorMode.dark);
 
 export const ThemeColors: ThemeColor[] = [
   DefaultThemeColor,
@@ -69,5 +52,10 @@ export const ThemeColors: ThemeColor[] = [
   SoftThemeColor,
   RetroThemeColor,
   DarkThemeColor,
-  StarryThemeColor,
 ];
+/** Stable family identities; theme changes replace colors, never these ids. */
+export const BoardStyleColors = themeConfig.styleColors;
+export type BoardStyleColor = (typeof BoardStyleColors)[number];
+export const isBoardStyleColor = (value: unknown): value is BoardStyleColor =>
+  typeof value === 'string' &&
+  (BoardStyleColors as readonly string[]).includes(value);

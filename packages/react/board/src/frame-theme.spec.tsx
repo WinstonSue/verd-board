@@ -3,6 +3,8 @@ import { createRoot } from 'react-dom/client';
 import { expect, it, vi } from 'vitest';
 import {
   applyCellOperations,
+  colorContrast,
+  resolveBoardTheme,
   createCellStore,
   createFrameCell,
   ThemeColorMode,
@@ -11,6 +13,8 @@ import {
 import { createTestCellRegistry } from '../../../../tests/fixtures/plugins/registry';
 import { createTestFramePluginSet } from '../../../../tests/fixtures/plugins/ui';
 import { FrameCanvas, type FrameCanvasController } from './frame-canvas';
+import { frameThemeStyle } from './frame-theme';
+import { frameTitleStyle } from './frame-title-editor';
 
 (
   globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }
@@ -168,4 +172,27 @@ it('restores embedded document interactivity after changing appearance while set
   } finally {
     await act(async () => root.unmount());
   }
+});
+
+it('keeps active and inactive frame titles readable without changing the theme accent', () => {
+  for (const id of Object.values(ThemeColorMode)) {
+    for (const appearance of ['light', 'dark'] as const) {
+      const theme = resolveBoardTheme({ themeColorMode: id }, appearance);
+      const before = JSON.stringify(theme);
+      const style = frameThemeStyle(theme) as Record<string, string>;
+      expect(style['--board-primary']).toBe(theme.accent);
+      expect(
+        colorContrast(theme.header, style['--board-title-active-color']),
+      ).toBeGreaterThanOrEqual(4.5);
+      expect(
+        colorContrast(theme.header, style['--board-title-color']),
+      ).toBeGreaterThanOrEqual(4.5);
+      expect(JSON.stringify(theme)).toBe(before);
+    }
+  }
+  expect(frameTitleStyle(true).color).toContain('--board-title-active-color');
+  expect(frameTitleStyle(false).color).toContain('--board-title-color');
+  expect(frameThemeStyle(resolveBoardTheme())).toEqual({
+    '--board-unmarked-text-color': 'initial',
+  });
 });

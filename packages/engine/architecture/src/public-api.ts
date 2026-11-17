@@ -11,3 +11,4 @@ export {
 export * from './kinds';
 export * from './plugin';
 export * from './types';
+export * from './relations';

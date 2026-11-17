@@ -5,7 +5,11 @@ import {
   type CellLayoutStyle,
 } from './arrangement';
 import { translateCellSelection } from './commands';
-import { createEdgeRoutingContext, edgePolyline } from '../geometry/edge';
+import {
+  createEdgeRoutingContext,
+  edgePolyline,
+  edgeRoutingContextFor,
+} from '../geometry/edge';
 import { anchorFromPoint } from '../anchor';
 import { isClearOrthogonalRoute } from '../geometry/obstacle-route';
 import {
@@ -301,7 +305,7 @@ export function planOptimizeEdges(
           points,
           entry.source.side,
           entry.target.side,
-          context.obstacles,
+          edgeRoutingContextFor(context, edge).obstacles,
           {
             sourceId: 'cellId' in edge.source ? edge.source.cellId : undefined,
             targetId: 'cellId' in edge.target ? edge.target.cellId : undefined,
@@ -491,7 +495,9 @@ export function planGeometryLayout(
             candidate = layoutPreview(
               candidate,
               movable.flatMap((b) =>
-                translateCellSelection(candidate, [b.id], [dx, 0], registry),
+                translateCellSelection(candidate, [b.id], [dx, 0], registry, {
+                  preserveMembership: true,
+                }),
               ),
             );
         }
@@ -534,7 +540,9 @@ export function planGeometryLayout(
             candidate = layoutPreview(
               candidate,
               blocks.flatMap((b) =>
-                translateCellSelection(candidate, [b.id], [0, dy], registry),
+                translateCellSelection(candidate, [b.id], [0, dy], registry, {
+                  preserveMembership: true,
+                }),
               ),
             );
           packed.push({ ...bounds, y: bounds.y + dy });
@@ -721,6 +729,7 @@ export function planNodeLayout(
         !block.members.some(
           (id) =>
             isDocumentCell(store.cells[id]) ||
+            store.cells[id]?.kind === 'card' ||
             (store.cells[id]?.kind === 'geometry' &&
               (store.cells[id] as import('./types').NodeCell).geometry
                 .outline === 'text'),
@@ -760,7 +769,9 @@ export function planNodeLayout(
     !movable.some((block) => block.members.some((id) => laneMembers.has(id)))
   ) {
     const shifts = movable.flatMap((block) =>
-      translateCellSelection(candidate, [block.id], delta, registry),
+      translateCellSelection(candidate, [block.id], delta, registry, {
+        preserveMembership: true,
+      }),
     );
     operations.push(...shifts);
     candidate = layoutPreview(candidate, shifts);

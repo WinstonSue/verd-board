@@ -1372,7 +1372,9 @@ function WorkspaceAppShell({
 
   const tabs = snapshot?.session.tabs ?? [];
   const activeTabId = snapshot?.session.activeTabId ?? null;
-  useEffect(() => {
+  // Invalidate before paint: a late navigation effect must not cancel a request
+  // started by clicking Present in the newly active document.
+  useLayoutEffect(() => {
     presentationRequest.current++;
     if (presentationPending.current) {
       presentationPending.current = false;
@@ -3462,6 +3464,13 @@ function WorkspaceAppShell({
       </div>
     );
   };
+  const folderTreeReveal = (() => {
+    if (!folderReveal) return;
+    const matches = findFoldersById(snapshot.entries, folderReveal.folderId);
+    if (matches.length === 1)
+      return { path: matches[0].path, nonce: folderReveal.nonce };
+    return undefined;
+  })();
   const content = (
     <WorkspaceAssetScope
       session={session}
@@ -3481,7 +3490,7 @@ function WorkspaceAppShell({
           }}
         >
           <WorkspaceManagement
-            revealFolderNonce={folderReveal?.nonce}
+            revealFolder={folderTreeReveal}
             isDefault={isDefaultWorkspace}
             key={activeWorkspace.current?.handle.key}
             onOpenFolder={
@@ -3648,16 +3657,7 @@ function WorkspaceAppShell({
                   setLibraryOpen(true);
                 }}
                 revealFile={fileTreeReveal}
-                revealDirectory={(() => {
-                  if (!folderReveal) return;
-                  const matches = findFoldersById(
-                    snapshot.entries,
-                    folderReveal.folderId,
-                  );
-                  if (matches.length === 1)
-                    return { path: matches[0].path, nonce: folderReveal.nonce };
-                  return undefined;
-                })()}
+                revealDirectory={folderTreeReveal}
                 onToggleDir={(path) => {
                   const dirs = snapshot.session.expandedDirs;
                   persistNav({

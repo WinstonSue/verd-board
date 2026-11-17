@@ -1,26 +1,30 @@
-import { resolveThemeRole, type CellRegistry } from '@sue/board-core';
-import type {
-  FrameRenderExtension,
-  FrameThemeAppearanceContext,
+import { type CellRegistry } from '@sue/board-core';
+import {
+  frameThemeAppearance,
+  type FrameRenderExtension,
+  type FrameThemeAppearanceContext,
 } from '@sue/board-react';
 
-const workflowNodeTone = ({ cell, theme }: FrameThemeAppearanceContext) =>
-  cell.kind === 'workflow-start'
-    ? resolveThemeRole(theme, 'secondary', 'strong')
-    : cell.kind === 'workflow-decision'
-      ? resolveThemeRole(theme, 'tertiary')
-      : resolveThemeRole(theme, 'primary');
+const workflowNodeTone = (context: FrameThemeAppearanceContext) =>
+  frameThemeAppearance(
+    context,
+    context.cell.kind === 'workflow-start'
+      ? 'secondary'
+      : context.cell.kind === 'workflow-decision'
+        ? 'tertiary'
+        : 'neutral',
+    context.cell.kind === 'workflow-task' ? 'node' : 'emphasis',
+  );
 
 const workflowThemeAppearance = (context: FrameThemeAppearanceContext) => {
-  const { cell, store, theme } = context;
+  const { cell, store } = context;
   if (cell.cellType !== 'edge') return workflowNodeTone(context);
   const source =
     'cellId' in cell.source ? store.cells[cell.source.cellId] : undefined;
-  return {
-    strokeColor: source
-      ? workflowNodeTone({ ...context, cell: source }).strokeColor
-      : resolveThemeRole(theme, 'neutral').strokeColor,
-  };
+  const tone = source
+    ? workflowNodeTone({ ...context, cell: source })
+    : frameThemeAppearance(context, 'neutral');
+  return { ...tone, fill: 'none' };
 };
 export const createWorkflowFrameExtensions = (
   registry: CellRegistry,

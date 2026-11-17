@@ -9,13 +9,24 @@ import {
 import { readRevisions, restoreRevision } from '@sue/verd-board-workspace';
 import { digest } from './workspace-lock';
 import { createFsWorkspaceHost } from './workspace-host-fs';
-import { preserveWorkspaceResources } from './workspace-resource-storage';
+import {
+  migrateWorkspaceResourcesUnlocked,
+  preserveWorkspaceResources,
+} from './workspace-resource-storage';
+
+// A configurable facade keeps fault injection local to this test module while
+// ordinary calls still use the real filesystem.
+vi.mock('node:fs/promises', async (importOriginal) => ({
+  ...(await importOriginal<typeof fs>()),
+}));
+
 const roots: string[] = [];
 const handles: {
   host: ReturnType<typeof createFsWorkspaceHost>;
   handle: { key: string; name: string };
 }[] = [];
 afterEach(async () => {
+  vi.restoreAllMocks();
   for (const { host, handle } of handles.splice(0))
     await host.closeWorkspace(handle);
   for (const root of roots.splice(0))
@@ -80,7 +91,7 @@ describe('managed project resources', () => {
     );
     expect(ignore).toContain('!resources/assets/**');
   });
-  it('preserves conflicting directories and blocks resource writes, including old writers after migration', async () => {
+  it('preserves conflicting directories and blocks resource writes', async () => {
     const root = await directory();
     await put(root, '.verd-resources/assets/a.bin', 'legacy');
     await put(root, '.verdscrolls/resources/assets/a.bin', 'current');
@@ -183,6 +194,269 @@ describe('managed project resources', () => {
       ).outcome,
     ).toBe('rejected');
   });
+});
+
+const legacy = '.verd-resources';
+const managed = '.verdscrolls/resources';
+const archived = '.verdscrolls/migration/resources-v1-legacy';
+const marker = '.verdscrolls/migration/resources-v1.json';
+async function files(
+  root: string,
+  relative: string,
+): Promise<Record<string, string>> {
+  const result: Record<string, string> = {};
+  for (const entry of await fs.readdir(path.join(root, relative), {
+    withFileTypes: true,
+  })) {
+    const child = relative + '/' + entry.name;
+    if (entry.isDirectory()) {
+      for (const [name, content] of Object.entries(await files(root, child)))
+        result[entry.name + '/' + name] = content;
+    } else
+      result[entry.name] = digest(await fs.readFile(path.join(root, child)));
+  }
+  return result;
+}
+
+describe('resource merge recovery', () => {
+  it('merges missing files, deduplicates identical bytes and preserves originals and Agent runtimes', async () => {
+    const root = await directory();
+    await put(root, legacy + '/assets/shared.bin', 'same');
+    await put(root, legacy + '/assets/old.bin', 'old');
+    await put(root, legacy + '/history/index.json', 'history');
+    await put(root, managed + '/assets/shared.bin', 'same');
+    await put(root, managed + '/assets/new.bin', 'new');
+    await put(
+      root,
+      managed + '/runtime/node_modules/package/index.js',
+      'runtime',
+    );
+    const before = await files(root, legacy);
+    await migrateWorkspaceResourcesUnlocked(root);
+    expect(await files(root, archived)).toEqual(before);
+    expect(await files(root, managed)).toEqual({
+      ...before,
+      'assets/new.bin': digest('new'),
+      'runtime/node_modules/package/index.js': digest('runtime'),
+    });
+    await expect(fs.stat(path.join(root, legacy))).rejects.toThrow();
+    await expect(fs.readFile(path.join(root, marker), 'utf8')).resolves.toBe(
+      '{"version":1}\n',
+    );
+    const after = await files(root, managed);
+    await migrateWorkspaceResourcesUnlocked(root);
+    expect(await files(root, managed)).toEqual(after);
+  });
+
+  it.each(['assets/z.bin', 'history/index.json'])(
+    'publishes nothing when the full preflight finds a conflict at %s',
+    async (key) => {
+      const root = await directory();
+      await put(root, legacy + '/assets/a-missing.bin', 'missing');
+      await put(root, legacy + '/' + key, 'legacy');
+      await put(root, managed + '/' + key, 'current');
+      const before = await files(root, legacy);
+      const current = await files(root, managed);
+      await expect(migrateWorkspaceResourcesUnlocked(root)).rejects.toThrow(
+        'different bytes',
+      );
+      expect(await files(root, legacy)).toEqual(before);
+      expect(await files(root, managed)).toEqual(current);
+      await expect(fs.stat(path.join(root, marker))).rejects.toThrow();
+      await expect(fs.stat(path.join(root, archived))).rejects.toThrow();
+    },
+  );
+
+  it('resumes after a publication failure without exposing partial bytes or deleting sources', async () => {
+    const root = await directory();
+    await put(root, legacy + '/assets/a.bin', 'first');
+    await put(root, legacy + '/assets/b.bin', 'second');
+    const before = await files(root, legacy);
+    const link = fs.link;
+    const mock = vi.spyOn(fs, 'link').mockImplementation(async (from, to) => {
+      if (String(to).endsWith('/b.bin'))
+        throw new Error('simulated publish failure');
+      await link(from, to);
+    });
+    await expect(migrateWorkspaceResourcesUnlocked(root)).rejects.toThrow(
+      'simulated publish failure',
+    );
+    expect(await files(root, legacy)).toEqual(before);
+    expect(await files(root, managed)).toEqual({
+      'assets/a.bin': digest('first'),
+    });
+    await expect(fs.stat(path.join(root, marker))).rejects.toThrow();
+    mock.mockRestore();
+    await migrateWorkspaceResourcesUnlocked(root);
+    expect(await files(root, archived)).toEqual(before);
+    expect(await files(root, managed)).toEqual(before);
+  });
+
+  it('never publishes an interrupted temporary write', async () => {
+    const root = await directory();
+    await put(root, legacy + '/assets/a.bin', 'complete original');
+    const openFile = fs.open;
+    const mock = vi
+      .spyOn(fs, 'open')
+      .mockImplementation(async (target, flags, mode) => {
+        const handle = await openFile(target, flags, mode);
+        if (String(target).includes('.resources-v1-') && flags === 'wx') {
+          const write = handle.writeFile.bind(handle);
+          vi.spyOn(handle, 'writeFile').mockImplementation(async () => {
+            await write('partial');
+            throw new Error('simulated interrupted copy');
+          });
+        }
+        return handle;
+      });
+    await expect(migrateWorkspaceResourcesUnlocked(root)).rejects.toThrow(
+      'simulated interrupted copy',
+    );
+    expect(await files(root, legacy)).toEqual({
+      'assets/a.bin': digest('complete original'),
+    });
+    expect(await files(root, managed)).toEqual({});
+    await expect(fs.stat(path.join(root, marker))).rejects.toThrow();
+    mock.mockRestore();
+    await migrateWorkspaceResourcesUnlocked(root);
+    expect(await files(root, managed)).toEqual(await files(root, archived));
+  });
+
+  it.each([false, true])(
+    'recovers an interruption %s after archiving',
+    async (afterRename) => {
+      const root = await directory();
+      await put(root, legacy + '/assets/a.bin', 'original');
+      const rename = fs.rename;
+      const mock = vi
+        .spyOn(fs, 'rename')
+        .mockImplementation(async (from, to) => {
+          if (afterRename) await rename(from, to);
+          throw new Error('simulated archive interruption');
+        });
+      await expect(migrateWorkspaceResourcesUnlocked(root)).rejects.toThrow(
+        'simulated archive interruption',
+      );
+      await expect(fs.stat(path.join(root, marker))).rejects.toThrow();
+      mock.mockRestore();
+      // An archived source is also sufficient to repair a missing publication.
+      await fs.unlink(path.join(root, managed, 'assets/a.bin'));
+      await migrateWorkspaceResourcesUnlocked(root);
+      expect(await files(root, archived)).toEqual({
+        'assets/a.bin': digest('original'),
+      });
+      expect(await files(root, managed)).toEqual(await files(root, archived));
+    },
+  );
+
+  it('checks the archive again before marking completion and resumes added files', async () => {
+    const root = await directory();
+    await put(root, legacy + '/assets/a.bin', 'first');
+    const rename = fs.rename;
+    const mock = vi.spyOn(fs, 'rename').mockImplementation(async (from, to) => {
+      await rename(from, to);
+      await put(root, archived + '/assets/late.bin', 'late writer');
+    });
+    await expect(migrateWorkspaceResourcesUnlocked(root)).rejects.toThrow(
+      'not published',
+    );
+    await expect(fs.stat(path.join(root, marker))).rejects.toThrow();
+    mock.mockRestore();
+    await migrateWorkspaceResourcesUnlocked(root);
+    expect(await files(root, managed)).toEqual(await files(root, archived));
+  });
+
+  it.each(['same', 'different'])(
+    'rechecks an existing destination on atomic publication: %s bytes',
+    async (content) => {
+      const root = await directory();
+      await put(root, legacy + '/assets/a.bin', 'same');
+      const link = fs.link;
+      vi.spyOn(fs, 'link').mockImplementation(async (from, to) => {
+        if (String(to).endsWith('/a.bin')) await fs.writeFile(to, content);
+        await link(from, to);
+      });
+      if (content === 'same') {
+        await migrateWorkspaceResourcesUnlocked(root);
+        expect(await files(root, managed)).toEqual(await files(root, archived));
+      } else {
+        await expect(migrateWorkspaceResourcesUnlocked(root)).rejects.toThrow(
+          'destination changed',
+        );
+        expect(await files(root, legacy)).toEqual({
+          'assets/a.bin': digest('same'),
+        });
+        await expect(fs.stat(path.join(root, marker))).rejects.toThrow();
+      }
+    },
+  );
+
+  it('blocks both ambiguous archives and recreated legacy writers', async () => {
+    const root = await directory();
+    await put(root, legacy + '/assets/a.bin', 'source');
+    await put(root, archived + '/assets/a.bin', 'archive');
+    await expect(migrateWorkspaceResourcesUnlocked(root)).rejects.toThrow(
+      'both exist',
+    );
+    await put(root, marker, '{"version":1}\n');
+    await expect(migrateWorkspaceResourcesUnlocked(root)).rejects.toThrow(
+      'older writer',
+    );
+    expect(await files(root, legacy)).toEqual({
+      'assets/a.bin': digest('source'),
+    });
+    expect(await files(root, archived)).toEqual({
+      'assets/a.bin': digest('archive'),
+    });
+  });
+
+  it.each(['unknown.bin', 'assets/nested/hidden.bin', 'history/bad name.json'])(
+    'preserves and rejects unexpected legacy entry %s',
+    async (key) => {
+      const root = await directory();
+      await put(root, legacy + '/assets/a.bin', 'valid');
+      await put(root, legacy + '/' + key, 'unknown');
+      const before = await files(root, legacy);
+      await expect(migrateWorkspaceResourcesUnlocked(root)).rejects.toThrow(
+        'Resource migration conflict',
+      );
+      expect(await files(root, legacy)).toEqual(before);
+      await expect(fs.stat(path.join(root, managed))).rejects.toThrow();
+    },
+  );
+
+  it.each([
+    legacy,
+    legacy + '/assets',
+    legacy + '/history/link.bin',
+    '.verdscrolls',
+    managed,
+    managed + '/assets',
+    managed + '/history/link.bin',
+    '.verdscrolls/migration',
+    archived,
+    archived + '/assets',
+    marker,
+  ])(
+    'rejects symlinks at %s without touching their target',
+    async (relative) => {
+      const root = await directory();
+      const outside = await directory();
+      await put(outside, 'kept.bin', 'do not change');
+      await fs.mkdir(path.dirname(path.join(root, relative)), {
+        recursive: true,
+      });
+      await fs.symlink(outside, path.join(root, relative));
+      const before = await files(outside, '.');
+      await expect(migrateWorkspaceResourcesUnlocked(root)).rejects.toThrow(
+        'ordinary',
+      );
+      expect(await files(outside, '.')).toEqual(before);
+      expect((await fs.lstat(path.join(root, relative))).isSymbolicLink()).toBe(
+        true,
+      );
+    },
+  );
 });
 
 it('restores migrated historical versions through their original logical paths', async () => {

@@ -132,16 +132,30 @@ async function exportScene(
 test('a copied folder link reveals the folder after rename and reload', async ({
   page,
   context,
+  localService,
 }) => {
+  const readFolderId = async (directory: string) => {
+    const marker = (await localService.readDisk()).nodes.find(
+      (node) => node.path === `${directory}/.verd-folder.json`,
+    );
+    return marker ? (JSON.parse(marker.text).id as string) : undefined;
+  };
   await context.grantPermissions(['clipboard-read', 'clipboard-write']);
   await page.goto('/');
   await createFolder(page, 'Link Parent');
   await createFolder(page, 'Empty Target', 'Link Parent');
   await folderAction(page, 'Empty Target', '复制链接');
+  let folderId = '';
+  await expect
+    .poll(async () => {
+      folderId = (await readFolderId('Link Parent/Empty Target')) ?? '';
+      return folderId;
+    })
+    .toMatch(/^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i);
+  const href = `verd://folder/${folderId}`;
   await expect
     .poll(() => page.evaluate(() => navigator.clipboard.readText()))
-    .toMatch(/^verd:\/\/folder\//);
-  const href = await page.evaluate(() => navigator.clipboard.readText());
+    .toBe(href);
   await importJson(
     page,
     'Folder Links.verd-doc.json',
@@ -152,6 +166,9 @@ test('a copied folder link reveals the folder after rename and reload', async ({
   await dialog.getByRole('textbox').fill('Moved Parent');
   await dialog.getByRole('button', { name: '确定', exact: true }).click();
   await expect(directoryRow(page, 'Moved Parent')).toBeVisible();
+  await expect
+    .poll(() => readFolderId('Moved Parent/Empty Target'))
+    .toBe(folderId);
   await page.reload();
   const parent = directoryRow(page, 'Moved Parent').getByRole('button', {
     name: 'Moved Parent',
@@ -355,6 +372,16 @@ test('professional creation through the palette is one undoable action with a st
   );
   await cell(page, 'mod-order').click();
   await paletteAction(page, 'architecture.box', '模块');
+  await expect(modules()).toHaveCount(4);
+  const placement = await cell(page, 'layer-service').evaluate((element) => {
+    const shape = element as SVGGraphicsElement;
+    const bounds = shape.getBBox();
+    const point = new DOMPoint(bounds.x + 20, bounds.y + 48).matrixTransform(
+      shape.getScreenCTM()!,
+    );
+    return { x: point.x, y: point.y };
+  });
+  await page.mouse.click(placement.x, placement.y);
   await expect(modules()).toHaveCount(5);
   const createdId = await modules().evaluateAll(
     (elements, originalIds) =>

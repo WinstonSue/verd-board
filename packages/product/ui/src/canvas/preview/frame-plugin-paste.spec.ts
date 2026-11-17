@@ -5,7 +5,10 @@ import {
   createFrameCell,
 } from '@sue/board-core';
 import { createMindFrameSnapshot } from '@sue/board-mind';
-import { createUmlClassFrameSnapshot } from '@sue/board-uml';
+import {
+  createUmlClassFrameSnapshot,
+  createUmlSequenceFrameSnapshot,
+} from '@sue/board-uml';
 import { createWorkflowFrameSnapshot } from '@sue/board-workflow';
 import { describe, expect, it } from 'vitest';
 import { createVerdFramePluginSet } from '../frame-plugins';
@@ -19,6 +22,7 @@ describe('full product clipboard contributions', () => {
       () => createArchitectureFrameSnapshot('frame', 'layer'),
     ],
     ['uml-class', () => createUmlClassFrameSnapshot('frame', 'uml')],
+    ['uml-participant', () => createUmlSequenceFrameSnapshot('frame', 'uml')],
   ] as const)(
     'routes text to %s without a sibling plugin claiming the paste',
     (kind, snapshot) => {
@@ -33,9 +37,11 @@ describe('full product clipboard contributions', () => {
         text: 'Pasted text',
         allocateId: () => `paste-${++count}`,
       };
-      const operations = set.extensions
+      const contributions = set.extensions
         .map((extension) => extension.plugin?.pasteText?.(request))
-        .find(Boolean)!;
+        .filter(Boolean);
+      expect(contributions).toHaveLength(1);
+      const operations = contributions[0]!;
       const next = applyCellOperations(store, operations, set.registry);
       expect(
         Object.values(next.cells).some(

@@ -1,5 +1,5 @@
 import {
-  ConfigPanel,
+  ConfigPanel as SchemaConfigPanel,
   defineSettings,
   type CommitMode,
   type SettingEditorProps,
@@ -7,8 +7,12 @@ import {
   type ControlProps,
   type ConfigPanelProps,
   type SettingsDefinition,
+  type SettingsComponents,
 } from '@sue/schema-settings-react';
 import {
+  Children,
+  createContext,
+  isValidElement,
   useContext,
   type InputHTMLAttributes,
   type SelectHTMLAttributes,
@@ -18,7 +22,7 @@ import { NumberEditor, type NumberProps } from './frame-property-number';
 import { useFrameI18n } from './frame-i18n';
 import { FramePropertyContext } from './frame-property-panel';
 
-export { ConfigPanel, defineSettings } from '@sue/schema-settings-react';
+export { defineSettings } from '@sue/schema-settings-react';
 export type {
   ConfigPanelProps,
   SettingsDefinition,
@@ -27,6 +31,82 @@ export type {
   SettingEditorProps,
   SettingsRequest,
 } from '@sue/schema-settings-react';
+
+type FrameSettingsComponents = Pick<SettingsComponents<ControlProps>, 'select'>;
+const SettingsComponentsContext = createContext<FrameSettingsComponents>({});
+
+/** Hosts can supply window-local controls without adding a design-library dependency to the SDK. */
+export function FrameSettingsComponentsProvider({
+  components,
+  children,
+}: {
+  components: FrameSettingsComponents;
+  children: ReactNode;
+}) {
+  const inherited = useContext(SettingsComponentsContext);
+  return (
+    <SettingsComponentsContext.Provider value={{ ...inherited, ...components }}>
+      {children}
+    </SettingsComponentsContext.Provider>
+  );
+}
+
+export function ConfigPanel<T extends object, C = void, R = ControlProps>(
+  props: ConfigPanelProps<T, C, R>,
+) {
+  const inherited = useContext(SettingsComponentsContext);
+  return (
+    <SchemaConfigPanel
+      {...props}
+      components={
+        { ...inherited, ...props.components } as SettingsComponents<R>
+      }
+    />
+  );
+}
+
+function optionText(children: ReactNode): string {
+  return Children.toArray(children)
+    .map((child) =>
+      isValidElement<{ children?: ReactNode }>(child)
+        ? optionText(child.props.children)
+        : String(child),
+    )
+    .join('');
+}
+
+/** Preserve native option values, including implicit text values and disabled groups. */
+function selectOptions(
+  children: ReactNode,
+  disabled = false,
+): {
+  value: string;
+  label: string;
+  disabled: boolean;
+}[] {
+  return Children.toArray(children).flatMap((child) => {
+    if (
+      !isValidElement<{
+        children?: ReactNode;
+        value?: string | number;
+        label?: string;
+        disabled?: boolean;
+      }>(child)
+    )
+      return [];
+    const text = optionText(child.props.children);
+    const blocked = disabled || !!child.props.disabled;
+    return child.type === 'option'
+      ? [
+          {
+            value: String(child.props.value ?? text),
+            label: child.props.label ?? text,
+            disabled: blocked,
+          },
+        ]
+      : selectOptions(child.props.children, blocked);
+  });
+}
 
 type NativeProps = Omit<
   InputHTMLAttributes<HTMLInputElement>,
@@ -43,15 +123,39 @@ function NativeEditor({
   props,
   disabled,
   onCommit,
+  ...editor
 }: SettingEditorProps<unknown, NativeControls['native']>) {
-  const { kind, ...attributes } = props;
+  const SelectEditor = useContext(SettingsComponentsContext).select;
+  const { kind, children, ...attributes } = props;
+  if (kind === 'select' && SelectEditor)
+    return (
+      <SelectEditor
+        {...editor}
+        value={value === undefined ? undefined : String(value)}
+        props={{
+          // Schema editors accept scalar DOM attributes rather than native event handlers.
+          attributes: Object.fromEntries(
+            Object.entries(attributes).filter(
+              ([, attribute]) =>
+                attribute === undefined ||
+                ['string', 'number', 'boolean'].includes(typeof attribute),
+            ),
+          ),
+        }}
+        options={selectOptions(children)}
+        disabled={disabled}
+        onCommit={onCommit}
+      />
+    );
   return kind === 'select' ? (
     <select
       {...(attributes as SelectHTMLAttributes<HTMLSelectElement>)}
       disabled={disabled}
       value={value as string | number | undefined}
       onChange={(event) => onCommit(event.target.value)}
-    />
+    >
+      {children}
+    </select>
   ) : (
     <input
       {...attributes}

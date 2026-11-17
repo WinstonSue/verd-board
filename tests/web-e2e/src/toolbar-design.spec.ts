@@ -144,8 +144,15 @@ for (const [appearance, language] of [
         const create = toolbar(page).locator(
           `[data-action-id="${scenario.action}"]`,
         );
-        await expect(create).not.toHaveAttribute('aria-pressed');
+        if (scenario.name !== 'architecture')
+          await expect(create).not.toHaveAttribute('aria-pressed');
         await create.click();
+        if (scenario.name === 'architecture') {
+          await expect(cells).toHaveCount(before);
+          await expect(create).toHaveAttribute('aria-pressed', 'true');
+          const box = (await canvas(page).boundingBox())!;
+          await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
+        }
         await expect(cells).toHaveCount(before + 1);
         await canvas(page).press('ControlOrMeta+z');
         await expect(cells).toHaveCount(before);

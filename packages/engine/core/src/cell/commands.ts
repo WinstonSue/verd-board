@@ -1,5 +1,6 @@
 import type { Point } from '../interfaces/point';
 import { frameScene } from './frame';
+import { geometryPolicyFor } from './geometry-policy';
 import {
   cellDeletionLocked,
   directGroupOf,
@@ -139,6 +140,7 @@ export const translateCellSelection = (
   ids: readonly string[],
   delta: Point,
   registry: CellRegistry = createCellRegistry(),
+  options: { preserveMembership?: boolean } = {},
 ): CellOperation[] => {
   // A locked object in the selection blocks the whole move. Skipping it would
   // leave the unlocked siblings shifted on their own.
@@ -149,9 +151,29 @@ export const translateCellSelection = (
     )
   )
     return [];
+  const expanded = new Set(ids);
+  for (const id of expanded) {
+    const cell = store.cells[id];
+    const util = cell && registry.get(cell.kind);
+    if (util?.moveMembers)
+      util.members?.(cell).forEach((member) => expanded.add(member));
+  }
+  if (
+    [...expanded].some((id) => registry.get(store.cells[id]?.kind)?.moveMembers)
+  )
+    for (const edge of Object.values(store.cells))
+      if (
+        isEdgeCell(edge) &&
+        'cellId' in edge.source &&
+        'cellId' in edge.target &&
+        expanded.has(edge.source.cellId) &&
+        expanded.has(edge.target.cellId)
+      )
+        expanded.add(edge.id);
+  if (!selectionMovesAtomically(store, [...expanded])) return [];
   const cells = appearanceCells(
     store,
-    ids.filter((id) => {
+    [...expanded].filter((id) => {
       const cell = store.cells[id];
       return (
         !isGroupCell(cell) ||
@@ -165,7 +187,31 @@ export const translateCellSelection = (
     point[0] + delta[0],
     point[1] + delta[1],
   ];
-  return normalizeCellPositionOperations(
+  if (
+    [...expanded].some((id) => registry.get(store.cells[id]?.kind)?.moveMembers)
+  )
+    assertWholeGroupsMoved(
+      store,
+      cells.filter(isNodeCell).map((cell) => cell.id),
+    );
+  const index = indexCells(store, registry);
+  const geometries = new Map<
+    string,
+    ReadonlyMap<string, import('./types').NodeGeometry>
+  >();
+  const geometryOf = (cell: NodeCell) => {
+    const frameId = index.parentOf.get(cell.id);
+    if (!frameId || !cell.geometry.derived) return cell.geometry;
+    let geometry = geometries.get(frameId);
+    if (!geometry) {
+      geometry =
+        geometryPolicyFor(store, frameId, registry).project?.(store, frameId) ??
+        new Map();
+      geometries.set(frameId, geometry);
+    }
+    return geometry.get(cell.id) ?? cell.geometry;
+  };
+  let operations = normalizeCellPositionOperations(
     store,
     cells.flatMap((cell): CellOperation[] => {
       if (isNodeCell(cell))
@@ -176,9 +222,9 @@ export const translateCellSelection = (
               ...((registry.get(cell.kind)?.translate?.(cell, delta) ??
                 cell) as NodeCell),
               geometry: {
-                ...cell.geometry,
-                x: cell.geometry.x + delta[0],
-                y: cell.geometry.y + delta[1],
+                ...geometryOf(cell),
+                x: geometryOf(cell).x + delta[0],
+                y: geometryOf(cell).y + delta[1],
                 derived: false,
               },
             },
@@ -208,6 +254,16 @@ export const translateCellSelection = (
       return [];
     }),
   );
+  if (!options.preserveMembership) {
+    const planners = new Set(
+      cells
+        .map((cell) => registry.get(cell.kind)?.planDrop)
+        .filter((plan) => !!plan),
+    );
+    for (const plan of planners)
+      operations = plan(store, [...expanded], operations, registry);
+  }
+  return operations;
 };
 export { alignCells, arrangeCells, distributeCells } from './arrangement';
 export const reorderCells = (
@@ -333,6 +389,7 @@ export const updateCellAppearance = (
     };
     if (!isNodeCell(cell)) {
       delete (appearance as Partial<NodeAppearance>).fill;
+      delete appearance.styleColor;
       delete colorSources.fill;
     }
     return { type: 'replace_cell', cell: { ...cell, appearance } as Cell };

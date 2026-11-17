@@ -1,3 +1,4 @@
+import { selectPropertyValue } from '../../helpers/property-select';
 import { selectHistoryAction } from './app-actions';
 import { test, expect, type Page } from './service-fixture';
 import { readFile } from 'node:fs/promises';
@@ -28,16 +29,19 @@ test('UML class editing, six-way relationship settings, native save and Mermaid/
   await tools.getByRole('button', { name: '添加类', exact: true }).click();
   await tools.getByRole('button', { name: '添加接口', exact: true }).click();
   await page.getByRole('button', { name: '适配画布', exact: true }).click();
-  await nodes(page, 'uml-class')
-    .first()
-    .click({ position: { x: 12, y: 12 } });
+  const classIds = await nodes(page, 'uml-class').evaluateAll((elements) =>
+    elements.map((element) => element.getAttribute('data-cell-id')!),
+  );
+  const classNode = (index: number) =>
+    umlCanvas(page).locator(`[data-cell-id="${classIds[index]}"]`);
+  await classNode(0).click({ position: { x: 12, y: 12 } });
   const attributes = page.getByLabel('属性（每行一项）');
   await attributes.fill('+id: string\n-name: string');
   await attributes.press('Tab');
-  await expect(nodes(page, 'uml-class').first()).toContainText('+id: string');
+  await expect(classNode(0)).toContainText('+id: string');
   await createWithParameters(page, '添加关系');
   await expect(page.getByLabel('关系类型')).toBeVisible();
-  await page.getByLabel('关系类型').selectOption('realization');
+  await selectPropertyValue(page.getByLabel('关系类型'), 'realization');
   await page.getByLabel('来源多重性').fill('1');
   await page.getByLabel('来源多重性').press('Tab');
   const saved = async () =>
@@ -73,15 +77,14 @@ test('UML class editing, six-way relationship settings, native save and Mermaid/
   await page.reload();
   await expect(nodes(page, 'uml-class')).toHaveCount(2);
   await expect(nodes(page, 'uml-relation')).toHaveCount(1);
-  await expect(nodes(page, 'uml-class').first()).toContainText('+id: string');
+  await expect(classNode(0)).toContainText('+id: string');
   const classNodes = nodes(page, 'uml-class');
-  await classNodes.first().click({ position: { x: 12, y: 12 } });
-  await classNodes
-    .last()
-    .click({ modifiers: ['Shift'], position: { x: 12, y: 12 } });
-  await classNodes
-    .first()
-    .click({ button: 'right', position: { x: 12, y: 12 } });
+  await classNode(0).click({ position: { x: 12, y: 12 } });
+  await classNode(1).click({
+    modifiers: ['Shift'],
+    position: { x: 12, y: 12 },
+  });
+  await classNode(0).click({ button: 'right', position: { x: 12, y: 12 } });
   const selection = page.getByRole('menu', {
     name: /^(画布编辑|Canvas editing)$/,
   });
@@ -98,7 +101,7 @@ test('UML class editing, six-way relationship settings, native save and Mermaid/
   await umlCanvas(page).press('ControlOrMeta+z');
   await expect(classNodes).toHaveCount(2);
   await expect.poll(groupCount).toBe(1);
-  await classNodes.first().click({ position: { x: 12, y: 12 } });
+  await classNode(0).click({ position: { x: 12, y: 12 } });
   await umlCanvas(page).press('ControlOrMeta+Shift+g');
   await expect.poll(groupCount).toBe(0);
 });
@@ -124,7 +127,10 @@ test('UML sequence native import preserves nested events, activation, self calls
       (f: any) =>
         Object.values(f.cells).some((c: any) => c.kind === 'uml-sequence-root'),
     ) as any;
-  const message = nodes(page, 'uml-message').first();
+  const messageId = (await nodes(page, 'uml-message')
+    .first()
+    .getAttribute('data-cell-id'))!;
+  const message = umlCanvas(page).locator(`[data-cell-id="${messageId}"]`);
   // Import selects the new graph; clear its transform handles before picking a line.
   await umlCanvas(page).press('Escape');
   const point = await message.locator('[data-edge-hit]').evaluate((element) => {
@@ -159,7 +165,7 @@ test('UML sequence native import preserves nested events, activation, self calls
   await page.reload();
   await expect(nodes(page, 'uml-message')).toHaveCount(3);
   await expect(umlCanvas(page).locator('[data-uml-activation]')).toHaveCount(1);
-  await expect(nodes(page, 'uml-message').first()).toContainText('changed()');
+  await expect(message).toContainText('changed()');
 });
 
 test('UML structural drags reorder messages and participants and preserve one-step undo', async ({

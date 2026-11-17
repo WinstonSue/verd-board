@@ -22,6 +22,20 @@ import { DrawKind } from './public-api';
 export class TextNodeUtil extends NodeUtil {
   readonly kind = 'text';
 }
+export class CardNodeUtil extends NodeUtil {
+  readonly kind = DrawKind.card;
+  override capabilities(
+    store: CellStore,
+    cell: Cell,
+    mount: import('@sue/board-core').FrameMount,
+  ) {
+    return {
+      ...super.capabilities(store, cell, mount),
+      connect: false,
+      rotate: false,
+    };
+  }
+}
 export class GeometryNodeUtil extends NodeUtil {
   readonly kind = DrawKind.geometry;
 }
@@ -194,6 +208,7 @@ export const registerDrawCells = (registry: CellRegistry) => {
   [
     new GeometryNodeUtil(),
     new TextNodeUtil(),
+    new CardNodeUtil(),
     new ImageNodeUtil(),
     new TableNodeUtil(),
     new SwimlaneNodeUtil(),

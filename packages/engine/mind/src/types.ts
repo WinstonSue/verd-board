@@ -1,6 +1,6 @@
 import type { CellId, NodeAppearance, Point } from '@sue/board-core';
 export type MindColorScheme =
-  'default' | 'colorful' | 'soft' | 'retro' | 'dark' | 'starry';
+  'default' | 'colorful' | 'soft' | 'retro' | 'dark';
 
 /**
  * Mind-specific view settings. Absent fields inherit the owning file's

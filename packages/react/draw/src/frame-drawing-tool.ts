@@ -13,6 +13,7 @@ import {
 } from '@sue/board-core';
 import {
   createFreehandCell,
+  createCardCell,
   createGeometryCell,
   createTableCell,
   createVectorLineCell,
@@ -158,23 +159,25 @@ export function createFrameDrawingTool({
     }
     if (pointer === 'vector-line') points = points.map(roundFramePoint);
     const cell =
-      pointer === 'pen'
-        ? createFreehandCell(cellId, points, pen)
-        : pointer === 'table' || pointer === 'swimlane'
-          ? createTableCell(
-              cellId,
-              points,
-              3,
-              pointer === 'swimlane' ? 2 : 3,
-              pointer === 'swimlane',
-            )
-          : pointer === 'vector-line'
-            ? createVectorLineCell(cellId, points)
-            : createGeometryCell(
+      pointer === 'card'
+        ? createCardCell(cellId, points)
+        : pointer === 'pen'
+          ? createFreehandCell(cellId, points, pen)
+          : pointer === 'table' || pointer === 'swimlane'
+            ? createTableCell(
                 cellId,
-                pointer === 'text' ? 'text' : shape,
                 points,
-              );
+                3,
+                pointer === 'swimlane' ? 2 : 3,
+                pointer === 'swimlane',
+              )
+            : pointer === 'vector-line'
+              ? createVectorLineCell(cellId, points)
+              : createGeometryCell(
+                  cellId,
+                  pointer === 'text' ? 'text' : shape,
+                  points,
+                );
     if (
       semanticSwimlane &&
       pointer === 'swimlane' &&

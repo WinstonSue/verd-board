@@ -45,6 +45,7 @@ export function frameSelectionActionId(
             : `canvas.selection.${command.type}`;
 }
 export interface FrameActionServices {
+  resetWaypointPlan?(edgeId: string): CellOperation[];
   getAutoCalculation?(): FrameAutoCalculationConfig;
   toggleAutoCalculation?(kind: 'layout' | 'edges'): void;
   selectionState(command: FrameSelectionOperation): {
@@ -107,6 +108,27 @@ export function createFrameActions(options: {
   });
   const add = (definition: FrameActionDefinition) =>
     registry.register(definition);
+  add({
+    id: 'canvas.edge.reset-waypoints',
+    label: { zh: '清除所有锚点', en: 'Reset all waypoints' },
+    category: 'canvas',
+    effect: 'content',
+    palette: false,
+    validateArgs: (args: unknown): args is { edgeId: string } =>
+      !!args &&
+      typeof args === 'object' &&
+      typeof (args as { edgeId?: unknown }).edgeId === 'string',
+    getState: (c, args: { edgeId: string }) => ({
+      ...editingState(c),
+      enabled:
+        !c.disabled &&
+        (options.services().resetWaypointPlan?.(args.edgeId)?.length ?? 0) > 0,
+    }),
+    execute: (c, args: { edgeId: string }) =>
+      c.runOperations(
+        options.services().resetWaypointPlan?.(args.edgeId) ?? [],
+      ),
+  });
   const selectionLabel = (
     command: FrameSelectionOperation,
     language: 'zh' | 'en',

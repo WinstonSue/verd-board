@@ -60,6 +60,7 @@ const resolveRoutingTerminal = (
 };
 
 export interface EdgeRoutingContext {
+  forEdge?: (edge: EdgeCell) => EdgeRoutingContext;
   /** Shared across equivalent contexts; entries contain pure derived geometry. */
   crossingsCache?: {
     signature?: string;
@@ -103,6 +104,11 @@ export interface EdgeRoutingContext {
     }
   >;
 }
+
+export const edgeRoutingContextFor = (
+  context: EdgeRoutingContext,
+  edge: EdgeCell,
+): EdgeRoutingContext => context.forEdge?.(edge) ?? context;
 
 /** Direct visible siblings share one coordinate system. Layer bands are
  * transparent containers; nested Frame shells remain obstacles in the parent. */
@@ -196,6 +202,32 @@ export const createEdgeRoutingContext = (
     // Retain only the current store and pure batch output after preparation.
     previous = undefined;
   };
+  if (policy.edgeObstacles) {
+    const contexts = new Map<EdgeCell, EdgeRoutingContext>();
+    context.forEdge = (edge) => {
+      const found = contexts.get(edge);
+      if (found) return found;
+      const boxes = policy.edgeObstacles!(
+        store,
+        frameId,
+        edge,
+        obstacles,
+        geometry,
+      );
+      if (boxes === obstacles) return context;
+      let spatial: ReturnType<typeof createSpatialIndex> | undefined;
+      const scoped = {
+        ...context,
+        forEdge: undefined,
+        obstacles: boxes,
+        obstacleById: new Map(boxes.map((box) => [box.id, box])),
+        queryObstacles: (bounds: RectangleClient) =>
+          (spatial ??= createSpatialIndex(boxes)).query(bounds),
+      };
+      contexts.set(edge, scoped);
+      return scoped;
+    };
+  }
   return context;
 };
 
@@ -513,6 +545,9 @@ function planFrameRoutes(
         ...target.point,
         target.side,
         edge.appearance?.strokeWidth,
+        context.forEdge
+          ? edgeRoutingContextFor(context, edge).obstacles
+          : undefined,
       ];
     }),
   ]);
@@ -535,7 +570,7 @@ function planFrameRoutes(
         source.side,
         target.point,
         target.side,
-        context.obstacles,
+        edgeRoutingContextFor(context, edge).obstacles,
         {
           sourceId: 'cellId' in edge.source ? edge.source.cellId : undefined,
           targetId: 'cellId' in edge.target ? edge.target.cellId : undefined,
@@ -546,7 +581,7 @@ function planFrameRoutes(
           strokeWidth: edge.appearance?.strokeWidth,
           occupied,
           crossingPenalty,
-          obstacleQuery: context.queryObstacles,
+          obstacleQuery: edgeRoutingContextFor(context, edge).queryObstacles,
         },
       );
     const old = previous?.routes.get(edge.id);
@@ -621,7 +656,7 @@ function planFrameRoutes(
         old.source.side,
         old.target.point,
         old.target.side,
-        context.obstacles,
+        edgeRoutingContextFor(context, edge).obstacles,
         {
           sourceId: 'cellId' in edge.source ? edge.source.cellId : undefined,
           targetId: 'cellId' in edge.target ? edge.target.cellId : undefined,
@@ -632,7 +667,7 @@ function planFrameRoutes(
           strokeWidth: edge.appearance?.strokeWidth,
           occupied: other,
           crossingPenalty,
-          obstacleQuery: context.queryObstacles,
+          obstacleQuery: edgeRoutingContextFor(context, edge).queryObstacles,
         },
       );
       if (
@@ -661,7 +696,7 @@ function planFrameRoutes(
           old.result.points,
           old.source.side,
           old.target.side,
-          context.obstacles,
+          edgeRoutingContextFor(context, edge).obstacles,
           {
             sourceId: 'cellId' in edge.source ? edge.source.cellId : undefined,
             targetId: 'cellId' in edge.target ? edge.target.cellId : undefined,
@@ -716,7 +751,7 @@ function planFrameRoutes(
         { id: edge.id, points: old.result.points, bridgeable: true },
         old.source.side,
         old.target.side,
-        context.obstacles,
+        edgeRoutingContextFor(context, edge).obstacles,
         others,
         {
           sourceId: 'cellId' in edge.source ? edge.source.cellId : undefined,
@@ -855,7 +890,11 @@ export const edgeRoutePoints = (
   routing?: EdgeRoutingContext,
 ): Point[] => {
   edge = normalizeEdgeRoute(edge, routing?.registry);
-  if (routing?.preview && automaticRoute(edge, routing.registry)) {
+  if (
+    routing?.preview &&
+    edgeRoutingContextFor(routing, edge) === routing &&
+    automaticRoute(edge, routing.registry)
+  ) {
     const settled = routing.preview;
     const prior = settled.routes.get(edge.id);
     const terminals = settled.terminals?.get(edge.id);
@@ -945,7 +984,7 @@ export const edgeRoutePoints = (
       source.side,
       target.point,
       target.side,
-      routing.obstacles,
+      edgeRoutingContextFor(routing, edge).obstacles,
       {
         sourceId: 'cellId' in edge.source ? edge.source.cellId : undefined,
         targetId: 'cellId' in edge.target ? edge.target.cellId : undefined,

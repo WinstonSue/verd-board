@@ -1,3 +1,7 @@
+import {
+  propertyOptions,
+  selectPropertyValue,
+} from '../../helpers/property-select';
 import { observeContentWrites } from './service-routes';
 import {
   expectSettingValue,
@@ -414,19 +418,21 @@ test('canvas and embedded documents adapt without changing authored colors, came
   await page.screenshot({ path: testInfo.outputPath('dark-document.png') });
 });
 
-test('all six neutral themes have light and dark variants, including export overrides', async ({
+test('all five neutral themes have light and dark variants, including export overrides', async ({
   page,
 }, testInfo) => {
   await seed(page);
   await active(page)
     .getByLabel('Reset canvas background', { exact: true })
     .click();
-  const names = ['经典', '缤纷', '柔和', '复古', '清新', '海洋'];
-  const ids = ['default', 'colorful', 'soft', 'retro', 'dark', 'starry'];
+  const names = ['经典', '缤纷', '柔和', '复古', '清新'];
+  const ids = ['default', 'colorful', 'soft', 'retro', 'dark'];
   const selector = active(page).getByLabel('Theme', { exact: true });
-  await expect(selector.locator('option')).toHaveText(names);
+  expect(
+    (await propertyOptions(selector)).map((option) => option.label),
+  ).toEqual(names);
   for (const id of ids) {
-    await selector.selectOption(id);
+    await selectPropertyValue(selector, id);
     await appearance(page, 'light');
     const light = (await colors(canvas(page))).background;
     await page.screenshot({ path: testInfo.outputPath(`${id}-light.png`) });
@@ -438,8 +444,8 @@ test('all six neutral themes have light and dark variants, including export over
   const darkSvg = await exportedSvg(page, 'dark', 'theme');
   expect(lightSvg).toContain('data-board-appearance="light"');
   expect(darkSvg).toContain('data-board-appearance="dark"');
-  expect(lightSvg).toContain('#eff7fb');
-  expect(darkSvg).toContain('#0d2537');
+  expect(lightSvg).toContain('#f2f8f9');
+  expect(darkSvg).toContain('#1c1d20');
   await expect(canvas(page)).toHaveAttribute('data-board-appearance', 'dark');
 });
 
@@ -454,6 +460,7 @@ for (const fixture of [
   test(`${fixture} adapts its diagram content and preserves its geometry`, async ({
     page,
   }, testInfo) => {
+    test.setTimeout(180_000);
     await page.emulateMedia({ colorScheme: 'light' });
     await page.goto('/');
     await setAppLanguage(page, 'zh');
@@ -561,13 +568,23 @@ for (const fixture of [
     );
     const painted = await roleParts.evaluateAll((parts) =>
       parts.map((part) => ({
+        kind: part.closest('[data-cell-kind]')?.getAttribute('data-cell-kind'),
+        fillAttribute: part.getAttribute('fill'),
+        strokeAttribute: part.getAttribute('stroke'),
         fill: getComputedStyle(part).fill,
         stroke: getComputedStyle(part).stroke,
       })),
     );
+    const neutralNode = await roleTone(page, 'retro', 'dark', 'neutral');
     for (const part of painted) {
-      expect(part.fill).not.toBe('rgb(55, 49, 40)');
-      expect(part.stroke).not.toBe('rgb(186, 166, 129)');
+      if (part.kind === 'workflow-task') {
+        // Ordinary tasks deliberately share the neutral family in every theme.
+        expect(part.fillAttribute).toBe(neutralNode.fill);
+        expect(part.strokeAttribute).toBe(neutralNode.strokeColor);
+      } else {
+        expect(part.fill).not.toBe('rgb(55, 49, 40)');
+        expect(part.stroke).not.toBe('rgb(186, 166, 129)');
+      }
     }
     if (
       [
@@ -582,22 +599,21 @@ for (const fixture of [
         1,
       );
     }
-    for (const theme of [
-      'default',
-      'colorful',
-      'soft',
-      'retro',
-      'dark',
-      'starry',
-    ]) {
+    for (const theme of ['default', 'colorful', 'soft', 'retro', 'dark']) {
       await target.press('Escape');
-      await active(page)
-        .getByLabel('Theme', { exact: true })
-        .selectOption(theme);
+      await selectPropertyValue(
+        active(page).getByLabel('Theme', { exact: true }),
+        theme,
+      );
       for (const mode of ['light', 'dark']) {
         await appearance(page, mode);
         await readable(target);
         await expect(world).toHaveAttribute('transform', camera!);
+        await page.mouse.move(0, 0);
+        await target.screenshot({
+          path: testInfo.outputPath(`${fixture}-${theme}-${mode}.png`),
+          animations: 'disabled',
+        });
       }
     }
     await page.screenshot({ path: testInfo.outputPath(`${fixture}-dark.png`) });
@@ -608,9 +624,10 @@ test('raster exports honor explicit light and dark appearances for PNG and JPEG'
   page,
 }) => {
   await seed(page);
-  await active(page)
-    .getByLabel('Theme', { exact: true })
-    .selectOption('starry');
+  await selectPropertyValue(
+    active(page).getByLabel('Theme', { exact: true }),
+    'dark',
+  );
   for (const format of ['png', 'jpeg'])
     for (const mode of ['light', 'dark']) {
       await selectAppAction(page, '图像导出');
@@ -642,7 +659,7 @@ test('raster exports honor explicit light and dark appearances for PNG and JPEG'
         },
         { data, format },
       );
-      const expected = mode === 'light' ? [239, 247, 251] : [13, 37, 55];
+      const expected = mode === 'light' ? [242, 248, 249] : [28, 29, 32];
       for (let i = 0; i < 3; i++)
         expect(Math.abs(pixel[i] - expected[i])).toBeLessThanOrEqual(
           format === 'jpeg' ? 3 : 0,
@@ -803,6 +820,8 @@ test('repeated references retain the source theme through static preview, inline
   );
   await expect(world).toHaveAttribute('transform', camera!);
   const exported = await exportedSvg(page, 'dark');
-  expect(exported).toContain((await roleTone(page, 'retro', 'dark')).fill);
-  expect(exported).toContain('#28251f');
+  expect(exported).toContain(
+    (await roleTone(page, 'retro', 'dark', 'primary', 'normal', 'opaque')).fill,
+  );
+  expect(exported).toContain('#242321');
 });

@@ -9,7 +9,6 @@ import {
 import { createPortal } from 'react-dom';
 import type { Editor } from '@tiptap/react';
 import {
-  AllSelection,
   NodeSelection,
   Plugin,
   PluginKey,
@@ -26,6 +25,12 @@ import {
 } from './document-block-order';
 import { useDocumentBubble } from './document-editor-bubble';
 import { DocumentSelectionToolbar } from './document-selection-toolbar';
+import { DocumentTableControls } from './document-table-controls';
+import { tableSelection, tableScopeKey } from './document-table';
+import {
+  documentBlockHandleLeft,
+  hasDocumentTextSelection,
+} from './document-controls';
 
 const highlightKey = new PluginKey('documentBlockHighlight');
 const blockSelector =
@@ -205,6 +210,21 @@ export function DocumentBlockPopover({
     )
       return;
     const { state, view } = editor;
+    if (block.node.type.name === 'table' && !readonly) {
+      const selection = tableSelection(state.doc, block.start, 'table');
+      if (selection) {
+        setOpen(null);
+        setTextToolbarVisible(false);
+        view.dispatch(
+          state.tr
+            .setSelection(selection)
+            .setMeta(tableScopeKey, 'table')
+            .setMeta('verd-table-menu-focus', true)
+            .setMeta('verd-table-previous', previous),
+        );
+      }
+      return;
+    }
     if (
       readonly &&
       !block.node.attrs['blockId'] &&
@@ -278,8 +298,7 @@ export function DocumentBlockPopover({
           !dismissedSelection.current &&
           !readonly &&
           !editor.view.composing &&
-          (selection instanceof TextSelection ||
-            selection instanceof AllSelection) &&
+          hasDocumentTextSelection(selection) &&
           (editor.view.hasFocus() || inTextToolbar(document.activeElement)),
       );
     };
@@ -536,6 +555,10 @@ export function DocumentBlockPopover({
       }
       const bounds = element.getBoundingClientRect();
       let centerY = bounds.top + Math.min(bounds.height / 2, 14);
+      if (shown.node.type.name === 'table') {
+        const table = element.querySelector('table') ?? element;
+        centerY = table.getBoundingClientRect().top;
+      }
       if (textStart !== null) {
         const text = view.nodeDOM(textStart);
         const textBounds =
@@ -553,7 +576,7 @@ export function DocumentBlockPopover({
         bounds.height &&
           centerY >= Math.max(0, clip?.top ?? 0) &&
           centerY < Math.min(window.innerHeight, clip?.bottom ?? Infinity)
-          ? { left: Math.max(4, bounds.left - 28), centerY }
+          ? { left: documentBlockHandleLeft(element), centerY }
           : null,
       );
     };
@@ -724,6 +747,14 @@ export function DocumentBlockPopover({
   const group = open?.block.node.type.name;
   return (
     <>
+      {controller && !readonly && !suspended && !dragging && (
+        <DocumentTableControls
+          editor={editor}
+          controller={controller}
+          zh={zh}
+          onNotice={onNotice}
+        />
+      )}
       {shown &&
         (gripPosition || dragging) &&
         !suspended &&

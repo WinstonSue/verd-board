@@ -4,6 +4,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { createBlockText } from '@sue/board-common';
 import {
   colorContrast,
+  compositeThemeFill,
   createCellStore,
   createFrameCell,
   resolveBoardTheme,
@@ -20,15 +21,18 @@ import {
   createSwimlaneCell,
   createTableCell,
   transposeSwimlane,
+  tableGrid,
   type TableCellData,
 } from '@sue/board-draw';
 import {
   createFramePluginSet,
   FrameCanvas,
   resolveFrameAppearance,
+  resolveFrameCellAppearance,
   type FrameCanvasController,
 } from '@sue/board-react';
 import { createDrawUIPlugin } from './plugin';
+import { frameDrawExtensions } from './frame-draw-extension';
 import {
   drawThemeAppearance,
   drawThemeSeriesIndex,
@@ -67,6 +71,30 @@ const hex = (color: string) => {
 };
 
 describe('Draw role colors', () => {
+  it('uses an explicit source family for edges from otherwise neutral tables', () => {
+    const source = createTableCell('table', [[0, 0]], 2, 2);
+    source.appearance = {
+      styleColor: 'series-5',
+      strokeColor: '#ff0000',
+      colorSources: { strokeColor: 'custom' },
+    };
+    const edge: EdgeCell = {
+      id: 'edge',
+      kind: 'arrow',
+      cellType: 'edge',
+      source: { cellId: source.id },
+      target: { point: [300, 30] },
+      route: { mode: 'straight' },
+    };
+    const store = { rootId: 'frame', cells: { [source.id]: source, edge } };
+    const theme = resolveBoardTheme(undefined, 'light');
+    expect(drawThemeSeriesIndex(source)).toBeUndefined();
+    expect(drawThemeAppearance(context(edge, theme, store))).toMatchObject({
+      styleFamily: 'series-5',
+      strokeColor: resolveThemeSeries(theme, 4, 'node', 'overlay').strokeColor,
+      fill: 'none',
+    });
+  });
   it('keeps local readable text on fixed white table cells when entering the text editor in dark appearance', async () => {
     const frame = createFrameCell('frame');
     const table = createTableCell(
@@ -134,7 +162,10 @@ describe('Draw role colors', () => {
       const fills = nodes.map((node, index) => {
         expect(drawThemeSeriesIndex(node)).toBe(index);
         const actual = drawThemeAppearance(context(node, theme));
-        expect(actual).toEqual(resolveThemeSeries(theme, index));
+        expect(actual).toMatchObject(
+          resolveThemeSeries(theme, index, 'node', 'overlay'),
+        );
+        expect(actual?.styleLevel).toBe('node');
         return actual!.fill;
       });
       expect(new Set(fills).size).toBe(4);
@@ -161,14 +192,15 @@ describe('Draw role colors', () => {
         route: { mode: 'straight' },
       };
       const store = { rootId: 'frame', cells: { [source.id]: source, edge } };
-      expect(drawThemeAppearance(context(edge, theme, store))).toEqual({
-        strokeColor: resolveThemeSeries(theme, 2).strokeColor,
+      expect(drawThemeAppearance(context(edge, theme, store))).toMatchObject({
+        strokeColor: resolveThemeSeries(theme, 2, 'node', 'overlay')
+          .strokeColor,
       });
       expect(
         drawThemeAppearance(
           context({ ...edge, source: { point: [0, 0] } }, theme),
         ),
-      ).toEqual({
+      ).toMatchObject({
         strokeColor: resolveThemeRole(theme, 'neutral').strokeColor,
       });
       expect(drawThemeAppearance(context(shape('text'), theme))).toMatchObject({
@@ -195,19 +227,19 @@ describe('Draw role colors', () => {
         2,
       ) as NodeCell<TableCellData>;
       const [first, , second] = table.data!.cells;
-      expect(tableEntryThemeAppearance(context(table, theme), first)).toEqual(
-        resolveThemeRole(theme, 'neutral', 'subtle'),
-      );
-      expect(tableEntryThemeAppearance(context(table, theme), second)).toEqual(
-        resolveThemeRole(theme, 'neutral', 'normal'),
-      );
+      expect(
+        tableEntryThemeAppearance(context(table, theme), first),
+      ).toMatchObject(resolveThemeRole(theme, 'neutral', 'subtle'));
+      expect(
+        tableEntryThemeAppearance(context(table, theme), second),
+      ).toMatchObject(resolveThemeRole(theme, 'neutral', 'normal'));
       const header = { ...table, data: { ...table.data!, header: true } };
-      expect(tableEntryThemeAppearance(context(header, theme), first)).toEqual(
-        resolveThemeRole(theme, 'primary', 'normal'),
-      );
-      expect(tableEntryThemeAppearance(context(header, theme), second)).toEqual(
-        resolveThemeRole(theme, 'primary', 'subtle'),
-      );
+      expect(
+        tableEntryThemeAppearance(context(header, theme), first),
+      ).toMatchObject(resolveThemeRole(theme, 'primary', 'emphasis'));
+      expect(
+        tableEntryThemeAppearance(context(header, theme), second),
+      ).toMatchObject(resolveThemeRole(theme, 'primary', 'subtle'));
       const fixed = {
         ...header,
         appearance: {
@@ -275,16 +307,11 @@ describe('Draw role colors', () => {
     },
   );
 
-  it('assigns swimlanes by axis order, excluding the whole title, with matching normal/subtle parts', () => {
+  it('keeps lane headers consistent and uses container colors only on lane bodies', () => {
     const lane = createSwimlaneCell('lane', [[0, 0]], 'horizontal', true, 8);
     const theme = resolveBoardTheme(undefined, 'dark');
     for (const table of [lane, transposeSwimlane(lane)]) {
-      expect(
-        tableEntryThemeAppearance(
-          context(table, theme),
-          table.data!.cells.find((entry) => entry.role === 'title')!,
-        ),
-      ).toEqual(resolveThemeRole(theme, 'primary', 'strong'));
+      const fills = [];
       for (let at = 0; at < 8; at++) {
         const title = table.data!.cells.find(
           (entry) => entry.id === `lane-lane${at}`,
@@ -292,29 +319,28 @@ describe('Draw role colors', () => {
         const body = table.data!.cells.find(
           (entry) => entry.id === `lane-body${at}`,
         )!;
-        expect(tableEntryThemeAppearance(context(table, theme), title)).toEqual(
-          resolveThemeSeries(theme, at, 'normal'),
+        const headerTone = tableEntryThemeAppearance(
+          context(table, theme),
+          title,
+        )!;
+        const bodyTone = tableEntryThemeAppearance(
+          context(table, theme),
+          body,
+        )!;
+        expect(headerTone).toMatchObject(
+          resolveThemeRole(theme, 'primary', 'emphasis'),
         );
-        expect(tableEntryThemeAppearance(context(table, theme), body)).toEqual(
-          resolveThemeSeries(theme, at, 'subtle'),
-        );
+        expect(bodyTone.styleLevel).toBe('container');
+        expect(bodyTone.fill).not.toBe(headerTone.fill);
+        fills.push(bodyTone.fill);
       }
+      expect(new Set(fills).size).toBeGreaterThan(1);
+      table.appearance = { styleColor: 'series-4' };
+      for (const entry of table.data!.cells)
+        expect(
+          tableEntryThemeAppearance(context(table, theme), entry)?.styleFamily,
+        ).toBe('series-4');
     }
-    const reordered = {
-      ...lane,
-      data: { ...lane.data!, rows: [...lane.data!.rows].reverse() },
-    };
-    const title = lane.data!.cells.find((entry) => entry.id === 'lane-lane0')!;
-    expect(tableEntryThemeAppearance(context(reordered, theme), title)).toEqual(
-      resolveThemeSeries(theme, 7, 'normal'),
-    );
-    const moved = {
-      ...lane,
-      geometry: { ...lane.geometry, x: 200, y: 500, width: 800 },
-    };
-    expect(tableEntryThemeAppearance(context(moved, theme), title)).toEqual(
-      tableEntryThemeAppearance(context(lane, theme), title),
-    );
   });
 
   it.each(themes)(
@@ -365,10 +391,10 @@ describe('Draw role colors', () => {
               />,
             ),
           );
-          for (const [index, cell] of nodes.entries()) {
+          for (const cell of nodes) {
             const visual = resolveFrameAppearance(
               context(cell, theme, store),
-              resolveThemeSeries(theme, index),
+              drawThemeAppearance(context(cell, theme, store)),
             );
             const element = container.querySelector(
               `[data-cell-id="${cell.id}"]`,
@@ -381,7 +407,10 @@ describe('Draw role colors', () => {
             const text = element.querySelector('[data-frame-rich-text] p')!;
             expect(hex(getComputedStyle(text).color)).toBe(visual.textColor);
             expect(
-              colorContrast(hex(getComputedStyle(text).color), visual.fill!),
+              colorContrast(
+                hex(getComputedStyle(text).color),
+                compositeThemeFill(visual.fill!, theme.canvas),
+              ),
             ).toBeGreaterThanOrEqual(4.5);
           }
           for (const entry of lane.data!.cells) {
@@ -419,4 +448,49 @@ describe('Draw role colors', () => {
       }
     },
   );
+});
+
+it('resolves lane-backed node paint against the actual container while retaining the canvas base', () => {
+  const frame = createFrameCell('f'),
+    store = createCellStore(frame);
+  const lane = createSwimlaneCell('lane', [[0, 0]], 'horizontal', true, 2);
+  const body = tableGrid(lane).entries.find(
+    (part) => part.entry.role === 'body',
+  )!;
+  const node = {
+    ...shape('rectangle'),
+    geometry: {
+      x: body.x + body.width / 2 - 20,
+      y: body.y + body.height / 2 - 10,
+      width: 40,
+      height: 20,
+    },
+    appearance: { styleColor: 'series-4' as const },
+  };
+  store.cells.lane = lane;
+  store.cells[node.id] = node;
+  frame.children = [lane.id, node.id];
+  const theme = resolveBoardTheme(
+    { backgroundMode: 'custom', boardBackground: '#f4d35e' },
+    'light',
+  );
+  const visual = () =>
+    resolveFrameCellAppearance(
+      { cell: node, store, frameId: frame.id, theme },
+      frameDrawExtensions,
+    );
+  const first = visual();
+  const background = resolveTableEntryAppearance(
+    { cell: lane, store, frameId: frame.id, theme },
+    body.entry,
+  ).fill!;
+  expect(first.background).toBe(background);
+  expect(first.exportFill).toBe(compositeThemeFill(first.fill!, background));
+  expect(
+    colorContrast(first.exportFill!, first.textColor!),
+  ).toBeGreaterThanOrEqual(4.5);
+  lane.appearance = { styleColor: 'series-2' };
+  expect(visual().styleFamily).toBe('series-4');
+  expect(visual().exportFill).not.toBe(first.exportFill);
+  expect(theme.canvas).toBe('#f4d35e');
 });

@@ -9,12 +9,28 @@ import {
 } from 'react';
 import type { Viewport } from '@sue/board-core';
 
+/** Body and sibling control overlays can belong to the same logical cell. */
+export function frameHoverOwner(target: EventTarget | null): string | null {
+  if (!(target instanceof Element)) return null;
+  const owner = target.closest(
+    '[data-port-edge-id], [data-edge-controls], [data-port-node-id], [data-cell-id]',
+  );
+  return (
+    owner?.getAttribute('data-port-edge-id') ??
+    owner?.getAttribute('data-edge-controls') ??
+    owner?.getAttribute('data-port-node-id') ??
+    owner?.getAttribute('data-cell-id') ??
+    null
+  );
+}
+
 /** Canvas-local, published camera; input accumulation stays in the canvas ref. */
 export function createFrameCameraStore(initial: Viewport, frameId: string) {
   let snapshot = initial;
   const listeners = new Set<() => void>();
   const viewportListeners = new Set<() => void>();
   let hoveredId: string | null = null;
+  let hoverSource: object | undefined;
   let connectionTargetId: string | null = null;
   const cellListeners = new Map<string, Set<() => void>>();
   return {
@@ -37,16 +53,23 @@ export function createFrameCameraStore(initial: Viewport, frameId: string) {
       if (id) cellListeners.get(id)?.forEach((notify) => notify());
     },
     isHovered: (id?: string) => id != null && hoveredId === id,
-    setHovered(id: string | null) {
+    setHovered(id: string | null, source?: object) {
+      hoverSource = id === null ? undefined : source;
       if (id === hoveredId) return;
       const previous = hoveredId;
       hoveredId = id;
       if (previous) cellListeners.get(previous)?.forEach((notify) => notify());
       if (id) cellListeners.get(id)?.forEach((notify) => notify());
     },
-    leave(id: string) {
-      if (hoveredId !== id) return;
+    leave(id: string, source?: object, next: EventTarget | null = null) {
+      if (hoveredId !== id || hoverSource !== source) return;
+      if (frameHoverOwner(next) === id) {
+        // A following body enter may precede a queued control leave.
+        hoverSource = undefined;
+        return;
+      }
       hoveredId = null;
+      hoverSource = undefined;
       cellListeners.get(id)?.forEach((notify) => notify());
     },
     subscribeCell(id: string | undefined, listener: () => void) {

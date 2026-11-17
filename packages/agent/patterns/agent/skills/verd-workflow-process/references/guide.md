@@ -10,7 +10,7 @@
 
 编辑示例：先 inspect 获得身份与正文块，再使用 document.splice、node.upsert 或对应关系操作，plan 后 validate 与 preview。
 
-结构规则：以 verd rules 和 describe 返回的已安装版本为准。视觉布局需要复核预览。 先确定主流程方向，再选端口：横向流程默认右出左入，纵向流程默认下出上入；不要用显式端口绕过普通流程的方向偏好。validate/plan 的 workflow\.port-direction 是非阻断提示，每条提示都要修正或确认是必要的分支、回路，并结合预览自检；允许保留例外，不自动改口。
+结构规则：以 verd rules 和 describe 返回的已安装版本为准。构图、端口选择和预览复核遵循上方图表编写规范。
 
 ```json
 {

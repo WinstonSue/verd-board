@@ -1,3 +1,9 @@
+import {
+  expectPropertyPopupAnchored,
+  expectPropertyValue,
+  propertySelectRoot,
+  selectPropertyValue,
+} from '../../helpers/property-select';
 import { selectHistoryAction } from '../../web-e2e/src/app-actions';
 import { electron, writeDesktopLauncher } from './desktop-launcher';
 import {
@@ -133,6 +139,86 @@ test('Desktop numeric inspector commits one history step, cancels locked drafts 
     await ready(page);
     await canvas(page).locator('[data-cell-kind="geometry"]').click();
     await expect(x(page)).toHaveValue('123');
+  } finally {
+    await desktop
+      .evaluate(({ BrowserWindow, app }) => {
+        for (const window of BrowserWindow.getAllWindows()) window.destroy();
+        app.exit(0);
+      })
+      .catch(() => undefined);
+    await desktop.close().catch(() => undefined);
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
+test('Desktop inspector dropdowns remain anchored after window movement, resize and zoom', async () => {
+  const directory = await mkdtemp(path.join(tmpdir(), 'verd-dropdown-e2e-'));
+  const userData = path.join(directory, 'user-data');
+  await mkdir(userData);
+  const launcher = path.join(directory, 'launch.cjs');
+  await writeDesktopLauncher(launcher, userData);
+  const workspace = path.join(userData, 'workspaces', 'default');
+  await seedEmptyCanvas(workspace);
+  const desktop = await electron.launch({
+    args: [launcher],
+    env: { ...process.env, VERDBOARD_WORKSPACE_PATH: workspace },
+  });
+  try {
+    const page = await desktop.firstWindow();
+    await desktop.evaluate(({ BrowserWindow, screen }) => {
+      const { x, y } = screen.getPrimaryDisplay().workArea;
+      BrowserWindow.getAllWindows()[0].setBounds({
+        x: x + 20,
+        y: y + 30,
+        width: 1200,
+        height: 800,
+      });
+    });
+    await ready(page);
+    const theme = panel(page).getByLabel('Theme', { exact: true });
+    const combo = propertySelectRoot(theme).getByRole('combobox');
+    await expect(panel(page).locator('select')).toHaveCount(0);
+    let popup = await expectPropertyPopupAnchored(theme);
+    await desktop.evaluate(({ BrowserWindow }) => {
+      const window = BrowserWindow.getAllWindows()[0];
+      const bounds = window.getBounds();
+      window.setBounds({
+        ...bounds,
+        x: bounds.x + 40,
+        y: bounds.y + 20,
+        width: 1000,
+        height: 720,
+      });
+      window.webContents.setZoomFactor(1.25);
+    });
+    await expectPropertyPopupAnchored(theme);
+    await page.screenshot({
+      path: test.info().outputPath('desktop-inspector-dropdown.png'),
+    });
+    await combo.press('Escape');
+    await expect(popup).not.toBeVisible();
+    await expect(combo).toBeFocused();
+    await selectPropertyValue(theme, 'retro');
+    await expectPropertyValue(theme, 'retro');
+    await selectHistoryAction(page, '撤销');
+    await expectPropertyValue(theme, 'default');
+    await selectHistoryAction(page, '重做');
+    await expectPropertyValue(theme, 'retro');
+    popup = await expectPropertyPopupAnchored(theme);
+    await page.getByTestId('inspector-collapse').click();
+    await expect(popup).not.toBeVisible();
+    await expect(pane(page).getByTestId('save-status')).toHaveAttribute(
+      'data-save-state',
+      'saved',
+    );
+    await page.getByTestId('inspector-expand').click();
+    await page.reload();
+    await expectPropertyValue(theme, 'retro');
+    expect(
+      await desktop.evaluate(
+        ({ BrowserWindow }) => BrowserWindow.getAllWindows().length,
+      ),
+    ).toBe(1);
   } finally {
     await desktop
       .evaluate(({ BrowserWindow, app }) => {

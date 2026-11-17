@@ -72,6 +72,24 @@ describe('authored graph layouts', () => {
       );
       expect(next.cells.diagram).toEqual(store.cells.diagram);
       for (const cell of Object.values(store.cells)) {
+        if (cell.kind === 'architecture-layer') {
+          const layer = next.cells[cell.id] as NodeCell<ArchitectureLayerData>;
+          expect(layer.data).toEqual((cell as NodeCell).data);
+          expect(layer.content).toEqual((cell as NodeCell).content);
+          expect(layer.geometry.derived).toBe(false);
+          for (const id of layer.data!.memberIds) {
+            const member = geometry(next, id);
+            expect(member.x).toBeGreaterThanOrEqual(layer.geometry.x + 20);
+            expect(member.y).toBeGreaterThanOrEqual(layer.geometry.y + 44);
+            expect(member.x + member.width).toBeLessThanOrEqual(
+              layer.geometry.x + layer.geometry.width - 20,
+            );
+            expect(member.y + member.height).toBeLessThanOrEqual(
+              layer.geometry.y + layer.geometry.height - 16,
+            );
+          }
+          continue;
+        }
         if (cell.kind !== 'architecture-module') {
           expect(next.cells[cell.id]).toEqual(cell);
           continue;

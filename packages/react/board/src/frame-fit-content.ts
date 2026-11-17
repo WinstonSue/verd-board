@@ -83,6 +83,19 @@ export function fitNodeContent(
     };
   };
   const natural = measure(text, Infinity, fontSize) ?? fallback(Infinity);
+  if (cell.kind === 'card') {
+    const content =
+      measure(text, Math.max(1, cell.geometry.width - 32), fontSize) ??
+      fallback(Math.max(1, cell.geometry.width - 32));
+    return {
+      ...cell.geometry,
+      height: Math.max(
+        120,
+        cell.geometry.height,
+        Math.ceil(content.height + 32),
+      ),
+    };
+  }
   const shape = nodeShapeGeometry(cell.geometry.outline);
   const cap = Math.max(1, cell.geometry.width);
   let geometry = {

@@ -1,6 +1,7 @@
 import {
   isEdgeCell,
   isFrameCell,
+  isNodeCell,
   type Cell,
   type CellRegistry,
   type CellStore,
@@ -233,7 +234,13 @@ export const createMindFrameExtensions = (
       }: FrameThemeAppearanceContext) => {
         if (cell.cellType !== 'node' || !theme.adaptive) return undefined;
         const value = mindPresentation(store, cell, frameId, theme.appearance);
-        return { fill: value.fill, strokeColor: value.stroke };
+        return {
+          fill: value.fill,
+          strokeColor: value.stroke,
+          textColor: value.color,
+          styleFamily: value.styleFamily,
+          styleLevel: value.styleLevel,
+        };
       },
       textBounds: (context: FrameRenderContext) => {
         if (!context.geometry)
@@ -268,6 +275,22 @@ export const createMindFrameExtensions = (
     })),
     {
       kind: 'mind-summary-edge',
+      themeAppearance: ({ store, cell, frameId, theme }) => {
+        if (!isEdgeCell(cell) || !('cellId' in cell.source)) return undefined;
+        const source = store.cells[cell.source.cellId];
+        if (!isNodeCell(source)) return undefined;
+        const value = mindPresentation(
+          store,
+          source,
+          frameId,
+          theme.adaptive ? theme.appearance : undefined,
+        );
+        return {
+          strokeColor: value.stroke,
+          styleFamily: value.styleFamily,
+          styleLevel: 'node',
+        };
+      },
       render: (context) => createElement(MindSummaryEdge, context),
     },
     {

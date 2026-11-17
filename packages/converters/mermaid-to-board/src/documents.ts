@@ -53,6 +53,7 @@ const DEFAULT_LAYER_LABEL = 'Default';
 type NodeShape = 'box' | 'decision' | 'store' | 'stadium';
 
 interface ParsedNode {
+  explicit?: boolean;
   authoredStyle?: AuthoredStyle;
   id: string;
   label: string;
@@ -67,6 +68,7 @@ interface ParsedLayer {
 }
 
 interface ParsedEdge {
+  strokeStyle?: 'solid' | 'dashed';
   authoredStyle?: AuthoredStyle;
   source: string;
   target: string;
@@ -80,6 +82,7 @@ export interface FlowchartModel {
   positions: Record<string, { x: number; y: number }>;
   meta: VerdMeta;
   edgeMeta: Array<{
+    relation?: 'dependency' | 'flow';
     source: string;
     target: string;
     key?: string;
@@ -89,6 +92,10 @@ export interface FlowchartModel {
 }
 
 interface VerdMeta {
+  layerBounds?: Record<
+    string,
+    { x: number; y: number; width: number; height: number }
+  >;
   frameId?: string;
   cellIds?: Record<string, string>;
   graphs?: {
@@ -99,6 +106,7 @@ interface VerdMeta {
   }[];
   positions?: Record<string, { x: number; y: number }>;
   edges?: Array<{
+    relation?: 'dependency' | 'flow';
     source: string;
     target: string;
     key?: string;
@@ -169,6 +177,7 @@ const rememberNode = (
   }
   const existing = model.nodes.find((node) => node.id === parsed.id);
   if (existing) {
+    if (parsed.label !== undefined || parsed.shape) existing.explicit = true;
     if (parsed.label !== undefined) {
       existing.label = parsed.label;
     }
@@ -178,6 +187,7 @@ const rememberNode = (
     return;
   }
   model.nodes.push({
+    explicit: parsed.label !== undefined || !!parsed.shape,
     id: parsed.id,
     label: parsed.label ?? parsed.id,
     shape: parsed.shape ?? 'box',
@@ -235,6 +245,7 @@ export const parseFlowchart = (definition: string): FlowchartModel => {
       const targetId = parseNodeToken(target)?.id;
       if (sourceId && targetId) {
         model.edges.push({
+          strokeStyle: arrow[2] === '-.->' ? 'dashed' : 'solid',
           source: sourceId,
           target: targetId,
           ...(arrow[3] ? { label: unquote(arrow[3]) } : {}),
@@ -246,7 +257,12 @@ export const parseFlowchart = (definition: string): FlowchartModel => {
       .split(/\s+&\s+/)
       .forEach((token) => rememberNode(model, token, layerId));
   });
+  model.nodes = model.nodes.filter(
+    (node) =>
+      node.explicit || !model.layers.some((layer) => layer.id === node.id),
+  );
   if (
+    !model.layers.length &&
     model.nodes.some((node) => node.layerId === DEFAULT_LAYER_ID) &&
     !model.layers.some((layer) => layer.id === DEFAULT_LAYER_ID)
   ) {
@@ -304,35 +320,48 @@ const nativeSnapshot = (
     const layers = model.layers.length
       ? model.layers
       : [{ id: DEFAULT_LAYER_ID, label: DEFAULT_LAYER_LABEL }];
+    const assigned = new Set<string>();
+    const makeModule = (item: ParsedNode) => {
+      const shape =
+        item.shape === 'decision'
+          ? 'decision'
+          : item.shape === 'store'
+            ? 'store'
+            : 'box';
+      const node = createArchitectureModuleCell(
+        idFor('module', item.id),
+        shape,
+      );
+      node.content = { label: item.label };
+      const position = model.positions[item.id];
+      if (position) {
+        node.geometry = { ...node.geometry, ...position, derived: false };
+        node.data = { shape, placed: true };
+      }
+      add(node, item.id);
+      assigned.add(item.id);
+      return node;
+    };
     for (const [at, layer] of layers.entries()) {
       const cell = createArchitectureLayerCell(
         idFor('layer', layer.id),
         String(at).padStart(8, '0'),
       );
       cell.content = { label: layer.label };
+      const bounds = model.meta.layerBounds?.[layer.id];
+      const position = bounds ?? model.positions[layer.id];
+      if (position)
+        cell.geometry = { ...cell.geometry, ...position, derived: false };
       add(cell, layer.id);
       for (const item of model.nodes.filter(
         (node) => node.layerId === layer.id,
-      )) {
-        const shape =
-          item.shape === 'decision'
-            ? 'decision'
-            : item.shape === 'store'
-              ? 'store'
-              : 'box';
-        const node = createArchitectureModuleCell(
-          idFor('module', item.id),
-          shape,
-        );
-        node.content = { label: item.label };
-        const position = model.positions[item.id];
-        if (position) {
-          node.geometry = { ...node.geometry, ...position, derived: false };
-          node.data = { shape, placed: true };
-        }
-        add(node, item.id);
-        cell.data!.memberIds.push(node.id);
-      }
+      ))
+        cell.data!.memberIds.push(makeModule(item).id);
+    }
+    for (const item of model.nodes.filter((node) => !assigned.has(node.id))) {
+      const node = makeModule(item);
+      node.geometry = { ...node.geometry, derived: false };
+      node.data = { ...(node.data as object), placed: true };
     }
   } else {
     const first =
@@ -416,7 +445,9 @@ const nativeSnapshot = (
                 defaultWorkflowPort(store, sourceNode, targetNode, 'source'),
               ),
             }
-          : {}),
+          : meta?.sourcePort
+            ? { portId: meta.sourcePort }
+            : {}),
       },
       target: {
         cellId: target,
@@ -427,13 +458,26 @@ const nativeSnapshot = (
                 defaultWorkflowPort(store, targetNode, sourceNode, 'target'),
               ),
             }
-          : {}),
+          : meta?.targetPort
+            ? { portId: meta.targetPort }
+            : {}),
       },
       route: { mode: 'orthogonal' },
+      ...(scene === 'architecture' && meta?.relation
+        ? { data: { relation: meta.relation } }
+        : {}),
+      ...(edge.strokeStyle === 'dashed'
+        ? { appearance: { strokeStyle: 'dashed' as const } }
+        : {}),
       labels: edge.label !== undefined ? [{ text: edge.label }] : [],
       ...(edge.authoredStyle && Object.keys(edge.authoredStyle).length
         ? {
-            appearance: authoredEdgeAppearance(edge.authoredStyle),
+            appearance: {
+              ...(edge.strokeStyle === 'dashed'
+                ? { strokeStyle: 'dashed' as const }
+                : {}),
+              ...authoredEdgeAppearance(edge.authoredStyle),
+            },
             labels:
               edge.label !== undefined
                 ? [
@@ -497,21 +541,27 @@ export const flowchartToDomainFrame = (
       label: layer.text,
       authoredStyle: layer.authoredStyle,
     })),
-    nodes: nodes.map((node) => ({
-      id: node.id,
-      label: node.text,
-      authoredStyle: node.authoredStyle,
-      shape:
-        node.type === 'diamond'
-          ? 'decision'
-          : node.type === 'stadium'
-            ? 'stadium'
-            : String(node.type) === 'cylinder'
-              ? 'store'
-              : 'box',
-      layerId: layerOf.get(node.id) ?? DEFAULT_LAYER_ID,
-    })),
+    nodes: nodes
+      .filter((node) => !graph.subGraphs.some((layer) => layer.id === node.id))
+      .map((node) => ({
+        id: node.id,
+        label: node.text,
+        authoredStyle: node.authoredStyle,
+        shape:
+          node.type === 'diamond'
+            ? 'decision'
+            : node.type === 'stadium'
+              ? 'stadium'
+              : String(node.type) === 'cylinder'
+                ? 'store'
+                : 'box',
+        layerId: layerOf.get(node.id) ?? DEFAULT_LAYER_ID,
+      })),
     edges: graph.edges.map((edge) => ({
+      strokeStyle:
+        (edge as unknown as { stroke?: string }).stroke === 'dotted'
+          ? ('dashed' as const)
+          : ('solid' as const),
       source: edge.start,
       target: edge.end,
       authoredStyle: edge.authoredStyle,
@@ -527,6 +577,7 @@ export const flowchartToDomainFrame = (
     meta: parsed.meta,
   };
   if (
+    !model.layers.length &&
     model.nodes.some((node) => node.layerId === DEFAULT_LAYER_ID) &&
     !model.layers.some((layer) => layer.id === DEFAULT_LAYER_ID)
   )
@@ -559,6 +610,14 @@ export const serializeFrameToMermaid = (
   snapshot: FrameSnapshot,
   frameId = snapshot.store.rootId,
 ): string => {
+  const sourceFrame = snapshot.store.cells[frameId];
+  if (
+    isFrameCell(sourceFrame) &&
+    sourceFrame.children.some((id) => snapshot.store.cells[id]?.kind === 'card')
+  )
+    throw new Error(
+      'Mermaid cannot express text cards. Export native JSON instead.',
+    );
   if (umlRoot(snapshot.store, frameId))
     return serializeUmlToMermaid(snapshot, frameId);
   const frame = snapshot.store.cells[frameId];
@@ -577,13 +636,26 @@ export const serializeFrameToMermaid = (
     (node) => node.kind === WorkflowKind.workflowStart,
   );
   const aliases = new Map<string, string>();
-  const meta: VerdMeta = { frameId, cellIds: {}, positions: {}, edges: [] };
+  const meta: VerdMeta = {
+    frameId,
+    cellIds: {},
+    positions: {},
+    edges: [],
+    layerBounds: {},
+  };
   for (const [at, node] of nodes.entries()) {
     const alias = `n${at}`;
     aliases.set(node.id, alias);
     meta.cellIds![alias] = node.id;
     if (!node.geometry.derived)
       meta.positions![alias] = { x: node.geometry.x, y: node.geometry.y };
+    if (node.kind === 'architecture-layer' && !node.geometry.derived)
+      meta.layerBounds![alias] = {
+        x: node.geometry.x,
+        y: node.geometry.y,
+        width: node.geometry.width,
+        height: node.geometry.height,
+      };
   }
   const lines = ['flowchart LR'];
   const write = (node: NodeCell, indent = '  ') => {
@@ -614,6 +686,16 @@ export const serializeFrameToMermaid = (
       }
       lines.push('  end');
     }
+    const assigned = new Set(
+      layers.flatMap(
+        (layer) => (layer.data as ArchitectureLayerData).memberIds,
+      ),
+    );
+    nodes
+      .filter(
+        (node) => node.kind === 'architecture-module' && !assigned.has(node.id),
+      )
+      .forEach((node) => write(node));
   } else {
     if (
       nodes.some(
@@ -639,12 +721,21 @@ export const serializeFrameToMermaid = (
     const source = aliases.get(edge.source.cellId)!,
       target = aliases.get(edge.target.cellId)!;
     const label = edge.labels?.[0]?.text;
+    const relation = (
+      edge.data as { relation?: 'dependency' | 'flow' } | undefined
+    )?.relation;
+    const arrow =
+      relation === 'dependency' ||
+      (!relation && edge.appearance?.strokeStyle === 'dashed')
+        ? '-.->'
+        : '-->';
     lines.push(
       label
-        ? `  ${source} -->|${quote(label)}| ${target}`
-        : `  ${source} --> ${target}`,
+        ? `  ${source} ${arrow}|${quote(label)}| ${target}`
+        : `  ${source} ${arrow} ${target}`,
     );
     meta.edges!.push({
+      ...(relation ? { relation } : {}),
       source,
       target,
       key: edge.id,

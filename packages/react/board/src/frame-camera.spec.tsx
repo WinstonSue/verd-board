@@ -4227,7 +4227,7 @@ describe('waypoint context menus', () => {
       expect(test.controller.current!.runtime.store.cells.e).toEqual(next);
     },
   );
-  it('disables minimal corners and lets Escape close a fully disabled menu', async () => {
+  it('disables deletion of minimal corners but still offers reset', async () => {
     const value = fixture('orthogonal');
     const edge = value.store.cells.e as Core.EdgeCell;
     edge.target = { point: [200, 220] };
@@ -4244,7 +4244,10 @@ describe('waypoint context menus', () => {
     expect(item.textContent).toBe('Delete waypoint');
     expect(item.disabled).toBe(true);
     const menu = document.querySelector<HTMLElement>('[role="menu"]')!;
-    expect(document.activeElement).toBe(menu);
+    const reset =
+      document.querySelectorAll<HTMLButtonElement>('[role="menuitem"]')[1];
+    expect(reset.disabled).toBe(false);
+    expect(document.activeElement).toBe(reset);
     await act(async () =>
       menu.dispatchEvent(
         new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }),
@@ -4301,6 +4304,81 @@ describe('waypoint context menus', () => {
       expect(test.controller.current!.runtime.store.cells.e).toEqual(next);
     },
   );
+  it('resets only the requested edge in one undoable edit and disables repeated reset', async () => {
+    const value = fixture('orthogonal');
+    value.store.cells.f = { ...value.store.cells.e, id: 'f' };
+    (value.store.cells.root as Core.FrameCell).children.push('f');
+    const test = await mount(value);
+    const runtime = test.controller.current!.runtime;
+    const before = structuredClone(runtime.store);
+    await open(test);
+    await act(async () => runtime.select({ focus: ['root'], ids: ['e', 'f'] }));
+    const reset =
+      document.querySelectorAll<HTMLButtonElement>('[role="menuitem"]')[1];
+    expect(reset.textContent).toBe('清除所有锚点');
+    await act(async () => reset.click());
+    expect((runtime.store.cells.e as Core.EdgeCell).route).toEqual({
+      mode: 'orthogonal',
+    });
+    expect(runtime.store.cells.f).toEqual(before.cells.f);
+    expect(test.onChange).toHaveBeenCalledTimes(1);
+    expect(
+      test.controller.current!.getActionState('canvas.edge.reset-waypoints', {
+        edgeId: 'e',
+      }).enabled,
+    ).toBe(false);
+    await act(async () =>
+      test.controller.current!.executeAction('canvas.history.undo'),
+    );
+    expect(runtime.store).toEqual(before);
+    await act(async () =>
+      test.controller.current!.executeAction('canvas.history.redo'),
+    );
+    expect((runtime.store.cells.e as Core.EdgeCell).route).toEqual({
+      mode: 'orthogonal',
+    });
+  });
+  it.each([
+    'readonly',
+    'locked',
+    'hidden',
+    'unsupported',
+    'unselected',
+  ] as const)('rejects waypoint reset for %s targets', async (mode) => {
+    const value = fixture();
+    const edge = value.store.cells.e as Core.EdgeCell;
+    if (mode === 'locked') edge.locked = true;
+    if (mode === 'hidden') edge.hidden = true;
+    const test = await mount(value, {
+      readonly: mode === 'readonly',
+      extensions:
+        mode === 'unsupported'
+          ? [
+              {
+                plugin: {
+                  id: 'no-edge-edit',
+                  engine: { id: 'no-edge-edit', install() {} },
+                  cells: { arrow: { editEdge: false } },
+                },
+              },
+            ]
+          : undefined,
+    });
+    await act(async () =>
+      test.controller.current!.runtime.select({
+        focus: ['root'],
+        ids: mode === 'unselected' ? ['a'] : ['e'],
+      }),
+    );
+    const before = test.controller.current!.runtime.store;
+    await act(async () =>
+      test.controller.current!.executeAction('canvas.edge.reset-waypoints', {
+        edgeId: 'e',
+      }),
+    );
+    expect(test.controller.current!.runtime.store).toBe(before);
+    expect(test.onChange).not.toHaveBeenCalled();
+  });
   it('uses the winning waypoint when an overlapping node port receives the native right click', async () => {
     const value = fixture();
     (value.store.cells.a as Core.NodeCell).ports = [
@@ -4530,4 +4608,90 @@ describe('asynchronous target reveal', () => {
       test.controller.current!.revealTarget({ cellId: 'gone', requestId: 3 }),
     ).resolves.toEqual({ status: 'unavailable', code: 'missing-cell' });
   });
+});
+
+describe('temporary frame paint order', () => {
+  it('raises a selected group through its leaves without changing ownership', async () => {
+    const value = sample();
+    value.store.cells.b = { ...value.store.cells.a, id: 'b' };
+    value.store.cells.e = {
+      id: 'e',
+      kind: 'arrow',
+      cellType: 'edge',
+      source: { point: [0, 30] },
+      target: { point: [200, 30] },
+      route: { mode: 'straight' },
+    };
+    value.store.cells.g = {
+      id: 'g',
+      cellType: 'group',
+      kind: 'group',
+      members: ['a', 'e'],
+    };
+    const frame = value.store.cells.root as Core.FrameCell;
+    frame.children = ['a', 'e', 'b'];
+    frame.groups = ['g'];
+    const test = await mount(value);
+    const runtime = test.controller.current!.runtime;
+    const before = structuredClone(runtime.store);
+    await act(async () => runtime.select({ focus: ['root'], ids: ['g'] }));
+    expect(
+      [
+        ...test.svg.querySelectorAll(
+          '[data-frame-content-id="root"] > [data-frame-paint-item]',
+        ),
+      ].map((item) => item.getAttribute('data-frame-paint-item')),
+    ).toEqual(['b', 'a', 'e']);
+    expect(runtime.store).toEqual(before);
+  });
+
+  it.each([false, true])(
+    'keeps unselected edges below nodes regardless of creation order (reverse=%s)',
+    async (reverse) => {
+      const value = sample();
+      value.store.cells.b = { ...value.store.cells.a, id: 'b' };
+      value.store.cells.e = {
+        id: 'e',
+        kind: 'arrow',
+        cellType: 'edge',
+        source: { point: [0, 30] },
+        target: { point: [200, 30] },
+        route: { mode: 'straight' },
+      };
+      const frame = value.store.cells.root as Core.FrameCell;
+      frame.children = reverse ? ['e', 'b', 'a'] : ['a', 'b', 'e'];
+      const test = await mount(value);
+      const runtime = test.controller.current!.runtime;
+      const before = structuredClone(runtime.store);
+      const order = () =>
+        [
+          ...test.svg.querySelectorAll(
+            '[data-frame-content-id="root"] > [data-frame-paint-item]',
+          ),
+        ].map((item) => item.getAttribute('data-frame-paint-item'));
+      const normal = reverse ? ['e', 'b', 'a'] : ['e', 'a', 'b'];
+      expect(order()).toEqual(normal);
+      await act(async () => runtime.select({ focus: ['root'], ids: ['e'] }));
+      expect(order()).toEqual([...normal.filter((id) => id !== 'e'), 'e']);
+      const { cloneFrameImageSvg } = await import('./frame-export');
+      const clone = cloneFrameImageSvg(test.svg);
+      expect(
+        [
+          ...clone.querySelectorAll('[data-frame-content-id="root"] > g'),
+        ].flatMap(
+          (item) =>
+            item
+              .querySelector('[data-cell-id]')
+              ?.getAttribute('data-cell-id') ?? [],
+        ),
+      ).toEqual(normal);
+      await act(async () => runtime.select({ focus: ['root'], ids: ['b'] }));
+      expect(order()).toEqual([...normal.filter((id) => id !== 'b'), 'b']);
+      await act(async () => runtime.select({ focus: ['root'], ids: [] }));
+      expect(order()).toEqual(normal);
+      expect(runtime.store).toEqual(before);
+      expect(runtime.history.undos).toHaveLength(0);
+      expect(test.onChange).not.toHaveBeenCalled();
+    },
+  );
 });

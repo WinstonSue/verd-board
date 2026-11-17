@@ -1,3 +1,4 @@
+import { selectPropertyValue } from '../../helpers/property-select';
 import { observeContentWrites } from './service-routes';
 import { openActiveFile } from './app-actions';
 import { selectSetting } from '../../helpers/settings-controls';
@@ -121,26 +122,19 @@ async function writeCount(page: Page) {
   );
 }
 
-test('real legacy text marks follow all six themes in static text, editing, references and source documents without content writes', async ({
+test('real legacy text marks follow all five themes in static text, editing, references and source documents without content writes', async ({
   page,
 }, testInfo) => {
   test.setTimeout(180_000);
   await seed(page);
   const selector = pane(page).getByLabel('Theme', { exact: true });
-  for (const theme of [
-    'default',
-    'colorful',
-    'soft',
-    'retro',
-    'dark',
-    'starry',
-  ]) {
+  for (const theme of ['default', 'colorful', 'soft', 'retro', 'dark']) {
     const svg = pane(page).locator('svg[data-surface="root"]').first();
     const bounds = (await svg.boundingBox())!;
     await svg.click({
       position: { x: bounds.width - 120, y: bounds.height - 100 },
     });
-    await selector.selectOption(theme);
+    await selectPropertyValue(selector, theme);
     await expect
       .poll(
         async () =>
@@ -217,7 +211,7 @@ test('explicitly choosing the displayed color creates a persistent custom overri
   const task = pane(page).locator('[data-cell-id="text-task"]');
   await task.click();
   const color = pane(page).getByLabel('Selection text color', { exact: true });
-  await expect(color).toHaveValue('#e2e8f0');
+  await expect(color).toHaveValue('#e4e7ec');
   await color.dispatchEvent('input');
   const source = async () => {
     const cell = (await persistedWorkspace(page))?.records['theme-text-board']
@@ -228,16 +222,16 @@ test('explicitly choosing the displayed color creates a persistent custom overri
   };
   await expect
     .poll(source)
-    .toMatchObject({ color: '#e2e8f0', colorSource: 'custom' });
+    .toMatchObject({ color: '#e4e7ec', colorSource: 'custom' });
   await appearance(page, 'light');
   await expect(task.getByText('Legacy task', { exact: true })).toHaveCSS(
     'color',
-    'rgb(226, 232, 240)',
+    'rgb(228, 231, 236)',
   );
   await page.reload();
   await expect(task.getByText('Legacy task', { exact: true })).toHaveCSS(
     'color',
-    'rgb(226, 232, 240)',
+    'rgb(228, 231, 236)',
   );
   await task.click();
   await pane(page)
@@ -245,18 +239,18 @@ test('explicitly choosing the displayed color creates a persistent custom overri
     .click();
   await expect(task.getByText('Legacy task', { exact: true })).toHaveCSS(
     'color',
-    'rgb(15, 23, 42)',
+    'rgb(30, 41, 59)',
   );
   await task.click();
   await page.keyboard.press('Meta+z');
   await expect(task.getByText('Legacy task', { exact: true })).toHaveCSS(
     'color',
-    'rgb(226, 232, 240)',
+    'rgb(228, 231, 236)',
   );
   await page.keyboard.press('Meta+Shift+z');
   await expect(task.getByText('Legacy task', { exact: true })).toHaveCSS(
     'color',
-    'rgb(15, 23, 42)',
+    'rgb(30, 41, 59)',
   );
 });
 
@@ -321,7 +315,7 @@ test('SVG and raster exports use the same resolved text colors as the live scene
           image.width,
           image.height,
         ).data;
-        const color = mode === 'dark' ? [226, 232, 240] : [15, 23, 42];
+        const color = mode === 'dark' ? [228, 231, 236] : [30, 41, 59];
         let hits = 0;
         for (let at = 0; at < pixels.length; at += 4)
           if (

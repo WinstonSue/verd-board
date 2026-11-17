@@ -2,14 +2,19 @@ import {
   isEdgeCell,
   isNodeCell,
   resolveBoardTheme,
-  resolveThemeRole,
-  resolveThemeSeries,
+  compositeThemeFill,
+  type BoardStyleColor,
   type Cell,
   type NodeCell,
 } from '@sue/board-core';
-import type { TableCellData, TableEntry } from '@sue/board-draw';
+import {
+  tableGrid,
+  type TableCellData,
+  type TableEntry,
+} from '@sue/board-draw';
 import {
   resolveFrameAppearance,
+  frameThemeAppearance,
   type FrameRenderContext,
   type FrameThemeAppearance,
   type FrameThemeAppearanceContext,
@@ -79,41 +84,49 @@ export function drawThemeAppearance(
   context: FrameThemeAppearanceContext,
 ): FrameThemeAppearance | undefined {
   const { cell, store, theme } = context;
+  if (cell.kind === 'card')
+    return frameThemeAppearance(context, 'neutral', 'container', 'opaque');
   if (!theme.adaptive || cell.kind === 'image') return undefined;
   if (isEdgeCell(cell)) {
-    const index =
-      'cellId' in cell.source
-        ? drawThemeSeriesIndex(store.cells[cell.source.cellId])
-        : undefined;
-    const tone =
+    const source =
+      'cellId' in cell.source ? store.cells[cell.source.cellId] : undefined;
+    const index = drawThemeSeriesIndex(source);
+    const tone = frameThemeAppearance(
+      { ...context, cell: source ?? cell },
       index === undefined
-        ? resolveThemeRole(theme, 'neutral')
-        : resolveThemeSeries(theme, index);
-    return { strokeColor: tone.strokeColor };
+        ? 'neutral'
+        : (`series-${(index % 6) + 1}` as BoardStyleColor),
+    );
+    return { ...tone, fill: 'none' };
   }
   if (!isNodeCell(cell)) return undefined;
   if (cell.kind === 'freehand' || cell.kind === 'vector-line')
     return {
       fill: 'none',
-      strokeColor: resolveThemeRole(theme, 'primary').strokeColor,
+      strokeColor: frameThemeAppearance(context, 'primary').strokeColor,
     };
   if (cell.kind === 'table') {
     const data = cell.data as TableCellData | undefined;
-    return resolveThemeRole(
-      theme,
+    return frameThemeAppearance(
+      context,
       data && tableStructure(data).hasHeader ? 'primary' : 'neutral',
-      'subtle',
+      'container',
+      'opaque',
     );
   }
-  if (cell.kind === 'swimlane') return resolveThemeSeries(theme, 0, 'subtle');
+  if (cell.kind === 'swimlane')
+    return frameThemeAppearance(context, 'primary', 'container', 'opaque');
   if (cell.kind !== 'geometry') return undefined;
   if (shapeKind(cell) === 'text')
     return {
       fill: 'none',
       strokeColor: 'none',
-      textColor: resolveThemeRole(theme, 'neutral').textColor,
+      textColor: frameThemeAppearance(context, 'neutral').textColor,
     };
-  return resolveThemeSeries(theme, drawThemeSeriesIndex(cell) ?? 0);
+  return frameThemeAppearance(
+    context,
+    `series-${((drawThemeSeriesIndex(cell) ?? 0) % 6) + 1}` as BoardStyleColor,
+  );
 }
 
 /** Standalone leaves use the same pure resolver as the surrounding Frame scene. */
@@ -143,17 +156,23 @@ export function tableEntryThemeAppearance(
   const structure = tableStructure(data);
   if (cell.kind === 'swimlane') {
     if (entry.role === 'title')
-      return resolveThemeRole(theme, 'primary', 'strong');
+      return frameThemeAppearance(context, 'primary', 'emphasis', 'opaque');
     const tracks =
       data.direction === 'vertical' ? structure.columns : structure.rows;
     const trackId =
       data.direction === 'vertical' ? entry.columnId : entry.rowId;
     const ordinal = tracks.get(trackId) ?? 0;
-    return resolveThemeSeries(
-      theme,
-      ordinal,
-      entry.role === 'body' ? 'subtle' : 'normal',
+    if (entry.role !== 'body')
+      return frameThemeAppearance(context, 'primary', 'emphasis', 'opaque');
+    const tone = frameThemeAppearance(
+      context,
+      `series-${(ordinal % 6) + 1}` as BoardStyleColor,
+      'container',
+      'opaque',
     );
+    return ordinal % 2
+      ? { ...tone, fill: compositeThemeFill(tone.fill! + 'bf', theme.canvas) }
+      : tone;
   }
   const row = structure.rows.get(entry.rowId) ?? 0;
   if (structure.hasHeader) {
@@ -161,9 +180,19 @@ export function tableEntryThemeAppearance(
       entry.role === 'title' ||
       entry.role === 'lane' ||
       (!!data.header && row === 0 && entry.role !== 'body');
-    return resolveThemeRole(theme, 'primary', header ? 'normal' : 'subtle');
+    return frameThemeAppearance(
+      context,
+      'primary',
+      header ? 'emphasis' : 'container',
+      'opaque',
+    );
   }
-  return resolveThemeRole(theme, 'neutral', row % 2 ? 'normal' : 'subtle');
+  return frameThemeAppearance(
+    context,
+    'neutral',
+    row % 2 ? 'node' : 'container',
+    'opaque',
+  );
 }
 
 /** An entry override wins over the table field, without persisting derived tones. */
@@ -191,4 +220,55 @@ export function resolveTableEntryAppearance(
     { ...context, cell: { ...cell, appearance } },
     tableEntryThemeAppearance(context, entry),
   );
+}
+
+/** Semantic and legacy lanes both paint a real supporting surface. */
+export function drawThemeBackground(
+  context: FrameThemeAppearanceContext,
+): string | undefined {
+  if (!isNodeCell(context.cell) || context.cell.cellType === 'frame') return;
+  const frame = context.store.cells[context.frameId];
+  if (!frame || frame.cellType !== 'frame' || !('children' in frame)) return;
+  const center = {
+    x: context.cell.geometry.x + context.cell.geometry.width / 2,
+    y: context.cell.geometry.y + context.cell.geometry.height / 2,
+  };
+  for (const id of [...frame.children].reverse()) {
+    const lane = context.store.cells[id];
+    if (
+      !isNodeCell(lane) ||
+      lane.kind !== 'swimlane' ||
+      lane.id === context.cell.id
+    )
+      continue;
+    const data = lane.data as TableCellData;
+    const entries = tableGrid(lane as NodeCell<TableCellData>).entries;
+    const trackId = Object.entries(data.laneMembers ?? {}).find(([, members]) =>
+      members.includes(context.cell.id),
+    )?.[0];
+    const track = entries.find((entry) => entry.entry.id === trackId);
+    const body = entries.find(
+      (part) =>
+        part.entry.role === 'body' &&
+        (track
+          ? data.direction === 'vertical'
+            ? part.column === track.column
+            : part.row === track.row
+          : center.x >= part.x &&
+            center.x <= part.x + part.width &&
+            center.y >= part.y &&
+            center.y <= part.y + part.height),
+    );
+    if (body) {
+      const visual = resolveTableEntryAppearance(
+        { ...context, cell: lane },
+        body.entry,
+      );
+      return compositeThemeFill(
+        visual.fill ?? context.theme.canvas,
+        context.theme.canvas,
+      );
+    }
+  }
+  return undefined;
 }

@@ -6,6 +6,7 @@ import { expect, it, vi } from 'vitest';
 import {
   applyCellOperations,
   colorContrast,
+  compositeThemeFill,
   isFrameCell,
   isNodeCell,
   resolveBoardTheme,
@@ -190,6 +191,9 @@ it.each([
             )
               continue;
             const visual = ref.current!.resolveAppearance(id)!;
+            expect(element.getAttribute('data-frame-export-fill')).toBe(
+              visual.exportFill ?? null,
+            );
             const outline = element.querySelector(
               '[data-uml-class] rect, [data-uml-note], [data-uml-fragment], [data-uml-lifeline] > rect',
             );
@@ -197,13 +201,13 @@ it.each([
             const background =
               visual.fill === 'none' || visual.fill === 'transparent'
                 ? theme.background
-                : visual.fill!;
+                : compositeThemeFill(visual.fill!, theme.background);
             expect(
               colorContrast(visual.strokeColor!, background),
             ).toBeGreaterThanOrEqual(3);
             if (cell.kind === 'uml-note')
               expect(visual.fill).toBe(
-                resolveThemeRole(theme, 'annotation').fill,
+                resolveThemeRole(theme, 'annotation', 'node', 'overlay').fill,
               );
             for (const text of element.querySelectorAll('text[fill]')) {
               const color = text.getAttribute('fill');

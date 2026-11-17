@@ -7,6 +7,11 @@ import {
   exercisePortInteractions,
   exerciseWorkflowEndpoints,
   exerciseWaypointRemoval,
+  exerciseWaypointReset,
+  paintLayerFixture,
+  exercisePaintLayers,
+  architectureSelectionFixture,
+  exerciseArchitectureSelectionDrag,
   portCanvas,
   portFixture,
   waypointFixture,
@@ -108,4 +113,35 @@ test('selected Workflow endpoints follow actual bindings and remain independent 
   await portCanvas(page).screenshot({
     path: test.info().outputPath('workflow-ports.png'),
   });
+});
+
+test('waypoint reset works from its menu and inspector and persists after reload', async ({
+  page,
+}) => {
+  const saved = await openFixture(page, waypointFixture());
+  await exerciseWaypointReset(page, saved);
+  const expected = await saved();
+  await page.reload();
+  await openActiveFile(page);
+  expect(await saved()).toEqual(expected);
+});
+test('architecture module multi-selection drags from bodies and port padding at small zoom', async ({
+  page,
+}) => {
+  const saved = await openFixture(page, architectureSelectionFixture());
+  await exerciseArchitectureSelectionDrag(page, saved);
+  const expected = await saved();
+  await page.reload();
+  await openActiveFile(page);
+  expect(await saved()).toEqual(expected);
+});
+
+test('selected objects lift above ordinary nodes and restore their original layering', async ({
+  page,
+}) => {
+  const saved = await openFixture(page, paintLayerFixture());
+  await exercisePaintLayers(page, saved);
+  await page.reload();
+  await openActiveFile(page);
+  expect(await saved()).toEqual(paintLayerFixture().cells);
 });

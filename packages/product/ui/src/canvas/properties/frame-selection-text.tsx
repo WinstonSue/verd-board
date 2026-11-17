@@ -252,6 +252,7 @@ export function FrameSelectionText({
               ? theme.background
               : fill,
             appearance?.textColor ?? theme.text,
+            appearance?.background ?? theme.canvas,
           )
         : '#0f172a';
       return leaves(text.content).map((node) => {

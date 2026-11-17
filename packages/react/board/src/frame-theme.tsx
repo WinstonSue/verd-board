@@ -4,7 +4,11 @@ import {
   type ComponentProps,
   type CSSProperties,
 } from 'react';
-import { resolveBoardTheme, type ResolvedBoardTheme } from '@sue/board-core';
+import {
+  readableThemeText,
+  resolveBoardTheme,
+  type ResolvedBoardTheme,
+} from '@sue/board-core';
 
 const legacyTheme = resolveBoardTheme();
 export const FrameThemeContext = createContext<ResolvedBoardTheme>(legacyTheme);
@@ -32,6 +36,8 @@ export function frameThemeStyle(theme: ResolvedBoardTheme): CSSProperties {
     '--board-hover': theme.header,
     '--board-active': theme.header,
     '--board-primary': theme.accent,
+    '--board-title-color': readableThemeText(theme.header, theme.text),
+    '--board-title-active-color': readableThemeText(theme.header, theme.accent),
     '--board-danger': theme.appearance === 'dark' ? '#fda4af' : '#b91c1c',
     '--board-danger-bg': theme.appearance === 'dark' ? '#3b202d' : '#fef2f2',
     '--board-code-bg': theme.header,

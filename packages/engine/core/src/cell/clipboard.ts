@@ -422,11 +422,13 @@ export const planCellPaste = (request: CellPasteRequest): CellPastePlan => {
   const needsOwner =
     request.intent === 'open'
       ? []
-      : Object.values(request.fragment.cells).filter((cell) =>
-          request.registry
-            ?.get(cell.kind)
-            ?.requiresPasteOwner?.(cell, request.fragment),
-        );
+      : Object.values(request.fragment.cells).filter((cell) => {
+          const util = registry.get(cell.kind);
+          return (
+            util?.requiresPasteOwner?.(cell, request.fragment) ||
+            util?.optionalPasteOwner?.(cell, request.fragment)
+          );
+        });
   const source = request.fragment.source;
   const sameFrame =
     request.intent !== 'import' &&
@@ -447,6 +449,8 @@ export const planCellPaste = (request: CellPasteRequest): CellPastePlan => {
       )
     ) {
       owner = source.ownerById?.[cell.id];
+      if (!owner && !util?.requiresPasteOwner?.(cell, request.fragment))
+        continue;
       const target = owner ? request.store.cells[owner] : undefined;
       const index = indexCells(request.store, registry);
       const expected = registry.get(cell.kind)?.ownerKind;
@@ -458,8 +462,11 @@ export const planCellPaste = (request: CellPasteRequest): CellPastePlan => {
         throw new Error('Original paste owner is no longer available');
     } else
       owner = util?.pasteOwner?.(request.store, request.frameId, selectionIds);
-    if (!owner)
-      throw new Error('Select a target first (target must be unambiguous)');
+    if (!owner) {
+      if (util?.requiresPasteOwner?.(cell, request.fragment))
+        throw new Error('Select a target first (target must be unambiguous)');
+      continue;
+    }
     if (
       request.store.cells[owner]?.locked ||
       lockedByAncestor(request.store, owner)

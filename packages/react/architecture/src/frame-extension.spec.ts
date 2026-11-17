@@ -5,6 +5,8 @@ import {
 } from '@sue/board-architecture';
 import {
   createCellRegistry,
+  colorContrast,
+  compositeThemeFill,
   createFrameCell,
   resolveBoardTheme,
   resolveThemeSeries,
@@ -68,10 +70,24 @@ it('colors layers and members in structural order and recomputes only for new sn
         expect(visual(store, layer.id)).toMatchObject(
           resolveThemeSeries(theme, i, 'subtle'),
         );
-        if (i > 0)
-          expect(visual(store, modules[i].id)).toMatchObject(
-            resolveThemeSeries(theme, i),
+        if (i > 0) {
+          const module = visual(store, modules[i].id);
+          expect(module).toMatchObject({
+            fill: resolveThemeSeries(theme, i, 'node', 'overlay').fill,
+            styleLevel: 'node',
+            styleFamily: `series-${(i % 6) + 1}`,
+          });
+          const fill = compositeThemeFill(
+            module.fill!,
+            visual(store, layer.id).fill!,
           );
+          expect(colorContrast(fill, module.textColor!)).toBeGreaterThanOrEqual(
+            4.5,
+          );
+          expect(
+            colorContrast(fill, module.strokeColor!),
+          ).toBeGreaterThanOrEqual(3);
+        }
       });
       expect(visual(store, modules[0].id)).toMatchObject({
         fill: '#ffffff',
@@ -97,7 +113,7 @@ it('colors layers and members in structural order and recomputes only for new sn
         resolveThemeSeries(theme, 0, 'subtle').fill,
       );
       expect(visual(reordered, modules[1].id).fill).toBe(
-        resolveThemeSeries(theme, 0).fill,
+        resolveThemeSeries(theme, 0, 'node', 'overlay').fill,
       );
       const moved = {
         ...store,

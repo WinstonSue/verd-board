@@ -1,3 +1,10 @@
+import {
+  expectPropertyPopupAnchored,
+  expectPropertyValue,
+  openPropertyOptions,
+  propertySelectRoot,
+  selectPropertyValue,
+} from '../../helpers/property-select';
 import { selectSetting } from '../../helpers/settings-controls';
 import { openActiveFile } from './app-actions';
 import { selectHistoryAction } from './app-actions';
@@ -264,9 +271,10 @@ async function selectDomain(
   await expect(
     panel(page).locator('[data-property-group="geometry"]'),
   ).toBeVisible();
-  await expect(
+  await expectPropertyValue(
     panel(page).getByLabel('Selection font size', { exact: true }),
-  ).toHaveValue('16px');
+    '16px',
+  );
   await page.screenshot({
     path: `/tmp/properties-${domain}-${viewport.width}-${language}.png`,
   });
@@ -314,7 +322,10 @@ for (const viewport of [
             .getAttribute('width'),
         ) + 16;
       await expect.poll(width).toBe(336);
-      await panel(page).getByTestId('mind-width-mode').selectOption('custom');
+      await selectPropertyValue(
+        panel(page).getByTestId('mind-width-mode'),
+        'custom',
+      );
       await expect(panel(page).getByTestId('mind-max-width')).toHaveValue(
         '336',
       );
@@ -356,3 +367,48 @@ for (const viewport of [
       ).toBeDisabled();
     });
   }
+
+test('inspector dropdowns stay in the viewport, support keyboard dismissal and persist theme history', async ({
+  page,
+}, testInfo) => {
+  await page.setViewportSize({ width: 1280, height: 720 });
+  await open(page);
+  await setAppLanguage(page, 'zh');
+  const theme = panel(page).getByLabel('Theme', { exact: true });
+  const combo = propertySelectRoot(theme).getByRole('combobox');
+  await expect(panel(page).locator('select')).toHaveCount(0);
+  let popup = await expectPropertyPopupAnchored(theme);
+  await page.screenshot({
+    path: testInfo.outputPath('inspector-dropdown.png'),
+  });
+  await combo.press('Escape');
+  await expect(popup).not.toBeVisible();
+  await expect(combo).toBeFocused();
+  await expectPropertyValue(theme, 'default');
+  await combo.press('ArrowDown');
+  await combo.press('ArrowDown');
+  await combo.press('Enter');
+  await expectPropertyValue(theme, 'colorful');
+  await selectHistoryAction(page, '撤销');
+  await expectPropertyValue(theme, 'default');
+  await selectHistoryAction(page, '重做');
+  await expectPropertyValue(theme, 'colorful');
+  await selectPropertyValue(theme, 'retro');
+  await expectPropertyValue(theme, 'retro');
+  popup = await openPropertyOptions(theme);
+  await page.getByTestId('inspector-collapse').click();
+  await expect(popup).not.toBeVisible();
+  await page.getByTestId('inspector-expand').click();
+  await expect(combo).toHaveAttribute('aria-expanded', 'false');
+  await page.setViewportSize({ width: 1440, height: 900 });
+  popup = await expectPropertyPopupAnchored(theme);
+  await hit(node(page, 'a'));
+  await expect(popup).not.toBeVisible();
+  await expect(panel(page).locator('select')).toHaveCount(0);
+  await expect(pane(page).getByTestId('save-status')).toHaveAttribute(
+    'data-save-state',
+    'saved',
+  );
+  await page.reload();
+  await expectPropertyValue(theme, 'retro');
+});

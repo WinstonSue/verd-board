@@ -1,5 +1,13 @@
 # Changelog
 
+## 2.1.1
+
+### Patch Changes
+
+- Fix architecture container placement and relation routing, add independent text cards, unify theme color families and manual color preservation, improve document table controls and sidebar selection, and preserve conflicting legacy resources during migration. Stabilize document controls, port interactions, exports and isolated Web/Desktop validation; pin Electron 44.11.3 for cross-display window geometry.
+- Updated dependencies
+  - @sue/board-core@2.1.1
+
 ## 2.1.0
 
 ### Major Changes

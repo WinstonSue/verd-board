@@ -339,3 +339,51 @@ test('baseline initialization is create-only, drafts never claim approval, and s
     await fs.rm(root, { recursive: true, force: true });
   }
 });
+
+test('selected units share one process per package without widening their selection', async () => {
+  const { groupUnitTests } = await import('./quality-gate.mjs');
+  const groups = await groupUnitTests([
+    'scripts/remote-test.test.mjs',
+    'packages/agent/runtime/src/node/agent-resources.spec.ts',
+    'scripts/quality-gate.test.mjs',
+    'packages/agent/runtime/src/node/workspace-project.spec.ts',
+    'scripts/remote-test.test.mjs',
+  ]);
+  assert.equal(groups.length, 2);
+  assert.deepEqual(groups[0].args, [
+    '--test',
+    'scripts/remote-test.test.mjs',
+    'scripts/quality-gate.test.mjs',
+  ]);
+  assert.deepEqual(groups[1].args, [
+    'exec',
+    'vitest',
+    'run',
+    '--passWithNoTests=false',
+    'src/node/agent-resources.spec.ts',
+    'src/node/workspace-project.spec.ts',
+  ]);
+});
+
+test('step records retain timing and failure information before propagating errors', async () => {
+  const { recordStep } = await import('./quality-gate.mjs');
+  const steps = [];
+  await recordStep(steps, 'check', ['success'], {}, async () => {});
+  const failure = Object.assign(new Error('fixture failure'), { exitCode: 9 });
+  await assert.rejects(
+    recordStep(steps, 'check', ['failure'], {}, async () => {
+      throw failure;
+    }),
+    (error) => error === failure,
+  );
+  assert.deepEqual(
+    steps.map((step) => step.exitCode),
+    [0, 9],
+  );
+  assert.equal(steps[1].error, 'fixture failure');
+  for (const step of steps) {
+    assert.ok(Number.isFinite(Date.parse(step.startedAt)));
+    assert.ok(Number.isFinite(Date.parse(step.finishedAt)));
+    assert.ok(step.durationMs >= 0);
+  }
+});

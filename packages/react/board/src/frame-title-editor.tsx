@@ -10,8 +10,8 @@ export const frameTitleStyle = (selected: boolean) => ({
   fontSize: 14,
   textAlign: 'left' as const,
   color: selected
-    ? 'var(--board-primary, #6366f1)'
-    : 'var(--board-text, #94a3b8)',
+    ? 'var(--board-title-active-color, var(--board-primary, #6366f1))'
+    : 'var(--board-title-color, var(--board-text, #94a3b8))',
 });
 
 export const frameTitleCss = `

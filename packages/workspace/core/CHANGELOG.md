@@ -1,5 +1,19 @@
 # Changelog
 
+## 2.2.1
+
+### Patch Changes
+
+- Updated dependencies
+  - @sue/board-architecture@2.1.1
+  - @sue/board-core@2.1.1
+  - @sue/board-draw@2.1.1
+  - @sue/board-mind@2.1.1
+  - @sue/board-react-text@2.1.1
+  - @sue/verd-board-agent-patterns@2.1.2
+  - @sue/board-uml@2.1.1
+  - @sue/board-workflow@2.1.1
+
 ## 2.2.0
 
 ### Minor Changes

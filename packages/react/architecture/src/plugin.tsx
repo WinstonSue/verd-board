@@ -1,7 +1,6 @@
 import { FrameSettingsControl } from '@sue/board-react';
 import {
   addArchitectureModule,
-  createArchitectureLayerCell,
   createArchitectureModuleCell,
   createArchitecturePlugin,
   reorderArchitectureLayers,
@@ -10,9 +9,11 @@ import {
   type ArchitectureModuleData,
 } from '@sue/board-architecture';
 import {
+  frameScene,
   indexCells,
   isFrameCell,
   isNodeCell,
+  isEdgeCell,
   lockedByAncestor,
   selectionAllows,
   type NodeCell,
@@ -24,6 +25,7 @@ import {
 } from '@sue/board-react';
 import { createArchitectureFrameExtensions } from './frame-extension';
 import { ArchitectureLayerField } from './layer-field';
+import { createArchitecturePlacementTool } from './placement-tool';
 const layersOf = (c: FramePluginContext) => {
   const frame = c.store.cells[c.frameId];
   return isFrameCell(frame)
@@ -36,62 +38,106 @@ const layersOf = (c: FramePluginContext) => {
         .sort((a, b) => a.data!.order.localeCompare(b.data!.order))
     : [];
 };
-const activeLayer = (c: FramePluginContext) =>
-  c.cell?.kind === 'architecture-layer'
-    ? c.cell.id
-    : c.cell
-      ? c.controller?.runtime.index.domainOwnerOf.get(c.cell.id)
-      : layersOf(c).length === 1
-        ? layersOf(c)[0].id
-        : undefined;
 export const createArchitectureUIPlugin = (): FrameUIPlugin => ({
   id: 'architecture',
   engine: createArchitecturePlugin(),
   extensions: createArchitectureFrameExtensions,
   cells: {
-    'architecture-layer': { pointerMove: false },
-    'architecture-module': { edgeKind: 'architecture-edge' },
+    'architecture-layer': {
+      background: true,
+      edgeKind: 'architecture-edge',
+    },
+    'architecture-module': {
+      edgeKind: 'architecture-edge',
+    },
+    'architecture-edge': {
+      edgeData: { relation: 'dependency' },
+    },
   },
   pasteText(c) {
     const frame = c.store.cells[c.frameId];
-    if (!isFrameCell(frame)) return undefined;
-    const layers = frame.children
-      .map((id) => c.store.cells[id])
-      .filter((cell) => cell?.kind === 'architecture-layer');
+    if (
+      !isFrameCell(frame) ||
+      frameScene(c.store, c.frameId, c.registry) !== 'architecture-layer'
+    )
+      return undefined;
     const layerId =
       c.hit?.kind === 'architecture-layer'
         ? c.hit.id
         : c.hit
           ? indexCells(c.store, c.registry).domainOwnerOf.get(c.hit.id)
-          : layers.length === 1
-            ? layers[0].id
-            : undefined;
-    return layerId && c.store.cells[layerId]?.kind === 'architecture-layer'
-      ? addArchitectureModule(c.store, layerId, {
-          ...createArchitectureModuleCell(c.allocateId()),
-          content: { label: c.text },
-        })
-      : undefined;
+          : undefined;
+    return addArchitectureModule(c.store, layerId ?? c.frameId, {
+      ...createArchitectureModuleCell(c.allocateId()),
+      geometry: {
+        ...createArchitectureModuleCell('').geometry,
+        x: c.at[0],
+        y: c.at[1],
+        derived: false,
+      },
+      content: { label: c.text },
+    });
   },
   actions: [
+    {
+      id: 'architecture.set-relation',
+      label: { zh: '关系类型', en: 'Relationship type' },
+      category: 'architecture',
+      effect: 'content',
+      palette: false,
+      validateArgs: (
+        args: unknown,
+      ): args is { cellId: string; relation: 'dependency' | 'flow' } =>
+        !!args &&
+        typeof args === 'object' &&
+        typeof (args as { cellId?: unknown }).cellId === 'string' &&
+        ['dependency', 'flow'].includes(
+          (args as { relation: string }).relation,
+        ),
+      getState: (c, args) => ({
+        visible: !!args,
+        enabled:
+          !c.disabled &&
+          c.store.cells[args?.cellId]?.kind === 'architecture-edge',
+      }),
+      execute: (c, args) => {
+        const edge = c.store.cells[args.cellId];
+        if (!isEdgeCell(edge))
+          return { status: 'rejected', code: 'missing-edge' };
+        return c.runOperations([
+          {
+            type: 'replace_cell',
+            cell: {
+              ...edge,
+              data: {
+                ...((edge as import('@sue/board-core').EdgeCell)
+                  .data as object),
+                relation: args.relation,
+              },
+            },
+          },
+        ]);
+      },
+    },
     {
       id: 'architecture.layer',
       label: { zh: '添加层', en: 'Layer' },
       category: 'architecture',
-      effect: 'content',
-      getState: (c) => ({ enabled: !c.disabled }),
+      effect: 'view',
+      getState: (c) => ({
+        enabled: !c.disabled && !!c.setTool,
+        checked: c.tool?.key === 'architecture.layer',
+      }),
       execute: (c) => {
-        const cell = createArchitectureLayerCell(
-          c.allocateId(),
-          `${layersOf(c).at(-1)?.data?.order ?? ''}~`,
+        c.setTool?.(
+          createArchitecturePlacementTool('layer', c.language, () =>
+            c.setTool?.({ mode: 'select' }),
+          ),
         );
-        return c.runOperations(
-          [{ type: 'insert_cell', parentId: c.frameId, cell }],
-          { selectionIds: [cell.id] },
-        );
+        return { status: 'completed' };
       },
     },
-    ...(['box', 'decision', 'store'] as const).map((shape) => ({
+    ...(['box', 'store'] as const).map((shape) => ({
       id: `architecture.${shape}`,
       label: {
         box: { zh: '模块', en: 'Module' },
@@ -99,19 +145,18 @@ export const createArchitectureUIPlugin = (): FrameUIPlugin => ({
         store: { zh: '存储', en: 'Store' },
       }[shape],
       category: 'architecture',
-      effect: 'content' as const,
+      effect: 'view' as const,
       getState: (c: FrameActionContext) => ({
-        enabled: !c.disabled && !!activeLayer(c),
+        enabled: !c.disabled && !!c.setTool,
+        checked: c.tool?.key === `architecture.${shape}`,
       }),
       execute: (c: FrameActionContext) => {
-        const layerId = activeLayer(c);
-        if (!layerId)
-          return { status: 'rejected' as const, code: 'missing-layer' };
-        const cell = createArchitectureModuleCell(c.allocateId(), shape);
-        return c.runOperations(addArchitectureModule(c.store, layerId, cell), {
-          selectionIds: [cell.id],
-          editId: cell.id,
-        });
+        c.setTool?.(
+          createArchitecturePlacementTool(shape, c.language, () =>
+            c.setTool?.({ mode: 'select' }),
+          ),
+        );
+        return { status: 'completed' as const };
       },
     })),
     ...([-1, 1] as const).map((direction) => ({
@@ -153,20 +198,22 @@ export const createArchitectureUIPlugin = (): FrameUIPlugin => ({
       effect: 'content',
       validateArgs: (
         args: unknown,
-      ): args is { cellId: string; layerId: string } =>
+      ): args is { cellId: string; layerId: string | null } =>
         !!args &&
         typeof args === 'object' &&
         typeof (args as { cellId?: unknown }).cellId === 'string' &&
-        typeof (args as { layerId?: unknown }).layerId === 'string',
+        ((args as { layerId?: unknown }).layerId === null ||
+          typeof (args as { layerId?: unknown }).layerId === 'string'),
       getState: (c, args) => ({
         visible: !!args,
         enabled:
           !c.disabled &&
           !!args &&
           c.store.cells[args.cellId]?.kind === 'architecture-module' &&
-          c.store.cells[args.layerId]?.kind === 'architecture-layer' &&
-          !c.store.cells[args.layerId]?.locked &&
-          !lockedByAncestor(c.store, args.layerId) &&
+          (args.layerId === null ||
+            (c.store.cells[args.layerId]?.kind === 'architecture-layer' &&
+              !c.store.cells[args.layerId]?.locked &&
+              !lockedByAncestor(c.store, args.layerId))) &&
           selectionAllows(
             c.store,
             [args.cellId],
@@ -175,7 +222,7 @@ export const createArchitectureUIPlugin = (): FrameUIPlugin => ({
             c.frameId,
           ),
       }),
-      execute: (c, args: { cellId: string; layerId: string }) =>
+      execute: (c, args: { cellId: string; layerId: string | null }) =>
         c.runOperations(
           moveArchitectureModuleToLayer(c.store, args.cellId, args.layerId, {
             position: 'inside-layer',
@@ -226,7 +273,7 @@ export const createArchitectureUIPlugin = (): FrameUIPlugin => ({
       },
     },
   ],
-  tools: ['layer', 'box', 'decision', 'store'].map((id) => ({
+  tools: ['layer', 'box', 'store'].map((id) => ({
     id: `architecture.${id}`,
     actionId: `architecture.${id}`,
   })),
@@ -266,7 +313,47 @@ export const createArchitectureUIPlugin = (): FrameUIPlugin => ({
     {
       id: 'architecture.properties',
       render: (c) =>
-        c.cell?.kind === 'architecture-module' && isNodeCell(c.cell) ? (
+        c.cell?.kind === 'architecture-edge' ? (
+          <label>
+            {c.language === 'zh' ? '关系类型' : 'Relationship type'}
+            <FrameSettingsControl
+              field={{
+                key: 'architecture.relation',
+                editor: 'select',
+                props: {
+                  'aria-label': 'Architecture relationship',
+                  disabled: c.disabled,
+                  children: (
+                    <>
+                      {!(c.cell.data as { relation?: string } | undefined)
+                        ?.relation && (
+                        <option value="">
+                          {c.language === 'zh' ? '未指定' : 'Unspecified'}
+                        </option>
+                      )}
+                      <option value="dependency">
+                        {c.language === 'zh' ? '依赖' : 'Dependency'}
+                      </option>
+                      <option value="flow">
+                        {c.language === 'zh' ? '数据流' : 'Data flow'}
+                      </option>
+                    </>
+                  ),
+                },
+              }}
+              value={
+                (c.cell.data as { relation?: string } | undefined)?.relation ??
+                ''
+              }
+              onCommit={(value) =>
+                c.executeAction('architecture.set-relation', {
+                  cellId: c.cell!.id,
+                  relation: value,
+                })
+              }
+            />
+          </label>
+        ) : c.cell?.kind === 'architecture-module' && isNodeCell(c.cell) ? (
           <>
             {c.controller && (
               <ArchitectureLayerField
@@ -276,7 +363,7 @@ export const createArchitectureUIPlugin = (): FrameUIPlugin => ({
                 getStore={() => c.controller?.runtime.store ?? c.store}
               />
             )}
-            {c.surface !== 'product' && (
+            {
               <label>
                 {c.language === 'zh' ? '形状' : 'Shape'}
                 <FrameSettingsControl
@@ -287,9 +374,18 @@ export const createArchitectureUIPlugin = (): FrameUIPlugin => ({
                       disabled: c.disabled,
                       children: (
                         <>
-                          <option value="box">Box</option>
-                          <option value="decision">Decision</option>
-                          <option value="store">Store</option>
+                          <option value="box">
+                            {c.language === 'zh' ? '模块' : 'Module'}
+                          </option>
+                          {(c.cell.data as ArchitectureModuleData).shape ===
+                            'decision' && (
+                            <option value="decision">
+                              {c.language === 'zh' ? '判断' : 'Decision'}
+                            </option>
+                          )}
+                          <option value="store">
+                            {c.language === 'zh' ? '存储' : 'Store'}
+                          </option>
                         </>
                       ),
                     },
@@ -303,7 +399,7 @@ export const createArchitectureUIPlugin = (): FrameUIPlugin => ({
                   }
                 />
               </label>
-            )}
+            }
           </>
         ) : null,
     },

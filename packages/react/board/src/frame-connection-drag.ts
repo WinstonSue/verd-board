@@ -11,6 +11,7 @@ import {
   type CellRegistry,
   type CellStore,
   type EdgeCell,
+  type NodeCell,
   type NodeGeometry,
   type Point,
   type RectangleClient,
@@ -165,7 +166,8 @@ export function resolveConnectionDrag(options: {
     };
     return !registry.validateEdge(candidate, next);
   };
-  const node = [...candidates]
+  let blocked: NodeCell | undefined;
+  let node = [...candidates]
     .reverse()
     .map((id) => store.cells[id])
     .find((cell) => {
@@ -182,16 +184,26 @@ export function resolveConnectionDrag(options: {
       )
         return false;
       const geometry = options.getGeometry(cell.id) ?? cell.geometry;
-      return (
+      const hit =
         hitNodeShape(cell, point, radius, geometry) ||
         cell.ports.some((port) => {
           const position = resolvePort(geometry, port).point;
           return (
             Math.hypot(position[0] - point[0], position[1] - point[1]) <= radius
           );
-        })
-      );
+        });
+      if (!hit) return false;
+      if (
+        !availablePorts(store, cell, end, edge.id).some((port) =>
+          valid({ cellId: cell.id, portId: port.id }),
+        )
+      ) {
+        blocked ??= cell;
+        return false;
+      }
+      return true;
     });
+  node ??= blocked;
   if (!isNodeCell(node)) {
     state.nodeId = state.snappedPortId = state.lastSnappedPortId = undefined;
     state.anchor = undefined;

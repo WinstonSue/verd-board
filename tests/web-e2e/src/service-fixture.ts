@@ -2,7 +2,11 @@ import { test as base, type Page } from '@playwright/test';
 import * as fs from 'node:fs/promises';
 import path from 'node:path';
 import os from 'node:os';
-import { spawn, type ChildProcess } from 'node:child_process';
+import {
+  startReadyProcess,
+  setServiceTarget,
+  webE2EOptions,
+} from '../../../scripts/web-e2e-runtime.mjs';
 import { pathToFileURL } from 'node:url';
 
 export * from '@playwright/test';
@@ -22,6 +26,7 @@ export interface ServiceFixture {
   root: string;
   workspace: string;
   dataRoot: string;
+  readonly origin: string;
   readDisk(): Promise<DiskSnapshot>;
   seedLegacy(records: [string, unknown][]): Promise<void>;
   restart(): Promise<void>;
@@ -34,34 +39,68 @@ export function serviceFixture(_page?: Page): ServiceFixture {
   return active;
 }
 const repo = path.resolve(__dirname, '../../..');
-const buildDirectory = path.join(
-  repo,
-  `apps/service/dist-e2e-${Number(process.env.VERDBOARD_SERVICE_PORT ?? 7330)}`,
-);
-export const test = base.extend<{ localService: ServiceFixture }>({
+const buildDirectory =
+  process.env.VERD_WEB_E2E_BUILD ??
+  path.join(repo, 'apps/service/dist-e2e-standalone');
+interface WebRuntime {
+  origin?: string;
+  setTarget(origin?: string): Promise<void>;
+}
+export const test = base.extend<
+  { localService: ServiceFixture },
+  { webRuntime: WebRuntime }
+>({
+  webRuntime: [
+    async ({}, runFixture, info) => {
+      if (info.project.metadata.runtime === 'production') {
+        await runFixture({ setTarget: async () => {} });
+        return;
+      }
+      const options = webE2EOptions();
+      const frontend = await startReadyProcess(
+        process.execPath,
+        ['scripts/web-e2e.mjs', 'serve'],
+        { cwd: repo, env: process.env, port: options.webPort, timeout: 120000 },
+      );
+      try {
+        await runFixture({
+          origin: `http://${options.hostname}:${(frontend.ready as { port: number }).port}`,
+          async setTarget(origin) {
+            await setServiceTarget(frontend.child, origin);
+          },
+        });
+      } finally {
+        await frontend.stop();
+      }
+    },
+    { scope: 'worker' },
+  ],
+  baseURL: async ({ localService, webRuntime }, runFixture) => {
+    await runFixture(webRuntime.origin ?? localService.origin);
+  },
   localService: [
-    async ({ baseURL }, runFixture, info) => {
+    async ({ webRuntime }, runFixture, info) => {
       const root = await fs.mkdtemp(path.join(os.tmpdir(), 'verd-web-e2e-'));
       const dataRoot = path.join(root, 'data');
       const workspace = path.join(dataRoot, 'workspaces/default');
       await fs.mkdir(workspace, { recursive: true });
-      const port =
-        info.project.metadata.runtime === 'production'
-          ? Number(new URL(baseURL!).port)
-          : Number(process.env.VERDBOARD_SERVICE_PORT ?? 7330);
-      let child: ChildProcess | undefined;
+      const production = info.project.metadata.runtime === 'production';
+      const options = webE2EOptions();
+      let port = production
+        ? options.webPort || options.servicePort
+        : options.servicePort;
+      let running: Awaited<ReturnType<typeof startReadyProcess>> | undefined;
       let logs = '';
       async function start() {
-        child = spawn(
+        running = await startReadyProcess(
           process.execPath,
           [
             path.join(buildDirectory, 'main.mjs'),
-            ...(info.project.metadata.runtime === 'production'
-              ? []
-              : ['--dev']),
+            ...(production ? [] : ['--dev']),
           ],
           {
             cwd: repo,
+            port,
             env: {
               ...process.env,
               VERDBOARD_WEB_DATA_PATH: dataRoot,
@@ -69,47 +108,32 @@ export const test = base.extend<{ localService: ServiceFixture }>({
               VERDBOARD_EMPTY_DEFAULT: '1',
               VERDBOARD_WORKSPACE_PATH: undefined,
               VERDBOARD_SERVICE_PORT: String(port),
-              VERDBOARD_WEB_PORT: new URL(baseURL!).port,
+              VERDBOARD_WEB_PORT: webRuntime.origin
+                ? new URL(webRuntime.origin).port
+                : String(port),
               VERDBOARD_SERVICE_TEST: '1',
             },
-            stdio: ['ignore', 'pipe', 'pipe'],
           },
         );
-        child.stdout?.on('data', (chunk) => {
-          logs += chunk;
-        });
-        child.stderr?.on('data', (chunk) => {
-          logs += chunk;
-        });
-        for (let attempt = 0; attempt < 240; attempt++) {
-          if (child.exitCode !== null)
-            throw new Error('Service startup failed:\n' + logs);
-          try {
-            if ((await fetch(`http://127.0.0.1:${port}/api/v1/health`)).ok)
-              return;
-          } catch {}
-          await new Promise((resolve) => setTimeout(resolve, 100));
-        }
-        throw new Error('Service did not become ready:\n' + logs);
+        port = (running.ready as { port: number }).port;
+        await webRuntime.setTarget(`http://127.0.0.1:${port}`);
       }
       async function stop() {
-        const running = child;
-        if (!running || running.exitCode !== null) return;
-        await new Promise<void>((resolve) => {
-          const timer = setTimeout(() => running.kill('SIGKILL'), 10000);
-          running.once('exit', () => {
-            clearTimeout(timer);
-            resolve();
-          });
-          running.kill('SIGTERM');
-        });
+        const previous = running;
+        running = undefined;
+        if (!previous) return;
+        await previous.stop();
+        logs += previous.logs;
       }
       const fixture: ServiceFixture = {
         root,
         workspace,
         dataRoot,
+        get origin() {
+          return `http://${options.hostname}:${port}`;
+        },
         get openedPaths() {
-          return logs
+          return (logs + (running?.logs ?? ''))
             .split('\n')
             .filter((line) => line.startsWith('VERD_OPEN_PATH '))
             .map((line) => JSON.parse(line.slice(15)) as string);
@@ -177,13 +201,23 @@ export const test = base.extend<{ localService: ServiceFixture }>({
         await runFixture(fixture);
       } finally {
         active = undefined;
-        await stop();
-        if (info.status !== info.expectedStatus)
-          await info.attach('local-service.log', {
-            body: logs,
-            contentType: 'text/plain',
-          });
-        await fs.rm(root, { recursive: true, force: true });
+        try {
+          try {
+            await webRuntime.setTarget();
+          } finally {
+            await stop();
+          }
+        } finally {
+          try {
+            if (info.status !== info.expectedStatus)
+              await info.attach('local-service.log', {
+                body: logs,
+                contentType: 'text/plain',
+              });
+          } finally {
+            await fs.rm(root, { recursive: true, force: true });
+          }
+        }
       }
     },
     { auto: true },

@@ -1,11 +1,11 @@
 import {
-  ConfigPanel,
   defineSettings,
   type ControlProps,
   type SettingEditorProps,
   type SettingsRequest,
   type CommitResult,
 } from '@sue/schema-settings-react';
+import { ConfigPanel } from './frame-settings';
 import { useContext, useId, useEffect, useRef, useState } from 'react';
 import { FramePropertyContext } from './frame-property-panel';
 import { NumberEditor, type NumberProps } from './frame-property-number';
@@ -123,6 +123,7 @@ export function FrameAppearanceSettings({
   language,
   profile,
   includeFill,
+  includeStrokeStyle = true,
   single = false,
   disabled = false,
   strokeFallback = '#64748b',
@@ -136,6 +137,7 @@ export function FrameAppearanceSettings({
   language: 'zh' | 'en';
   profile: 'editor' | 'product';
   includeFill: boolean;
+  includeStrokeStyle?: boolean;
   single?: boolean;
   disabled?: boolean;
   strokeFallback?: string;
@@ -201,7 +203,7 @@ export function FrameAppearanceSettings({
           'aria-label': product ? 'Stroke width' : 'strokeWidth',
         },
       },
-      ...(product
+      ...(product && includeStrokeStyle
         ? [
             {
               key: 'strokeStyle' as const,

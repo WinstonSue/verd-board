@@ -42,8 +42,8 @@ export const createDrawPlugin = (): CellPlugin => ({
       ...registry,
       register(util) {
         Object.assign(util, {
-          fitText: util.kind === 'geometry',
-          canConnect: (node: Cell) => isNodeCell(node),
+          fitText: util.kind === 'geometry' || util.kind === 'card',
+          canConnect: (node: Cell) => isNodeCell(node) && node.kind !== 'card',
           freeTerminals: util.kind === 'arrow',
           groupable: true,
         });

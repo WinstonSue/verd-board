@@ -3,6 +3,7 @@ export * from './cell-shape';
 export * from './cell-table';
 export { remapSwimlaneMembers } from './swimlane-members';
 export {
+  CardNodeUtil,
   ArrowEdgeUtil,
   FreehandNodeUtil,
   GeometryNodeUtil,

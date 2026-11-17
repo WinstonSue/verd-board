@@ -109,6 +109,22 @@ export function cloneFrameImageSvg(
       )
         target.removeAttribute(attribute.name);
   });
+  // Resolved paint travels with each rendered occurrence, including references
+  // whose source cells live outside the exporting snapshot.
+  clone
+    .querySelectorAll<SVGElement>('[data-frame-export-fill]')
+    .forEach((node) => {
+      const fill = node.getAttribute('data-frame-export-fill')!;
+      const inherited = node.style.fill;
+      // Computed-style freezing made inherited paints explicit on descendants.
+      if (inherited)
+        node.querySelectorAll<SVGElement>('*').forEach((child) => {
+          if (child.style.fill === inherited) child.style.fill = fill;
+        });
+      node.setAttribute('fill', fill);
+      node.style.fill = fill;
+      node.removeAttribute('data-frame-export-fill');
+    });
   // DOM cloning drops scroll offsets. Freeze each document viewport into its
   // own clipped, translated content without touching the live reader.
   originals.forEach((node, index) => {
@@ -137,6 +153,28 @@ export function cloneFrameImageSvg(
       node.style.setProperty(property, value);
       node.removeAttribute(attribute);
     });
+  // A live SVG can contain a temporary selection lift. Restore each frame's
+  // ordinary ordering only in the clone, leaving the mounted canvas intact.
+  const paintParents = new Map<Element, Element[]>();
+  clone.querySelectorAll('[data-frame-normal-rank]').forEach((item) => {
+    const parent = item.parentElement!;
+    const siblings = paintParents.get(parent) ?? [];
+    siblings.push(item);
+    paintParents.set(parent, siblings);
+  });
+  for (const [parent, items] of paintParents) {
+    const after = items.at(-1)!.nextSibling;
+    items.sort(
+      (a, b) =>
+        Number(a.getAttribute('data-frame-normal-rank')) -
+        Number(b.getAttribute('data-frame-normal-rank')),
+    );
+    for (const item of items) {
+      parent.insertBefore(item, after);
+      item.removeAttribute('data-frame-normal-rank');
+      item.removeAttribute('data-frame-paint-item');
+    }
+  }
   clone.querySelectorAll(excluded).forEach((node) => node.remove());
   // Offscreen paint suppression belongs only to the live viewport.
   clone

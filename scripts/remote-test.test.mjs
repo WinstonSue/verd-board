@@ -70,3 +70,24 @@ test('project proof binds quality record to source and task', async (t) => {
   );
   await assert.rejects(verifyProof(file, root), /captured source/);
 });
+
+test('failed gate records can never serve as source proof', async (t) => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), 'verd-failed-proof-'));
+  t.after(() => fs.rm(root, { recursive: true, force: true }));
+  await fs.mkdir(path.join(root, 'scripts'));
+  await fs.mkdir(path.join(root, '.quality'));
+  await fs.writeFile(
+    path.join(root, 'scripts/release-review.mjs'),
+    'export const sourceInventory = async () => ["current"]; export const hash = () => "current";',
+  );
+  const file = path.join(root, 'manifest.json');
+  await fs.writeFile(
+    file,
+    JSON.stringify({ task: 'dev', proof: { sourceDigest: 'current' } }),
+  );
+  await fs.writeFile(
+    path.join(root, '.quality/dev.json'),
+    JSON.stringify({ mode: 'dev', status: 'failed', sourceDigest: 'current' }),
+  );
+  await assert.rejects(verifyProof(file, root), /captured source/);
+});

@@ -1,5 +1,14 @@
 import type { Cell, NodeAppearance } from '../cell/types';
 import {
+  themeConfig,
+  themeLevelAliases,
+  themeStyleLevels,
+  type ThemeBaseConfig,
+} from './theme-config';
+import {
+  BoardStyleColors,
+  isBoardStyleColor,
+  type BoardStyleColor,
   ThemeColorMode,
   ThemeColors,
   type BoardAppearance,
@@ -9,15 +18,30 @@ import {
 
 export type BoardThemeRole =
   'neutral' | 'primary' | 'secondary' | 'tertiary' | 'annotation';
-export type BoardThemeLevel = 'subtle' | 'normal' | 'strong';
+export type BoardThemeStyleLevel = 'container' | 'node' | 'emphasis';
+export type BoardThemeLegacyLevel = 'subtle' | 'normal' | 'strong';
+export type BoardThemeLevel = BoardThemeStyleLevel | BoardThemeLegacyLevel;
+export type BoardThemeFamily = BoardThemeRole | BoardStyleColor;
+export const themeLevelKey = (level: BoardThemeLevel): BoardThemeLegacyLevel =>
+  level === 'container'
+    ? themeLevelAliases.container
+    : level === 'node'
+      ? themeLevelAliases.node
+      : level === 'emphasis'
+        ? themeLevelAliases.emphasis
+        : level;
 export interface BoardThemeTone {
   fill: string;
   strokeColor: string;
   textColor: string;
 }
-export type BoardThemeRamp = Readonly<Record<BoardThemeLevel, BoardThemeTone>>;
+export type BoardThemeRamp = Readonly<
+  Record<BoardThemeLegacyLevel, BoardThemeTone>
+>;
 
 export interface BoardThemePalette {
+  /** Actual canvas base; background remains the compatible alias. */
+  canvas?: string;
   background: string;
   surface: string;
   header: string;
@@ -31,151 +55,27 @@ export interface BoardThemePalette {
   series?: readonly BoardThemeRamp[];
 }
 export interface ResolvedBoardTheme extends BoardThemePalette {
+  canvas: string;
   id: ThemeColorMode;
   appearance: BoardAppearance;
   /** Omitted appearance preserves the pre-adaptive public renderer contract. */
   adaptive: boolean;
 }
 const palette = (
-  background: string,
-  surface: string,
-  header: string,
-  text: string,
-  stroke: string,
-  accent: string,
-  dark = false,
+  { background, surface, header, text, stroke, accent }: ThemeBaseConfig,
+  appearance: BoardAppearance,
 ): BoardThemePalette => ({
   background,
+  canvas: background,
   surface,
   header,
   text,
   stroke,
   accent,
   secondaryText: text,
-  grid: dark ? '#64748b' : '#94a3b8',
-  note: dark ? '#40371c' : '#fef9c3',
+  grid: themeConfig.appearance[appearance].grid,
+  note: themeConfig.appearance[appearance].note,
 });
-
-/** Theme identity describes a style; appearance selects its presentation. */
-const baseThemeDefinitions: Record<
-  ThemeColorMode,
-  Record<BoardAppearance, BoardThemePalette>
-> = {
-  default: {
-    light: palette(
-      '#f8fafc',
-      '#ffffff',
-      '#f1f5f9',
-      '#0f172a',
-      '#64748b',
-      '#4f46e5',
-    ),
-    dark: palette(
-      '#0f172a',
-      '#1e293b',
-      '#29384e',
-      '#e2e8f0',
-      '#94a3b8',
-      '#a5b4fc',
-      true,
-    ),
-  },
-  colorful: {
-    light: palette(
-      '#ffffff',
-      '#ffffff',
-      '#f3edfc',
-      '#1e293b',
-      '#64748b',
-      '#7c3aed',
-    ),
-    dark: palette(
-      '#171329',
-      '#2b2342',
-      '#382d52',
-      '#f3eefe',
-      '#b8a3d4',
-      '#c4b5fd',
-      true,
-    ),
-  },
-  soft: {
-    light: palette(
-      '#f5f5f5',
-      '#ffffff',
-      '#edf0f4',
-      '#334155',
-      '#64748b',
-      '#687ea3',
-    ),
-    dark: palette(
-      '#1e232b',
-      '#2c3440',
-      '#353f4d',
-      '#dce4ee',
-      '#a2b3c6',
-      '#b3c7e8',
-      true,
-    ),
-  },
-  retro: {
-    light: palette(
-      '#f9f8ed',
-      '#fffdf4',
-      '#eee8d7',
-      '#493e32',
-      '#8a7155',
-      '#8b6138',
-    ),
-    dark: palette(
-      '#28251f',
-      '#373128',
-      '#443c2f',
-      '#f4e8ca',
-      '#baa681',
-      '#d5b77b',
-      true,
-    ),
-  },
-  dark: {
-    light: palette(
-      '#eff9f5',
-      '#ffffff',
-      '#dcefe7',
-      '#153c35',
-      '#527f72',
-      '#147d64',
-    ),
-    dark: palette(
-      '#141414',
-      '#1d2b26',
-      '#283c34',
-      '#e0f5ec',
-      '#8cbaa6',
-      '#6ee7b7',
-      true,
-    ),
-  },
-  starry: {
-    light: palette(
-      '#eff7fb',
-      '#ffffff',
-      '#dcecf5',
-      '#163c52',
-      '#577e99',
-      '#246f99',
-    ),
-    dark: palette(
-      '#0d2537',
-      '#18384d',
-      '#21475e',
-      '#e0f0fa',
-      '#91b5cc',
-      '#7dd3fc',
-      true,
-    ),
-  },
-};
 
 const normalize = (value: string) => {
   const color = value.trim().toLowerCase();
@@ -186,18 +86,10 @@ const normalize = (value: string) => {
 const matches = (value: string, defaults: readonly string[]) =>
   defaults.some((c) => normalize(c) === normalize(value));
 
-// Each theme keeps its own hue character. The first three families are also
-// its primary, secondary and tertiary semantic roles; the rest are categories.
-const seriesSeeds: Record<ThemeColorMode, readonly string[]> = {
-  default: ['#4f46e5', '#138b9e', '#b27a35', '#9669b3', '#bf667d', '#4d916b'],
-  colorful: ['#7c3aed', '#e44674', '#d78b13', '#169c91', '#3483d5', '#80a52b'],
-  soft: ['#687ea3', '#69947f', '#b28e61', '#a184b4', '#b58091', '#6c9dab'],
-  retro: ['#8b6138', '#447e6c', '#94718a', '#b56050', '#6c7e9c', '#929251'],
-  dark: ['#147d64', '#467eab', '#b98d3a', '#ad6d86', '#8574b2', '#bf7653'],
-  starry: ['#246f99', '#3e918b', '#9973a4', '#b68b45', '#b96f80', '#568b73'],
-};
-
-const themeLevels: readonly BoardThemeLevel[] = ['subtle', 'normal', 'strong'];
+const nodeTonePaint = new WeakMap<
+  BoardThemeTone,
+  { seed: string; amount: number }
+>();
 
 /** Mix opaque colors, so nested surfaces and image exports have identical paint. */
 const mixThemeColors = (from: string, to: string, amount: number): string => {
@@ -220,7 +112,7 @@ const mixThemeColors = (from: string, to: string, amount: number): string => {
 };
 
 /** Keep a border visible on both sides, including an explicitly fixed canvas. */
-const readableThemeStroke = (
+export const readableThemeStroke = (
   fill: string,
   background: string,
   preferred: string,
@@ -232,7 +124,10 @@ const readableThemeStroke = (
   if (bestScore >= 3) return preferred;
   // Search both directions, nearest first, retaining the hue wherever possible.
   for (let step = 1; step <= 100; step++) {
-    for (const target of ['#0f172a', '#ffffff']) {
+    for (const target of [
+      themeConfig.readability.dark,
+      themeConfig.readability.light,
+    ]) {
       const color = mixThemeColors(preferred, target, step / 100);
       const contrast = score(color);
       if (contrast >= 3) return color;
@@ -253,22 +148,41 @@ const themeTone = (
   stroke: string,
 ): BoardThemeTone => ({
   fill,
-  strokeColor: readableThemeStroke(fill, theme.background, stroke),
+  strokeColor: readableThemeStroke(
+    fill,
+    theme.canvas ?? theme.background,
+    stroke,
+  ),
   textColor: readableThemeText(fill, theme.text),
 });
+
+const paintedTone = (
+  theme: BoardThemePalette,
+  seed: string,
+  amount: number,
+): BoardThemeTone => {
+  const alpha = Math.round(amount * 255) / 255;
+  const tone = themeTone(
+    theme,
+    mixThemeColors(theme.canvas ?? theme.background, seed, alpha),
+    seed,
+  );
+  nodeTonePaint.set(tone, { seed, amount: alpha });
+  return tone;
+};
 
 const themeRamp = (
   theme: BoardThemePalette,
   seed: string,
   dark: boolean,
 ): BoardThemeRamp => {
-  const amounts = dark ? [0.14, 0.3, 0.48] : [0.1, 0.24, 0.44];
+  const amounts = themeConfig.styleAmounts[dark ? 'dark' : 'light'];
   return Object.fromEntries(
-    themeLevels.map((level, at) => [
-      level,
-      themeTone(theme, mixThemeColors(theme.surface, seed, amounts[at]), seed),
+    themeStyleLevels.map((level) => [
+      themeLevelAliases[level],
+      paintedTone(theme, seed, amounts[level]),
     ]),
-  ) as Record<BoardThemeLevel, BoardThemeTone>;
+  ) as Record<BoardThemeLegacyLevel, BoardThemeTone>;
 };
 
 const createThemeRoles = (
@@ -278,16 +192,16 @@ const createThemeRoles = (
 ): Pick<BoardThemePalette, 'roles' | 'series'> => {
   const series = seeds.map((seed) => themeRamp(theme, seed, dark));
   const neutral: BoardThemeRamp = {
-    subtle: themeTone(theme, theme.surface, theme.stroke),
-    normal: themeTone(
+    subtle: paintedTone(
       theme,
-      mixThemeColors(theme.surface, theme.stroke, 0.06),
       theme.stroke,
+      themeConfig.neutralAmounts.container,
     ),
-    strong: themeTone(
+    normal: paintedTone(theme, theme.stroke, themeConfig.neutralAmounts.node),
+    strong: paintedTone(
       theme,
-      mixThemeColors(theme.surface, theme.stroke, 0.14),
       theme.stroke,
+      themeConfig.neutralAmounts.emphasis,
     ),
   };
   return {
@@ -297,7 +211,11 @@ const createThemeRoles = (
       primary: series[0],
       secondary: series[1],
       tertiary: series[2],
-      annotation: themeRamp(theme, dark ? '#b39a43' : '#c4a33a', dark),
+      annotation: themeRamp(
+        theme,
+        themeConfig.appearance[dark ? 'dark' : 'light'].annotationSeed,
+        dark,
+      ),
     },
   };
 };
@@ -311,12 +229,16 @@ export const BoardThemeDefinitions: Record<
     id,
     Object.fromEntries(
       (['light', 'dark'] as const).map((appearance) => {
-        const base = baseThemeDefinitions[id][appearance];
+        const base = palette(themeConfig.themes[id][appearance], appearance);
         return [
           appearance,
           {
             ...base,
-            ...createThemeRoles(base, seriesSeeds[id], appearance === 'dark'),
+            ...createThemeRoles(
+              base,
+              themeConfig.themes[id][appearance].seriesSeeds,
+              appearance === 'dark',
+            ),
           },
         ];
       }),
@@ -332,11 +254,22 @@ const rolesForTheme = (theme: BoardThemePalette) => {
   let colors = fallbackRoles.get(theme);
   if (!colors) {
     const dark =
-      colorContrast(theme.surface, '#ffffff') >
-      colorContrast(theme.surface, '#0f172a');
+      colorContrast(
+        theme.canvas ?? theme.background,
+        themeConfig.readability.light,
+      ) >
+      colorContrast(
+        theme.canvas ?? theme.background,
+        themeConfig.readability.dark,
+      );
     colors = createThemeRoles(
       theme,
-      [theme.accent, ...seriesSeeds.default.slice(1)],
+      [
+        theme.accent,
+        ...themeConfig.themes.default[
+          dark ? 'dark' : 'light'
+        ].seriesSeeds.slice(1),
+      ],
       dark,
     );
     fallbackRoles.set(theme, colors);
@@ -399,9 +332,12 @@ export function resolveThemeRole(
   theme: BoardThemePalette,
   role: BoardThemeRole,
   level: BoardThemeLevel = 'normal',
+  nodeFill?: 'overlay' | 'opaque',
 ): BoardThemeTone {
   const ramp = theme.roles?.[role] ?? rolesForTheme(theme).roles![role];
-  return presentThemeTone(theme, ramp[level]);
+  return nodeFill
+    ? resolveThemeNodeTone(theme, ramp[themeLevelKey(level)], nodeFill)
+    : presentThemeTone(theme, ramp[themeLevelKey(level)]);
 }
 
 /** Category indices wrap deterministically; invalid indices use the first family. */
@@ -409,6 +345,7 @@ export function resolveThemeSeries(
   theme: BoardThemePalette,
   index: number,
   level: BoardThemeLevel = 'normal',
+  nodeFill?: 'overlay' | 'opaque',
 ): BoardThemeTone {
   const series = theme.series?.length
     ? theme.series
@@ -416,43 +353,116 @@ export function resolveThemeSeries(
   const ordinal = Number.isFinite(index) ? Math.trunc(index) : 0;
   const ramp =
     series[((ordinal % series.length) + series.length) % series.length];
-  return presentThemeTone(theme, ramp[level]);
+  return nodeFill
+    ? resolveThemeNodeTone(theme, ramp[themeLevelKey(level)], nodeFill)
+    : presentThemeTone(theme, ramp[themeLevelKey(level)]);
+}
+
+export function resolveThemeFamily(
+  theme: BoardThemePalette,
+  family: BoardThemeFamily,
+  level: BoardThemeLevel = 'node',
+  fillMode?: 'overlay' | 'opaque',
+): BoardThemeTone {
+  return isBoardStyleColor(family)
+    ? resolveThemeSeries(
+        theme,
+        BoardStyleColors.indexOf(family),
+        level,
+        fillMode,
+      )
+    : resolveThemeRole(theme, family, level, fillMode);
+}
+
+/** Composite a node's hex alpha paint onto its actual supporting surface. */
+export function compositeThemeFill(fill: string, background: string): string {
+  const color = normalize(fill);
+  if (/^#[\da-f]{8}$/.test(color))
+    return mixThemeColors(
+      background,
+      color.slice(0, 7),
+      parseInt(color.slice(7), 16) / 255,
+    );
+  return fill === 'none' || fill === 'transparent' ? background : fill;
+}
+
+/** Nodes float over the canvas; containers retain their opaque surface ramps. */
+export function resolveThemeNodeTone(
+  theme: BoardThemePalette,
+  tone: BoardThemeTone,
+  mode: 'overlay' | 'opaque' = 'overlay',
+): BoardThemeTone {
+  const paint = nodeTonePaint.get(tone);
+  if (!paint) return presentThemeTone(theme, tone);
+  const seed = normalize(paint.seed);
+  if (!/^#[\da-f]{6}$/.test(seed)) return presentThemeTone(theme, tone);
+  const amount = paint.amount;
+  const overlay =
+    seed +
+    Math.round(amount * 255)
+      .toString(16)
+      .padStart(2, '0');
+  const effective = compositeThemeFill(
+    overlay,
+    theme.canvas ?? theme.background,
+  );
+  return {
+    fill: mode === 'overlay' ? overlay : effective,
+    strokeColor: readableThemeStroke(
+      effective,
+      theme.canvas ?? theme.background,
+      seed,
+    ),
+    textColor: readableThemeText(effective, theme.text),
+  };
 }
 
 export function resolveBoardTheme(
   theme?: Partial<BoardTheme>,
   appearance?: BoardAppearance,
 ): ResolvedBoardTheme {
-  const id =
-    theme?.themeColorMode &&
-    Object.hasOwn(BoardThemeDefinitions, theme.themeColorMode)
-      ? theme.themeColorMode
-      : ThemeColorMode.default;
-  const native = id === 'dark' || id === 'starry' ? 'dark' : 'light';
+  const known =
+    theme?.themeColorMode !== undefined &&
+    Object.hasOwn(BoardThemeDefinitions, theme.themeColorMode);
+  const unknown = theme?.themeColorMode !== undefined && !known;
+  const id = known ? theme!.themeColorMode! : ThemeColorMode.default;
+  const native = themeConfig.themes[id].nativeAppearance;
   const colors = BoardThemeDefinitions[id][appearance ?? 'light'];
   const raw =
     typeof theme?.boardBackground === 'string'
       ? theme.boardBackground
       : undefined;
   const historic = [
-    id === 'dark' ? '#141414' : id === 'starry' ? '#0d2537' : '#f8fafc',
+    themeConfig.themes[id].legacy.historicBackground,
     ThemeColors.find((c) => c.mode === id)!.boardBackground!,
   ];
   const custom =
     raw !== undefined &&
     (theme?.backgroundMode === 'custom' ||
-      (theme?.backgroundMode !== 'theme' && !matches(raw, historic)));
+      (!unknown &&
+        theme?.backgroundMode !== 'theme' &&
+        !matches(raw, historic)));
+  const canvas =
+    appearance === undefined
+      ? unknown && theme?.backgroundMode !== 'custom'
+        ? themeConfig.legacy.canvas
+        : (raw ?? themeConfig.legacy.canvas)
+      : custom
+        ? raw!
+        : colors.background;
+  const resolved = { ...colors, background: canvas, canvas };
   return {
-    ...colors,
+    ...resolved,
+    ...(appearance !== undefined && canvas !== colors.background
+      ? createThemeRoles(
+          resolved,
+          themeConfig.themes[id][appearance ?? 'light'].seriesSeeds,
+          appearance === 'dark',
+        )
+      : {}),
     id,
     appearance: appearance ?? native,
     adaptive: appearance !== undefined,
-    background:
-      appearance === undefined
-        ? (raw ?? '#f8fafc')
-        : custom
-          ? raw!
-          : colors.background,
   };
 }
 
@@ -474,6 +484,7 @@ export function resolveCellAppearance(
   cell: Cell,
   theme: ResolvedBoardTheme,
   defaults?: Pick<NodeAppearance, 'fill' | 'strokeColor'>,
+  background = theme.canvas ?? theme.background,
 ): NodeAppearance {
   const raw = ('appearance' in cell ? cell.appearance : undefined) as
     NodeAppearance | undefined;
@@ -486,22 +497,30 @@ export function resolveCellAppearance(
   const fill = resolveThemeColor(
     raw?.fill,
     raw?.colorSources?.fill,
-    defaults?.fill ?? theme.surface,
+    defaults?.fill ??
+      (theme.adaptive
+        ? resolveThemeRole(theme, 'neutral', 'node').fill
+        : theme.surface),
     theme,
   );
   const line =
     cell.cellType === 'edge' || ['freehand', 'vector-line'].includes(cell.kind);
-  const strokeBackground =
-    line || fill === 'none' || fill === 'transparent' ? theme.background : fill;
+  const strokeBackground = line
+    ? background
+    : compositeThemeFill(fill, background);
   const defaultStroke = readableThemeStroke(
     strokeBackground,
-    theme.background,
+    background,
     defaults?.strokeColor ?? theme.stroke,
   );
   const strokeColor = resolveThemeColor(
     raw?.strokeColor,
     raw?.colorSources?.strokeColor,
-    theme.adaptive ? defaultStroke : frame ? '#cbd5e1' : '#64748b',
+    theme.adaptive
+      ? defaultStroke
+      : frame
+        ? themeConfig.legacy.frameStroke
+        : themeConfig.legacy.nodeStroke,
     theme,
   );
   return { ...raw, fill, strokeColor };
@@ -525,10 +544,19 @@ export function colorContrast(a: string, b: string): number {
 export function readableThemeText(
   background: string,
   preferred: string,
+  backdrop: string = themeConfig.readability.light,
 ): string {
-  if (colorContrast(background, preferred) >= 4.5) return preferred;
-  return colorContrast(background, '#0f172a') >=
-    colorContrast(background, '#ffffff')
-    ? '#0f172a'
-    : '#ffffff';
+  background = compositeThemeFill(background, backdrop);
+  // Leave room for channel/alpha rounding in browser compositing.
+  const readableContrast = 4.55;
+  if (colorContrast(background, preferred) >= readableContrast)
+    return preferred;
+  const fallback =
+    colorContrast(background, themeConfig.readability.dark) >=
+    colorContrast(background, themeConfig.readability.light)
+      ? themeConfig.readability.dark
+      : themeConfig.readability.light;
+  return colorContrast(background, fallback) >= readableContrast
+    ? fallback
+    : themeConfig.readability.maximumContrastDark;
 }

@@ -13,6 +13,11 @@ import {
   exercisePortInteractions,
   exerciseWorkflowEndpoints,
   exerciseWaypointRemoval,
+  exerciseWaypointReset,
+  paintLayerFixture,
+  exercisePaintLayers,
+  architectureSelectionFixture,
+  exerciseArchitectureSelectionDrag,
   portCanvas,
   portFixture,
   waypointFixture,
@@ -330,4 +335,48 @@ test('Desktop Workflow endpoints use the actual route and preserve bindings acro
       portId: 'left',
     });
   });
+});
+
+// eslint-disable-next-line no-empty-pattern -- Electron owns its window.
+test('Desktop waypoint reset persists from both entries across restart', async ({}) => {
+  await runDesktopPorts(
+    waypointFixture(),
+    exerciseWaypointReset,
+    1,
+    (cells) => {
+      expect(cells.bend.route).toEqual({
+        mode: 'orthogonal',
+        strategy: 'optimized',
+      });
+      expect(cells.bend.labels).toEqual([{ text: 'Keep label' }]);
+    },
+  );
+});
+// eslint-disable-next-line no-empty-pattern -- Electron owns its window.
+test('Desktop architecture multi-selection drags through port padding and preserves ownership', async ({}) => {
+  await runDesktopPorts(
+    architectureSelectionFixture(),
+    exerciseArchitectureSelectionDrag,
+    0,
+    (cells) => {
+      expect([...cells.layer.data.memberIds].sort()).toEqual(['a', 'b', 'c']);
+      expect(cells.b.geometry.x - cells.a.geometry.x).toBe(350);
+      expect(cells.b.geometry.y).toBe(cells.a.geometry.y);
+      expect(cells.c.geometry).toEqual(
+        architectureSelectionFixture().cells.c.geometry,
+      );
+    },
+  );
+});
+
+// eslint-disable-next-line no-empty-pattern -- Electron owns its window.
+test('Desktop temporary selection layering keeps endpoint dragging and persistence intact', async ({}) => {
+  await runDesktopPorts(
+    paintLayerFixture(),
+    exercisePaintLayers,
+    1,
+    (cells) => {
+      expect(cells).toEqual(paintLayerFixture().cells);
+    },
+  );
 });

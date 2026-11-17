@@ -5,6 +5,7 @@ import {
   isNodeCell,
   resolveBoardTheme,
   resolveCellAppearance,
+  resolveThemeFamily,
 } from '@sue/board-core';
 import { parseMermaidToFrameSnapshot } from './index';
 
@@ -47,9 +48,10 @@ linkStyle 1 stroke:#123456,color:#884422
     const get = (label: string) =>
       nodes.find((node) => node.content?.label === label)!;
     const theme = resolveBoardTheme(undefined, 'dark');
+    const nodeTone = resolveThemeFamily(theme, 'neutral', 'node');
     expect(resolveCellAppearance(get('Default'), theme)).toMatchObject({
-      fill: theme.surface,
-      strokeColor: theme.stroke,
+      fill: nodeTone.fill,
+      strokeColor: nodeTone.strokeColor,
     });
     expect(get('Styled').appearance?.colorSources).toEqual({
       fill: 'custom',

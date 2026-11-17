@@ -42,8 +42,8 @@ importers:
         specifier: 1.0.0-beta.0
         version: 1.0.0-beta.0
       electron:
-        specifier: 45.1.0
-        version: 45.1.0(supports-color@8.1.1)
+        specifier: 44.11.3
+        version: 44.11.3(supports-color@8.1.1)
       electron-builder:
         specifier: ^24.9.1
         version: 24.13.3(electron-builder-squirrel-windows@24.13.3)(supports-color@8.1.1)
@@ -142,8 +142,8 @@ importers:
         specifier: ^4.2.0
         version: 4.7.0(supports-color@8.1.1)(vite@6.4.3(@types/node@22.20.2)(sass@1.104.1)(yaml@2.9.1))
       electron:
-        specifier: 45.1.0
-        version: 45.1.0(supports-color@8.1.1)
+        specifier: 44.11.3
+        version: 44.11.3(supports-color@8.1.1)
       electron-builder:
         specifier: ^24.9.1
         version: 24.13.3(electron-builder-squirrel-windows@24.13.3)(supports-color@8.1.1)
@@ -3760,8 +3760,8 @@ packages:
   electron-to-chromium@1.5.302:
     resolution: {integrity: sha512-sM6HAN2LyK82IyPBpznDRqlTQAtuSaO+ShzFiWTvoMJLHyZ+Y39r8VMfHzwbU8MVBzQ4Wdn85+wlZl2TLGIlwg==}
 
-  electron@45.1.0:
-    resolution: {integrity: sha512-i7qKVAh/KR5v1pf56NhGGX2QYHcdjvLgS7koL6ui50c+zUDGLRunR95nXcTpHPURKOQ4GDBG8BmXiDgOQ8DD0A==}
+  electron@44.11.3:
+    resolution: {integrity: sha512-yVzJBAM7hfK/gkD3LHvFD4gfHLj1f6cL3yYgzX8pHQyWyz8U9FTfTj9WOFdwzLj5ta+/oIKDD4BsBTLYiFa2Tg==}
     engines: {node: '>= 22.12.0'}
     hasBin: true
 
@@ -9170,7 +9170,7 @@ snapshots:
 
   electron-to-chromium@1.5.302: {}
 
-  electron@45.1.0(supports-color@8.1.1):
+  electron@44.11.3(supports-color@8.1.1):
     dependencies:
       '@electron-internal/extract-zip': 1.0.8
       '@electron/get': 5.1.0(supports-color@8.1.1)

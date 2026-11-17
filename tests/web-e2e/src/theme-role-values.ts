@@ -12,6 +12,7 @@ export async function roleTone(
   appearance: 'light' | 'dark',
   role: string | number = 'primary',
   level: string = 'normal',
+  fillMode: 'overlay' | 'opaque' = 'overlay',
 ): Promise<Tone> {
   values ??= (async () => {
     // Keep the repository's ESM validation runtime out of Playwright's CommonJS transform.
@@ -41,13 +42,16 @@ export async function roleTone(
             5,
           ])
             for (const emphasis of ['subtle', 'normal', 'strong'])
-              tones[`${id}/${mode}/${key}/${emphasis}`] =
-                typeof key === 'number'
-                  ? core.resolveThemeSeries(theme, key, emphasis)
-                  : core.resolveThemeRole(theme, key, emphasis);
+              for (const paint of ['overlay', 'opaque'])
+                tones[`${id}/${mode}/${key}/${emphasis}/${paint}`] =
+                  typeof key === 'number'
+                    ? core.resolveThemeSeries(theme, key, emphasis, paint)
+                    : core.resolveThemeRole(theme, key, emphasis, paint);
         }
       return tones;
     });
   })();
-  return (await values!)[`${themeId}/${appearance}/${role}/${level}`];
+  return (await values!)[
+    `${themeId}/${appearance}/${role}/${level}/${fillMode}`
+  ];
 }

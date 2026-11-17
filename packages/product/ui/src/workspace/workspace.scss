@@ -247,8 +247,7 @@ button.workspace-reference-action,
   &.is-menu-open {
     background: var(--vm-fill-hover);
   }
-  &.is-selected,
-  &.is-active {
+  &.is-highlighted {
     background: var(--vm-fill-active);
     color: var(--vm-primary);
     font-weight: 500;

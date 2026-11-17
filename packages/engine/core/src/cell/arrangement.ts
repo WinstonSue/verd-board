@@ -113,13 +113,16 @@ const moveBlocks = (
   deltas: readonly Point[],
   roundDelta = true,
   registry: CellRegistry = createCellRegistry(),
+  preserveMembership = false,
 ): CellOperation[] =>
   blocks.flatMap((block, i) => {
     const delta: Point = roundDelta
       ? [Math.round(deltas[i][0]), Math.round(deltas[i][1])]
       : deltas[i];
     return delta[0] || delta[1]
-      ? translateCellSelection(store, [block.id], delta, registry)
+      ? translateCellSelection(store, [block.id], delta, registry, {
+          preserveMembership,
+        })
       : [];
   });
 
@@ -253,6 +256,7 @@ export function arrangeCells(
         !block.members.some(
           (id) =>
             isDocumentCell(store.cells[id]) ||
+            store.cells[id]?.kind === 'card' ||
             (store.cells[id]?.kind === 'geometry' &&
               (store.cells[id] as import('./types').NodeCell).geometry
                 .outline === 'text'),
@@ -350,6 +354,7 @@ function arrangePartition(
       }),
       false,
       registry,
+      true,
     );
   }
   let rows: ArrangementBlock[][];
@@ -384,6 +389,7 @@ function arrangePartition(
       }),
       false,
       registry,
+      true,
     );
   }
   const members = new Set(blocks.flatMap((block) => block.members));
@@ -419,6 +425,7 @@ function arrangePartition(
     blocks.map((block) => positions.get(block.id)!),
     true,
     registry,
+    true,
   );
 }
 

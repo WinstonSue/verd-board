@@ -92,6 +92,8 @@ export interface FrameToolContribution {
 }
 /** Pure per-kind interaction policy. Mutable editor state belongs to React instances. */
 export interface FrameCellUI {
+  /** Structural backgrounds stay below their members, including when selected. */
+  background?: boolean;
   topic?: boolean;
   pasteTarget?: boolean;
   pointerMove?: boolean;
@@ -99,6 +101,8 @@ export interface FrameCellUI {
   resizeHandles?: boolean;
   defaultFontSize?: number;
   defaultTextAlignment?: 'left' | 'center';
+  textPadding?: number;
+  textVerticalAlignment?: 'top' | 'center';
   edgeKind?: string;
   edgeData?: unknown;
   branch?: boolean;

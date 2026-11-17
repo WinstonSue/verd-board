@@ -6,6 +6,8 @@ import {
   planBlockOrder,
 } from './document-block-order';
 import { closeHistory } from '@tiptap/pm/history';
+import { selectedRect } from '@tiptap/pm/tables';
+import { planTableMove, tableScopeKey, tableSelection } from './document-table';
 import type { Editor } from '@tiptap/react';
 import { NodeSelection, Selection, TextSelection } from '@tiptap/pm/state';
 import {
@@ -204,6 +206,12 @@ export function createDocumentController(
   const format = (run: () => void) => {
     if (editable()) withSource('format', run);
   };
+  const tableFormat = (run: () => void) =>
+    format(() => {
+      editor.view.dispatch(closeHistory(editor.state.tr));
+      run();
+      editor.view.dispatch(closeHistory(editor.state.tr));
+    });
 
   const revealAt = (pos: number) => {
     editor.view.dispatch(
@@ -327,26 +335,36 @@ export function createDocumentController(
         );
     },
     addTableRow(position) {
-      format(() =>
+      tableFormat(() =>
         editor.chain().focus()[TABLE_COMMANDS[position].row]().run(),
       );
     },
     addTableColumn(position) {
-      format(() =>
+      tableFormat(() =>
         editor.chain().focus()[TABLE_COMMANDS[position].column]().run(),
       );
     },
     deleteTableRow() {
-      format(() => editor.chain().focus().deleteRow().run());
+      tableFormat(() => {
+        const rect = selectedRect(editor.state);
+        if (rect.bottom - rect.top === rect.map.height)
+          editor.chain().focus().deleteTable().run();
+        else editor.chain().focus().deleteRow().run();
+      });
     },
     deleteTableColumn() {
-      format(() => editor.chain().focus().deleteColumn().run());
+      tableFormat(() => {
+        const rect = selectedRect(editor.state);
+        if (rect.right - rect.left === rect.map.width)
+          editor.chain().focus().deleteTable().run();
+        else editor.chain().focus().deleteColumn().run();
+      });
     },
     deleteTable() {
-      format(() => editor.chain().focus().deleteTable().run());
+      tableFormat(() => editor.chain().focus().deleteTable().run());
     },
     toggleTableHeader(kind) {
-      format(() => editor.chain().focus()[HEADER_COMMANDS[kind]]().run());
+      tableFormat(() => editor.chain().focus()[HEADER_COMMANDS[kind]]().run());
     },
 
     can(command) {
@@ -613,6 +631,7 @@ export function createDocumentController(
     id: options.getBaseDocument().id,
     document: editor.state.doc,
     selection: editor.state.selection,
+    state: editor.state,
     slash: slashToCapture,
   });
   const registry = createActionRegistry({
@@ -1304,6 +1323,50 @@ export function createDocumentController(
     ],
   ] as const)
     register(id, label, command, run);
+  for (const axis of ['row', 'column'] as const)
+    registry.register<{ toIndex: number }>({
+      id: `document.move-${axis}`,
+      label: { zh: axis === 'row' ? '移动行' : '移动列', en: `Move ${axis}` },
+      category: 'document',
+      effect: 'content',
+      palette: false,
+      validateArgs: (args): args is { toIndex: number } =>
+        isObject(args) && Number.isInteger(args['toIndex']),
+      getState: (context, args) => ({
+        visible: true,
+        enabled:
+          editable() && !!planTableMove(context.state, axis, args.toIndex),
+        reason: !editable() ? 'readonly' : 'invalid-table-move',
+      }),
+      execute: async (context, args) => {
+        const plan = planTableMove(context.state, axis, args.toIndex);
+        if (!plan) return { status: 'rejected', code: 'invalid-table-move' };
+        withSource('format', () => {
+          const tr = closeHistory(editor.state.tr).replaceWith(
+            plan.start,
+            plan.start + context.state.doc.nodeAt(plan.start)!.nodeSize,
+            plan.table,
+          );
+          const selection = tableSelection(
+            tr.doc,
+            plan.start,
+            axis,
+            plan.toIndex,
+            plan.toIndex + plan.count - 1,
+          );
+          if (selection) tr.setSelection(selection);
+          tr.setMeta(tableScopeKey, axis).setMeta(
+            blockOrderMapping,
+            plan.mappings,
+          );
+          editor.view.dispatch(tr);
+          editor.view.dispatch(closeHistory(editor.state.tr));
+          editor.view.focus();
+        });
+        const receipt = await flushEditing();
+        return receipt.status === 'noop' ? { status: 'completed' } : receipt;
+      },
+    });
   register(
     'replace',
     '替换',

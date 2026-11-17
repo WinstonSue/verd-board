@@ -1,6 +1,17 @@
 import { Translations } from '../types';
 
 const enTranslations: Translations = {
+  'appearance.styleColor': 'Style color',
+  'appearance.styleColor.automatic': 'Automatic',
+  'appearance.styleColor.mixed': 'Mixed values',
+  'appearance.styleColor.customOverride':
+    'Custom fill or stroke takes precedence. Reset it to the theme to use the style color.',
+  'appearance.styleColor.family1': 'Style color 1',
+  'appearance.styleColor.family2': 'Style color 2',
+  'appearance.styleColor.family3': 'Style color 3',
+  'appearance.styleColor.family4': 'Style color 4',
+  'appearance.styleColor.family5': 'Style color 5',
+  'appearance.styleColor.family6': 'Style color 6',
   'settings.appearance': 'Appearance',
   'settings.appearance.system': 'System',
   'settings.appearance.light': 'Light',
@@ -167,7 +178,6 @@ const enTranslations: Translations = {
   'theme.soft': 'Soft',
   'theme.retro': 'Retro',
   'theme.dark': 'Fresh',
-  'theme.starry': 'Ocean',
 
   // Colors
   'color.none': 'Topic Color',
@@ -397,7 +407,6 @@ const enTranslations: Translations = {
   'rightPanel.bg.soft': 'Soft (theme default)',
   'rightPanel.bg.retro': 'Retro (theme default)',
   'rightPanel.bg.dark': 'Fresh (theme default)',
-  'rightPanel.bg.starry': 'Ocean (theme default)',
   'rightPanel.bg.deepGray': 'Deep gray',
 
   'mind.layout.standard': 'Standard',

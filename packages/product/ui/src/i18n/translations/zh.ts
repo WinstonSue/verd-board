@@ -1,6 +1,17 @@
 import { Translations } from '../types';
 
 const zhTranslations: Translations = {
+  'appearance.styleColor': '风格色',
+  'appearance.styleColor.automatic': '自动',
+  'appearance.styleColor.mixed': '混合值',
+  'appearance.styleColor.customOverride':
+    '手动填充或描边优先；恢复主题后使用风格色。',
+  'appearance.styleColor.family1': '风格色 1',
+  'appearance.styleColor.family2': '风格色 2',
+  'appearance.styleColor.family3': '风格色 3',
+  'appearance.styleColor.family4': '风格色 4',
+  'appearance.styleColor.family5': '风格色 5',
+  'appearance.styleColor.family6': '风格色 6',
   'settings.appearance': '外观',
   'settings.appearance.system': '跟随系统',
   'settings.appearance.light': '浅色',
@@ -164,7 +175,6 @@ const zhTranslations: Translations = {
   'theme.soft': '柔和',
   'theme.retro': '复古',
   'theme.dark': '清新',
-  'theme.starry': '海洋',
 
   // Colors
   'color.none': '主题颜色',
@@ -389,7 +399,6 @@ const zhTranslations: Translations = {
   'rightPanel.bg.soft': '柔和（主题默认）',
   'rightPanel.bg.retro': '复古（主题默认）',
   'rightPanel.bg.dark': '清新（主题默认）',
-  'rightPanel.bg.starry': '海洋（主题默认）',
   'rightPanel.bg.deepGray': '深灰',
 
   'mind.layout.standard': '标准',

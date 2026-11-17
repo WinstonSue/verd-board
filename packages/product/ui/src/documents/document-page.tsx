@@ -63,7 +63,6 @@ import {
   type DocumentHistoryAdapter,
   type DocumentHeading,
   type DocumentSelection,
-  type DocumentToolbarState,
 } from '@sue/board-react-text';
 import type { BoardTextDocument, WorkspaceFileTarget } from '@sue/board-common';
 import './document-page.scss';
@@ -397,7 +396,6 @@ function DocumentPageContent({
   const [controller, setController] = useState<DocumentEditorController | null>(
     null,
   );
-  const [toolbar, setToolbar] = useState<DocumentToolbarState | null>(null);
   const [tocOpen, setTocOpen] = useState(!compact);
   const tocId = useId();
   const [headings, setHeadings] = useState<DocumentHeading[]>([]);
@@ -422,7 +420,6 @@ function DocumentPageContent({
   const refreshToolbar = useCallback(() => {
     const ctl = controllerRef.current;
     if (!ctl) return;
-    setToolbar(ctl.getToolbarState());
     setHeadings(ctl.getHeadings());
     setCharCount(ctl.getCharacterCount());
   }, []);
@@ -927,30 +924,6 @@ function DocumentPageContent({
           <div className="document-page__main">
             <header className="document-page__header">
               <div className="doc-toolbar" role="toolbar" aria-label="document">
-                {!readonly && (
-                  <div className="doc-toolbar__edit">
-                    {toolbar?.inTable && (
-                      <DocumentToolbarMenu
-                        label={t.tableActions}
-                        onOpen={captureMenu}
-                      >
-                        {(close) =>
-                          [
-                            ['add-row-before', t.addRowBefore],
-                            ['add-row-after', t.addRow],
-                            ['add-column-before', t.addColBefore],
-                            ['add-column-after', t.addCol],
-                            ['delete-row', t.delRow],
-                            ['delete-column', t.delCol],
-                            ['toggle-header-row', t.headerRow],
-                            ['toggle-header-column', t.headerCol],
-                            ['delete-table', t.delTable],
-                          ].map(([id, label]) => menuItem(id, label, close))
-                        }
-                      </DocumentToolbarMenu>
-                    )}
-                  </div>
-                )}
                 <div className="doc-toolbar__actions">
                   {showSaveStatus && (
                     <DocumentSaveStatus state={saveState} locale={locale} />

@@ -24,9 +24,12 @@ export function planDomainGraphLayout(
   const blocks = collectArrangementBlocks(
     store,
     frameId,
-    options.ids,
+    options.ids.filter((id) => store.cells[id]?.kind !== 'card'),
     registry,
-  ).filter((b) => !b.locked);
+  ).filter(
+    (b) =>
+      !b.locked && !b.members.some((id) => store.cells[id]?.kind === 'card'),
+  );
   if (blocks.length < 2) return [];
   const owner = new Map(
     blocks.flatMap((b) => b.members.map((id) => [id, b.id] as const)),
@@ -78,6 +81,7 @@ export function planDomainGraphLayout(
         origin[1] + point(b.id)[1] - b.bounds.y,
       ],
       registry,
+      { preserveMembership: true },
     ),
   );
 }

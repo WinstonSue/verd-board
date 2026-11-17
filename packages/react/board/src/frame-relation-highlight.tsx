@@ -339,7 +339,7 @@ export function FrameNodeInteraction({
           event.currentTarget.contains(event.relatedTarget)
         )
           return;
-        camera.leave(cellId);
+        camera.leave(cellId, undefined, event.relatedTarget);
       }}
     >
       <g ref={body}>{children}</g>

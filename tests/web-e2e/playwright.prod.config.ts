@@ -1,6 +1,6 @@
 import { defineConfig, devices } from '@playwright/test';
 
-const baseURL = 'http://127.0.0.1:4173';
+import { webE2EOptions } from '../../scripts/web-e2e-runtime.mjs';
 
 /** Serves the latest web production build. It never reuses a dev server. */
 export default defineConfig({
@@ -12,9 +12,9 @@ export default defineConfig({
   testDir: './src',
   globalSetup: './global-setup.ts',
   timeout: 60_000,
-  workers: 1,
+  workers: webE2EOptions().workers,
+  outputDir: process.env.VERDBOARD_E2E_OUTPUT ?? 'test-results',
   use: {
-    baseURL,
     trace: process.env.REMOTE_TEST_TRACE === 'all' ? 'on' : 'retain-on-failure',
   },
   projects: [

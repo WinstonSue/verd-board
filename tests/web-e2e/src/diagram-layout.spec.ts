@@ -1,9 +1,14 @@
+import {
+  expectPropertyValue,
+  selectPropertyValue,
+} from '../../helpers/property-select';
 import { selectHistoryAction } from './app-actions';
 import { expect, test, type Page, type Locator } from './service-fixture';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { selectAppAction, setAppLanguage, openActiveFile } from './app-actions';
 import { expandPropertyGroup } from './property-group';
+import { architecturePorts } from '../../../packages/engine/architecture/src/cell-commands';
 import {
   type FrameCell,
   type FrameSnapshot,
@@ -185,7 +190,11 @@ test('one-shot edge optimization saves editable paths and shares the routing cho
   for (const node of Object.values(before).filter(
     (cell) => cell.cellType === 'node',
   ))
-    expect(optimized[node.id]).toEqual(node);
+    expect(optimized[node.id]).toEqual(
+      node.kind === 'architecture-layer' && node.ports === undefined
+        ? { ...node, ports: architecturePorts() }
+        : node,
+    );
   await panel.getByRole('button', { name: '选择连线整理方式' }).click();
   await page.getByRole('menuitemradio', { name: /^重置手工走线/ }).click();
   await expect(main).toHaveText('重置手工走线');
@@ -203,7 +212,7 @@ test('one-shot edge optimization saves editable paths and shares the routing cho
   for (const node of Object.values(before).filter(
     (cell) => cell.cellType === 'node',
   ))
-    expect(reset[node.id]).toEqual(node);
+    expect(reset[node.id]).toEqual(optimized[node.id]);
   await main.locator('..').focus();
   await expect(page.getByRole('tooltip')).toContainText('手工折点');
   await page.keyboard.press('Escape');
@@ -402,7 +411,7 @@ test('group node layout and edge rerouting are independent, undoable and survive
     palette.locator('[data-action-id="canvas.edges.reroute"]'),
   ).toContainText('组内');
   await page.keyboard.press('Escape');
-  await panel.locator('select').selectOption('horizontal');
+  await selectPropertyValue(panel.getByRole('combobox'), 'horizontal');
   await panel.getByTestId('frame-auto-layout').click();
   await expect
     .poll(async () => (await savedCells(page)).b?.geometry)
@@ -460,7 +469,7 @@ for (const name of ['layered', 'data-flow', 'packages']) {
       .getByRole('complementary')
       .getByTestId('frame-arrangement');
     await expandPropertyGroup(page);
-    await expect(panel.locator('select')).toHaveValue('layers');
+    await expectPropertyValue(panel.getByRole('combobox'), 'layers');
     await panel.getByTestId('frame-auto-layout').click();
     await expect
       .poll(async () => moduleGeometry(await savedCells(page)))

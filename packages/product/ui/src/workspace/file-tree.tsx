@@ -139,6 +139,7 @@ export interface FileTreeProps {
   libraryActive?: boolean;
   /** Reveal the canonical row after the host expands its ancestor directories. */
   revealFile?: { fileId: string; nonce: number };
+  /** Scroll and focus the directory; selection is controlled by selectedPaths. */
   revealDirectory?: { path: string; nonce: number };
 }
 
@@ -521,6 +522,9 @@ export function FileTree({
     return () => cancelAnimationFrame(frame);
   }, [revealDirectory?.path, revealDirectory?.nonce]);
   const expanded = new Set(expandedDirs);
+  // Selection takes visual priority without changing the open file identity.
+  const highlighted = (path: string, active = false) =>
+    selectedPaths.length ? selectedPaths.includes(path) : active;
   const item = (
     id: string,
     label: string,
@@ -732,7 +736,7 @@ export function FileTree({
     return (
       <div key={key} className="file-tree-block">
         <div
-          className={`file-tree-row file-tree-file${active ? ' is-active' : ''}${selectedPaths.includes(file.path) ? ' is-selected' : ''}${file.conflicted ? ' is-conflicted' : ''}${menu?.key === key ? ' is-menu-open' : ''}`}
+          className={`file-tree-row file-tree-file${active ? ' is-active' : ''}${selectedPaths.includes(file.path) ? ' is-selected' : ''}${highlighted(file.path, active && !activeFailedPath) ? ' is-highlighted' : ''}${file.conflicted ? ' is-conflicted' : ''}${menu?.key === key ? ' is-menu-open' : ''}`}
           draggable={!readonly}
           data-entry-path={file.path}
           data-entry-kind="file"
@@ -847,7 +851,7 @@ export function FileTree({
     return (
       <div
         key={key}
-        className={`file-tree-row file-tree-file${selectedPaths.includes(path) ? ' is-selected' : ''}${menu?.key === key ? ' is-menu-open' : ''}`}
+        className={`file-tree-row file-tree-file${selectedPaths.includes(path) ? ' is-selected is-highlighted' : ''}${menu?.key === key ? ' is-menu-open' : ''}`}
         data-entry-path={path}
         data-entry-kind="resource"
         draggable={!readonly}
@@ -1025,8 +1029,7 @@ export function FileTree({
           () => onOrganize(dir.path, 'move'),
         ),
       );
-    const selected =
-      selectedPaths.includes(dir.path) || revealDirectory?.path === dir.path;
+    const selected = selectedPaths.includes(dir.path);
     return (
       <div key={dir.path || '__root'}>
         {dir.path ? (
@@ -1037,7 +1040,7 @@ export function FileTree({
             data-drop-side={
               dropTarget?.path === dir.path ? dropTarget.side : undefined
             }
-            className={`file-tree-row file-tree-dir${selected ? ' is-selected' : ''}${menu?.key === dirKey ? ' is-menu-open' : ''}`}
+            className={`file-tree-row file-tree-dir${selected ? ' is-selected is-highlighted' : ''}${menu?.key === dirKey ? ' is-menu-open' : ''}`}
             style={{ '--depth': depth } as CSSProperties}
             onContextMenu={(event) => openMenu(event, dirKey, dir.name, items)}
           >
@@ -1112,10 +1115,13 @@ export function FileTree({
             {dir.failures.map((failure) => (
               <div
                 key={failure.path}
-                className={`file-tree-row file-tree-file${failure.path === activeFailedPath ? ' is-active' : ''}`}
+                className={`file-tree-row file-tree-file${failure.path === activeFailedPath ? ' is-active' : ''}${selectedPaths.includes(failure.path) ? ' is-selected' : ''}${highlighted(failure.path, failure.path === activeFailedPath) ? ' is-highlighted' : ''}`}
                 data-failed-path={failure.path}
                 data-entry-path={failure.path}
                 data-entry-kind="failed"
+                aria-selected={
+                  selectedPaths.includes(failure.path) || undefined
+                }
                 draggable={!readonly}
                 style={{ '--depth': dir.path ? depth + 1 : 0 } as CSSProperties}
               >

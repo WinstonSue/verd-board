@@ -8,6 +8,61 @@ import { FrameNodeInteraction } from './frame-relation-highlight';
   globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }
 ).IS_REACT_ACT_ENVIRONMENT = true;
 
+it('retains node hover while entering a sibling port and clears it on a real exit', async () => {
+  const camera = createFrameCameraStore({ zoom: 1 }, 'root');
+  const container = document.createElement('div');
+  document.body.append(container);
+  const root = createRoot(container);
+  try {
+    await act(() =>
+      root.render(
+        <svg>
+          <g data-cell-id="node">
+            <FrameNodeInteraction
+              camera={camera}
+              cellId="node"
+              bounds={{ x: 0, y: 0, width: 100, height: 40 }}
+              relatedSelected={false}
+              primary={false}
+              scale={1}
+              baseWidth={1}
+            >
+              <rect data-frame-node-outline width={100} height={40} />
+            </FrameNodeInteraction>
+          </g>
+          <g data-port-node-id="node">
+            <circle />
+          </g>
+        </svg>,
+      ),
+    );
+    const body = container.querySelector('rect')!;
+    const port = container.querySelector('circle')!;
+    await act(() =>
+      body.dispatchEvent(new MouseEvent('pointerover', { bubbles: true })),
+    );
+    expect(camera.getHoveredId()).toBe('node');
+    await act(() =>
+      body.dispatchEvent(
+        new MouseEvent('pointerout', { bubbles: true, relatedTarget: port }),
+      ),
+    );
+    expect(camera.getHoveredId()).toBe('node');
+    await act(() =>
+      body.dispatchEvent(
+        new MouseEvent('pointerout', {
+          bubbles: true,
+          relatedTarget: container.querySelector('svg'),
+        }),
+      ),
+    );
+    expect(camera.getHoveredId()).toBeNull();
+  } finally {
+    await act(() => root.unmount());
+    container.remove();
+  }
+});
+
 it('does not commit inactive nodes on zoom and changes active shadows without recopying their contours', async () => {
   const camera = createFrameCameraStore(
     { zoom: 1, origination: [0, 0] },

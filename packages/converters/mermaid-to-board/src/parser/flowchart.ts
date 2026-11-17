@@ -75,15 +75,19 @@ const parseSubGraph = (
 
   // Get position
   const el: SVGSVGElement | null = containerEl.querySelector(
-    `[id='${data.id}']`,
+    `[id='${data.id}'], [id*="flowchart-${data.id}-"]`,
   );
-  if (!el) {
+  // Empty subgraphs may have no rendered cluster. A subgraph used as an edge
+  // endpoint may instead use Mermaid's vertex id; both retain their semantics.
+  if (!el && nodeIds.length) {
     throw new Error('SubGraph element not found');
   }
-  const position = computeElementPosition(el, containerEl);
+  const position = el
+    ? computeElementPosition(el, containerEl)
+    : { x: 0, y: 0 };
 
   // Get dimension
-  const boundingBox = el.getBBox();
+  const boundingBox = el?.getBBox() ?? { width: 0, height: 0 };
   const dimension = {
     width: boundingBox.width,
     height: boundingBox.height,

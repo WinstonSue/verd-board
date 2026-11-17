@@ -1,5 +1,6 @@
 import {
   applyCellOperations,
+  createCellRuntime,
   planGeometryLayout,
 } from '../../../packages/engine/core/src/cell/index';
 import { createWorkspaceCellRegistry } from '../../../packages/workspace/core/src/frames/plugins';
@@ -40,10 +41,15 @@ test('one-shot optimized paths persist across desktop restart without enabling c
     // Give all 43 relationships the current 96px layout clearance before testing
     // route-only optimization; the authored diagram has two blocked terminals.
     const registry = createWorkspaceCellRegistry();
-    const initial = {
-      rootId: source.frame.id,
-      cells: { [source.frame.id]: source.frame, ...source.cells },
-    };
+    const initial = createCellRuntime(
+      {
+        store: {
+          rootId: source.frame.id,
+          cells: { [source.frame.id]: source.frame, ...source.cells },
+        },
+      },
+      registry,
+    ).store;
     const plan = planGeometryLayout(
       initial,
       { focus: [initial.rootId], ids: [] },

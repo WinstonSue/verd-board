@@ -1,6 +1,7 @@
 import {
   applyCellOperations,
   colorContrast,
+  compositeThemeFill,
   isFrameCell,
   isNodeCell,
   resolveBoardTheme,
@@ -11,7 +12,11 @@ import {
   type CellStore,
   type EdgeCell,
 } from '@sue/board-core';
-import { FrameCanvas, type FrameCanvasController } from '@sue/board-react';
+import {
+  FrameCanvas,
+  type FrameRenderContext,
+  type FrameCanvasController,
+} from '@sue/board-react';
 import {
   addUmlActivation,
   addUmlCell,
@@ -175,13 +180,23 @@ it('paints classifier headers and members with coordinated local colors and hono
         await render(snapshot, appearance);
         expect(
           controller.current!.resolveAppearance('relation')?.strokeColor,
-        ).toBe(resolveThemeSeries(theme, 0).strokeColor);
+        ).toBe(resolveThemeSeries(theme, 0, 'normal', 'overlay').strokeColor);
         ['class', 'interface', 'abstract', 'enum'].forEach((id, ordinal) => {
           const element = container.querySelector(`[data-cell-id="${id}"]`)!;
           const body = element.querySelector('[data-uml-class-body]')!;
           const header = element.querySelector('[data-uml-class-header]')!;
-          const bodyTone = resolveThemeSeries(theme, ordinal, 'subtle');
-          const headerTone = resolveThemeSeries(theme, ordinal);
+          const bodyTone = resolveThemeSeries(
+            theme,
+            ordinal,
+            'node',
+            'overlay',
+          );
+          const headerTone = resolveThemeSeries(
+            theme,
+            ordinal,
+            'emphasis',
+            'overlay',
+          );
           expect(body.getAttribute('fill')).toBe(bodyTone.fill);
           expect(header.getAttribute('fill')).toBe(headerTone.fill);
           expect(bodyTone.fill).not.toBe(headerTone.fill);
@@ -189,14 +204,20 @@ it('paints classifier headers and members with coordinated local colors and hono
             bodyTone.fill,
           );
           expect(
-            colorContrast(headerTone.textColor, headerTone.fill),
+            colorContrast(
+              headerTone.textColor,
+              compositeThemeFill(headerTone.fill, theme.background),
+            ),
           ).toBeGreaterThanOrEqual(4.5);
           for (const member of element.querySelectorAll<HTMLDivElement>(
             '[data-uml-class] foreignObject > div',
           )) {
             expect(member.style.color).toBe(cssColor(bodyTone.textColor));
             expect(
-              colorContrast(bodyTone.textColor, bodyTone.fill),
+              colorContrast(
+                bodyTone.textColor,
+                compositeThemeFill(bodyTone.fill, theme.background),
+              ),
             ).toBeGreaterThanOrEqual(4.5);
           }
           for (const classifier of element.querySelectorAll(
@@ -216,7 +237,12 @@ it('paints classifier headers and members with coordinated local colors and hono
     );
     await render(edited, 'dark');
     expect(controller.current!.resolveAppearance('relation')?.strokeColor).toBe(
-      resolveThemeSeries(resolveBoardTheme(undefined, 'dark'), 0).strokeColor,
+      resolveThemeSeries(
+        resolveBoardTheme(undefined, 'dark'),
+        0,
+        'normal',
+        'overlay',
+      ).strokeColor,
     );
     const editedClass = container.querySelector('[data-cell-id="class"]')!;
     for (const rect of editedClass.querySelectorAll(
@@ -244,12 +270,12 @@ it('paints classifier headers and members with coordinated local colors and hono
       container
         .querySelector('[data-cell-id="class"] [data-uml-class-body]')
         ?.getAttribute('fill'),
-    ).toBe(resolveThemeSeries(theme, 0, 'subtle').fill);
+    ).toBe(resolveThemeSeries(theme, 0, 'node', 'overlay').fill);
     expect(
       container
         .querySelector('[data-cell-id="class"] [data-uml-class-header]')
         ?.getAttribute('fill'),
-    ).toBe(resolveThemeSeries(theme, 0).fill);
+    ).toBe(resolveThemeSeries(theme, 0, 'emphasis', 'overlay').fill);
     await render(store);
     expect(
       container
@@ -353,18 +379,18 @@ it('shares sequence families across participant parts and messages and reassigns
           participant
             .querySelector('[data-uml-lifeline] > rect')
             ?.getAttribute('fill'),
-        ).toBe(resolveThemeSeries(theme, 1).fill);
+        ).toBe(resolveThemeSeries(theme, 1, 'node', 'overlay').fill);
         expect(
           participant
             .querySelector('[data-uml-activation]')
             ?.getAttribute('fill'),
-        ).toBe(resolveThemeSeries(theme, 1, 'strong').fill);
+        ).toBe(resolveThemeSeries(theme, 1, 'emphasis', 'overlay').fill);
         expect(
           controller.current!.resolveAppearance('message')?.strokeColor,
-        ).toBe(resolveThemeSeries(theme, 0).strokeColor);
+        ).toBe(resolveThemeSeries(theme, 0, 'node', 'overlay').strokeColor);
         expect(
           container.querySelector('[data-uml-note]')?.getAttribute('fill'),
-        ).toBe(resolveThemeRole(theme, 'annotation').fill);
+        ).toBe(resolveThemeRole(theme, 'annotation', 'node', 'overlay').fill);
         for (const [operator, role] of [
           ['alt', 'tertiary'],
           ['opt', 'secondary'],
@@ -378,7 +404,7 @@ it('shares sequence families across participant parts and messages and reassigns
             fragment
               .querySelector('[data-uml-fragment-label]')
               ?.getAttribute('fill'),
-          ).toBe(resolveThemeRole(theme, role, 'subtle').fill);
+          ).toBe(resolveThemeRole(theme, role, 'emphasis').fill);
         }
       }
     }
@@ -443,10 +469,10 @@ it('shares sequence families across participant parts and messages and reassigns
     await render(reordered, 'light');
     const theme = resolveBoardTheme(undefined, 'light');
     expect(controller.current!.resolveAppearance('participant')?.fill).toBe(
-      resolveThemeSeries(theme, 0).fill,
+      resolveThemeSeries(theme, 0, 'node', 'overlay').fill,
     );
     expect(controller.current!.resolveAppearance('message')?.strokeColor).toBe(
-      resolveThemeSeries(theme, 1).strokeColor,
+      resolveThemeSeries(theme, 1, 'node', 'overlay').strokeColor,
     );
     const actor = store.cells.actor;
     if (!isNodeCell(actor)) throw new Error('Missing actor');
@@ -478,4 +504,23 @@ it('shares sequence families across participant parts and messages and reassigns
     await act(async () => root.unmount());
     container.remove();
   }
+});
+
+it('uses fragment label contrast for its common text presentation', () => {
+  const registry = createTestCellRegistry();
+  const { store } = createUmlSequenceFrameSnapshot('f', 'r');
+  const cell = createUmlFragmentCell('fragment', 'loop');
+  const theme = resolveBoardTheme(
+    { themeColorMode: ThemeColorMode.retro },
+    'dark',
+  );
+  const extension = createUmlFrameExtensions(registry).find(
+    (value) => value.kind === 'uml-fragment',
+  )!;
+  const context = { store, cell, frameId: 'f', theme } as FrameRenderContext;
+  const label = resolveUmlPartAppearance(context, 'fragment-label');
+  expect(extension.presentation!(context)?.color).toBe(label.textColor);
+  expect(colorContrast(label.fill!, label.textColor!)).toBeGreaterThanOrEqual(
+    4.5,
+  );
 });

@@ -61,7 +61,7 @@
     "@vitejs/plugin-react": "^4.2.0",
     "@vitest/ui": "^3.0.8",
     "@ylib/ai-config-manager": "1.0.0-beta.0",
-    "electron": "45.1.0",
+    "electron": "44.11.3",
     "electron-builder": "^24.9.1",
     "eslint": "^9.22.0",
     "eslint-config-prettier": "^10.1.0",

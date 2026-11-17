@@ -453,34 +453,78 @@ test('desktop document enters presentation directly and preserves the draft on e
       'false',
     );
     const editor = page.locator('.workspace-pane.is-active .ProseMirror');
-    await editor.click();
-    await expect(editor).toBeFocused();
-    await page.keyboard.press('ControlOrMeta+End');
-    await page.keyboard.type(' preserved draft');
-    await expect(editor).toContainText('preserved draft');
-    await page
-      .locator('.workspace-pane.is-active')
-      .getByRole('toolbar', { name: 'document', exact: true })
-      .getByRole('button', { name: '演示', exact: true })
-      .click();
-    const mode = page.getByTestId('presentation-mode');
-    await expect(mode).toBeVisible();
-    await expect(mode.locator('.ProseMirror')).toHaveAttribute(
-      'contenteditable',
-      'false',
-    );
-    await expect(mode).toContainText('preserved draft');
-    await expect
-      .poll(() =>
-        desktop.evaluate(
-          ({ BrowserWindow }) => BrowserWindow.getAllWindows().length,
-        ),
-      )
-      .toBe(1);
-    await page.keyboard.press('Escape');
-    await expect(mode).toHaveCount(0);
-    await expect(editor).toHaveAttribute('contenteditable', 'true');
-    await expect(editor).toContainText('preserved draft');
+    let expected = 'Document body';
+    for (const addition of [
+      ' preserved draft',
+      ' another edit',
+      ' latest edit',
+    ]) {
+      expected += addition;
+      await editor.click();
+      await expect(editor).toBeFocused();
+      await page.keyboard.press('ControlOrMeta+End');
+      await page.keyboard.type(addition);
+      await expect(editor).toContainText(expected);
+      await page
+        .locator('.workspace-pane.is-active')
+        .getByRole('toolbar', { name: 'document', exact: true })
+        .getByRole('button', { name: '演示', exact: true })
+        .click();
+      const mode = page.getByTestId('presentation-mode');
+      try {
+        await expect(mode).toBeVisible();
+      } catch (error) {
+        const info = test.info();
+        await info.attach('document-presentation-state', {
+          body: JSON.stringify(
+            await page.evaluate(() => {
+              const element = document.querySelector(
+                '.workspace-pane.is-active .ProseMirror',
+              );
+              const editor = (element as any)?.editor;
+              return {
+                text: document.body.innerText,
+                active: document.activeElement?.outerHTML,
+                fullscreen: document.fullscreenElement?.className,
+                focused: editor?.isFocused,
+                editable: editor?.isEditable,
+                selection: editor?.state.selection.toJSON(),
+                content: editor?.getJSON(),
+              };
+            }),
+            null,
+            2,
+          ),
+          contentType: 'application/json',
+        });
+        const trace = info.outputPath('document-presentation-electron.zip');
+        await desktop.context().tracing.stop({ path: trace });
+        await info.attach('document-presentation-electron', {
+          path: trace,
+          contentType: 'application/zip',
+        });
+        throw error;
+      }
+      await expect(mode.locator('.ProseMirror')).toHaveAttribute(
+        'contenteditable',
+        'false',
+      );
+      await expect(mode).toContainText(expected);
+      await expect
+        .poll(() =>
+          desktop.evaluate(
+            ({ BrowserWindow }) => BrowserWindow.getAllWindows().length,
+          ),
+        )
+        .toBe(1);
+      await page.keyboard.press('Escape');
+      await expect(mode).toHaveCount(0);
+      await expect(editor).toHaveAttribute('contenteditable', 'true');
+      await expect(editor).toContainText(expected);
+      await expect
+        .poll(() => page.evaluate(() => document.fullscreenElement === null))
+        .toBe(true);
+    }
     await expect(
       page
         .locator('.workspace-pane.is-active .workspace-file-navigation')

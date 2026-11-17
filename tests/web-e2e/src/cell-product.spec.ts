@@ -1,3 +1,9 @@
+import { placeArchitectureTool } from '../../helpers/architecture-cards';
+import {
+  expectPropertyValue,
+  propertyOptions,
+  selectPropertyValue,
+} from '../../helpers/property-select';
 import { cellBodyPoint, nodePort } from '../../helpers/port-controls';
 import { selectHistoryAction } from './app-actions';
 import { expect, test, type Page } from './service-fixture';
@@ -22,6 +28,8 @@ const cells = (page: Page, kind: string) =>
       ? '[data-cell-kind="frame"],[data-cell-kind="frame-reference"]'
       : `[data-cell-kind="${kind}"]`,
   );
+const cell = (page: Page, id: string) =>
+  canvas(page).locator(`[data-cell-id="${id}"]`);
 const persisted = persistedWorkspace;
 const createAt = async (page: Page, label: string, x = 280, y = 180) => {
   await selectDrawingTool(page, label);
@@ -43,6 +51,7 @@ test('multi-selection drag and group alignment preserve member spacing with one-
   const ids = await nodes.evaluateAll((elements) =>
     elements.map((element) => element.getAttribute('data-cell-id')!),
   );
+  const node = (index: number) => cell(page, ids[index]);
   const saved = async () => {
     const data = await persisted(page);
     return data?.records[data.manifest.rootId];
@@ -51,9 +60,9 @@ test('multi-selection drag and group alignment preserve member spacing with one-
     .poll(async () => Object.keys((await saved())?.cells ?? {}).length)
     .toBe(3);
   const before = (await saved())!.cells;
-  await nodes.nth(0).click();
-  await nodes.nth(1).click({ modifiers: ['Shift'] });
-  const box = (await nodes.nth(0).locator('path').first().boundingBox())!;
+  await node(0).click();
+  await node(1).click({ modifiers: ['Shift'] });
+  const box = (await node(0).locator('path').first().boundingBox())!;
   await page.mouse.move(box.x + 20, box.y + 20);
   await page.mouse.down();
   await page.mouse.move(box.x + 70, box.y + 55, { steps: 5 });
@@ -70,8 +79,8 @@ test('multi-selection drag and group alignment preserve member spacing with one-
   await selectHistoryAction(page, '重做');
   await expandPropertyGroup(page);
   await page.getByRole('button', { name: '分组', exact: true }).click();
-  await nodes.nth(0).click();
-  await nodes.nth(2).click({ modifiers: ['Shift'] });
+  await node(0).click();
+  await node(2).click({ modifiers: ['Shift'] });
   await page.getByRole('button', { name: '右对齐', exact: true }).click();
   await expect
     .poll(async () => {
@@ -89,18 +98,18 @@ test('multi-selection drag and group alignment preserve member spacing with one-
     .toEqual([220, 0]);
   await page.reload();
   await expect(nodes).toHaveCount(3);
-  await nodes.nth(0).click();
+  await node(0).click();
   await expandPropertyGroup(page);
   await expect(
     page.getByRole('button', { name: '取消分组', exact: true }),
   ).toBeVisible();
-  await nodes.nth(0).dblclick();
+  await node(0).dblclick();
   await editBody(page, 'Group member');
-  await expect(nodes.nth(0)).toContainText('Group member');
-  await expect(nodes.nth(1)).toHaveText('');
+  await expect(node(0)).toContainText('Group member');
+  await expect(node(1)).toHaveText('');
   await canvas(page).press('Escape');
   await canvas(page).press('Escape');
-  await nodes.nth(0).click();
+  await node(0).click();
   await expect(
     page.getByRole('button', { name: '取消分组', exact: true }),
   ).toBeVisible();
@@ -118,7 +127,7 @@ test('grid, Frame aspect ratio and automatic stylus protection retain their prod
   await createAt(page, '容器', 280, 180);
   await cells(page, 'frame').locator('[data-frame-title-id]').first().click();
   const id = (await cells(page, 'frame').getAttribute('data-cell-id'))!;
-  await page.getByLabel('比例').selectOption('16:9');
+  await selectPropertyValue(page.getByLabel('比例'), '16:9');
   await expect
     .poll(async () => {
       const data = await persisted(page);
@@ -176,7 +185,7 @@ test('grid, Frame aspect ratio and automatic stylus protection retain their prod
     page.getByLabel('Canvas grid size', { exact: true }),
   ).toHaveValue('32');
   await cells(page, 'frame').locator('[data-frame-title-id]').first().click();
-  await expect(page.getByLabel('比例')).toHaveValue('16:9');
+  await expectPropertyValue(page.getByLabel('比例'), '16:9');
 });
 
 test('new mind topics inherit typography and expand their layout without copying text or links', async ({
@@ -187,9 +196,10 @@ test('new mind topics inherit typography and expand their layout without copying
   await page
     .getByRole('button', { name: 'Selection bold', exact: true })
     .click();
-  await page
-    .getByLabel('Selection font size', { exact: true })
-    .selectOption('32px');
+  await selectPropertyValue(
+    page.getByLabel('Selection font size', { exact: true }),
+    '32px',
+  );
   await page.getByRole('button', { name: '编辑链接', exact: true }).click();
   const linkDialog = page.getByRole('dialog', {
     name: '编辑链接',
@@ -288,16 +298,16 @@ test('mind style inheritance, branch appearance and image edits survive history,
     .getByLabel('Stroke width', { exact: true })
     .locator('visible=true')
     .press('Enter');
-  await page
-    .getByLabel('Stroke style', { exact: true })
-    .locator('visible=true')
-    .selectOption('dotted');
-  await page.getByLabel('Mind topic shape').selectOption('underline');
-  await page.getByLabel('Mind branch shape').selectOption('polyline');
+  await selectPropertyValue(
+    page.getByLabel('Stroke style', { exact: true }).locator('visible=true'),
+    'dotted',
+  );
+  await selectPropertyValue(page.getByLabel('Mind topic shape'), 'underline');
+  await selectPropertyValue(page.getByLabel('Mind branch shape'), 'polyline');
   await page.getByLabel('Mind branch color').fill('#008800');
   await page.getByLabel('Mind branch width').fill('5');
   await page.getByLabel('Mind branch width').press('Enter');
-  await page.getByLabel('Mind branch style').selectOption('dotted');
+  await selectPropertyValue(page.getByLabel('Mind branch style'), 'dotted');
   const imageUrl = await page.evaluate(() => {
     const image = document.createElement('canvas');
     image.width = 64;
@@ -480,6 +490,15 @@ for (const grip of ['left', 'right'] as const) {
     const child = cells(page, 'mind-child').filter({ hasText: 'Nested child' });
     const childId = (await child.getAttribute('data-cell-id'))!;
     await expect.poll(() => savedMindParent(page, childId)).toBe(aId);
+    await expect
+      .poll(async () => {
+        const data = await persisted(page);
+        const nested = Object.values(data?.records ?? {})
+          .flatMap((record: any) => Object.values(record.cells))
+          .find((cell: any) => cell.id === childId) as any;
+        return nested?.content?.text?.plainText;
+      })
+      .toBe('Nested child');
     await page.getByRole('button', { name: '适配画布', exact: true }).click();
     const before = await persisted(page);
     const rootId = await cells(page, 'mind-root').getAttribute('data-cell-id');
@@ -1005,9 +1024,10 @@ test('edits arrow bindings, route segments and multiple labels through native tr
   await page.getByLabel('Edge label 1', { exact: true }).fill('First');
   await page.getByRole('button', { name: '添加标签', exact: true }).click();
   await page.getByLabel('Edge label 2', { exact: true }).fill('Second');
-  await page
-    .getByLabel('Edge route', { exact: true })
-    .selectOption('orthogonal');
+  await selectPropertyValue(
+    page.getByLabel('Edge route', { exact: true }),
+    'orthogonal',
+  );
   const segments = canvas(page).locator(
     `[data-edge-controls="${await edge.getAttribute('data-cell-id')}"] [data-edge-segment]`,
   );
@@ -1158,16 +1178,20 @@ test('saves a mind note before closing its editor and hides collapsed descendant
   await cells(page, 'mind-child').click();
   await canvas(page).press('Tab');
   await expect(cells(page, 'mind-child')).toHaveCount(2);
-  await cells(page, 'mind-child').first().click();
+  const parentId = (await cells(page, 'mind-child')
+    .first()
+    .getAttribute('data-cell-id'))!;
+  const parent = cell(page, parentId);
+  await parent.click();
   await page.getByTitle('添加笔记').click();
   const note = page.getByRole('region', { name: 'Mind note' });
   await note
     .locator('[contenteditable="true"]')
     .fill('Final keystroke is saved');
   await note.getByRole('button', { name: '完成笔记', exact: true }).click();
-  await expect(
-    cells(page, 'mind-child').first().locator('[data-mind-note]'),
-  ).toContainText('Final keystroke is saved');
+  await expect(parent.locator('[data-mind-note]')).toContainText(
+    'Final keystroke is saved',
+  );
   await page.getByLabel('Collapse topic', { exact: true }).check();
   await expect(cells(page, 'mind-child')).toHaveCount(1);
   await expect(cells(page, 'mind-branch')).toHaveCount(1);
@@ -1192,9 +1216,9 @@ test('saves a mind note before closing its editor and hides collapsed descendant
   await cells(page, 'mind-child').click();
   await page.getByLabel('Collapse topic', { exact: true }).uncheck();
   await expect(cells(page, 'mind-child')).toHaveCount(2);
-  await expect(
-    cells(page, 'mind-child').first().locator('[data-mind-note]'),
-  ).toContainText('Final keystroke is saved');
+  await expect(parent.locator('[data-mind-note]')).toContainText(
+    'Final keystroke is saved',
+  );
 });
 
 test('table cell editing, fill, structure and track resize survive undo and refresh', async ({
@@ -1320,7 +1344,7 @@ test('workflow swimlanes support independent start dragging, boundary release an
   const taskId = await task.getAttribute('data-cell-id');
   await expandPropertyGroup(page);
   const assignment = page.getByLabel('分配泳道', { exact: true });
-  await assignment.selectOption('0');
+  await selectPropertyValue(assignment, '0');
   const members = async () => {
     const state = await persisted(page);
     const lane = Object.values(state?.records ?? {})
@@ -1395,10 +1419,10 @@ test('workflow swimlanes support independent start dragging, boundary release an
   const taskPoint = await cellBodyPoint(task);
   await page.mouse.click(taskPoint.x, taskPoint.y);
   await expandPropertyGroup(page);
-  await assignment.selectOption('0');
+  await selectPropertyValue(assignment, '0');
   await expect.poll(members).toContain(taskId);
   const assigned = (await savedCells())[taskId!];
-  await assignment.selectOption('remove');
+  await selectPropertyValue(assignment, 'remove');
   await expect.poll(members).toEqual([]);
   expect((await savedCells())[taskId!]).toEqual(assigned);
   await expect(task).toBeVisible();
@@ -1426,7 +1450,7 @@ test('vector line multi-click creation, closure, curve editing and vertex transa
     page.getByRole('button', { name: '选择', exact: true }),
   ).toHaveAttribute('aria-pressed', 'true');
   await page.mouse.click(box.x + 230, box.y + 120);
-  await page.getByLabel('Vector line shape').selectOption('curve');
+  await selectPropertyValue(page.getByLabel('Vector line shape'), 'curve');
   await expect(line.locator('[data-vector-path]')).toHaveAttribute('d', /C/);
   const first = line.locator('[data-vector-point="0"]');
   const bounds = (await first.boundingBox())!;
@@ -1509,7 +1533,7 @@ test('vector line eraser hits a rendered curve and deletion can be undone', asyn
   await page.mouse.dblclick(box.x + 400, box.y + 100);
   const line = cells(page, 'vector-line');
   await page.mouse.click(box.x + 175, box.y + 175);
-  await page.getByLabel('Vector line shape').selectOption('curve');
+  await selectPropertyValue(page.getByLabel('Vector line shape'), 'curve');
   const position = await line
     .locator('[data-vector-path]')
     .evaluate((element) => {
@@ -1581,8 +1605,11 @@ test('image exports preserve rich text, selection scope, transparency and real J
   await openActiveFile(page);
   await createAt(page, '形状', 100, 120);
   await createAt(page, '形状', 400, 120);
-  const node = cells(page, 'geometry').first(),
-    otherId = await cells(page, 'geometry').last().getAttribute('data-cell-id');
+  const ids = await cells(page, 'geometry').evaluateAll((elements) =>
+    elements.map((element) => element.getAttribute('data-cell-id')!),
+  );
+  const node = cell(page, ids[0]),
+    otherId = ids[1];
   await node.click();
   await editBody(page, 'Export rich text');
   await node.dblclick({ position: { x: 70, y: 50 } });
@@ -1734,7 +1761,7 @@ test('multi-selection appearance and group layer blocks survive history, shortcu
   await second.click({ modifiers: ['Shift'] });
   await page.getByLabel('Stroke width', { exact: true }).fill('5');
   await page.getByLabel('Stroke width', { exact: true }).press('Enter');
-  await page.getByLabel('Shadow', { exact: true }).selectOption('md');
+  await selectPropertyValue(page.getByLabel('Shadow', { exact: true }), 'md');
   const saved = async () => {
     const data = await persisted(page);
     return data?.records[data.manifest.rootId];
@@ -1781,7 +1808,7 @@ test('multi-selection appearance and group layer blocks survive history, shortcu
     /-md\)$/,
   );
   await first.click();
-  await expect(page.getByLabel('Shadow', { exact: true })).toHaveValue('md');
+  await expectPropertyValue(page.getByLabel('Shadow', { exact: true }), 'md');
   await expect(page.getByLabel('Stroke width', { exact: true })).toHaveValue(
     '5',
   );
@@ -1800,14 +1827,12 @@ test('native keyboard cut and paste preserve a group closure with fresh identity
   const original = await cells(page, 'geometry').evaluateAll((elements) =>
     elements.map((element) => element.getAttribute('data-cell-id')!),
   );
-  await cells(page, 'geometry').first().click();
-  await cells(page, 'geometry')
-    .last()
-    .click({ modifiers: ['Shift'] });
+  await cell(page, original[0]).click();
+  await cell(page, original[1]).click({ modifiers: ['Shift'] });
   await expandPropertyGroup(page);
   await page.getByRole('button', { name: '分组', exact: true }).click();
   await cells(page, 'geometry').first().click();
-  await page.getByLabel('Shadow', { exact: true }).selectOption('lg');
+  await selectPropertyValue(page.getByLabel('Shadow', { exact: true }), 'lg');
   await canvas(page).focus();
   await page.keyboard.press('ControlOrMeta+x');
   await expect(cells(page, 'geometry')).toHaveCount(0);
@@ -1826,7 +1851,7 @@ test('native keyboard cut and paste preserve a group closure with fresh identity
   await expect(
     page.getByRole('button', { name: '取消分组', exact: true }),
   ).toBeVisible();
-  await expect(page.getByLabel('Shadow', { exact: true })).toHaveValue('lg');
+  await expectPropertyValue(page.getByLabel('Shadow', { exact: true }), 'lg');
   await expect
     .poll(async () => {
       const data = await persisted(page);
@@ -1852,7 +1877,7 @@ test('shadow filters remain self-contained in SVG and affect exported PNG pixels
   const without = await downloadImage(page, 'png');
   const before = await imagePixels(page, [...without.bytes]);
   await cells(page, 'geometry').click();
-  await page.getByLabel('Shadow', { exact: true }).selectOption('lg');
+  await selectPropertyValue(page.getByLabel('Shadow', { exact: true }), 'lg');
   const exported = await downloadImage(page, 'svg');
   const xml = exported.bytes.toString('utf8');
   expect(xml).toContain('<feDropShadow');
@@ -1883,14 +1908,17 @@ test('context actions retain multi-selection and use system clipboard with histo
   await openActiveFile(page);
   await createAt(page, '形状', 220, 240);
   await createAt(page, '形状', 460, 240);
-  await cells(page, 'geometry').first().click();
-  await cells(page, 'geometry')
-    .last()
-    .click({ modifiers: ['Shift'] });
-  await page
-    .locator('.frame-inspector:visible')
-    .getByLabel('Shadow', { exact: true })
-    .selectOption('sm');
+  const ids = await cells(page, 'geometry').evaluateAll((elements) =>
+    elements.map((element) => element.getAttribute('data-cell-id')!),
+  );
+  await cell(page, ids[0]).click();
+  await cell(page, ids[1]).click({ modifiers: ['Shift'] });
+  await selectPropertyValue(
+    page
+      .locator('.frame-inspector:visible')
+      .getByLabel('Shadow', { exact: true }),
+    'sm',
+  );
   await expect(
     cells(page, 'geometry').first().locator(':scope > g[filter]'),
   ).toHaveAttribute('filter', /-sm\)$/);
@@ -2160,7 +2188,7 @@ test('all nine mind layouts keep root origins and render sibling directions thro
       await page
         .getByRole('button', { name: `Mind layout ${value}`, exact: true })
         .click();
-    else await layout.selectOption(value);
+    else await selectPropertyValue(layout, value);
     await expect.poll(async () => (await saved())?.data.layout).toBe(value);
     await page.getByRole('button', { name: '适配画布', exact: true }).click();
     await expect(cells(page, 'mind-summary')).toHaveCount(1);
@@ -2176,12 +2204,12 @@ test('all nine mind layouts keep root origins and render sibling directions thro
     expect((await saved())?.geometry).toEqual(originalOrigin);
   }
   await selectHistoryAction(page, '撤销');
-  await expect(layout).toHaveValue('left-top-indented');
+  await expectPropertyValue(layout, 'left-top-indented');
   await selectHistoryAction(page, '重做');
-  await expect(layout).toHaveValue('left-bottom-indented');
+  await expectPropertyValue(layout, 'left-bottom-indented');
   await page.reload();
   await center.click();
-  await expect(layout).toHaveValue('left-bottom-indented');
+  await expectPropertyValue(layout, 'left-bottom-indented');
   await expect(cells(page, 'mind-child')).toHaveCount(3);
   await expect(cells(page, 'mind-summary')).toHaveCount(1);
 });
@@ -2343,7 +2371,7 @@ test('horizontal vector lines retain their stroke and visible shadow in PNG expo
   ]);
   expect(before.opaque).toBeGreaterThan(600);
   await page.mouse.click(box.x + 350, box.y + 240);
-  await page.getByLabel('Shadow', { exact: true }).selectOption('lg');
+  await selectPropertyValue(page.getByLabel('Shadow', { exact: true }), 'lg');
   await expect(line.locator(':scope > g[filter]')).toHaveAttribute(
     'filter',
     /-lg\)$/,
@@ -2370,21 +2398,25 @@ test('batch text formatting preserves labels through history, duplication, clear
   await page
     .getByRole('button', { name: 'Selection bold', exact: true })
     .click();
-  await page
-    .getByLabel('Selection font size', { exact: true })
-    .selectOption('24px');
-  await page
-    .getByLabel('Selection text alignment', { exact: true })
-    .selectOption('left');
+  await selectPropertyValue(
+    page.getByLabel('Selection font size', { exact: true }),
+    '24px',
+  );
+  await selectPropertyValue(
+    page.getByLabel('Selection text alignment', { exact: true }),
+    'left',
+  );
   await expect(cells(page, 'geometry').locator('strong')).toHaveCount(2);
   await selectHistoryAction(page, '撤销');
-  await expect(
+  await expectPropertyValue(
     page.getByLabel('Selection text alignment', { exact: true }),
-  ).toHaveValue('center');
+    'center',
+  );
   await selectHistoryAction(page, '重做');
-  await expect(
+  await expectPropertyValue(
     page.getByLabel('Selection text alignment', { exact: true }),
-  ).toHaveValue('left');
+    'left',
+  );
   await canvas(page).press('ControlOrMeta+d');
   await expect(cells(page, 'geometry')).toHaveCount(4);
   await expect(cells(page, 'geometry').locator('strong')).toHaveCount(4);
@@ -2433,7 +2465,10 @@ for (const [tool, anchor, member, add] of [
     await createAt(page, tool);
     await cells(page, 'frame').locator('[data-frame-title-id]').first().click();
     await page.getByTestId('frame-open').locator('visible=true').click();
-    await page.getByRole('button', { name: add, exact: true }).click();
+    if (anchor === 'architecture-layer') {
+      await placeArchitectureTool(page, add);
+      await bodyEditor(page);
+    } else await page.getByRole('button', { name: add, exact: true }).click();
     await expect(cells(page, member)).toHaveCount(1);
     await expect(page.locator('.ProseMirror:visible')).toBeFocused();
     await selectAppAction(page, '清空');
@@ -2496,10 +2531,9 @@ test('moving a shape into a native frame frees boundary arrows and persists owne
     .getByLabel('Move to frame', { exact: true })
     .locator('visible=true');
   // The shell on the board is a reference; the option value is the target file.
-  const targetId = (await moveToFrame
-    .locator('option:not([value=""])')
-    .first()
-    .getAttribute('value'))!;
+  const targetId = (await propertyOptions(moveToFrame)).find(
+    (option) => option.value !== '',
+  )!.value;
   const saved = async () => {
     const data = await persisted(page);
     return data
@@ -2517,7 +2551,7 @@ test('moving a shape into a native frame frees boundary arrows and persists owne
         ) as any,
     )
     .toMatchObject({ source: { cellId: sourceId } });
-  await moveToFrame.selectOption(targetId);
+  await selectPropertyValue(moveToFrame, targetId);
   await page
     .getByRole('button', { name: 'Move selection to frame', exact: true })
     .locator('visible=true')
@@ -2558,10 +2592,10 @@ test('moving a shape into a native frame frees boundary arrows and persists owne
   await cells(page, 'geometry').click();
   await expandPropertyGroup(page);
   const rootId = (await persisted(page))!.manifest.rootId;
-  await page
-    .getByLabel('Move to frame', { exact: true })
-    .locator('visible=true')
-    .selectOption(rootId);
+  await selectPropertyValue(
+    page.getByLabel('Move to frame', { exact: true }).locator('visible=true'),
+    rootId,
+  );
   await page
     .getByRole('button', { name: 'Move selection to frame', exact: true })
     .locator('visible=true')
@@ -2583,9 +2617,11 @@ test('workflow ports reject DAG cycles and cross-graph links, while process cycl
   await page.getByTestId('palette-task').click();
   await page.getByTestId('palette-decision').click();
   await page.getByRole('button', { name: '适配画布', exact: true }).click();
-  const task = cells(page, 'workflow-task').first(),
+  const taskId = (await cells(page, 'workflow-task')
+    .first()
+    .getAttribute('data-cell-id'))!;
+  const task = cell(page, taskId),
     decision = cells(page, 'workflow-decision');
-  const taskId = (await task.getAttribute('data-cell-id'))!;
   await task.hover();
   await (await nodePort(task, 'right')).click();
   await decision.hover();
@@ -2599,7 +2635,7 @@ test('workflow ports reject DAG cycles and cross-graph links, while process cycl
   await expect(cells(page, 'workflow-edge')).toHaveCount(1);
   const start = cells(page, 'workflow-start').first();
   await start.click();
-  await page.getByTestId('workflow-graph-mode').selectOption('process');
+  await selectPropertyValue(page.getByTestId('workflow-graph-mode'), 'process');
   await decision.hover();
   await (await nodePort(decision, 'bottom')).click();
   await task.hover();
@@ -2623,8 +2659,17 @@ test('workflow ports reject DAG cycles and cross-graph links, while process cycl
   await page.getByRole('button', { name: '适配画布', exact: true }).click();
   await task.hover();
   await (await nodePort(task, 'top')).click();
-  await cells(page, 'workflow-task').nth(1).hover();
-  await (await nodePort(cells(page, 'workflow-task').nth(1), 'top')).click();
+  const otherId = await cells(page, 'workflow-task').evaluateAll(
+    (elements, first) =>
+      elements
+        .map((element) => element.getAttribute('data-cell-id')!)
+        .find((id) => id !== first)!,
+    taskId,
+  );
+  const otherTask = cell(page, otherId);
+  const otherPoint = await cellBodyPoint(otherTask);
+  await page.mouse.move(otherPoint.x, otherPoint.y);
+  await (await nodePort(otherTask, 'top')).click();
   await expect(page.getByRole('alert').first()).toContainText(
     'Workflow edges must stay in one graph',
   );
@@ -2656,25 +2701,32 @@ test('architecture dependencies route across layers, reject self-links and retai
     .getAttribute('data-cell-id');
   await cells(page, 'frame').locator('[data-frame-title-id]').first().click();
   await page.getByTestId('frame-open').locator('visible=true').click();
-  await page.getByRole('button', { name: '模块', exact: true }).click();
-  const first = cells(page, 'architecture-module').first();
-  await page.getByRole('button', { name: '添加层', exact: true }).click();
-  await page.getByRole('button', { name: '模块', exact: true }).click();
-  const second = cells(page, 'architecture-module').nth(1);
-  const secondId = (await second.getAttribute('data-cell-id'))!;
+  await placeArchitectureTool(page, '模块');
+  const firstId = (await cells(page, 'architecture-module')
+    .first()
+    .getAttribute('data-cell-id'))!;
+  const first = cell(page, firstId);
+  await placeArchitectureTool(page, '添加层');
+  await placeArchitectureTool(page, '模块');
+  const secondId = (await cells(page, 'architecture-module')
+    .nth(1)
+    .getAttribute('data-cell-id'))!;
+  const second = cell(page, secondId);
   {
     const point = await cellBodyPoint(second);
     await page.mouse.click(point.x, point.y);
   }
-  const layers = await page
-    .getByLabel('Architecture layer', { exact: true })
-    .locator('option')
-    .evaluateAll((options) =>
-      options.map((option) => (option as HTMLOptionElement).value),
-    );
-  await page
-    .getByLabel('Architecture layer', { exact: true })
-    .selectOption(layers[1]);
+  const layers = (
+    await propertyOptions(
+      page.getByLabel('Architecture layer', { exact: true }),
+    )
+  )
+    .map((option) => option.value)
+    .filter(Boolean);
+  await selectPropertyValue(
+    page.getByLabel('Architecture layer', { exact: true }),
+    layers[1],
+  );
   await page.getByRole('button', { name: '适配画布', exact: true }).click();
   {
     const point = await cellBodyPoint(first);

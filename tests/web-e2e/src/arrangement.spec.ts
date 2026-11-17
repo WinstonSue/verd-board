@@ -1,3 +1,7 @@
+import {
+  openPropertyOptions,
+  selectPropertyValue,
+} from '../../helpers/property-select';
 import { selectHistoryAction } from './app-actions';
 import { expect, test, type Page } from './service-fixture';
 import { openActiveFile, openSettings } from './app-actions';
@@ -142,11 +146,10 @@ test('localized alignment, distribution and partial/all layouts save exact scope
   await node(page, 'A').click();
   await node(page, 'B').click({ modifiers: ['Shift'] });
   const before = await saved(page);
-  await (
-    await panel(page)
-  )
-    .getByLabel('节点布局方式', { exact: true })
-    .selectOption('vertical');
+  await selectPropertyValue(
+    (await panel(page)).getByLabel('节点布局方式', { exact: true }),
+    'vertical',
+  );
   await (
     await panel(page)
   )
@@ -161,11 +164,10 @@ test('localized alignment, distribution and partial/all layouts save exact scope
     byLabel(original, 'Inside'),
   );
   await canvas(page).press('Escape');
-  await (
-    await panel(page)
-  )
-    .getByLabel('节点布局方式', { exact: true })
-    .selectOption('grid');
+  await selectPropertyValue(
+    (await panel(page)).getByLabel('节点布局方式', { exact: true }),
+    'grid',
+  );
   await (
     await panel(page)
   )
@@ -209,11 +211,10 @@ test('keyboard groups remain rigid in layouts, allow drill-down and independentl
     byLabel(grouped, 'B').geometry.y - byLabel(grouped, 'A').geometry.y,
   ];
   await node(page, 'C').click({ modifiers: ['Shift'] });
-  await (
-    await panel(page)
-  )
-    .getByLabel('节点布局方式', { exact: true })
-    .selectOption('vertical');
+  await selectPropertyValue(
+    (await panel(page)).getByLabel('节点布局方式', { exact: true }),
+    'vertical',
+  );
   await (
     await panel(page)
   )
@@ -441,16 +442,19 @@ for (const scene of ['workflow', 'architecture'] as const) {
       .toBe(1);
     await item('B').click({ modifiers: ['Shift'] });
     const blocked = scene === 'workflow' ? 'flow' : 'layers';
+    const layoutControl = (await panel(page)).getByLabel('节点布局方式', {
+      exact: true,
+    });
+    const options = await openPropertyOptions(layoutControl);
     await expect(
-      (await panel(page))
-        .getByLabel('节点布局方式', { exact: true })
-        .locator(`option[value="${blocked}"]`),
-    ).toHaveAttribute('disabled', '');
-    await (
-      await panel(page)
-    )
-      .getByLabel('节点布局方式', { exact: true })
-      .selectOption('horizontal');
+      options.getByRole('option').filter({
+        has: page.locator(`[data-setting-option-value="${blocked}"]`),
+      }),
+    ).toHaveAttribute('aria-disabled', 'true');
+    await selectPropertyValue(
+      (await panel(page)).getByLabel('节点布局方式', { exact: true }),
+      'horizontal',
+    );
     await (
       await panel(page)
     )

@@ -14,6 +14,7 @@ import {
   parseMermaidToWorkflowFrame,
   serializeFrameToMermaid,
 } from './documents';
+import { parseMermaidToFrameSnapshot } from './index';
 const testCellRegistry = createFixtureRegistry();
 const nodes = (snapshot: ReturnType<typeof parseMermaidToArchitectureFrame>) =>
   Object.values(snapshot.store.cells)
@@ -22,6 +23,51 @@ const nodes = (snapshot: ReturnType<typeof parseMermaidToArchitectureFrame>) =>
 const edges = (snapshot: ReturnType<typeof parseMermaidToArchitectureFrame>) =>
   Object.values(snapshot.store.cells).filter(isEdgeCell);
 describe('Mermaid native Frames', () => {
+  it.each(['text', 'full'] as const)(
+    'round-trips mixed layer relationships, free modules and bounds through the %s parser',
+    async (parser) => {
+      const parse = (source: string) =>
+        parser === 'full'
+          ? parseMermaidToFrameSnapshot(source, { scene: 'architecture' })
+          : Promise.resolve(parseMermaidToArchitectureFrame(source));
+      const snapshot = await parse(`flowchart TB
+subgraph a [Apps]
+service[Service]
+end
+subgraph b [Data]
+end
+loose[Loose]
+a -.->|uses| b
+b -->|events| a
+service -->|legacy call| loose
+%% verd:{"layerBounds":{"a":{"x":20,"y":30,"width":440,"height":240},"b":{"x":600,"y":30,"width":360,"height":240}},"positions":{"service":{"x":60,"y":100},"loose":{"x":80,"y":400}},"edges":[{"key":"layer-dependency","sourcePort":"right","targetPort":"left","relation":"dependency"},{"key":"layer-flow","sourcePort":"bottom","targetPort":"bottom","relation":"flow"},{"key":"legacy-module","sourcePort":"bottom","targetPort":"top"}]}
+`);
+      const layerNodes = nodes(snapshot).filter(
+        (node) => node.kind === 'architecture-layer',
+      );
+      expect(layerNodes).toHaveLength(2);
+      expect(
+        nodes(snapshot).filter((node) => node.kind === 'architecture-module'),
+      ).toHaveLength(2);
+      expect(edges(snapshot)[0]).toMatchObject({
+        source: { cellId: layerNodes[0].id, portId: 'right' },
+        target: { cellId: layerNodes[1].id, portId: 'left' },
+        data: { relation: 'dependency' },
+      });
+      const source = serializeFrameToMermaid(snapshot);
+      expect(
+        edges(snapshot).map(
+          (edge) => (edge.data as { relation?: string } | undefined)?.relation,
+        ),
+      ).toEqual(['dependency', 'flow', undefined]);
+      const restored = await parse(source);
+      expect(restored).toEqual(snapshot);
+      expect(source).toContain('-.->');
+      const external = await parse('flowchart LR\na[A]\nb[B]\na -.-> b');
+      expect(edges(external)[0].data).toBeUndefined();
+      expect(edges(external)[0].appearance?.strokeStyle).toBe('dashed');
+    },
+  );
   it('imports subgraphs, all module shapes and loose nodes as native architecture Cells', () => {
     const snapshot = parseMermaidToArchitectureFrame(`flowchart TB
 subgraph apps ["Apps"]
@@ -35,10 +81,7 @@ desktop -->|uses| choice
     const layers = nodes(snapshot).filter(
       (node) => node.kind === ArchitectureKind.architectureLayer,
     );
-    expect(layers.map((node) => node.content?.label)).toEqual([
-      'Apps',
-      'Default',
-    ]);
+    expect(layers.map((node) => node.content?.label)).toEqual(['Apps']);
     const modules = nodes(snapshot).filter(
       (node) => node.kind === ArchitectureKind.architectureModule,
     );
@@ -46,7 +89,7 @@ desktop -->|uses| choice
       { shape: 'box' },
       { shape: 'decision' },
       { shape: 'store' },
-      { shape: 'box' },
+      { shape: 'box', placed: true },
     ]);
     expect(edges(snapshot)[0].labels).toEqual([{ text: 'uses' }]);
     expect(validateCellStore(snapshot.store, testCellRegistry)).toEqual([]);

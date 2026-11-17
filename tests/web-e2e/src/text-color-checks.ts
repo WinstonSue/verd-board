@@ -29,7 +29,7 @@ export function textColorSamples(root: Element) {
       .reduce((sum, c, at) => sum + c * [0.2126, 0.7152, 0.0722][at], 0);
   return [
     ...root.querySelectorAll<HTMLElement>(
-      'span[data-board-original-color], [data-uml-class] text, [data-uml-class] foreignObject > div, [data-uml-fragment] text',
+      'span[data-board-original-color], [data-frame-rich-text] :is(p, span):not(:has(*)), [data-uml-class] text, [data-uml-class] foreignObject > div, [data-uml-fragment] text',
     ),
   ]
     .filter(
@@ -102,8 +102,41 @@ export function textColorSamples(root: Element) {
         leaf instanceof SVGElement && leaf.tagName.toLowerCase() === 'text'
           ? getComputedStyle(leaf).fill
           : getComputedStyle(leaf).color;
-      const foreground = rgb(paint),
-        bg = rgb(background);
+      const foreground = rgb(paint);
+      let bg = rgb(background);
+      const alpha = background.startsWith('rgba')
+        ? Number(background.match(/[\d.]+/g)?.[3] ?? 1)
+        : background.startsWith('#') && background.length === 9
+          ? parseInt(background.slice(7), 16) / 255
+          : 1;
+      if (alpha < 1 && svg) {
+        const center = leaf.getBoundingClientRect();
+        const layer = [
+          ...svg.querySelectorAll('[data-cell-kind="architecture-layer"]'),
+        ].find((node) => {
+          const box = node.getBoundingClientRect();
+          return (
+            center.x >= box.x &&
+            center.right <= box.right &&
+            center.y >= box.y &&
+            center.bottom <= box.bottom
+          );
+        });
+        const support =
+          layer?.querySelector('[data-frame-node-outline]') ?? layer;
+        const behind = support
+          ? getComputedStyle(support).fill
+          : getComputedStyle(svg).backgroundColor;
+        const backdrop = opaque(behind)
+          ? rgb(behind)
+          : rgb(
+              svg.querySelector(':scope > rect')?.getAttribute('fill') ??
+                '#ffffff',
+            );
+        bg = bg.map(
+          (channel, at) => channel * alpha + backdrop[at] * (1 - alpha),
+        );
+      }
       const visible = foreground.map(
         (c, at) => c * opacity + bg[at] * (1 - opacity),
       );

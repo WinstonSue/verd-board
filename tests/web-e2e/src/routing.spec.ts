@@ -361,7 +361,12 @@ for (const { background, opacity, color } of ['#000000', '#6366f1'].flatMap(
     const paths = await surface
       .locator('[data-edge-display]')
       .evaluateAll((elements) =>
-        elements.map((element) => element.getAttribute('d')),
+        Object.fromEntries(
+          elements.map((element) => [
+            element.closest('[data-cell-id]')!.getAttribute('data-cell-id'),
+            element.getAttribute('d'),
+          ]),
+        ),
       );
     await expect
       .poll(async () => (await savedCells(page))['edge-1'])
@@ -501,7 +506,12 @@ for (const { background, opacity, color } of ['#000000', '#6366f1'].flatMap(
       await surface
         .locator('[data-edge-display]')
         .evaluateAll((elements) =>
-          elements.map((element) => element.getAttribute('d')),
+          Object.fromEntries(
+            elements.map((element) => [
+              element.closest('[data-cell-id]')!.getAttribute('data-cell-id'),
+              element.getAttribute('d'),
+            ]),
+          ),
         ),
     ).toEqual(paths);
     const svg = await exportedSvg(page);

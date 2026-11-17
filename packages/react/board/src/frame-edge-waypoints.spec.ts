@@ -6,7 +6,7 @@ import {
 } from '@sue/board-core';
 import { describe, expect, it } from 'vitest';
 import { createTestCellRegistry } from '../../../../tests/fixtures/plugins/registry';
-import { planWaypointRemoval } from './frame-edge-waypoints';
+import { planWaypointRemoval, planWaypointReset } from './frame-edge-waypoints';
 
 const registry = createTestCellRegistry();
 
@@ -307,4 +307,62 @@ describe('local waypoint removal', () => {
       ],
     });
   });
+});
+
+describe('waypoint reset', () => {
+  it.each(['fixed', 'straight', 'curve', 'orthogonal'] as const)(
+    'resets %s without changing terminal bindings or authored content',
+    (mode) => {
+      const original = {
+        ...edge(mode, [
+          [0, 0],
+          [20, 30],
+          [100, 100],
+        ]),
+        source: { cellId: 'a', portId: 'right' },
+        target: { cellId: 'b', anchor: [0, 0.5] as Point },
+        appearance: { strokeWidth: 4 },
+      };
+      const before = structuredClone(original);
+      const result = planWaypointReset(original, registry)!;
+      expect(result).toEqual({
+        ...original,
+        route: { mode: mode === 'fixed' ? 'auto' : mode },
+      });
+      expect(original).toEqual(before);
+      expect(planWaypointReset(result, registry)).toBeNull();
+    },
+  );
+  it.each(['workflow-edge', 'architecture-edge', 'uml-relation'])(
+    'keeps the %s orthogonal constraint and routing strategy',
+    (kind) => {
+      const original = {
+        ...edge('orthogonal', [
+          [0, 0],
+          [20, 0],
+          [20, 100],
+          [100, 100],
+        ]),
+        kind,
+        route: {
+          mode: 'orthogonal' as const,
+          origin: 'manual' as const,
+          strategy: 'optimized' as const,
+          points: [
+            [0, 0],
+            [20, 0],
+            [20, 100],
+            [100, 100],
+          ] as Point[],
+        },
+      };
+      expect(planWaypointReset(original, registry)?.route).toEqual({
+        mode: 'orthogonal',
+        strategy: 'optimized',
+      });
+      expect(
+        planWaypointReset({ ...original, route: { mode: 'auto' } }, registry),
+      ).toBeNull();
+    },
+  );
 });

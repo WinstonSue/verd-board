@@ -52,6 +52,8 @@ export interface CellPlugin {
   scenes?: readonly CellScene[];
   validate?(store: CellStore, cell: Cell): string | undefined;
   normalize?(before: CellStore, candidate: CellStore): CellStore;
+  /** Pure compatibility preparation; loading never creates a persistence edit. */
+  prepareSnapshot?(store: CellStore): CellStore;
   validateTransaction?(
     before: CellStore,
     candidate: CellStore,

@@ -49,6 +49,7 @@ export async function verifyProof(
     ),
   );
   if (
+    (quality.status !== undefined && quality.status !== 'passed') ||
     quality.mode !== manifest.task ||
     quality.sourceDigest !== manifest.proof?.sourceDigest ||
     (await captureProof(root)).sourceDigest !== manifest.proof?.sourceDigest

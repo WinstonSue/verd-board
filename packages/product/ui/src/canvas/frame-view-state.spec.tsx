@@ -174,6 +174,22 @@ async function mount({
 }
 
 describe('local canvas view subscriptions', () => {
+  it('uses window-local selects for canvas and selection properties', async () => {
+    const test = await mount();
+    const inspector = test.container.querySelector('.frame-inspector')!;
+    expect(inspector.querySelector('select')).toBeNull();
+    expect(
+      inspector.querySelector(
+        '[aria-label="Selection font size"][role="combobox"]',
+      ),
+    ).not.toBeNull();
+    await test.select([]);
+    expect(inspector.querySelector('select')).toBeNull();
+    expect(
+      inspector.querySelector('[aria-label="Theme"][role="combobox"]'),
+    ).not.toBeNull();
+  });
+
   it('edits names in the header, follows history and resets the editor between selections', async () => {
     const test = await mount({
       autoCommit: true,
@@ -684,13 +700,22 @@ it('shows the workspace Mind default and uses it when creating an explicit overr
     },
   });
   expect(test.container.textContent).toContain('336');
-  const mode = test.container.querySelector<HTMLSelectElement>(
-    '[data-testid="mind-width-mode"]',
+  const mode = test.container.querySelector<HTMLInputElement>(
+    '[data-testid="mind-width-mode"] [role="combobox"]',
   )!;
   await act(async () => {
-    mode.value = 'custom';
-    mode.dispatchEvent(new Event('change', { bubbles: true }));
+    mode.dispatchEvent(
+      new KeyboardEvent('keydown', {
+        key: 'ArrowDown',
+        keyCode: 40,
+        bubbles: true,
+      }),
+    );
   });
+  const custom = document.querySelector<HTMLElement>(
+    '[data-setting-option-value="custom"]',
+  )!;
+  await act(async () => custom.click());
   expect(
     test.container.querySelector<HTMLInputElement>(
       '[data-testid="mind-max-width"]',

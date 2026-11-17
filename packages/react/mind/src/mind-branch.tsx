@@ -84,7 +84,7 @@ const branchDrawing = (
     cell.appearance?.strokeColor,
     cell.appearance?.colorSources?.strokeColor,
     mindBranchColor(store, targetNode.id, frameId, context.appearance) ??
-      '#64748b',
+      (context.theme ?? resolveBoardTheme()).stroke,
     context.theme ?? resolveBoardTheme(),
   );
   const width =

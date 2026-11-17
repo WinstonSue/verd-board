@@ -51,6 +51,9 @@ export function ArchitectureLayerField({
               !selectionAllows(store, [cell.id], registry, 'move', frameId),
             children: (
               <>
+                <option value="">
+                  {language === 'zh' ? '无所属层' : 'No layer'}
+                </option>
                 {layers.map((layer, index) => (
                   <option
                     key={layer.id}
@@ -70,7 +73,7 @@ export function ArchitectureLayerField({
           return settingsCommitResult(
             executeAction('architecture.move-module', {
               cellId: cell.id,
-              layerId: value,
+              layerId: value || null,
             }),
           );
         }}

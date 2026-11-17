@@ -57,6 +57,39 @@ export const gestureBounds = (
     height: click ? defaultSize[1] : Math.max(8, Math.abs(last[1] - first[1])),
   };
 };
+export const createCardText = (text = ''): BoardTextDocument => {
+  const document = createBlockText(text);
+  document.content = {
+    type: 'doc',
+    content: text.split('\n').map((line, index) => ({
+      type: index === 0 ? 'heading' : 'paragraph',
+      ...(index === 0 ? { attrs: { level: 3 } } : {}),
+      content: line ? [{ type: 'text', text: line }] : [],
+    })),
+  };
+  return document;
+};
+/** A canvas-owned block of text, independent of document references and domains. */
+export const createCardCell = (
+  id: string,
+  points: Point[] = [[0, 0]],
+  text = '',
+): NodeCell => ({
+  id,
+  kind: 'card',
+  cellType: 'node',
+  geometry: {
+    ...gestureBounds(points, [320, 120]),
+    width: Math.max(120, gestureBounds(points, [320, 120]).width),
+    height: Math.max(120, gestureBounds(points, [320, 120]).height),
+    outline: 'roundRectangle',
+  },
+  appearance: {
+    strokeWidth: 1,
+    colorSources: { fill: 'theme', strokeColor: 'theme' },
+  },
+  content: { label: text, text: createCardText(text) },
+});
 export const createGeometryCell = (
   id: string,
   shape: string,

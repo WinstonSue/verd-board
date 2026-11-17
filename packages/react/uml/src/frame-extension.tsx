@@ -32,7 +32,13 @@ function UmlShape(context: FrameRenderContext) {
   const { cell, geometry: b, store, frameId } = context;
   if (!isNodeCell(cell) || !b) return null;
   const theme = context.theme ?? resolveBoardTheme();
-  const appearanceContext = { cell, store, frameId, theme };
+  const appearanceContext = {
+    cell,
+    store,
+    frameId,
+    theme,
+    background: context.resolvedAppearance?.background,
+  };
   const visual =
     context.resolvedAppearance ??
     resolveFrameAppearance(
@@ -66,13 +72,18 @@ function UmlShape(context: FrameRenderContext) {
       <g data-uml-class>
         <rect
           data-uml-class-body
-          {...{ x: b.x, y: b.y, width: b.width, height: b.height }}
+          data-frame-export-fill={visual.exportFill}
+          x={b.x}
+          y={b.y + (theme.adaptive ? 54 : 0)}
+          width={b.width}
+          height={Math.max(0, b.height - (theme.adaptive ? 54 : 0))}
           fill={fill}
           stroke={stroke}
         />
         {theme.adaptive && (
           <rect
             data-uml-class-header
+            data-frame-export-fill={title.exportFill}
             x={b.x}
             y={b.y}
             width={b.width}
@@ -165,6 +176,7 @@ function UmlShape(context: FrameRenderContext) {
             <rect
               key={a.startId}
               data-uml-activation={a.startId}
+              data-frame-export-fill={activation.exportFill}
               x={a.x}
               y={a.y}
               width={a.width}
@@ -362,14 +374,14 @@ export function createUmlFrameExtensions(
         kind,
         themeAppearance: umlThemeAppearance,
         presentation:
-          kind === 'uml-class'
+          kind === 'uml-class' || kind === 'uml-fragment'
             ? (context: FrameRenderContext) => {
                 const theme = context.theme ?? resolveBoardTheme();
                 if (!theme.adaptive) return undefined;
                 return {
                   color: resolveUmlPartAppearance(
                     { ...context, theme },
-                    'title',
+                    kind === 'uml-fragment' ? 'fragment-label' : 'title',
                   ).textColor,
                 };
               }

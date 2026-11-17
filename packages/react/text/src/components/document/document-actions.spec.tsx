@@ -74,10 +74,15 @@ describe('document action host acknowledgements', () => {
     const root = createRoot(container);
     let controller: DocumentEditorController | null = null;
     let acknowledge!: (value: DocumentChangeReceipt) => void;
+    let notifyChange!: () => void;
+    const changed = new Promise<void>((resolve) => {
+      notifyChange = resolve;
+    });
     const onChange = vi.fn(
       () =>
         new Promise<DocumentChangeReceipt>((resolve) => {
           acknowledge = resolve;
+          notifyChange();
         }),
     );
     try {
@@ -94,7 +99,9 @@ describe('document action host acknowledgements', () => {
         ),
       );
       const active = controller! as DocumentEditorController;
-      active.restoreSelection({ from: 1, to: 6, collapsed: false });
+      await act(async () =>
+        active.restoreSelection({ from: 1, to: 6, collapsed: false }),
+      );
       let completed = false;
       let work!: ReturnType<DocumentEditorController['executeAction']>;
       await act(async () => {
@@ -102,16 +109,15 @@ describe('document action host acknowledgements', () => {
         void work.then(() => {
           completed = true;
         });
-        await Promise.resolve();
-        await Promise.resolve();
-        await Promise.resolve();
+        await changed;
       });
       expect(onChange).toHaveBeenCalledTimes(1);
       expect(completed).toBe(false);
       expect(active.getActionState('document.toggle-bold').enabled).toBe(false);
-      await act(async () =>
-        acknowledge({ ok: false, diagnostics: [{ message: 'Conflict' }] }),
-      );
+      await act(async () => {
+        acknowledge({ ok: false, diagnostics: [{ message: 'Conflict' }] });
+        await work;
+      });
       expect(await work).toMatchObject({
         status: 'rejected',
         code: 'host-rejected',

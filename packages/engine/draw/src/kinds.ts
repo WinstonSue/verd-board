@@ -1,4 +1,5 @@
 export const DrawKind = {
+  card: 'card',
   text: 'text',
   arrow: 'arrow',
   geometry: 'geometry',

@@ -174,6 +174,8 @@ export function planLaneDrop(
   const moves = operations.map((op) => {
     if (op.type !== 'replace_cell') return op;
     const util = registry.get(op.cell.kind);
+    // Spatial-owner planners already resolve their membership before lane drop.
+    if (util?.planDrop) return op;
     if (!util?.members || !util.withMembers) return op;
     const old = store.cells[op.cell.id];
     const members = old && util.members(old);

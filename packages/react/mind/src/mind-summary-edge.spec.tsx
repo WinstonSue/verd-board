@@ -51,6 +51,70 @@ const fixture = () => {
   return { registry, extensions, value: { store: runtime.store } };
 };
 describe('native summary renderer', () => {
+  it('keeps the selected summary stable when its range handle captures a pointer', async () => {
+    const { registry, extensions, value } = fixture();
+    const container = document.createElement('div');
+    const root = createRoot(container);
+    const ref = createRef<FrameCanvasController>();
+    const onChange = vi.fn();
+    vi.stubGlobal(
+      'DOMPoint',
+      class {
+        constructor(
+          public x: number,
+          public y: number,
+        ) {}
+        matrixTransform() {
+          return { x: this.x, y: this.y };
+        }
+      },
+    );
+    try {
+      await act(async () =>
+        root.render(
+          <FrameCanvas
+            ref={ref}
+            value={value}
+            registry={registry}
+            extensions={extensions}
+            onChange={onChange}
+          />,
+        ),
+      );
+      await act(async () =>
+        ref.current!.runtime.select({ focus: ['frame'], ids: ['summary'] }),
+      );
+      const group = container.querySelector<SVGGElement>(
+        '[data-mind-summary-bracket]',
+      )!;
+      group.getScreenCTM = () =>
+        ({ inverse: () => ({}) }) as unknown as DOMMatrix;
+      const handle = group.querySelector<SVGCircleElement>(
+        '[data-summary-handle="start"]',
+      )!;
+      handle.focus = vi.fn();
+      handle.setPointerCapture = vi.fn();
+      const down = new MouseEvent('pointerdown', {
+        bubbles: true,
+        button: 0,
+        clientX: 10,
+        clientY: 10,
+      });
+      Object.defineProperty(down, 'pointerId', { value: 7 });
+      await act(async () => handle.dispatchEvent(down));
+      expect(handle.setPointerCapture).toHaveBeenCalledWith(7);
+      expect(ref.current!.runtime.selection.ids).toEqual(['summary']);
+      expect(ref.current!.runtime.store).toBe(value.store);
+      expect(onChange).not.toHaveBeenCalled();
+      await act(async () =>
+        handle.dispatchEvent(new Event('pointercancel', { bubbles: true })),
+      );
+      expect(ref.current!.runtime.selection.ids).toEqual(['summary']);
+    } finally {
+      await act(async () => root.unmount());
+      vi.unstubAllGlobals();
+    }
+  });
   it('shows a bracket but disables range editing in a readonly view', async () => {
     const { registry, extensions, value } = fixture(),
       container = document.createElement('div'),

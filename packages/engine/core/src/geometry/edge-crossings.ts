@@ -1,7 +1,11 @@
 import type { Point } from '../interfaces/point';
 import type { RectangleClient } from '../interfaces/rectangle-client';
 import { isEdgeCell, isFrameCell, type CellStore } from '../cell/types';
-import { edgePolyline, type EdgeRoutingContext } from './edge';
+import {
+  edgePolyline,
+  edgeRoutingContextFor,
+  type EdgeRoutingContext,
+} from './edge';
 
 import {
   edgeCrossingJumps,
@@ -78,7 +82,13 @@ export function frameEdgeCrossingJumps(
     : [];
   const signature = JSON.stringify([
     routes,
-    routing.obstacles,
+    routes.map(
+      (route) =>
+        edgeRoutingContextFor(
+          routing,
+          store.cells[route.id] as import('../cell/types').EdgeCell,
+        ).obstacles,
+    ),
     routing.visualGap,
     routing.policyVersion,
     routes.map(
@@ -95,6 +105,10 @@ export function frameEdgeCrossingJumps(
   const result = edgeCrossingJumps(routes);
   // Do not let a bridge bulge into a nearby node in a cramped manual drawing.
   for (const [id, jumps] of result) {
+    const scoped = edgeRoutingContextFor(
+      routing,
+      store.cells[id] as import('../cell/types').EdgeCell,
+    );
     const safe = jumps.flatMap((jump) => {
       const gap =
         (routing.visualGap ?? 12) +
@@ -102,7 +116,7 @@ export function frameEdgeCrossingJumps(
           ?.strokeWidth ?? 2) /
           2;
       const range = jump.radius + gap;
-      const nearby = routing.queryObstacles?.({
+      const nearby = scoped.queryObstacles?.({
         x: jump.point[0] - range,
         y: jump.point[1] - range,
         width: range * 2,
@@ -111,11 +125,11 @@ export function frameEdgeCrossingJumps(
       const boxes = nearby
         ? nearby.flatMap((id) => {
             const b =
-              routing.obstacleById?.get(id) ??
-              routing.obstacles.find((b) => b.id === id);
+              scoped.obstacleById?.get(id) ??
+              scoped.obstacles.find((b) => b.id === id);
             return b ? [b] : [];
           })
-        : routing.obstacles;
+        : scoped.obstacles;
       const radius = Math.min(
         jump.radius,
         ...boxes.map(

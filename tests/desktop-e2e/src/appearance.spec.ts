@@ -14,6 +14,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { roleTone } from '../../web-e2e/src/theme-role-values';
 import { workspaceDigest } from './workspace-disk';
+import { readable } from '../../web-e2e/src/text-color-checks';
 
 async function close(desktop: ElectronApplication, page: Page) {
   const closed = page.waitForEvent('close');
@@ -100,6 +101,14 @@ test('Desktop follows system, remembers manual appearance after restart, and lea
       },
     },
   }));
+  const embedded = {
+    id: 'embedded-document',
+    kind: 'document-frame',
+    cellType: 'node',
+    geometry: { x: 30, y: 150, width: 430, height: 130 },
+    data: { targetDocumentId: doc.id },
+  };
+  const boardNodes = [...nodes, embedded];
   const board = {
     format: 'verd-frame',
     version: 2,
@@ -112,10 +121,10 @@ test('Desktop follows system, remembers manual appearance after restart, and lea
       view: {
         theme: { themeColorMode: 'default', boardBackground: '#f8fafc' },
       },
-      children: nodes.map((node) => node.id),
+      children: boardNodes.map((node) => node.id),
       groups: [],
     },
-    cells: Object.fromEntries(nodes.map((node) => [node.id, node])),
+    cells: Object.fromEntries(boardNodes.map((node) => [node.id, node])),
   };
   const boardPath = path.join(workspace, 'Board.verd.json');
   const boardBytes = JSON.stringify(board);
@@ -219,6 +228,15 @@ test('Desktop follows system, remembers manual appearance after restart, and lea
       '.workspace-pane.is-active svg[data-surface="root"]',
     );
     await expect(canvas).toHaveAttribute('data-board-appearance', 'dark');
+    const verifyEmbeddedTitle = async () => {
+      const card = canvas.locator('[data-cell-id="embedded-document"]');
+      await card.getByText('Original body', { exact: true }).dblclick();
+      await expect(card.locator('.ProseMirror')).toBeVisible();
+      await readable(card);
+      await card.locator('.ProseMirror').press('Escape');
+      await readable(card);
+    };
+
     await expect(
       canvas.locator('[data-cell-id="legacy-shape"]'),
     ).toHaveAttribute('fill', (await roleTone(page, 'default', 'dark')).fill);
@@ -233,12 +251,13 @@ test('Desktop follows system, remembers manual appearance after restart, and lea
     ).toHaveAttribute('fill', '#fff');
     await expect(canvas.getByText('Adaptive shape', { exact: true })).toHaveCSS(
       'color',
-      'rgb(226, 232, 240)',
+      'rgb(228, 231, 236)',
     );
     await expect(canvas.getByText('Fixed white', { exact: true })).toHaveCSS(
       'color',
       'rgb(15, 23, 42)',
     );
+    await verifyEmbeddedTitle();
     for (const fixture of ['uml-sequence', 'workflow-process']) {
       await page
         .locator('.file-tree-name')
@@ -265,6 +284,13 @@ test('Desktop follows system, remembers manual appearance after restart, and lea
             (cell) => cell.kind === 'uml-sequence-root',
           )?.data.participantIds ?? [])
         : [];
+      if (!sequence) {
+        const fills = await parts.evaluateAll((nodes) =>
+          nodes.map((node) => node.getAttribute('fill')),
+        );
+        expect(new Set(fills).size).toBe(1);
+        continue;
+      }
       for (const part of await parts.all()) {
         const ownerId = await part.evaluate((element) =>
           element.closest('[data-cell-id]')?.getAttribute('data-cell-id'),
@@ -292,6 +318,9 @@ test('Desktop follows system, remembers manual appearance after restart, and lea
     await expect(
       canvas.locator('[data-cell-id="legacy-shape"]'),
     ).toHaveAttribute('fill', (await roleTone(page, 'default', 'light')).fill);
+    await page.getByTestId('my-back').click();
+    await expect(page.getByTestId('my-page')).not.toBeVisible();
+    await verifyEmbeddedTitle();
     await page.emulateMedia({ colorScheme: 'dark' });
     await expect(page.locator('html')).toHaveAttribute(
       'data-verd-appearance',

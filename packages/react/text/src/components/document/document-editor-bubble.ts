@@ -17,6 +17,8 @@ export function useDocumentBubble(
   placement: NonNullable<BubbleMenuPluginProps['options']>['placement'] = anchor
     ? 'bottom-start'
     : 'top',
+  canShow?: () => boolean,
+  fitViewport = false,
 ) {
   const [content] = useState(() => {
     const element = document.createElement('div');
@@ -53,14 +55,30 @@ export function useDocumentBubble(
         appendTo: () =>
           editor.view.dom.closest<HTMLElement>('.board-document-editor') ??
           document.body,
-        shouldShow: ({ view }) => !view.composing && (!anchor || !!anchor()),
+        shouldShow: ({ view }) =>
+          !disposed &&
+          !view.composing &&
+          (!canShow || canShow()) &&
+          (!anchor || !!anchor()),
         getReferencedVirtualElement: anchor,
         options: {
           strategy: 'fixed',
           placement,
           offset: 6,
           flip: true,
-          shift: { padding: 8 },
+          shift: { padding: 8, ...(fitViewport ? { crossAxis: true } : {}) },
+          size: fitViewport
+            ? {
+                padding: 8,
+                apply({ availableHeight, availableWidth }) {
+                  const menu = content.firstElementChild;
+                  if (!disposed && menu instanceof HTMLElement) {
+                    menu.style.maxHeight = `${Math.max(0, availableHeight)}px`;
+                    menu.style.maxWidth = `${Math.max(0, availableWidth)}px`;
+                  }
+                },
+              }
+            : false,
           hide: { strategy: 'referenceHidden' },
           onShow: () => {
             resetPosition();
@@ -102,6 +120,16 @@ export function useDocumentBubble(
       if (!editor.isDestroyed) editor.unregisterPlugin(key);
       host.remove();
     };
-  }, [anchor, content, editor, key, onPositioned, placement, visible]);
+  }, [
+    anchor,
+    canShow,
+    content,
+    editor,
+    fitViewport,
+    key,
+    onPositioned,
+    placement,
+    visible,
+  ]);
   return content;
 }

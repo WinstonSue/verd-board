@@ -1,7 +1,7 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import os from 'node:os';
-import { createHash } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import { spawnSync } from 'node:child_process';
 import { pathToFileURL } from 'node:url';
 import { packPublicPackages, root } from './pack-public.mjs';
@@ -37,28 +37,65 @@ async function download(url) {
     throw new Error(`Download failed ${response.status}: ${url}`);
   return Buffer.from(await response.arrayBuffer());
 }
+export async function downloadNodeArchive(
+  platform,
+  arch,
+  {
+    cacheRoot = path.join(
+      process.env.XDG_CACHE_HOME ??
+        path.join(os.tmpdir(), 'verd-download-cache'),
+      'verd-agent/node',
+    ),
+    fetchBytes = download,
+  } = {},
+) {
+  const archive = nodeArchive(platform, arch);
+  const base = `https://nodejs.org/download/release/v${NODE_VERSION}/`;
+  // Refresh the official checksum even when the archive bytes are cached.
+  const sums = (await fetchBytes(base + 'SHASUMS256.txt')).toString();
+  const expected = sums
+    .split('\n')
+    .map((line) => line.trim().split(/\s+/))
+    .find(([, name]) => name === archive)?.[0];
+  if (!/^[a-f0-9]{64}$/.test(expected ?? ''))
+    throw new Error('Official Node checksum missing for ' + archive);
+  const directory = path.join(cacheRoot, NODE_VERSION, expected);
+  const cached = path.join(directory, archive);
+  let bytes = await fs.readFile(cached).catch((error) => {
+    if (error.code !== 'ENOENT') throw error;
+    return undefined;
+  });
+  if (bytes) {
+    if (hash(bytes) !== 'sha256-' + expected)
+      throw new Error('Cached Node archive checksum mismatch: ' + cached);
+  } else {
+    bytes = await fetchBytes(base + archive);
+    if (hash(bytes) !== 'sha256-' + expected)
+      throw new Error('Node archive checksum mismatch');
+    await fs.mkdir(directory, { recursive: true });
+    const temporary = cached + '.' + randomUUID() + '.tmp';
+    try {
+      await fs.writeFile(temporary, bytes);
+      await fs.rename(temporary, cached);
+    } finally {
+      await fs.rm(temporary, { force: true });
+    }
+  }
+  return { archive, sums, bytes, expected };
+}
 export async function prepareAgentResources(
   destination,
   { platform = process.platform, arch = process.arch } = {},
 ) {
-  const archive = nodeArchive(platform, arch);
   const target = path.resolve(destination);
   const scratch = await fs.mkdtemp(
     path.join(os.tmpdir(), 'verd-agent-resources-'),
   );
   try {
-    // Use official HTTPS checksums, then verify the exact downloaded archive before extraction.
-    const base = `https://nodejs.org/download/release/v${NODE_VERSION}/`;
-    const sums = (await download(base + 'SHASUMS256.txt')).toString();
-    const expected = sums
-      .split('\n')
-      .map((l) => l.trim().split(/\s+/))
-      .find(([, name]) => name === archive)?.[0];
-    if (!/^[a-f0-9]{64}$/.test(expected ?? ''))
-      throw new Error('Official Node checksum missing for ' + archive);
-    const bytes = await download(base + archive);
-    if (hash(bytes) !== 'sha256-' + expected)
-      throw new Error('Node archive checksum mismatch');
+    const { archive, sums, bytes, expected } = await downloadNodeArchive(
+      platform,
+      arch,
+    );
     const archivePath = path.join(scratch, archive);
     await fs.writeFile(archivePath, bytes);
     const unpacked = path.join(scratch, 'unpacked');

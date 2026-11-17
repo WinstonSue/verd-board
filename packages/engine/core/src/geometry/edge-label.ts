@@ -1,7 +1,7 @@
 import type { EdgeCell } from '../cell/types';
 import type { Point } from '../interfaces/point';
 import type { RectangleClient } from '../interfaces/rectangle-client';
-import type { EdgeRoutingContext } from './edge';
+import { edgeRoutingContextFor, type EdgeRoutingContext } from './edge';
 import { polylinePointAt } from './polyline';
 import { copyLabelLayouts, routingBatches } from './routing-cache';
 
@@ -177,19 +177,20 @@ export function edgeLabelLayout(
       edge,
       index,
       points,
-      routing?.obstacles ?? [],
+      routing ? edgeRoutingContextFor(routing, edge).obstacles : [],
       [],
       routing?.registry,
     );
   if (!routing.labelLayouts) {
-    const obstacles: RectangleClient[] = [...routing.obstacles];
+    const obstacles: RectangleClient[] = [];
     const routes = [...routing.routes.values()];
     routes.sort((a, b) => a.edge.id.localeCompare(b.edge.id));
     const signature = JSON.stringify([
-      routing.obstacles,
+      edgeRoutingContextFor(routing, edge).obstacles,
       routes.map(({ edge, result }) => [
         edge.id,
         result.points,
+        edgeRoutingContextFor(routing, edge).obstacles,
         edge.route.mode,
         'points' in edge.route && !!edge.route.points?.length,
         edge.labels?.map((label) => [label.text, label.position]),
@@ -210,7 +211,10 @@ export function edgeLabelLayout(
             route.edge,
             at,
             route.result.points,
-            obstacles,
+            [
+              ...edgeRoutingContextFor(routing, route.edge).obstacles,
+              ...obstacles,
+            ],
             routes.map((value) => value.result.points),
             routing.registry,
           );
@@ -232,7 +236,7 @@ export function edgeLabelLayout(
       edge,
       index,
       points,
-      routing.obstacles,
+      edgeRoutingContextFor(routing, edge).obstacles,
       [...routing.routes.values()].map((route) => route.result.points),
       routing.registry,
     )

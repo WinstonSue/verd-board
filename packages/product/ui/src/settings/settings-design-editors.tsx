@@ -1,9 +1,4 @@
-import {
-  Checkbox,
-  Select,
-  Slider,
-  type SelectProps,
-} from '@sue/design-web-react';
+import { Checkbox, Slider } from '@sue/design-web-react';
 import type {
   ControlProps,
   SettingEditorProps,
@@ -11,84 +6,13 @@ import type {
 } from '@sue/schema-settings-react';
 import { useEffect, useRef, useState } from 'react';
 import type { KeyboardEvent } from 'react';
+import { SettingsSelectEditor } from '../shared/settings-select';
+export { SettingsSelect } from '../shared/settings-select';
 import {
   WorkspaceInput,
   WorkspaceNumberInput,
   WorkspaceTextArea,
 } from '../shared/workspace-design';
-
-/** Encode option identities without coercing the values submitted to the host. */
-export function SettingsSelect<V>({
-  value,
-  options,
-  onChange,
-  ...props
-}: Omit<SelectProps<string>, 'value' | 'options' | 'onChange'> & {
-  value: V;
-  options: readonly { value: V; label: string; disabled?: boolean }[];
-  onChange(value: V): void;
-}) {
-  const [open, setOpen] = useState(props.defaultOpen ?? false);
-  const selected = options.findIndex((option) =>
-    Object.is(option.value, value),
-  );
-  return (
-    <Select<string>
-      {...props}
-      open={props.open ?? open}
-      virtual={props.virtual ?? false}
-      value={selected < 0 ? undefined : String(selected)}
-      options={options.map((option, index) => ({
-        ...option,
-        value: String(index),
-      }))}
-      onChange={(index) => {
-        const option = options[Number(index)];
-        if (!props.disabled && option && !option.disabled)
-          onChange(option.value);
-      }}
-      onOpenChange={(next) => {
-        setOpen(next);
-        props.onOpenChange?.(next);
-      }}
-      onInputKeyDown={(event) => {
-        // stopPropagation alone does not cancel a native dialog's Escape action.
-        if (event.key === 'Escape' && (props.open ?? open)) {
-          event.preventDefault();
-          event.stopPropagation();
-          setOpen(false);
-          props.onOpenChange?.(false);
-        }
-        props.onInputKeyDown?.(event);
-      }}
-    />
-  );
-}
-
-function SelectEditor({
-  value,
-  options,
-  props,
-  disabled,
-  state,
-  label,
-  onCommit,
-}: SettingEditorProps<unknown, ControlProps['select']>) {
-  return (
-    <SettingsSelect
-      {...props.attributes}
-      className="settings-select"
-      aria-label={String(props.attributes?.['aria-label'] ?? label)}
-      value={state.mixed ? Symbol.for('settings.mixed') : value}
-      options={options}
-      placeholder={
-        state.mixed ? (props.mixedLabel ?? 'Mixed values') : undefined
-      }
-      disabled={disabled}
-      onChange={onCommit}
-    />
-  );
-}
 
 function CheckboxEditor({
   value,
@@ -265,7 +189,7 @@ function NumberEditor(
 }
 
 export const settingsDesignComponents = {
-  select: SelectEditor,
+  select: SettingsSelectEditor,
   range: RangeEditor,
   checkbox: CheckboxEditor,
   text: DraftEditor,

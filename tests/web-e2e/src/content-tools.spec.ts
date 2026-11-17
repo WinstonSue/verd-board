@@ -263,6 +263,8 @@ test.describe('touch document controls', () => {
     await page.setViewportSize({ width: 580, height: 720 });
     await editor.locator('p').tap();
     const toolbar = active(page).getByRole('toolbar', { name: '文字格式' });
+    await expect(toolbar).toBeHidden();
+    await editor.press('ControlOrMeta+a');
     await expect(toolbar).toBeInViewport({ ratio: 1 });
     await toolbar.getByRole('button', { name: '更多格式' }).tap();
     const formatting = active(page).getByRole('group', { name: '更多格式' });

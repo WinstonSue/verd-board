@@ -231,13 +231,19 @@ for (const width of [1280, 800])
         buffer: Buffer.from(JSON.stringify(file)),
       });
     const nodes = canvas(page).locator('[data-cell-kind="geometry"]');
-    const shapes = nodes.locator('[data-shape-renderer="rough"]');
     await expect(nodes).toHaveCount(2);
+    const ids = await nodes.evaluateAll((elements) =>
+      elements.map((element) => element.getAttribute('data-cell-id')!),
+    );
+    const first = canvas(page).locator(`[data-cell-id="${ids[0]}"]`);
+    const second = canvas(page).locator(`[data-cell-id="${ids[1]}"]`);
+    const firstShape = first.locator('[data-shape-renderer="rough"]');
+    const secondShape = second.locator('[data-shape-renderer="rough"]');
     await expect(page.getByTestId('save-status')).toHaveAttribute(
       'data-save-state',
       'saved',
     );
-    await nodes.first().click();
+    await first.click();
     await expect(recenter).toHaveText('重新居中');
     const controls = (await page
         .getByTestId('canvas-status-bar')
@@ -275,11 +281,11 @@ for (const width of [1280, 800])
     await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
     await page.mouse.wheel(2400, 1800);
     await expect
-      .poll(async () => (await nodes.first().boundingBox())!.x)
+      .poll(async () => (await first.boundingBox())!.x)
       .toBeLessThan(box.x - 100);
     await expect(recenter).toBeVisible();
     await recenter.click();
-    await expectSelectionCentered(page, [shapes.first()]);
+    await expectSelectionCentered(page, [firstShape]);
     await expect(page.getByTestId('canvas-zoom-label')).toHaveText(zoom!);
     expect(await writes()).toBe(before);
     await expect(page.getByTestId('save-status')).toHaveAttribute(
@@ -289,16 +295,16 @@ for (const width of [1280, 800])
 
     // Fit keeps both targets reachable before adding the second to the selection.
     await page.getByTestId('canvas-status-fit').click();
-    await nodes.nth(1).click({ modifiers: ['Shift'] });
+    await second.click({ modifiers: ['Shift'] });
     await recenter.click();
-    await expectSelectionCentered(page, [shapes.first(), shapes.nth(1)]);
+    await expectSelectionCentered(page, [firstShape, secondShape]);
     expect(await writes()).toBe(before);
     await canvas(page).press('Escape');
     await expect(recenter).toHaveCount(0);
 
     if (width === 390) {
       await page.getByTestId('canvas-status-fit').click();
-      await nodes.first().click();
+      await first.click();
       const expandProperties = page
         .getByTestId('inspector-expand')
         .locator('visible=true');
@@ -315,18 +321,18 @@ for (const width of [1280, 800])
         })
         .toBeGreaterThanOrEqual(10);
       await recenter.click();
-      await expectSelectionCentered(page, [shapes.first()]);
+      await expectSelectionCentered(page, [firstShape]);
       await page.screenshot({ path: '/private/tmp/verd-recenter-narrow.png' });
     } else {
       await page.getByTestId('canvas-status-fit').click();
-      await nodes.first().click();
-      await nodes.nth(1).click({ modifiers: ['Shift'] });
+      await first.click();
+      await second.click({ modifiers: ['Shift'] });
       await expandPropertyGroup(page);
       await page.getByRole('button', { name: '分组', exact: true }).click();
-      await nodes.first().click();
+      await first.click();
       await expect(recenter).toBeVisible();
       await recenter.click();
-      await expectSelectionCentered(page, [shapes.first(), shapes.nth(1)]);
+      await expectSelectionCentered(page, [firstShape, secondShape]);
       await page.screenshot({ path: '/private/tmp/verd-recenter-desktop.png' });
     }
   });

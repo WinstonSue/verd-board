@@ -314,6 +314,9 @@ export function runOperations(
               [[60, 60]],
             );
             break;
+          case 'card':
+            node = draw.createCardCell(id, [[60, 60]], op.label);
+            break;
           default:
             throw new Error(
               'Use an existing anchor ID or cell.set for this node kind: ' +
@@ -324,7 +327,10 @@ export function runOperations(
         node.content = {
           ...node.content,
           label: op.label,
-          text: createInlineText(op.label),
+          text:
+            op.kind === 'card'
+              ? draw.createCardText(op.label)
+              : createInlineText(op.label),
         };
       if (op.geometry)
         node.geometry = { ...node.geometry, ...op.geometry, derived: false };
@@ -428,6 +434,21 @@ export function runOperations(
                 labels: [],
               };
       const previous = store.cells[id];
+      if (kind === 'architecture-edge') {
+        if (
+          op.relation !== undefined &&
+          !['dependency', 'flow'].includes(op.relation)
+        )
+          throw new Error('Invalid architecture relationship');
+        edge.data = {
+          ...(previous?.cellType === 'edge' ? (previous.data as object) : {}),
+          ...(op.relation !== undefined
+            ? { relation: op.relation }
+            : !previous
+              ? { relation: 'dependency' }
+              : {}),
+        };
+      }
       if (previous) {
         if (!isEdgeCell(previous) || previous.kind !== edge.kind)
           throw new Error('Edge kind cannot change');
@@ -467,7 +488,7 @@ export function runOperations(
           : architecture.moveArchitectureModuleToLayer(
               store,
               op.id,
-              op.parentId,
+              op.parentId === store.rootId ? null : op.parentId,
             ),
       );
     } else if (op.type === 'architecture.reorder')

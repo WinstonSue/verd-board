@@ -1,6 +1,7 @@
 import {
   createFrameCell,
   indexCells,
+  isFrameCell,
   isNodeCell,
   lockedByAncestor,
   type CellOperation,
@@ -10,6 +11,12 @@ import {
 } from '@sue/board-core';
 import { layoutArchitectureCells } from './cell-utils';
 import { ArchitectureKind, type ArchitectureLayerData } from './public-api';
+export const architecturePorts = () =>
+  (['top', 'right', 'bottom', 'left'] as const).map((side) => ({
+    id: side,
+    side,
+    direction: 'both' as const,
+  }));
 export const createArchitectureLayerCell = (
   id: string,
   order = '0000',
@@ -26,6 +33,7 @@ export const createArchitectureLayerCell = (
     outline: 'rectangle',
   },
   content: { label: '' },
+  ports: architecturePorts(),
   data: { order, memberIds: [] },
 });
 export const createArchitectureModuleCell = (
@@ -78,11 +86,25 @@ export const addArchitectureModule = (
   node: NodeCell,
 ): CellOperation[] => {
   const layer = store.cells[layerId];
+  if (isFrameCell(layer))
+    return [
+      {
+        type: 'insert_cell',
+        parentId: layerId,
+        cell: {
+          ...node,
+          geometry: { ...node.geometry, derived: false },
+          data: { ...(node.data as object), placed: true },
+        },
+      },
+    ];
   if (!isNodeCell(layer) || layer.kind !== ArchitectureKind.architectureLayer)
     throw new Error('Missing architecture layer');
   const data = (layer as NodeCell<ArchitectureLayerData>).data!,
     parentId = indexCells(store).parentOf.get(layerId);
   if (!parentId) throw new Error('Missing architecture frame');
+  const layout = layoutArchitectureCells(store, parentId);
+  const bounds = layout.get(layerId)!;
   return [
     {
       type: 'insert_cell',
@@ -92,15 +114,18 @@ export const addArchitectureModule = (
             geometry: {
               ...node.geometry,
               x: Math.max(
-                20,
+                bounds.x + 20,
                 ...data.memberIds.map((id) => {
                   const member = store.cells[id];
-                  return isNodeCell(member)
-                    ? member.geometry.x + member.geometry.width + 32
-                    : 20;
+                  const geometry =
+                    layout.get(id) ??
+                    (isNodeCell(member) ? member.geometry : undefined);
+                  return geometry
+                    ? geometry.x + geometry.width + 32
+                    : bounds.x + 20;
                 }),
               ),
-              y: layoutArchitectureCells(store, parentId).get(layerId)!.y + 44,
+              y: bounds.y + Math.max(44, data.layoutPaddingTop ?? 44),
               derived: false,
             },
             data: { ...(node.data as object), placed: true },
@@ -122,20 +147,24 @@ export const addArchitectureModule = (
 export const moveArchitectureModuleToLayer = (
   store: CellStore,
   moduleId: string,
-  layerId: string,
+  layerId: string | null,
   options: { position?: 'preserve' | 'inside-layer' } = {},
 ): CellOperation[] => {
-  const module = store.cells[moduleId],
-    target = store.cells[layerId];
+  const module = store.cells[moduleId];
+  const candidate = layerId ? store.cells[layerId] : undefined;
+  const target = isNodeCell(candidate)
+    ? (candidate as NodeCell<ArchitectureLayerData>)
+    : undefined;
   if (
     !isNodeCell(module) ||
     module.kind !== ArchitectureKind.architectureModule ||
-    !isNodeCell(target) ||
-    target.kind !== ArchitectureKind.architectureLayer
+    (layerId !== null &&
+      (!isNodeCell(target) ||
+        target.kind !== ArchitectureKind.architectureLayer))
   )
     throw new Error('Invalid architecture layer move');
   const index = indexCells(store);
-  if (index.parentOf.get(moduleId) !== index.parentOf.get(layerId))
+  if (layerId && index.parentOf.get(moduleId) !== index.parentOf.get(layerId))
     throw new Error('Architecture membership crosses frame');
   const source = store.cells[
     Object.values(store.cells).find(
@@ -143,15 +172,16 @@ export const moveArchitectureModuleToLayer = (
         isNodeCell(cell) &&
         cell.kind === 'architecture-layer' &&
         (cell.data as ArchitectureLayerData)?.memberIds.includes(moduleId),
-    )!.id
+    )?.id ?? ''
   ] as NodeCell<ArchitectureLayerData>;
-  if (!source?.data) throw new Error('Missing architecture owner');
-  if (source.id === layerId) return [];
+  if ((source?.id ?? null) === layerId) return [];
   if (
     module.locked ||
-    target.locked ||
+    target?.locked ||
+    source?.locked ||
     lockedByAncestor(store, module.id) ||
-    lockedByAncestor(store, target.id)
+    (target && lockedByAncestor(store, target.id)) ||
+    (source && lockedByAncestor(store, source.id))
   )
     throw new Error('Cannot move locked architecture content');
   const frame = store.cells[
@@ -160,9 +190,11 @@ export const moveArchitectureModuleToLayer = (
   const layers = frame.children.filter(
     (id) => store.cells[id].kind === ArchitectureKind.architectureLayer,
   );
-  const targetBounds = layoutArchitectureCells(store, frame.id).get(layerId)!;
+  const targetBounds = layerId
+    ? layoutArchitectureCells(store, frame.id).get(layerId)!
+    : undefined;
   const placement: CellOperation[] =
-    options.position === 'inside-layer'
+    options.position === 'inside-layer' && target && targetBounds
       ? [
           {
             type: 'replace_cell',
@@ -201,29 +233,39 @@ export const moveArchitectureModuleToLayer = (
         ],
       },
     },
-    {
-      type: 'replace_cell',
-      cell: {
-        ...source,
-        data: {
-          ...source.data,
-          memberIds: source.data.memberIds.filter((id) => id !== moduleId),
-        },
-      },
-    },
-    {
-      type: 'replace_cell',
-      cell: {
-        ...target,
-        data: {
-          ...(target.data as ArchitectureLayerData),
-          memberIds: [
-            ...(target.data as ArchitectureLayerData).memberIds,
-            moduleId,
-          ],
-        },
-      },
-    },
+    ...(source?.data
+      ? [
+          {
+            type: 'replace_cell',
+            cell: {
+              ...source,
+              data: {
+                ...source.data,
+                memberIds: source.data.memberIds.filter(
+                  (id) => id !== moduleId,
+                ),
+              },
+            },
+          } as CellOperation,
+        ]
+      : []),
+    ...(target
+      ? [
+          {
+            type: 'replace_cell',
+            cell: {
+              ...target,
+              data: {
+                ...(target.data as ArchitectureLayerData),
+                memberIds: [
+                  ...(target.data as ArchitectureLayerData).memberIds,
+                  moduleId,
+                ],
+              },
+            },
+          } as CellOperation,
+        ]
+      : []),
   ];
 };
 

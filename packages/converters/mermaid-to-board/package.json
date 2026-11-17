@@ -1,6 +1,6 @@
 {
   "name": "@sue/board-mermaid-to-board",
-  "version": "2.1.0",
+  "version": "2.1.1",
   "description": "Mermaid to VerdBoard diagrams",
   "main": "./dist/index.cjs",
   "types": "./src/index.ts",

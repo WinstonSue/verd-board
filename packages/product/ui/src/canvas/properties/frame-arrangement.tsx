@@ -1,5 +1,5 @@
 import { useActionSource } from '@sue/board-react-actions';
-import { frameSelectionActionId } from '@sue/board-react';
+import { frameSelectionActionId, FrameSettingsControl } from '@sue/board-react';
 import {
   frameScene,
   isFrameCell,
@@ -207,30 +207,42 @@ export function FrameArrangement({
       </div>
       <label>
         {t('arrange.layout')}
-        <select
-          aria-label={t('arrange.layout')}
+        <FrameSettingsControl
+          field={{
+            key: 'Arrangement layout',
+            editor: 'select',
+            props: {
+              'aria-label': t('arrange.layout'),
+              children: (
+                <>
+                  {styles.map((option) => {
+                    const state = controller?.getActionState(
+                      frameSelectionActionId({ type: 'layout', style: option }),
+                    );
+                    const explanation = reason(state?.reason);
+                    return (
+                      <option
+                        key={option}
+                        value={option}
+                        disabled={!!explanation}
+                      >
+                        {t(
+                          `arrange.${option}` as keyof import('../../i18n').Translations,
+                        )}
+                        {explanation ? ` — ${explanation}` : ''}
+                      </option>
+                    );
+                  })}
+                </>
+              ),
+            },
+          }}
           value={selectedStyle}
-          onChange={(event) => {
-            const value = event.target.value as CellLayoutStyle;
+          onCommit={(value) => {
             controller?.setAutoLayoutStyle?.(value);
             setStyle({ frameId, value });
           }}
-        >
-          {styles.map((option) => {
-            const state = controller?.getActionState(
-              frameSelectionActionId({ type: 'layout', style: option }),
-            );
-            const explanation = reason(state?.reason);
-            return (
-              <option key={option} value={option} disabled={!!explanation}>
-                {t(
-                  `arrange.${option}` as keyof import('../../i18n').Translations,
-                )}
-                {explanation ? ` — ${explanation}` : ''}
-              </option>
-            );
-          })}
-        </select>
+        />
       </label>
       <FrameTooltip
         disabled={!layoutState?.enabled}

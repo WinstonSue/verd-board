@@ -120,9 +120,10 @@
     }
 
     table {
+      width: 100%;
       border-collapse: collapse;
       table-layout: fixed;
-      min-width: 320px;
+      min-width: 0;
 
       td,
       th {
@@ -136,6 +137,11 @@
         background: var(--board-table-head, #f9fafb);
         font-weight: 600;
         text-align: left;
+      }
+
+      td,
+      th {
+        overflow-wrap: anywhere;
       }
 
       .selectedCell::after {
@@ -213,6 +219,47 @@
     visibility: hidden;
     pointer-events: none;
   }
+}
+
+.document-table-controls {
+  position: fixed;
+  inset: 0;
+  z-index: 5;
+  pointer-events: none;
+}
+.document-table-handle {
+  position: fixed;
+  display: grid;
+  place-items: center;
+  width: 16px;
+  height: 16px;
+  padding: 0;
+  border: 0;
+  border-radius: 3px;
+  background: var(--board-surface, Canvas);
+  color: var(--board-text-secondary, GrayText);
+  visibility: hidden;
+  pointer-events: none;
+  cursor: grab;
+  touch-action: none;
+  &[data-visible] {
+    visibility: visible;
+    pointer-events: auto;
+  }
+  &:hover,
+  &:focus-visible {
+    background: var(--board-hover, #80808022);
+    color: var(--board-text, CanvasText);
+  }
+}
+.document-table-drop-line {
+  position: fixed;
+  background: var(--board-primary, #3b82f6);
+  pointer-events: none;
+}
+.document-table-menu {
+  max-height: min(560px, calc(100vh - 24px));
+  overflow-y: auto;
 }
 .document-block-handle,
 .document-block-popover,

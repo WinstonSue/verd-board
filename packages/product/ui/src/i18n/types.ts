@@ -5,6 +5,16 @@ export type Language = 'zh' | 'en';
 
 // Define translation keys and their corresponding values
 export interface Translations {
+  'appearance.styleColor': string;
+  'appearance.styleColor.automatic': string;
+  'appearance.styleColor.mixed': string;
+  'appearance.styleColor.customOverride': string;
+  'appearance.styleColor.family1': string;
+  'appearance.styleColor.family2': string;
+  'appearance.styleColor.family3': string;
+  'appearance.styleColor.family4': string;
+  'appearance.styleColor.family5': string;
+  'appearance.styleColor.family6': string;
   'contextMenu.title': string;
   'contextMenu.arrange': string;
   'contextMenu.layers': string;
@@ -163,7 +173,6 @@ export interface Translations {
   'theme.soft': string;
   'theme.retro': string;
   'theme.dark': string;
-  'theme.starry': string;
 
   // Colors
   'color.none': string;
@@ -366,7 +375,6 @@ export interface Translations {
   'rightPanel.bg.soft': string;
   'rightPanel.bg.retro': string;
   'rightPanel.bg.dark': string;
-  'rightPanel.bg.starry': string;
   'rightPanel.bg.deepGray': string;
 
   'mind.layout.standard': string;

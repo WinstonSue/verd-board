@@ -207,12 +207,9 @@ test('document toolbar, link preference and body focus work across container wid
   await find.press('Escape');
   const table = pane.locator('.tiptap table');
   await table.getByText('Cell', { exact: true }).click();
-  await toolbar.getByRole('button', { name: '表格', exact: true }).click();
-  await page
-    .getByRole('dialog', { name: '表格', exact: true })
-    .getByRole('button', { name: '下方插入行', exact: true })
-    .click();
-  await expect(table.locator('tr')).toHaveCount(2);
+  await expect(
+    toolbar.getByRole('button', { name: '表格', exact: true }),
+  ).toHaveCount(0);
   await pane.locator('.tiptap').focus();
   await expect
     .poll(() =>

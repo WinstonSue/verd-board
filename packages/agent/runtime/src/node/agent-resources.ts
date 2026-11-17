@@ -1,4 +1,5 @@
 import * as fs from 'node:fs/promises';
+import { constants } from 'node:fs';
 import path from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { digest, withWorkspaceLock } from './workspace-lock';
@@ -44,7 +45,8 @@ export async function readAgentResources(
   ])
     if (!manifest.files[required])
       throw new Error('AGENT_RESOURCES_INVALID: missing ' + required);
-  for (const [relative, hash] of Object.entries(manifest.files)) {
+  const entries = Object.entries(manifest.files);
+  for (const [relative, hash] of entries) {
     if (
       path.isAbsolute(relative) ||
       relative.split(/[\\/]/).some((p) => p === '..' || p === '.' || !p) ||
@@ -52,10 +54,29 @@ export async function readAgentResources(
       !/^sha256-[a-f0-9]{64}$/.test(hash)
     )
       throw new Error('AGENT_RESOURCES_INVALID: unsafe manifest path');
-    if (verify && digest(await fs.readFile(path.join(root, relative))) !== hash)
-      throw new Error(
-        'AGENT_RESOURCES_INVALID: checksum mismatch: ' + relative,
-      );
+  }
+  if (verify) {
+    let next = 0;
+    let failed = false;
+    const results = await Promise.allSettled(
+      Array.from({ length: Math.min(16, entries.length) }, async () => {
+        while (!failed && next < entries.length) {
+          const [relative, hash] = entries[next++];
+          try {
+            if (digest(await fs.readFile(path.join(root, relative))) !== hash)
+              throw new Error(
+                'AGENT_RESOURCES_INVALID: checksum mismatch: ' + relative,
+              );
+          } catch (error) {
+            failed = true;
+            throw error;
+          }
+        }
+      }),
+    );
+    // Drain in-flight reads before callers clean up a failed deployment.
+    for (const result of results)
+      if (result.status === 'rejected') throw result.reason;
   }
   return manifest;
 }
@@ -83,7 +104,21 @@ export async function deployAgentResources(
     }
     const staging = path.join(directory, '.deploy-' + randomUUID());
     try {
-      await fs.cp(source, staging, { recursive: true, dereference: true });
+      try {
+        await fs.cp(source, staging, {
+          recursive: true,
+          dereference: true,
+          mode: constants.COPYFILE_FICLONE,
+        });
+      } catch (error) {
+        if (
+          !['ENOTSUP', 'EOPNOTSUPP', 'ENOSYS', 'EXDEV'].includes(
+            (error as NodeJS.ErrnoException).code ?? '',
+          )
+        )
+          throw error;
+        await fs.cp(source, staging, { recursive: true, dereference: true });
+      }
       await readAgentResources(staging, true);
       await fs.rename(staging, target);
     } finally {

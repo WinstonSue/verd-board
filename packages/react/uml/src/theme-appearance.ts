@@ -1,11 +1,7 @@
-import {
-  isNodeCell,
-  resolveThemeRole,
-  resolveThemeSeries,
-  type CellStore,
-} from '@sue/board-core';
+import { isNodeCell, type CellStore } from '@sue/board-core';
 import {
   resolveFrameAppearance,
+  frameThemeAppearance,
   type FrameThemeAppearanceContext,
 } from '@sue/board-react';
 import {
@@ -48,6 +44,17 @@ const seriesFor = (
   return umlSeries(context.store, context.frameId).get(id) ?? 0;
 };
 
+const seriesTone = (
+  context: FrameThemeAppearanceContext,
+  level: 'node' | 'emphasis' = 'node',
+  id = context.cell.id,
+) =>
+  frameThemeAppearance(
+    { ...context, cell: context.store.cells[id] ?? context.cell },
+    `series-${(seriesFor(context, id) % 6) + 1}` as import('@sue/board-core').BoardStyleColor,
+    level,
+  );
+
 const fragmentRole = (context: FrameThemeAppearanceContext) => {
   const operator = (
     context.cell as import('@sue/board-core').NodeCell<UmlFragmentData>
@@ -60,24 +67,29 @@ const fragmentRole = (context: FrameThemeAppearanceContext) => {
 };
 
 export const umlThemeAppearance = (context: FrameThemeAppearanceContext) => {
-  const { cell, theme } = context;
-  if (cell.kind === 'uml-note') return resolveThemeRole(theme, 'annotation');
+  const { cell } = context;
+  if (cell.kind === 'uml-note')
+    return frameThemeAppearance(context, 'annotation');
   if (cell.kind === 'uml-fragment')
-    return { ...resolveThemeRole(theme, fragmentRole(context)), fill: 'none' };
+    return {
+      ...frameThemeAppearance(
+        context,
+        fragmentRole(context),
+        'container',
+        'opaque',
+      ),
+      fill: 'none',
+    };
   if (cell.cellType === 'edge') {
     const id = 'cellId' in cell.source ? cell.source.cellId : undefined;
     return {
-      strokeColor:
-        id === undefined
-          ? resolveThemeRole(theme, 'neutral').strokeColor
-          : resolveThemeSeries(theme, seriesFor(context, id)).strokeColor,
+      ...(id === undefined
+        ? frameThemeAppearance(context, 'neutral')
+        : seriesTone(context, 'node', id)),
+      fill: 'none',
     };
   }
-  const tone = resolveThemeSeries(
-    theme,
-    seriesFor(context),
-    cell.kind === 'uml-class' ? 'subtle' : 'normal',
-  );
+  const tone = seriesTone(context);
   return cell.kind === 'uml-participant' &&
     isNodeCell(cell) &&
     (cell.data as UmlParticipantData).actorType === 'actor'
@@ -93,12 +105,16 @@ export function resolveUmlPartAppearance(
   if (part === 'fragment-label')
     return resolveFrameAppearance(
       context,
-      resolveThemeRole(context.theme, fragmentRole(context), 'subtle'),
+      frameThemeAppearance(
+        context,
+        fragmentRole(context),
+        'emphasis',
+        'opaque',
+      ),
     );
-  const tone = resolveThemeSeries(
-    context.theme,
-    seriesFor(context),
-    part === 'activation' ? 'strong' : 'normal',
+  const tone = seriesTone(
+    context,
+    part === 'activation' || part === 'title' ? 'emphasis' : 'node',
   );
   if (part !== 'lifeline') return resolveFrameAppearance(context, tone);
   // A lifeline has no painted fill, even when its participant has a custom fill.

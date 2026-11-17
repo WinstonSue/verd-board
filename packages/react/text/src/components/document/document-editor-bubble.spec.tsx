@@ -26,7 +26,15 @@ const anchor = () => ({
   contextElement: editor.view.dom,
   getBoundingClientRect: () => new DOMRect(100, 100, 1, 20),
 });
-function Bubble({ visible = true, placement = 'top' as 'top' | 'bottom' }) {
+function Bubble({
+  visible = true,
+  placement = 'top' as 'top' | 'bottom',
+  canShow,
+}: {
+  visible?: boolean;
+  placement?: 'top' | 'bottom';
+  canShow?: () => boolean;
+}) {
   const content = useDocumentBubble(
     editor,
     key,
@@ -34,6 +42,7 @@ function Bubble({ visible = true, placement = 'top' as 'top' | 'bottom' }) {
     anchor,
     positioned,
     placement,
+    canShow,
   );
   return createPortal(<button>Menu action</button>, content);
 }
@@ -88,6 +97,35 @@ afterEach(async () => {
   await act(async () => root.unmount());
   shell.remove();
   container.remove();
+});
+
+it('rechecks live eligibility without replacing a selection session plugin', async () => {
+  let eligible = true;
+  const canShow = () => eligible;
+  await act(async () => root.render(<Bubble canShow={canShow} />));
+  const plugin = latest();
+  const shouldShow = () =>
+    plugin.shouldShow!({ view: editor.view } as Parameters<
+      NonNullable<BubbleMenuPluginProps['shouldShow']>
+    >[0]);
+  expect(shouldShow()).toBe(true);
+  eligible = false;
+  expect(shouldShow()).toBe(false);
+  eligible = true;
+  await act(async () => root.render(<Bubble canShow={canShow} />));
+  expect(latest()).toBe(plugin);
+  expect(shouldShow()).toBe(true);
+  Object.defineProperty(editor.view, 'composing', {
+    configurable: true,
+    value: true,
+  });
+  expect(shouldShow()).toBe(false);
+  Object.defineProperty(editor.view, 'composing', {
+    configurable: true,
+    value: false,
+  });
+  await act(async () => root.render(null));
+  expect(shouldShow()).toBe(false);
 });
 
 it('stays out of document flow and waits for coordinates before enabling focus', async () => {

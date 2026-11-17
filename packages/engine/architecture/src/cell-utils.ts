@@ -1,10 +1,12 @@
 import {
   EdgeUtil,
   groupLeafMembers,
+  geometryBounds,
   indexCells,
   isFrameCell,
   isNodeCell,
   NodeUtil,
+  translateCellSelection,
   type Cell,
   type CellCapabilities,
   type CellMoveContext,
@@ -17,12 +19,29 @@ import {
   type NodeGeometry,
   type Point,
 } from '@sue/board-core';
-import { moveArchitectureModuleToLayer } from './cell-commands';
+import type { ArchitectureEdgeData } from './types';
+import { planArchitectureDrop } from './containers';
 import { ArchitectureKind, type ArchitectureLayerData } from './public-api';
 
 export abstract class ArchitectureNodeUtil extends NodeUtil {}
 export class ArchitectureLayerNodeUtil extends ArchitectureNodeUtil {
+  constructor(private readonly registry?: CellRegistry) {
+    super();
+  }
   readonly kind = ArchitectureKind.architectureLayer;
+  override move(store: CellStore, cell: Cell, geometry: NodeGeometry) {
+    if (!isNodeCell(cell)) return [];
+    const parent = indexCells(store).parentOf.get(cell.id);
+    const old = parent
+      ? layoutArchitectureCells(store, parent).get(cell.id)
+      : cell.geometry;
+    return translateCellSelection(
+      store,
+      [cell.id],
+      [geometry.x - old!.x, geometry.y - old!.y],
+      this.registry,
+    );
+  }
   override capabilities(
     store: CellStore,
     cell: Cell,
@@ -30,10 +49,10 @@ export class ArchitectureLayerNodeUtil extends ArchitectureNodeUtil {
   ): CellCapabilities {
     return {
       ...super.capabilities(store, cell, mount),
-      connect: false,
+      connect: !cell.locked,
       rotate: false,
       resize: false,
-      move: false,
+      move: !cell.locked,
     };
   }
   override validate(store: CellStore, cell: Cell): string | undefined {
@@ -100,13 +119,16 @@ export class ArchitectureLayerNodeUtil extends ArchitectureNodeUtil {
   }
 }
 export class ArchitectureModuleNodeUtil extends ArchitectureNodeUtil {
+  constructor(private readonly registry?: CellRegistry) {
+    super();
+  }
   readonly kind = ArchitectureKind.architectureModule;
   override move(
     store: CellStore,
     cell: Cell,
     geometry: NodeGeometry,
     _targetId?: string,
-    context?: CellMoveContext,
+    _context?: CellMoveContext,
   ) {
     const operations = isNodeCell(cell)
       ? [
@@ -120,30 +142,8 @@ export class ArchitectureModuleNodeUtil extends ArchitectureNodeUtil {
           },
         ]
       : [];
-    const index = indexCells(store);
-    const parent = index.parentOf.get(cell.id);
-    const target =
-      context &&
-      Object.values(store.cells).find((candidate) => {
-        if (
-          candidate.kind !== ArchitectureKind.architectureLayer ||
-          index.parentOf.get(candidate.id) !== parent
-        )
-          return false;
-        const bounds = context.geometry.get(candidate.id);
-        return (
-          bounds &&
-          context.point[0] >= bounds.x &&
-          context.point[0] <= bounds.x + bounds.width &&
-          context.point[1] >= bounds.y &&
-          context.point[1] <= bounds.y + bounds.height
-        );
-      });
-    return target
-      ? [
-          ...operations,
-          ...moveArchitectureModuleToLayer(store, cell.id, target.id),
-        ]
+    return _context && this.registry
+      ? planArchitectureDrop(store, [cell.id], operations, this.registry)
       : operations;
   }
   override resize(store: CellStore, cell: Cell, geometry: NodeGeometry) {
@@ -160,18 +160,15 @@ export class ArchitectureModuleNodeUtil extends ArchitectureNodeUtil {
           cell.id,
         ),
     );
-    if (layers.length !== 1)
-      return 'Architecture module must belong to exactly one layer';
+    if (layers.length > 1)
+      return 'Architecture module cannot belong to multiple layers';
     return undefined;
   }
-  requiresPasteOwner(cell: Cell, fragment: { cells: Record<string, Cell> }) {
+  optionalPasteOwner(cell: Cell, fragment: { cells: Record<string, Cell> }) {
     return !Object.values(fragment.cells).some(
-      (candidate) =>
-        candidate.kind === ArchitectureKind.architectureLayer &&
-        Array.isArray(
-          (candidate as NodeCell<ArchitectureLayerData>).data?.memberIds,
-        ) &&
-        (candidate as NodeCell<ArchitectureLayerData>).data!.memberIds.includes(
+      (owner) =>
+        owner.kind === ArchitectureKind.architectureLayer &&
+        (owner as NodeCell<ArchitectureLayerData>).data?.memberIds.includes(
           cell.id,
         ),
     );
@@ -215,7 +212,7 @@ export class ArchitectureModuleNodeUtil extends ArchitectureNodeUtil {
       geometry?: ReadonlyMap<string, NodeGeometry>;
     },
   ) {
-    if (!context.ownerId || context.nested || !isNodeCell(cell)) return cell;
+    if (context.nested || !isNodeCell(cell)) return cell;
     const displayed = context.geometry?.get(context.sourceId);
     return {
       ...cell,
@@ -275,20 +272,24 @@ export class ArchitectureEdgeUtil extends EdgeUtil {
       edge.source.cellId === edge.target.cellId
     )
       return 'Invalid architecture dependency';
+    const source = store.cells[edge.source.cellId],
+      target = store.cells[edge.target.cellId];
     if (
-      store.cells[edge.source.cellId]?.kind !==
-        ArchitectureKind.architectureModule ||
-      store.cells[edge.target.cellId]?.kind !==
-        ArchitectureKind.architectureModule
+      !source ||
+      source.kind !== target?.kind ||
+      !['architecture-layer', 'architecture-module'].includes(source.kind)
     )
-      return 'Only modules can connect';
+      return 'Architecture relationships require two layers or two modules';
+    const relation = (edge.data as ArchitectureEdgeData | undefined)?.relation;
+    if (relation !== undefined && !['dependency', 'flow'].includes(relation))
+      return 'Invalid architecture relationship';
     return undefined;
   }
 }
 export const registerArchitectureCells = (registry: CellRegistry) => {
   [
-    new ArchitectureLayerNodeUtil(),
-    new ArchitectureModuleNodeUtil(),
+    new ArchitectureLayerNodeUtil(registry),
+    new ArchitectureModuleNodeUtil(registry),
     new ArchitectureEdgeUtil(),
   ].forEach((util) => registry.register(util));
 };
@@ -332,7 +333,7 @@ export const layoutArchitectureCells = (
         !(node.data as { placed?: boolean } | undefined)?.placed
           ? { ...node.geometry, x, y: y + 44 }
           : { ...node.geometry };
-      rectangles.push(rect);
+      rectangles.push(geometryBounds(rect));
       result.set(id, rect);
       x += rect.width + 24;
     });
@@ -349,14 +350,34 @@ export const layoutArchitectureCells = (
     const bottom = rectangles.length
       ? Math.max(...rectangles.map((rect) => rect.y + rect.height)) + 16
       : y + 104;
-    result.set(layer.id, {
+    const envelope = {
       x: minX,
       y: minY,
       width: right - minX,
       height: bottom - minY,
       derived: true,
       outline: 'rectangle',
-    });
+    } as NodeGeometry;
+    if (!layer.geometry.derived) {
+      const base = layer.geometry;
+      const left = Math.min(base.x, rectangles.length ? minX : base.x);
+      const top = Math.min(base.y, rectangles.length ? minY : base.y);
+      result.set(layer.id, {
+        ...base,
+        x: left,
+        y: top,
+        width:
+          Math.max(
+            base.x + base.width,
+            rectangles.length ? right : base.x + base.width,
+          ) - left,
+        height:
+          Math.max(
+            base.y + base.height,
+            rectangles.length ? bottom : base.y + base.height,
+          ) - top,
+      });
+    } else result.set(layer.id, envelope);
     y = bottom + 72;
   });
   return result;

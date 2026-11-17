@@ -1,6 +1,7 @@
 import { exerciseDocumentFormatLayout } from './document-format-layout-actions';
 import { exerciseDocumentBubbleStability } from './document-bubble-stability-actions';
-import { expect, type Locator, type Page } from '@playwright/test';
+import { exerciseDocumentListHandles } from './document-list-handle-actions';
+import { expect, test, type Locator, type Page } from '@playwright/test';
 
 export async function exerciseDocumentBlockActions(page: Page) {
   const id = 'block-actions';
@@ -72,13 +73,41 @@ export async function exerciseDocumentBlockActions(page: Page) {
       })
       .toBe(true);
   };
+  await editor.evaluate((element) => {
+    const tiptap = (element as any).editor;
+    const records: unknown[] = [];
+    (element as any).controlSelectionTrace = records;
+    const sample = (type: string) => {
+      const selection = tiptap.state.selection;
+      records.push({
+        type,
+        time: performance.now(),
+        native: getSelection()?.toString(),
+        model: tiptap.state.doc.textBetween(selection.from, selection.to),
+        from: selection.from,
+        to: selection.to,
+        focused: tiptap.view.hasFocus(),
+        active: document.activeElement?.className,
+      });
+      if (records.length > 100) records.shift();
+    };
+    for (const type of [
+      'pointerdown',
+      'pointerup',
+      'selectionchange',
+      'focusin',
+      'focusout',
+    ])
+      document.addEventListener(type, () => sample(type), true);
+    tiptap.on('selectionUpdate', () => sample('selectionUpdate'));
+    tiptap.on('transaction', () => sample('transaction'));
+  });
   await expect(paragraphs).toHaveText(labels);
   await third.click();
   await editor.press('End');
-  await expect(toolbar).toBeVisible();
-  await expect(toolbar).toBeInViewport({ ratio: 1 });
+  await expect(toolbar).toBeHidden();
   expect(await page.evaluate(() => getSelection()?.isCollapsed)).toBe(true);
-  await toolbar.getByRole('button', { name: '下划线' }).click();
+  await editor.press('ControlOrMeta+u');
   await expect(editor).toBeFocused();
   await page.keyboard.type('!');
   await expect(paragraphs.last().locator('u')).toHaveText('!');
@@ -87,12 +116,52 @@ export async function exerciseDocumentBlockActions(page: Page) {
   await page.getByRole('button', { name: '查找', exact: true }).focus();
   await expect(toolbar).toBeHidden();
   await editor.focus();
-  await expect(toolbar).toBeVisible();
-  await first.dblclick({ position: { x: 12, y: 10 } });
+  await expect(editor).toBeFocused();
+  await expect
+    .poll(() =>
+      editor.evaluate((element) => {
+        const tiptap = (element as any).editor;
+        return {
+          focused: tiptap.isFocused && tiptap.view.hasFocus(),
+          empty: tiptap.state.selection.empty,
+          native: getSelection()?.isCollapsed,
+        };
+      }),
+    )
+    .toEqual({ focused: true, empty: true, native: true });
+  await expect(toolbar).toBeHidden();
+  // A zero-delay gesture races ProseMirror's deferred focus selection restore.
+  await first.dblclick({ position: { x: 12, y: 10 }, delay: 50 });
   await expect
     .poll(() => page.evaluate(() => getSelection()?.toString()))
     .toBe('First');
-  await expect(toolbar).toBeVisible();
+  try {
+    await expect
+      .poll(() =>
+        editor.evaluate((element) => {
+          const tiptap = (element as any).editor;
+          const { from, to } = tiptap.state.selection;
+          return tiptap.state.doc.textBetween(from, to);
+        }),
+      )
+      .toBe('First');
+    await expect(toolbar).toBeVisible();
+  } catch (error) {
+    await test.info().attach('control-selection-state', {
+      body: JSON.stringify(
+        await editor.evaluate((element) => ({
+          trace: (element as any).controlSelectionTrace,
+          native: getSelection()?.toString(),
+          model: (element as any).editor.state.selection.toJSON(),
+          focused: (element as any).editor.view.hasFocus(),
+        })),
+        null,
+        2,
+      ),
+      contentType: 'application/json',
+    });
+    throw error;
+  }
   await expect(toolbar).toBeInViewport({ ratio: 1 });
   await toolbar.getByRole('button', { name: '加粗' }).click();
   await expect(first.locator('strong')).toHaveText('First');
@@ -263,7 +332,7 @@ export async function exerciseDocumentBlockActions(page: Page) {
     .toBe('First');
   await expect(toolbar).toBeVisible();
   await editor.press('ArrowRight');
-  await expect(toolbar).toBeVisible();
+  await expect(toolbar).toBeHidden();
   await editor.press('Alt+F10');
   await expect(menu).toBeVisible();
   await expect(first).toHaveClass(/document-block-active/);
@@ -311,4 +380,5 @@ export async function exerciseDocumentBlockActions(page: Page) {
     .toBe('First');
   await exerciseDocumentFormatLayout(page);
   await exerciseDocumentBubbleStability(page);
+  await exerciseDocumentListHandles(page);
 }

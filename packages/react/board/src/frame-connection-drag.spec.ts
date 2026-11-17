@@ -15,6 +15,11 @@ import { describe, expect, it } from 'vitest';
 import { createTestCellRegistry } from '../../../../tests/fixtures/plugins/registry';
 import { createWorkflowStartCell } from '../../../engine/workflow/src/cell-commands';
 import {
+  createArchitectureFrameSnapshot,
+  createArchitectureLayerCell,
+  createArchitectureModuleCell,
+} from '../../../engine/architecture/src/cell-commands';
+import {
   connectionDragState,
   connectionPreviewAnchor,
   projectConnectionOutline,
@@ -77,6 +82,52 @@ const fixture = () => {
 };
 
 describe('manual connection outline dragging', () => {
+  it('skips an enclosing layer when a module edge targets the module inside it', () => {
+    const snapshot = createArchitectureFrameSnapshot('root', 'layer');
+    const store = snapshot.store;
+    const frame = store.cells.root;
+    if (frame.cellType !== 'frame') throw new Error('Expected frame');
+    const layer = createArchitectureLayerCell('layer', '0');
+    layer.geometry = {
+      ...layer.geometry,
+      x: 300,
+      y: 0,
+      width: 400,
+      height: 300,
+      derived: false,
+    };
+    const source = createArchitectureModuleCell('source');
+    source.geometry = { ...source.geometry, x: 0, y: 100, derived: false };
+    const target = createArchitectureModuleCell('target');
+    target.geometry = { ...target.geometry, x: 400, y: 100, derived: false };
+    layer.data!.memberIds = [target.id];
+    Object.assign(store.cells, { layer, source, target });
+    frame.children = ['source', 'target', 'layer'];
+    const edge: EdgeCell = {
+      id: 'draft',
+      kind: 'architecture-edge',
+      cellType: 'edge',
+      route: { mode: 'orthogonal' },
+      source: { cellId: source.id, portId: 'right' },
+      target: { point: [400, 130] },
+      data: { relation: 'dependency' },
+    };
+    const result = resolveConnectionDrag({
+      store,
+      frameId: frame.id,
+      edge,
+      end: 'target',
+      point: [400, 130],
+      scale: 1,
+      registry: createTestCellRegistry(),
+      state: {},
+      commit: true,
+      query: () => frame.children,
+      getGeometry: (id) => (store.cells[id] as NodeCell).geometry,
+      locked: () => false,
+    });
+    expect(result.terminal).toEqual({ cellId: 'target', portId: 'left' });
+  });
   it('follows the interior without the Workflow default-side jump', () => {
     const test = fixture();
     expect(test.registry.validateEdge(test.store, test.edge)).toBeUndefined();
@@ -188,10 +239,25 @@ describe('manual connection outline dragging', () => {
     test.node.ports![0].direction = 'input';
     test.node.ports![1].maxConnections = 0;
     expect(test.move([80, 0], true).terminal).toHaveProperty('portId', 'left');
-    for (const port of test.node.ports!) port.maxConnections = 0;
-    expect(test.move([100, 12.5]).terminal).toHaveProperty('anchor');
-    expect(test.move([100, 12.5], true).terminal).toBeNull();
   });
+
+  it.each(['workflow-edge', 'arrow'])(
+    'keeps an unavailable target visible and cancels %s release instead of leaving a free endpoint',
+    (kind) => {
+      const test = fixture();
+      test.edge.kind = kind;
+      for (const port of test.node.ports!) port.maxConnections = 0;
+      const before = structuredClone(test.store);
+      const preview = test.move([100, 12.5]);
+      expect(preview).toMatchObject({
+        nodeId: 'node',
+        terminal: { cellId: 'node', anchor: expect.any(Array) },
+      });
+      expect(preview.terminal).not.toHaveProperty('portId');
+      expect(test.move([100, 12.5], true).terminal).toBeNull();
+      expect(test.store).toEqual(before);
+    },
+  );
 
   it('rejects domain-invalid releases and keeps existing blank-space behavior', () => {
     const test = fixture();

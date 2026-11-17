@@ -14,7 +14,11 @@ import type {
 import { memo, type ReactElement } from 'react';
 import { FrameTable } from './frame-table';
 import { FrameVectorLine } from './frame-vector-line';
-import { drawThemeAppearance, resolveDrawAppearance } from './frame-draw-theme';
+import {
+  drawThemeAppearance,
+  drawThemeBackground,
+  resolveDrawAppearance,
+} from './frame-draw-theme';
 // These leaves only use immutable content inputs. Reusing their elements also
 // lets the camera selector skip JSX allocation and repeated props comparisons.
 const freehandElements = new WeakMap<
@@ -76,6 +80,12 @@ const table: FrameRenderExtension = {
   render: (context) => <FrameTable {...context} />,
 };
 export const frameDrawExtensions: FrameRenderExtension[] = [
+  { themeBackground: drawThemeBackground },
+  {
+    kind: 'card',
+    themeAppearance: drawThemeAppearance,
+    textBounds: ({ cell, geometry }) => geometry ?? (cell as NodeCell).geometry,
+  },
   {
     kind: 'image',
     render: ({ cell, geometry }) =>

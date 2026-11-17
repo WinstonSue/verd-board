@@ -23,6 +23,7 @@ const acceptsPaste = (
     ) ||
     Object.values(DrawKind).includes(c.hit.kind as never));
 const drawTools = [
+  { id: 'card', pointer: 'card', label: { zh: '卡片', en: 'Card' } },
   {
     id: 'text',
     pointer: 'text',
@@ -84,6 +85,11 @@ export const createDrawUIPlugin = (): FrameUIPlugin => ({
   engine: createDrawPlugin(),
   extensions: () => frameDrawExtensions,
   cells: {
+    card: {
+      defaultTextAlignment: 'left',
+      textPadding: 16,
+      textVerticalAlignment: 'top',
+    },
     geometry: { edgeKind: 'arrow' },
     image: { edgeKind: 'arrow' },
     'vector-line': { resizeHandles: false },
@@ -198,8 +204,12 @@ export const createDrawUIPlugin = (): FrameUIPlugin => ({
         getState: (c: FrameActionContext) => ({
           visible:
             id === 'swimlane'
-              ? !!frameLaneScene(c.store, c.frameId, c.registry)
-              : !frameScene(c.store, c.frameId, c.registry),
+              ? !!frameLaneScene(c.store, c.frameId, c.registry) &&
+                frameLaneScene(c.store, c.frameId, c.registry)?.id !==
+                  'architecture'
+              : id === 'card'
+                ? true
+                : !frameScene(c.store, c.frameId, c.registry),
           enabled: !c.disabled && !!c.setTool,
           checked: (c.tool?.key?.split(':')[0] ?? c.tool?.mode) === pointer,
         }),

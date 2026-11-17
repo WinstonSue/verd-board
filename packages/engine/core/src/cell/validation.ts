@@ -1,4 +1,5 @@
 import { isValidAnchor } from '../anchor';
+import { isBoardStyleColor } from '../interfaces/theme';
 import { withCellValidationReads } from './validation-read-context';
 import { laneContains } from './lanes';
 import { geometryBounds, groupLeafMembers, isGroupableCell } from './group';
@@ -70,6 +71,7 @@ function validateStoreContents(
         if (
           isFrameCell(child) ||
           isDocumentReferenceCell(child) ||
+          child.kind === 'card' ||
           (isNodeCell(child) &&
             child.kind === 'geometry' &&
             child.geometry.outline === 'text')
@@ -115,6 +117,11 @@ function validateStoreContents(
         report(id, 'Groups are not allowed in this scene');
     }
     if (isNodeCell(cell)) {
+      if (
+        cell.appearance?.styleColor !== undefined &&
+        !isBoardStyleColor(cell.appearance.styleColor)
+      )
+        report(id, 'Invalid style color family');
       if (isDocumentCell(cell)) {
         if (
           typeof cell.data?.targetDocumentId !== 'string' ||
@@ -175,6 +182,8 @@ function validateStoreContents(
           const endpoint = store.cells[terminal.cellId];
           if (isDocumentCell(endpoint))
             report(cell.id, 'Document references cannot be connected');
+          if (endpoint?.kind === 'card')
+            report(cell.id, 'Cards cannot be connected');
           if (!endpoint || !isNodeCell(endpoint))
             report(cell.id, 'Edge endpoint must be a node');
           if (parents.get(terminal.cellId) !== parents.get(cell.id))

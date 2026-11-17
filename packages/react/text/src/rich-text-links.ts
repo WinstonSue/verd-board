@@ -71,12 +71,11 @@ export function useRichTextLinks(options: RichTextLinkOptions) {
       if (!anchorOf(event.target, event.currentTarget)) return;
       openedPointer.current = false;
       pointer.current = { x: event.clientX, y: event.clientY, moved: false };
-      if (
-        options.blockPointer &&
-        options.onOpenLink &&
-        shouldActivateRichTextLink(event, options)
-      ) {
-        event.stopPropagation();
+      if (options.onOpenLink && shouldActivateRichTextLink(event, options)) {
+        // Focusing an editable host can scroll its previous caret into view
+        // between press and release, moving the navigation link away.
+        event.preventDefault();
+        if (options.blockPointer) event.stopPropagation();
       }
     },
     onPointerMoveCapture(event: PointerEvent) {

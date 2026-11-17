@@ -17,7 +17,11 @@ import {
   type FrameCursorController,
   type FrameCursorSource,
 } from './frame-control-cursor';
-import { FrameScaleContent, type FrameCameraStore } from './frame-camera-store';
+import {
+  frameHoverOwner,
+  FrameScaleContent,
+  type FrameCameraStore,
+} from './frame-camera-store';
 import type {
   ResolvedPortGroup,
   SelectedEndpointPlan,
@@ -53,12 +57,18 @@ type Control = {
   cursor: string;
   nodeId?: string;
   endpoint: boolean;
+  markRadius: number;
+  visible: boolean;
   hover(value: boolean): void;
   enter?(): void;
   leave?(): void;
   down(event: PointerEvent<SVGElement>): void;
 };
-type ControlEntry = { current: Control; element?: SVGCircleElement };
+type ControlEntry = {
+  current: Control;
+  element?: SVGCircleElement;
+  hoverOwner?: string | null;
+};
 const ControlContext = createContext<{
   add(element: SVGCircleElement, control: ControlEntry): void;
   remove(element: SVGCircleElement): void;
@@ -66,7 +76,20 @@ const ControlContext = createContext<{
 } | null>(null);
 
 /** Resolve overlapping targets in screen space, independently of SVG paint order. */
-export function FrameControlLayer({ children }: { children: ReactNode }) {
+export function FrameControlLayer({
+  children,
+  camera,
+  onNodeBodyPointerDown,
+}: {
+  children: ReactNode;
+  camera?: FrameCameraStore;
+  onNodeBodyPointerDown?(
+    event: PointerEvent<SVGElement>,
+    element: Element,
+  ): boolean;
+}) {
+  const cameraRef = useRef(camera);
+  cameraRef.current = camera;
   const element = useRef<SVGGElement | null>(null);
   const controls = useRef(new Map<SVGCircleElement, ControlEntry>());
   const hovered = useRef<ControlEntry | null>(null);
@@ -93,13 +116,27 @@ export function FrameControlLayer({ children }: { children: ReactNode }) {
   }, []);
   const selectHover = (next: ControlEntry | null) => {
     applyCursor(next);
+    const target =
+      next?.element ??
+      (pointer.current
+        ? element.current?.ownerDocument.elementFromPoint?.(...pointer.current)
+        : null) ??
+      null;
+    if (next) {
+      next.hoverOwner = frameHoverOwner(next.element ?? null);
+      if (next.hoverOwner) cameraRef.current?.setHovered(next.hoverOwner, next);
+    }
     if (next === hovered.current) return;
     const previous = hovered.current;
     hovered.current = next;
-    previous?.current.hover(false);
-    previous?.current.leave?.();
+    // Claim the new control before releasing the old one, including controls
+    // with different DOM parents which belong to the same cell.
     next?.current.hover(true);
     next?.current.enter?.();
+    previous?.current.hover(false);
+    if (previous?.hoverOwner)
+      cameraRef.current?.leave(previous.hoverOwner, previous, target);
+    previous?.current.leave?.();
   };
   source.current.leave = () => {
     if (element.current) selectHover(null);
@@ -210,6 +247,8 @@ export function FrameControlLayer({ children }: { children: ReactNode }) {
       svg.removeEventListener('pointermove', record, true);
       svg.removeEventListener('pointerdown', record, true);
       svg.removeEventListener('pointerleave', leave);
+      pointer.current = null;
+      selectHover(null);
       controller.remove(owner);
       cursor.current = null;
       detach();
@@ -236,6 +275,43 @@ export function FrameControlLayer({ children }: { children: ReactNode }) {
         onPointerDownCapture={(event) => {
           const control = resolve(event);
           if (control) {
+            const hit = control.element;
+            const matrix = hit?.getScreenCTM?.();
+            const distance =
+              hit && matrix
+                ? Math.hypot(
+                    matrix.a * Number(hit.getAttribute('cx')) +
+                      matrix.c * Number(hit.getAttribute('cy')) +
+                      matrix.e -
+                      event.clientX,
+                    matrix.b * Number(hit.getAttribute('cx')) +
+                      matrix.d * Number(hit.getAttribute('cy')) +
+                      matrix.f -
+                      event.clientY,
+                  )
+                : 0;
+            // Enlarged port padding must not consume the body of a selected
+            // movable node. The visible mark remains a dedicated control.
+            if (
+              onNodeBodyPointerDown &&
+              control.current.kind === 'port' &&
+              !control.current.endpoint &&
+              (!control.current.visible ||
+                distance > control.current.markRadius + 0.5)
+            ) {
+              const bodies =
+                element.current?.ownerDocument.elementsFromPoint?.(
+                  event.clientX,
+                  event.clientY,
+                ) ?? [];
+              const body = bodies
+                .map((item) => item.closest('[data-cell-id]'))
+                .find(Boolean);
+              if (body && onNodeBodyPointerDown(event, body)) {
+                selectHover(null);
+                return;
+              }
+            }
             selectHover(control);
             control.current.down(event);
             if (
@@ -337,6 +413,8 @@ export function FrameControlHandle({
     cursor,
     nodeId,
     endpoint,
+    markRadius: radius * (hovered ? 1.5 : 1),
+    visible: visible || hovered,
     hover: setHovered,
     enter: onPointerEnter,
     leave: onPointerLeave,

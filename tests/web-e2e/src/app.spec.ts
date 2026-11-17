@@ -1,3 +1,8 @@
+import { placeArchitectureTool } from '../../helpers/architecture-cards';
+import {
+  expectPropertyValue,
+  selectPropertyValue,
+} from '../../helpers/property-select';
 import { rejectNextCommit } from './service-routes';
 import { cellBodyPoint } from '../../helpers/port-controls';
 import { nodePorts } from '../../helpers/port-controls';
@@ -39,19 +44,25 @@ const createAt = async (page: Page, tool: string, x = 0.28, y = 0.32) => {
   await page.mouse.click(box.x + box.width * x, box.y + box.height * y);
   await page.getByRole('button', { name: '选择', exact: true }).click();
 };
-const selectFrame = async (page: Page, index = 0) => {
-  // The embedded preview paints over the frame body, so the shell's only
-  // always-clickable chrome is the title strip.
-  await cells(page, 'frame')
-    .nth(index)
-    .locator('[data-frame-title-id]')
-    .click({ position: { x: 24, y: 12 }, force: true });
+const selectFrame = async (page: Page, index: number | string = 0) => {
+  // Selection can raise an overlapping shell; use an exposed title hit.
+  const shell =
+    typeof index === 'number'
+      ? cells(page, 'frame').nth(index)
+      : canvas(page).locator(`[data-cell-id="${index}"]`);
+  const id = (await shell.getAttribute('data-cell-id'))!;
+  const point = await cellBodyPoint(shell.locator('[data-frame-title-id]'));
+  await page.mouse.click(point.x, point.y);
+  await expect(pane(page).locator('.frame-inspector')).toHaveAttribute(
+    'data-selected-cell-id',
+    id,
+  );
   await expect(pane(page).getByTestId('frame-open')).toBeVisible();
 };
 const openFrame = async (
   page: Page,
   workspace: Exclude<Workspace, 'board'>,
-  index = 0,
+  index: number | string = 0,
 ) => {
   await selectFrame(page, index);
   await pane(page).getByTestId('frame-open').click();
@@ -244,10 +255,10 @@ test('opens a board mind in exclusive edit and writes children back', async ({
 
 test('switches theme scheme and restores it after reload', async ({ page }) => {
   await page.emulateMedia({ colorScheme: 'light' });
-  await page.getByLabel('Theme', { exact: true }).selectOption('dark');
+  await selectPropertyValue(page.getByLabel('Theme', { exact: true }), 'dark');
   await expect(canvas(page)).toHaveCSS(
     'background-color',
-    'rgb(239, 249, 245)',
+    'rgb(242, 248, 249)',
   );
   await expect
     .poll(async () => {
@@ -257,10 +268,10 @@ test('switches theme scheme and restores it after reload', async ({ page }) => {
     })
     .toBe('dark');
   await page.reload();
-  await expect(page.getByLabel('Theme', { exact: true })).toHaveValue('dark');
+  await expectPropertyValue(page.getByLabel('Theme', { exact: true }), 'dark');
   await expect(canvas(page)).toHaveCSS(
     'background-color',
-    'rgb(239, 249, 245)',
+    'rgb(242, 248, 249)',
   );
 });
 
@@ -421,8 +432,8 @@ test('opens a board mind in exclusive edit from the living component', async ({
 test('persists workflow graph mode after reload', async ({ page }) => {
   await newWorkflow(page);
   await cells(page, 'workflow-start').click();
-  await expect(page.getByTestId('workflow-graph-mode')).toHaveValue('dag');
-  await page.getByTestId('workflow-graph-mode').selectOption('process');
+  await expectPropertyValue(page.getByTestId('workflow-graph-mode'), 'dag');
+  await selectPropertyValue(page.getByTestId('workflow-graph-mode'), 'process');
   await expect
     .poll(
       async () => (await savedKind(page, 'workflow-start'))[0]?.data.graphMode,
@@ -432,9 +443,10 @@ test('persists workflow graph mode after reload', async ({ page }) => {
   await activateBoardTab(page);
   await openFrame(page, 'workflow');
   await cells(page, 'workflow-start').click();
-  await expect(
+  await expectPropertyValue(
     pane(page, 'workflow').getByTestId('workflow-graph-mode'),
-  ).toHaveValue('process');
+    'process',
+  );
 });
 
 test('inserts a workflow component, renames a node, and opens exclusive edit', async ({
@@ -476,19 +488,22 @@ for (const [workspace, tool] of [
     await createAt(page, tool, 0.12, 0.2);
     await createAt(page, tool, 0.6, 0.55);
     await expect(cells(page, 'frame')).toHaveCount(2);
+    const ids = await cells(page, 'frame').evaluateAll((elements) =>
+      elements.map((element) => element.getAttribute('data-cell-id')!),
+    );
     await zoomBy(page, 'board', 1);
     const boardZoom = (await zoomLabel(page, 'board').textContent())!;
-    await openFrame(page, workspace, 0);
+    await openFrame(page, workspace, ids[0]);
     await expect(zoomLabel(page, workspace)).toHaveText('100%');
     await zoomBy(page, workspace, 1);
     // Tabs keep their own view state — returning restores the board camera,
     // and reopening the detail tab restores its camera too.
     await backToPreviousCanvas(page);
     await expect(zoomLabel(page, 'board')).toHaveText(boardZoom);
-    await openFrame(page, workspace, 0);
+    await openFrame(page, workspace, ids[0]);
     await expect(zoomLabel(page, workspace)).toHaveText('110%');
     await backToPreviousCanvas(page);
-    await openFrame(page, workspace, 1);
+    await openFrame(page, workspace, ids[1]);
     await expect(zoomLabel(page, workspace)).toHaveText('100%');
   });
 }
@@ -594,13 +609,13 @@ test('architecture layer sorting and module ownership changes survive undo, casc
   await createAt(page, '架构图');
   await openFrame(page, 'architecture');
   const archPane = pane(page, 'architecture');
-  await archPane.getByRole('button', { name: '模块', exact: true }).click();
+  await placeArchitectureTool(page, '模块');
   const module = cells(page, 'architecture-module');
   const moduleId = (await module.getAttribute('data-cell-id'))!;
   const firstId = (await cells(page, 'architecture-layer')
     .first()
     .getAttribute('data-cell-id'))!;
-  await archPane.getByRole('button', { name: '添加层', exact: true }).click();
+  await placeArchitectureTool(page, '添加层');
   await expect(cells(page, 'architecture-layer')).toHaveCount(2);
   const secondId = (await cells(page, 'architecture-layer')
     .filter({ has: page.locator('path') })
@@ -612,12 +627,14 @@ test('architecture layer sorting and module ownership changes survive undo, casc
       firstId,
     ))!;
   await module.click();
-  await expect(
+  await expectPropertyValue(
     archPane.getByLabel('Architecture layer', { exact: true }),
-  ).toHaveValue(firstId);
-  await archPane
-    .getByLabel('Architecture layer', { exact: true })
-    .selectOption(secondId);
+    firstId,
+  );
+  await selectPropertyValue(
+    archPane.getByLabel('Architecture layer', { exact: true }),
+    secondId,
+  );
   await expect
     .poll(
       async () =>
@@ -627,13 +644,15 @@ test('architecture layer sorting and module ownership changes survive undo, casc
     )
     .toEqual([moduleId]);
   await selectHistoryAction(page, '撤销');
-  await expect(
+  await expectPropertyValue(
     archPane.getByLabel('Architecture layer', { exact: true }),
-  ).toHaveValue(firstId);
+    firstId,
+  );
   await selectHistoryAction(page, '重做');
-  await expect(
+  await expectPropertyValue(
     archPane.getByLabel('Architecture layer', { exact: true }),
-  ).toHaveValue(secondId);
+    secondId,
+  );
   await archPane.getByRole('button', { name: '适配画布', exact: true }).click();
   const layer = canvas(page).locator(`[data-cell-id="${secondId}"]`);
   await layer.click({ position: { x: 15, y: 15 } });
@@ -663,9 +682,10 @@ test('architecture layer sorting and module ownership changes survive undo, casc
   await openFrame(page, 'architecture');
   await expect(module).toHaveCount(1);
   await module.click();
-  await expect(
+  await expectPropertyValue(
     archPane.getByLabel('Architecture layer', { exact: true }),
-  ).toHaveValue(secondId);
+    secondId,
+  );
 });
 
 test('workflow start coordinate properties move the selected node independently and undo in one step', async ({

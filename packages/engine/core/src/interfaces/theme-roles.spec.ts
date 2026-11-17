@@ -3,6 +3,7 @@ import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { createFrameCell, type NodeCell } from '../cell/types';
 import { ThemeColorMode } from './theme';
+import { themeConfig } from './theme-config';
 import {
   BoardThemeDefinitions,
   colorContrast,
@@ -128,7 +129,7 @@ describe('diagram theme roles and category families', () => {
   it('adjusts borders for an explicit canvas background without mutating the shared ramps', () => {
     const theme = resolveBoardTheme(
       {
-        themeColorMode: ThemeColorMode.starry,
+        themeColorMode: ThemeColorMode.dark,
         backgroundMode: 'custom',
         boardBackground: '#ffffff',
       },
@@ -153,7 +154,11 @@ describe('diagram theme roles and category families', () => {
       }
     assertReadableTone(resolveThemeRole(theme, 'primary', 'subtle'), theme);
     expect(JSON.stringify(theme)).toBe(before);
-    expect(theme.roles).toBe(BoardThemeDefinitions.starry.dark.roles);
+    expect(theme.roles).not.toBe(BoardThemeDefinitions.dark.dark.roles);
+    expect(theme.canvas).toBe('#ffffff');
+    expect(resolveThemeSeries(theme, 0).fill).not.toBe(
+      resolveThemeSeries(BoardThemeDefinitions.dark.dark, 0).fill,
+    );
   });
 
   it('supplies defaults without overriding custom colors or legacy rendering', () => {
@@ -223,4 +228,162 @@ it('keeps the native design palette values synchronized with the actual theme de
     }),
   );
   expect(JSON.parse(block.content[0].text)).toEqual(expected);
+});
+
+it('aliases semantic levels without changing legacy ramps', () => {
+  const theme = resolveBoardTheme(undefined, 'light');
+  for (const [level, legacy] of [
+    ['container', 'subtle'],
+    ['node', 'normal'],
+    ['emphasis', 'strong'],
+  ] as const)
+    expect(resolveThemeSeries(theme, 2, level)).toBe(
+      resolveThemeSeries(theme, 2, legacy),
+    );
+});
+
+it('gives Classic the complete former Colorful light and dark palettes', () => {
+  expect(themeConfig.themes.default.light).toEqual({
+    background: '#ffffff',
+    surface: '#ffffff',
+    header: '#f3edfc',
+    text: '#1e293b',
+    stroke: '#64748b',
+    accent: '#b59ad7',
+    seriesSeeds: [
+      '#b59ad7',
+      '#d89baf',
+      '#d7b477',
+      '#83b8ab',
+      '#91afcf',
+      '#a8bd85',
+    ],
+  });
+  expect(themeConfig.themes.default.dark).toEqual({
+    background: '#1c1d20',
+    surface: '#26282d',
+    header: '#30333a',
+    text: '#e4e7ec',
+    stroke: '#9aa1ab',
+    accent: '#cba6f7',
+    seriesSeeds: [
+      '#cba6f7',
+      '#f2a6bc',
+      '#f9d89c',
+      '#94d8c5',
+      '#9dbfef',
+      '#b8d59a',
+    ],
+  });
+});
+
+it('keeps the same purple, rose, ochre, teal, blue and grass family ordinals in every appearance', () => {
+  const expected = {
+    default: [
+      ['#b59ad7', '#d89baf', '#d7b477', '#83b8ab', '#91afcf', '#a8bd85'],
+      ['#cba6f7', '#f2a6bc', '#f9d89c', '#94d8c5', '#9dbfef', '#b8d59a'],
+    ],
+    colorful: [
+      ['#8b5cf6', '#f43f5e', '#f5b800', '#00b8a9', '#2f7cf6', '#74bc1f'],
+      ['#bb8aff', '#ff718b', '#ffd84d', '#43d7c5', '#73adff', '#a5d94f'],
+    ],
+    soft: [
+      ['#9a83ad', '#b47f89', '#ba9d68', '#6e9e9a', '#748fae', '#8da579'],
+      ['#c5b7c7', '#cfb5b8', '#d0bfa7', '#b2c7c6', '#b1c0c9', '#b7c3b4'],
+    ],
+    retro: [
+      ['#94718a', '#b56050', '#8b6138', '#447e6c', '#6c7e9c', '#929251'],
+      ['#c5a4b5', '#d69b88', '#d7b77b', '#99b8a2', '#9cb1c9', '#cabd85'],
+    ],
+    dark: [
+      ['#8d87af', '#b47e91', '#b89a69', '#2a8793', '#568db4', '#85a582'],
+      ['#b7afd6', '#d8a7b9', '#dbc18e', '#7fc7cd', '#9abedf', '#b5cca5'],
+    ],
+  };
+  for (const id of Object.values(ThemeColorMode)) {
+    for (const [modeIndex, appearance] of (
+      ['light', 'dark'] as const
+    ).entries()) {
+      const theme = resolveBoardTheme({ themeColorMode: id }, appearance);
+      expect(themeConfig.themes[id][appearance].seriesSeeds).toEqual(
+        expected[id][modeIndex],
+      );
+      for (let index = 0; index < 6; index++) {
+        expect(
+          resolveThemeSeries(theme, index, 'node', 'overlay').fill.slice(0, 7),
+        ).toBe(expected[id][modeIndex][index]);
+      }
+    }
+  }
+});
+
+it('retains theme accents independently from categorical primary and preserves the fill weights', () => {
+  for (const id of [
+    ThemeColorMode.soft,
+    ThemeColorMode.retro,
+    ThemeColorMode.dark,
+  ]) {
+    for (const appearance of ['light', 'dark'] as const) {
+      const theme = resolveBoardTheme({ themeColorMode: id }, appearance);
+      expect(theme.accent).toBe(themeConfig.themes[id][appearance].accent);
+      expect(theme.accent).not.toBe(
+        resolveThemeRole(theme, 'primary', 'node', 'overlay').fill.slice(0, 7),
+      );
+      expect(resolveThemeRole(theme, 'primary')).toBe(
+        resolveThemeSeries(theme, 0),
+      );
+    }
+  }
+  expect(themeConfig.styleAmounts).toEqual({
+    light: { container: 0.1, node: 0.24, emphasis: 0.44 },
+    dark: { container: 0.14, node: 0.3, emphasis: 0.48 },
+  });
+  expect(themeConfig.neutralAmounts).toEqual({
+    container: 0,
+    node: 0.06,
+    emphasis: 0.14,
+  });
+});
+
+it('gives Soft a lighter warm canvas and more separated muted hues', () => {
+  expect(themeConfig.themes.soft.light).toMatchObject({
+    background: '#faf9f7',
+    surface: '#ffffff',
+    header: '#f0ede9',
+    text: '#494746',
+    stroke: '#8b8682',
+    accent: '#748fae',
+  });
+  const lightness = (hex: string) =>
+    [1, 3, 5].reduce((sum, at) => sum + parseInt(hex.slice(at, at + 2), 16), 0);
+  expect(lightness(themeConfig.themes.soft.light.background)).toBeGreaterThan(
+    lightness('#f3f1ef'),
+  );
+  // Expand the blue/teal and purple/rose hue gaps from the former palette.
+  const hue = (hex: string) => {
+    const [r, g, b] = [1, 3, 5].map(
+      (at) => parseInt(hex.slice(at, at + 2), 16) / 255,
+    );
+    const max = Math.max(r, g, b),
+      min = Math.min(r, g, b),
+      delta = max - min;
+    const value =
+      max === r
+        ? (g - b) / delta
+        : max === g
+          ? (b - r) / delta + 2
+          : (r - g) / delta + 4;
+    return (value * 60 + 360) % 360;
+  };
+  const distance = (a: string, b: string) => {
+    const value = Math.abs(hue(a) - hue(b));
+    return Math.min(value, 360 - value);
+  };
+  const seeds = themeConfig.themes.soft.light.seriesSeeds;
+  expect(distance(seeds[3], seeds[4])).toBeGreaterThan(
+    distance('#8ea5a6', '#8497a5'),
+  );
+  expect(distance(seeds[0], seeds[1])).toBeGreaterThan(
+    distance('#a295a8', '#b09a9e'),
+  );
 });

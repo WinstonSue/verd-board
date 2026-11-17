@@ -22,6 +22,7 @@ import type { FramePluginContext } from '@sue/board-react';
 import { mergeSettingsPatch } from '@sue/board-react';
 import { FrameGeometryControls } from '@sue/board-react';
 import { FrameSettingsControl } from '@sue/board-react';
+import { ProductPropertyPanel } from './properties/product-property-panel';
 import {
   autoUpdate,
   flip,
@@ -140,7 +141,7 @@ import { FrameImportDialog } from './dialogs/frame-import-dialog';
 import { FrameMindProperties, MindSchemeField } from '@sue/board-react-mind';
 import { isFrameSnapshot, openFrameOperations } from './frame-open';
 import { FramePropertyNumber } from '@sue/board-react';
-import { FramePropertyGroup, FramePropertyPanel } from '@sue/board-react';
+import { FramePropertyGroup } from '@sue/board-react';
 import { FrameSaveStatus } from '../shared/save-status';
 import { FrameFindBar } from './toolbar/frame-find-bar';
 import { FrameSelectionAppearance } from './properties/frame-selection-appearance';
@@ -937,6 +938,25 @@ export function FrameProductShell({
     dispatch,
     allocateId: id,
   };
+  const resetWaypointsControl =
+    cell && isEdgeCell(cell) ? (
+      <button
+        type="button"
+        data-testid="edge-reset-waypoints"
+        disabled={
+          !settingsContext.getActionState('canvas.edge.reset-waypoints', {
+            edgeId: cell.id,
+          }).enabled
+        }
+        onClick={() =>
+          void settingsContext.executeAction('canvas.edge.reset-waypoints', {
+            edgeId: cell.id,
+          })
+        }
+      >
+        {language === 'zh' ? '清除所有锚点' : 'Reset all waypoints'}
+      </button>
+    ) : null;
   const contributedProperties = pluginSet.plugins.flatMap((plugin) =>
     (plugin.propertyPanels ?? []).flatMap((panel) => {
       const node = panel.render(settingsContext);
@@ -1017,10 +1037,7 @@ export function FrameProductShell({
                   backgroundMode: 'theme',
                   boardBackground: resolveBoardTheme(
                     { themeColorMode: mode },
-                    mode === ThemeColorMode.dark ||
-                      mode === ThemeColorMode.starry
-                      ? 'dark'
-                      : 'light',
+                    mode === ThemeColorMode.dark ? 'dark' : 'light',
                   ).background,
                 },
               },
@@ -1695,6 +1712,7 @@ export function FrameProductShell({
         title={actionTitle(id)}
         icon={icon}
         disabled={!state.enabled}
+        pressed={state.checked}
         tooltipPlacement="right"
         onClick={() => runAction(id)}
       />
@@ -2203,6 +2221,11 @@ export function FrameProductShell({
                         })}
                         shapes={shapes}
                         value=""
+                        cardLabel={language === 'zh' ? '卡片' : 'Card'}
+                        onSelectCard={() => {
+                          runAction('draw.card');
+                          setShapePickerOpen(false);
+                        }}
                         onChange={(next) => {
                           runAction('draw.shape', { shape: next });
                           setShapePickerOpen(false);
@@ -2268,7 +2291,6 @@ export function FrameProductShell({
             ) : scene === 'architecture-layer' ? (
               <div className="frame-tool-group">
                 {domainButton('architecture.box', Square)}
-                {domainButton('architecture.decision', Diamond)}
                 {domainButton('architecture.store', Database)}
                 {domainButton('architecture.layer', Layers3)}
               </div>
@@ -2281,6 +2303,11 @@ export function FrameProductShell({
             {stateFor('draw.swimlane').visible && (
               <div className="frame-tool-group">
                 {domainButton('draw.swimlane', Columns3)}
+              </div>
+            )}
+            {scene && (
+              <div className="frame-tool-group">
+                {domainButton('draw.card', FileText)}
               </div>
             )}
             {stateFor('mind.summary').visible && (
@@ -2343,7 +2370,8 @@ export function FrameProductShell({
             </div>
           </div>
         </div>
-        <FramePropertyPanel
+        <ProductPropertyPanel
+          active={!suspended && !presenting && !myOpen}
           key={frameId}
           open={inspectorOpen}
           cellId={cell?.id}
@@ -2893,114 +2921,125 @@ export function FrameProductShell({
                               }}
                             />
                           </label>
-                          {(['sourceMarker', 'targetMarker'] as const).map(
-                            (end) => (
-                              <label key={end}>
-                                {end === 'sourceMarker'
-                                  ? language === 'zh'
-                                    ? '起点箭头'
-                                    : 'Start marker'
-                                  : language === 'zh'
-                                    ? '终点箭头'
-                                    : 'End marker'}
-                                <FrameSettingsControl
-                                  field={{
-                                    key: 'frame-product-shell.1',
-                                    editor: 'select',
-                                    props: {
-                                      'aria-label': end,
-                                      children: (
-                                        <>
-                                          {[
-                                            'none',
-                                            'arrow',
-                                            'solid-triangle',
-                                            'hollow-triangle',
-                                            'diamond',
-                                            'diamond_outline',
-                                            'circle',
-                                            'cross',
-                                            'one-side-up',
-                                            'one-side-down',
-                                            'single-slash',
-                                          ].map((marker) => (
-                                            <option key={marker} value={marker}>
-                                              {
-                                                (
-                                                  {
-                                                    none:
-                                                      language === 'zh'
-                                                        ? '无'
-                                                        : 'None',
-                                                    arrow:
-                                                      language === 'zh'
-                                                        ? '箭头'
-                                                        : 'Arrow',
-                                                    'solid-triangle':
-                                                      language === 'zh'
-                                                        ? '实心三角'
-                                                        : 'Solid triangle',
-                                                    'hollow-triangle':
-                                                      language === 'zh'
-                                                        ? '空心三角'
-                                                        : 'Hollow triangle',
-                                                    diamond:
-                                                      language === 'zh'
-                                                        ? '实心菱形'
-                                                        : 'Solid diamond',
-                                                    diamond_outline:
-                                                      language === 'zh'
-                                                        ? '空心菱形'
-                                                        : 'Hollow diamond',
-                                                    circle:
-                                                      language === 'zh'
-                                                        ? '圆形'
-                                                        : 'Circle',
-                                                    cross:
-                                                      language === 'zh'
-                                                        ? '交叉'
-                                                        : 'Cross',
-                                                    'one-side-up':
-                                                      language === 'zh'
-                                                        ? '上侧箭头'
-                                                        : 'Upper arrow',
-                                                    'one-side-down':
-                                                      language === 'zh'
-                                                        ? '下侧箭头'
-                                                        : 'Lower arrow',
-                                                    'single-slash':
-                                                      language === 'zh'
-                                                        ? '斜线'
-                                                        : 'Slash',
-                                                  } as Record<string, string>
-                                                )[marker]
-                                              }
-                                            </option>
-                                          ))}
-                                        </>
-                                      ),
-                                    },
-                                  }}
-                                  value={
-                                    (
-                                      cell.data as
-                                        Record<string, string> | undefined
-                                    )?.[end] ??
-                                    (end === 'sourceMarker' ? 'none' : 'arrow')
-                                  }
-                                  onCommit={(value) =>
-                                    replace({
-                                      ...cell,
-                                      data: {
-                                        ...(cell.data as object),
-                                        [end]: value,
+                          {resetWaypointsControl}
+                          {!(
+                            cell.kind === 'architecture-edge' &&
+                            (cell.data as { relation?: string } | undefined)
+                              ?.relation
+                          ) &&
+                            (['sourceMarker', 'targetMarker'] as const).map(
+                              (end) => (
+                                <label key={end}>
+                                  {end === 'sourceMarker'
+                                    ? language === 'zh'
+                                      ? '起点箭头'
+                                      : 'Start marker'
+                                    : language === 'zh'
+                                      ? '终点箭头'
+                                      : 'End marker'}
+                                  <FrameSettingsControl
+                                    field={{
+                                      key: 'frame-product-shell.1',
+                                      editor: 'select',
+                                      props: {
+                                        'aria-label': end,
+                                        children: (
+                                          <>
+                                            {[
+                                              'none',
+                                              'arrow',
+                                              'solid-triangle',
+                                              'hollow-triangle',
+                                              'diamond',
+                                              'diamond_outline',
+                                              'circle',
+                                              'cross',
+                                              'one-side-up',
+                                              'one-side-down',
+                                              'single-slash',
+                                            ].map((marker) => (
+                                              <option
+                                                key={marker}
+                                                value={marker}
+                                              >
+                                                {
+                                                  (
+                                                    {
+                                                      none:
+                                                        language === 'zh'
+                                                          ? '无'
+                                                          : 'None',
+                                                      arrow:
+                                                        language === 'zh'
+                                                          ? '箭头'
+                                                          : 'Arrow',
+                                                      'solid-triangle':
+                                                        language === 'zh'
+                                                          ? '实心三角'
+                                                          : 'Solid triangle',
+                                                      'hollow-triangle':
+                                                        language === 'zh'
+                                                          ? '空心三角'
+                                                          : 'Hollow triangle',
+                                                      diamond:
+                                                        language === 'zh'
+                                                          ? '实心菱形'
+                                                          : 'Solid diamond',
+                                                      diamond_outline:
+                                                        language === 'zh'
+                                                          ? '空心菱形'
+                                                          : 'Hollow diamond',
+                                                      circle:
+                                                        language === 'zh'
+                                                          ? '圆形'
+                                                          : 'Circle',
+                                                      cross:
+                                                        language === 'zh'
+                                                          ? '交叉'
+                                                          : 'Cross',
+                                                      'one-side-up':
+                                                        language === 'zh'
+                                                          ? '上侧箭头'
+                                                          : 'Upper arrow',
+                                                      'one-side-down':
+                                                        language === 'zh'
+                                                          ? '下侧箭头'
+                                                          : 'Lower arrow',
+                                                      'single-slash':
+                                                        language === 'zh'
+                                                          ? '斜线'
+                                                          : 'Slash',
+                                                    } as Record<string, string>
+                                                  )[marker]
+                                                }
+                                              </option>
+                                            ))}
+                                          </>
+                                        ),
                                       },
-                                    })
-                                  }
-                                />
-                              </label>
-                            ),
-                          )}
+                                    }}
+                                    value={
+                                      (
+                                        cell.data as
+                                          Record<string, string> | undefined
+                                      )?.[end] ??
+                                      (end === 'sourceMarker'
+                                        ? 'none'
+                                        : 'arrow')
+                                    }
+                                    onCommit={(value) =>
+                                      replace({
+                                        ...cell,
+                                        data: {
+                                          ...(cell.data as object),
+                                          [end]: value,
+                                        },
+                                      })
+                                    }
+                                  />
+                                </label>
+                              ),
+                            )}
                         </>
                       )}
                     </>
@@ -3036,8 +3075,7 @@ export function FrameProductShell({
                     }}
                     value={
                       isFrameCell(frame)
-                        ? (frame.view?.theme?.themeColorMode ??
-                          ThemeColorMode.default)
+                        ? resolveBoardTheme(frame.view?.theme, appearance).id
                         : ThemeColorMode.default
                     }
                     onCommit={(value) => setTheme(value as ThemeColorMode)}
@@ -3207,11 +3245,40 @@ export function FrameProductShell({
                     return (
                       <label>
                         {label}
-                        <select
-                          aria-label={label}
+                        <FrameSettingsControl<string>
+                          field={{
+                            key: 'Assign swimlane',
+                            editor: 'select',
+                            props: {
+                              'aria-label': label,
+                              children: (
+                                <>
+                                  <option value="" disabled>
+                                    {label}
+                                  </option>
+                                  <option value="remove">
+                                    {language === 'zh'
+                                      ? '移出泳道'
+                                      : 'Remove from swimlane'}
+                                  </option>
+                                  {lanes.map((lane, index) => (
+                                    <option
+                                      key={JSON.stringify([
+                                        lane.containerId,
+                                        lane.id,
+                                      ])}
+                                      value={index}
+                                    >
+                                      {lane.label ||
+                                        `${language === 'zh' ? '泳道' : 'Lane'} ${index + 1}`}
+                                    </option>
+                                  ))}
+                                </>
+                              ),
+                            },
+                          }}
                           value=""
-                          onChange={(event) => {
-                            const value = event.target.value;
+                          onCommit={(value) => {
                             const lane = lanes[Number(value)];
                             if (value === 'remove')
                               runAction('draw.assign-swimlane', null);
@@ -3221,25 +3288,7 @@ export function FrameProductShell({
                                 laneId: lane.id,
                               });
                           }}
-                        >
-                          <option value="" disabled>
-                            {label}
-                          </option>
-                          <option value="remove">
-                            {language === 'zh'
-                              ? '移出泳道'
-                              : 'Remove from swimlane'}
-                          </option>
-                          {lanes.map((lane, index) => (
-                            <option
-                              key={JSON.stringify([lane.containerId, lane.id])}
-                              value={index}
-                            >
-                              {lane.label ||
-                                `${language === 'zh' ? '泳道' : 'Lane'} ${index + 1}`}
-                            </option>
-                          ))}
-                        </select>
+                        />
                       </label>
                     );
                   })()}
@@ -3400,6 +3449,7 @@ export function FrameProductShell({
               id="actions"
               title={language === 'zh' ? '操作' : 'Actions'}
             >
+              {cell?.kind === 'uml-relation' && resetWaypointsControl}
               {cell &&
                 (isFrameCell(cell) ||
                   isFrameReferenceCell(cell) ||
@@ -3438,7 +3488,7 @@ export function FrameProductShell({
               {store.cells[id]?.kind}: {id}
             </button>
           ))}
-        </FramePropertyPanel>
+        </ProductPropertyPanel>
 
         {myOpen && (
           <MyPage

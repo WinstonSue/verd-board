@@ -3,6 +3,7 @@ import {
   createFrameCell,
   resolveBoardTheme,
   resolveThemeRole,
+  resolveThemeSeries,
   ThemeColorMode,
   type CellStore,
   type EdgeCell,
@@ -64,18 +65,20 @@ it('uses role defaults in cyclic workflows and keeps edge colors independent of 
           extensions,
         );
       expect(visual('start')).toMatchObject(
-        resolveThemeRole(theme, 'secondary', 'strong'),
+        resolveThemeRole(theme, 'secondary', 'strong', 'overlay'),
       );
-      expect(visual('task')).toMatchObject(resolveThemeRole(theme, 'primary'));
+      expect(visual('task')).toMatchObject(
+        resolveThemeRole(theme, 'neutral', 'node', 'overlay'),
+      );
       expect(visual('decision')).toMatchObject({
         fill: '#ffffff',
         strokeColor: '#aabbcc',
       });
       expect(visual('edge').strokeColor).toBe(
-        resolveThemeRole(theme, 'tertiary').strokeColor,
+        resolveThemeRole(theme, 'tertiary', 'emphasis', 'overlay').strokeColor,
       );
       expect(visual('loop').strokeColor).toBe(
-        resolveThemeRole(theme, 'primary').strokeColor,
+        resolveThemeRole(theme, 'neutral', 'node', 'overlay').strokeColor,
       );
       expect(visual('task').fill).not.toBe(visual('start').fill);
     }
@@ -90,4 +93,45 @@ it('uses role defaults in cyclic workflows and keeps edge colors independent of 
   ).toMatchObject(task.appearance);
   delete task.appearance;
   expect(JSON.stringify(store)).toBe(original);
+});
+
+it('keeps a task-only chain neutral and permits an explicit family', () => {
+  const registry = createCellRegistry({ plugins: [createWorkflowPlugin()] });
+  const extensions = createWorkflowFrameExtensions(registry);
+  const frame = createFrameCell('frame');
+  const tasks = ['a', 'b', 'c', 'd'].map((id) => createWorkflowTaskCell(id));
+  const edges: EdgeCell[] = tasks.slice(1).map((task, at) => ({
+    id: `e${at}`,
+    kind: 'workflow-edge',
+    cellType: 'edge',
+    source: { cellId: tasks[at].id },
+    target: { cellId: task.id },
+    route: { mode: 'auto' },
+  }));
+  frame.children = [...tasks, ...edges].map((cell) => cell.id);
+  const store: CellStore = {
+    rootId: frame.id,
+    cells: Object.fromEntries(
+      [frame, ...tasks, ...edges].map((cell) => [cell.id, cell]),
+    ),
+  };
+  const theme = resolveBoardTheme(undefined, 'light');
+  const visual = (cell: (typeof tasks)[number]) =>
+    resolveFrameCellAppearance(
+      { cell, store, frameId: frame.id, theme },
+      extensions,
+    );
+  expect(new Set(tasks.map((cell) => visual(cell).fill)).size).toBe(1);
+  tasks[1].appearance = { styleColor: 'series-4' };
+  expect(visual(tasks[1]).fill).toBe(
+    resolveThemeSeries(theme, 3, 'node', 'overlay').fill,
+  );
+  expect(visual(tasks[0]).fill).toBe(
+    resolveThemeRole(theme, 'neutral', 'node', 'overlay').fill,
+  );
+  const edge = resolveFrameCellAppearance(
+    { cell: edges[1], store, frameId: frame.id, theme },
+    extensions,
+  );
+  expect(edge.styleFamily).toBe('series-4');
 });

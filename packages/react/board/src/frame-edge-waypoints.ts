@@ -9,6 +9,25 @@ import {
 } from '@sue/board-core';
 
 const samePoint = (a: Point, b: Point) => a[0] === b[0] && a[1] === b[1];
+
+/** Reset authored points without freezing the next automatically derived route. */
+export function planWaypointReset(
+  edge: EdgeCell,
+  registry: CellRegistry,
+): EdgeCell | null {
+  if (!('points' in edge.route) || !edge.route.points?.length) return null;
+  const normalized = normalizeEdgeRoute(edge, registry);
+  const route = normalized.route;
+  return {
+    ...normalized,
+    route: {
+      mode: route.mode === 'fixed' ? 'auto' : route.mode,
+      ...('strategy' in route && route.strategy
+        ? { strategy: route.strategy }
+        : {}),
+    },
+  };
+}
 const length = (points: readonly Point[]) =>
   points
     .slice(1)

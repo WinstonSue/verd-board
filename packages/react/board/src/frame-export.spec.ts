@@ -44,6 +44,22 @@ describe('native frame image clone', () => {
     );
     source.parentElement!.remove();
   });
+  it('restores ordinary ranks independently in nested frames without reordering the source', () => {
+    const source = svg(
+      '<g data-frame-content-id="root"><g data-frame-normal-rank="1" data-cell-id="node"><g data-frame-content-id="inner"><g data-frame-normal-rank="1" data-cell-id="child"/><g data-frame-normal-rank="0" data-cell-id="inner-edge"/></g></g><g data-frame-normal-rank="0" data-cell-id="edge"/><g data-frame-export-exclude="controls"/></g>',
+    );
+    const order = (root: Element, frame: string) =>
+      [...root.querySelector(`[data-frame-content-id="${frame}"]`)!.children]
+        .map((el) => el.getAttribute('data-cell-id'))
+        .filter(Boolean);
+    const clone = cloneFrameImageSvg(source);
+    expect(order(clone, 'root')).toEqual(['edge', 'node']);
+    expect(order(clone, 'inner')).toEqual(['inner-edge', 'child']);
+    expect(order(source, 'root')).toEqual(['node', 'edge']);
+    expect(order(source, 'inner')).toEqual(['child', 'inner-edge']);
+    expect(clone.querySelector('[data-frame-normal-rank]')).toBeNull();
+    source.parentElement!.remove();
+  });
   it('rejects invalid export options before mounting a renderer', async () => {
     const snapshot = { store: createCellStore(createFrameCell('root')) };
     const before = document.body.childElementCount;
@@ -150,6 +166,40 @@ it('freezes concrete styles without retaining ambient application custom propert
       'rgb(255, 255, 255)',
     );
     expect(source.style.getPropertyValue('--board-text')).toBe('#ffffff');
+  } finally {
+    source.parentElement!.remove();
+  }
+});
+
+it('freezes automatic overlay paints per occurrence without flattening authored transparency', () => {
+  const source = svg(
+    '<g data-cell-id="reference"><g data-cell-id="external-task" fill="#7c3aed3d" style="fill:rgba(124,58,237,0.24)" data-frame-export-fill="#e0cffb"><rect data-overlay-child style="fill:rgba(124,58,237,0.24)" width="100" height="60"/></g><g data-cell-id="external-class"><rect data-uml-class-body fill="#7c3aed1a" data-frame-export-fill="#eee6fd"/><rect data-uml-class-header fill="#7c3aed3d" data-frame-export-fill="#e0cffb"/></g><rect data-authored fill="#ff000080"/></g>',
+  );
+  try {
+    const clone = cloneFrameImageSvg(source);
+    expect(
+      clone
+        .querySelector('[data-cell-id="external-task"]')
+        ?.getAttribute('fill'),
+    ).toBe('#e0cffb');
+    expect(
+      clone.querySelector<SVGElement>('[data-uml-class-header]')?.style.fill,
+    ).toBe('#e0cffb');
+    expect(
+      clone.querySelector('[data-uml-class-body]')?.getAttribute('fill'),
+    ).toBe('#eee6fd');
+    expect(
+      clone.querySelector<SVGElement>('[data-overlay-child]')?.style.fill,
+    ).toBe('#e0cffb');
+    expect(clone.querySelector('[data-authored]')?.getAttribute('fill')).toBe(
+      '#ff000080',
+    );
+    expect(clone.querySelector('[data-frame-export-fill]')).toBeNull();
+    expect(
+      source
+        .querySelector('[data-cell-id="external-task"]')
+        ?.getAttribute('fill'),
+    ).toBe('#7c3aed3d');
   } finally {
     source.parentElement!.remove();
   }

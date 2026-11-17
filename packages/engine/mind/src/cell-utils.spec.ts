@@ -802,9 +802,11 @@ describe('native mind rules', () => {
     expect(
       mindPresentation(r.store, r.store.cells.root as NodeCell, 'frame'),
     ).toEqual({
-      fill: '#f5f5f5',
-      stroke: '#64748b',
-      color: '#333333',
+      fill: '#dbd0ec',
+      stroke: '#8070a0',
+      color: '#1e293b',
+      styleFamily: 'series-1',
+      styleLevel: 'emphasis',
     });
   });
   it('keeps unedited marks through a text edit, undo and snapshot restore', () => {

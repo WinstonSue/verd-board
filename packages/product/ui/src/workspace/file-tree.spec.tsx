@@ -72,6 +72,73 @@ afterEach(async () => {
 });
 
 describe('FileTree', () => {
+  it('highlights only explicit selections while retaining the current file identity', async () => {
+    const props = await setup({ selectedPaths: ['docs', 'b.verd.json'] });
+    const highlighted = () =>
+      [...container.querySelectorAll<HTMLElement>('.is-highlighted')].map(
+        (row) => row.dataset['entryPath'],
+      );
+    expect(highlighted()).toEqual(['docs', 'b.verd.json']);
+    expect(button('Alpha').getAttribute('aria-current')).toBe('page');
+    expect(
+      button('Alpha')
+        .closest('.file-tree-row')
+        ?.classList.contains('is-active'),
+    ).toBe(true);
+    await act(async () =>
+      root.render(<FileTree {...props} selectedPaths={[]} />),
+    );
+    expect(highlighted()).toEqual(['docs/a.verd.json']);
+  });
+
+  it('can repeatedly focus a directory without turning its reveal request into selection', async () => {
+    const props = await setup({ revealDirectory: { path: 'docs', nonce: 1 } });
+    const nextFrame = () =>
+      act(
+        async () =>
+          new Promise<void>((resolve) =>
+            requestAnimationFrame(() => resolve()),
+          ),
+      );
+    await nextFrame();
+    expect(document.activeElement).toBe(button('docs'));
+    expect(
+      button('docs').closest('.file-tree-row')?.hasAttribute('aria-selected'),
+    ).toBe(false);
+    button('Alpha').focus();
+    await act(async () =>
+      root.render(
+        <FileTree {...props} revealDirectory={{ path: 'docs', nonce: 2 }} />,
+      ),
+    );
+    await nextFrame();
+    expect(document.activeElement).toBe(button('docs'));
+    expect(container.querySelectorAll('.is-highlighted')).toHaveLength(1);
+    expect(props.onToggleDir).not.toHaveBeenCalled();
+  });
+
+  it('applies selection priority to resource and unavailable rows', async () => {
+    await setup({
+      entries: [
+        { path: 'docs', kind: 'directory' },
+        { path: 'notes.md', kind: 'file' },
+      ],
+      failedFiles: [{ path: 'broken.verd.json' }],
+      activeFailedPath: 'broken.verd.json',
+      selectedPaths: ['notes.md', 'broken.verd.json'],
+    });
+    expect(
+      [...container.querySelectorAll<HTMLElement>('.is-highlighted')].map(
+        (row) => row.dataset['entryPath'],
+      ),
+    ).toEqual(['notes.md', 'broken.verd.json']);
+    expect(
+      container
+        .querySelector('[data-failed-path="broken.verd.json"]')
+        ?.getAttribute('aria-selected'),
+    ).toBe('true');
+  });
+
   it('opens unavailable files by real path without inventing file identities', async () => {
     const onOpenFailedFile = vi.fn();
     await setup({
