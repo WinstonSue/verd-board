@@ -1,5 +1,11 @@
 # @sue/verd-board-app
 
+## 2.1.3
+
+### Patch Changes
+
+- Fix folder-link selection and focus when reopening the collapsed sidebar. Collect release gate failures by dependency, bound test concurrency, and package on the remote test host using this run's validated builds and Agent resources, with verified installer transfer and preserved previous outputs.
+
 ## 2.1.2
 
 ### Patch Changes

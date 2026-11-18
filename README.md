@@ -34,9 +34,9 @@ pnpm dev:web
 pnpm test:remote doctor
 ```
 
-验收范围以根级 [AGENTS.md](AGENTS.md) 为准，按实际改动选择内容专项或功能定向验证。开发机的 `check:dev`、`check:ci` 默认转到远程测试机，结果绑定源码摘要与测试选择。全量 CI 覆盖 ESLint、Prettier、类型、原生内容、单测、消费者、Agent 资源和四套 Web/Desktop E2E，其触发条件与日常定向验收分别见根规范和开发指南。
+验收范围以根级 [AGENTS.md](AGENTS.md) 为准，按实际改动选择内容专项或功能定向验证。开发机的 `check:dev`、`check:ci`、`check:release` 和正式打包默认转到远程测试机，结果绑定源码摘要与测试选择。全量门禁按依赖集中收集失败，修复方负责修复与定向验证；完整通过后，打包复用同轮已验收构建和资源。单测和 Web 使用受控并发，同一桌面会话的 Desktop 串行；ESLint、Prettier、类型、原生内容、单测、消费者、Agent 资源及四套 E2E 均保留。
 
-Use the root `AGENTS.md` to select content-specific checks or feature-scoped validation on the test Mac. Development-machine quality commands delegate remotely, and results remain bound to their source snapshot and test selection. Build and release commands, explicit local debugging and reconnect procedures are documented in the native development guide.
+Use the root `AGENTS.md` to choose validation scope. Quality gates and Desktop packaging default to the remote test host. Gates collect independent failures for the repair owner; packaging consumes this run's complete passing proof and validated artifacts. Unit and Web tests use bounded parallelism, while native Desktop tests remain serial within one GUI session. All four development/production E2E suites remain required. Setup and recovery commands are documented in the native development guide.
 
 ## 包分层与第三方接入
 

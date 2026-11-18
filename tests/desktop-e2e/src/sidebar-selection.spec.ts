@@ -22,6 +22,10 @@ test('Desktop sidebar replaces folder reveals and multi-selection on ordinary na
     });
     const page = await desktop.firstWindow();
     await expect(page.locator('.workspace-shell')).toBeVisible();
+    // Copy must finish before the helper consumes a previous workspace's link.
+    await desktop.evaluate(({ clipboard }) =>
+      clipboard.writeText('verd://folder/00000000-0000-4000-8000-000000000000'),
+    );
     await checkSidebarSelection(page, () =>
       desktop!.evaluate(({ clipboard }) => clipboard.readText()),
     );

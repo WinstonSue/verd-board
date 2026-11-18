@@ -4,6 +4,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import { createHash, randomUUID } from 'node:crypto';
 import { spawn } from 'node:child_process';
 import { build, createServer } from 'vite';
+import { buildInContext } from './build-context.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const mode = process.argv[2] ?? 'dev';
@@ -39,6 +40,13 @@ const run = (command, args, env = process.env) =>
     });
   });
 async function prepareResources() {
+  if (explicitResources) {
+    const { readAgentResources } = await import(
+      pathToFileURL(path.join(root, 'packages/agent/runtime/dist/node.js')).href
+    );
+    await readAgentResources(explicitResources, true);
+    return;
+  }
   const { publicPackages } = await import('./pack-public.mjs');
   await run('pnpm', [
     'exec',
@@ -50,10 +58,6 @@ async function prepareResources() {
   const { readAgentResources } = await import(
     pathToFileURL(path.join(root, 'packages/agent/runtime/dist/node.js')).href
   );
-  if (explicitResources) {
-    await readAgentResources(explicitResources, true);
-    return;
-  }
   const { NODE_VERSION } = await import('./prepare-agent-resources.mjs');
   const hash = createHash('sha256').update(
     JSON.stringify([process.platform, process.arch, NODE_VERSION]),
@@ -106,18 +110,24 @@ async function prepareResources() {
   process.env.VERD_AGENT_RESOURCES = target;
 }
 async function serviceBuild() {
-  await build({
-    root: serviceRoot,
-    configFile: path.join(serviceRoot, 'vite.config.ts'),
+  await buildInContext({
+    marker: process.env.VERD_WEB_BUILD_CONTEXT,
+    directory: path.join(serviceRoot, 'dist'),
+    build: () =>
+      build({
+        root: serviceRoot,
+        configFile: path.join(serviceRoot, 'vite.config.ts'),
+      }),
   });
 }
 if (mode === 'build' || mode === 'build-e2e' || mode === 'service-build') {
   await prepareResources();
-  const { prepareBuiltinWorkspaces } =
+  const { prepareBuiltinWorkspaces, copyBuiltinWorkspaces } =
     await import('./prepare-builtin-workspaces.mjs');
-  await prepareBuiltinWorkspaces(
-    path.join(serviceRoot, 'build/builtin-workspaces'),
-  );
+  const builtin = path.join(serviceRoot, 'build/builtin-workspaces');
+  if (process.env.VERD_BUILTIN_WORKSPACES)
+    await copyBuiltinWorkspaces(process.env.VERD_BUILTIN_WORKSPACES, builtin);
+  else await prepareBuiltinWorkspaces(builtin);
   if (mode !== 'service-build')
     await build({
       root: path.join(root, 'apps/web'),

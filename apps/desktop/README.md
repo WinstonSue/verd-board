@@ -8,7 +8,9 @@
 
 从仓库根目录运行：
 
-日常正式验收优先使用 `pnpm test:remote`，在另一台保持桌面登录的 Mac 执行构建、单测及 Web/Desktop E2E；`pnpm test:remote doctor` 检查连接与运行时。开发机上的 `check:dev`、`check:ci` 同样默认走远程；直接 Desktop E2E 缺少执行上下文时会在启动 Electron 前拒绝。未提交修改随独立快照传输，断连后可用 `status`、`logs`、`fetch` 和任务 ID 恢复操作。统一配置位于 `~/.config/remote-test/config.json`，主机 `cacheDir` 可指定远端缓存位置；完整过程 trace 保留三轮，`artifacts` 查看、`fetch <任务ID> --raw` 按需回收。配置与 SSH 密钥接入见[原生开发指南](../../workspace/文档/开发/开发指南.verd-doc.json)的“Tailscale 远程开发验收”；下面的原始验证命令由测试 worker、CI 执行，用户明确要求本机调试时可使用 `VERD_TEST_EXECUTION=local`。
+日常验收按根级 `AGENTS.md` 选择远程专项或定向测试；`pnpm test:remote doctor` 检查连接与运行时。开发机上的 `check:dev`、`check:ci`、`check:release` 和 `package:desktop` 默认委托远程。完整门禁集中报告失败，修复与定向验证由修复方完成；本轮完整通过后才复用已验收资源打包，并继续应用、DMG 与真实安装包 E2E。Desktop 同一 GUI 会话保持单 worker。直接 Desktop E2E 缺少执行上下文时会在启动 Electron 前拒绝。
+
+未提交修改随独立快照传输，断连后可用 `status`、`logs`、`fetch` 和任务 ID 恢复操作。统一配置位于 `~/.config/remote-test/config.json`，仓库只派生稳定任务定义，不修改连接配置；主机 `cacheDir` 管理缓存。完整过程 trace 保留三轮，`artifacts` 查看、`fetch <任务ID> --raw` 按需回收；最终安装包与证明随默认结果回传，当前快照核对通过后更新安装包输出。配置与 SSH 密钥接入见[原生开发指南](../../workspace/文档/开发/开发指南.verd-doc.json)的“Tailscale 远程开发验收”；下面的原始验证命令由测试 worker、CI 执行，用户明确要求本机调试时可使用 `VERD_TEST_EXECUTION=local`。
 
 ```bash
 pnpm install

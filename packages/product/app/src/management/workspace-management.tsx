@@ -26,6 +26,7 @@ import {
   isValidElement,
   type ReactElement,
   useEffect,
+  useLayoutEffect,
   useCallback,
   useMemo,
   useRef,
@@ -338,7 +339,7 @@ export function WorkspaceManagement(p: Props) {
   const revealedFolderNonce = useRef<number | undefined>(undefined);
   const revealFolderPath = p.revealFolder?.path;
   const revealFolderNonce = p.revealFolder?.nonce;
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (
       revealFolderPath === undefined ||
       revealFolderNonce === undefined ||
@@ -350,7 +351,8 @@ export function WorkspaceManagement(p: Props) {
     setSelected([revealFolderPath]);
     anchor.current = revealFolderPath;
   }, [revealFolderPath, revealFolderNonce]);
-  useEffect(() => {
+  // Directory reveal focuses on the next frame, after the sidebar is visible.
+  useLayoutEffect(() => {
     const element = root.current?.closest('aside');
     if (element) {
       element.style.width = collapsed ? '44px' : `${width}px`;

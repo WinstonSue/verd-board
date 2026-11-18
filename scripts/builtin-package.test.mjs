@@ -4,7 +4,10 @@ import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { createHash } from 'node:crypto';
-import { prepareBuiltinWorkspaces } from './prepare-builtin-workspaces.mjs';
+import {
+  prepareBuiltinWorkspaces,
+  copyBuiltinWorkspaces,
+} from './prepare-builtin-workspaces.mjs';
 test('bundled native assets match their manifest and the product version', async () => {
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'verd-bundled-'));
   try {
@@ -36,6 +39,25 @@ test('bundled native assets match their manifest and the product version', async
           !file.includes('instance.json') && !file.includes('session.json'),
         );
       }
+    }
+    const copy = await fs.mkdtemp(path.join(os.tmpdir(), 'verd-bundled-copy-'));
+    try {
+      await copyBuiltinWorkspaces(dir, copy);
+      assert.deepEqual(
+        await fs.readFile(
+          path.join(copy, 'workspace/.verdscrolls/release.json'),
+        ),
+        await fs.readFile(
+          path.join(dir, 'workspace/.verdscrolls/release.json'),
+        ),
+      );
+      await fs.writeFile(
+        path.join(copy, 'workspace/文档导航.verd-doc.json'),
+        '{}',
+      );
+      await assert.rejects(copyBuiltinWorkspaces(copy, dir));
+    } finally {
+      await fs.rm(copy, { recursive: true, force: true });
     }
   } finally {
     await fs.rm(dir, { recursive: true, force: true });

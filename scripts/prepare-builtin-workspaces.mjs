@@ -3,6 +3,43 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { withWorkspaceRuntime, REPO_ROOT } from './workspace.mjs';
 
+export async function copyBuiltinWorkspaces(source, destination) {
+  await withWorkspaceRuntime(async (runtime) => {
+    for (const [name, kind] of [
+      ['workspace', 'project'],
+      ['agent-patterns', 'agent-patterns'],
+    ]) {
+      const original = await runtime.builtin.readBuiltinRelease(
+        path.join(source, name),
+        kind,
+      );
+      const declared = JSON.parse(
+        await fs.readFile(
+          path.join(source, name, '.verdscrolls/release.json'),
+          'utf8',
+        ),
+      );
+      if (original.releaseId !== declared.releaseId)
+        throw new Error('Prepared built-in workspace is stale: ' + name);
+      if (path.resolve(source) !== path.resolve(destination)) {
+        await fs.rm(path.join(destination, name), {
+          recursive: true,
+          force: true,
+        });
+        await fs.cp(path.join(source, name), path.join(destination, name), {
+          recursive: true,
+        });
+      }
+      const copied = await runtime.builtin.readBuiltinRelease(
+        path.join(destination, name),
+        kind,
+      );
+      if (original.releaseId !== copied.releaseId)
+        throw new Error('Prepared built-in workspace changed during copy');
+    }
+  });
+}
+
 /** Package only validated portable assets; source runtime state never enters a release. */
 export async function prepareBuiltinWorkspaces(
   destination = path.join(REPO_ROOT, 'apps/desktop/build/builtin-workspaces'),

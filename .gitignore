@@ -89,6 +89,7 @@ Thumbs.db
 /apps/service/dist-e2e-*/
 /apps/web/dist-e2e/
 /.quality/
+/apps/desktop/.package-output-*/
 
 # Machine-local remote test target (SSH/npm credentials stay in user config).
 /.remote-test.local.json

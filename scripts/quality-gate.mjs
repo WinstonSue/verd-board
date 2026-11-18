@@ -2,7 +2,23 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import os from 'node:os';
 import { spawn } from 'node:child_process';
+import { createWriteStream } from 'node:fs';
+import { finished } from 'node:stream/promises';
 import { pathToFileURL } from 'node:url';
+import { stripVTControlCharacters } from 'node:util';
+import { randomUUID } from 'node:crypto';
+import {
+  collectStages,
+  assertStagesPassed,
+  writeRecord,
+} from './gate-runner.mjs';
+import { testConcurrency, vitestArguments } from './test-concurrency.mjs';
+import {
+  releaseInputs,
+  releaseIdentity,
+  fullStageIds,
+  captureArtifacts,
+} from './release-proof.mjs';
 import {
   ROOT,
   hash,
@@ -47,27 +63,51 @@ export function parseSelection(args) {
 export async function runCommand(
   program,
   args,
-  { env = process.env, cwd = ROOT } = {},
+  { env = process.env, cwd = ROOT, logFile, onSpawn } = {},
 ) {
   console.log(`\n[gate] ${program} ${args.join(' ')}`);
-  await new Promise((resolve, reject) => {
-    const child = spawn(program, args, {
-      cwd,
-      env,
-      stdio: 'inherit',
-      shell: process.platform === 'win32' && program === 'pnpm',
+  if (logFile) await fs.mkdir(path.dirname(logFile), { recursive: true });
+  const log = logFile ? createWriteStream(logFile) : null;
+  log?.on('error', () => {});
+  try {
+    await new Promise((resolve, reject) => {
+      const child = spawn(program, args, {
+        cwd,
+        env,
+        stdio: log ? ['inherit', 'pipe', 'pipe'] : 'inherit',
+        shell: process.platform === 'win32' && program === 'pnpm',
+      });
+      onSpawn?.(child);
+      if (log) {
+        child.stdout.on('data', (chunk) => {
+          process.stdout.write(chunk);
+          log.write(chunk);
+        });
+        child.stderr.on('data', (chunk) => {
+          process.stderr.write(chunk);
+          log.write(chunk);
+        });
+      }
+      child.once('error', (error) =>
+        reject(Object.assign(error, { fatal: true })),
+      );
+      child.once('close', (code, signal) =>
+        code === 0
+          ? resolve()
+          : reject(
+              Object.assign(new Error(`${program} exited ${code ?? signal}`), {
+                exitCode: code ?? 1,
+                signal,
+              }),
+            ),
+      );
     });
-    child.once('error', reject);
-    child.once('exit', (code, signal) =>
-      code === 0
-        ? resolve()
-        : reject(
-            Object.assign(new Error(`${program} exited ${code ?? signal}`), {
-              exitCode: code ?? 1,
-            }),
-          ),
-    );
-  });
+  } finally {
+    if (log) {
+      log.end();
+      await finished(log);
+    }
+  }
 }
 
 export function localTestExecutionAllowed(env = process.env) {
@@ -84,7 +124,10 @@ export async function runQualityCli(
   args = [],
   { env = process.env, execute = runCommand, gate = runGate } = {},
 ) {
-  if (['dev', 'ci'].includes(mode) && !localTestExecutionAllowed(env)) {
+  if (
+    ['dev', 'ci', 'release'].includes(mode) &&
+    !localTestExecutionAllowed(env)
+  ) {
     try {
       await execute(
         process.execPath,
@@ -183,142 +226,386 @@ export async function recordStep(
   }
 }
 
-/** One fixed full suite serves CI and publishing; development may select feature tests. */
-export async function runGate(mode, args = []) {
+export async function gateDiagnostics(env = process.env) {
+  if (!env.REMOTE_TEST_JOB_DIR) return [];
+  const directory = path.join(env.REMOTE_TEST_JOB_DIR, 'diagnostics');
+  const reports = [];
+  for (const name of await fs.readdir(directory).catch(() => [])) {
+    const file = path.join(directory, name, 'index.json');
+    const report = await fs
+      .readFile(file, 'utf8')
+      .then(JSON.parse)
+      .catch((error) =>
+        error.code === 'ENOENT'
+          ? null
+          : { complete: false, issues: [error.message], tests: [] },
+      );
+    if (report)
+      reports.push({
+        index: path.relative(env.REMOTE_TEST_JOB_DIR, file),
+        complete: report.complete,
+        issues: report.issues,
+        failedTests: (report.tests ?? [])
+          .filter(
+            (test) =>
+              test.failure ||
+              test.status === 'interrupted' ||
+              test.status !== test.expectedStatus,
+          )
+          .map((test) => ({
+            title: test.title,
+            status: test.status,
+            attachments: test.attachments,
+          })),
+      });
+  }
+  return reports;
+}
+
+/** The dependency graph is shared by full CI and release control. */
+export async function createGatePlan({
+  selection,
+  env,
+  unitEnv,
+  resources,
+  settings,
+  logDirectory,
+  execute = runCommand,
+}) {
+  const plan = [];
+  const command = (id, dependencies, program, argv, options = { env }) => {
+    plan.push({
+      id,
+      dependsOn: dependencies,
+      run: async (stage) => {
+        Object.assign(stage, {
+          program,
+          args: argv,
+          ...(options.cwd ? { cwd: options.cwd } : {}),
+        });
+        const logFile = logDirectory
+          ? path.join(logDirectory, id + '.log')
+          : undefined;
+        if (logFile) stage.log = path.relative(ROOT, logFile);
+        try {
+          await execute(program, argv, { ...options, logFile });
+        } finally {
+          if (logFile) {
+            const output = stripVTControlCharacters(
+              await fs.readFile(logFile, 'utf8').catch(() => ''),
+            );
+            stage.failures = [
+              ...output.matchAll(
+                /^(?:[^\n]*?:test:\s*)?(?:\s*FAIL\s+|not ok \d+ - |✖\s+)(.+)$/gm,
+              ),
+            ].map((match) => match[1]);
+          }
+        }
+      },
+    });
+  };
+  const pnpm = (id, dependencies, ...argv) =>
+    command(id, dependencies, 'pnpm', argv);
+  const desktop = (id, dependencies, ...argv) =>
+    process.platform === 'linux'
+      ? command(id, dependencies, 'xvfb-run', ['-a', 'pnpm', ...argv])
+      : pnpm(id, dependencies, ...argv);
+  pnpm('lint', [], 'exec', 'eslint', '.');
+  command('ui-styles', [], process.execPath, ['scripts/check-ui-styles.mjs']);
+  pnpm('format', [], 'format:check');
+  pnpm('typecheck', [], 'typecheck');
+  pnpm('plugins', [], 'check:plugins');
+  pnpm('workspace', [], 'workspace:check');
+  pnpm(
+    'public-build',
+    [],
+    'exec',
+    'turbo',
+    'run',
+    'build',
+    ...publicPackages.map(({ pkg }) => '--filter=' + pkg.name),
+    '--force',
+    '--continue=dependencies-successful',
+  );
+  command(
+    'builtin-workspaces',
+    ['public-build', 'workspace'],
+    process.execPath,
+    ['scripts/prepare-builtin-workspaces.mjs'],
+  );
+  pnpm(
+    'agent-resources',
+    ['public-build'],
+    'prepare:agent-resources',
+    resources,
+  );
+  command('agent-resources-check', ['agent-resources'], process.execPath, [
+    'scripts/test-agent-resources.mjs',
+    resources,
+  ]);
+  if (!selection)
+    pnpm(
+      'application-build',
+      ['public-build'],
+      '--filter',
+      'consumer-vite',
+      'build',
+    );
+  if (selection) {
+    for (const [index, group] of (
+      await groupUnitTests(selection.unit)
+    ).entries()) {
+      const node = group.program === process.execPath;
+      command(
+        'unit-' + index,
+        node ? [] : ['public-build'],
+        group.program,
+        [
+          ...group.args.slice(0, node ? 1 : 4),
+          ...(node
+            ? ['--test-concurrency=' + settings.scripts]
+            : vitestArguments(settings)),
+          ...group.args.slice(node ? 1 : 4),
+        ],
+        { cwd: group.cwd, env: unitEnv },
+      );
+    }
+  } else {
+    command(
+      'unit-packages',
+      ['public-build'],
+      process.execPath,
+      ['scripts/test-units.mjs', '--packages-only', '--prebuilt'],
+      {
+        env: {
+          ...unitEnv,
+          VERD_UNIT_TEST_PACKAGES: String(settings.packages),
+          VERD_UNIT_TEST_WORKERS: String(settings.workers),
+        },
+      },
+    );
+    command(
+      'unit-scripts',
+      [],
+      process.execPath,
+      ['scripts/test-scripts.mjs'],
+      { env: unitEnv },
+    );
+    pnpm('pack', ['public-build'], 'pack:dry');
+    command(
+      'consumer',
+      ['public-build', 'pack', 'application-build'],
+      process.execPath,
+      ['scripts/test-consumer.mjs'],
+      { env: unitEnv },
+    );
+    for (const [id, script] of [
+      ['plugin-consumers', 'test:plugin-consumers'],
+      ['agent-consumer', 'test:agent-consumer'],
+    ])
+      command(id, ['public-build', 'pack'], 'pnpm', [script], { env: unitEnv });
+  }
+  const runtime = [
+    'public-build',
+    'agent-resources-check',
+    'builtin-workspaces',
+  ];
+  if (!selection || selection.web.length)
+    pnpm(
+      'web-dev',
+      runtime,
+      'test:e2e',
+      ...(selection?.web.map((file) => file.replace('tests/web-e2e/', '')) ??
+        []),
+    );
+  if (!selection || selection.desktop.length)
+    desktop(
+      'desktop-dev',
+      runtime,
+      'test:e2e:desktop',
+      ...(selection?.desktop ?? []),
+    );
+  if (!selection) {
+    pnpm(
+      'web-build',
+      ['public-build', 'agent-resources', 'builtin-workspaces'],
+      'build:web',
+    );
+    plan.push({
+      id: 'web-production-clean',
+      dependsOn: ['web-build'],
+      run: () => assertProductionWeb(),
+    });
+    pnpm('web-e2e-build', ['web-build'], 'build:web:e2e');
+    pnpm(
+      'web-prod',
+      [...runtime, 'web-production-clean', 'web-e2e-build'],
+      'test:e2e:prod',
+    );
+    pnpm('desktop-build', ['public-build'], '--filter', 'desktop', 'build');
+    desktop(
+      'desktop-prod',
+      [...runtime, 'desktop-build'],
+      'test:e2e:desktop:prod',
+    );
+  }
+  return plan;
+}
+
+/** Each invocation actually executes its selected tests. No previous success is reused. */
+export async function runGate(mode, args = [], { consume } = {}) {
   if (!['dev', 'ci', 'release'].includes(mode))
     throw new Error('Unknown gate: ' + mode);
   if (mode !== 'dev' && args.length)
     throw new Error('Full CI/release gates do not accept test filters');
   if (mode !== 'release' && !localTestExecutionAllowed())
     throw new Error(
-      'Development validation runs on the test host. Use pnpm check:dev, pnpm check:ci or pnpm test:remote. Explicit user-requested local debugging requires VERD_TEST_EXECUTION=local.',
+      'Validation runs on the test host; use pnpm check:dev, pnpm check:ci or pnpm check:release.',
     );
   const selection = mode === 'dev' ? parseSelection(args) : null;
   await validateSelection(selection);
   if (mode === 'release') await checkReleaseReview();
   const before = hash(await sourceInventory());
-  const steps = [];
+  const identity = await releaseIdentity();
+  const settings = testConcurrency();
   const scratch = await fs.mkdtemp(path.join(os.tmpdir(), 'verd-quality-'));
   const resources = path.join(scratch, 'agent-resources');
+  const builtin = path.join(ROOT, 'apps/desktop/build/builtin-workspaces');
   const webBuild = path.join(
     ROOT,
     'apps/service',
     'dist-e2e-' + path.basename(scratch),
   );
-  const startedAt = new Date().toISOString();
-  const started = performance.now();
-  let status = 'failed';
-  let failure;
   const env = {
     ...process.env,
     VERD_TEST_EXECUTION:
-      mode === 'release'
-        ? 'release'
-        : (process.env.VERD_TEST_EXECUTION ?? 'ci'),
+      process.env.VERD_TEST_EXECUTION ??
+      (mode === 'release' ? 'release' : 'ci'),
     VERD_AGENT_RESOURCES: resources,
     VERD_AGENT_RESOURCE_TEST_PATH: resources,
     VERD_WEB_E2E_BUILD: webBuild,
+    VERD_BUILTIN_WORKSPACES: builtin,
+    VERD_WEB_BUILD_CONTEXT: path.join(scratch, 'service-build.json'),
   };
-  // Unit and standalone consumer tests provide their own fixtures/packages.
-  // Injecting the shared bundle would alter their workspace initialization.
   const unitEnv = {
     ...process.env,
     VERD_TEST_EXECUTION: env.VERD_TEST_EXECUTION,
   };
   delete unitEnv.VERD_AGENT_RESOURCES;
   delete unitEnv.VERD_AGENT_RESOURCE_TEST_PATH;
-  const run = (program, argv, options) =>
-    recordStep(steps, program, argv, options);
-  const pnpm = (...argv) => run('pnpm', argv, { env });
-  const e2e = (...argv) =>
-    process.platform === 'linux'
-      ? run('xvfb-run', ['-a', 'pnpm', ...argv], { env })
-      : pnpm(...argv);
+  delete unitEnv.VERD_BUILTIN_WORKSPACES;
+  const record = {
+    format: 'verd-quality',
+    version: 2,
+    runId: randomUUID(),
+    mode,
+    status: 'running',
+    sourceDigest: before,
+    identity,
+    planDigest: selection ? null : hash(fullStageIds),
+    platform: process.platform,
+    node: process.version,
+    selection,
+    startedAt: new Date().toISOString(),
+    steps: [],
+  };
+  const file = path.join(ROOT, '.quality', mode + '.json');
+  const started = performance.now();
+  let gatePassed = false;
   try {
-    await pnpm('lint');
-    await pnpm('format:check');
-    await pnpm('typecheck');
-    await pnpm('check:plugins');
-    await pnpm('workspace:check');
-    // Force a fresh dependency build and test execution; cached success is not a release proof.
-    await pnpm(
-      'exec',
-      'turbo',
-      'run',
-      'build',
-      ...publicPackages.map(({ pkg }) => '--filter=' + pkg.name),
-      '--force',
-    );
-    await pnpm('prepare:agent-resources', resources);
-    await run(
-      process.execPath,
-      ['scripts/test-agent-resources.mjs', resources],
-      { env },
-    );
-    if (!selection)
-      await pnpm('exec', 'turbo', 'run', 'build', '--filter=!desktop');
-    if (selection) {
-      for (const group of await groupUnitTests(selection.unit))
-        await run(group.program, group.args, { cwd: group.cwd, env: unitEnv });
-    } else {
-      await run('pnpm', ['test'], { env: unitEnv });
-      await pnpm('pack:dry');
-      await run('pnpm', ['test:consumer'], { env: unitEnv });
-      await run('pnpm', ['test:plugin-consumers'], { env: unitEnv });
-      await run('pnpm', ['test:agent-consumer'], { env: unitEnv });
-    }
-    if (!selection || selection.web.length)
-      await pnpm(
-        'test:e2e',
-        ...(selection?.web.map((file) => file.replace('tests/web-e2e/', '')) ??
-          []),
-      );
-    if (!selection || selection.desktop.length)
-      await e2e('test:e2e:desktop', ...(selection?.desktop ?? []));
-    if (!selection) {
-      await pnpm('build:web');
-      await assertProductionWeb();
-      await pnpm('build:web:e2e');
-      await pnpm('test:e2e:prod');
-      await pnpm('--filter', 'desktop', 'build');
-      await e2e('test:e2e:desktop:prod');
-    }
-    if (hash(await sourceInventory()) !== before)
-      throw new Error(
-        'Source changed during validation; rerun the gate against the final source',
-      );
+    const plan = await createGatePlan({
+      selection,
+      env,
+      unitEnv,
+      resources,
+      settings,
+      logDirectory: path.join(ROOT, '.quality/logs', record.runId),
+    });
+    if (!selection && hash(plan.map((node) => node.id)) !== hash(fullStageIds))
+      throw new Error('Full gate plan is incomplete');
+    const result = await collectStages(plan, {
+      update: async (stages) => {
+        record.steps = stages;
+        await writeRecord(file, record);
+      },
+      checkpoint: async () => {
+        if (
+          (await releaseInputs()).releaseInputDigest !==
+          identity.releaseInputDigest
+        )
+          throw new Error(
+            'Source changed during validation; return the final source for a new gate',
+          );
+      },
+    });
+    Object.assign(record, result, { steps: result.stages });
+    delete record.stages;
+    assertStagesPassed(result);
+    record.diagnostics = await gateDiagnostics();
+    const expectedReports = selection
+      ? Number(selection.web.length > 0) + Number(selection.desktop.length > 0)
+      : 4;
+    if (
+      process.env.REMOTE_TEST_JOB_DIR &&
+      (record.diagnostics.length < expectedReports ||
+        record.diagnostics.some((report) => !report.complete))
+    )
+      throw new Error('Test diagnostics are incomplete; release is blocked');
     if (mode === 'release') await checkReleaseReview();
-    status = 'passed';
+    record.finishedAt = new Date().toISOString();
+    record.durationMs = Math.round(performance.now() - started);
+    await writeRecord(file, record);
+    gatePassed = true;
+    if (consume) {
+      if (mode !== 'release' || selection)
+        throw new Error('Only a full release can produce packaging context');
+      const artifacts = await captureArtifacts({
+        agent: resources,
+        builtin,
+        desktop: path.join(ROOT, 'apps/desktop/dist'),
+        electron: path.join(ROOT, 'apps/desktop/dist-electron'),
+        web: path.join(ROOT, 'apps/web/dist'),
+        webE2E: path.join(ROOT, 'apps/web/dist-e2e'),
+        ...Object.fromEntries(
+          publicPackages.map(({ pkg, directory }) => [
+            pkg.name,
+            path.join(directory, 'dist'),
+          ]),
+        ),
+      });
+      const context = {
+        format: 'verd-release-context',
+        version: 1,
+        proof: record,
+        artifacts,
+      };
+      context.digest = hash({ proof: record, artifacts });
+      const contextFile = path.join(scratch, 'release-context.json');
+      await writeRecord(contextFile, context);
+      return await consume({
+        context,
+        contextFile,
+        env: {
+          ...env,
+          VERD_RELEASE_CONTEXT: contextFile,
+          VERD_RELEASE_RUN_ID: record.runId,
+        },
+      });
+    }
+    return record;
   } catch (error) {
-    failure = error.message;
+    if (!gatePassed) {
+      record.status = 'failed';
+      record.error = error.message;
+    }
     throw error;
   } finally {
-    try {
-      await fs.mkdir(path.join(ROOT, '.quality'), { recursive: true });
-      await fs.writeFile(
-        path.join(ROOT, '.quality', mode + '.json'),
-        JSON.stringify(
-          {
-            mode,
-            status,
-            sourceDigest: before,
-            platform: process.platform,
-            node: process.version,
-            selection,
-            startedAt,
-            finishedAt: new Date().toISOString(),
-            durationMs: Math.round(performance.now() - started),
-            ...(failure ? { error: failure } : {}),
-            steps,
-          },
-          null,
-          2,
-        ) + '\n',
-      );
-    } finally {
-      await fs.rm(scratch, { recursive: true, force: true });
-      await fs.rm(webBuild, { recursive: true, force: true });
-    }
+    record.diagnostics ??= await gateDiagnostics();
+    record.finishedAt ??= new Date().toISOString();
+    record.durationMs ??= Math.round(performance.now() - started);
+    await writeRecord(file, record);
+    await fs.rm(scratch, { recursive: true, force: true });
+    await fs.rm(webBuild, { recursive: true, force: true });
   }
 }
 

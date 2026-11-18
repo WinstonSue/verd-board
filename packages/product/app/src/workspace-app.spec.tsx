@@ -2,6 +2,7 @@ import React, { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { I18nProvider } from '@sue/verd-board-ui';
+import { createWorkspaceLink } from '@sue/board-common';
 import type { FrameCell, NodeCell } from '@sue/board-core';
 import { createMemoryWorkspaceHost } from '@sue/verd-board-workspace';
 import { WorkspaceApp } from './workspace-app';
@@ -126,6 +127,146 @@ const hostWith = async (path = 'ws-ui') => {
 };
 
 describe('WorkspaceApp', () => {
+  it.each([false, true])(
+    'reveals a folder from a collapsed sidebar before frame focus without replacing the document (strict=%s)',
+    async (strict) => {
+      const { host, handle, path } = await hostWith('sidebar-folder-reveal');
+      const folderId = '92df80e6-f4bd-4fbc-9c1f-825ef37415de';
+      const source = createDocumentFile('source', 'Source');
+      source.text.plainText = 'Open folder';
+      source.text.content = {
+        type: 'doc',
+        content: [
+          {
+            type: 'paragraph',
+            content: [
+              {
+                type: 'text',
+                text: 'Open folder',
+                marks: [
+                  {
+                    type: 'link',
+                    attrs: {
+                      href: createWorkspaceLink({ kind: 'folder', folderId }),
+                    },
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+      };
+      await host.commit(handle, {
+        transactionId: 'seed-folder-reveal',
+        mkdirs: ['Target'],
+        writes: [
+          {
+            path: 'Target/.verd-folder.json',
+            content: JSON.stringify({ version: 1, id: folderId }),
+            expectedVersion: null,
+          },
+          {
+            path: 'source.verd-doc.json',
+            content: JSON.stringify(source),
+            expectedVersion: null,
+          },
+        ],
+        session: {
+          tabs: [{ fileId: 'source' }],
+          activeTabId: 'source',
+          activeView: 'file',
+          expandedDirs: [],
+        },
+      });
+      const frames = new Map<number, FrameRequestCallback>();
+      let nextFrame = 0;
+      const requestFrame = vi
+        .spyOn(globalThis, 'requestAnimationFrame')
+        .mockImplementation((callback) => {
+          frames.set(++nextFrame, callback);
+          return nextFrame;
+        });
+      const cancelFrame = vi
+        .spyOn(globalThis, 'cancelAnimationFrame')
+        .mockImplementation((id) => {
+          frames.delete(id);
+        });
+      const visibilityAtFocus: boolean[] = [];
+      const originalFocus = HTMLElement.prototype.focus;
+      const focus = vi
+        .spyOn(HTMLElement.prototype, 'focus')
+        .mockImplementation(function (this: HTMLElement, options) {
+          if (this.closest('[data-entry-path="Target"]'))
+            visibilityAtFocus.push(
+              !this.closest('aside')?.classList.contains(
+                'management-collapsed',
+              ),
+            );
+          originalFocus.call(this, options);
+        });
+      try {
+        await render(<WorkspaceApp host={host} workspace={{ path }} />, strict);
+        const target = container.querySelector<HTMLElement>(
+          '.management-tree [data-entry-path="Target"]',
+        )!;
+        const targetButton =
+          target.querySelector<HTMLButtonElement>('.file-tree-main')!;
+        const sourceButton = container.querySelector<HTMLButtonElement>(
+          '[data-file-id="source"] .file-tree-main',
+        )!;
+        const aside = target.closest('aside')!;
+        const advanceFrame = async () =>
+          act(async () => {
+            const pending = [...frames.values()];
+            frames.clear();
+            pending.forEach((callback) => callback(performance.now()));
+          });
+        await advanceFrame();
+        for (let reveal = 0; reveal < 2; reveal++) {
+          await act(async () => sourceButton.click());
+          expect(target.hasAttribute('aria-selected')).toBe(false);
+          const collapse = container.querySelector<HTMLButtonElement>(
+            '[aria-label="收起侧栏"]',
+          )!;
+          await act(async () => collapse.click());
+          expect(aside.classList.contains('management-collapsed')).toBe(true);
+          await act(async () => {
+            container
+              .querySelector<HTMLAnchorElement>('.workspace-pane.is-active a')!
+              .dispatchEvent(
+                new MouseEvent('click', {
+                  bubbles: true,
+                  cancelable: true,
+                  ctrlKey: true,
+                }),
+              );
+          });
+          expect(aside.classList.contains('management-collapsed')).toBe(false);
+          await advanceFrame();
+          expect(document.activeElement).toBe(targetButton);
+          expect(target.getAttribute('aria-selected')).toBe('true');
+          expect(
+            container.querySelectorAll('.management-tree .is-highlighted'),
+          ).toHaveLength(1);
+          expect(sourceButton.getAttribute('aria-current')).toBe('page');
+          expect(
+            container
+              .querySelector(
+                '.workspace-pane.is-active .document-page__content',
+              )
+              ?.getAttribute('aria-label'),
+          ).toBe('Source');
+          expect(visibilityAtFocus).toHaveLength(reveal + 1);
+        }
+        expect(visibilityAtFocus).toEqual([true, true]);
+      } finally {
+        focus.mockRestore();
+        requestFrame.mockRestore();
+        cancelFrame.mockRestore();
+      }
+    },
+  );
+
   it('clears sidebar multi-selection on ordinary activation and tab switches while preserving range selection', async () => {
     const { host, handle, path } = await hostWith('sidebar-selection');
     await host.commit(handle, {

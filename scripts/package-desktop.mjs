@@ -7,22 +7,27 @@ import {
   readFile,
   writeFile,
   mkdir,
-  rename,
   cp,
   rm,
   access,
 } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
-import { runGate } from './quality-gate.mjs';
+import { fileURLToPath, pathToFileURL } from 'node:url';
+import { runGate, localTestExecutionAllowed } from './quality-gate.mjs';
+import { assertReleaseContext, artifactFiles } from './release-proof.mjs';
+import { writeRecord } from './gate-runner.mjs';
+import { replaceReleaseDirectory } from './package-output.mjs';
+import { hash } from './release-review.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const desktop = path.join(root, 'apps/desktop');
 const output = path.join(desktop, 'release');
-const flags = process.argv.slice(2);
-if (flags.some((flag) => flag !== '--with-zip'))
-  throw new Error('Usage: pnpm package:desktop [--with-zip]');
+export function parseFlags(flags) {
+  if (flags.some((flag) => flag !== '--with-zip'))
+    throw new Error('Usage: pnpm package:desktop [--with-zip]');
+  return [...new Set(flags)];
+}
 
 function run(program, args, options = {}) {
   const result = spawnSync(program, args, {
@@ -147,108 +152,163 @@ async function validateMacDmg(file, config, staging) {
   }
 }
 
-await runGate('release');
-const staging = await mkdtemp(path.join(tmpdir(), 'verd-desktop-package-'));
-try {
-  const require = createRequire(import.meta.url);
-  const { build, Platform } = require('electron-builder');
-  const config = JSON.parse(
-    await readFile(path.join(desktop, 'package.json'), 'utf8'),
-  );
-  const platform =
-    process.platform === 'darwin'
-      ? Platform.MAC
-      : process.platform === 'win32'
-        ? Platform.WINDOWS
-        : Platform.LINUX;
-  const targets =
-    process.platform === 'darwin'
-      ? ['dmg', ...(flags.includes('--with-zip') ? ['zip'] : [])]
-      : undefined;
-  const artifacts = await build({
-    projectDir: desktop,
-    targets: platform.createTarget(targets),
-    publish: 'never',
-    config: {
-      ...config.build,
-      beforePack: path.resolve(desktop, config.build.beforePack),
-      directories: { ...config.build.directories, output: staging },
+export async function packageDesktop(input = []) {
+  const flags = parseFlags(input);
+  if (!localTestExecutionAllowed()) {
+    const { main } = await import('./remote-test.mjs');
+    return main(['package', ...flags]);
+  }
+  return runGate('release', [], {
+    consume: async ({ context, contextFile }) => {
+      const previousContext = process.env.VERD_RELEASE_CONTEXT;
+      const previousRun = process.env.VERD_RELEASE_RUN_ID;
+      process.env.VERD_RELEASE_CONTEXT = contextFile;
+      process.env.VERD_RELEASE_RUN_ID = context.proof.runId;
+      const evidence = {
+        format: 'verd-desktop-package',
+        version: 1,
+        status: 'failed',
+        release: context.proof,
+      };
+      try {
+        await assertReleaseContext(context);
+        await buildPackage(flags, context, evidence);
+        evidence.status = 'passed';
+      } catch (error) {
+        evidence.error = error.message;
+        throw error;
+      } finally {
+        await writeRecord(path.join(root, '.quality/package.json'), evidence);
+        if (previousContext === undefined)
+          delete process.env.VERD_RELEASE_CONTEXT;
+        else process.env.VERD_RELEASE_CONTEXT = previousContext;
+        if (previousRun === undefined) delete process.env.VERD_RELEASE_RUN_ID;
+        else process.env.VERD_RELEASE_RUN_ID = previousRun;
+      }
+      return 0;
     },
   });
-  if (process.platform === 'darwin') {
-    const app = path.join(
-      staging,
-      process.arch === 'arm64' ? 'mac-arm64' : 'mac',
-      'VerdBoard.app',
+}
+
+async function buildPackage(flags, context, evidence) {
+  const staging = await mkdtemp(path.join(tmpdir(), 'verd-desktop-package-'));
+  try {
+    const require = createRequire(import.meta.url);
+    const { build, Platform } = require('electron-builder');
+    const config = JSON.parse(
+      await readFile(path.join(desktop, 'package.json'), 'utf8'),
     );
-    await validateMacApp(app, config);
-    for (const file of artifacts.filter((file) => file.endsWith('.dmg')))
-      await validateMacDmg(file, config, staging);
-    run(
-      'pnpm',
-      [
-        'exec',
-        'playwright',
-        'test',
-        '--config',
-        'tests/desktop-e2e/playwright.packaged.config.ts',
-        '--output',
-        'test-results/desktop-packaged',
-        'packaged.spec.ts',
-      ],
-      {
-        env: { ...process.env, VERDBOARD_PACKAGED_APP: app },
+    const platform =
+      process.platform === 'darwin'
+        ? Platform.MAC
+        : process.platform === 'win32'
+          ? Platform.WINDOWS
+          : Platform.LINUX;
+    const targets =
+      process.platform === 'darwin'
+        ? ['dmg', ...(flags.includes('--with-zip') ? ['zip'] : [])]
+        : undefined;
+    const artifacts = await build({
+      projectDir: desktop,
+      targets: platform.createTarget(targets),
+      publish: 'never',
+      config: {
+        ...config.build,
+        beforePack: path.resolve(desktop, config.build.beforePack),
+        directories: { ...config.build.directories, output: staging },
+      },
+    });
+    if (process.platform === 'darwin') {
+      const app = path.join(
+        staging,
+        process.arch === 'arm64' ? 'mac-arm64' : 'mac',
+        'VerdBoard.app',
+      );
+      await validateMacApp(app, config);
+      for (const file of artifacts.filter((file) => file.endsWith('.dmg')))
+        await validateMacDmg(file, config, staging);
+      run(
+        'pnpm',
+        [
+          'exec',
+          'playwright',
+          'test',
+          '--config',
+          'tests/desktop-e2e/playwright.packaged.config.ts',
+          '--output',
+          'test-results/desktop-packaged',
+          'packaged.spec.ts',
+        ],
+        {
+          env: { ...process.env, VERDBOARD_PACKAGED_APP: app },
+        },
+      );
+    }
+    evidence.validations = {
+      application: process.platform === 'darwin' ? 'passed' : 'not-applicable',
+      installer: process.platform === 'darwin' ? 'passed' : 'not-applicable',
+      e2e: process.platform === 'darwin' ? 'passed' : 'not-applicable',
+    };
+    await assertReleaseContext(context);
+    const installers = artifacts.filter((file) =>
+      /\.(dmg|zip|exe|AppImage|deb)$/.test(file),
+    );
+    if (!installers.length) throw new Error('No installers were generated');
+    const prepared = path.join(staging, 'verified-installers');
+    await mkdir(prepared);
+    const checksums = [];
+    for (const file of installers) {
+      await cp(file, path.join(prepared, path.basename(file)));
+      const digest = createHash('sha256')
+        .update(await readFile(file))
+        .digest('hex');
+      checksums.push(`${digest}  ${path.basename(file)}`);
+    }
+    await writeFile(
+      path.join(prepared, 'SHA256SUMS'),
+      `${checksums.join('\n')}\n`,
+    );
+    evidence.files = await artifactFiles(prepared);
+    await replaceReleaseDirectory(
+      prepared,
+      output,
+      path.join(desktop, 'release-history', String(Date.now())),
+      async (directory) => {
+        if (hash(await artifactFiles(directory)) !== hash(evidence.files))
+          throw new Error('Installer bytes changed while staging');
       },
     );
-  }
-  const installers = artifacts.filter((file) =>
-    /\.(dmg|zip|exe|AppImage|deb)$/.test(file),
-  );
-  if (!installers.length) throw new Error('No installers were generated');
-  // Archive only after validation, so a failed build leaves the last release intact.
-  const previous = await readdir(output).catch((error) => {
-    if (error.code === 'ENOENT') return [];
-    throw error;
-  });
-  if (previous.length) {
-    await unregisterMacApps(output);
-    const archive = path.join(desktop, 'release-history', `${Date.now()}`);
-    await mkdir(path.dirname(archive), { recursive: true });
-    await rename(output, archive);
-    // Loose app bundles cause duplicate Launchpad entries; installers remain recoverable.
-    for (const entry of await readdir(archive)) {
-      if (/^(mac(?:-.+)?|win-unpacked|linux(?:-.+)?-unpacked)$/.test(entry))
-        await rm(path.join(archive, entry), { recursive: true, force: true });
+    console.log(`Installers: ${output}`);
+  } finally {
+    await unregisterMacApps(staging);
+    await rm(staging, { recursive: true, force: true });
+    // LaunchServices may disable an identical installed bundle when a temporary
+    // copy is unregistered. Restore the canonical local installation last.
+    if (process.platform === 'darwin') {
+      const installed = '/Applications/VerdBoard.app';
+      if (
+        await access(installed).then(
+          () => true,
+          () => false,
+        )
+      )
+        execFileSync(
+          '/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister',
+          ['-f', installed],
+          { stdio: 'pipe' },
+        );
     }
   }
-  await mkdir(output, { recursive: true });
-  const checksums = [];
-  for (const file of installers) {
-    await cp(file, path.join(output, path.basename(file)));
-    const hash = createHash('sha256')
-      .update(await readFile(file))
-      .digest('hex');
-    checksums.push(`${hash}  ${path.basename(file)}`);
-  }
-  await writeFile(path.join(output, 'SHA256SUMS'), `${checksums.join('\n')}\n`);
-  console.log(`Installers: ${output}`);
-} finally {
-  await unregisterMacApps(staging);
-  await rm(staging, { recursive: true, force: true });
-  // LaunchServices may disable an identical installed bundle when a temporary
-  // copy is unregistered. Restore the canonical local installation last.
-  if (process.platform === 'darwin') {
-    const installed = '/Applications/VerdBoard.app';
-    if (
-      await access(installed).then(
-        () => true,
-        () => false,
-      )
-    )
-      execFileSync(
-        '/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister',
-        ['-f', installed],
-        { stdio: 'pipe' },
-      );
+}
+
+if (
+  process.argv[1] &&
+  import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href
+) {
+  try {
+    process.exitCode = await packageDesktop(process.argv.slice(2));
+  } catch (error) {
+    console.error(error.stack);
+    process.exitCode = error.exitCode ?? 1;
   }
 }

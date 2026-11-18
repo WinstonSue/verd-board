@@ -1,5 +1,6 @@
 import { spawn } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
+import { defaultWebWorkers } from './test-concurrency.mjs';
 
 export function setServiceTarget(child, origin, timeout = 10000) {
   const id = randomUUID();
@@ -31,7 +32,9 @@ export function webE2EOptions(env = process.env) {
   const fixed = Boolean(
     env.BASE_URL || env.VERDBOARD_WEB_PORT || env.VERDBOARD_SERVICE_PORT,
   );
-  const workers = Number(env.VERD_WEB_E2E_WORKERS ?? (fixed ? 1 : 2));
+  const workers = Number(
+    env.VERD_WEB_E2E_WORKERS ?? (fixed ? 1 : defaultWebWorkers),
+  );
   if (!Number.isInteger(workers) || workers < 1)
     throw new Error('VERD_WEB_E2E_WORKERS must be a positive integer');
   assertWebWorkers(workers, fixed);

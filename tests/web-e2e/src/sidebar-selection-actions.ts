@@ -1,4 +1,4 @@
-import { expect, type Page } from '@playwright/test';
+import { expect, test, type Page } from '@playwright/test';
 import {
   createFolder,
   directoryRow,
@@ -10,9 +10,82 @@ export async function checkSidebarSelection(
   page: Page,
   readClipboard: () => Promise<string>,
 ) {
+  try {
+    await runSidebarSelection(page, readClipboard);
+  } catch (error) {
+    const state = await page
+      .evaluate(() => {
+        const active = document.activeElement;
+        const target = document.querySelector<HTMLElement>(
+          '.management-tree [data-entry-path="Target"]',
+        );
+        const aside = target?.closest('aside');
+        const body = aside?.querySelector('.management-sidebar-body');
+        const rect = target?.getBoundingClientRect();
+        return {
+          activeElement: active && {
+            tag: active.tagName,
+            className: active.className,
+            label: active.getAttribute('aria-label'),
+            text: active.textContent?.slice(0, 200),
+          },
+          sidebarClass: aside?.className,
+          sidebarBodyDisplay: body && getComputedStyle(body).display,
+          linkHref: document
+            .querySelector('.workspace-pane.is-active a')
+            ?.getAttribute('href'),
+          notices: [
+            ...document.querySelectorAll(
+              '.sue-message-notice, .workspace-notice-banner',
+            ),
+          ].map((notice) => notice.textContent),
+          target: target && {
+            visible:
+              target.getClientRects().length > 0 &&
+              getComputedStyle(target).visibility !== 'hidden',
+            rect: rect?.toJSON(),
+            selected: target.getAttribute('aria-selected'),
+          },
+          selectedPaths: [
+            ...document.querySelectorAll<HTMLElement>(
+              '.management-tree .file-tree-row.is-selected',
+            ),
+          ].map((row) => row.dataset['entryPath']),
+          currentFile: document
+            .querySelector('.management-tree [aria-current="page"]')
+            ?.closest('[data-file-id]')
+            ?.getAttribute('data-file-id'),
+        };
+      })
+      .catch((diagnosticError: unknown) => ({
+        unavailable: String(diagnosticError),
+      }));
+    await test
+      .info()
+      .attach('sidebar-selection-state', {
+        body: JSON.stringify(
+          { ...state, clipboard: await readClipboard().catch(String) },
+          null,
+          2,
+        ),
+        contentType: 'application/json',
+      })
+      .catch(() => {});
+    throw error;
+  }
+}
+
+async function runSidebarSelection(
+  page: Page,
+  readClipboard: () => Promise<string>,
+) {
   await createFolder(page, 'Target');
   await createFolder(page, 'Other');
+  const previousClipboard = await readClipboard();
   await folderAction(page, 'Target', '复制链接');
+  await expect(page.locator('.sue-message-notice')).toHaveText('已复制链接');
+  // Another host's folder link can already be on the shared system clipboard.
+  await expect.poll(readClipboard).not.toBe(previousClipboard);
   await expect.poll(readClipboard).toMatch(/^verd:\/\/folder\//);
   const href = await readClipboard();
   const before = Array.from(
@@ -76,6 +149,7 @@ export async function checkSidebarSelection(
   await sourceButton.click();
   await expect(activeTabTitle(page)).toHaveText('Links');
   await page.getByRole('button', { name: '收起侧栏', exact: true }).click();
+  await expect(target).toBeHidden();
   await link.click({ modifiers: ['ControlOrMeta'] });
   await expect(target.locator('.file-tree-main')).toBeFocused();
   await expect(target).toHaveAttribute('aria-selected', 'true');
@@ -94,7 +168,9 @@ export async function checkSidebarSelection(
   await expect(source).toHaveClass(/is-highlighted/);
   await expect(sourceButton).toBeFocused();
 
-  // A fresh nonce must select and focus the same folder after ordinary navigation.
+  // A fresh nonce must reveal the same folder after navigation and another collapse.
+  await page.getByRole('button', { name: '收起侧栏', exact: true }).click();
+  await expect(target).toBeHidden();
   await link.click({ modifiers: ['ControlOrMeta'] });
   await expect(target.locator('.file-tree-main')).toBeFocused();
   await expect(target).toHaveAttribute('aria-selected', 'true');

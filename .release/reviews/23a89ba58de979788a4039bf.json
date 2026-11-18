@@ -1,0 +1,110 @@
+{
+  "format": "verd-release-review",
+  "version": 1,
+  "targets": [
+    {
+      "name": "@sue/verd-board-agent-patterns",
+      "version": "2.1.3"
+    },
+    {
+      "name": "@sue/verd-board-app",
+      "version": "2.1.3"
+    },
+    {
+      "name": "desktop",
+      "version": "2.1.3"
+    },
+    {
+      "name": "service",
+      "version": "2.1.3"
+    }
+  ],
+  "previous": "36edf9283c9a2602a377d32b.json",
+  "previousDigest": "18896f6c1c9840ade184665521316adbb0bc54936029c0724d17a7f823f4545e",
+  "sourceDigest": "7f2e372c52e51403f88a32f9864d42e40afd94074f6eecbff9f4847d7ff0f4ef",
+  "versions": {
+    "@sue/board-architecture": "2.1.1",
+    "@sue/board-common": "2.1.0",
+    "@sue/board-core": "2.1.1",
+    "@sue/board-draw": "2.1.1",
+    "@sue/board-layouts": "2.1.0",
+    "@sue/board-markdown-to-board": "2.1.1",
+    "@sue/board-markdown-to-text": "2.1.0",
+    "@sue/board-mermaid-to-board": "2.1.1",
+    "@sue/board-mind": "2.1.1",
+    "@sue/board-react": "2.2.1",
+    "@sue/board-react-actions": "2.1.0",
+    "@sue/board-react-architecture": "2.1.2",
+    "@sue/board-react-draw": "2.1.2",
+    "@sue/board-react-mind": "2.1.2",
+    "@sue/board-react-text": "2.1.1",
+    "@sue/board-react-uml": "2.1.2",
+    "@sue/board-react-workflow": "2.1.2",
+    "@sue/board-text": "2.1.0",
+    "@sue/board-uml": "2.1.1",
+    "@sue/board-workflow": "2.1.1",
+    "@sue/verd-board-agent": "2.1.2",
+    "@sue/verd-board-agent-patterns": "2.1.3",
+    "@sue/verd-board-app": "2.1.3",
+    "@sue/verd-board-source": "0.0.1",
+    "@sue/verd-board-ui": "2.1.2",
+    "@sue/verd-board-workspace": "2.2.1",
+    "consumer-vite": "0.0.1",
+    "desktop": "2.1.3",
+    "service": "2.1.3",
+    "web": "2.1.0",
+    "web-e2e": "0.0.1"
+  },
+  "introduction": {
+    "project-doc:architecture/ARCHITECTURE": "18bcbab0836ae3d9538629a1793d7a6f918ebf31a0560b290497e11f2d5b4fa2",
+    "project-doc:development/README": "8e4b31bb10f9beff041c5f2033c3949ce7a2aee387033e9fd686bf1d57c10470",
+    "project-doc:DOCUMENTATION_GUIDE": "9e11f8c4a89e4704f25fa415482f72548fd2f0feae2349fa72404433985d25e6",
+    "project-doc:guides/ai-canvas-data-spec": "f5ec4ee463d689710d44f7c936a96debea039c45be03a3e5fe0bb4fbaa648ae2",
+    "project-doc:guides/SETUP": "d375e2198bf41e636de772b0d461a9a6672abca6e2c8c6c3e6447d57badc6f7f",
+    "project-doc:guides/体验回归验收": "46414deb7ee64877d4a2c30b8349cdae1d4b6dd7a4ae2855c8a70d405de8b2db",
+    "project-doc:guides/配置与源码索引": "33a2c8ad950ae5c794ee5511bc3db90d80dbbacff84b3656439821ff40cb960a",
+    "project-doc:packages/board/arrangement": "248fa9cb489d4ba835713ca6b57d5ea042c42d48d07aeb38f66c62cc5a187e45",
+    "project-doc:packages/board/canvas-modes": "07a11223f6dbf5fcad7e11943edb43be66da03349d2affb83e1617793fb6abee",
+    "project-doc:packages/board/CHANGELOG": "667de424eceb440d44771974283be20a554c345b7126a758fa9e34eed18d70e5",
+    "project-doc:packages/board/frame-converters": "dd6b53810195a875154e2823539c1316392e32db7bea5bdd63a6c97c26424b5c",
+    "project-doc:packages/board/mind-features": "459c1c62a752387ff8264079048ef90b36dc47a69523f7974931965c8df80cfb",
+    "project-doc:packages/board/NODE_WIDTH_SPECIFICATION": "a2ad80a9948531eac2ac4e57d4b03c18e15022e76136253f5ea011497da4674b",
+    "project-doc:packages/board/README": "ac14b19d8821f62bb2dded9d4ef47e2f2cd2cf84a36e14fc56563a93c9bb026f",
+    "project-doc:packages/board/README.zh-CN": "a3d7c5250c6a021bf0c463ce5b1f75ce73333c8a6cf71ac404022bdb7d695e0a",
+    "project-doc:packages/react/README": "6fc95c51cdf1e84c41962c19c4c8f83a20ea45345dc1630a820026ff8794dc33",
+    "project-doc:packages/README": "c13f523229a13e38593ef85381d2f0da4ca5a997e4ac0c7ae1f0419384cfeab8",
+    "project-doc:packages/release-2": "1d6c16cb43ac71f32b3c1cdd71de249fe95ce0a9910b13c0f264b16b07e17d34",
+    "project-doc:product/产品概览": "b49f61ec854e0043ec73f54dbdeaf7d1dbf17f51d5f85bf416e584bb2b8dcc91",
+    "project-doc:README": "2070ca2c4f243cd8dd0d34a1ca94c2412391956abae011d8e96d20a241c76e4a",
+    "project-doc:README_en": "ad3eefc3dbbd4ca8265a1b12d43ccfe2da89c4d1d9251d3dfd6fcdef2e963b00"
+  },
+  "reviews": {
+    "agent": {
+      "status": "reviewed",
+      "reason": "Reviewed the common authoring Skill, native document rules and resource migration boundaries. This patch changes product sidebar reveal timing and repository release/test orchestration; it adds no Agent operation or default Skill contract, so the Agent sources need no additional change.",
+      "files": [
+        "packages/agent/patterns/agent/skills/verd-authoring/SKILL.md",
+        "packages/agent/patterns/agent/skills/verd-authoring/references/writing.md",
+        "packages/agent/runtime/src/node/agent-resources.ts"
+      ]
+    },
+    "recommendations": {
+      "status": "reviewed",
+      "reason": "Reviewed the recommendation catalog and rich-document guidance. Sidebar focus and remote packaging do not change document authoring workflows or templates; the user library remains separate from default Agent instructions.",
+      "files": [
+        "packages/agent/patterns/recommendations.json",
+        "packages/agent/patterns/workspace/rich-document/规则说明.verd-doc.json"
+      ]
+    },
+    "introduction": {
+      "status": "updated",
+      "reason": "Updated the native product overview with collapsed-sidebar folder-link focus behavior, same-task remote release validation, verified installer transfer and archived previous outputs. Existing development-guide and bilingual-navigation changes explain dependency-aware failure collection and bounded concurrency. Document identity is preserved and the authoring plan validated without errors; technical gate and visual acceptance results are recorded separately for the final snapshot.",
+      "files": [
+        "workspace/文档/产品/产品概览.verd-doc.json",
+        "workspace/文档/开发/开发指南.verd-doc.json",
+        "workspace/文档导航.verd-doc.json",
+        "workspace/Documentation.verd-doc.json"
+      ]
+    }
+  }
+}

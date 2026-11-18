@@ -170,7 +170,8 @@ export async function exerciseDocumentTables(page: Page) {
   await expectHandles(2, 2);
   await page.keyboard.press('Escape');
 
-  await cellAt(2, 2).locator('p').click();
+  // Give the editor's deferred focus restore time within the pointer gesture.
+  await cellAt(2, 2).locator('p').click({ delay: 50 });
   await expect(editor).toBeFocused();
   await expect
     .poll(() =>
@@ -337,7 +338,7 @@ export async function exerciseDocumentTables(page: Page) {
   await page.keyboard.press('Escape');
   await editor
     .getByText('Before table', { exact: true })
-    .dblclick({ position: { x: 16, y: 12 } });
+    .dblclick({ position: { x: 16, y: 12 }, delay: 50 });
   await expect
     .poll(() => page.evaluate(() => getSelection()?.toString()))
     .toBe('Before');

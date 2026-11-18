@@ -10,10 +10,11 @@ import {
   setServiceTarget,
   webE2EOptions,
 } from './web-e2e-runtime.mjs';
+import { defaultWebWorkers } from './test-concurrency.mjs';
 import { ROOT } from './release-review.mjs';
 
 test('Web workers default to two and preserve explicit single-worker addresses', () => {
-  assert.equal(webE2EOptions({}).workers, 2);
+  assert.equal(webE2EOptions({}).workers, defaultWebWorkers);
   assert.equal(webE2EOptions({ VERD_WEB_E2E_WORKERS: '1' }).workers, 1);
   for (const name of [
     'BASE_URL',

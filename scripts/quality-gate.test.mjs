@@ -30,7 +30,7 @@ test('ordinary development gate commands delegate remotely without invoking a lo
     'tests/desktop-e2e/src/dev-runtime.spec.ts',
   ];
   const calls = [];
-  for (const mode of ['dev', 'ci']) {
+  for (const mode of ['dev', 'ci', 'release']) {
     const selection = mode === 'dev' ? args : [];
     assert.equal(
       await runQualityCli(mode, selection, {
@@ -82,16 +82,6 @@ test('test workers, CI, explicit local debugging and publishing retain direct ga
     assert.equal(executed, true);
   }
   assert.equal(localTestExecutionAllowed({ CI: 'true' }), false);
-  let release = false;
-  await runQualityCli('release', [], {
-    env: {},
-    execute: async () =>
-      assert.fail('Publishing must retain its existing local gate'),
-    gate: async () => {
-      release = true;
-    },
-  });
-  assert.equal(release, true);
 });
 
 test('feature filters require existing repository-relative unit and E2E selections without accepting full-gate flags', () => {

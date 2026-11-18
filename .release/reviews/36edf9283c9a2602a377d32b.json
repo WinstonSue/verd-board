@@ -93,7 +93,7 @@
   ],
   "previous": "3e4bf36872da945f3cd64471.json",
   "previousDigest": "99cfe207756f46a59a2463626971cb27476ef6be787df4056071f2c341febc1d",
-  "sourceDigest": "4602df2e182559576f69ae6868177490fee768cc1bc20e324d52b297d2facf4f",
+  "sourceDigest": "a8a6fb50e0b4b2e439ae380ef08a3fa5df80439f6271c153ded7437c4752a07d",
   "versions": {
     "@sue/board-architecture": "2.1.1",
     "@sue/board-common": "2.1.0",
@@ -129,7 +129,7 @@
   },
   "introduction": {
     "project-doc:architecture/ARCHITECTURE": "18bcbab0836ae3d9538629a1793d7a6f918ebf31a0560b290497e11f2d5b4fa2",
-    "project-doc:development/README": "4846b7bd7727e208113764ae98039bfd2da0f35b8956a8c33eefb89911fbd6e1",
+    "project-doc:development/README": "8e4b31bb10f9beff041c5f2033c3949ce7a2aee387033e9fd686bf1d57c10470",
     "project-doc:DOCUMENTATION_GUIDE": "9e11f8c4a89e4704f25fa415482f72548fd2f0feae2349fa72404433985d25e6",
     "project-doc:guides/ai-canvas-data-spec": "f5ec4ee463d689710d44f7c936a96debea039c45be03a3e5fe0bb4fbaa648ae2",
     "project-doc:guides/SETUP": "d375e2198bf41e636de772b0d461a9a6672abca6e2c8c6c3e6447d57badc6f7f",
@@ -146,14 +146,14 @@
     "project-doc:packages/react/README": "6fc95c51cdf1e84c41962c19c4c8f83a20ea45345dc1630a820026ff8794dc33",
     "project-doc:packages/README": "c13f523229a13e38593ef85381d2f0da4ca5a997e4ac0c7ae1f0419384cfeab8",
     "project-doc:packages/release-2": "1d6c16cb43ac71f32b3c1cdd71de249fe95ce0a9910b13c0f264b16b07e17d34",
-    "project-doc:product/产品概览": "9e3725a321294a8b68acdf7a59dda72ca3f2cb4d90634ef08c8edff7ac5c08d6",
-    "project-doc:README": "486b2b5a7336ca4fd3fb72eea313c77af4b37f52b0bc16a5b524e9e1db03499f",
-    "project-doc:README_en": "4c33ff21e95e48061244b681ef262322370ab531e6126131ade32e6546e6334f"
+    "project-doc:product/产品概览": "8f5e571c7837378aa6b069a33c12639e5b75a5a4d61d134ba10fb308430ea2a0",
+    "project-doc:README": "2070ca2c4f243cd8dd0d34a1ca94c2412391956abae011d8e96d20a241c76e4a",
+    "project-doc:README_en": "ad3eefc3dbbd4ca8265a1b12d43ccfe2da89c4d1d9251d3dfd6fcdef2e963b00"
   },
   "reviews": {
     "agent": {
       "status": "updated",
-      "reason": "Reviewed architecture operations, templates and Markdown guidance: independent or layered modules, typed dependency/flow relations, and cards outside business connections and domain layout. Diagram guidance follows shared theme families and preview checks. Resource verification and legacy migration validate ordinary files, merge matching content, preserve conflicts and record recovery markers. Exact clear/undo tests compare the runtime-prepared snapshot after legacy ports are normalized. CLI and workspace boundaries continue through the standalone Agent.",
+      "reason": "Reviewed the existing architecture operations, templates, resource migration and standalone Agent boundaries for this version. This round changes release orchestration and artifact transfer only; it does not add Agent runtime APIs or change default Skills, so no additional Agent specification edit is needed.",
       "files": [
         "packages/agent/runtime/src/operations.ts",
         "packages/agent/runtime/src/node/agent-resources.ts",
@@ -166,7 +166,7 @@
     },
     "recommendations": {
       "status": "updated",
-      "reason": "Reviewed the user-facing architecture advice and template against the new placement, optional layer membership, layer/module relation semantics and independent text cards. The recommendation body and executable template were updated together. User recommendations remain editable content and do not become default Agent instructions; theme and workflow execution guidance stays in the separate Agent Skills.",
+      "reason": "Reviewed the existing architecture advice and template for the current release. The release-control changes do not change user authoring behavior or introduce new recommendation requirements; the recommendation library remains separate from default Agent instructions.",
       "files": [
         "packages/agent/patterns/workspace/architecture/规则说明.verd-doc.json",
         "packages/agent/patterns/workspace/architecture/模板.verd.json",
@@ -175,7 +175,7 @@
     },
     "introduction": {
       "status": "updated",
-      "reason": "Updated product capabilities and bilingual navigation for product 2.1.2 and board-react/workspace 2.2.1. Substantive prose covers architecture containers/cards, shared theme families/manual colors, document tables, sidebar selection, conflict-preserving migration and Electron 44.11.3 cross-display behavior. Native updates also cover architecture data, Mind themes, runtime evidence and isolated validation. Stable identities, links and plainText caches are preserved; product overview preview was visually checked and native validation had no errors. Reviewed clipboard scene isolation, blocked-port cancellation, summary capture through selection raising and navigation presses that preserve the editor caret. Tests use real imported identities and exposed hits, compare paths by edge identity, verify the native table caret and retain exact camera, history, content and export assertions. Failed release cases were resolved with scoped validation: the 33-case Web scope passed on 20261117104542007-dd0658ff, Desktop summary drag/history/restart passed on 20261117105136279-081dced2, and final link-activation/document tests plus Web 8 cases and Desktop long-document sidebar navigation passed on 20261117114226687-f141ea58. Full release and installer acceptance are recorded separately. Desktop routing now compares against the runtime-prepared snapshot, retaining exact node equality after port normalization. Related geometry/connection units and all seven routing/port Desktop cases passed on 20261117122420654-5c8dcff0, including real native focus/cursor checks. The local release attempt encountered a locked console; the complete official packaging gate runs on the unlocked macOS arm64 test host. One full Web attempt observed a text-format toolbar visibility failure that did not reproduce in scoped Web/Desktop diagnostics. The shared interaction test now requires editor focus and collapsed native/model selections before double-clicking, verifies the resulting model text selection, and records native/model selection and pointer-event evidence on failure. All related units, 13 Web content-tool cases and two Desktop document-resource cases passed for this final test source on 20261117125809334-0ebb4c43. The interrupted full attempt is retained separately and is not release proof. Card scene tests now wait for the intended tab and navigation readiness before interacting, select domain tools inside the active pane, and select the ordinary canvas card from its portaled Shape dialog. Exact content, history, paste isolation, save and restart checks remain. Card/container units, both Web card cases and the Desktop six-scene/restart case passed on 20261117132353320-0c36e19b. Earlier locator failures and interrupted full runs are retained as failure evidence. The folder-link failure was traced to stale clipboard data: the document contained a different folder UUID while network snapshots proved the real target identity survived the rename. The test now derives the expected complete link from the durable folder marker, waits for that exact clipboard value, and verifies the renamed marker before reload. Workspace-session units and all seven Web link/action cases passed on 20261117140059236-a7b1727c. The full attempt with 374 Web passes and this failure is preserved separately. Presentation request invalidation now runs in the layout phase so a delayed navigation effect cannot cancel a request from the newly active document; stale-context checks are retained. Desktop coverage edits and enters/exits presentation three times, checks exact draft retention, readonly state, single-window ownership and full native exit, and preserves Electron state/trace on entry failure. Temporary diagnostic probes were removed. The production presentation scope passed on 20261117155621120-ff7b8bfe, and 21 related units plus three Web and three Desktop development presentation cases passed on 20261117155941919-f40b13f6. Agent and recommended-library contracts are unchanged by this host lifecycle adjustment. Mind hotzone fixtures now wait for the nested child body to persist before recording the exact pre-gesture snapshot. The observed mismatch was the pending Topic-to-Nested child edit, not a drag mutation. Full snapshot equality during preview/cancel and exact commit/history checks remain. Related Mind drag units and all 51 Web product-interaction cases passed on 20261117162131087-aed9b6c4. 文档格式工具栏的原生/模型选区事件证据定位到零延时双击与 ProseMirror 聚焦后 20ms 选区恢复的竞争；单次双击使用 50ms 按压节奏，保留原生及模型 First 选区、工具栏、编辑和历史断言。远程任务 20261117165206094-ee6a4fc2 通过 7 个相关单测、13 个 Web E2E、2 个 Desktop E2E 和 dev 固定门禁。",
+      "reason": "Updated the native product overview, development guide and bilingual navigation to explain repair-owner responsibilities, independent failure collection, dependency blocking, bounded unit/Web concurrency, four required E2E suites, remote Desktop packaging and same-run artifact verification. Existing architecture/card, theme, document-table, sidebar and migration capabilities remain documented. Native identities and links are preserved; body/cache consistency and remote document preview were checked. Technical validation remains separately bound to its actual snapshot and scope.",
       "files": [
         "workspace/文档/产品/产品概览.verd-doc.json",
         "workspace/文档导航.verd-doc.json",
