@@ -21,7 +21,7 @@
   ],
   "previous": "36edf9283c9a2602a377d32b.json",
   "previousDigest": "18896f6c1c9840ade184665521316adbb0bc54936029c0724d17a7f823f4545e",
-  "sourceDigest": "7f2e372c52e51403f88a32f9864d42e40afd94074f6eecbff9f4847d7ff0f4ef",
+  "sourceDigest": "bbfca645e906f0baa4feb6b346c956efa716ddc2416332cbaaf9c2c03dca85dd",
   "versions": {
     "@sue/board-architecture": "2.1.1",
     "@sue/board-common": "2.1.0",
