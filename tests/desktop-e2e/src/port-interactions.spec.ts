@@ -127,7 +127,7 @@ async function runDesktopPorts(
     const userData = path.join(directory, 'user-data');
     await mkdir(project);
     await mkdir(userData);
-    const filename = path.join(project, 'ports.verd.json');
+    const filename = path.join(project, 'ports.verd');
     await writeFile(filename, JSON.stringify(fixture));
     const launcher = path.join(directory, 'launch.cjs');
     await writeDesktopLauncher(launcher, userData);

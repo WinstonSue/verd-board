@@ -1,7 +1,5 @@
 # @sue/board-react-actions
 
-New public package for the next-major source release. This task prepares Changesets only; it does not bump versions or publish.
-
 Shared React action scopes, command palette and shortcut help. React 18 or later is required. The runtime depends only on React and `@sue/board-common`; it does not import the board renderer, text editor or product packages.
 
 <!-- consumer-example -->

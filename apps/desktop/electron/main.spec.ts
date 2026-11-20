@@ -15,6 +15,7 @@ const mocks = vi.hoisted(() => {
     legacyStorage: () => '',
   };
   const webContents = {
+    id: 1,
     mainFrame: {},
     openDevTools: vi.fn(),
     on: vi.fn(),
@@ -23,6 +24,7 @@ const mocks = vi.hoisted(() => {
     isDestroyed: () => false,
   };
   const window = {
+    isDestroyed: () => false,
     webContents,
     on: vi.fn(),
     isFullScreen: () => false,
@@ -67,6 +69,7 @@ vi.mock('electron', () => ({
     getPath: () => '/tmp/verd-main-test',
     setName: vi.fn(),
     setPath: vi.fn(),
+    requestSingleInstanceLock: () => true,
     get isPackaged() {
       return mocks.application.isPackaged;
     },
@@ -93,8 +96,13 @@ vi.mock('electron', () => ({
       setPermissionRequestHandler: vi.fn(),
     },
   },
-  dialog: {},
+  dialog: { showMessageBox: vi.fn(async () => ({ response: 1 })) },
   shell: { openPath: vi.fn(async () => '') },
+}));
+vi.mock('./file-associations', () => ({
+  launchFiles: () => [],
+  supportedDesktopFile: () => true,
+  setDefaultFileApplications: vi.fn(),
 }));
 vi.mock('./workspace-host-fs', () => ({
   createFsWorkspaceHost: (options: object) => {
@@ -170,6 +178,14 @@ describe('desktop startup and IPC registration', () => {
       ).toEqual(entries);
       expect(mocks.manager.listHistory).toHaveBeenCalledOnce();
       const handle = { key: 'workspace' };
+      mocks.manager.open.mockResolvedValueOnce(handle);
+      await mocks.handlers.get('workspace-host:open')!(
+        {
+          sender: mocks.window.webContents,
+          senderFrame: mocks.window.webContents.mainFrame,
+        },
+        { default: true },
+      );
       await mocks.handlers.get('workspace-host:snapshot')!(
         {
           sender: mocks.window.webContents,
@@ -254,6 +270,8 @@ it('opens only ordinary workspace files through the trusted resource IPC', async
       sender: mocks.window.webContents,
       senderFrame: mocks.window.webContents.mainFrame,
     };
+    mocks.manager.open.mockResolvedValueOnce({ key: 'test' });
+    await mocks.handlers.get('workspace-host:open')!(event, { default: true });
     await expect(
       open(event, { key: 'test' }, 'notes.md'),
     ).resolves.toBeUndefined();

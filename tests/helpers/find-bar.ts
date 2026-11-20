@@ -41,9 +41,11 @@ export async function exerciseFindBars(
     ),
   );
   await page
-    .locator('input[accept=".json,.verd.json,.verd-doc.json,.md,.markdown"]')
+    .locator(
+      'input[accept=".json,.verd,.verd.json,.verd-doc.json,.md,.markdown"]',
+    )
     .setInputFiles({
-      name: 'unified-find.verd.json',
+      name: 'unified-find.verd',
       mimeType: 'application/json',
       buffer: Buffer.from(
         JSON.stringify({

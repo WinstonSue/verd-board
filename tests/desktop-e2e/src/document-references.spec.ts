@@ -56,7 +56,7 @@ test('Desktop previews documents in every canvas, adopts external edits and pres
           data: { targetDocumentId: 'desktop-reference-doc' },
         };
       }
-      const filePath = path.join(workspace, name + '.verd.json');
+      const filePath = path.join(workspace, name + '.verd');
       const bytes = JSON.stringify(frame, null, 2);
       originals.set(filePath, bytes);
       await writeFile(filePath, bytes);

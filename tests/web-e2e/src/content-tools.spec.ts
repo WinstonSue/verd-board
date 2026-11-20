@@ -12,7 +12,11 @@ test.beforeEach(async ({ page }) => {
 });
 
 const active = (page: Page) => page.locator('.workspace-pane.is-active');
-const nativeDoc = (id: string, title: string, body = 'Original decision') => ({
+const nativeDoc = (
+  id: string,
+  title: string,
+  body: string | string[] = 'Original decision',
+) => ({
   format: 'verd-document',
   version: 1,
   id,
@@ -22,26 +26,26 @@ const nativeDoc = (id: string, title: string, body = 'Original decision') => ({
     id,
     kind: 'block',
     align: 'left',
-    plainText: body,
+    plainText: Array.isArray(body) ? body.join('\n') : body,
     content: {
       type: 'doc',
-      content: [
-        {
-          type: 'paragraph',
-          content: body ? [{ type: 'text', text: body }] : [],
-        },
-      ],
+      content: (Array.isArray(body) ? body : [body]).map((paragraph) => ({
+        type: 'paragraph',
+        content: paragraph ? [{ type: 'text', text: paragraph }] : [],
+      })),
     },
   },
 });
 async function openDoc(
   page: Page,
   id = 'tools-doc',
-  body = 'Original decision',
+  body: string | string[] = 'Original decision',
 ) {
   await page.goto('/');
   await page
-    .locator('input[accept=".json,.verd.json,.verd-doc.json,.md,.markdown"]')
+    .locator(
+      'input[accept=".json,.verd,.verd.json,.verd-doc.json,.md,.markdown"]',
+    )
     .setInputFiles({
       name: 'Tools.verd-doc.json',
       mimeType: 'application/json',
@@ -194,12 +198,8 @@ test('slash heading submenu preserves editor focus and direct heading searches',
 test('block options follow a hovered paragraph without changing the caret', async ({
   page,
 }) => {
-  await openDoc(page, 'blocks', 'First paragraph');
+  await openDoc(page, 'blocks', ['First paragraph', 'Second paragraph']);
   const editor = active(page).locator('.tiptap');
-  await editor.locator('p').click();
-  await page.keyboard.press('End');
-  await page.keyboard.press('Enter');
-  await page.keyboard.type('Second paragraph');
   // Click the paragraph start, clear of the floating formatting toolbar.
   await editor
     .getByText('First paragraph', { exact: true })
@@ -599,7 +599,9 @@ test('readonly paragraph excerpts follow source edits and retain a stable addres
     },
   ] as unknown as typeof target.text.content.content;
   await page
-    .locator('input[accept=".json,.verd.json,.verd-doc.json,.md,.markdown"]')
+    .locator(
+      'input[accept=".json,.verd,.verd.json,.verd-doc.json,.md,.markdown"]',
+    )
     .setInputFiles({
       name: 'excerpts.json',
       mimeType: 'application/json',

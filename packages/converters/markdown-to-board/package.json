@@ -1,6 +1,6 @@
 {
   "name": "@sue/board-markdown-to-board",
-  "version": "2.1.1",
+  "version": "0.1.0",
   "description": "Markdown to VerdBoard mind map",
   "main": "./dist/index.cjs",
   "types": "./src/index.ts",

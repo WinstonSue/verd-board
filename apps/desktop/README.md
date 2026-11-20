@@ -8,14 +8,14 @@
 
 从仓库根目录运行：
 
-日常验收按根级 `AGENTS.md` 选择远程专项或定向测试；`pnpm test:remote doctor` 检查连接与运行时。开发机上的 `check:dev`、`check:ci`、`check:release` 和 `package:desktop` 默认委托远程。完整门禁集中报告失败，修复与定向验证由修复方完成；本轮完整通过后才复用已验收资源打包，并继续应用、DMG 与真实安装包 E2E。Desktop 同一 GUI 会话保持单 worker。直接 Desktop E2E 缺少执行上下文时会在启动 Electron 前拒绝。
+日常验收按根级 `AGENTS.md` 选择远程专项或定向测试；`pnpm test:remote doctor` 检查连接与运行时。开发机上的 `check:dev`、`check:ci`、`check:release` 和 `package:desktop` 默认委托远程。发布按受影响架构边界验收，未变化上游引用有效证明；缺少证明才补跑。直接提交一次 package，由执行器完成发布计划、当前构建、应用/DMG 与真实安装包 E2E；Agent 等待终态汇总，断连用 wait <任务ID> 接管。Desktop 同一 GUI 会话保持单 worker。直接 Desktop E2E 缺少执行上下文时会在启动 Electron 前拒绝。
 
 未提交修改随独立快照传输，断连后可用 `status`、`logs`、`fetch` 和任务 ID 恢复操作。统一配置位于 `~/.config/remote-test/config.json`，仓库只派生稳定任务定义，不修改连接配置；主机 `cacheDir` 管理缓存。完整过程 trace 保留三轮，`artifacts` 查看、`fetch <任务ID> --raw` 按需回收；最终安装包与证明随默认结果回传，当前快照核对通过后更新安装包输出。配置与 SSH 密钥接入见[原生开发指南](../../workspace/文档/开发/开发指南.verd-doc.json)的“Tailscale 远程开发验收”；下面的原始验证命令由测试 worker、CI 执行，用户明确要求本机调试时可使用 `VERD_TEST_EXECUTION=local`。
 
 ```bash
 pnpm install
 pnpm dev:desktop # dev / start 为别名；源码热更新
-pnpm test:e2e:desktop # 真实 dev，自动启动隔离测试服务
+pnpm test:e2e:desktop # 仅开发身份、隔离和热更新专项
 # 显式生产构建专项验收
 pnpm build:desktop
 pnpm test:e2e:desktop:prod
@@ -50,7 +50,7 @@ pnpm workspace:check
 
 ## 内容维护
 
-文字稿以 `.verd-doc.json` 为直接编辑真源，画布以 `.verd.json` 为真源。项目文档通过稳定文件 ID 互链，移动、重命名仍能导航；画布之间使用 `frame-reference` 引用。
+文字稿以 `.verd-doc.json` 为直接编辑真源，画布以 `.verd` 为真源。项目文档通过稳定文件 ID 互链，移动、重命名仍能导航；画布之间使用 `frame-reference` 引用。
 
 ```bash
 # 校验原生格式、身份、图表引用和文档链接

@@ -113,7 +113,7 @@ test('Desktop shows ordinary originals and migrates project resources without pa
     'managed original',
   );
   await writeFile(
-    path.join(workspace, '.verd-resources/history/hidden.verd.json'),
+    path.join(workspace, '.verd-resources/history/hidden.verd'),
     '{}',
   );
   const page = await launch();
@@ -280,10 +280,10 @@ test('Desktop moves a read-only Mind preview shell without changing its source g
   };
   await mkdir(workspaceDir(), { recursive: true });
   await writeFile(
-    path.join(workspaceDir(), 'Board.verd.json'),
+    path.join(workspaceDir(), 'Board.verd'),
     JSON.stringify(owner),
   );
-  const sourcePath = path.join(workspaceDir(), 'Mind.verd.json');
+  const sourcePath = path.join(workspaceDir(), 'Mind.verd');
   const sourceBytes = JSON.stringify(source);
   await writeFile(sourcePath, sourceBytes);
   let page = await launch(owner.frame.name);
@@ -402,7 +402,8 @@ test('Desktop saves pending drawing and a focused mind note before close, then r
   await page.getByRole('button', { name: '选择', exact: true }).click();
   await expect(page.getByTestId('frame-open')).toBeVisible();
   await page.getByTestId('frame-open').click();
-  // The reference opens its target file in a dedicated tab.
+  // Wait for the owner pane's embedded preview to leave the active view.
+  await expect(cells(page, 'frame-reference')).toHaveCount(0);
   await cells(page, 'mind-root').click();
   await canvas(page).press('Tab');
   await expect(cells(page, 'mind-child')).toHaveCount(1);
@@ -419,7 +420,7 @@ test('Desktop saves pending drawing and a focused mind note before close, then r
 
   page = await launch();
   // Restart restores the persisted tabs; activate the board file.
-  await page.locator('.file-tree-name[title="画布.verd.json"]').click();
+  await page.locator('.file-tree-name[title="画布.verd"]').click();
   await expect(cells(page, 'geometry')).toHaveCount(1);
   await cells(page, 'frame-reference')
     .locator(':scope > [data-frame-header] > rect')

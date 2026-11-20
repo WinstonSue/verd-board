@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   createTestCellRegistry as createFixtureRegistry,
   createTestCellRegistry,
-} from '../../../../../tests/fixtures/plugins/registry';
+} from '../../../../../tests/fixtures/core/registry';
 import {
   applyCellOperations,
   copyCellFragment,
@@ -28,7 +28,6 @@ import {
 } from './types';
 import { NodeUtil } from './util';
 const testCellRegistry = createFixtureRegistry();
-
 const node = (id: string, x: number): NodeCell => ({
   id,
   kind: 'geometry',
@@ -108,7 +107,6 @@ const build = () => {
   );
   return store;
 };
-
 describe('three-level groups', () => {
   it('keeps nodes, arrows and a nested frame across move, copy, ungroup, reorder, transfer, delete and undo', () => {
     const store = build();
@@ -251,7 +249,6 @@ describe('three-level groups', () => {
     runtime.redo();
     runtime.undo();
   });
-
   it('refuses a mixed delete when one object cannot be deleted', () => {
     const store = build();
     class Fixed extends NodeUtil {
@@ -275,7 +272,6 @@ describe('three-level groups', () => {
     );
     expect(selectionAllows(store, ['arrow'], registry, 'delete')).toBe(true);
   });
-
   it('pastes a nested frame without shifting its interior and selects only the shell', () => {
     const store = build();
     const plan = planCellPaste({
@@ -297,7 +293,6 @@ describe('three-level groups', () => {
       (store.cells.inner as NodeCell).geometry,
     );
   });
-
   it('pastes a copied group without selecting its members', () => {
     const store = build();
     const pasted = applyCellOperations(
@@ -318,7 +313,6 @@ describe('three-level groups', () => {
       (store.cells.n1 as NodeCell).geometry.x + 8,
     );
   });
-
   it('rejects a fragment that is not a complete cell without planning a change', () => {
     const board = createFrameCell('root');
     const store = createCellStore(board);

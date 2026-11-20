@@ -370,7 +370,7 @@ export function WorkspaceManagement(p: Props) {
         detail.path
           .split('/')
           .pop()!
-          .replace(/\.verd(?:-doc)?\.json$/, ''),
+          .replace(/\.verd(?:(?:-doc)?\.json)?$/, ''),
       );
       setDialog(detail.kind);
     };
@@ -534,7 +534,7 @@ export function WorkspaceManagement(p: Props) {
       entry.kind === 'file' &&
       !entry.canvas &&
       !entry.document &&
-      !/\.verd(?:-doc)?\.json$/.test(entry.path) &&
+      !/\.verd(?:(?:-doc)?\.json)?$/.test(entry.path) &&
       isWorkspaceContentPath(entry.path, p.snapshot.entries) &&
       !files.some((file) => file.path === entry.path) &&
       (type === 'all' || type === 'resource') &&
@@ -626,7 +626,7 @@ export function WorkspaceManagement(p: Props) {
                   selected[0]
                     .split('/')
                     .pop()!
-                    .replace(/\.verd(?:-doc)?\.json$/, ''),
+                    .replace(/\.verd(?:(?:-doc)?\.json)?$/, ''),
                 );
                 setDialog('rename');
               }}

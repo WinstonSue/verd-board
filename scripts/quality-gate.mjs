@@ -16,7 +16,6 @@ import { testConcurrency, vitestArguments } from './test-concurrency.mjs';
 import {
   releaseInputs,
   releaseIdentity,
-  fullStageIds,
   captureArtifacts,
 } from './release-proof.mjs';
 import {
@@ -26,6 +25,9 @@ import {
   checkReleaseReview,
 } from './release-review.mjs';
 import { publicPackages } from './pack-public.mjs';
+import { createTestPlan, parseGateOptions } from './test-plan.mjs';
+import { digest, verificationIdentity, loadCatalog } from './test-catalog.mjs';
+import { verificationCache, saveVerification } from './verification-cache.mjs';
 
 export function parseSelection(args) {
   const selection = { unit: [], web: [], desktop: [] };
@@ -49,14 +51,6 @@ export function parseSelection(args) {
     selection[key].push(value);
   }
   const selected = Object.values(selection).some((files) => files.length);
-  if (
-    selected &&
-    (!selection.unit.length ||
-      !(selection.web.length || selection.desktop.length))
-  )
-    throw new Error(
-      'Feature development requires both unit tests and E2E tests',
-    );
   return selected ? selection : null;
 }
 
@@ -160,6 +154,7 @@ async function validateSelection(selection) {
         !prefix &&
         !file.startsWith('packages/') &&
         !file.startsWith('apps/') &&
+        !file.startsWith('tests/contracts/') &&
         !file.startsWith('scripts/')
       )
         throw new Error('Unsupported unit test: ' + file);
@@ -263,7 +258,7 @@ export async function gateDiagnostics(env = process.env) {
 }
 
 /** The dependency graph is shared by full CI and release control. */
-export async function createGatePlan({
+async function createLegacyGatePlan({
   selection,
   env,
   unitEnv,
@@ -452,17 +447,205 @@ export async function createGatePlan({
   return plan;
 }
 
-/** Each invocation actually executes its selected tests. No previous success is reused. */
+/** Test ownership and the execution graph are separate: building a dependency never selects its tests. */
+export async function createGatePlan(options) {
+  if (!options.verification) return createLegacyGatePlan(options);
+  const {
+    verification,
+    env,
+    unitEnv,
+    settings,
+    logDirectory,
+    execute = runCommand,
+  } = options;
+  const units = verification.units.filter((unit) => unit.action === 'run');
+  const runtimeUnits = units.filter((unit) => unit.runtime);
+  const isolated =
+    verification.mode === 'dev' &&
+    units.every(
+      (unit) => unit.runner === 'node' || unit.layer === 'foundation',
+    );
+  const legacy = await createLegacyGatePlan({ ...options, selection: null });
+  const plan = legacy.filter(
+    (stage) =>
+      ![
+        'unit-packages',
+        'unit-scripts',
+        'web-dev',
+        'desktop-dev',
+        'web-prod',
+        'desktop-prod',
+      ].includes(stage.id),
+  );
+  const add = (id, dependsOn, program, args, execution, ownedUnits) => {
+    plan.push({
+      id,
+      dependsOn,
+      units: ownedUnits.map((unit) => unit.id),
+      run: async (stage) => {
+        Object.assign(stage, {
+          program,
+          args,
+          units: ownedUnits.map((unit) => unit.id),
+          cwd: execution.cwd ?? ROOT,
+        });
+        const logFile = path.join(
+          logDirectory,
+          id.replaceAll(':', '_') + '.log',
+        );
+        stage.log = path.relative(ROOT, logFile);
+        try {
+          await execute(program, args, { ...execution, logFile });
+        } finally {
+          const output = stripVTControlCharacters(
+            await fs.readFile(logFile, 'utf8').catch(() => ''),
+          );
+          stage.failures = [
+            ...output.matchAll(
+              /^(?:[^\n]*?:test:\s*)?(?:\s*FAIL\s+|not ok \d+ - |✖\s+)(.+)$/gm,
+            ),
+          ].map((match) => match[1]);
+        }
+      },
+    });
+  };
+  for (const unit of units.filter((unit) => !unit.runtime)) {
+    const [group] = await groupUnitTests(unit.tests);
+    const node = group.program === process.execPath;
+    add(
+      unit.id,
+      node || isolated || unit.layer === 'foundation' ? [] : ['public-build'],
+      group.program,
+      [
+        ...group.args.slice(0, node ? 1 : 4),
+        ...(node
+          ? ['--test-concurrency=' + settings.scripts]
+          : vitestArguments(settings)),
+        ...group.args.slice(node ? 1 : 4),
+      ],
+      { cwd: group.cwd, env: unitEnv },
+      [unit],
+    );
+    Object.assign(plan.at(-1), {
+      pool: node ? 'script-files' : 'unit-packages',
+      concurrency: node ? settings.scripts : settings.packages,
+    });
+  }
+  const runtime = [
+    'public-build',
+    'agent-resources-check',
+    'builtin-workspaces',
+  ];
+  for (const [id, host, state, command] of [
+    ['web-dev', 'web', 'development', 'test:e2e'],
+    ['desktop-dev', 'desktop', 'development', 'test:e2e:desktop'],
+    ['web-prod', 'web', 'production', 'test:e2e:prod'],
+    ['desktop-prod', 'desktop', 'production', 'test:e2e:desktop:prod'],
+  ]) {
+    const selected = runtimeUnits.filter(
+      (unit) => unit.host === host && unit.runtime === state,
+    );
+    if (!selected.length) continue;
+    const files = selected
+      .flatMap((unit) => unit.tests)
+      .map((file) =>
+        host === 'web' ? file.replace('tests/web-e2e/', '') : file,
+      );
+    const deps = [
+      ...runtime,
+      ...(id === 'web-prod'
+        ? ['web-production-clean', 'web-e2e-build']
+        : id === 'desktop-prod'
+          ? ['desktop-build']
+          : []),
+    ];
+    const headless = host === 'desktop' && process.platform === 'linux';
+    add(
+      id,
+      deps,
+      headless ? 'xvfb-run' : 'pnpm',
+      [...(headless ? ['-a', 'pnpm'] : []), command, ...files],
+      { env },
+      selected,
+    );
+  }
+  if (verification.mode === 'dev' && !runtimeUnits.length) {
+    const unnecessary = new Set([
+      'builtin-workspaces',
+      'agent-resources',
+      'agent-resources-check',
+      'application-build',
+      'pack',
+      'consumer',
+      'plugin-consumers',
+      'agent-consumer',
+      'web-build',
+      'web-production-clean',
+      'web-e2e-build',
+      'desktop-build',
+    ]);
+    if (isolated) {
+      unnecessary.add('public-build');
+      unnecessary.add('typecheck');
+      for (const unit of units.filter((unit) => unit.layer === 'foundation')) {
+        const config = path.join(
+          path.dirname(options.resources),
+          unit.id.replaceAll(':', '_').replaceAll('/', '_') + '.tsconfig.json',
+        );
+        plan.push({
+          id: 'typecheck:' + unit.id,
+          units: [unit.id],
+          dependsOn: [],
+          run: async (stage) => {
+            await fs.mkdir(path.dirname(config), { recursive: true });
+            await fs.writeFile(
+              config,
+              JSON.stringify({
+                extends: path.join(ROOT, 'tsconfig.base.json'),
+                compilerOptions: { noEmit: true },
+                include: [path.join(ROOT, unit.directory, 'src/**/*.ts')],
+                exclude: [
+                  path.join(ROOT, unit.directory, '**/*.spec.ts'),
+                  path.join(ROOT, unit.directory, '**/*.test.ts'),
+                ],
+              }),
+            );
+            const args = ['exec', 'tsc', '--project', config];
+            const logFile = path.join(
+              logDirectory,
+              'typecheck-' + path.basename(config) + '.log',
+            );
+            Object.assign(stage, {
+              program: 'pnpm',
+              args,
+              cwd: ROOT,
+              log: path.relative(ROOT, logFile),
+            });
+            await execute('pnpm', args, { env, logFile });
+          },
+        });
+      }
+    }
+    return plan.filter((stage) => !unnecessary.has(stage.id));
+  }
+  return plan;
+}
+
+/** Execute selected complete units; reuse only matching verification evidence. */
 export async function runGate(mode, args = [], { consume } = {}) {
   if (!['dev', 'ci', 'release'].includes(mode))
     throw new Error('Unknown gate: ' + mode);
-  if (mode !== 'dev' && args.length)
-    throw new Error('Full CI/release gates do not accept test filters');
+  const options = parseGateOptions(args);
+  if (mode !== 'dev' && options.selectors.length)
+    throw new Error(
+      'Release and CI accept --full, not individual test filters',
+    );
   if (mode !== 'release' && !localTestExecutionAllowed())
     throw new Error(
       'Validation runs on the test host; use pnpm check:dev, pnpm check:ci or pnpm check:release.',
     );
-  const selection = mode === 'dev' ? parseSelection(args) : null;
+  const selection = mode === 'dev' ? parseSelection(options.selectors) : null;
+  const verification = await createTestPlan({ mode, options });
   await validateSelection(selection);
   if (mode === 'release') await checkReleaseReview();
   const before = hash(await sourceInventory());
@@ -496,14 +679,22 @@ export async function runGate(mode, args = [], { consume } = {}) {
   delete unitEnv.VERD_BUILTIN_WORKSPACES;
   const record = {
     format: 'verd-quality',
-    version: 2,
+    version: 3,
     runId: randomUUID(),
     mode,
     status: 'running',
     sourceDigest: before,
     identity,
-    planDigest: selection ? null : hash(fullStageIds),
+    verification,
+    planDigest: verification.digest,
     platform: process.platform,
+    executionConcurrency: {
+      packages: settings.packages,
+      unitWorkers: settings.workers,
+      scriptFiles: settings.scripts,
+      webWorkers: identity.concurrency.web,
+      desktopWorkers: 1,
+    },
     node: process.version,
     selection,
     startedAt: new Date().toISOString(),
@@ -515,14 +706,17 @@ export async function runGate(mode, args = [], { consume } = {}) {
   try {
     const plan = await createGatePlan({
       selection,
+      verification,
       env,
       unitEnv,
       resources,
       settings,
       logDirectory: path.join(ROOT, '.quality/logs', record.runId),
     });
-    if (!selection && hash(plan.map((node) => node.id)) !== hash(fullStageIds))
-      throw new Error('Full gate plan is incomplete');
+    record.requiredStages = plan.map((node) => node.id);
+    record.stageUnits = Object.fromEntries(
+      plan.filter((node) => node.units).map((node) => [node.id, node.units]),
+    );
     const result = await collectStages(plan, {
       update: async (stages) => {
         record.steps = stages;
@@ -540,16 +734,46 @@ export async function runGate(mode, args = [], { consume } = {}) {
     });
     Object.assign(record, result, { steps: result.stages });
     delete record.stages;
-    assertStagesPassed(result);
     record.diagnostics = await gateDiagnostics();
-    const expectedReports = selection
-      ? Number(selection.web.length > 0) + Number(selection.desktop.length > 0)
-      : 4;
+    const expectedReports = plan.filter((stage) =>
+      ['web-dev', 'desktop-dev', 'web-prod', 'desktop-prod'].includes(stage.id),
+    ).length;
+    const diagnosticsComplete =
+      !process.env.REMOTE_TEST_JOB_DIR ||
+      (record.diagnostics.length >= expectedReports &&
+        record.diagnostics.every((report) => report.complete));
     if (
-      process.env.REMOTE_TEST_JOB_DIR &&
-      (record.diagnostics.length < expectedReports ||
-        record.diagnostics.some((report) => !report.complete))
+      (await releaseInputs()).releaseInputDigest !== identity.releaseInputDigest
     )
+      throw new Error('Source changed before recording verification');
+    record.unitResults = {};
+    const catalog = await loadCatalog();
+    for (const unit of verification.units) {
+      const actual = await verificationIdentity(
+        catalog.units.find((entry) => entry.id === unit.id),
+        catalog,
+      );
+      if (actual.digest !== unit.fingerprint)
+        throw new Error('Verification inputs changed: ' + unit.id);
+      if (unit.action === 'run' && (!unit.runtime || diagnosticsComplete)) {
+        const stages = result.stages.filter((stage) =>
+          record.stageUnits[stage.id]?.includes(unit.id),
+        );
+        if (!stages.length || stages.some((stage) => stage.status !== 'passed'))
+          continue;
+        const evidence = await saveVerification(
+          verificationCache(ROOT),
+          unit,
+          record.runId,
+          stages,
+        );
+        if (evidence) record.unitResults[unit.id] = evidence;
+      }
+    }
+    if (digest({ ...verification, digest: undefined }) !== verification.digest)
+      throw new Error('Verification plan changed');
+    assertStagesPassed(result);
+    if (!diagnosticsComplete)
       throw new Error('Test diagnostics are incomplete; release is blocked');
     if (mode === 'release') await checkReleaseReview();
     record.finishedAt = new Date().toISOString();
@@ -558,7 +782,9 @@ export async function runGate(mode, args = [], { consume } = {}) {
     gatePassed = true;
     if (consume) {
       if (mode !== 'release' || selection)
-        throw new Error('Only a full release can produce packaging context');
+        throw new Error(
+          'Only a complete release plan can produce packaging context',
+        );
       const artifacts = await captureArtifacts({
         agent: resources,
         builtin,

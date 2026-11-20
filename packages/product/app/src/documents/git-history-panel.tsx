@@ -339,6 +339,25 @@ export function GitHistoryPanel({
           }
         />
       )}
+      {status?.repository && (
+        <div className="workspace-git-repository">
+          <p>
+            {t('所属仓库', 'Repository')}: <code>{status.repository.root}</code>
+          </p>
+          <p>
+            {t('工作区范围', 'Workspace scope')}:{' '}
+            <code>{status.repository.workspacePath || '.'}</code>
+          </p>
+          {status.repositoryManaged === false && (
+            <p>
+              {t(
+                '沿用项目 Git。此处只提交和恢复工作区内容，分支、远端与历史清理由项目 Git 工具管理。',
+                'Uses project Git. Commits and restores are limited to this workspace; manage branches, remotes and history cleanup in your project Git tools.',
+              )}
+            </p>
+          )}
+        </div>
+      )}
       {readonly && (
         <p>{t('当前为只读工作区。', 'This workspace is read-only.')}</p>
       )}
@@ -385,48 +404,50 @@ export function GitHistoryPanel({
             </WorkspaceButton>
           </fieldset>
         )}
-      {status && (!status.initialized || !fileId || !status.author) && (
-        <fieldset disabled={locked} className="workspace-git-form">
-          <legend>{t('提交身份', 'Commit author')}</legend>
-          <label>
-            {t('姓名', 'Name')}
-            <WorkspaceInput
-              value={authorName}
-              autoComplete="name"
-              onChange={(event) => {
-                authorDirty.current = true;
-                setAuthorName(event.target.value);
-              }}
-            />
-          </label>
-          <label>
-            {t('邮箱', 'Email')}
-            <WorkspaceInput
-              value={authorEmail}
-              type="email"
-              autoComplete="email"
-              onChange={(event) => {
-                authorDirty.current = true;
-                setAuthorEmail(event.target.value);
-              }}
-            />
-          </label>
-          {status.initialized && (
-            <WorkspaceButton
-              disabled={!author}
-              onClick={() =>
-                void perform(async () => {
-                  await request({ type: 'configure', author });
-                  authorDirty.current = false;
-                  setNotice(t('提交身份已保存', 'Commit author saved'));
-                })
-              }
-            >
-              {t('保存提交身份', 'Save author')}
-            </WorkspaceButton>
-          )}
-        </fieldset>
-      )}
+      {status &&
+        status.repositoryManaged !== false &&
+        (!status.initialized || !fileId || !status.author) && (
+          <fieldset disabled={locked} className="workspace-git-form">
+            <legend>{t('提交身份', 'Commit author')}</legend>
+            <label>
+              {t('姓名', 'Name')}
+              <WorkspaceInput
+                value={authorName}
+                autoComplete="name"
+                onChange={(event) => {
+                  authorDirty.current = true;
+                  setAuthorName(event.target.value);
+                }}
+              />
+            </label>
+            <label>
+              {t('邮箱', 'Email')}
+              <WorkspaceInput
+                value={authorEmail}
+                type="email"
+                autoComplete="email"
+                onChange={(event) => {
+                  authorDirty.current = true;
+                  setAuthorEmail(event.target.value);
+                }}
+              />
+            </label>
+            {status.initialized && (
+              <WorkspaceButton
+                disabled={!author}
+                onClick={() =>
+                  void perform(async () => {
+                    await request({ type: 'configure', author });
+                    authorDirty.current = false;
+                    setNotice(t('提交身份已保存', 'Commit author saved'));
+                  })
+                }
+              >
+                {t('保存提交身份', 'Save author')}
+              </WorkspaceButton>
+            )}
+          </fieldset>
+        )}
       {status?.available && !status.initialized && (
         <div>
           <p>
@@ -610,7 +631,7 @@ export function GitHistoryPanel({
               </section>
             </>
           )}
-          {!fileId && (
+          {!fileId && status.repositoryManaged !== false && (
             <details className="workspace-git-remote">
               <summary>{t('远端备份与同步', 'Remote backup and sync')}</summary>
               <p>
@@ -819,73 +840,70 @@ export function GitHistoryPanel({
                   />
                 </>
               )}
-              {!fileId && (
-                <details
-                  className="workspace-git-purge"
-                  open={purgeEntryIds?.length ? true : undefined}
-                >
-                  <summary>
-                    {t(
-                      '永久删除与历史清理',
-                      'Permanent deletion and history cleanup',
-                    )}
-                  </summary>
-                  <p>
-                    {t(
-                      '选择回收站中的内容，先检查受影响的文件与版本，再确认永久删除。',
-                      'Select trashed content and review affected files and versions before deleting permanently.',
-                    )}
-                  </p>
-                  {snapshot.trash.map((item) => (
-                    <label
-                      className="workspace-git-purge-choice"
-                      key={item.entryId}
-                    >
-                      <input
-                        type="checkbox"
-                        disabled={locked}
-                        checked={purgeIds.includes(item.entryId)}
-                        onChange={(event) =>
-                          setPurgeIds((previous) =>
-                            event.target.checked
-                              ? [...previous, item.entryId]
-                              : previous.filter((id) => id !== item.entryId),
-                          )
-                        }
-                      />
-                      {item.originalPath}
-                    </label>
-                  ))}
-                  <WorkspaceButton
-                    danger
-                    disabled={locked || !purgeIds.length}
-                    onClick={() =>
-                      void perform(async () => {
-                        const result = await request({
-                          type: 'purge-plan',
-                          fileIds: [],
-                          trashEntryIds: purgeIds,
-                        });
-                        setPlan(result.plan ?? null);
-                        if (!result.plan)
-                          throw new Error(
-                            t(
-                              '无法生成清理预览',
-                              'Could not prepare cleanup preview',
-                            ),
-                          );
-                      })
-                    }
-                  >
-                    {t('预览永久删除…', 'Preview permanent deletion…')}
-                  </WorkspaceButton>
-                </details>
-              )}
             </>
+          )}
+          {!fileId && status.historyCleanupSupported !== false && (
+            <details
+              className="workspace-git-purge"
+              open={purgeEntryIds?.length ? true : undefined}
+            >
+              <summary>
+                {t('Git 历史清理（高级）', 'Git history cleanup (advanced)')}
+              </summary>
+              <p>
+                {t(
+                  '此操作会改写 Git 历史。选择回收站内容后检查受影响的文件与版本；普通永久删除请使用回收站。',
+                  'This rewrites Git history. Review affected files and versions first. Use Trash for ordinary permanent deletion.',
+                )}
+              </p>
+              {snapshot.trash.map((item) => (
+                <label
+                  className="workspace-git-purge-choice"
+                  key={item.entryId}
+                >
+                  <input
+                    type="checkbox"
+                    disabled={locked}
+                    checked={purgeIds.includes(item.entryId)}
+                    onChange={(event) =>
+                      setPurgeIds((previous) =>
+                        event.target.checked
+                          ? [...previous, item.entryId]
+                          : previous.filter((id) => id !== item.entryId),
+                      )
+                    }
+                  />
+                  {item.originalPath}
+                </label>
+              ))}
+              <WorkspaceButton
+                danger
+                disabled={locked || !purgeIds.length}
+                onClick={() =>
+                  void perform(async () => {
+                    const result = await request({
+                      type: 'purge-plan',
+                      fileIds: [],
+                      trashEntryIds: purgeIds,
+                    });
+                    setPlan(result.plan ?? null);
+                    if (!result.plan)
+                      throw new Error(
+                        t(
+                          '无法生成清理预览',
+                          'Could not prepare cleanup preview',
+                        ),
+                      );
+                  })
+                }
+              >
+                {t('预览永久删除…', 'Preview permanent deletion…')}
+              </WorkspaceButton>
+            </details>
           )}
         </>
       )}
-      {plan && !adminOnly && (
+      {plan && (!adminOnly || plan.kind === 'purge') && (
         <section
           className="workspace-git-plan"
           aria-label={

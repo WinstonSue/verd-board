@@ -85,7 +85,8 @@ export function WorkspaceTrash({
         confirm: '确定',
         cancel: '取消',
         processing: '处理中…',
-        irreversible: '永久删除后无法恢复，相关撤销记录也会移除。',
+        irreversible:
+          '删除后无法从回收站还原，相关撤销记录也会移除。已提交的 Git 历史保留。',
         unconfirmed: '操作结果尚未确认，请重试后继续。',
         retry: '重试',
         readonly: '当前工作区为只读，无法修改回收站。',
@@ -101,7 +102,7 @@ export function WorkspaceTrash({
         cancel: 'Cancel',
         processing: 'Processing…',
         irreversible:
-          'This cannot be undone. Related undo history will also be removed.',
+          'This removes the trash copy and related undo history. Committed Git history is preserved.',
         unconfirmed: 'The operation is unconfirmed. Retry before continuing.',
         retry: 'Retry',
         readonly: 'This workspace is read-only. Trash cannot be modified.',

@@ -14,7 +14,7 @@ test('style edits stay isolated from unrelated legacy containers and follow the 
   test.setTimeout(240_000);
   for (const file of styleColorWorkspaceFixture().files)
     await writeFile(
-      path.join(localService.workspace, `${file.frame.id}.verd.json`),
+      path.join(localService.workspace, `${file.frame.id}.verd`),
       JSON.stringify(file),
     );
   await localService.restart();

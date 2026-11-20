@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { createTestCellRegistry as createFixtureRegistry } from '../../../../../tests/fixtures/plugins/registry';
+import { createTestCellRegistry as createFixtureRegistry } from '../../../../../tests/fixtures/core/registry';
 import {
   alignCells,
   arrangeCells,
@@ -27,7 +27,6 @@ import {
   type NodeCell,
 } from './types';
 const testCellRegistry = createFixtureRegistry();
-
 const node = (
   id: string,
   x: number,
@@ -52,7 +51,6 @@ const fixture = () =>
   );
 const geometry = (store: CellStore, id: string) =>
   (store.cells[id] as NodeCell).geometry;
-
 describe('explicit arrangement', () => {
   it('aligns rotated visual bounds in one reversible transaction', () => {
     const store = applyCellOperations(
@@ -85,7 +83,6 @@ describe('explicit arrangement', () => {
     runtime.undo();
     expect(runtime.store).toEqual(store);
   });
-
   it.each(['horizontal', 'vertical'] as const)(
     'distributes different sizes along %s with fixed ends and bounded rounding',
     (axis) => {
@@ -116,7 +113,6 @@ describe('explicit arrangement', () => {
       ).toEqual([]);
     },
   );
-
   it('moves nested groups and their free routes as one block, keeping Frame interiors intact', () => {
     let store = applyCellOperations(
       fixture(),
@@ -185,7 +181,6 @@ describe('explicit arrangement', () => {
       ),
     ).toHaveLength(1);
   });
-
   it('lays out only a selection, or the current Frame direct objects when empty', () => {
     const store = applyCellOperations(
       fixture(),
@@ -223,7 +218,6 @@ describe('explicit arrangement', () => {
       arrangeCells(store, 'root', ['inside'], 'grid', 32, testCellRegistry),
     ).toThrow('crosses frame');
   });
-
   it('rejects cross-Frame scope and prevents locked objects from being partly arranged', () => {
     let store = applyCellOperations(
       fixture(),
@@ -277,7 +271,6 @@ describe('explicit arrangement', () => {
       ).enabled,
     ).toBe(false);
   });
-
   it('supports nested focus, nested regrouping and one-level ungrouping without changing z-order', () => {
     let store = fixture();
     store = applyCellOperations(
@@ -313,7 +306,6 @@ describe('explicit arrangement', () => {
     expect(runtime.store).toEqual(store);
   });
 });
-
 it('locked groups protect nested Frame content and cascaded deletions', () => {
   let store = applyCellOperations(
     fixture(),

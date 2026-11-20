@@ -602,12 +602,12 @@
         "outline": "roundRectangle"
       },
       "content": {
-        "label": "FrameFileV2 · .verd.json：自身根与非 Frame Cell",
+        "label": "FrameFileV2 · .verd：自身根与非 Frame Cell",
         "text": {
           "schemaVersion": 1,
           "id": "demo:model/node/5-2/text",
           "kind": "inline",
-          "plainText": "FrameFileV2 · .verd.json：自身根与非 Frame Cell",
+          "plainText": "FrameFileV2 · .verd：自身根与非 Frame Cell",
           "content": {
             "type": "doc",
             "content": [
@@ -616,7 +616,7 @@
                 "content": [
                   {
                     "type": "text",
-                    "text": "FrameFileV2 · .verd.json：自身根与非 Frame Cell",
+                    "text": "FrameFileV2 · .verd：自身根与非 Frame Cell",
                     "marks": [
                       {
                         "type": "textStyle",

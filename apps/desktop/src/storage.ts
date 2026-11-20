@@ -1,7 +1,11 @@
 declare global {
   interface Window {
     electronAPI: {
-      onShutdown: (flush: () => Promise<void>) => () => void;
+      files: import('./external-file-types').DesktopFilesApi;
+      onShutdown: (
+        flush: () => Promise<void>,
+        onCancelled?: () => void,
+      ) => () => void;
       storage: {
         keys: () => Promise<string[]>;
         get: (key: string) => Promise<unknown>;

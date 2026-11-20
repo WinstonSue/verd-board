@@ -361,10 +361,7 @@ export async function importBrowserBackup(
           await fs.mkdir(root);
           for (const file of partitionCellStore(snapshot.store).files)
             await fs.writeFile(
-              path.join(
-                root,
-                file.frame.id.replace(/[^\w.-]/g, '_') + '.verd.json',
-              ),
+              path.join(root, file.frame.id.replace(/[^\w.-]/g, '_') + '.verd'),
               JSON.stringify(file),
             );
           roots.push({

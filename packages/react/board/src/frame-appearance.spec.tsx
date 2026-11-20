@@ -42,7 +42,7 @@ it.each([
       readFileSync(
         path.resolve(
           process.cwd(),
-          `../../../tests/fixtures/ai-canvas/${fixture}.verd.json`,
+          `../../../tests/fixtures/ai-canvas/${fixture}.verd`,
         ),
         'utf8',
       ),

@@ -113,6 +113,27 @@ const button = (container: HTMLElement, text: string) =>
   )!;
 
 describe('Git version controls', () => {
+  it('explains inherited repository scope and omits repository settings and history rewriting', async () => {
+    const { session } = setup(undefined, {
+      ...initialStatus(),
+      repository: {
+        root: '/project',
+        workspacePath: 'docs',
+        ownership: 'project',
+      },
+      repositoryManaged: false,
+      historyCleanupSupported: false,
+      remoteSupported: false,
+    });
+    const container = await render(session, { adminOnly: true });
+    expect(container.textContent).toContain('/project');
+    expect(container.textContent).toContain('docs');
+    expect(container.textContent).toContain('Uses project Git');
+    expect(container.querySelector('.workspace-git-remote')).toBeNull();
+    expect(container.querySelector('.workspace-git-purge')).toBeNull();
+    expect(container.textContent).not.toContain('Save author');
+    expect(container.textContent).not.toContain('Initialize Git repository');
+  });
   it.each(['zh', 'en'] as const)(
     'provides official platform cleanup steps and clone guidance in %s',
     async (locale) => {

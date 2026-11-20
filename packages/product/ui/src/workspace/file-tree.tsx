@@ -131,7 +131,7 @@ export interface FileTreeProps {
   /** Exports the file plus its dependency closure as a bundle. */
   onExport?(frameId: string): void;
   onCopyLink?(fileId: string): void | Promise<void>;
-  /** Imports a `.verd.json` file or canvas bundle into the workspace. */
+  /** Imports a `.verd` file or canvas bundle into the workspace. */
   onImport?(): void;
   /** Hides every control that would write to the workspace. */
   readonly?: boolean;
@@ -298,7 +298,8 @@ function FileTreePrompt({
     input.current?.focus();
     if (rename) {
       const start = initialValue.lastIndexOf('/') + 1;
-      const suffix = initialValue.match(/\.verd(?:-doc)?\.json$/)?.[0] ?? '';
+      const suffix =
+        initialValue.match(/\.verd(?:(?:-doc)?\.json)?$/)?.[0] ?? '';
       input.current?.setSelectionRange(
         start,
         initialValue.length - suffix.length,
@@ -489,7 +490,7 @@ export function FileTree({
             entry.kind === 'file' &&
             !entry.canvas &&
             !entry.document &&
-            !/\.verd(?:-doc)?\.json$/.test(entry.path) &&
+            !/\.verd(?:(?:-doc)?\.json)?$/.test(entry.path) &&
             !canvases.some((file) => file.path === entry.path) &&
             !documents.some((file) => file.path === entry.path),
         ),
@@ -1144,7 +1145,7 @@ export function FileTree({
                     {failure.path
                       .split('/')
                       .pop()
-                      ?.replace(/\.verd(?:-doc)?\.json$/, '')}
+                      ?.replace(/\.verd(?:(?:-doc)?\.json)?$/, '')}
                   </span>
                 </button>
               </div>

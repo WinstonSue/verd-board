@@ -39,7 +39,7 @@ const { controller } = vi.hoisted(() => ({
       { level: 2, text: '章节', anchor: '章节-1', pos: 20 },
     ]),
     getCharacterCount: vi.fn(() => 4),
-    subscribe: vi.fn(() => () => {}),
+    subscribe: vi.fn((_listener: () => void) => () => {}),
   },
 }));
 
@@ -148,6 +148,62 @@ afterEach(async () => {
 });
 
 describe('document navigation', () => {
+  it('updates headings and character counts from controller revisions during continuous edits', async () => {
+    const previous = {
+      subscribe: controller.subscribe.getMockImplementation()!,
+      headings: controller.getHeadings.getMockImplementation()!,
+      count: controller.getCharacterCount.getMockImplementation()!,
+      revision: controller.revision,
+    };
+    const listeners = new Set<() => void>();
+    let count = 0;
+    controller.subscribe.mockImplementation((listener) => {
+      listeners.add(listener);
+      return () => {
+        listeners.delete(listener);
+      };
+    });
+    controller.getHeadings.mockImplementation(() => [
+      { level: 2, text: `Heading ${count}`, anchor: 'heading', pos: 1 },
+    ]);
+    controller.getCharacterCount.mockImplementation(() => count);
+    try {
+      await render();
+      for (count = 1; count <= 128; count++)
+        await act(async () => {
+          controller.revision++;
+          for (const listener of [...listeners]) listener();
+        });
+      expect(
+        container.querySelector('.document-page__toc-list')?.textContent,
+      ).toContain('Heading 128');
+      expect(
+        container.querySelector('.document-page__status')?.textContent,
+      ).toContain('128');
+    } finally {
+      controller.subscribe.mockImplementation(previous.subscribe);
+      controller.getHeadings.mockImplementation(previous.headings);
+      controller.getCharacterCount.mockImplementation(previous.count);
+      controller.revision = previous.revision;
+    }
+  });
+
+  it('uses the latest presentation callback and updates availability when it is removed', async () => {
+    const first = vi.fn(async () => ({ status: 'completed' as const }));
+    const latest = vi.fn(async () => ({ status: 'completed' as const }));
+    await render({ onPresent: first });
+    await render({ onPresent: latest });
+    await click(
+      container.querySelector('[data-action-id="document.presentation"]')!,
+    );
+    expect(first).not.toHaveBeenCalled();
+    expect(latest).toHaveBeenCalledOnce();
+    await render();
+    expect(
+      container.querySelector('[data-action-id="document.presentation"]'),
+    ).toBeNull();
+  });
+
   it('shows presentation and save feedback in the header and keeps history in the menu', async () => {
     const history = createActionRegistry({ getContext: () => ({}) });
     const undo = vi.fn(() => ({ status: 'completed' as const }));

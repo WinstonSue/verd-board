@@ -174,8 +174,26 @@ export const test = base.extend<
           const config = await fs
             .readFile(path.join(workspace, '.verdscrolls/config.json'), 'utf8')
             .then(JSON.parse, () => ({ version: 0, value: {} }));
+          const sessions = await fs
+            .readdir(path.join(workspace, '.verdscrolls/sessions'))
+            .catch((error) => {
+              if (error.code === 'ENOENT') return [] as string[];
+              throw error;
+            });
+          const personal = sessions.filter((name) => name.endsWith('.json'));
+          if (personal.length > 1)
+            throw new Error(
+              'Web fixture has multiple host sessions; select the intended host explicitly',
+            );
           const session = await fs
-            .readFile(path.join(workspace, '.verdscrolls/session.json'), 'utf8')
+            .readFile(
+              path.join(
+                workspace,
+                '.verdscrolls',
+                personal.length ? 'sessions/' + personal[0] : 'session.json',
+              ),
+              'utf8',
+            )
             .then(JSON.parse, () => undefined);
           return { nodes, meta: { config, session } };
         },

@@ -16,7 +16,7 @@ export const isBuiltinAsset = (relative: string) =>
     relative,
   ) ||
   (!relative.split('/').some((p) => p.startsWith('.')) &&
-    /\.verd(?:-doc)?\.json$/.test(relative));
+    /\.verd(?:(?:-doc)?\.json)?$/.test(relative));
 
 /** The same whitelist, checksum and authoring validation serves seeding and updates. */
 export async function readBuiltinRelease(

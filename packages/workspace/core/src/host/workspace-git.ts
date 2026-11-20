@@ -26,6 +26,15 @@ export interface WorkspaceGitStatus {
   canSync: boolean;
   /** Host transport capability, independent of whether a remote is configured or clean. */
   remoteSupported?: boolean;
+  /** Actual repository and the workspace's path within it; paths returned by Git remain workspace-relative. */
+  repository?: {
+    root: string;
+    workspacePath: string;
+    ownership: 'workspace' | 'project';
+  };
+  /** Repository-wide settings and history rewriting may be owned by the enclosing project. */
+  repositoryManaged?: boolean;
+  historyCleanupSupported?: boolean;
   author?: { name: string; email: string };
   blocked?: string[];
   error?: string;

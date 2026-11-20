@@ -17,6 +17,7 @@ import {
   type NodeCell,
 } from '@sue/board-core';
 import {
+  createCardCell,
   createGeometryCell,
   createSwimlaneCell,
   createTableCell,
@@ -71,7 +72,7 @@ const hex = (color: string) => {
 };
 
 describe('Draw role colors', () => {
-  it('uses an explicit source family for edges from otherwise neutral tables', () => {
+  it('uses an explicit source family for table edges', () => {
     const source = createTableCell('table', [[0, 0]], 2, 2);
     source.appearance = {
       styleColor: 'series-5',
@@ -88,13 +89,56 @@ describe('Draw role colors', () => {
     };
     const store = { rootId: 'frame', cells: { [source.id]: source, edge } };
     const theme = resolveBoardTheme(undefined, 'light');
-    expect(drawThemeSeriesIndex(source)).toBeUndefined();
+    expect(drawThemeSeriesIndex(source)).toBe(0);
     expect(drawThemeAppearance(context(edge, theme, store))).toMatchObject({
       styleFamily: 'series-5',
       strokeColor: resolveThemeSeries(theme, 4, 'node', 'overlay').strokeColor,
       fill: 'none',
     });
   });
+  it.each(themes)(
+    '$mode/$appearance gives automatic cards and plain tables the same first family as explicit selection',
+    ({ mode, appearance }) => {
+      const theme = resolveBoardTheme({ themeColorMode: mode }, appearance);
+      for (const source of [
+        createCardCell('card', [[0, 0]], 'Notes'),
+        createTableCell('table', [[0, 0]], 2, 2),
+      ]) {
+        const edge: EdgeCell = {
+          id: 'edge',
+          kind: 'arrow',
+          cellType: 'edge',
+          source: { cellId: source.id },
+          target: { point: [400, 40] },
+          route: { mode: 'auto' },
+        };
+        const store = { rootId: 'frame', cells: { [source.id]: source, edge } };
+        const visual = () =>
+          resolveFrameCellAppearance(
+            context(source, theme, store),
+            frameDrawExtensions,
+          );
+        const before = JSON.stringify(store);
+        const automatic = visual();
+        expect(automatic).toMatchObject({
+          ...resolveThemeSeries(theme, 0, 'container', 'opaque'),
+          styleFamily: 'series-1',
+          styleLevel: 'container',
+        });
+        expect(JSON.stringify(store)).toBe(before);
+        source.appearance = { ...source.appearance, styleColor: 'series-1' };
+        expect(visual()).toMatchObject(automatic);
+        source.appearance.styleColor = undefined;
+        expect(visual()).toMatchObject(automatic);
+        expect(drawThemeAppearance(context(edge, theme, store))).toMatchObject({
+          styleFamily: 'series-1',
+          strokeColor: resolveThemeSeries(theme, 0, 'node', 'overlay')
+            .strokeColor,
+          fill: 'none',
+        });
+      }
+    },
+  );
   it('keeps local readable text on fixed white table cells when entering the text editor in dark appearance', async () => {
     const frame = createFrameCell('frame');
     const table = createTableCell(
@@ -201,7 +245,7 @@ describe('Draw role colors', () => {
           context({ ...edge, source: { point: [0, 0] } }, theme),
         ),
       ).toMatchObject({
-        strokeColor: resolveThemeRole(theme, 'neutral').strokeColor,
+        strokeColor: resolveThemeSeries(theme, 0).strokeColor,
       });
       expect(drawThemeAppearance(context(shape('text'), theme))).toMatchObject({
         fill: 'none',
@@ -229,10 +273,10 @@ describe('Draw role colors', () => {
       const [first, , second] = table.data!.cells;
       expect(
         tableEntryThemeAppearance(context(table, theme), first),
-      ).toMatchObject(resolveThemeRole(theme, 'neutral', 'subtle'));
+      ).toMatchObject(resolveThemeSeries(theme, 0, 'container'));
       expect(
         tableEntryThemeAppearance(context(table, theme), second),
-      ).toMatchObject(resolveThemeRole(theme, 'neutral', 'normal'));
+      ).toMatchObject(resolveThemeSeries(theme, 0, 'node'));
       const header = { ...table, data: { ...table.data!, header: true } };
       expect(
         tableEntryThemeAppearance(context(header, theme), first),

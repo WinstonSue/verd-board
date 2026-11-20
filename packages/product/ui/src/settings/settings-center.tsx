@@ -4,7 +4,7 @@ import {
   WorkspaceInput,
   WorkspaceTag,
 } from '../shared/workspace-design';
-import { Search } from 'lucide-react';
+import { Copy, Search } from 'lucide-react';
 import { ConfigProvider, Menu, theme } from '@sue/design-web-react';
 import {
   SettingsPage,
@@ -35,6 +35,7 @@ export interface SettingsCenterProps {
   section: string;
   onSection(section: string): void;
   onBack(): void;
+  onSetDefaultFileApplications?(): Promise<void>;
   workspace?: WorkspaceSettingsProps;
   testId?: string;
   backTestId?: string;
@@ -45,6 +46,7 @@ function SettingsCenterContent({
   section,
   onSection,
   onBack,
+  onSetDefaultFileApplications,
   workspace,
   testId = 'settings-center',
   backTestId = 'settings-center-back',
@@ -122,6 +124,32 @@ function SettingsCenterContent({
     ? normalized
     : 'personal.general';
   const [storageError, setStorageError] = useState('');
+  const [defaultApplicationError, setDefaultApplicationError] = useState('');
+  const [copiedLocation, setCopiedLocation] = useState('');
+  const [copyingLocation, setCopyingLocation] = useState(false);
+  useEffect(() => {
+    if (!copiedLocation) return;
+    const timer = setTimeout(() => setCopiedLocation(''), 2000);
+    return () => clearTimeout(timer);
+  }, [copiedLocation]);
+  const copyStorageLocation = async () => {
+    if (!workspace?.storageLocation || copyingLocation) return;
+    setStorageError('');
+    setCopiedLocation('');
+    setCopyingLocation(true);
+    try {
+      await navigator.clipboard.writeText(workspace.storageLocation);
+      setCopiedLocation(workspace.storageLocation);
+    } catch {
+      setStorageError(
+        zh
+          ? '复制失败，请重试或手动选择地址复制。'
+          : 'Could not copy. Try again or select and copy the path manually.',
+      );
+    } finally {
+      setCopyingLocation(false);
+    }
+  };
   const [mobileContent, setMobileContent] = useState(false);
   const navigate = async (target: string) => {
     for (const save of drafts.values()) if (!(await save())) return;
@@ -400,6 +428,41 @@ function SettingsCenterContent({
               section={selected === 'personal.editor' ? 'editor' : 'general'}
             />
           )}
+          {selected === 'personal.general' && onSetDefaultFileApplications && (
+            <SettingsSection title={zh ? '文件打开方式' : 'File associations'}>
+              <SettingsRow
+                label={
+                  zh ? 'Markdown 和 .verd 画布' : 'Markdown and .verd canvases'
+                }
+              >
+                <WorkspaceButton
+                  type="button"
+                  disabled={busy}
+                  onClick={async () => {
+                    setBusy(true);
+                    setDefaultApplicationError('');
+                    try {
+                      await onSetDefaultFileApplications();
+                    } catch (error) {
+                      setDefaultApplicationError(String(error));
+                    } finally {
+                      setBusy(false);
+                    }
+                  }}
+                >
+                  {zh ? '设置默认打开方式' : 'Set default application'}
+                </WorkspaceButton>
+              </SettingsRow>
+              <p>
+                {zh
+                  ? '按操作系统提示确认默认应用。'
+                  : 'Confirm the default application in the system prompt.'}
+              </p>
+              {defaultApplicationError && (
+                <WorkspaceAlert type="error" title={defaultApplicationError} />
+              )}
+            </SettingsSection>
+          )}
           {w && selected.startsWith('workspace.') && (
             <>
               {selected === 'workspace.project' && (
@@ -439,19 +502,53 @@ function SettingsCenterContent({
                     <SettingsSection title={zh ? '存储位置' : 'Storage'}>
                       <SettingsRow label={zh ? '工作区资料' : 'Workspace data'}>
                         {w.storage !== 'browser' && w.storageLocation ? (
-                          <WorkspaceButton
-                            type="button"
-                            intent="ghost"
-                            data-testid="workspace-storage-location"
-                            title={w.storageLocation}
-                            onClick={() =>
-                              void w
-                                .onOpenStorage?.()
-                                .catch((e) => setStorageError(String(e)))
-                            }
-                          >
-                            {w.storageLocation}
-                          </WorkspaceButton>
+                          <div className="settings-storage-location">
+                            {w.onOpenStorage ? (
+                              <WorkspaceButton
+                                type="button"
+                                intent="ghost"
+                                className="settings-storage-path"
+                                data-testid="workspace-storage-location"
+                                title={w.storageLocation}
+                                onClick={() => {
+                                  setStorageError('');
+                                  void w.onOpenStorage!().catch((e) =>
+                                    setStorageError(String(e)),
+                                  );
+                                }}
+                              >
+                                {w.storageLocation}
+                              </WorkspaceButton>
+                            ) : (
+                              <span
+                                className="settings-storage-path"
+                                data-testid="workspace-storage-location"
+                              >
+                                {w.storageLocation}
+                              </span>
+                            )}
+                            <WorkspaceButton
+                              type="button"
+                              intent="ghost"
+                              size="small"
+                              icon={<Copy size={14} aria-hidden />}
+                              data-testid="workspace-storage-copy"
+                              disabled={copyingLocation}
+                              onClick={() => void copyStorageLocation()}
+                            >
+                              {zh ? '复制地址' : 'Copy path'}
+                            </WorkspaceButton>
+                            <span
+                              role="status"
+                              className="settings-storage-copy-status"
+                            >
+                              {copiedLocation === w.storageLocation
+                                ? zh
+                                  ? '已复制'
+                                  : 'Copied'
+                                : ''}
+                            </span>
+                          </div>
                         ) : (
                           <span>
                             {w.storage === 'browser'
@@ -463,10 +560,31 @@ function SettingsCenterContent({
                                 : 'Reading location…'}
                           </span>
                         )}
-                        {storageError && (
-                          <WorkspaceAlert type="error" title={storageError} />
-                        )}
                       </SettingsRow>
+                      {w.directoryContext && (
+                        <>
+                          <SettingsRow label={zh ? '所属项目' : 'Project'}>
+                            <code>{w.directoryContext.projectRoot}</code>
+                          </SettingsRow>
+                          <SettingsRow
+                            label={zh ? '项目内目录' : 'Directory in project'}
+                          >
+                            <code>
+                              {w.directoryContext.workspacePath || '.'}
+                            </code>
+                          </SettingsRow>
+                          {w.directoryContext.repositoryRoot && (
+                            <SettingsRow
+                              label={zh ? 'Git 仓库' : 'Git repository'}
+                            >
+                              <code>{w.directoryContext.repositoryRoot}</code>
+                            </SettingsRow>
+                          )}
+                        </>
+                      )}
+                      {storageError && (
+                        <WorkspaceAlert type="error" title={storageError} />
+                      )}
                     </SettingsSection>
                   )}
                   {w.onMigrateBrowserData && (
@@ -481,27 +599,68 @@ function SettingsCenterContent({
                   )}
                   {w.agent && (
                     <SettingsSection
-                      title={zh ? 'AI 接入' : 'AI connection'}
+                      title={zh ? '外部 AI 助手' : 'External AI assistants'}
                       data-testid="workspace-agent-status"
                     >
+                      <p>
+                        {zh
+                          ? '让可访问本地文件、执行命令的 AI 助手，按青编格式创建和修改文档、图表。'
+                          : 'Let an AI assistant with local file and command access create and edit VerdBoard documents and diagrams.'}
+                      </p>
                       <WorkspaceTag>
-                        {w.agent.ready
+                        {w.agent.enabled === false
                           ? zh
-                            ? '已就绪'
-                            : 'Ready'
-                          : zh
-                            ? '暂不可用，重新打开工作区后可重试。'
-                            : 'Not ready · reopen workspace or run verd doctor --repair'}
+                            ? '尚未启用编写工具'
+                            : 'Authoring tools not enabled'
+                          : w.agent.ready
+                            ? zh
+                              ? '编写工具已就绪'
+                              : 'Authoring tools ready'
+                            : zh
+                              ? '编写工具暂不可用'
+                              : 'Authoring tools unavailable'}
                       </WorkspaceTag>
-                      <Disclosure label={zh ? '诊断详情' : 'Diagnostics'}>
-                        <div className="vm-diagnostics">
-                          {w.agent.diagnostics.map((d, i) => (
-                            <p key={i}>
-                              {d.code}: {d.message}
-                            </p>
-                          ))}
-                        </div>
-                      </Disclosure>
+                      {w.onInitializeAgent && !w.agent.ready && (
+                        <WorkspaceButton
+                          disabled={disabled || busy}
+                          onClick={() => {
+                            setBusy(true);
+                            setStorageError('');
+                            void w.onInitializeAgent!()
+                              .catch((error) => setStorageError(String(error)))
+                              .finally(() => setBusy(false));
+                          }}
+                        >
+                          {zh
+                            ? '启用或修复编写工具'
+                            : 'Enable or repair authoring tools'}
+                        </WorkspaceButton>
+                      )}
+                      <p>
+                        {w.agent.enabled === false
+                          ? zh
+                            ? '启用后仅在当前工作区写入编写入口，不修改所属项目根目录的规范。'
+                            : 'Enabling adds authoring instructions to this workspace only, preserving the enclosing project rules.'
+                          : w.agent.ready
+                            ? zh
+                              ? '在 AI 助手中打开上方工作区目录，让它读取 AGENTS.md，再描述要创建或修改的内容。'
+                              : 'Open the workspace folder above in your AI assistant, ask it to read AGENTS.md, then describe what you want to create or change.'
+                            : zh
+                              ? '重新打开工作区后重试；若仍不可用，请查看诊断详情。'
+                              : 'Reopen the workspace and try again. If tools are still unavailable, check the diagnostics.'}
+                      </p>
+                      {w.agent.enabled !== false &&
+                        w.agent.diagnostics.length > 0 && (
+                          <Disclosure label={zh ? '诊断详情' : 'Diagnostics'}>
+                            <div className="vm-diagnostics">
+                              {w.agent.diagnostics.map((d, i) => (
+                                <p key={i}>
+                                  {d.code}: {d.message}
+                                </p>
+                              ))}
+                            </div>
+                          </Disclosure>
+                        )}
                     </SettingsSection>
                   )}
                   {w.builtin && (

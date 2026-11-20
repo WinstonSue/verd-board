@@ -92,7 +92,7 @@ test('native documents navigate to unmounted files, duplicate sections and canva
 }) => {
   await page.goto('/');
   const input = page.locator(
-    'input[accept=".json,.verd.json,.verd-doc.json,.md,.markdown"]',
+    'input[accept=".json,.verd,.verd.json,.verd-doc.json,.md,.markdown"]',
   );
   for (const { file, title, suffix } of [
     { file: destination, title: destination.title, suffix: 'verd-doc' },

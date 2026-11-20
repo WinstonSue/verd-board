@@ -1,12 +1,29 @@
 import { contextBridge, ipcRenderer } from 'electron';
 
+// Keep activations until a live workspace view subscribes, including React remounts.
+const workspaceFileListeners = new Set<(path: string) => void>();
+const workspaceFilePaths: string[] = [];
+const deliverWorkspaceFiles = () => {
+  if (!workspaceFileListeners.size) return;
+  for (const path of workspaceFilePaths.splice(0))
+    workspaceFileListeners.forEach((listener) => listener(path));
+};
+const receiveWorkspaceFiles = () => {
+  void ipcRenderer.invoke('files:workspace-pending').then((paths: string[]) => {
+    workspaceFilePaths.push(...paths);
+    deliverWorkspaceFiles();
+  });
+};
+if (process.isMainFrame)
+  ipcRenderer.on('files:workspace-file', receiveWorkspaceFiles);
+
 if (process.isMainFrame)
   contextBridge.exposeInMainWorld('electronAPI', {
     readBundledPdfAsset: (kind: string, name: string) =>
       ipcRenderer.invoke('pdf:asset', kind, name),
     openExternal: (url: string) => ipcRenderer.invoke('link:external', url),
     whenFullscreenReady: () => ipcRenderer.invoke('window:fullscreen-ready'),
-    onShutdown: (flush: () => Promise<void>) => {
+    onShutdown: (flush: () => Promise<void>, onCancelled?: () => void) => {
       const listener = (
         _event: Electron.IpcRendererEvent,
         requestId: number,
@@ -28,11 +45,59 @@ if (process.isMainFrame)
           );
       };
       ipcRenderer.on('workspace:flush-request', listener);
+      const resume = () => {
+        onCancelled?.();
+      };
+      ipcRenderer.on('files:resume', resume);
       ipcRenderer.send('workspace:flush-ready', true);
       return () => {
         ipcRenderer.removeListener('workspace:flush-request', listener);
+        ipcRenderer.removeListener('files:resume', resume);
         ipcRenderer.send('workspace:flush-ready', false);
       };
+    },
+    files: {
+      binding: () => ipcRenderer.invoke('files:binding'),
+      warnings: () => ipcRenderer.invoke('files:warnings'),
+      readImage: (href: string) => ipcRenderer.invoke('files:image', href),
+      openLink: (href: string) => ipcRenderer.invoke('files:link', href),
+      setDefaults: () => ipcRenderer.invoke('files:defaults'),
+      resolve: (action: string, files: unknown) =>
+        ipcRenderer.invoke('files:resolve', action, files),
+      onOpenWorkspaceFile: (listener: (path: string) => void) => {
+        workspaceFileListeners.add(listener);
+        deliverWorkspaceFiles();
+        receiveWorkspaceFiles();
+        return () => {
+          workspaceFileListeners.delete(listener);
+        };
+      },
+      host: {
+        readSnapshot: (h: unknown) =>
+          ipcRenderer.invoke('file-host:snapshot', h),
+        readFile: (h: unknown, path: string) =>
+          ipcRenderer.invoke('file-host:read-file', h, path),
+        readResource: (h: unknown, key: string) =>
+          ipcRenderer.invoke('file-host:read-resource', h, key),
+        commit: (h: unknown, request: unknown) =>
+          ipcRenderer.invoke('file-host:commit', h, request),
+        resolveConflict: (h: unknown, request: unknown) =>
+          ipcRenderer.invoke('file-host:resolve-conflict', h, request),
+        closeWorkspace: (h: unknown) =>
+          ipcRenderer.invoke('file-host:close', h),
+        subscribe: (h: unknown, listener: (hint: unknown) => void) => {
+          const id = `file-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+          const channel = `file-host:change:${id}`;
+          const wrapped = (_event: Electron.IpcRendererEvent, hint: unknown) =>
+            listener(hint);
+          ipcRenderer.on(channel, wrapped);
+          ipcRenderer.send('file-host:subscribe', h, id);
+          return () => {
+            ipcRenderer.removeListener(channel, wrapped);
+            ipcRenderer.send('file-host:unsubscribe', id);
+          };
+        },
+      },
     },
     storage: {
       keys: () => ipcRenderer.invoke('storage:keys'),
@@ -83,6 +148,8 @@ if (process.isMainFrame)
       listWorkspaceHistory: () => ipcRenderer.invoke('workspace-host:history'),
       readSnapshot: (handle: unknown) =>
         ipcRenderer.invoke('workspace-host:snapshot', handle),
+      initializeAgent: (handle: unknown) =>
+        ipcRenderer.invoke('workspace-host:initialize-agent', handle),
       readFile: (handle: unknown, path: string) =>
         ipcRenderer.invoke('workspace-host:read-file', handle, path),
       readResource: (handle: unknown, key: string) =>

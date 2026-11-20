@@ -70,6 +70,15 @@ test('new Desktop workspace exposes project context and built-in tools to an ext
     await expect(page.locator('.workspace-shell')).toBeVisible({
       timeout: 60000,
     });
+    expect(await readFile(path.join(project, 'AGENTS.md'), 'utf8')).toBe(
+      '# Existing project\nPreserve this.\n',
+    );
+    await openWorkspaceMenu(page);
+    await page.getByTestId('workspace-open-settings').click();
+    await page.getByTestId('settings-nav-workspace.data').click();
+    await page
+      .getByRole('button', { name: '启用或修复编写工具', exact: true })
+      .click();
     await expect
       .poll(async () =>
         (await readFile(path.join(project, 'AGENTS.md'), 'utf8')).includes(
@@ -102,9 +111,6 @@ test('new Desktop workspace exposes project context and built-in tools to an ext
       return JSON.parse(result.stdout);
     }
     expect(context().agent.ready).toBe(true);
-    await openWorkspaceMenu(page);
-    await page.getByTestId('workspace-open-settings').click();
-    await page.getByTestId('settings-nav-workspace.data').click();
     await expect(page.getByTestId('workspace-agent-status')).toContainText(
       '已就绪',
     );

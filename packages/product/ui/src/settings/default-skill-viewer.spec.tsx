@@ -12,16 +12,10 @@ import { I18nProvider } from '../i18n';
 (
   globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }
 ).IS_REACT_ACT_ENVIRONMENT = true;
-HTMLDialogElement.prototype.showModal ??= function () {
-  this.open = true;
-};
-HTMLDialogElement.prototype.close ??= function () {
-  this.open = false;
-};
 Range.prototype.getClientRects ??= () => [] as unknown as DOMRectList;
 Range.prototype.getBoundingClientRect ??= () => new DOMRect();
 
-it('reads through a readonly editor and preserves exact source while switching items', async () => {
+it('reads inline through a readonly editor and preserves exact source while switching items', async () => {
   const container = document.createElement('div');
   document.body.append(container);
   const root = createRoot(container);
@@ -56,6 +50,10 @@ it('reads through a readonly editor and preserves exact source while switching i
     );
   try {
     await act(async () => render());
+    expect(container.querySelector('dialog')).toBeNull();
+    expect(document.activeElement).toBe(
+      container.querySelector('[data-testid="workspace-default-skill-back"]'),
+    );
     const editor = container.querySelector<HTMLElement>('.tiptap')!;
     expect(editor.textContent).toBe('First document');
     expect(editor.getAttribute('contenteditable')).toBe('false');
@@ -74,8 +72,19 @@ it('reads through a readonly editor and preserves exact source while switching i
     expect(other?.getAttribute('contenteditable')).toBe('false');
     expect(other).not.toBe(editor);
     expect(JSON.stringify(value)).toBe(original);
-    await click('[aria-label="关闭默认 Skill"]');
+    await click('[data-testid="workspace-default-skill-back"]');
     expect(close).toHaveBeenCalledOnce();
+    const editorEscape = vi.fn((event: Event) => event.stopPropagation());
+    other!.addEventListener('keydown', editorEscape);
+    const escape = new KeyboardEvent('keydown', {
+      key: 'Escape',
+      bubbles: true,
+      cancelable: true,
+    });
+    await act(async () => other!.dispatchEvent(escape));
+    expect(escape.defaultPrevented).toBe(true);
+    expect(editorEscape).not.toHaveBeenCalled();
+    expect(close).toHaveBeenCalledTimes(2);
     await act(async () => render('Legacy guidance\n  keep spacing'));
     expect(container.querySelector('pre')?.textContent).toBe(
       'Legacy guidance\n  keep spacing',

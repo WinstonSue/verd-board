@@ -64,7 +64,7 @@ it('electron-builder includes every native document and nested diagram while exc
       '{}',
     );
     const native = (await listing(source)).filter((file) =>
-      /\.verd(?:-doc)?\.json$/.test(file),
+      /\.verd(?:(?:-doc)?\.json)?$/.test(file),
     );
     await fs.mkdir(path.join(source, '.verdscrolls', 'trash'), {
       recursive: true,
@@ -114,7 +114,7 @@ it('electron-builder includes every native document and nested diagram while exc
         assetPath,
       ].sort(),
     );
-    expect(native).toContain('架构图/项目导览.verd.json');
+    expect(native).toContain('架构图/项目导览.verd');
     expect(native).toContain('文档/架构/系统架构.verd-doc.json');
   } finally {
     await fs.rm(dir, { recursive: true, force: true });

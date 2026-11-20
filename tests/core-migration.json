@@ -1,0 +1,816 @@
+{
+  "version": 1,
+  "baseline": "d03eea0bd3bad255f0048beb3a9d97a642f3a571",
+  "files": [
+    {
+      "from": "packages/engine/core/src/cell/arrangement-scenes.spec.ts",
+      "cases": [
+        {
+          "title": "'keeps document cards outside a specialized layout and ignores derived transparent layer bands'",
+          "signature": "5ab3636c0ada61726225649fa6643c89b105aec0f11e0a441f7d5c6a6d16a907",
+          "to": ["tests/contracts/src/core-cell-arrangement-scenes.spec.ts"]
+        },
+        {
+          "title": "'arranges %s without changing sizes, membership, topology or child order; repeated application is stable'",
+          "signature": "8ff4efd28bc77a145a55582aefb6f008fd7b498f08f9d1c27a614e4853e9f5b4",
+          "to": ["tests/contracts/src/core-cell-arrangement-scenes.spec.ts"]
+        },
+        {
+          "title": "'keeps group interiors and locked or unselected modules in place'",
+          "signature": "f17610569b08fd25f8bd5328292e1f5b734c51cd32ba26083e8cd38479e17167",
+          "to": ["tests/contracts/src/core-cell-arrangement-scenes.spec.ts"]
+        },
+        {
+          "title": "'rejects architecture groups crossing layer boundaries'",
+          "signature": "a9c394135378b288ebbdcb4d04c7b5928c85a1eac07c82898526119e74246ba1",
+          "to": ["tests/contracts/src/core-cell-arrangement-scenes.spec.ts"]
+        },
+        {
+          "title": "'preserves workflow topology and rejects cycles including cycles created by grouping'",
+          "signature": "f4c5293c5c4afb4fdead6c3de7904daf21461b47ef4cc5e9802a673189cec38b",
+          "to": ["tests/contracts/src/core-cell-arrangement-scenes.spec.ts"]
+        }
+      ]
+    },
+    {
+      "from": "packages/engine/core/src/cell/arrangement.spec.ts",
+      "cases": [
+        {
+          "title": "'aligns rotated visual bounds in one reversible transaction'",
+          "signature": "090a6c35bbdbfe6239fbb46a41e444f610cf57c15c19b6acbba1772be4ce444e",
+          "to": ["packages/engine/core/src/cell/arrangement.spec.ts"]
+        },
+        {
+          "title": "'distributes different sizes along %s with fixed ends and bounded rounding'",
+          "signature": "e4faa9ea41645559f26c56ab07a5ac260574a980ba797da863d4325e609c9573",
+          "to": ["packages/engine/core/src/cell/arrangement.spec.ts"]
+        },
+        {
+          "title": "'moves nested groups and their free routes as one block, keeping Frame interiors intact'",
+          "signature": "ba9672ed06492e1451edc156b05f0f0dc87dbd24008a97b53fe05ac735f721a1",
+          "to": ["packages/engine/core/src/cell/arrangement.spec.ts"]
+        },
+        {
+          "title": "'lays out only a selection, or the current Frame direct objects when empty'",
+          "signature": "e326b9b74a69074bb7c916794e4e07c07b015f4f0551098866e3cddde43129a6",
+          "to": ["packages/engine/core/src/cell/arrangement.spec.ts"]
+        },
+        {
+          "title": "'rejects cross-Frame scope and prevents locked objects from being partly arranged'",
+          "signature": "24680183840d169b764da57723963e8a591cd93ca04015303a111a01b30b6ac6",
+          "to": ["packages/engine/core/src/cell/arrangement.spec.ts"]
+        },
+        {
+          "title": "'supports nested focus, nested regrouping and one-level ungrouping without changing z-order'",
+          "signature": "75f12cb653e71bdfce6296095d62d506e46f8a9c267f00419583bf79a73f43de",
+          "to": ["packages/engine/core/src/cell/arrangement.spec.ts"]
+        },
+        {
+          "title": "'locked groups protect nested Frame content and cascaded deletions'",
+          "signature": "364beaa324add6a4036f59bf27a82941103c06bd1ece1a7de3b38a0d2a166249",
+          "to": ["packages/engine/core/src/cell/arrangement.spec.ts"]
+        }
+      ]
+    },
+    {
+      "from": "packages/engine/core/src/cell/cell.spec.ts",
+      "cases": [
+        {
+          "title": "'keeps hierarchy on the frame and restores it with undo'",
+          "signature": "44d8a3c216e82eb72b31153fe7473175253adaf8a45073976fa30781f18226fe",
+          "to": ["tests/contracts/src/core-cell-cell.spec.ts"]
+        },
+        {
+          "title": "'drops edges whose endpoint was removed and dissolves a small group'",
+          "signature": "5d031b342d4f58982dd2d3a115b9461bf3c2c31bb086152f9f9b50759d3f292a",
+          "to": ["tests/contracts/src/core-cell-cell.spec.ts"]
+        },
+        {
+          "title": "'asks the edge kind whether a connection is allowed'",
+          "signature": "8c8660bdd4490e887026be0639d47b70d4d625c103c993b1dcb79e011979f37d",
+          "to": ["tests/contracts/src/core-cell-cell.spec.ts"]
+        },
+        {
+          "title": "'restores descendants and connected edges after deleting a frame'",
+          "signature": "b935c3db1541275cfc3298a6f789681f5734fe402a95907ee4a1e6732a7f749d",
+          "to": ["tests/contracts/src/core-cell-cell.spec.ts"]
+        },
+        {
+          "title": "'dissolves groups after member deletion and restores the relationship on undo'",
+          "signature": "775c771c52d019a29ef42ff6f7ef51a06ba504461191f8569b44b50b6e939423",
+          "to": ["tests/contracts/src/core-cell-cell.spec.ts"]
+        },
+        {
+          "title": "'undoes a transaction with dependent insert and replace operations'",
+          "signature": "862f86a7ef29145406d190edccc627b6ff49b3840b2a8125895d82ca95cc41b7",
+          "to": ["tests/contracts/src/core-cell-cell.spec.ts"]
+        },
+        {
+          "title": "'rejects an invalid transaction atomically'",
+          "signature": "8d58de13abdf20189718bf801fe0c23040da822e3708eb734727cf7077160aa2",
+          "to": ["tests/contracts/src/core-cell-cell.spec.ts"]
+        },
+        {
+          "title": "'rejects cross-frame edges and non-consecutive groups'",
+          "signature": "b9ddc0a9df28915436ea2fe7ab55d59c5f56a4bda61d4ec9d5941c5d7fc36f60",
+          "to": ["tests/contracts/src/core-cell-cell.spec.ts"]
+        },
+        {
+          "title": "'protects the last anchor from moves and permits atomic anchor replacement'",
+          "signature": "7b9e8c4cdf77b0e2b33d4d2eb49179fedfddcb425bf2118690810b0814e8bf79",
+          "to": ["tests/contracts/src/core-cell-cell.spec.ts"]
+        },
+        {
+          "title": "'deletes a parent, descendant and incident edge selection atomically without duplicate removals'",
+          "signature": "78b16d41df465547bbe66b80dd28d386942a1eedb632bcb2f4ce88dcaed799b7",
+          "to": ["tests/contracts/src/core-cell-cell.spec.ts"]
+        }
+      ]
+    },
+    {
+      "from": "packages/engine/core/src/cell/clear.spec.ts",
+      "cases": [
+        {
+          "title": "'retains required %s anchors and restores the exact document in one undo'",
+          "signature": "23f71ab48704ed7384060cbe819f36021a4371c949388c22099cf4c6c73c9909",
+          "to": ["tests/contracts/src/core-cell-clear.spec.ts"]
+        },
+        {
+          "title": "'clears descendants and groups inside one frame without touching its sibling'",
+          "signature": "90d47b41f3b3f3f1039e8d1f71b099ca803a27dfd926e0d52b7e96a0f27e7210",
+          "to": ["packages/engine/core/src/cell/clear.spec.ts"]
+        }
+      ]
+    },
+    {
+      "from": "packages/engine/core/src/cell/clipboard.spec.ts",
+      "cases": [
+        {
+          "title": "'makes missing arrow endpoints free at their actual port'",
+          "signature": "8484b4d81cc494fe58500826a5f84a4ff477f8a5171907827f766bf8ee9d0928",
+          "to": ["packages/engine/core/src/cell/clipboard.spec.ts"]
+        },
+        {
+          "title": "'moves the pasted frame shell without changing its internal coordinate system'",
+          "signature": "39337180c8ab8f154df5268182d315b79b39c60916d01e908ccf000cdb5fd5c6",
+          "to": ["packages/engine/core/src/cell/clipboard.spec.ts"]
+        }
+      ]
+    },
+    {
+      "from": "packages/engine/core/src/cell/commands.spec.ts",
+      "cases": [
+        {
+          "title": "'distinguishes owned Frame shells from global and mounted roots without changing ordinary node capabilities'",
+          "signature": "60c5ff6e69338d6666fcea9c4c3179ab43f56711c2bde9891a89b7efbd2c63e9",
+          "to": ["packages/engine/core/src/cell/commands.spec.ts"]
+        },
+        {
+          "title": "'blocks Frame modifications under a locked ancestor or group and preserves whole-selection capability checks'",
+          "signature": "2d80d1d005801689d8721a6a492235b103d1babab1cdfcf25e2cb8d4a15cf8c4",
+          "to": ["packages/engine/core/src/cell/commands.spec.ts"]
+        },
+        {
+          "title": "'translates selected groups and Frame shells once, keeps nested coordinates and restores the whole selection in one undo'",
+          "signature": "61eef38571e5d9c2214fac8fa62b7a54bd6227e53721f9ce666c76066315c402",
+          "to": ["packages/engine/core/src/cell/commands.spec.ts"]
+        },
+        {
+          "title": "'aligns a group bounding block without changing the spacing of its members'",
+          "signature": "97a103d388bb6ef595f970055891f568cf6b1ffd57fad894a12f0c238f476851",
+          "to": ["packages/engine/core/src/cell/commands.spec.ts"]
+        },
+        {
+          "title": "'moves a group as a contiguous layer block with one-step history'",
+          "signature": "ba56ce6bc041d87f635cdc3385f374d33954c96fc6447f0e7974a47895e6ffe1",
+          "to": ["packages/engine/core/src/cell/commands.spec.ts"]
+        },
+        {
+          "title": "'formats mixed groups, edges and nested Frames atomically without editing locked cells or Frame descendants'",
+          "signature": "c57e905ec0203e268ce85ada020c72553a1646747591d44d74a6d1fb756eccc6",
+          "to": ["packages/engine/core/src/cell/commands.spec.ts"]
+        },
+        {
+          "title": "'keeps locked group members in place when changing layer order'",
+          "signature": "3d2efe08388775b3e92b684035a4ce4365a1e73c40ab7de7a9049527887045c9",
+          "to": ["packages/engine/core/src/cell/commands.spec.ts"]
+        }
+      ]
+    },
+    {
+      "from": "packages/engine/core/src/cell/document-reference.spec.ts",
+      "cases": [
+        {
+          "title": "`is independently editable as a shell in ${scene ?? 'whiteboard'}, never as document content`",
+          "signature": "11418b4ed4923f9b487157af7a8be1ca479eb9e264a12a6d2cb5e601d815e644",
+          "to": ["tests/contracts/src/core-cell-document-reference.spec.ts"]
+        },
+        {
+          "title": "'rejects malformed targets, rotation and connected cards while allowing missing source files'",
+          "signature": "dc86a41e07f4825aa799276e0ff3541b1ea9263be2b4db4ba2702c862ef99044",
+          "to": ["packages/engine/core/src/cell/document-reference.spec.ts"]
+        },
+        {
+          "title": "'editable document Frames are allowed only in regular canvases and keep Frame shell capabilities'",
+          "signature": "fd0d7d9e8cc08c2ef319c9d076a27edf3ff0d18f37e15d4c45e2e9d196157aee",
+          "to": ["tests/contracts/src/core-cell-document-reference.spec.ts"]
+        }
+      ]
+    },
+    {
+      "from": "packages/engine/core/src/cell/edge-edit.spec.ts",
+      "cases": [
+        {
+          "title": "'snaps to actual ports or shape boundaries and never to another Frame child'",
+          "signature": "ba838cc249088a28d82440089e780d848e6ba2a7187ae268af3932306f06a973",
+          "to": ["packages/engine/core/src/cell/edge-edit.spec.ts"]
+        },
+        {
+          "title": "'updates explicit route endpoints when binding and releasing an arrow'",
+          "signature": "de3b649ec2a3f3908dc62f671daccab86ff6c725e777b73b181f1c559f016756",
+          "to": ["packages/engine/core/src/cell/edge-edit.spec.ts"]
+        },
+        {
+          "title": "'keeps endpoints and orthogonality while moving a bend or segment'",
+          "signature": "2c4e96a1df4f6007e506649bff751481a79f82ddefcb0ab7ff6f8043dbdf270e",
+          "to": ["packages/engine/core/src/cell/edge-edit.spec.ts"]
+        },
+        {
+          "title": "'adds curve controls and positions labels by distance along the route'",
+          "signature": "0f64759e6e2165cb8c837b7f8ec0e4d55a8df20a7236818cfcb12452a763ba2b",
+          "to": ["packages/engine/core/src/cell/edge-edit.spec.ts"]
+        },
+        {
+          "title": "'keeps distributed automatic attachment points when authoring a bend or segment'",
+          "signature": "7962bac91c9824c2fd3a8b53f15a417fc9b0d334b1adec7c8a230623362ba9a6",
+          "to": ["packages/engine/core/src/cell/edge-edit.spec.ts"]
+        }
+      ]
+    },
+    {
+      "from": "packages/engine/core/src/cell/frame.spec.ts",
+      "cases": [
+        {
+          "title": "'contains the title and content in the outer shell without extending its bounds'",
+          "signature": "6d7150a45e24924764db11c9a4f5396d8b7ad96e67f0dcd6ebe6680418e0ce60",
+          "to": ["packages/engine/core/src/cell/frame.spec.ts"]
+        },
+        {
+          "title": "'safely collapses the content viewport of legacy small shells'",
+          "signature": "1f5de4e39121d20144983136cbf70a5c0bc3ad9de1edfbd534fb4733953c912a",
+          "to": ["packages/engine/core/src/cell/frame.spec.ts"]
+        },
+        {
+          "title": "'converts through centered nested shells and round trips without moving content'",
+          "signature": "02e78c952e3de93d7ee336c0e7e93da4047418746787aa3d165f8a99af44fc54",
+          "to": ["packages/engine/core/src/cell/frame.spec.ts"]
+        },
+        {
+          "title": "'includes free arrows and their control points in fit bounds'",
+          "signature": "0c4da1c1ebd0bc292e64eae65351d3dc1bed2a89d2bc82f9033cc50cd0ef6aea",
+          "to": ["packages/engine/core/src/cell/frame.spec.ts"]
+        },
+        {
+          "title": "'rejects inverse transforms of collapsed shells'",
+          "signature": "0d06fc14aca2e11b5b976e8146cab191663b19525b0b88954c8af7f3a03d2bdb",
+          "to": ["packages/engine/core/src/cell/frame.spec.ts"]
+        }
+      ]
+    },
+    {
+      "from": "packages/engine/core/src/cell/geometry-plan.spec.ts",
+      "cases": [
+        {
+          "title": "'keeps a locked architecture layer and all of its members fixed during joint layout'",
+          "signature": "1c93faa9b02fb2153b04747a4adc5e56b022c6c1af336fc1fb5e59a67dd5dcd0",
+          "to": ["tests/contracts/src/core-cell-geometry-plan.spec.ts"]
+        },
+        {
+          "title": "'uses a roomy fallback for one movable endpoint beside fixed outside nodes'",
+          "signature": "82e4ff0cacd52353a6f4b119e7484a58bcdb8a508c016c486326770c6b3a03cc",
+          "to": ["packages/engine/core/src/cell/geometry-plan.spec.ts"]
+        },
+        {
+          "title": "'grows unlocked in-scope swimlanes and reports a locked container without moving it'",
+          "signature": "278003fe9861866a761d160f87a843033315c2b2a42a4bda3bc55ffb3142495f",
+          "to": ["tests/contracts/src/core-cell-geometry-plan.spec.ts"]
+        },
+        {
+          "title": "'keeps Mind and sequence projections under domain ownership, including core routing exclusion'",
+          "signature": "2176f4de41f482022bf6667895129f5a3ccd7a6cd66af0f7eb7556c56e551784",
+          "to": ["tests/contracts/src/core-cell-geometry-plan.spec.ts"]
+        },
+        {
+          "title": "'preserves UML relation markers, multiplicity and legal association cycles while ranking inheritance'",
+          "signature": "931198936bc08e2a4ea400ffe6d5833ff2ba039976cdb45250163e3391b27d97",
+          "to": ["tests/contracts/src/core-cell-geometry-plan.spec.ts"]
+        },
+        {
+          "title": "'packs independent workflows as separate units without mixing their nodes'",
+          "signature": "81c13409ece4a1c94ad7c572e6c4ae8806521c6e01209e2621785f2eb3dd63e1",
+          "to": ["tests/contracts/src/core-cell-geometry-plan.spec.ts"]
+        },
+        {
+          "title": "'creates safe deterministic channels for %i edges sharing one real port, in one undo step'",
+          "signature": "72152370ee42336ab3ce27b84143584a8a104275a8da5d597a864c67fb8f102c",
+          "to": ["packages/engine/core/src/cell/geometry-plan.spec.ts"]
+        },
+        {
+          "title": "'keeps failed edges and fixed nodes while applying successful edge-only results'",
+          "signature": "f21da95b1e2fc149804f91cd2b69236d978f5ba272c8790a6bf0f100be35aabc",
+          "to": ["packages/engine/core/src/cell/geometry-plan.spec.ts"]
+        },
+        {
+          "title": "'preserves legacy manual points in background and replaces them only for explicit commands'",
+          "signature": "53c24cc054818e3c3d9fe41723a445272c13d518fa07dfd466a8793e8ca1e9e1",
+          "to": ["packages/engine/core/src/cell/geometry-plan.spec.ts"]
+        },
+        {
+          "title": "'uses painted rotated bounds, independent of UI state and zoom'",
+          "signature": "d74f6850ce4660bc81557da4b07707214825bc68689741477fff80daed128c9b",
+          "to": ["packages/engine/core/src/cell/geometry-plan.spec.ts"]
+        },
+        {
+          "title": "'retries an architecture layout with its layer headers and keeps semantic data'",
+          "signature": "0d93ba7724554f2aa78800431046a2521f3f02a32c305e01f7f16a46f9d4dc80",
+          "to": ["tests/contracts/src/core-cell-geometry-plan.spec.ts"]
+        },
+        {
+          "title": "'lays out cyclic process graphs without losing any edges'",
+          "signature": "24084aa75275d7d20094eb8fc3673351f31130764f1b2a52f2d3eb9f53e34200",
+          "to": ["tests/contracts/src/core-cell-geometry-plan.spec.ts"]
+        }
+      ]
+    },
+    {
+      "from": "packages/engine/core/src/cell/group-bounds.spec.ts",
+      "cases": [
+        {
+          "title": "'plans a Frame once for all nested-group arrows and includes their obstacle detours'",
+          "signature": "3caa5f8092b0d5a49a665218257ee360ef0c3322a39d6002e6550ad5886a0dbd",
+          "to": ["packages/engine/core/src/cell/group-bounds.spec.ts"]
+        },
+        {
+          "title": "'uses independent Frame contexts for separate groups'",
+          "signature": "330de782b8cc7950e939ea5ee6a38cf58482c30048d0eb60ea3f9a2127db118a",
+          "to": ["packages/engine/core/src/cell/group-bounds.spec.ts"]
+        },
+        {
+          "title": "'keeps fixed curves, rotated nodes and Frame shells in bounds without routing hidden or nested content'",
+          "signature": "018f338ab5e1486b8083392fc8a3ae9931bd7d10fb923ddd3488d2b48293d97d",
+          "to": ["packages/engine/core/src/cell/group-bounds.spec.ts"]
+        }
+      ]
+    },
+    {
+      "from": "packages/engine/core/src/cell/group-nesting.spec.ts",
+      "cases": [
+        {
+          "title": "'keeps nodes, arrows and a nested frame across move, copy, ungroup, reorder, transfer, delete and undo'",
+          "signature": "2c043d323e718f90214143b5a109491fac952072c6ef36dd0fb80383f3520289",
+          "to": ["packages/engine/core/src/cell/group-nesting.spec.ts"]
+        },
+        {
+          "title": "'refuses a mixed delete when one object cannot be deleted'",
+          "signature": "b0ece222892a7c2f2950c8f01d09526b1808b84af49a65becc87d602690fb327",
+          "to": ["packages/engine/core/src/cell/group-nesting.spec.ts"]
+        },
+        {
+          "title": "'pastes a nested frame without shifting its interior and selects only the shell'",
+          "signature": "0fa98730fd68b82cfe8577a05d6d7e3436021afa0e71d423f1f52d252354c6b3",
+          "to": ["packages/engine/core/src/cell/group-nesting.spec.ts"]
+        },
+        {
+          "title": "'pastes a copied group without selecting its members'",
+          "signature": "ea2578c48ee1bc2b05684826645cc84c27dd985c3ab8d0fe4d808d7da59f0f9c",
+          "to": ["packages/engine/core/src/cell/group-nesting.spec.ts"]
+        },
+        {
+          "title": "'rejects a fragment that is not a complete cell without planning a change'",
+          "signature": "5a358e13ebfb17c773a818e300928f1c75cfc631af93f95c284334271ddad83e",
+          "to": ["packages/engine/core/src/cell/group-nesting.spec.ts"]
+        }
+      ]
+    },
+    {
+      "from": "packages/engine/core/src/cell/identity.spec.ts",
+      "cases": [
+        {
+          "title": "'keeps unaffected frames and memberships identical and records only the edited cell'",
+          "signature": "b81dc991481cdc25c1b96c7bb5e76074ccbf5c2cbf9636ed3e80e4ed5b4f6ba5",
+          "to": ["packages/engine/core/src/cell/identity.spec.ts"]
+        },
+        {
+          "title": "'still prunes removed children and memberships after a transaction'",
+          "signature": "8a230f79ce123719dd5ae983bf43ef60ec6ae312e70e2d98f44362f368b4952b",
+          "to": ["packages/engine/core/src/cell/identity.spec.ts"]
+        }
+      ]
+    },
+    {
+      "from": "packages/engine/core/src/cell/layout-plan.spec.ts",
+      "cases": [
+        {
+          "title": "'persists one-shot editable paths and keeps repeat optimization idempotent'",
+          "signature": "d23ca75aacfe5eca2ee63c1a6ba6345f2555a37f1a9a79bee699a495977e7792",
+          "to": ["packages/engine/core/src/cell/layout-plan.spec.ts"]
+        },
+        {
+          "title": "'resolves a focused Frame reference to its target without arranging the parent canvas'",
+          "signature": "6dca5006bd9d08bba40da1b17c7e0940b6aa3a6ecf2cc04d3cda7a182fb817c5",
+          "to": ["packages/engine/core/src/cell/layout-plan.spec.ts"]
+        },
+        {
+          "title": "'does not expand a hidden group into layout or routing targets'",
+          "signature": "2f4a4e76039726856e65a9808b72f36dbacf97c053da2acc47bf816222bc91b0",
+          "to": ["packages/engine/core/src/cell/layout-plan.spec.ts"]
+        },
+        {
+          "title": "'lays out only group contents with selection %j, keeping manual edges and one-step history'",
+          "signature": "d81b11f086922f779ee40c8dd0694336582a1c9b6db38318f6ae7a96c1d36d69",
+          "to": ["packages/engine/core/src/cell/layout-plan.spec.ts"]
+        },
+        {
+          "title": "'keeps nested groups rigid, expands only the selected level and never opens a nested Frame'",
+          "signature": "b43e0886b2fcc9232ce46739948cbd30863f4894541116e5baeae05e37ffc367",
+          "to": ["packages/engine/core/src/cell/layout-plan.spec.ts"]
+        },
+        {
+          "title": "'treats multiple selected groups as separate rigid blocks'",
+          "signature": "fb75ac1ae8ba7f11a5fb39973f90f8f6e1b7fe715065a0b9bad2748511d1c136",
+          "to": ["packages/engine/core/src/cell/layout-plan.spec.ts"]
+        },
+        {
+          "title": "'keeps nested groups with derived internal routes stable after layout'",
+          "signature": "2b79edaa5fa323dd939e272e2c1df99095708e183ec5c4b85565d5367bbd2a4a",
+          "to": ["packages/engine/core/src/cell/layout-plan.spec.ts"]
+        },
+        {
+          "title": "'enlarges layout around outside or locked nodes without mutating the source'",
+          "signature": "ffa67d949e58d1ad3c420551a3f776faeab7a2045fd1201aedc0198ee10d73c4",
+          "to": ["packages/engine/core/src/cell/layout-plan.spec.ts"]
+        },
+        {
+          "title": "'keeps locked members fixed and does not expand an empty or edge-only scope to the Frame'",
+          "signature": "3ace848c1ed167f7fa23a1ca2bd20596bc087888b3713ca084f8485d19fb149e",
+          "to": ["packages/engine/core/src/cell/layout-plan.spec.ts"]
+        },
+        {
+          "title": "'handles cycles, branching, duplicate/self/outside edges, disconnected nodes and stable input order'",
+          "signature": "1ce8d1a7bef9a7a7a56ec263119eda0f47e462e7bfefb870ac7791da8a76556a",
+          "to": ["packages/engine/core/src/cell/layout-plan.spec.ts"]
+        },
+        {
+          "title": "'packs disconnected nodes as a grid and ignores edges leaving a local scope'",
+          "signature": "4e8424c972519915f431be96d61b431b347aef0d3e93cfb20d4fb5e53a877fcf",
+          "to": ["packages/engine/core/src/cell/layout-plan.spec.ts"]
+        },
+        {
+          "title": "'collects incident boundary edges and explicitly selected edges without moving nodes'",
+          "signature": "6e39a9bf7811bf01e89248ca0070332287efbd2fb63ff8baa2a6bd1e0e2e3b9c",
+          "to": ["packages/engine/core/src/cell/layout-plan.spec.ts"]
+        },
+        {
+          "title": "'preserves ports, anchors, free endpoints, labels and appearance while converting fixed paths'",
+          "signature": "d29c36edef21c983ced1a8b90151d9d12d0f751293252da937d6c966ae7d8c80",
+          "to": ["packages/engine/core/src/cell/layout-plan.spec.ts"]
+        },
+        {
+          "title": "'skips straight, curved, automatic, hidden, locked and plugin-owned paths including ancestor locks'",
+          "signature": "238e39ebe152ae98ecbd5059360f9e41765874c434dc004a989eb581a071bd56",
+          "to": ["packages/engine/core/src/cell/layout-plan.spec.ts"]
+        }
+      ]
+    },
+    {
+      "from": "packages/engine/core/src/cell/name.spec.ts",
+      "cases": [
+        {
+          "title": "'initializes insertion transactionally and restores absence on undo'",
+          "signature": "3db4e5852734d1eac15b3f4d25290d36b20f3e32c9838f216661b37a11520fb7",
+          "to": ["packages/engine/core/src/cell/name.spec.ts"]
+        },
+        {
+          "title": "'defers empty-node naming through all keystrokes and preserves explicit empty names'",
+          "signature": "5c65a2ab30a054f5df9238eaad7e1f395f36e17dc60788edb10667261a038386",
+          "to": ["packages/engine/core/src/cell/name.spec.ts"]
+        },
+        {
+          "title": "'freezes a legacy name before body changes, ignoring rich-text formatting'",
+          "signature": "558dbf08a250b88e510c7a46eff690ccf0a97491e3b6fb2da29ffc077bf049de",
+          "to": ["packages/engine/core/src/cell/name.spec.ts"]
+        }
+      ]
+    },
+    {
+      "from": "packages/engine/core/src/cell/position.spec.ts",
+      "cases": [
+        {
+          "title": "'rounds dimensions without hiding invalid sizes or changing angles'",
+          "signature": "977145c89099c22ae375f1686df783aaffd27566b7c74a7ea597bf0e2b26e412",
+          "to": ["packages/engine/core/src/cell/position.spec.ts"]
+        },
+        {
+          "title": "'normalizes new cells and dimension edits independently of legacy positions'",
+          "signature": "9fdb283ab9653036eccd8988c36c923eb538841edd94721cd1e48563c0981db7",
+          "to": ["packages/engine/core/src/cell/position.spec.ts"]
+        },
+        {
+          "title": "'rounds local placement without changing dimensions, rotation or invalid coordinates'",
+          "signature": "7cc1615736249ddab218b423d8c66a5771fabfa9617591f2ad64c436410b095e",
+          "to": ["packages/engine/core/src/cell/position.spec.ts"]
+        },
+        {
+          "title": "'does not move an old fractional node when changing only its name'",
+          "signature": "89d0ed221badbc88eef34e97ebf1bcce741f99cfb8235d94826e2fa88f15871b",
+          "to": ["packages/engine/core/src/cell/position.spec.ts"]
+        },
+        {
+          "title": "'rounds every group member once and undo restores the exact legacy coordinates'",
+          "signature": "7bd3dc023cb8f3a93049c65198875049153bd4e462de5140992af9f98451d714",
+          "to": ["packages/engine/core/src/cell/position.spec.ts"]
+        },
+        {
+          "title": "'snaps pasted placement but file opening preserves original positions'",
+          "signature": "cb6710daab72813267278c62d35a09d3c85bab922e6818adc1952b347a0a532b",
+          "to": ["packages/engine/core/src/cell/position.spec.ts"]
+        },
+        {
+          "title": "'snaps free terminals and manual points while retaining relative anchors and curve controls'",
+          "signature": "40a50b82e5330fab326bb8747fd69be16e8e86ecdbc08bade9939dfc7bef9133",
+          "to": ["packages/engine/core/src/cell/position.spec.ts"]
+        }
+      ]
+    },
+    {
+      "from": "packages/engine/core/src/cell/runtime.spec.ts",
+      "cases": [
+        {
+          "title": "'drops legacy frame cameras without changing the input and caches indexes by document identity'",
+          "signature": "4cad5dcf6221f885574ad676d9c5e9bcd7c99ce2103f4e92c769f8847960e825",
+          "to": ["packages/engine/core/src/cell/runtime.spec.ts"]
+        },
+        {
+          "title": "'preserves valid selection across host replacements and removes missing selected cells'",
+          "signature": "4779cda9856aed6f5321a8e707d56874650eeba21eddf25af3d44d34fd49ac99",
+          "to": ["packages/engine/core/src/cell/runtime.spec.ts"]
+        },
+        {
+          "title": "'mounts a nested frame as a detail root without changing canonical hierarchy'",
+          "signature": "44ce77f049537aba1263c21b9e169e41fe42054851779df40ad38d8fb106dc15",
+          "to": ["packages/engine/core/src/cell/runtime.spec.ts"]
+        },
+        {
+          "title": "'allows explicit history-free metadata transactions'",
+          "signature": "567f425f1308ddc3b394e275ee18dc38c1d99193f09b8a997871982421d0d70a",
+          "to": ["packages/engine/core/src/cell/runtime.spec.ts"]
+        },
+        {
+          "title": "'preserves later theme metadata when undo changes frame children'",
+          "signature": "65bd0073da6e12838b3ed482ed1336d6b83275d44fe80e87c88cb0940eaa1b53",
+          "to": ["packages/engine/core/src/cell/runtime.spec.ts"]
+        },
+        {
+          "title": "'restores the file theme when the transaction asks for it'",
+          "signature": "20165371eb270924060421de0e658b1a823211374c4f3be98fd71b15d693f40b",
+          "to": ["packages/engine/core/src/cell/runtime.spec.ts"]
+        },
+        {
+          "title": "'drops selections that move out of their focus boundary'",
+          "signature": "72a1e08516230375fc06c4f034f739a6659b38c1792d0409f64d5f41fd33dc5a",
+          "to": ["packages/engine/core/src/cell/runtime.spec.ts"]
+        },
+        {
+          "title": "'retains a valid nested selection through property undo and redo'",
+          "signature": "5c7764482114b1df32978fa405a96ac8c97bd2efd32dff1075fbccc55f3735a9",
+          "to": ["packages/engine/core/src/cell/runtime.spec.ts"]
+        },
+        {
+          "title": "'falls back to an existing root when redo deletes the mounted frame'",
+          "signature": "ea623b88aa102093b13dd8528c4e995f7dfc88a4a311fdc39781a884fe6016aa",
+          "to": ["packages/engine/core/src/cell/runtime.spec.ts"]
+        }
+      ]
+    },
+    {
+      "from": "packages/engine/core/src/cell/style-color.spec.ts",
+      "cases": [
+        {
+          "title": "'persists style families through transactions, clipboard, reset and undo without changing custom fields'",
+          "signature": "1fe9c679a0ed040d78464eebe86187eebc877131fc8dc886b954d39208b9bae7",
+          "to": ["packages/engine/core/src/cell/style-color.spec.ts"]
+        }
+      ]
+    },
+    {
+      "from": "packages/engine/core/src/cell/text-annotation.spec.ts",
+      "cases": [
+        {
+          "title": "'supports plain text annotations outside %s membership and layout'",
+          "signature": "dbe557e9fbacf5b152d560aa77f313b40d4274552d0fc1e065172f2365d33d8f",
+          "to": ["tests/contracts/src/core-cell-text-annotation.spec.ts"]
+        }
+      ]
+    },
+    {
+      "from": "packages/engine/core/src/cell/transfer.spec.ts",
+      "cases": [
+        {
+          "title": "'rejects locked group members and locked targets without changing the store'",
+          "signature": "9b4ad6c9eaaa2f0edad2dd5675efb360e34f83542d3cb8249dc9b7f09d650f34",
+          "to": ["packages/engine/core/src/cell/transfer.spec.ts"]
+        },
+        {
+          "title": "'dissolves partial groups and frees arrows across the boundary, with complete undo'",
+          "signature": "896c836bb4e189caf8d2694fdf0c3bcca0b1bb2f411cad1f5806be7a30008718",
+          "to": ["packages/engine/core/src/cell/transfer.spec.ts"]
+        },
+        {
+          "title": "'moves full groups with their internal edges'",
+          "signature": "577e8cb3ce5655b517086fb78e7d96262a441576fe7b5b1d2b15763fd40cab75",
+          "to": ["packages/engine/core/src/cell/transfer.spec.ts"]
+        },
+        {
+          "title": "'rejects a frame being moved into a descendant before changing anything'",
+          "signature": "636b3d7d54f7a27335feee71a6a38b2d12726e5f1e79687f644ac37f4aac7f74",
+          "to": ["packages/engine/core/src/cell/transfer.spec.ts"]
+        }
+      ]
+    },
+    {
+      "from": "packages/engine/core/src/geometry/batch-route.spec.ts",
+      "cases": [
+        {
+          "title": "'reoptimizes around a moved obstacle instead of freezing saved route points'",
+          "signature": "1e9ec4d751a52fbae0692fc78b108b8c980c90642cdc62951c4f9cdcef136e53",
+          "to": ["packages/engine/core/src/geometry/batch-route.spec.ts"]
+        },
+        {
+          "title": "'improves existing automatic diagrams with stable, persistent, bounded routing'",
+          "signature": "42918d63999d8536b8945b37a6a2550b5abed6d0681866f124cf9c6c7b625304",
+          "to": ["tests/contracts/src/core-geometry-batch-route.spec.ts"]
+        },
+        {
+          "title": "'plans one hundred edges among one hundred nodes once per context'",
+          "signature": "6a2f513077c4084b567d1ba5d3032a36c6551a6671f78f3c17f0a36ce6d8d820",
+          "to": ["packages/engine/core/src/geometry/batch-route.spec.ts"]
+        },
+        {
+          "title": "'reduces clutter in %s without changing document data'",
+          "signature": "535f22794f315449af7d37e7b766f5da383199f6dadb2cff08630511ece25c96",
+          "to": ["tests/contracts/src/core-geometry-batch-route.spec.ts"]
+        },
+        {
+          "title": "'keeps the real 24-module package graph legible and deterministic after layout'",
+          "signature": "2b4d9b8e1962ec3bad0f634f06ccee54433c41e67f81b155bc50480db26c5b2f",
+          "to": ["tests/contracts/src/core-geometry-batch-route.spec.ts"]
+        },
+        {
+          "title": "'never compacts authored orthogonal points even when they contain a short stair'",
+          "signature": "dc127d0bdc87a6558546931048511c0ec8ba5249c735e65c2a925fbc3ef6447e",
+          "to": ["packages/engine/core/src/geometry/batch-route.spec.ts"]
+        },
+        {
+          "title": "'distributes automatic exits in destination order while preserving authored ports and points'",
+          "signature": "c8a876526153081fa435c3d6a1907e4d3ba5158915e95c73739ecba6b9897934",
+          "to": ["tests/contracts/src/core-geometry-batch-route.spec.ts"]
+        },
+        {
+          "title": "'keeps derived labels away from nodes and one another, and honors explicit positions'",
+          "signature": "5297a20f830976f42cf95c2c34e7cfc6503cb6be302864e239c7d9fc817ece11",
+          "to": ["tests/contracts/src/core-geometry-batch-route.spec.ts"]
+        },
+        {
+          "title": "'includes offset labels in embedded fit and image export bounds'",
+          "signature": "6e6e248efd8b9ab3443dff3fd1af3937ca89fde52249d2da47d7ac0954dbb2df",
+          "to": ["packages/engine/core/src/geometry/batch-route.spec.ts"]
+        }
+      ]
+    },
+    {
+      "from": "packages/engine/core/src/geometry/obstacle-route.spec.ts",
+      "cases": [
+        {
+          "title": "'routes a vertical long edge around siblings without changing stored geometry or routes'",
+          "signature": "4ffb6e83180796b1d48d4f73ded8e5f4bc41f6ec386fd36867dbe17696f80df8",
+          "to": ["packages/engine/core/src/geometry/obstacle-route.spec.ts"]
+        },
+        {
+          "title": "'keeps fixed ports in a vertical workflow and handles backward-facing terminals'",
+          "signature": "e377f09377f19713c023d241168842ab9b80b0f04edd5d75d0062d2e8c6fb3d1",
+          "to": ["packages/engine/core/src/geometry/obstacle-route.spec.ts"]
+        },
+        {
+          "title": "'uses preview geometry, skips hidden nodes and transparent layers, and stops at nested Frame shells'",
+          "signature": "c5cdf0c3073f16a4c3c1ec70d1a584277611a80c2c17569e2e3fabbffd089f7f",
+          "to": ["tests/contracts/src/core-geometry-obstacle-route.spec.ts"]
+        },
+        {
+          "title": "'uses rotated AABBs while retaining a diamond port and relative anchor'",
+          "signature": "2c06c0574b9a7d2d2eedc8827cd616c5178042abcda596a9d7c9c216253b9ca7",
+          "to": ["packages/engine/core/src/geometry/obstacle-route.spec.ts"]
+        },
+        {
+          "title": "'reuses routes outside changed regions but removes obsolete detours as a blocker moves away'",
+          "signature": "454d22f5a15c43c3783caf0c661da760f6413a8a65b390f4610ae845798315e2",
+          "to": ["packages/engine/core/src/geometry/obstacle-route.spec.ts"]
+        },
+        {
+          "title": "'leaves explicit bends, straight and curve modes under manual control'",
+          "signature": "0e60e2535da5760a07be1c6a0a1c39e9c92035bd88f06fe3e6050364d5642752",
+          "to": ["packages/engine/core/src/geometry/obstacle-route.spec.ts"]
+        },
+        {
+          "title": "'retries a narrow terminal corridor with stroke-safe clearance'",
+          "signature": "a0bd0a105352ab33e1b513c028b8b516ea47de24752ada3fe9000ac6bef52cf0",
+          "to": ["packages/engine/core/src/geometry/obstacle-route.spec.ts"]
+        },
+        {
+          "title": "'returns a finite editable fallback for overlapping endpoints blocked by another node'",
+          "signature": "c2b17023d14d76b785c65982c7dc4dda935ace4e299cde9c7c9f13e0e2add666",
+          "to": ["packages/engine/core/src/geometry/obstacle-route.spec.ts"]
+        },
+        {
+          "title": "'shortens terminal jetties when a nearby node leaves less than 24px to turn'",
+          "signature": "98e096e8f7b5bf9dec0498b3cf1890b887bfa325463f460d063ea73c86131c47",
+          "to": ["packages/engine/core/src/geometry/obstacle-route.spec.ts"]
+        },
+        {
+          "title": "'finds deterministic paths through multiple staggered obstacles independently of input order'",
+          "signature": "f12590a01c9408d60e315aaebbedb68a521596b0076d0f9f946dabf0ba62dc80",
+          "to": ["packages/engine/core/src/geometry/obstacle-route.spec.ts"]
+        },
+        {
+          "title": "'routes one hundred edges among one hundred nodes'",
+          "signature": "cc012e0804767542d127362c785c4f4a8c3d9a80052ec8e43a46a1a1af33a28d",
+          "to": ["packages/engine/core/src/geometry/obstacle-route.spec.ts"]
+        },
+        {
+          "title": "'bounds search allocation and validates local routes against distant obstacles'",
+          "signature": "17602de8dbd340bc5d5830d72d8072e1bed72a0939480dce5d602ecd07ca0f7e",
+          "to": ["packages/engine/core/src/geometry/obstacle-route.spec.ts"]
+        }
+      ]
+    },
+    {
+      "from": "packages/engine/core/src/geometry/routing-cache.spec.ts",
+      "cases": [
+        {
+          "title": "'skips routing for node/label text changes and keeps current edge and terminal wrappers'",
+          "signature": "c49e1a0d8764f57d3a50d483dd06893b6e43ef5bebc2ee83fce1aec5efa2234a",
+          "to": ["packages/engine/core/src/geometry/routing-cache.spec.ts"]
+        },
+        {
+          "title": "'invalidates changed plugin direction hints without moving nodes, and preserves authored anchors'",
+          "signature": "eea2ba8c13fb7d2d2178d770424f689319e0f9b19e8bf60f55a96ca1a5039bbd",
+          "to": ["packages/engine/core/src/geometry/routing-cache.spec.ts"]
+        },
+        {
+          "title": "'invalidates the batch when %s changes routing inputs'",
+          "signature": "aa479438d06543d314c5c26a2bccb7e9598cbdf2208dce7bef461439743fb4b3",
+          "to": ["packages/engine/core/src/geometry/routing-cache.spec.ts"]
+        },
+        {
+          "title": "'keeps canonical results independent of fallback route overrides and unprepared contexts'",
+          "signature": "8a41c6059b6f4b5734b29c8de927c25ca7cf0e8efff0e7535bea55fc08ddb46a",
+          "to": ["packages/engine/core/src/geometry/routing-cache.spec.ts"]
+        },
+        {
+          "title": "'does not let mutations of published points or labels corrupt the next revision'",
+          "signature": "51eaf0da2c18cf7d2506ec06da90a074a0ba26ffa970af5a952750f289d11c1d",
+          "to": ["packages/engine/core/src/geometry/routing-cache.spec.ts"]
+        },
+        {
+          "title": "'reuses label layouts for identical batches but recomputes all labels when text changes'",
+          "signature": "5947fcfb6031d9ed8ac6092d41626cfd194780bf4cce3b13640df9ed490e4579",
+          "to": ["packages/engine/core/src/geometry/routing-cache.spec.ts"]
+        }
+      ]
+    },
+    {
+      "from": "packages/engine/core/src/geometry/routing-preview.spec.ts",
+      "cases": [
+        {
+          "title": "'reuses stationary paths and moves connected ends without routing or optimization work'",
+          "signature": "d3c4e0ff92129ea37165d2ea2f61ee16c78be54b54d5a0c4d9a355a0cfff141e",
+          "to": ["packages/engine/core/src/geometry/routing-preview.spec.ts"]
+        },
+        {
+          "title": "'ignores legacy continuous flags, and only explicitly runs the optimizer once per frame'",
+          "signature": "f4aba3abd28692f28d2549a4fe5455ff64dd47163a9f525cac8d1cd3f4c0b373",
+          "to": ["packages/engine/core/src/geometry/routing-preview.spec.ts"]
+        },
+        {
+          "title": "'records settled versus lightweight preview workloads for package and dense diagrams'",
+          "signature": "ff95333e0cf4c7ab503c8c5d49556d5aa38c1fdd2648b840ace6af1237a4a7f6",
+          "to": ["tests/contracts/src/core-geometry-routing-preview.spec.ts"]
+        },
+        {
+          "title": "'translates a free automatic group connector as a whole during preview'",
+          "signature": "4c67d19217d2a134a78049a61b70b191652bb77653248f199a94612d388b3de2",
+          "to": ["packages/engine/core/src/geometry/routing-preview.spec.ts"]
+        }
+      ]
+    }
+  ]
+}

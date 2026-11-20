@@ -32,7 +32,7 @@ export const activateBoardTab = async (page: Page) => {
 };
 
 /**
- * The workspace host persists each canvas as a `.verd.json` file inside
+ * The workspace host persists each canvas as a `.verd` file inside
  * `verdboard-host` (files store, default workspace). This reader presents the
  * same shape the legacy `verdboard_store` manifest used: `rootId` resolves to
  * the top-level file — one no other file's frame-reference targets — matching
@@ -44,7 +44,7 @@ export const persistedWorkspace = async (page: Page) => {
   const records: Record<string, any> = {};
   const paths: Record<string, string> = {};
   for (const node of nodes) {
-    if (node.kind !== 'file' || !node.path.endsWith('.verd.json')) continue;
+    if (node.kind !== 'file' || !node.path.endsWith('.verd')) continue;
     const parsed = JSON.parse(node.text);
     if (parsed?.format === 'verd-frame') {
       records[parsed.frame.id] = parsed;

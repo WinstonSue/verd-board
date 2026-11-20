@@ -3,16 +3,103 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
+import { createHash } from 'node:crypto';
 import {
   parseCli,
   main,
   captureProof,
   verifyProof,
   deriveConfiguration,
+  developmentProfile,
   verifyPackageRecord,
 } from './remote-test.mjs';
-import { artifactFiles, fullStageIds } from './release-proof.mjs';
-import { hash } from './release-review.mjs';
+import { artifactFiles } from './release-proof.mjs';
+import { releaseProofFixture } from '../tests/fixtures/release-proof.mjs';
+
+test('pure package and consumer contracts need no GUI regardless of architecture layer', () => {
+  const units = [
+    { action: 'run', layer: 'product', runner: 'vitest' },
+    { action: 'run', layer: 'contract', runner: 'vitest' },
+  ];
+  assert.equal(developmentProfile({ units }, 'project'), 'project-units');
+  assert.equal(
+    developmentProfile(
+      { units: [...units, { action: 'outside', runtime: 'production' }] },
+      'project',
+    ),
+    'project-units',
+  );
+  assert.equal(
+    developmentProfile(
+      {
+        units: [
+          ...units,
+          { action: 'run', runtime: 'production', host: 'desktop' },
+        ],
+      },
+      'project',
+    ),
+    'project-dev',
+  );
+  assert.equal(
+    developmentProfile(
+      { units: [{ action: 'run', runtime: 'production', host: 'web' }] },
+      'project',
+    ),
+    'project-web',
+  );
+});
+
+test('GUI tasks own their display assertion while headless profiles keep independent preparation', () => {
+  const original = {
+    version: 1,
+    hosts: { host: { ssh: 'host', cacheDir: '~/cache' } },
+    projects: {
+      fixture: {
+        root: '/fixture',
+        host: 'host',
+        requiresGui: true,
+        prepare: [
+          ['pnpm', 'install'],
+          ['node', 'scripts/install-electron.mjs'],
+          ['pnpm', 'exec', 'playwright', 'install'],
+        ],
+      },
+    },
+  };
+  const before = structuredClone(original);
+  const { project, config } = deriveConfiguration(original, '/fixture');
+  assert.deepEqual(project.tasks.package.command, [
+    'node',
+    'scripts/remote-gui-session.mjs',
+    'pnpm',
+    'package:desktop',
+  ]);
+  assert.deepEqual(project.prepare[0], [
+    'node',
+    'scripts/remote-gui-session.mjs',
+    '--check',
+  ]);
+  assert.deepEqual(config.projects['fixture-dev'].tasks.dev.command, [
+    'node',
+    'scripts/remote-gui-session.mjs',
+    'pnpm',
+    'check:dev',
+  ]);
+  assert.equal(config.projects['fixture-web'].requiresGui, false);
+  assert.deepEqual(config.projects['fixture-web'].prepare, [
+    ['pnpm', 'install'],
+    ['pnpm', 'exec', 'playwright', 'install'],
+  ]);
+  assert.deepEqual(config.projects['fixture-units'].prepare, [
+    ['pnpm', 'install'],
+  ]);
+  assert.deepEqual(config.projects['fixture-units'].tasks.dev.command, [
+    'pnpm',
+    'check:dev',
+  ]);
+  assert.deepEqual(original, before);
+});
 
 test('package evidence rejects failed, partial or changed installers', async (t) => {
   const directory = await fs.mkdtemp(
@@ -23,23 +110,19 @@ test('package evidence rejects failed, partial or changed installers', async (t)
     path.join(directory, 'VerdBoard.dmg'),
     'validated installer',
   );
+  const sha256 = createHash('sha256')
+    .update('validated installer')
+    .digest('hex');
+  const checksumFile = path.join(directory, 'SHA256SUMS');
+  await fs.writeFile(checksumFile, sha256 + '  VerdBoard.dmg\n');
   const manifest = {
     id: 'same-task',
     transportDigest: 'same-source',
     profileDigest: 'profile',
     proof: { releaseInputDigest: 'source', sourceDigest: 'business' },
   };
-  const release = {
-    format: 'verd-quality',
-    version: 2,
-    mode: 'release',
-    status: 'passed',
-    selection: null,
-    runId: 'one-run',
-    sourceDigest: 'business',
-    planDigest: hash(fullStageIds),
-    steps: fullStageIds.map((id) => ({ id, status: 'passed' })),
-    identity: {
+  const release = releaseProofFixture(
+    {
       releaseInputDigest: 'source',
       versions: { desktop: '2.1.2' },
       reviewDigest: 'review',
@@ -54,16 +137,41 @@ test('package evidence rejects failed, partial or changed installers', async (t)
         profileDigest: manifest.profileDigest,
       },
     },
-  };
+    { sourceDigest: 'business' },
+  );
   const record = {
     format: 'verd-desktop-package',
     version: 1,
     status: 'passed',
     release,
     validations: { application: 'passed', installer: 'passed', e2e: 'passed' },
+    diagnostics: [{ index: 'diagnostics/package/index.json', complete: true }],
     files: await artifactFiles(directory),
   };
   await verifyPackageRecord(record, directory, manifest);
+  await fs.rm(checksumFile);
+  await assert.rejects(
+    verifyPackageRecord(
+      { ...record, files: await artifactFiles(directory) },
+      directory,
+      manifest,
+    ),
+    /checksum/i,
+  );
+  await fs.writeFile(checksumFile, '0'.repeat(64) + '  VerdBoard.dmg\n');
+  await assert.rejects(
+    verifyPackageRecord(
+      { ...record, files: await artifactFiles(directory) },
+      directory,
+      manifest,
+    ),
+    /checksum/i,
+  );
+  await fs.writeFile(checksumFile, sha256 + '  VerdBoard.dmg\n');
+  await assert.rejects(
+    verifyPackageRecord({ ...record, diagnostics: [] }, directory, manifest),
+    /evidence/,
+  );
   await assert.rejects(
     verifyPackageRecord({ ...record, status: 'failed' }, directory, manifest),
     /evidence/,
@@ -96,8 +204,9 @@ test('repository adapter preserves full gate and development selection requireme
   ];
   assert.deepEqual(parseCli(['dev', ...args]), ['run', 'dev', '--', ...args]);
   assert.throws(() => parseCli(['ci', ...args]));
-  assert.throws(() =>
+  assert.deepEqual(
     parseCli(['dev', '--unit', 'scripts/remote-test.test.mjs']),
+    ['run', 'dev', '--', '--unit', 'scripts/remote-test.test.mjs'],
   );
   assert.deepEqual(parseCli(['fetch', 'fixture-123', '--raw']), [
     'fetch',
@@ -219,6 +328,27 @@ test('derived release profiles are stable, preserve user configuration, and reco
     'package:desktop',
   ]);
   assert.equal(first.project.artifacts.requireReport, true);
+  assert.equal(first.config.projects['fixture-units'].requiresGui, false);
+  assert.equal(first.config.projects['fixture-scripts'].requiresGui, false);
+  assert.equal(
+    first.config.projects['fixture-dev'].artifacts.requireReport,
+    false,
+  );
+  assert.equal(
+    first.config.projects['fixture-units'].env.ELECTRON_SKIP_BINARY_DOWNLOAD,
+    '1',
+  );
+  assert.deepEqual(parseCli(['wait', 'fixture-123', '--timeout', '0']), [
+    'wait',
+    'fixture-123',
+    '--timeout',
+    '0',
+  ]);
+  assert.deepEqual(parseCli(['summary', 'fixture-123', '--json']), [
+    'summary',
+    'fixture-123',
+    '--json',
+  ]);
   assert.equal(
     first.config.projects['fixture-scripts'].artifacts.requireReport,
     false,

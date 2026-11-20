@@ -1,5 +1,5 @@
 import { expect, it } from 'vitest';
-import { createTestCellRegistry } from '../../../../../tests/fixtures/plugins/registry';
+import { createTestCellRegistry } from '../../../../../tests/fixtures/core/registry';
 import {
   createCellStore,
   createFrameCell,

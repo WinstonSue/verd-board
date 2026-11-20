@@ -35,6 +35,9 @@ test('folders with nested documents, canvases and empty directories trash and re
   await createFolder(page, '空目录', '子项');
   await folderAction(page, '归档', '在此新建画布');
   await folderAction(page, '子项', '在此新建文档');
+  await expect(
+    directoryRow(page, '归档').locator('..').locator('.file-tree-name'),
+  ).toHaveCount(2);
   const paths = await directoryRow(page, '归档')
     .locator('..')
     .locator('.file-tree-name')
@@ -88,7 +91,7 @@ test('permanent deletion and empty trash require confirmation and persist after 
     .getByRole('button', { name: '永久删除 删除甲', exact: true })
     .click();
   await expect(page.getByTestId('workspace-action-confirmation')).toContainText(
-    '无法恢复',
+    '无法从回收站还原',
   );
   await page.keyboard.press('Escape');
   await expect(page.getByTestId('workspace-action-confirmation')).toHaveCount(
@@ -106,7 +109,7 @@ test('permanent deletion and empty trash require confirmation and persist after 
   await expect(page.getByTestId('workspace-trash-count')).toHaveText('1');
   await page.getByRole('button', { name: '清空回收站', exact: true }).click();
   await expect(page.getByTestId('workspace-action-confirmation')).toContainText(
-    '无法恢复',
+    '无法从回收站还原',
   );
   await page
     .getByTestId('workspace-action-confirmation')

@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { createTestCellRegistry as createFixtureRegistry } from '../../../../../tests/fixtures/plugins/registry';
+import { createTestCellRegistry as createFixtureRegistry } from '../../../../../tests/fixtures/core/registry';
 import {
   applyCellOperations,
   commitCellOperations,

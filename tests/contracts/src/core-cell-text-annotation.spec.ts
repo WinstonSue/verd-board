@@ -1,8 +1,13 @@
 import { expect, it } from 'vitest';
-import { createTestCellRegistry } from '../../../../../tests/fixtures/plugins/registry';
-import { createCellStore, createFrameCell, type NodeCell } from './types';
-import { validateCellStore } from './validation';
-import { arrangeCells } from './arrangement';
+import { createTestCellRegistry } from '../../fixtures/plugins/registry';
+import {
+  createCellStore,
+  createFrameCell,
+  type NodeCell,
+} from '../../../packages/engine/core/src/cell/types';
+import { validateCellStore } from '../../../packages/engine/core/src/cell/validation';
+import { arrangeCells } from '../../../packages/engine/core/src/cell/arrangement';
+
 it.each(['mind-root', 'workflow-start', 'architecture-layer'])(
   'supports plain text annotations outside %s membership and layout',
   (kind) => {

@@ -62,7 +62,9 @@ const file = {
 async function openToolbarDocument(page: Page) {
   await page.goto('/');
   await page
-    .locator('input[accept=".json,.verd.json,.verd-doc.json,.md,.markdown"]')
+    .locator(
+      'input[accept=".json,.verd,.verd.json,.verd-doc.json,.md,.markdown"]',
+    )
     .setInputFiles({
       name: 'Toolbar document.verd-doc.json',
       mimeType: 'application/json',

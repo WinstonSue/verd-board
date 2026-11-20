@@ -16,7 +16,7 @@ import { runCli } from './cli';
 async function fixture(pattern = 'workflow-dag'): Promise<FrameFileV2> {
   return JSON.parse(
     await fs.readFile(
-      new URL(`${pattern}/模板.verd.json`, patternWorkspaceUrl),
+      new URL(`${pattern}/模板.verd`, patternWorkspaceUrl),
       'utf8',
     ),
   );
@@ -43,15 +43,13 @@ it.each([
         terminal.portId = end === 'source' ? 'custom-out' : 'custom-in';
       }
     }
-    expect(validateNativeWorkspace([{ path: 'flow.verd.json', file }])).toEqual(
-      [],
-    );
+    expect(validateNativeWorkspace([{ path: 'flow.verd', file }])).toEqual([]);
   },
 );
 
 it('reports each reversed endpoint with its pointer, without changing the file or runtime validation', async () => {
   const file = await fixture('workflow-process');
-  const entries = [{ path: 'flow.verd.json', file }];
+  const entries = [{ path: 'flow.verd', file }];
   const before = JSON.stringify(file);
   const issues = validateNativeWorkspace(entries);
   expect(issues).toHaveLength(3);
@@ -73,7 +71,7 @@ it('reports each reversed endpoint with its pointer, without changing the file o
       (issue) =>
         issue.cellId &&
         issue.fileId &&
-        issue.path === 'flow.verd.json' &&
+        issue.path === 'flow.verd' &&
         issue.suggestion?.includes('Loops'),
     ),
   ).toBe(true);
@@ -93,7 +91,7 @@ it('keeps direction warnings non-blocking through plan, CLI validate and apply',
   try {
     const file = await fixture('workflow-process');
     const plan = await prepareAuthoringBatch(await readNativeSnapshot(root), [
-      { type: 'file.import', file, path: 'flow.verd.json' },
+      { type: 'file.import', file, path: 'flow.verd' },
     ]);
     expect(plan.diagnostics).toHaveLength(3);
     expect(

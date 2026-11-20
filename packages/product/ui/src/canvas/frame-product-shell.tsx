@@ -312,6 +312,7 @@ export function FrameProductShell({
   onCreateDocumentFrame,
   documentReferences,
   onExportNative,
+  onImportNative,
   onOpenMy,
   navigation,
   onNavigationResult,
@@ -1304,7 +1305,9 @@ export function FrameProductShell({
     const file = event.target.files?.[0];
     if (!file) return;
     try {
-      await importSnapshot(await readDocument(file));
+      if (onImportNative && /\.verd(?:\.json)?$/i.test(file.name))
+        await onImportNative(file);
+      else await importSnapshot(await readDocument(file));
     } catch (error) {
       setFailure(error instanceof Error ? error.message : String(error));
     }
@@ -1314,7 +1317,9 @@ export function FrameProductShell({
     const file = event.target.files?.[0];
     if (!file) return;
     try {
-      await openDocument(file);
+      if (onImportNative && /\.verd(?:\.json)?$/i.test(file.name))
+        await onImportNative(file);
+      else await openDocument(file);
       setFailure(null);
     } catch (error) {
       setFailure(error instanceof Error ? error.message : String(error));
@@ -3571,14 +3576,14 @@ export function FrameProductShell({
           hidden
           ref={importInput}
           type="file"
-          accept="application/json,.md,.markdown,.mmd,.mermaid"
+          accept="application/json,.verd,.verd.json,.md,.markdown,.mmd,.mermaid"
           onChange={(event) => void importFile(event)}
         />
         <input
           hidden
           ref={openInput}
           type="file"
-          accept="application/json,.md,.markdown,.mmd,.mermaid"
+          accept="application/json,.verd,.verd.json,.md,.markdown,.mmd,.mermaid"
           onChange={(event) => void openFile(event)}
         />
         {markdownPreview !== null && (

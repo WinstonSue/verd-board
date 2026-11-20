@@ -61,7 +61,6 @@ import {
   type RichTextLinkActivation,
   type DocumentEditorController,
   type DocumentHistoryAdapter,
-  type DocumentHeading,
   type DocumentSelection,
 } from '@sue/board-react-text';
 import type { BoardTextDocument, WorkspaceFileTarget } from '@sue/board-common';
@@ -70,8 +69,6 @@ import {
   WorkspaceLinkEditor,
   type WorkspaceLinkChoice,
 } from '../shared/workspace-link-editor';
-import { useFrameTheme } from '@sue/board-react';
-import { useAppearancePreference } from '../shared/preferences/appearance-preferences';
 
 export type {
   DocumentEditorChange,
@@ -398,13 +395,11 @@ function DocumentPageContent({
   );
   const [tocOpen, setTocOpen] = useState(!compact);
   const tocId = useId();
-  const [headings, setHeadings] = useState<DocumentHeading[]>([]);
   const [findOpen, setFindOpen] = useState<false | 'find' | 'replace'>(false);
   const [frameQuery, setFrameQuery] = useState('');
   const linkHost = useContext(LinkEditorHost);
   const [notice, setNotice] = useState<string | null>(null);
   const [framePickerOpen, setFramePickerOpen] = useState(false);
-  const [charCount, setCharCount] = useState(0);
   const findInputRef = useRef<HTMLInputElement>(null);
   const controllerRef = useRef<DocumentEditorController | null>(null);
   const lastNavigationRef = useRef<number | null>(null);
@@ -417,21 +412,15 @@ function DocumentPageContent({
   const navigationFrameReference = navigation?.frameReference;
   controllerRef.current = controller;
 
-  const refreshToolbar = useCallback(() => {
-    const ctl = controllerRef.current;
-    if (!ctl) return;
-    setHeadings(ctl.getHeadings());
-    setCharCount(ctl.getCharacterCount());
-  }, []);
-
-  const { appearance } = useAppearancePreference();
-  const frameTheme = useFrameTheme();
-
-  useEffect(() => {
-    if (!controller) return;
-    refreshToolbar();
-    return controller.subscribe(refreshToolbar);
-  }, [controller, refreshToolbar, appearance, frameTheme]);
+  const controllerRevision = useActionSource(controller);
+  const { headings, charCount } = useMemo(() => {
+    // Controller reads are mutable; its revision invalidates this metadata.
+    void controllerRevision;
+    return {
+      headings: controller?.getHeadings() ?? [],
+      charCount: controller?.getCharacterCount() ?? 0,
+    };
+  }, [controller, controllerRevision]);
 
   const ready = useCallback(
     (ctl: DocumentEditorController | null) => {
@@ -763,9 +752,11 @@ function DocumentPageContent({
       });
     };
   }, [pageActions]);
+  const hasExport = Boolean(onExport);
+  const hasPresentation = Boolean(onPresent);
   useEffect(() => {
     pageActions.invalidate();
-  }, [pageActions, controller, readonly, onExport, onPresent]);
+  }, [pageActions, controller, readonly, hasExport, hasPresentation]);
   const source = useMemo<ActionSource>(
     () => ({
       actions: () => [

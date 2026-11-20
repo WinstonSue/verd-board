@@ -33,7 +33,7 @@ const nativeFiles = async (
         files,
         await nativeFiles(path.join(dir, entry.name), relative),
       );
-    else if (/\.verd(?:-doc)?\.json$/.test(entry.name))
+    else if (/\.verd(?:(?:-doc)?\.json)?$/.test(entry.name))
       files[relative] = await readFile(path.join(dir, entry.name), 'utf8');
   }
   return files;
@@ -127,7 +127,7 @@ test('built-in native workspace opens its diagrams and documents, follows links 
     });
 
     const topics = Object.keys(original)
-      .filter((file) => /^架构图\/\d{2}-[^/]+\.verd\.json$/.test(file))
+      .filter((file) => /^架构图\/\d{2}-[^/]+\.verd(?:\.json)?$/.test(file))
       .sort();
     expect(topics).toHaveLength(9);
     const openReference = async (cellId: string) => {
@@ -172,7 +172,7 @@ test('built-in native workspace opens its diagrams and documents, follows links 
     };
     for (const [index, file] of topics.entries()) {
       const topic = JSON.parse(original[file]);
-      const home = JSON.parse(original['架构图/项目导览.verd.json']);
+      const home = JSON.parse(original['架构图/项目导览.verd']);
       const homeRef = Object.values<any>(home.cells).find(
         (c) => c.data?.targetFrameId === topic.frame.id,
       )!;

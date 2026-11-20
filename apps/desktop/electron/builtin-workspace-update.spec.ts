@@ -259,20 +259,20 @@ it('replaces the legacy directory layout while preserving original paths in the 
     path.join(target, '文档/文档导航.verd-doc.json'),
   );
   await fs.rename(
-    path.join(target, '架构图/项目导览.verd.json'),
-    path.join(target, '项目导览.verd.json'),
+    path.join(target, '架构图/项目导览.verd'),
+    path.join(target, '项目导览.verd'),
   );
   const identity = (await host.readSnapshot(handle)).config.value.identity;
   const info = (await updater.info(handle))!;
   const next = await updater.update(handle, info.releaseId, {
     backupParent: path.dirname(target),
   });
-  for (const file of ['文档/文档导航.verd-doc.json', '项目导览.verd.json'])
+  for (const file of ['文档/文档导航.verd-doc.json', '项目导览.verd'])
     await expect(fs.access(path.join(target, file))).rejects.toThrow();
   for (const file of [
     '文档导航.verd-doc.json',
     'Documentation.verd-doc.json',
-    '架构图/项目导览.verd.json',
+    '架构图/项目导览.verd',
   ])
     await expect(fs.access(path.join(target, file))).resolves.toBeUndefined();
   expect((await host.readSnapshot(next)).config.value.identity).toBe(identity);

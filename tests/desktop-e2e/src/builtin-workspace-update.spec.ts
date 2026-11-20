@@ -299,11 +299,11 @@ test('a legacy canvas-first copy changes only after confirmed replacement', asyn
     path.join(root, '文档/Documentation.verd-doc.json'),
   );
   await rename(
-    path.join(root, '架构图/项目导览.verd.json'),
-    path.join(root, '项目导览.verd.json'),
+    path.join(root, '架构图/项目导览.verd'),
+    path.join(root, '项目导览.verd'),
   );
   const overview = JSON.parse(
-    await readFile(path.join(root, '项目导览.verd.json'), 'utf8'),
+    await readFile(path.join(root, '项目导览.verd'), 'utf8'),
   );
   for (const [index, targetDocumentId] of [
     'project-doc:README',
@@ -321,7 +321,7 @@ test('a legacy canvas-first copy changes only after confirmed replacement', asyn
     };
   }
   const legacyCanvas = JSON.stringify(overview, null, 2) + '\n';
-  await writeFile(path.join(root, '项目导览.verd.json'), legacyCanvas);
+  await writeFile(path.join(root, '项目导览.verd'), legacyCanvas);
   await writeFile(path.join(root, 'my-notes.txt'), 'preserve my old copy');
   await mkdir(path.join(root, '.verdboard'));
   const identity = 'legacy-builtin-e2e-project';
@@ -358,7 +358,7 @@ test('a legacy canvas-first copy changes only after confirmed replacement', asyn
         '.workspace-pane.is-active svg[data-surface="root"] [data-cell-kind="document-frame"]',
       ),
     ).toHaveCount(3);
-    expect(await readFile(path.join(root, '项目导览.verd.json'), 'utf8')).toBe(
+    expect(await readFile(path.join(root, '项目导览.verd'), 'utf8')).toBe(
       legacyCanvas,
     );
 
@@ -372,7 +372,7 @@ test('a legacy canvas-first copy changes only after confirmed replacement', asyn
       .getByRole('button', { name: /(?:更新为|恢复)系统内置内容…/ })
       .click();
     await page.getByRole('button', { name: '取消', exact: true }).click();
-    expect(await readFile(path.join(root, '项目导览.verd.json'), 'utf8')).toBe(
+    expect(await readFile(path.join(root, '项目导览.verd'), 'utf8')).toBe(
       legacyCanvas,
     );
     await page
@@ -402,7 +402,7 @@ test('a legacy canvas-first copy changes only after confirmed replacement', asyn
       page.getByTestId('workspace-management-page'),
     ).not.toBeVisible();
     for (const oldPath of [
-      '项目导览.verd.json',
+      '项目导览.verd',
       '文档/文档导航.verd-doc.json',
       '文档/Documentation.verd-doc.json',
       'my-notes.txt',
@@ -415,7 +415,7 @@ test('a legacy canvas-first copy changes only after confirmed replacement', asyn
       ).value.identity,
     ).toBe(identity);
     const currentCanvas = JSON.parse(
-      await readFile(path.join(root, '架构图/项目导览.verd.json'), 'utf8'),
+      await readFile(path.join(root, '架构图/项目导览.verd'), 'utf8'),
     );
     expect(
       Object.values(currentCanvas.cells).some(
@@ -427,10 +427,7 @@ test('a legacy canvas-first copy changes only after confirmed replacement', asyn
     const copies = await readdir(backups);
     expect(copies).toHaveLength(1);
     expect(
-      await readFile(
-        path.join(backups, copies[0], '项目导览.verd.json'),
-        'utf8',
-      ),
+      await readFile(path.join(backups, copies[0], '项目导览.verd'), 'utf8'),
     ).toBe(legacyCanvas);
     expect(
       await readFile(path.join(backups, copies[0], 'my-notes.txt'), 'utf8'),

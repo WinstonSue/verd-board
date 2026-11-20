@@ -40,6 +40,10 @@ test('workspace checks do not turn authoring warnings into errors', async () => 
 });
 
 test('project content validates, package facts are current, refresh is idempotent', async () => {
+  const projectConfig = JSON.parse(
+    await readFile(new URL('../.verd.config.json', import.meta.url), 'utf8'),
+  );
+  assert.equal(projectConfig.workspace, 'workspace');
   const entries = await readWorkspace(),
     model = await readPackageModel();
   assert.equal(
@@ -80,7 +84,7 @@ test('project content validates, package facts are current, refresh is idempoten
   );
   assert.equal(
     entries.find((e) => e.file.frame?.id === 'board-root').path,
-    '架构图/项目导览.verd.json',
+    '架构图/项目导览.verd',
   );
   for (const entry of entries.filter((e) => e.file.format === 'verd-frame')) {
     assert.equal(
@@ -147,7 +151,7 @@ test('project content validates, package facts are current, refresh is idempoten
       'ordinary documentation links must not export document bodies',
     );
     const duplicate = structuredClone(entries[0]);
-    duplicate.path = 'duplicate.verd.json';
+    duplicate.path = 'duplicate.verd';
     assert.ok(
       (await validateWorkspace([...entries, duplicate], runtime)).some((e) =>
         e.includes('Duplicate identity'),
@@ -273,7 +277,10 @@ test('nine overviews reach exactly twenty-one standalone details without changin
     for (const detailRef of refs) {
       const detail = byId.get(detailRef.data.targetFrameId);
       assert.ok(detail, overview.path);
-      assert.match(detail.path, /^架构图\/细节\/[^/]+\/[^/]+\.verd\.json$/);
+      assert.match(
+        detail.path,
+        /^架构图\/细节\/[^/]+\/[^/]+\.verd(?:\.json)?$/,
+      );
       assert.equal(
         detail.file.organization?.kind ?? 'standalone',
         'standalone',
@@ -370,14 +377,14 @@ test('atomic refresh refuses concurrent edits without leaving temporary files', 
     path.join(os.tmpdir(), 'verd-project-content-'),
   );
   try {
-    const file = path.join(directory, 'canvas.verd.json');
+    const file = path.join(directory, 'canvas.verd');
     await writeFile(file, 'latest user edit');
     await assert.rejects(
       atomicWrite(file, 'generated', 'stale content'),
       /changed during refresh/,
     );
     assert.equal(await readFile(file, 'utf8'), 'latest user edit');
-    assert.deepEqual(await readdir(directory), ['canvas.verd.json']);
+    assert.deepEqual(await readdir(directory), ['canvas.verd']);
     await atomicWrite(file, 'updated', 'latest user edit');
     assert.equal(await readFile(file, 'utf8'), 'updated');
   } finally {

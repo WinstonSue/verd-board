@@ -9,10 +9,10 @@ const workflowNodeTone = (context: FrameThemeAppearanceContext) =>
   frameThemeAppearance(
     context,
     context.cell.kind === 'workflow-start'
-      ? 'secondary'
+      ? 'series-2'
       : context.cell.kind === 'workflow-decision'
-        ? 'tertiary'
-        : 'neutral',
+        ? 'series-3'
+        : 'series-1',
     context.cell.kind === 'workflow-task' ? 'node' : 'emphasis',
   );
 
@@ -23,7 +23,7 @@ const workflowThemeAppearance = (context: FrameThemeAppearanceContext) => {
     'cellId' in cell.source ? store.cells[cell.source.cellId] : undefined;
   const tone = source
     ? workflowNodeTone({ ...context, cell: source })
-    : frameThemeAppearance(context, 'neutral');
+    : frameThemeAppearance(context, 'series-1');
   return { ...tone, fill: 'none' };
 };
 export const createWorkflowFrameExtensions = (

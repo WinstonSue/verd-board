@@ -2,6 +2,13 @@ import { expect, test, type Page } from './service-fixture';
 import { openSettings } from './app-actions';
 import { exerciseDefaultSkillViewer } from './default-skill-viewer-actions';
 
+test.beforeEach(async ({ page }) => {
+  // Local settings checks must not wait for third-party analytics.
+  await page.route('https://cloud.umami.is/script.js', (route) =>
+    route.abort(),
+  );
+});
+
 test('default Skills use the readonly document editor in light and dark appearance', async ({
   page,
   context,
@@ -39,9 +46,7 @@ test('workspace settings persist common and pattern Skills and recycle only the 
   await expect(commonViewer.getByTestId('workspace-skill-guide')).toContainText(
     '# 内容编写规范',
   );
-  await commonViewer
-    .getByRole('button', { name: '关闭默认 Skill', exact: true })
-    .click();
+  await commonViewer.getByTestId('workspace-default-skill-back').click();
   await page
     .getByTestId('workspace-skill-description')
     .fill('Project terminology and language');
@@ -96,9 +101,7 @@ test('workspace settings persist common and pattern Skills and recycle only the 
   await expect(viewer.getByTestId('workspace-skill-guide')).toContainText(
     '# 分层架构 · 编写规则',
   );
-  await viewer
-    .getByRole('button', { name: '关闭默认 Skill', exact: true })
-    .click();
+  await viewer.getByTestId('workspace-default-skill-back').click();
   await page.getByTestId('my-back').click();
   await expect(page.locator('[data-entry-path=".agents"]')).toHaveCount(0);
   await page.reload();
@@ -134,6 +137,22 @@ test('independent custom Skills can be created, edited, reopened and deleted fro
   await page
     .getByTestId('workspace-skill-body')
     .fill('Use project terminology.');
+  await page.getByTestId('workspace-skill-default').click();
+  const viewer = page.getByTestId('workspace-default-skill-viewer');
+  await expect(page.getByRole('dialog')).toHaveCount(1);
+  await expect(
+    viewer.getByTestId('workspace-default-skill-back'),
+  ).toBeFocused();
+  await page.keyboard.press('Escape');
+  await expect(viewer).toHaveCount(0);
+  await expect(page.getByTestId('my-page')).toBeVisible();
+  await expect(page.getByTestId('workspace-skill-default')).toBeFocused();
+  await expect(page.getByTestId('workspace-custom-skill-name')).toHaveValue(
+    'domain-writing',
+  );
+  await expect(page.getByTestId('workspace-skill-body')).toHaveValue(
+    'Use project terminology.',
+  );
   await page.getByTestId('workspace-skill-body').press('ControlOrMeta+Enter');
   await expect(page.getByTestId('workspace-skill-remove')).toBeEnabled();
   await expect(page.getByTestId('workspace-custom-skill-name')).toHaveAttribute(

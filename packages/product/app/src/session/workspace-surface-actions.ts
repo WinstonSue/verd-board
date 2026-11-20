@@ -671,7 +671,7 @@ export function createWorkspaceSurfaceActions(options: {
             entry.kind === 'file' &&
             !entry.canvas &&
             !entry.document &&
-            !/\.verd(?:-doc)?\.json$/.test(path),
+            !/\.verd(?:(?:-doc)?\.json)?$/.test(path),
         )
     );
   };
@@ -880,11 +880,6 @@ export function createWorkspaceSurfaceActions(options: {
         };
       },
       execute: async (c, args) => {
-        const state = await c.session!.versions({ type: 'status' });
-        if (state.status.enabled)
-          return options.invoke('versions-purge', {
-            entryIds: workspaceActionArgument(args, 'entryIds'),
-          });
         return workspaceCommandActionResult(
           await c.session!.apply({
             type: 'purge-trash',

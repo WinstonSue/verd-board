@@ -47,9 +47,7 @@ const architectureThemeAppearance = (context: FrameThemeAppearanceContext) => {
       : cell;
   const ordinal = source ? indices.get(source.id) : undefined;
   const family =
-    ordinal === undefined
-      ? 'neutral'
-      : (`series-${(ordinal % 6) + 1}` as import('@sue/board-core').BoardStyleColor);
+    `series-${((ordinal ?? 0) % 6) + 1}` as import('@sue/board-core').BoardStyleColor;
   let background: string | undefined;
   if (cell.kind === 'architecture-module') {
     const layer = architectureLayerIds(store, frameId)

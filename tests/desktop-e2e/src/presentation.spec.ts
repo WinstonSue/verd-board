@@ -281,8 +281,8 @@ test('internal links keep canvas and document targets in the same presentation',
     },
   });
   const fixtures = {
-    'A.verd.json': board('A', 'a-links'),
-    'B.verd.json': board('B', 'b-links'),
+    'A.verd': board('A', 'a-links'),
+    'B.verd': board('B', 'b-links'),
     'a-links.verd-doc.json': document(
       'a-links',
       'A links',
@@ -318,7 +318,7 @@ test('internal links keep canvas and document targets in the same presentation',
   try {
     const page = await desktop.firstWindow();
     await expect(page.locator('.workspace-shell')).toBeVisible();
-    await page.locator('.file-tree-name[title="A.verd.json"]').click();
+    await page.locator('.file-tree-name[title="A.verd"]').click();
     const skip = page.getByRole('button', { name: '跳过', exact: true });
     if (await skip.isVisible()) await skip.click();
     await page

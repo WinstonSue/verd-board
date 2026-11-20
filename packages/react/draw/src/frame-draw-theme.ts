@@ -57,15 +57,13 @@ export function drawThemeSeriesIndex(
 ): number | undefined {
   if (!isNodeCell(cell)) return undefined;
   if (
+    cell.kind === 'card' ||
+    cell.kind === 'table' ||
     cell.kind === 'swimlane' ||
     cell.kind === 'freehand' ||
     cell.kind === 'vector-line'
   )
     return 0;
-  if (cell.kind === 'table') {
-    const data = cell.data as TableCellData | undefined;
-    return data && tableStructure(data).hasHeader ? 0 : undefined;
-  }
   if (cell.kind !== 'geometry') return undefined;
   const shape = shapeKind(cell);
   if (shape === 'text') return undefined;
@@ -85,7 +83,7 @@ export function drawThemeAppearance(
 ): FrameThemeAppearance | undefined {
   const { cell, store, theme } = context;
   if (cell.kind === 'card')
-    return frameThemeAppearance(context, 'neutral', 'container', 'opaque');
+    return frameThemeAppearance(context, 'series-1', 'container', 'opaque');
   if (!theme.adaptive || cell.kind === 'image') return undefined;
   if (isEdgeCell(cell)) {
     const source =
@@ -93,9 +91,7 @@ export function drawThemeAppearance(
     const index = drawThemeSeriesIndex(source);
     const tone = frameThemeAppearance(
       { ...context, cell: source ?? cell },
-      index === undefined
-        ? 'neutral'
-        : (`series-${(index % 6) + 1}` as BoardStyleColor),
+      `series-${((index ?? 0) % 6) + 1}` as BoardStyleColor,
     );
     return { ...tone, fill: 'none' };
   }
@@ -106,13 +102,7 @@ export function drawThemeAppearance(
       strokeColor: frameThemeAppearance(context, 'primary').strokeColor,
     };
   if (cell.kind === 'table') {
-    const data = cell.data as TableCellData | undefined;
-    return frameThemeAppearance(
-      context,
-      data && tableStructure(data).hasHeader ? 'primary' : 'neutral',
-      'container',
-      'opaque',
-    );
+    return frameThemeAppearance(context, 'series-1', 'container', 'opaque');
   }
   if (cell.kind === 'swimlane')
     return frameThemeAppearance(context, 'primary', 'container', 'opaque');
@@ -189,7 +179,7 @@ export function tableEntryThemeAppearance(
   }
   return frameThemeAppearance(
     context,
-    'neutral',
+    'series-1',
     row % 2 ? 'node' : 'container',
     'opaque',
   );

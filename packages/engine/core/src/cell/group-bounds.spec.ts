@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { createTestCellRegistry as createFixtureRegistry } from '../../../../../tests/fixtures/plugins/registry';
+import { createTestCellRegistry as createFixtureRegistry } from '../../../../../tests/fixtures/core/registry';
 import * as routing from '../geometry/edge';
 import { cellArrangementBounds, groupBounds, unionCellBounds } from './group';
 import { applyCellOperations, groupCells } from './index';
@@ -10,9 +10,6 @@ import {
   type NodeCell,
 } from './types';
 const testCellRegistry = createFixtureRegistry();
-
-afterEach(() => vi.restoreAllMocks());
-
 const arrow = (id: string, y: number): EdgeCell => ({
   id,
   kind: 'arrow',
@@ -72,7 +69,7 @@ const fixture = () => {
   );
   return store;
 };
-
+afterEach(() => vi.restoreAllMocks());
 describe('group route bounds', () => {
   it('plans a Frame once for all nested-group arrows and includes their obstacle detours', () => {
     const store = fixture();
@@ -119,7 +116,6 @@ describe('group route bounds', () => {
     expect(create.mock.results[1].value).not.toBe(shared);
     expect(next).not.toEqual(bounds);
   });
-
   it('uses independent Frame contexts for separate groups', () => {
     let store = fixture();
     store = applyCellOperations(
@@ -156,7 +152,6 @@ describe('group route bounds', () => {
     });
     expect(create.mock.calls.map((call) => call[1])).toEqual(['root', 'other']);
   });
-
   it('keeps fixed curves, rotated nodes and Frame shells in bounds without routing hidden or nested content', () => {
     let store = applyCellOperations(
       createCellStore(createFrameCell('root')),

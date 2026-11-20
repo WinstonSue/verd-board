@@ -142,6 +142,169 @@ describe('Directory versions', () => {
   });
 });
 
+describe('Project document Git scope', () => {
+  async function project() {
+    const f = await fixture();
+    await f.write('src/code.ts', 'export const version = 1;');
+    await f.write('docs/note.txt', 'First');
+    const first = await f.save('Project baseline');
+    const root = path.join(f.root, 'docs');
+    const git = createNodeWorkspaceGit(root);
+    return { ...f, workspaceRoot: root, scopedGit: git, first: first.oid! };
+  }
+  it('inherits the repository, commits only document worktree bytes and preserves code staging', async () => {
+    const f = await project();
+    await f.write('src/code.ts', 'staged code');
+    await f.run('add', 'src/code.ts');
+    await f.write('src/code.ts', 'unstaged code');
+    await f.write('docs/note.txt', 'Second');
+    await f.write('docs/image.bin', 'binary resource');
+    const before = await f.scopedGit({ type: 'status' });
+    expect(before.status).toMatchObject({
+      initialized: true,
+      repositoryManaged: false,
+      remoteSupported: false,
+      historyCleanupSupported: false,
+      repository: {
+        root: await fs.realpath(f.root),
+        workspacePath: 'docs',
+        ownership: 'project',
+      },
+    });
+    expect(before.status.changes.map((change) => change.path).sort()).toEqual([
+      'image.bin',
+      'note.txt',
+    ]);
+    const preview = await f.scopedGit({
+      type: 'create-plan',
+      message: 'Document update',
+    });
+    expect(preview.plan!.paths.map((file) => file.path).sort()).toEqual([
+      'image.bin',
+      'note.txt',
+    ]);
+    await f.scopedGit({
+      type: 'create',
+      planId: preview.plan!.id,
+      expectedToken: preview.plan!.token,
+    });
+    expect(await f.run('show', 'HEAD:docs/note.txt')).toBe('Second');
+    expect(await f.run('show', 'HEAD:src/code.ts')).toBe(
+      'export const version = 1;',
+    );
+    expect(await f.run('show', ':src/code.ts')).toBe('staged code');
+    expect(await fs.readFile(path.join(f.root, 'src/code.ts'), 'utf8')).toBe(
+      'unstaged code',
+    );
+    expect(
+      await fs.lstat(path.join(f.workspaceRoot, '.git')).catch(() => null),
+    ).toBeNull();
+  });
+  it('stops plain file history when a rename crosses the workspace boundary', async () => {
+    const f = await project();
+    await f.write('source.txt', 'Outside the document workspace');
+    await f.save('Outside file');
+    await f.run('mv', 'source.txt', 'docs/imported.txt');
+    await f.run('commit', '-m', 'Move into documents');
+    const entered = await f.run('rev-parse', 'HEAD');
+    const history = await f.scopedGit({ type: 'log', path: 'imported.txt' });
+    expect(history.commits?.map((commit) => commit.oid)).toEqual([entered]);
+  });
+  it('filters history and reads, restores only documents, and leaves HEAD and code staging unchanged', async () => {
+    const f = await project();
+    await f.write('docs/note.txt', 'Second');
+    const state = (await f.scopedGit({ type: 'status' })).status;
+    const second = await f.scopedGit({
+      type: 'commit',
+      message: 'Documents',
+      expectedToken: state.token,
+    });
+    await f.write('src/code.ts', 'new code');
+    await f.run('add', 'src/code.ts');
+    await f.run('commit', '-m', 'Code only');
+    const head = await f.run('rev-parse', 'HEAD');
+    await f.write('src/code.ts', 'staged outside');
+    await f.run('add', 'src/code.ts');
+    const history = await f.scopedGit({ type: 'log' });
+    expect(history.commits?.map((commit) => commit.oid)).toEqual([
+      second.oid,
+      f.first,
+    ]);
+    expect(
+      (await f.scopedGit({ type: 'read', oid: head })).files?.map(
+        (file) => file.path,
+      ),
+    ).toEqual(['note.txt']);
+    const plan = await f.scopedGit({ type: 'restore-plan', oid: f.first });
+    expect(plan.plan?.paths).toEqual([{ path: 'note.txt', action: 'write' }]);
+    await f.scopedGit({
+      type: 'restore',
+      planId: plan.plan!.id,
+      expectedToken: plan.plan!.token,
+    });
+    expect(
+      await fs.readFile(path.join(f.workspaceRoot, 'note.txt'), 'utf8'),
+    ).toBe('First');
+    expect(await f.run('rev-parse', 'HEAD')).toBe(head);
+    expect(await f.run('show', ':src/code.ts')).toBe('staged outside');
+  });
+  it('rejects repository-wide mutations and paths outside the document directory', async () => {
+    const f = await project();
+    const token = (await f.scopedGit({ type: 'status' })).status.token;
+    for (const request of [
+      { type: 'init' },
+      {
+        type: 'configure',
+        author: { name: 'Wrong', email: 'wrong@example.com' },
+      },
+      { type: 'sync', expectedToken: token },
+      { type: 'purge-plan', fileIds: [] },
+      { type: 'cleanup-confirm', expectedToken: token },
+    ] as WorkspaceGitRequest[])
+      await expect(f.scopedGit(request)).rejects.toThrow('enclosing project');
+    await expect(
+      f.scopedGit({ type: 'read', oid: f.first, paths: ['../src/code.ts'] }),
+    ).rejects.toThrow('Invalid Git content path');
+    expect(await f.run('config', '--get', 'user.name')).toBe('Test Author');
+    expect(await f.run('rev-parse', 'HEAD')).toBe(f.first);
+  });
+  it('commits and restores a document directory inside a linked worktree', async () => {
+    const f = await project();
+    const linked = await fs.mkdtemp(path.join(os.tmpdir(), 'verd-linked-'));
+    roots.push(linked);
+    await f.run('worktree', 'add', '-b', 'documents-feature', linked, 'HEAD');
+    const git = createNodeWorkspaceGit(path.join(linked, 'docs'));
+    await fs.writeFile(path.join(linked, 'docs/note.txt'), 'Linked update');
+    const state = (await git({ type: 'status' })).status;
+    expect(state).toMatchObject({
+      initialized: true,
+      branch: 'documents-feature',
+      repositoryManaged: false,
+      blocked: [],
+    });
+    const next = await git({
+      type: 'commit',
+      message: 'Worktree document',
+      expectedToken: state.token,
+    });
+    expect(next.oid).not.toBe(f.first);
+    expect(await f.run('rev-parse', 'HEAD')).toBe(f.first);
+    const plan = await git({
+      type: 'restore-plan',
+      oid: f.first,
+      path: 'note.txt',
+    });
+    await git({
+      type: 'restore',
+      planId: plan.plan!.id,
+      expectedToken: plan.plan!.token,
+    });
+    expect(await fs.readFile(path.join(linked, 'docs/note.txt'), 'utf8')).toBe(
+      'First',
+    );
+  });
+});
+
 describe('Node root Git workspace', () => {
   it('does not initialize during status and creates an independent root repository', async () => {
     const root = await fs.mkdtemp(path.join(os.tmpdir(), 'verd-git-'));

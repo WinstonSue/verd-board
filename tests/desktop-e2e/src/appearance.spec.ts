@@ -126,7 +126,7 @@ test('Desktop follows system, remembers manual appearance after restart, and lea
     },
     cells: Object.fromEntries(boardNodes.map((node) => [node.id, node])),
   };
-  const boardPath = path.join(workspace, 'Board.verd.json');
+  const boardPath = path.join(workspace, 'Board.verd');
   const boardBytes = JSON.stringify(board);
   await writeFile(boardPath, boardBytes);
   const docPath = path.join(workspace, 'Appearance.verd-doc.json');
@@ -147,7 +147,7 @@ test('Desktop follows system, remembers manual appearance after restart, and lea
       theme: { themeColorMode: 'default', backgroundMode: 'theme' },
     };
     await writeFile(
-      path.join(workspace, `${fixture}.verd.json`),
+      path.join(workspace, `${fixture}.verd`),
       JSON.stringify(file),
     );
   }

@@ -109,7 +109,7 @@ describe('WorkspaceSession', () => {
       mkdirs: ['docs/nested/empty', 'docs-other'],
       writes: [
         {
-          path: 'docs/board.verd.json',
+          path: 'docs/board.verd',
           content: fileJson('inside'),
           expectedVersion: null,
         },
@@ -124,7 +124,7 @@ describe('WorkspaceSession', () => {
           expectedVersion: null,
         },
         {
-          path: 'outside.verd.json',
+          path: 'outside.verd',
           content: JSON.stringify(
             withRef(fileFor('outside'), 'ref-inside', 'inside'),
           ),
@@ -248,7 +248,7 @@ describe('WorkspaceSession', () => {
     await session.apply({
       type: 'create-file',
       file: fileFor('new'),
-      path: 'docs/new.verd.json',
+      path: 'docs/new.verd',
     });
     expect(
       (await session.apply({ type: 'trash-directory', path: 'docs' })).ok,
@@ -259,7 +259,7 @@ describe('WorkspaceSession', () => {
       type: 'file',
       file: fileFor('inside', 'Local edit'),
     });
-    const raw = await host.readFile(handle, 'docs/board.verd.json');
+    const raw = await host.readFile(handle, 'docs/board.verd');
     await host.commit(handle, {
       transactionId: 'external-change',
       writes: [
@@ -290,7 +290,7 @@ describe('WorkspaceSession', () => {
       '.verdboard/trash',
       '.verdscrolls',
       '.verdscrolls/trash',
-      'docs/board.verd.json',
+      'docs/board.verd',
     ])
       expect((await session.apply({ type: 'trash-directory', path })).ok).toBe(
         false,
@@ -352,7 +352,7 @@ describe('WorkspaceSession', () => {
     await session.apply({
       type: 'create-file',
       file: fileFor('replacement'),
-      path: 'docs/board.verd.json',
+      path: 'docs/board.verd',
     });
     expect(
       (await session.apply({ type: 'purge-trash', entryIds: [entryId] })).ok,
@@ -473,7 +473,7 @@ describe('WorkspaceSession', () => {
       file: fileFor('board-1', 'Board One'),
     });
     expect(result.ok).toBe(true);
-    expect(entryPaths(session)).toEqual(['Board One.verd.json']);
+    expect(entryPaths(session)).toEqual(['Board One.verd']);
     expect(session.getState().dirty).toBe(true);
     expect(session.getState().canUndo).toBe(true);
 
@@ -483,7 +483,7 @@ describe('WorkspaceSession', () => {
 
     const snapshot = await host.readSnapshot(handle);
     expect(snapshot.canvases.map((canvas) => canvas.path)).toEqual([
-      'Board One.verd.json',
+      'Board One.verd',
     ]);
     expect(session.getState().dirty).toBe(false);
     const entry = session.getState().files.get('board-1');
@@ -498,7 +498,7 @@ describe('WorkspaceSession', () => {
       recordHistory: false,
     });
     expect(result.ok).toBe(true);
-    expect(entryPaths(session)).toEqual(['Board One.verd.json']);
+    expect(entryPaths(session)).toEqual(['Board One.verd']);
     expect(session.getState().canUndo).toBe(false);
     expect(session.getState().canRedo).toBe(false);
   });
@@ -582,7 +582,7 @@ describe('WorkspaceSession', () => {
     await session.flush();
     const snapshot = await host.readSnapshot(handle);
     expect(snapshot.canvases.map((canvas) => canvas.path)).toEqual([
-      'board-1.verd.json',
+      'board-1.verd',
     ]);
   });
 
@@ -616,14 +616,14 @@ describe('WorkspaceSession', () => {
     const moved = await session.apply({
       type: 'move-file',
       frameId: 'board-1',
-      toPath: 'docs/board-1.verd.json',
+      toPath: 'docs/board-1.verd',
     });
     expect(moved.ok).toBe(true);
     await session.flush();
 
     const snapshot = await host.readSnapshot(handle);
     expect(snapshot.canvases.map((canvas) => canvas.path)).toEqual([
-      'docs/board-1.verd.json',
+      'docs/board-1.verd',
     ]);
     // A move preserves content, so the digest stays the same version.
     expect(session.getState().files.get('board-1')?.version).toBe(version);
@@ -646,7 +646,7 @@ describe('WorkspaceSession', () => {
       transactionId: 'external-tx',
       writes: [
         {
-          path: 'board-1.verd.json',
+          path: 'board-1.verd',
           content: fileJson('board-1', 'External'),
           expectedVersion: version,
         },
@@ -675,13 +675,13 @@ describe('WorkspaceSession', () => {
     });
     const snapshot = await host.readSnapshot(handle);
     const aVersion = snapshot.canvases.find(
-      (c) => c.path === 'a.verd.json',
+      (c) => c.path === 'a.verd',
     )?.version;
     await host.commit(handle, {
       transactionId: 'external-tx',
       writes: [
         {
-          path: 'a.verd.json',
+          path: 'a.verd',
           content: fileJson('a', 'External A'),
           expectedVersion: aVersion!,
         },
@@ -694,7 +694,7 @@ describe('WorkspaceSession', () => {
     });
     await session.flush();
     const after = await host.readSnapshot(handle);
-    const b = after.canvases.find((canvas) => canvas.path === 'b.verd.json');
+    const b = after.canvases.find((canvas) => canvas.path === 'b.verd');
     expect(b?.file?.frame.name).toBe('B local');
     expect(session.getState().files.get('a')?.conflicted).toBe(true);
   });
@@ -764,7 +764,7 @@ describe('WorkspaceSession', () => {
 
     expect(session.getState().saveStatus).toBe('saved');
     expect(session.getState().files.get('board-1')?.conflicted).toBeFalsy();
-    const read = await host.readFile(handle, 'board-1.verd.json');
+    const read = await host.readFile(handle, 'board-1.verd');
     expect(JSON.parse(new TextDecoder().decode(read.content)).frame.name).toBe(
       'Edit Two',
     );
@@ -806,7 +806,7 @@ describe('WorkspaceSession', () => {
 
     expect(session.getState().saveStatus).toBe('saved');
     expect(session.getState().files.get('board-1')?.conflicted).toBeFalsy();
-    const read = await host.readFile(handle, 'board-1.verd.json');
+    const read = await host.readFile(handle, 'board-1.verd');
     expect(JSON.parse(new TextDecoder().decode(read.content)).frame.name).toBe(
       'Edit Two',
     );
@@ -913,7 +913,7 @@ describe('WorkspaceSession', () => {
       transactionId: 'external-tx',
       writes: [
         {
-          path: 'board-1.verd.json',
+          path: 'board-1.verd',
           content: fileJson('board-1', 'External name'),
           expectedVersion: snapshot.canvases[0].version,
         },
@@ -941,7 +941,7 @@ describe('WorkspaceSession', () => {
       transactionId: 'external-tx',
       writes: [
         {
-          path: 'board-1.verd.json',
+          path: 'board-1.verd',
           content: fileJson('board-1', 'External'),
           expectedVersion: snapshot.canvases[0].version,
         },
@@ -1191,7 +1191,7 @@ describe('WorkspaceSession', () => {
       transactionId: 'external-tx',
       writes: [
         {
-          path: 'board-1.verd.json',
+          path: 'board-1.verd',
           content: fileJson('board-1', 'External'),
           expectedVersion: version,
         },
@@ -1237,4 +1237,38 @@ describe('WorkspaceSession', () => {
       'Local edit',
     );
   });
+});
+
+it('keeps old canvas paths readable and saves edits without renaming them', async () => {
+  const host = createMemoryWorkspaceHost();
+  const handle = (await host.openWorkspace({ path: 'legacy-suffix' }))!;
+  await host.commit(handle, {
+    transactionId: 'legacy-seed',
+    writes: [
+      {
+        path: 'old.verd.json',
+        content: fileJson('legacy'),
+        expectedVersion: null,
+      },
+    ],
+  });
+  const session = await openWorkspaceSession(host, handle);
+  try {
+    const file = session.getState().files.get('legacy')!.file;
+    expect(
+      (
+        await session.apply({
+          type: 'file',
+          file: { ...file, frame: { ...file.frame, name: 'Edited' } },
+        })
+      ).ok,
+    ).toBe(true);
+    expect(await session.flush()).toBe(true);
+    expect(session.getState().files.get('legacy')!.path).toBe('old.verd.json');
+    expect((await host.readSnapshot(handle)).canvases[0].path).toBe(
+      'old.verd.json',
+    );
+  } finally {
+    session.dispose();
+  }
 });

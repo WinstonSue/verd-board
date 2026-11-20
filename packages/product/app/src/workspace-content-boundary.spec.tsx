@@ -41,10 +41,7 @@ describe('workspace content boundary', () => {
         root.render(
           <>
             <nav>File tree</nav>
-            <WorkspaceContentBoundary
-              resetKeys={['one']}
-              path="broken.verd.json"
-            >
+            <WorkspaceContentBoundary resetKeys={['one']} path="broken.verd">
               <ThrowingChild effect={effect} />
             </WorkspaceContentBoundary>
             <article>Healthy document</article>

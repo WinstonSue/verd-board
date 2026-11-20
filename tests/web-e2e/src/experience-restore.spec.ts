@@ -479,7 +479,9 @@ test('restores editing, gestures, summaries, and file open', async ({
   );
   const openInput = page
     .locator('.workspace-pane.is-active')
-    .locator('input[accept="application/json,.md,.markdown,.mmd,.mermaid"]');
+    .locator(
+      'input[accept="application/json,.verd,.verd.json,.md,.markdown,.mmd,.mermaid"]',
+    );
   await openInput
     .nth(1)
     .setInputFiles(snapshotFile('open.json', 'Opened node', 2, 'dark'));

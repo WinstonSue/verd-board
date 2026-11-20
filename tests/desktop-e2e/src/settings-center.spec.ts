@@ -57,6 +57,22 @@ test('Desktop unified settings keeps personal and project configuration in one d
     await expect(page.getByTestId('workspace-storage-location')).toHaveText(
       path.join(directory, 'project'),
     );
+    await page.getByTestId('workspace-storage-copy').click();
+    await expect
+      .poll(() => desktop!.evaluate(({ clipboard }) => clipboard.readText()))
+      .toBe(path.join(directory, 'project'));
+    await expect(
+      page.getByRole('status').filter({ hasText: '已复制' }),
+    ).toBeVisible();
+    const agent = page.getByTestId('workspace-agent-status');
+    await expect(agent).toContainText('外部 AI 助手');
+    await expect(agent).toContainText('尚未启用编写工具');
+    await agent
+      .getByRole('button', { name: '启用或修复编写工具', exact: true })
+      .click();
+
+    await expect(agent).toContainText('编写工具已就绪');
+    await expect(agent).toContainText('让它读取 AGENTS.md');
     await desktop.evaluate(({ shell }) => {
       shell.openPath = async (target) => {
         (globalThis as any).__openedWorkspacePath = target;

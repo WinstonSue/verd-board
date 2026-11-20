@@ -107,6 +107,16 @@ async function context() {
 describeWorkspaceHostContract('HTTP filesystem host', context);
 
 describe('local service lifecycle and security', () => {
+  it('advertises the directory and bundled-workspace capabilities supplied by the full service', async () => {
+    const ctx = await context();
+    const handle = await ctx.open();
+    expect(ctx.host.capabilities).toEqual({
+      pickWorkspace: true,
+      openBuiltinWorkspace: true,
+      openPatternWorkspace: true,
+    });
+    await ctx.host.closeWorkspace(handle);
+  });
   it('drains accepted writes before exit and releases the exclusive data-directory lock', async () => {
     const ctx = await context();
     const handle = await ctx.open();
@@ -180,7 +190,7 @@ describe('local service lifecycle and security', () => {
       transactionId: 'added-before-update',
       writes: [
         {
-          path: 'added.verd.json',
+          path: 'added.verd',
           content: 'invalid native file retained in backup',
           expectedVersion: null,
         },
@@ -194,7 +204,7 @@ describe('local service lifecycle and security', () => {
     ).toBeNull();
     expect(
       (await ctx.host.readSnapshot(peer)).entries.some(
-        (entry) => entry.path === 'added.verd.json',
+        (entry) => entry.path === 'added.verd',
       ),
     ).toBe(true);
     selection = path.join(ctx.root, 'chosen-backups');
@@ -208,13 +218,13 @@ describe('local service lifecycle and security', () => {
     expect(replacement!.key).not.toBe(managed.key);
     const snapshot = await ctx.host.readSnapshot(peer);
     expect(snapshot.config.value.identity).toBe(identity);
-    expect(
-      snapshot.entries.some((entry) => entry.path === 'added.verd.json'),
-    ).toBe(false);
+    expect(snapshot.entries.some((entry) => entry.path === 'added.verd')).toBe(
+      false,
+    );
     const backup = path.join(selection, (await fs.readdir(selection))[0]);
-    expect(
-      await fs.readFile(path.join(backup, 'added.verd.json'), 'utf8'),
-    ).toBe('invalid native file retained in backup');
+    expect(await fs.readFile(path.join(backup, 'added.verd'), 'utf8')).toBe(
+      'invalid native file retained in backup',
+    );
     expect(await ctx.host.listWorkspaceHistory!()).toEqual(
       expect.arrayContaining([
         expect.objectContaining({ name: expect.any(String) }),

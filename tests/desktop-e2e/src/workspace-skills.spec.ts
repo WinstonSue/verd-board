@@ -84,9 +84,7 @@ test('Desktop edits standard workspace Skills and preserves an external edit ove
     await expect(viewer.getByTestId('workspace-skill-guide')).toContainText(
       '图表的信息价值与表达',
     );
-    await viewer
-      .getByRole('button', { name: '关闭默认 Skill', exact: true })
-      .click();
+    await viewer.getByTestId('workspace-default-skill-back').click();
     await page
       .getByTestId('workspace-skill-description')
       .fill('Project writing requirements');

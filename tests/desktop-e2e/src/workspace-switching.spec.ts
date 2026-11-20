@@ -34,11 +34,11 @@ test('Desktop remembers a selected folder, recovers a missing folder and returns
       },
     });
     const diagramPaths = (await readdir(path.join(source, '架构图')))
-      .filter((name) => /^\d{2}-.*\.verd\.json$/.test(name))
+      .filter((name) => /^\d{2}-.*\.verd(?:\.json)?$/.test(name))
       .map((name) => `架构图/${name}`);
     const canvasBytes = () =>
       Promise.all(
-        ['架构图/项目导览.verd.json', ...diagramPaths].map((file) =>
+        ['架构图/项目导览.verd', ...diagramPaths].map((file) =>
           readFile(path.join(source, file), 'utf8'),
         ),
       );
@@ -184,7 +184,7 @@ test('Desktop remembers a selected folder, recovers a missing folder and returns
     );
     await page.getByRole('button', { name: '架构图', exact: true }).click();
     const realDiagrams = page.locator(
-      '[data-entry-kind="file"] .file-tree-name[title^="架构图/"]:not([title="架构图/项目导览.verd.json"])',
+      '[data-entry-kind="file"] .file-tree-name[title^="架构图/"]:not([title="架构图/项目导览.verd"])',
     );
     await expect(realDiagrams).toHaveCount(diagramPaths.length);
     await page.screenshot({

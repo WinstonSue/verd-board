@@ -166,10 +166,7 @@ import {
   createWorkspaceDocumentPreviewCache,
   type PreviewOptions,
 } from './documents/workspace-previews';
-import {
-  remapWorkspaceFiles,
-  workspaceDocumentDependents,
-} from '@sue/verd-board-workspace';
+import { remapWorkspaceFiles } from '@sue/verd-board-workspace';
 import {
   assessReferencePlace,
   createFrameFile,
@@ -220,12 +217,14 @@ export interface WorkspaceAppProps {
   /**
    * Reads the pre-workspace storage record (flat manifest / legacy keys).
    * Consulted only when the opened workspace has no canvas files; its
-   * snapshot is partitioned into `.verd.json` files via `import-files`.
+   * snapshot is partitioned into `.verd` files via `import-files`.
    */
   importLegacy?(): Promise<WorkspaceSnapshot | null>;
   /** Renders the workspace read-only: canvas edits and file mutations off. */
   readonly?: boolean;
   onOpen?(handle: WorkspaceHandle): void;
+  onSetDefaultFileApplications?(): Promise<void>;
+  subscribeOpenFile?(listener: (path: string) => void): () => void;
   /** Desktop directory picker and return-to-built-in actions. */
   allowWorkspaceSwitching?: boolean;
   /** Optional migration action for hosts with existing browser workspaces. */
@@ -280,6 +279,8 @@ function WorkspaceAppShell({
   importLegacy,
   readonly = false,
   onOpen,
+  onSetDefaultFileApplications,
+  subscribeOpenFile,
   allowWorkspaceSwitching = false,
   onMigrateBrowserData,
 }: WorkspaceAppProps) {
@@ -953,23 +954,7 @@ function WorkspaceAppShell({
       createPageFilePersistence(snapshot?.filePersistence, workspaceReferences),
     [snapshot?.filePersistence, workspaceReferences],
   );
-  const documentDependents = useMemo(
-    () =>
-      workspaceReferences
-        ? workspaceDocumentDependents(
-            [
-              ...[...(snapshot?.files.values() ?? [])].map(
-                (entry) => entry.file,
-              ),
-              ...[...(snapshot?.documents.values() ?? [])].map(
-                (entry) => entry.file,
-              ),
-            ],
-            workspaceReferences,
-          )
-        : new Set<string>(),
-    [snapshot?.files, snapshot?.documents, workspaceReferences],
-  );
+
   const documentFrameChoices = useMemo(
     () =>
       [...(snapshot?.files.values() ?? [])].map((entry) => ({
@@ -1106,7 +1091,7 @@ function WorkspaceAppShell({
         state.diagnostics.some(
           (issue) =>
             !issue.frameId &&
-            (!issue.path || !/\.verd(?:-doc)?\.json$/.test(issue.path)),
+            (!issue.path || !/\.verd(?:(?:-doc)?\.json)?$/.test(issue.path)),
         )
       )
         throw new Error(
@@ -1263,6 +1248,10 @@ function WorkspaceAppShell({
             JSON.stringify(next.session) !== JSON.stringify(observed.session) ||
             next.mutationsPaused !== observed.mutationsPaused;
           observed = next;
+          // Publish action availability with the session event. Invalidating
+          // from a snapshot effect feeds synchronous external-store updates
+          // back into React commits during continuous document input.
+          workspaceActionsRef.current.invalidate();
           // Content and navigation must commit with edit/restore requests.
           // Pure save notifications can yield to ongoing canvas gestures.
           if (urgent) setSnapshot(next);
@@ -1356,12 +1345,21 @@ function WorkspaceAppShell({
     // web returns a no-op since its pagehide handler above is the
     // best-effort equivalent for IndexedDB writes.
     const offShutdown =
-      host.onShutdown?.(async () => {
-        if (settingsFlush.current && !(await settingsFlush.current()))
-          throw new Error('Workspace settings could not be saved');
-        if (session && !(await session.flush()))
-          throw new Error('Workspace could not be saved');
-      }) ?? (() => {});
+      host.onShutdown?.(
+        async () => {
+          if (settingsFlush.current && !(await settingsFlush.current()))
+            throw new Error('Workspace settings could not be saved');
+          const editing = await workspaceEditing.current()();
+          if (editing.status !== 'completed' && editing.status !== 'noop')
+            throw new Error('Editor could not be saved');
+          session?.freeze();
+          if (session && !(await session.flush())) {
+            session.unfreeze();
+            throw new Error('Workspace could not be saved');
+          }
+        },
+        () => session?.unfreeze(),
+      ) ?? (() => {});
     return () => {
       window.removeEventListener('beforeunload', beforeUnload);
       window.removeEventListener('pagehide', flush);
@@ -1563,6 +1561,30 @@ function WorkspaceAppShell({
     [session, persistNav],
   );
 
+  const workspaceReady = !!snapshot;
+  useEffect(() => {
+    if (!session || !workspaceReady || !subscribeOpenFile) return;
+    return subscribeOpenFile((path) => {
+      void (async () => {
+        await session.syncFromHost();
+        if (activeWorkspace.current?.session !== session) return;
+        const current = session.getState();
+        const id =
+          current.fileIdByPath.get(path) ??
+          current.failedFiles.get(path)?.fileId;
+        if (id) await openFile(id);
+        else
+          notify(
+            current.failedFiles
+              .get(path)
+              ?.diagnostics.map((item) => item.message)
+              .join('; ') || '无法打开所选画布',
+            'error',
+          );
+      })().catch((error) => notify(String(error), 'error'));
+    });
+  }, [session, openFile, subscribeOpenFile, workspaceReady, notify]);
+
   useEffect(() => {
     if (!failedPath || !snapshot || snapshot.failedFiles.has(failedPath))
       return;
@@ -1759,7 +1781,7 @@ function WorkspaceAppShell({
       const ticket = navigationFeedback.current();
       const frameId = uuid();
       const file = createFrameFile(createFrameCell(frameId));
-      const base = `${file.frame.name || '未命名画布'}.verd.json`;
+      const base = `${file.frame.name || '未命名画布'}.verd`;
       const result = await applyWorkspaceAction({
         type: 'create-file',
         file,
@@ -2058,13 +2080,45 @@ function WorkspaceAppShell({
         state.files.get(fileId)?.file.frame.name ||
         canvasDisplayName(entry?.path ?? 'frame');
       download(
-        `${name}${value.format === 'verd-document' ? '.verd-doc.json' : '.verd.json'}`,
+        `${name}${value.format === 'verd-document' ? '.verd-doc.json' : '.verd'}`,
         new Blob([JSON.stringify(value, null, 2)], {
           type: 'application/json',
         }),
       );
     },
     [session, locale, notify],
+  );
+
+  const importNativeCanvas = useCallback(
+    async (file: File) => {
+      if (!session) return;
+      if (file.size > WORKSPACE_PACKAGE_MAX_JSON_BYTES)
+        throw new Error('文件超过 384 MiB 上限');
+      const prepared = await parseWorkspacePackage(
+        JSON.parse(await file.text()),
+      );
+      if (!prepared) throw new Error('Unsupported native canvas');
+      const state = session.getState();
+      const remapped = remapWorkspaceFiles(
+        prepared.files,
+        (id) => !!state.store.cells[id] || state.documents.has(id),
+        uuid,
+      );
+      const result = await applyWorkspaceAction({
+        type: 'import-files',
+        files: remapped.files,
+        resources: prepared.resources,
+        label: 'import-native-canvas',
+      });
+      if (!result.ok)
+        throw new Error(
+          result.diagnostics.map((item) => item.message).join('; '),
+        );
+      await openFile(
+        remapped.idMap.get(prepared.rootFileId) ?? prepared.rootFileId,
+      );
+    },
+    [session, applyWorkspaceAction, openFile],
   );
 
   const importDocument = useCallback(
@@ -2097,7 +2151,10 @@ function WorkspaceAppShell({
             let path = item.path;
             let i = 1;
             while (taken.has(path)) {
-              path = item.path.replace(/(\.verd(?:-doc)?\.json)$/, ` ${i++}$1`);
+              path = item.path.replace(
+                /(\.verd(?:(?:-doc)?\.json)?)$/,
+                ` ${i++}$1`,
+              );
             }
             taken.add(path);
             return { ...item, path };
@@ -2202,7 +2259,6 @@ function WorkspaceAppShell({
     () => workspaceActions.invalidate(),
     [
       workspaceActions,
-      snapshot,
       readonly,
       switchingWorkspace,
       history,
@@ -4371,16 +4427,13 @@ function WorkspaceAppShell({
                                   setDocumentPickerEditable(true);
                                   setDocumentPickerFileId(tab.fileId);
                                 }}
-                                onExportNative={
-                                  documentDependents.has(tab.fileId)
-                                    ? () => {
-                                        void workspaceActions.executeAction(
-                                          'workspace.file.export',
-                                          { fileId: tab.fileId },
-                                        );
-                                      }
-                                    : undefined
-                                }
+                                onExportNative={() => {
+                                  void workspaceActions.executeAction(
+                                    'workspace.file.export',
+                                    { fileId: tab.fileId },
+                                  );
+                                }}
+                                onImportNative={importNativeCanvas}
                                 frameId={tab.fileId}
                                 onChange={onChange(tab.fileId)}
                                 onOpenFrame={(fileId, source) => {
@@ -4609,6 +4662,7 @@ function WorkspaceAppShell({
               </main>
               {settingsView ? (
                 <SettingsCenter
+                  onSetDefaultFileApplications={onSetDefaultFileApplications}
                   section={workspaceSettingsSection}
                   onSection={setWorkspaceSettingsSection}
                   onBack={closeMy}
@@ -4682,6 +4736,21 @@ function WorkspaceAppShell({
                       path: e.path,
                     })),
                     storageLocation: workspaceLocation,
+                    directoryContext: snapshot.context,
+                    onInitializeAgent:
+                      host.initializeAgent && !readonly
+                        ? async () => {
+                            if (!(await session.flush()))
+                              throw new Error(
+                                locale === 'zh'
+                                  ? '请先保存工作区修改。'
+                                  : 'Save workspace changes first.',
+                              );
+                            await host.initializeAgent!(
+                              activeWorkspace.current!.handle,
+                            );
+                          }
+                        : undefined,
                     onOpenStorage: host.revealWorkspaceLocation
                       ? () =>
                           host.revealWorkspaceLocation!(
@@ -4738,14 +4807,6 @@ function WorkspaceAppShell({
                           );
                       },
                       onPurge: async (entryIds) => {
-                        const versions = await session.versions({
-                          type: 'status',
-                        });
-                        if (versions.status.enabled) {
-                          setVersionPurgeIds(entryIds);
-                          openSettings('workspace.versions');
-                          return;
-                        }
                         const result = await applyWorkspaceAction({
                           type: 'purge-trash',
                           entryIds,
@@ -4844,7 +4905,7 @@ function WorkspaceAppShell({
                 ref={importInput}
                 type="file"
                 multiple
-                accept=".json,.verd.json,.verd-doc.json,.md,.markdown"
+                accept=".json,.verd,.verd.json,.verd-doc.json,.md,.markdown"
                 hidden
                 onChange={(event) => void importDocument(event)}
               />

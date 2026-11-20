@@ -40,7 +40,7 @@ test('internal link search, backlinks and static preview preserve the editing pa
   await page.goto('/');
   await expect(
     page.locator(
-      'input[accept=".json,.verd.json,.verd-doc.json,.md,.markdown"]',
+      'input[accept=".json,.verd,.verd.json,.verd-doc.json,.md,.markdown"]',
     ),
   ).toBeAttached({ timeout: 15000 });
   const destination = doc('knowledge-destination', 'Destination', [
@@ -60,7 +60,9 @@ test('internal link search, backlinks and static preview preserve the editing pa
   ]);
   for (const file of [destination, source])
     await page
-      .locator('input[accept=".json,.verd.json,.verd-doc.json,.md,.markdown"]')
+      .locator(
+        'input[accept=".json,.verd,.verd.json,.verd-doc.json,.md,.markdown"]',
+      )
       .setInputFiles({
         name: file.title + '.verd-doc.json',
         mimeType: 'application/json',
@@ -161,7 +163,9 @@ test('Cell links preview a real canvas without mounting an editable occurrence',
   await page.goto('/');
   for (const file of [board, source])
     await page
-      .locator('input[accept=".json,.verd.json,.verd-doc.json,.md,.markdown"]')
+      .locator(
+        'input[accept=".json,.verd,.verd.json,.verd-doc.json,.md,.markdown"]',
+      )
       .setInputFiles({
         name: (file.title ?? 'Knowledge canvas') + '.json',
         mimeType: 'application/json',

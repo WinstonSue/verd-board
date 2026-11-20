@@ -36,6 +36,11 @@ const seriesFor = (
   id = context.cell.id,
 ) => {
   const cell = context.store.cells[id];
+  if (isNodeCell(cell) && cell.kind === 'uml-note') return 2;
+  if (isNodeCell(cell) && cell.kind === 'uml-fragment') {
+    const operator = (cell.data as UmlFragmentData)?.operator;
+    return operator === 'alt' ? 2 : operator === 'opt' ? 1 : 0;
+  }
   if (isNodeCell(cell) && cell.kind === 'uml-class')
     return Math.max(
       0,
@@ -46,45 +51,29 @@ const seriesFor = (
 
 const seriesTone = (
   context: FrameThemeAppearanceContext,
-  level: 'node' | 'emphasis' = 'node',
+  level: 'container' | 'node' | 'emphasis' = 'node',
   id = context.cell.id,
+  fillMode: 'overlay' | 'opaque' = 'overlay',
 ) =>
   frameThemeAppearance(
     { ...context, cell: context.store.cells[id] ?? context.cell },
     `series-${(seriesFor(context, id) % 6) + 1}` as import('@sue/board-core').BoardStyleColor,
     level,
+    fillMode,
   );
-
-const fragmentRole = (context: FrameThemeAppearanceContext) => {
-  const operator = (
-    context.cell as import('@sue/board-core').NodeCell<UmlFragmentData>
-  ).data?.operator;
-  return operator === 'alt'
-    ? 'tertiary'
-    : operator === 'opt'
-      ? 'secondary'
-      : 'primary';
-};
 
 export const umlThemeAppearance = (context: FrameThemeAppearanceContext) => {
   const { cell } = context;
-  if (cell.kind === 'uml-note')
-    return frameThemeAppearance(context, 'annotation');
   if (cell.kind === 'uml-fragment')
     return {
-      ...frameThemeAppearance(
-        context,
-        fragmentRole(context),
-        'container',
-        'opaque',
-      ),
+      ...seriesTone(context, 'container', cell.id, 'opaque'),
       fill: 'none',
     };
   if (cell.cellType === 'edge') {
     const id = 'cellId' in cell.source ? cell.source.cellId : undefined;
     return {
       ...(id === undefined
-        ? frameThemeAppearance(context, 'neutral')
+        ? frameThemeAppearance(context, 'series-1')
         : seriesTone(context, 'node', id)),
       fill: 'none',
     };
@@ -105,12 +94,7 @@ export function resolveUmlPartAppearance(
   if (part === 'fragment-label')
     return resolveFrameAppearance(
       context,
-      frameThemeAppearance(
-        context,
-        fragmentRole(context),
-        'emphasis',
-        'opaque',
-      ),
+      seriesTone(context, 'emphasis', context.cell.id, 'opaque'),
     );
   const tone = seriesTone(
     context,

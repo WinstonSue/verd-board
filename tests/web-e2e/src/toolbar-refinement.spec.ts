@@ -5,7 +5,9 @@ import { openActiveFile, openAppMenu } from './app-actions';
 
 const active = (page: Page) => page.locator('.workspace-pane.is-active');
 const upload = (page: Page) =>
-  page.locator('input[accept=".json,.verd.json,.verd-doc.json,.md,.markdown"]');
+  page.locator(
+    'input[accept=".json,.verd,.verd.json,.verd-doc.json,.md,.markdown"]',
+  );
 async function openDocument(page: Page) {
   const id = 'toolbar-refinement-doc';
   await upload(page).setInputFiles({

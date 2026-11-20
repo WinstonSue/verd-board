@@ -142,9 +142,11 @@ async function seed(page: Page) {
   await page.goto('/');
   await setAppLanguage(page, 'zh');
   await page
-    .locator('input[accept=".json,.verd.json,.verd-doc.json,.md,.markdown"]')
+    .locator(
+      'input[accept=".json,.verd,.verd.json,.verd-doc.json,.md,.markdown"]',
+    )
     .setInputFiles({
-      name: 'appearance.verd.json',
+      name: 'appearance.verd',
       mimeType: 'application/json',
       buffer: Buffer.from(
         JSON.stringify({
@@ -514,9 +516,11 @@ for (const fixture of [
       theme: { themeColorMode: 'retro', backgroundMode: 'theme' },
     };
     await page
-      .locator('input[accept=".json,.verd.json,.verd-doc.json,.md,.markdown"]')
+      .locator(
+        'input[accept=".json,.verd,.verd.json,.verd-doc.json,.md,.markdown"]',
+      )
       .setInputFiles({
-        name: `${fixture}.verd.json`,
+        name: `${fixture}.verd`,
         mimeType: 'application/json',
         buffer: Buffer.from(JSON.stringify(file)),
       });
@@ -575,12 +579,12 @@ for (const fixture of [
         stroke: getComputedStyle(part).stroke,
       })),
     );
-    const neutralNode = await roleTone(page, 'retro', 'dark', 'neutral');
+    const taskNode = await roleTone(page, 'retro', 'dark', 0);
     for (const part of painted) {
       if (part.kind === 'workflow-task') {
-        // Ordinary tasks deliberately share the neutral family in every theme.
-        expect(part.fillAttribute).toBe(neutralNode.fill);
-        expect(part.strokeAttribute).toBe(neutralNode.strokeColor);
+        // Ordinary tasks use the first theme series, alongside start and decision accents.
+        expect(part.fillAttribute).toBe(taskNode.fill);
+        expect(part.strokeAttribute).toBe(taskNode.strokeColor);
       } else {
         expect(part.fill).not.toBe('rgb(55, 49, 40)');
         expect(part.stroke).not.toBe('rgb(186, 166, 129)');
@@ -605,10 +609,19 @@ for (const fixture of [
         active(page).getByLabel('Theme', { exact: true }),
         theme,
       );
-      for (const mode of ['light', 'dark']) {
+      for (const mode of ['light', 'dark'] as const) {
         await appearance(page, mode);
         await readable(target);
         await expect(world).toHaveAttribute('transform', camera!);
+        if (fixture === 'workflow-process') {
+          const tone = await roleTone(page, theme, mode, 0);
+          for (const task of await target
+            .locator('[data-cell-kind="workflow-task"]')
+            .all()) {
+            await expect(task).toHaveAttribute('fill', tone.fill);
+            await expect(task).toHaveAttribute('stroke', tone.strokeColor);
+          }
+        }
         await page.mouse.move(0, 0);
         await target.screenshot({
           path: testInfo.outputPath(`${fixture}-${theme}-${mode}.png`),
@@ -767,9 +780,11 @@ test('repeated references retain the source theme through static preview, inline
     },
   ];
   await page
-    .locator('input[accept=".json,.verd.json,.verd-doc.json,.md,.markdown"]')
+    .locator(
+      'input[accept=".json,.verd,.verd.json,.verd-doc.json,.md,.markdown"]',
+    )
     .setInputFiles({
-      name: 'themes.verd.json',
+      name: 'themes.verd',
       mimeType: 'application/json',
       buffer: Buffer.from(
         JSON.stringify({

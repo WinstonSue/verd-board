@@ -14,6 +14,7 @@ import type {
 } from '@sue/verd-board-workspace';
 
 interface DesktopBridge {
+  initializeAgent?: WorkspaceHost['initializeAgent'];
   git: NonNullable<WorkspaceHost['git']>;
   versions(
     handle: WorkspaceHandle,
@@ -62,7 +63,10 @@ interface DesktopBridge {
 
 interface DesktopElectronApi {
   workspaceHost?: DesktopBridge;
-  onShutdown?: (flush: () => Promise<void>) => () => void;
+  onShutdown?: (
+    flush: () => Promise<void>,
+    onCancelled?: () => void,
+  ) => () => void;
 }
 
 const electronApi = (): DesktopElectronApi | undefined =>
@@ -105,6 +109,11 @@ export const createDesktopWorkspaceHost = (): WorkspaceHost => {
     activateWorkspace: (handle) => bridge().activateWorkspace(handle),
     listWorkspaceHistory: () => bridge().listWorkspaceHistory(),
     readSnapshot: (handle) => bridge().readSnapshot(handle),
+    initializeAgent: (handle) => {
+      const initialize = bridge().initializeAgent;
+      if (!initialize) throw new Error('Agent setup is unavailable');
+      return initialize(handle);
+    },
     readFile: (handle, path) => bridge().readFile(handle, path),
     readResource: (handle, key) => bridge().readResource(handle, key),
     openResourceExternal: (handle, path) =>
@@ -125,6 +134,7 @@ export const createDesktopWorkspaceHost = (): WorkspaceHost => {
     resolveConflict: (handle, request) =>
       bridge().resolveConflict(handle, request),
     closeWorkspace: (handle) => bridge().closeWorkspace(handle),
-    onShutdown: (flush) => electronApi()?.onShutdown?.(flush) ?? (() => {}),
+    onShutdown: (flush, onCancelled) =>
+      electronApi()?.onShutdown?.(flush, onCancelled) ?? (() => {}),
   };
 };

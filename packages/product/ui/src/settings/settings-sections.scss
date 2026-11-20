@@ -96,6 +96,34 @@
     margin: 0;
     min-width: 0;
   }
+  .settings-storage-location {
+    display: flex;
+    flex: 1;
+    min-width: 0;
+    align-items: center;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+    gap: 8px;
+    > button:not(.settings-storage-path) {
+      flex: none;
+    }
+  }
+  .settings-storage-path {
+    min-width: 0;
+    max-width: 100%;
+    height: auto;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    text-align: left;
+    user-select: text;
+  }
+  .settings-storage-copy-status {
+    color: var(--vm-foreground-secondary);
+    font-size: var(--vm-text-sm);
+    &:empty {
+      display: none;
+    }
+  }
   .settings-select {
     min-width: 148px;
     max-width: 100%;
@@ -280,14 +308,13 @@
   gap: 8px;
   margin: 12px 0 20px;
 }
-.workspace-default-skill-dialog {
-  width: min(860px, calc(100vw - 32px));
-  max-height: calc(100dvh - 32px);
+.workspace-default-skill-heading {
+  margin-block: 20px 8px;
+  font-size: var(--vm-text-lg);
 }
 .workspace-default-skill-content {
   @include tokens.document;
-  overflow: auto;
-  max-height: 60dvh;
+  min-width: 0;
   > pre {
     white-space: pre-wrap;
     overflow-wrap: anywhere;

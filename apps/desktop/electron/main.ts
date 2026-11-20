@@ -1,4 +1,13 @@
 import { readFileSync } from 'node:fs';
+import * as fs from 'node:fs/promises';
+import { pathToFileURL, fileURLToPath } from 'node:url';
+import { createExternalFileHost } from './external-file-host';
+import {
+  launchFiles,
+  supportedDesktopFile,
+  setDefaultFileApplications,
+} from './file-associations';
+import type { WorkspaceFile } from '@sue/verd-board-app/headless';
 import { realpath, stat } from 'node:fs/promises';
 import { normalizeWorkspacePath } from '@sue/verd-board-app/headless';
 import { createBuiltinWorkspaceUpdater } from './builtin-workspace-update';
@@ -31,15 +40,17 @@ import { createDesktopWorkspaceManager } from './workspace-startup';
 const { legacyUserDataRoot } = configureApplicationIdentity(app);
 const interactiveDev =
   !app.isPackaged && process.env['VERDBOARD_INTERACTIVE_DEV'] === '1';
-if (interactiveDev) {
+if (interactiveDev || app.isPackaged) {
   if (!app.requestSingleInstanceLock()) {
-    console.error('[VerdBoard Dev] 该开发数据目录已有实例，请先退出原实例。');
+    if (interactiveDev)
+      console.error('[VerdBoard Dev] 该开发数据目录已有实例，请先退出原实例。');
     process.exit(0);
   }
 
   // A stopped or crashed Vite owner closes the inherited IPC channel.
   // Use the regular quit path so the renderer can flush pending edits.
-  if (process.connected) process.once('disconnect', () => app.quit());
+  if (interactiveDev && process.connected)
+    process.once('disconnect', () => app.quit());
 }
 const applicationIcon = path.join(
   __dirname,
@@ -47,10 +58,71 @@ const applicationIcon = path.join(
 );
 
 let mainWindow: BrowserWindow | null = null;
-let fullscreenReady = (): Promise<void> => Promise.resolve();
+type ExternalHost = Awaited<ReturnType<typeof createExternalFileHost>>;
+interface WindowRecord {
+  window: BrowserWindow;
+  external?: ExternalHost;
+  handles: Set<string>;
+  activeHandle?: string;
+  pendingPaths?: string[];
+  initialWorkspace?: Promise<void>;
+  completeWorkspaceOpen?(): void;
+  fullscreenReady(): Promise<void>;
+  ready: boolean;
+  pendingQuit?: { id: number; complete(ok: boolean, message?: string): void };
+}
+const windows = new Map<number, WindowRecord>();
+const pendingFiles: string[] = [];
+let fileQueue: Promise<unknown> = Promise.resolve();
+let allowQuit = false;
+let quitSequence = -1;
+const focusWindow = (window: BrowserWindow) => {
+  if (window.isMinimized()) window.restore();
+  window.show();
+  window.focus();
+};
+
 let quitting = false;
-app.on('before-quit', () => {
+app.on('before-quit', (event) => {
+  if (allowQuit) return;
+  const records = [...windows.values()];
+  if (!records.some((record) => record.ready)) return;
+  event.preventDefault();
+  if (quitting) return;
   quitting = true;
+  void Promise.all(
+    records.map((record) =>
+      record.ready
+        ? new Promise<string | null>((resolve) => {
+            const id = quitSequence--;
+            record.pendingQuit = {
+              id,
+              complete(ok, message) {
+                record.pendingQuit = undefined;
+                resolve(ok ? null : message || '文件保存失败');
+              },
+            };
+            record.window.webContents.send('workspace:flush-request', id);
+          })
+        : Promise.resolve(null),
+    ),
+  ).then(async (results) => {
+    quitting = false;
+    const failures = results.filter((result) => result !== null);
+    if (failures.length) {
+      for (const record of windows.values())
+        record.window.webContents.send('files:resume');
+      await dialog.showMessageBox({
+        type: 'error',
+        title: '保存失败',
+        message: '仍有文件尚未保存，窗口保持打开。',
+        detail: failures.join('\n'),
+      });
+    } else {
+      allowQuit = true;
+      app.quit();
+    }
+  });
 });
 let storagePath: string;
 const enqueueStorageWrite = createSerialQueue();
@@ -142,19 +214,336 @@ const builtinUpdater = createBuiltinWorkspaceUpdater({
 function trustedSender(
   event: Electron.IpcMainInvokeEvent | Electron.IpcMainEvent,
 ) {
-  return (
-    !!mainWindow &&
-    event.sender === mainWindow.webContents &&
-    event.senderFrame === mainWindow.webContents.mainFrame
-  );
+  const record = windows.get(event.sender.id);
+  return !!record && event.senderFrame === record.window.webContents.mainFrame;
 }
 const handleTrusted: typeof ipcMain.handle = (channel, listener) =>
   ipcMain.handle(channel, async (event, ...args) => {
     if (!trustedSender(event)) throw new Error('Untrusted IPC frame');
-    return listener(event, ...args);
+    const record = windows.get(event.sender.id)!;
+    if (record.external && channel.startsWith('storage:'))
+      throw new Error(
+        'External windows cannot access legacy workspace storage',
+      );
+    if (channel.startsWith('workspace-host:')) {
+      if (record.external)
+        throw new Error('External windows cannot access workspace hosts');
+      const handle = args[0] as { key?: string } | undefined;
+      if (handle?.key && !record.handles.has(handle.key))
+        throw new Error('Workspace handle not issued to this window');
+    }
+    let result;
+    try {
+      result = await listener(event, ...args);
+    } catch (error) {
+      if (channel === 'workspace-host:open') record.completeWorkspaceOpen?.();
+      throw error;
+    }
+    if (channel === 'workspace-host:activate')
+      record.activeHandle = (args[0] as { key: string }).key;
+    if (channel === 'workspace-host:close')
+      record.handles.delete((args[0] as { key: string }).key);
+    if (
+      channel.startsWith('workspace-host:') &&
+      result &&
+      typeof result === 'object' &&
+      'key' in result
+    )
+      record.handles.add(String(result.key));
+    if (channel === 'workspace-host:open') {
+      if (result && typeof result === 'object' && 'key' in result)
+        record.activeHandle ??= String(result.key);
+      record.completeWorkspaceOpen?.();
+    }
+    return result;
   });
 
 const workspaceSubscriptions = new Map<number, Map<string, () => void>>();
+
+async function configureDefaultApplications() {
+  if (!app.isPackaged)
+    throw new Error('请在已安装的正式应用中设置默认打开方式');
+  await setDefaultFileApplications({
+    platform: process.platform,
+    executable: process.execPath,
+    resources: process.resourcesPath,
+    home: app.getPath('home'),
+    openSettings: (url) => shell.openExternal(url),
+  });
+}
+
+async function promptDefaultApplications() {
+  if (!app.isPackaged) return;
+  const marker = path.join(app.getPath('userData'), 'file-associations.json');
+  try {
+    await fs.mkdir(app.getPath('userData'), { recursive: true });
+    await fs.writeFile(marker, JSON.stringify({ prompted: true }), {
+      flag: 'wx',
+    });
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === 'EEXIST') return;
+    console.error('Unable to record file association prompt', error);
+    return;
+  }
+  const result = await dialog.showMessageBox({
+    type: 'question',
+    title: '默认打开方式',
+    message: '使用 VerdBoard 打开 Markdown 和 .verd 画布文件？',
+    detail: '系统可能要求你确认默认应用。也可以稍后在设置或文件窗口中设置。',
+    buttons: ['设置默认打开方式', '暂不设置'],
+    defaultId: 0,
+    cancelId: 1,
+  });
+  if (result.response === 0) {
+    try {
+      await configureDefaultApplications();
+    } catch (error) {
+      await dialog.showMessageBox({
+        type: 'error',
+        message: '未能设置默认打开方式',
+        detail: String(error),
+      });
+    }
+  }
+}
+
+function openDesktopFiles(paths: string[]) {
+  const run = async () => {
+    const failures: string[] = [];
+    for (const input of paths) {
+      try {
+        if (!supportedDesktopFile(input)) continue;
+        const source = await realpath(input);
+        for (const record of windows.values()) {
+          if (
+            record.external ||
+            record.activeHandle ||
+            !record.initialWorkspace
+          )
+            continue;
+          let timeout: ReturnType<typeof setTimeout> | undefined;
+          try {
+            await Promise.race([
+              record.initialWorkspace,
+              new Promise<never>((_resolve, reject) => {
+                timeout = setTimeout(
+                  () => reject(new Error('工作区仍在启动，请稍后重试打开文件')),
+                  30_000,
+                ).unref();
+              }),
+            ]);
+          } finally {
+            clearTimeout(timeout);
+          }
+        }
+        const existing = [...windows.values()].find(
+          (record) => record.external?.source === source,
+        );
+        if (existing) {
+          focusWindow(existing.window);
+          continue;
+        }
+        let owner: WindowRecord | undefined;
+        let relative = '';
+        if (/\.verd(?:\.json)?$/i.test(source)) {
+          for (const record of windows.values()) {
+            for (const key of record.activeHandle
+              ? [record.activeHandle]
+              : []) {
+              const workspace = workspaceHost.workspaces.get(key);
+              if (!workspace) continue;
+              const root = await realpath(workspace.root);
+              const candidate = path.relative(root, source);
+              if (
+                candidate &&
+                candidate !== '..' &&
+                !candidate.startsWith('..' + path.sep) &&
+                !path.isAbsolute(candidate)
+              ) {
+                owner = record;
+                relative = candidate.split(path.sep).join('/');
+                break;
+              }
+            }
+            if (owner) break;
+          }
+        }
+        if (owner) {
+          (owner.pendingPaths ??= []).push(relative);
+          owner.window.webContents.send('files:workspace-file');
+          focusWindow(owner.window);
+        } else {
+          const external = await createExternalFileHost(
+            source,
+            path.join(app.getPath('userData'), 'external-files'),
+          );
+          createWindow(external);
+        }
+      } catch (error) {
+        failures.push(`${path.basename(input)}: ${String(error)}`);
+      }
+    }
+    if (!windows.size) createWindow();
+    if (failures.length)
+      void dialog
+        .showMessageBox({
+          type: 'error',
+          title: '打开文件失败',
+          message: '部分文件未能打开，其他文件已继续处理。',
+          detail: failures.join('\n'),
+        })
+        .catch((error) => console.error('Unable to show file errors', error));
+  };
+  const result = fileQueue.then(run, run);
+  fileQueue = result.catch(() => {});
+  return result;
+}
+
+let filesReady = false;
+app.on('open-file', (event, filename) => {
+  event.preventDefault();
+  if (filesReady) void openDesktopFiles([filename]);
+  else pendingFiles.push(filename);
+});
+app.on('second-instance', (_event, argv, workingDirectory) => {
+  const paths = launchFiles(
+    argv.slice(app.isPackaged ? 1 : 2),
+    workingDirectory,
+  );
+  if (!filesReady) pendingFiles.push(...paths);
+  else if (paths.length) void openDesktopFiles(paths);
+  else if (mainWindow) focusWindow(mainWindow);
+});
+
+function registerExternalFileIpc() {
+  const externalFor = (event: Electron.IpcMainInvokeEvent) => {
+    const external = windows.get(event.sender.id)?.external;
+    if (!external) throw new Error('Not an external file window');
+    return external;
+  };
+  handleTrusted(
+    'files:binding',
+    (event) => windows.get(event.sender.id)?.external?.binding ?? null,
+  );
+  handleTrusted('files:workspace-pending', (event) => {
+    const record = windows.get(event.sender.id)!;
+    const pending = record.pendingPaths ?? [];
+    record.pendingPaths = [];
+    return pending;
+  });
+  handleTrusted('files:defaults', configureDefaultApplications);
+  handleTrusted('files:warnings', (event) => externalFor(event).warnings());
+  handleTrusted('files:image', (event, href) =>
+    externalFor(event).readImage(href),
+  );
+  handleTrusted('files:link', async (event, href: string) => {
+    const external = externalFor(event);
+    const target = new URL(href, pathToFileURL(external.source));
+    if (target.protocol === 'file:') {
+      const filename = fileURLToPath(target);
+      if (!supportedDesktopFile(filename))
+        throw new Error('不支持的本地链接类型');
+      await openDesktopFiles([filename]);
+    } else if (
+      ['https:', 'http:'].includes(target.protocol) &&
+      !target.username &&
+      !target.password
+    )
+      await shell.openExternal(target.href);
+    else throw new Error('不支持的链接');
+  });
+  handleTrusted(
+    'files:resolve',
+    async (
+      event,
+      action: string,
+      local: { file: WorkspaceFile; path: string }[],
+    ) => {
+      const external = externalFor(event);
+      if (action === 'load-disk') {
+        await external.host.readSnapshot(external.binding.handle);
+        return true;
+      }
+      if (action === 'keep-local') {
+        const receipt = await external.overwrite(local);
+        if (receipt.outcome !== 'applied')
+          throw new Error('原文件再次发生变化，请重试');
+        return true;
+      }
+      if (action !== 'save-copy') throw new Error('Unknown conflict action');
+      const result = await dialog.showSaveDialog(
+        windows.get(event.sender.id)!.window,
+        {
+          defaultPath: path.join(
+            path.dirname(external.source),
+            external.binding.kind === 'markdown'
+              ? path
+                  .basename(external.source)
+                  .replace(/(\.(?:md|markdown))$/i, ' 副本$1')
+              : path
+                  .basename(external.source)
+                  .replace(/\.verd(?:\.json)?$/i, ' 副本.verd'),
+          ),
+          filters: [
+            {
+              name:
+                external.binding.kind === 'markdown'
+                  ? 'Markdown'
+                  : 'VerdBoard canvas',
+              extensions:
+                external.binding.kind === 'markdown'
+                  ? [path.extname(external.source).slice(1)]
+                  : ['verd'],
+            },
+          ],
+        },
+      );
+      if (result.canceled || !result.filePath) return false;
+      await external.saveCopy(result.filePath, local);
+      return true;
+    },
+  );
+  handleTrusted('file-host:snapshot', (event, h) =>
+    externalFor(event).host.readSnapshot(h),
+  );
+  handleTrusted('file-host:read-file', (event, h, p) =>
+    externalFor(event).host.readFile(h, p),
+  );
+  handleTrusted('file-host:read-resource', (event, h, p) =>
+    externalFor(event).host.readResource(h, p),
+  );
+  handleTrusted('file-host:commit', (event, h, request) =>
+    externalFor(event).host.commit(h, request),
+  );
+  handleTrusted('file-host:resolve-conflict', (event, h, request) =>
+    externalFor(event).host.resolveConflict(h, request),
+  );
+  handleTrusted('file-host:close', (event, h) =>
+    externalFor(event).host.closeWorkspace(h),
+  );
+  ipcMain.on('file-host:subscribe', (event, h, subId: string) => {
+    if (!trustedSender(event) || typeof subId !== 'string') return;
+    const external = windows.get(event.sender.id)?.external;
+    if (!external || h?.key !== external.binding.handle.key) return;
+    const unsubscribe = external.host.subscribe(h, (hint) => {
+      if (!event.sender.isDestroyed())
+        event.sender.send(`file-host:change:${subId}`, hint);
+    });
+    let subscriptions = workspaceSubscriptions.get(event.sender.id);
+    if (!subscriptions) {
+      subscriptions = new Map();
+      workspaceSubscriptions.set(event.sender.id, subscriptions);
+    }
+    subscriptions.get(subId)?.();
+    subscriptions.set(subId, unsubscribe);
+  });
+  ipcMain.on('file-host:unsubscribe', (event, subId: string) => {
+    if (!trustedSender(event)) return;
+    const subscriptions = workspaceSubscriptions.get(event.sender.id);
+    subscriptions?.get(subId)?.();
+    subscriptions?.delete(subId);
+  });
+}
 
 function registerWorkspaceHostIpc() {
   handleTrusted('link:external', async (_event, href: string) => {
@@ -262,6 +651,9 @@ function registerWorkspaceHostIpc() {
   handleTrusted('workspace-host:snapshot', (_, handle) =>
     workspaceHost.readSnapshot(handle),
   );
+  handleTrusted('workspace-host:initialize-agent', (_, handle) =>
+    workspaceHost.initializeAgent!(handle),
+  );
   handleTrusted('workspace-host:read-file', (_, handle, path: string) =>
     workspaceHost.readFile(handle, path),
   );
@@ -326,6 +718,8 @@ function registerWorkspaceHostIpc() {
     (event, handle: { key: string }, subId: string) => {
       if (typeof subId !== 'string' || !handle?.key) return;
       if (!trustedSender(event)) return;
+      const record = windows.get(event.sender.id)!;
+      if (record.external || !record.handles.has(handle.key)) return;
       const sender = event.sender;
       const unsub = workspaceHost.subscribe(handle as never, (hint) => {
         if (!sender.isDestroyed())
@@ -378,8 +772,8 @@ function installContentSecurityPolicy(devServerUrl?: string) {
   });
 }
 
-function createWindow() {
-  mainWindow = new BrowserWindow({
+function createWindow(external?: ExternalHost) {
+  const window = new BrowserWindow({
     title: app.isPackaged ? '青编' : '[DEV] 青编',
     icon: applicationIcon,
     width: 1200,
@@ -397,19 +791,37 @@ function createWindow() {
     },
   });
 
+  const windowId = window.webContents.id;
+  if (!external) mainWindow = window;
+  let completeWorkspaceOpen: (() => void) | undefined;
+  const initialWorkspace = external
+    ? undefined
+    : new Promise<void>((resolve) => {
+        completeWorkspaceOpen = resolve;
+      });
+  const record: WindowRecord = {
+    window,
+    external,
+    handles: new Set(),
+    fullscreenReady: () => Promise.resolve(),
+    ready: false,
+    initialWorkspace,
+    completeWorkspaceOpen,
+  };
+  windows.set(windowId, record);
+  if (external) window.setTitle(external.binding.displayName);
   if (!app.isPackaged) {
-    mainWindow.on('page-title-updated', (event, title) => {
+    window.on('page-title-updated', (event, title) => {
       event.preventDefault();
-      mainWindow?.setTitle(`[DEV] ${title.replace(/^\[DEV\]\s*/, '')}`);
+      window?.setTitle(`[DEV] ${title.replace(/^\[DEV\]\s*/, '')}`);
     });
   }
 
   const transition = createFullscreenTransition();
-  let nativeFullscreen = mainWindow.isFullScreen();
+  let nativeFullscreen = window.isFullScreen();
   let ownsSimpleFullscreen = false;
-  fullscreenReady = transition.ready;
-  mainWindow.on('enter-html-full-screen', () => {
-    const window = mainWindow;
+  record.fullscreenReady = transition.ready;
+  window.on('enter-html-full-screen', () => {
     if (
       process.platform === 'darwin' &&
       window &&
@@ -425,38 +837,38 @@ function createWindow() {
       }
     }
   });
-  mainWindow.on('enter-full-screen', () => {
+  window.on('enter-full-screen', () => {
     nativeFullscreen = true;
     transition.settle();
   });
-  mainWindow.on('leave-full-screen', () => {
+  window.on('leave-full-screen', () => {
     nativeFullscreen = false;
     transition.settle();
   });
-  mainWindow.on('leave-html-full-screen', () => {
+  window.on('leave-html-full-screen', () => {
     if (ownsSimpleFullscreen) {
       ownsSimpleFullscreen = false;
-      mainWindow?.setSimpleFullScreen(false);
+      window?.setSimpleFullScreen(false);
     }
     transition.settle();
   });
-  mainWindow.on('closed', transition.settle);
+  window.on('closed', transition.settle);
 
   if (process.env['VITE_DEV_SERVER_URL']) {
-    mainWindow.loadURL(process.env['VITE_DEV_SERVER_URL']);
+    window.loadURL(process.env['VITE_DEV_SERVER_URL']);
   } else {
-    mainWindow.loadFile(path.join(__dirname, '../dist/index.html'));
+    window.loadFile(path.join(__dirname, '../dist/index.html'));
   }
 
-  mainWindow.webContents.setWindowOpenHandler(() => {
+  window.webContents.setWindowOpenHandler(() => {
     return { action: 'deny' };
   });
-  mainWindow.webContents.on('will-navigate', (event, url) => {
-    if (url === mainWindow?.webContents.getURL()) return;
+  window.webContents.on('will-navigate', (event, url) => {
+    if (url === window?.webContents.getURL()) return;
     event.preventDefault();
     if (/^https?:\/\//i.test(url)) void shell.openExternal(url);
   });
-  mainWindow.webContents.on('will-frame-navigate', (event) => {
+  window.webContents.on('will-frame-navigate', (event) => {
     if (event.isMainFrame) return;
     try {
       const url = new URL(event.url);
@@ -472,7 +884,7 @@ function createWindow() {
       event.preventDefault();
     }
   });
-  mainWindow.webContents.on(
+  window.webContents.on(
     'will-redirect',
     (event, url, _inPlace, isMainFrame) => {
       if (isMainFrame) {
@@ -502,13 +914,11 @@ function createWindow() {
     (_contents, _permission, callback, details) =>
       callback(details.isMainFrame === true),
   );
-  const window = mainWindow;
   const shutdown = createShutdownCoordinator(
     (requestId) =>
       window.webContents.send('workspace:flush-request', requestId),
     () => {
-      if (quitting) app.quit();
-      else window.close();
+      window.close();
     },
     (message) => {
       const retryQuit = interactiveDev && quitting;
@@ -534,7 +944,13 @@ function createWindow() {
     interactiveDev ? 15_000 : undefined,
   );
   const ready = (event: Electron.IpcMainEvent, value: boolean) => {
-    if (event.sender === window.webContents) shutdown.setReady(value === true);
+    if (
+      event.sender === window.webContents &&
+      event.senderFrame === window.webContents.mainFrame
+    ) {
+      record.ready = value === true;
+      shutdown.setReady(value === true);
+    }
   };
   const flushed = (
     event: Electron.IpcMainEvent,
@@ -542,10 +958,15 @@ function createWindow() {
   ) => {
     if (
       event.sender !== window.webContents ||
+      event.senderFrame !== window.webContents.mainFrame ||
       !result ||
       typeof result.requestId !== 'number'
     )
       return;
+    if (record.pendingQuit?.id === result.requestId) {
+      record.pendingQuit.complete(result.ok === true, result.message);
+      return;
+    }
     shutdown.complete(
       result.requestId,
       result.ok === true,
@@ -554,15 +975,27 @@ function createWindow() {
   };
   ipcMain.on('workspace:flush-ready', ready);
   ipcMain.on('workspace:flush-result', flushed);
-  window.webContents.on('render-process-gone', () => shutdown.setReady(false));
-  window.on('close', (event) => {
-    if (shutdown.shouldPreventClose()) event.preventDefault();
+  window.webContents.on('render-process-gone', () => {
+    record.ready = false;
+    shutdown.setReady(false);
+    record.pendingQuit?.complete(false, '编辑器进程已退出，无法确认保存');
   });
-  mainWindow.on('closed', () => {
+  window.on('close', (event) => {
+    if (!allowQuit && shutdown.shouldPreventClose()) event.preventDefault();
+  });
+  window.on('closed', () => {
+    record.completeWorkspaceOpen?.();
     ipcMain.removeListener('workspace:flush-ready', ready);
     ipcMain.removeListener('workspace:flush-result', flushed);
-    mainWindow = null;
+    record.pendingQuit?.complete(false, '窗口已关闭');
+    workspaceSubscriptions
+      .get(windowId)
+      ?.forEach((unsubscribe) => unsubscribe());
+    workspaceSubscriptions.delete(windowId);
+    windows.delete(windowId);
+    if (mainWindow === window) mainWindow = null;
   });
+  return window;
 }
 
 app.whenReady().then(async () => {
@@ -576,7 +1009,16 @@ app.whenReady().then(async () => {
 
   installContentSecurityPolicy(process.env['VITE_DEV_SERVER_URL']);
   registerWorkspaceHostIpc();
-  createWindow();
+  registerExternalFileIpc();
+  filesReady = true;
+  const initial = [
+    ...pendingFiles,
+    ...launchFiles(process.argv.slice(app.isPackaged ? 1 : 2), process.cwd()),
+  ];
+  pendingFiles.length = 0;
+  if (initial.length) await openDesktopFiles(initial);
+  else createWindow();
+  void promptDefaultApplications();
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {
@@ -621,12 +1063,6 @@ handleTrusted('storage:reset', async (_, record: Record<string, unknown>) => {
   return true;
 });
 
-handleTrusted('window:fullscreen-ready', (event) => {
-  if (
-    !mainWindow ||
-    mainWindow.isDestroyed() ||
-    event.sender !== mainWindow.webContents
-  )
-    throw new Error('Unknown fullscreen window');
-  return fullscreenReady();
-});
+handleTrusted('window:fullscreen-ready', (event) =>
+  windows.get(event.sender.id)!.fullscreenReady(),
+);

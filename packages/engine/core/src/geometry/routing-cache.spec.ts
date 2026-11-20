@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { createTestCellRegistry as createFixtureRegistry } from '../../../../../tests/fixtures/plugins/registry';
+import { createTestCellRegistry as createFixtureRegistry } from '../../../../../tests/fixtures/core/registry';
 import {
   createCellStore,
   createFrameCell,
@@ -15,7 +15,6 @@ import {
 import { edgeLabelLayout } from './edge-label';
 import * as Routing from './obstacle-route';
 const testCellRegistry = createFixtureRegistry();
-
 const fixture = () => {
   const frame = createFrameCell('root'),
     store = createCellStore(frame);

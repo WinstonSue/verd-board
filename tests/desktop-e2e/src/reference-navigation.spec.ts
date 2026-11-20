@@ -24,10 +24,7 @@ test('native project navigation includes both the canvas and document embeds wit
           .split(path.sep)
           .includes('.verdscrolls'),
     });
-    const chartPath = path.join(
-      workspace,
-      '架构图/01-项目分层与依赖.verd.json',
-    );
+    const chartPath = path.join(workspace, '架构图/01-项目分层与依赖.verd');
     const documentPath = path.join(workspace, '文档/包/包索引.verd-doc.json');
     const originals = await Promise.all([
       readFile(chartPath, 'utf8'),
@@ -44,7 +41,7 @@ test('native project navigation includes both the canvas and document embeds wit
     );
     await expect(page.locator('.workspace-shell')).toBeVisible();
     const file = page.locator(
-      '.file-tree-name[title="架构图/01-项目分层与依赖.verd.json"]',
+      '.file-tree-name[title="架构图/01-项目分层与依赖.verd"]',
     );
     if (!(await file.isVisible()))
       await page.getByRole('button', { name: '架构图', exact: true }).click();

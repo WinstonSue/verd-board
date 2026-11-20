@@ -104,9 +104,11 @@ test('corrupt or incomplete packages never import their native files', async ({
   const { value } = nativePackageFixture();
   value.resources.pop();
   await page
-    .locator('input[accept=".json,.verd.json,.verd-doc.json,.md,.markdown"]')
+    .locator(
+      'input[accept=".json,.verd,.verd.json,.verd-doc.json,.md,.markdown"]',
+    )
     .setInputFiles({
-      name: 'invalid.verd.json',
+      name: 'invalid.verd',
       mimeType: 'application/json',
       buffer: Buffer.from(JSON.stringify(value)),
     });

@@ -23,7 +23,9 @@ import {
 } from './workspace-git-restore';
 import * as crypto from 'crypto';
 import { watch, type FSWatcher } from 'fs';
+import { readProjectContentExclusions } from './workspace-exclusions';
 import * as fs from 'fs/promises';
+import { hostname } from 'node:os';
 import * as path from 'path';
 import {
   createSerialQueue,
@@ -41,6 +43,7 @@ import {
   inspectWorkspaceAgentUnlocked,
   type AgentSetupDiagnostic,
 } from './workspace-project';
+import { readWorkspaceDirectoryContext } from './workspace-context';
 import {
   baseName,
   isWorkspaceContentPath,
@@ -190,7 +193,7 @@ type JournalOp =
       after: FileVersion;
       staged: string;
     }
-  | { kind: 'session'; staged: string };
+  | { kind: 'session'; staged: string; target?: string };
 
 interface TransactionJournal {
   transactionId: string;
@@ -244,7 +247,11 @@ function isTransactionJournal(raw: unknown): raw is TransactionJournal {
         case 'config':
           return typeof op.after === 'string' && stagedPathValid(op.staged);
         case 'session':
-          return stagedPathValid(op.staged);
+          return (
+            stagedPathValid(op.staged) &&
+            (op.target === undefined ||
+              /^sessions\/[a-f0-9]{32}\.json$/.test(op.target))
+          );
         case 'move':
           return contentPath(op.from) && contentPath(op.to);
         case 'mkdir':
@@ -302,6 +309,12 @@ export interface FsWorkspaceHostOptions {
   watchDebounceMs?: number;
   /** Versioned resources deployed outside the Desktop bundle. */
   sharedResources?: () => string | Promise<string>;
+  /** Optional project context for an embedded, fixed-directory host. */
+  projectRoot?: string;
+  /** Isolates personal UI sessions from other hosts using the same directory. */
+  sessionNamespace?: string;
+  /** Explicit opt-in for CLI initialization; normal directory opens preserve instructions. */
+  initializeAgent?: boolean;
 }
 
 const metaPath = (root: string, ...parts: string[]) =>
@@ -390,6 +403,20 @@ const createFsWorkspaceHostInner = (
   const globalConfigPath =
     options.globalConfigPath ??
     (() => path.join(options.defaultRoot(), '..', GLOBAL_CONFIG_FILE));
+  const sessionFile =
+    'sessions/' +
+    crypto
+      .createHash('sha256')
+      .update(
+        hostname() +
+          '\0' +
+          globalConfigPath() +
+          '\0' +
+          (options.sessionNamespace ?? 'filesystem'),
+      )
+      .digest('hex')
+      .slice(0, 32) +
+    '.json';
   let counter = 0;
 
   const absolute = (root: string, relativePath: string) =>
@@ -550,7 +577,7 @@ const createFsWorkspaceHostInner = (
       const target =
         op.kind === 'config'
           ? metaPath(root, CONFIG_FILE)
-          : metaPath(root, SESSION_FILE);
+          : metaPath(root, op.target ?? SESSION_FILE);
       await publishFile(target, content);
     }
   };
@@ -645,10 +672,6 @@ const createFsWorkspaceHostInner = (
         return `Recovery conflict at ${op.entryId}: trash entry vanished`;
       }
       const staged = await stagedContent(op.staged);
-      const current = await versionAt(
-        root,
-        `${META_DIR}/${op.kind === 'config' ? CONFIG_FILE : SESSION_FILE}`,
-      );
       if (op.kind === 'session') {
         if (staged) {
           const appliedError = await tryApply(op, 'session');
@@ -656,6 +679,8 @@ const createFsWorkspaceHostInner = (
         }
         continue;
       }
+      if (op.kind !== 'config') return 'Invalid recovery metadata operation';
+      const current = await versionAt(root, `${META_DIR}/${CONFIG_FILE}`);
       if (current === op.after) continue;
       if (current === op.before && staged) {
         const appliedError = await tryApply(op, 'config');
@@ -670,7 +695,7 @@ const createFsWorkspaceHostInner = (
       else if (op.kind === 'config' || op.kind === 'session')
         await cleanPublishedTemps(
           root,
-          `${META_DIR}/${op.kind === 'config' ? CONFIG_FILE : SESSION_FILE}`,
+          `${META_DIR}/${op.kind === 'config' ? CONFIG_FILE : (op.target ?? SESSION_FILE)}`,
         );
     }
     return null;
@@ -1214,7 +1239,7 @@ const createFsWorkspaceHostInner = (
           version: 1,
           ...request.session,
         });
-        ops.push({ kind: 'session', staged });
+        ops.push({ kind: 'session', staged, target: sessionFile });
       }
     } catch (error) {
       return fail(
@@ -1437,8 +1462,8 @@ const createFsWorkspaceHostInner = (
       });
     }
     const setup = await initializeWorkspaceAgentUnlocked(root, shared, {
-      preserveContent:
-        hadProjectConfig && (await exists(path.join(root, '.git'))),
+      preserveContent: hadProjectConfig && !options.initializeAgent,
+      setupGuide: options.initializeAgent === true,
     });
     agentSetupDiagnostics.push(
       ...setup.diagnostics.filter((d) => d.code.endsWith('-conflict')),
@@ -1498,6 +1523,7 @@ const createFsWorkspaceHostInner = (
   const readDirTree = async (
     root: string,
     dir: string,
+    excluded: ReadonlySet<string>,
   ): Promise<WorkspaceEntryMeta[]> => {
     const names = await fs
       .readdir(dir ? absolute(root, dir) : root)
@@ -1505,12 +1531,14 @@ const createFsWorkspaceHostInner = (
     const entries: WorkspaceEntryMeta[] = [];
     for (const name of names.sort()) {
       if (
+        name.toLowerCase() === '.git' ||
         [META_DIR, '.verdboard', LEGACY_RESOURCE_DIR, FOLDER_ID_FILE].includes(
           name,
         )
       )
         continue;
       const relativePath = dir ? `${dir}/${name}` : name;
+      if (excluded.has(relativePath)) continue;
       const stat = await fs
         .lstat(absolute(root, relativePath))
         .catch(() => null);
@@ -1529,14 +1557,22 @@ const createFsWorkspaceHostInner = (
               .catch(() => ''),
           ),
         });
-        entries.push(...(await readDirTree(root, relativePath)));
+        entries.push(...(await readDirTree(root, relativePath, excluded)));
       } else if (stat.isFile()) {
+        const native =
+          isCanvasPath(relativePath) || isDocumentPath(relativePath);
+        const deferred = !native && stat.size > 8 * 1024 * 1024;
         entries.push({
           path: relativePath,
           kind: 'file',
           canvas: isCanvasPath(relativePath),
           document: isDocumentPath(relativePath) || undefined,
-          version: (await versionAt(root, relativePath)) ?? undefined,
+          version: deferred
+            ? undefined
+            : ((await versionAt(root, relativePath)) ?? undefined),
+          metadataRevision: deferred
+            ? `${stat.size}:${stat.mtimeMs}:${stat.ctimeMs}`
+            : undefined,
           size: stat.size,
         });
       }
@@ -1613,15 +1649,45 @@ const createFsWorkspaceHostInner = (
           : options.defaultRoot();
       return open(root, request.create !== false, request.name);
     },
+    async initializeAgent(handle) {
+      const workspace = workspaceOf(handle);
+      return workspace.queue(() =>
+        withWorkspaceLock(workspace.root, async () => {
+          if (
+            workspace.generation !==
+            (await readWorkspaceGeneration(workspace.root))
+          )
+            throw new Error('WORKSPACE_REPLACED: reopen the workspace');
+          const recoveryErrors = await recoverWorkspace(workspace.root);
+          if (recoveryErrors.length) throw new Error(recoveryErrors.join('; '));
+          const shared =
+            (await options.sharedResources?.()) ??
+            process.env['VERD_AGENT_RESOURCES'];
+          const status = await initializeWorkspaceAgentUnlocked(
+            workspace.root,
+            shared,
+          );
+          workspace.agentSetupDiagnostics = status.diagnostics.filter((d) =>
+            d.code.endsWith('-conflict'),
+          );
+          workspace.listeners.forEach((listener) =>
+            listener({ paths: ['AGENTS.md'] }),
+          );
+          return status;
+        }),
+      );
+    },
     async readSnapshot(handle) {
       const workspace = workspaceOf(handle);
       const configValue = (await readJsonFile(
         metaPath(workspace.root, CONFIG_FILE),
       )) as { version?: number; value?: Record<string, unknown> } | null;
-      const session = (await readJsonFile(
-        metaPath(workspace.root, SESSION_FILE),
-      )) as (Partial<WorkspaceSessionState> & { version?: number }) | null;
-      const entries = await readDirTree(workspace.root, '');
+      const session = ((await readJsonFile(
+        metaPath(workspace.root, sessionFile),
+      )) ?? (await readJsonFile(metaPath(workspace.root, SESSION_FILE)))) as
+        (Partial<WorkspaceSessionState> & { version?: number }) | null;
+      const excluded = await readProjectContentExclusions(workspace.root);
+      const entries = await readDirTree(workspace.root, '', excluded);
       const canvases: WorkspaceHostSnapshot['canvases'] = [];
       const diagnostics: WorkspaceHostSnapshot['diagnostics'] =
         workspace.recoveryDiagnostics.map((message) => ({ message }));
@@ -1735,6 +1801,10 @@ const createFsWorkspaceHostInner = (
           });
       }
       return {
+        context: await readWorkspaceDirectoryContext(
+          workspace.root,
+          options.projectRoot,
+        ),
         agent: await inspectWorkspaceAgentUnlocked(workspace.root).then(
           (status) => ({
             ...status,

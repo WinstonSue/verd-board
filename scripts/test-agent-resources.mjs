@@ -178,6 +178,14 @@ for (const guide of guides) {
   );
 }
 const commonRoot = path.join(deployed, 'skills/verd-authoring');
+const { createDocumentHeadingSlugger } = await import(
+  pathToFileURL(
+    path.join(
+      resourceRoot,
+      'app/node_modules/@sue/board-react-text/dist/schema.js',
+    ),
+  )
+);
 const visited = new Set();
 async function checkCommonReferences(relative) {
   if (visited.has(relative)) return;
@@ -188,13 +196,32 @@ async function checkCommonReferences(relative) {
   )) {
     const target = bracketed ?? bare;
     if (/^https?:/.test(target)) continue;
-    const resolved = path.resolve(commonRoot, path.dirname(relative), target);
+    const link = new URL(
+      target,
+      pathToFileURL(path.join(commonRoot, relative)),
+    );
+    const fragment = decodeURIComponent(link.hash.slice(1));
+    link.hash = '';
+    const resolved = fileURLToPath(link);
     const nested = path.relative(commonRoot, resolved);
     assert.ok(
       !nested.startsWith('..'),
       'Common Skill reference must be self-contained',
     );
     assert.ok((await fs.stat(resolved)).isFile());
+    if (fragment) {
+      const slug = createDocumentHeadingSlugger();
+      const contents = await fs.readFile(resolved, 'utf8');
+      const headings = new Set(
+        [...contents.matchAll(/^#{1,6}\s+(.+?)\s*#*\s*$/gm)].map(
+          ([, heading]) => slug(heading),
+        ),
+      );
+      assert.ok(
+        headings.has(fragment),
+        'Missing linked Skill heading: ' + target,
+      );
+    }
     if (resolved.endsWith('.md')) await checkCommonReferences(nested);
   }
 }

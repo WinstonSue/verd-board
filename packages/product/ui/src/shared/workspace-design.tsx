@@ -13,6 +13,7 @@ import enUS from '@sue/design-web-react/locale/en_US';
 import zhCN from '@sue/design-web-react/locale/zh_CN';
 import {
   forwardRef,
+  memo,
   useEffect,
   useMemo,
   useState,
@@ -69,8 +70,24 @@ export function useWorkspaceDesignVariables(): CSSProperties {
   } as CSSProperties;
 }
 
+const WorkspaceMessageHolder = memo(
+  function WorkspaceMessageHolder({
+    children,
+  }: {
+    container: HTMLElement | undefined;
+    children: ReactNode;
+  }) {
+    return children;
+  },
+  // The message configuration only changes with the fullscreen container.
+  // Re-rendering the library holder on each editor revision queues passive
+  // container updates behind its synchronous external-store notifications.
+  // Context changes still reach the holder through this memo boundary.
+  (previous, next) => previous.container === next.container,
+);
+
 /** Keep transient feedback themed and visible inside native fullscreen. */
-export function useWorkspaceMessage() {
+export function useWorkspaceMessage(): ReturnType<typeof message.useMessage> {
   const [container, setContainer] = useState<HTMLElement>();
   useEffect(() => {
     const update = () =>
@@ -83,11 +100,17 @@ export function useWorkspaceMessage() {
     document.addEventListener('fullscreenchange', update);
     return () => document.removeEventListener('fullscreenchange', update);
   }, []);
-  return message.useMessage({
+  const [api, holder] = message.useMessage({
     duration: 3,
     maxCount: 1,
     getContainer: () => container ?? document.body,
   });
+  return [
+    api,
+    <WorkspaceMessageHolder key="workspace-messages" container={container}>
+      {holder}
+    </WorkspaceMessageHolder>,
+  ];
 }
 
 type WorkspaceButtonProps = ComponentProps<'button'> & {

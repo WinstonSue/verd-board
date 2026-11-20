@@ -58,9 +58,11 @@ async function seed(page: Page, embedded = false) {
       },
     });
   await page
-    .locator('input[accept=".json,.verd.json,.verd-doc.json,.md,.markdown"]')
+    .locator(
+      'input[accept=".json,.verd,.verd.json,.verd-doc.json,.md,.markdown"]',
+    )
     .setInputFiles({
-      name: 'theme-text.verd.json',
+      name: 'theme-text.verd',
       mimeType: 'application/json',
       buffer: Buffer.from(
         JSON.stringify({
@@ -86,9 +88,9 @@ async function seed(page: Page, embedded = false) {
     .poll(async () => Object.keys(await nativeContents(page)))
     .toEqual(
       expect.arrayContaining([
-        'Theme text sources.verd.json',
+        'Theme text sources.verd',
         'Theme text document.verd-doc.json',
-        ...(embedded ? ['Theme text host.verd.json'] : []),
+        ...(embedded ? ['Theme text host.verd'] : []),
       ]),
     );
 }
@@ -102,7 +104,8 @@ async function nativeContents(page: Page) {
       files
         .filter(
           (file) =>
-            file.kind === 'file' && /\.verd(?:-doc)?\.json$/.test(file.path),
+            file.kind === 'file' &&
+            /\.verd(?:(?:-doc)?\.json)?$/.test(file.path),
         )
         .sort((a, b) => a.path.localeCompare(b.path))
         .map((file) => [file.path, file.text]),

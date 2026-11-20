@@ -1,6 +1,6 @@
 {
   "name": "desktop",
-  "version": "2.1.3",
+  "version": "0.1.0",
   "private": true,
   "main": "dist-electron/main.js",
   "scripts": {
@@ -20,7 +20,8 @@
     "@sue/verd-board-app": "workspace:*",
     "@sue/verd-board-ui": "workspace:*",
     "react": "19.2.0",
-    "react-dom": "19.2.0"
+    "react-dom": "19.2.0",
+    "@sue/board-markdown-to-text": "workspace:*"
   },
   "devDependencies": {
     "@types/react": "19.2.2",
@@ -52,7 +53,46 @@
         "dmg"
       ],
       "category": "public.app-category.graphics-design",
-      "icon": "build/icon.icns"
+      "icon": "build/icon.icns",
+      "extendInfo": {
+        "UTExportedTypeDeclarations": [
+          {
+            "UTTypeIdentifier": "com.verdboard.canvas",
+            "UTTypeDescription": "VerdBoard Canvas",
+            "UTTypeConformsTo": [
+              "public.json"
+            ],
+            "UTTypeTagSpecification": {
+              "public.filename-extension": [
+                "verd"
+              ],
+              "public.mime-type": "application/vnd.verdscrolls+json"
+            }
+          }
+        ],
+        "UTImportedTypeDeclarations": [
+          {
+            "UTTypeIdentifier": "net.daringfireball.markdown",
+            "UTTypeDescription": "Markdown",
+            "UTTypeConformsTo": [
+              "public.plain-text"
+            ],
+            "UTTypeTagSpecification": {
+              "public.filename-extension": [
+                "md",
+                "markdown"
+              ],
+              "public.mime-type": "text/markdown"
+            }
+          }
+        ]
+      },
+      "extraResources": [
+        {
+          "from": "build/default-file-handler",
+          "to": "default-file-handler"
+        }
+      ]
     },
     "win": {
       "target": [
@@ -66,7 +106,11 @@
         "AppImage",
         "deb"
       ],
-      "icon": "build/icon.png"
+      "icon": "build/icon.png",
+      "desktop": {
+        "Exec": "verdboard %F"
+      },
+      "executableName": "verdboard"
     },
     "extraResources": [
       {
@@ -94,7 +138,33 @@
     "dmg": {
       "icon": "build/icon.icns"
     },
-    "beforePack": "./electron-builder-hooks.cjs"
+    "beforePack": "./electron-builder-hooks.cjs",
+    "fileAssociations": [
+      {
+        "ext": "md",
+        "name": "VerdBoard.Markdown",
+        "role": "Editor",
+        "rank": "Default",
+        "mimeType": "text/markdown"
+      },
+      {
+        "ext": "markdown",
+        "name": "VerdBoard.Markdown",
+        "role": "Editor",
+        "rank": "Default",
+        "mimeType": "text/markdown"
+      },
+      {
+        "ext": "verd",
+        "name": "VerdBoard.Canvas",
+        "role": "Editor",
+        "rank": "Owner",
+        "mimeType": "application/vnd.verdscrolls+json"
+      }
+    ],
+    "nsis": {
+      "include": "build/file-associations.nsh"
+    }
   },
   "productName": "VerdBoard"
 }

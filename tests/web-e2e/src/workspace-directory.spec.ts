@@ -38,7 +38,7 @@ async function createChart(page: Page) {
     .click({ position: { x: 12, y: 12 } });
   await page.getByTestId('frame-open').click();
   const active = page.locator('[data-entry-kind="file"].is-active');
-  await expect(active).toBeVisible();
+  await expect(active).toContainText('未命名流程图');
   return (await active.getAttribute('data-file-id'))!;
 }
 test('independent diagrams have one real entry and keep references after rename, move and restore', async ({
@@ -63,7 +63,7 @@ test('independent diagrams have one real entry and keep references after rename,
   await expect(dialog).toHaveCount(0);
   await expect
     .poll(async () => (await persistedWorkspace(page))?.paths[id])
-    .toBe('架构图/流程.verd.json');
+    .toBe('架构图/流程.verd');
   await page.reload();
   await directoryRow(page, '架构图').locator('.file-tree-dir-toggle').click();
   await expect(source(page, id)).toHaveCount(1);
@@ -71,7 +71,7 @@ test('independent diagrams have one real entry and keep references after rename,
   await expect(source(page, id)).toHaveCount(0);
   await openTrash(page);
   await page
-    .getByRole('button', { name: '还原 流程.verd.json', exact: true })
+    .getByRole('button', { name: '还原 流程.verd', exact: true })
     .click();
   await page.getByTestId('workspace-settings-back').click();
   await expect(source(page, id)).toHaveCount(1);
@@ -85,7 +85,7 @@ test('independent diagrams have one real entry and keep references after rename,
   await expect(
     page
       .locator('.chart-library tbody tr')
-      .filter({ hasText: '架构图/流程.verd.json' }),
+      .filter({ hasText: '架构图/流程.verd' }),
   ).toHaveCount(1);
   await expect(
     page.getByRole('combobox', { name: '归属', exact: true }),
@@ -137,7 +137,7 @@ test('ordinary originals are visible, preview without copies and keep their byte
             expectedVersion: null,
           },
           {
-            path: '资源/broken.verd.json',
+            path: '资源/broken.verd',
             content: '{',
             expectedVersion: null,
           },
@@ -154,7 +154,7 @@ test('ordinary originals are visible, preview without copies and keep their byte
         ],
         resourceWrites: [
           {
-            path: 'history/hidden.verd.json',
+            path: 'history/hidden.verd',
             content: '{}',
             expectedVersion: null,
           },
@@ -255,7 +255,7 @@ test('ordinary originals are visible, preview without copies and keep their byte
   await expect(content.locator('[data-entry-kind="failed"]')).toHaveCount(1);
   await content.locator('[data-entry-kind="failed"] button').click();
   const error = page.getByTestId('workspace-file-error');
-  await expect(error).toContainText('资源/broken.verd.json');
+  await expect(error).toContainText('资源/broken.verd');
   await expect(
     error.getByRole('button', { name: '重试', exact: true }),
   ).toBeVisible();
@@ -276,7 +276,7 @@ test('ordinary originals are visible, preview without copies and keep their byte
       ),
     };
   }, modulePath);
-  expect(managedKeys).toEqual(['history/hidden.verd.json']);
+  expect(managedKeys).toEqual(['history/hidden.verd']);
   expect(guide.split('<!-- verdscrolls:agent:start -->')[0].trim()).toBe(
     '# Workspace agent instructions',
   );

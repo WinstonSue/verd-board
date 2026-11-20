@@ -3,28 +3,62 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import os from 'node:os';
 import { spawn } from 'node:child_process';
+import { createReadStream, createWriteStream } from 'node:fs';
+import { createHash } from 'node:crypto';
+import { finished } from 'node:stream/promises';
+import { StringDecoder } from 'node:string_decoder';
+import { createTestPlan, parseGateOptions } from './test-plan.mjs';
+import { changedFiles } from './test-catalog.mjs';
+import { GUI_SESSION_SCRIPT } from './remote-gui-session.mjs';
+import {
+  fetchTaskResults,
+  readInstallerChecksums,
+  summaryExitCode,
+  summarizeResults,
+  waitForTask,
+} from './remote-results.mjs';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { parseSelection } from './quality-gate.mjs';
 import {
   releaseInputs,
   assertFullRelease,
+  verifyReleaseUnits,
   artifactFiles,
 } from './release-proof.mjs';
 import { hash } from './release-review.mjs';
 import { replaceReleaseDirectory } from './package-output.mjs';
 
 export const ROOT = fileURLToPath(new URL('../', import.meta.url));
+export function developmentProfile(plan, id) {
+  const runtime = plan.units.filter(
+    (unit) => unit.action === 'run' && unit.runtime,
+  );
+  return (
+    id +
+    (runtime.some((unit) => unit.host === 'desktop')
+      ? '-dev'
+      : runtime.length
+        ? '-web'
+        : '-units')
+  );
+}
 export function parseCli(input) {
   const args = input[0] === '--' ? input.slice(1) : [...input];
   const action = args.shift() ?? 'ci';
   if (
     ['ci', 'dev', 'release', 'package', 'scripts', 'benchmark'].includes(action)
   ) {
-    if (['ci', 'release'].includes(action) && args.length)
-      throw new Error('Full CI does not accept test filters');
-    if (action === 'dev') parseSelection(args);
-    if (action === 'package' && args.some((arg) => arg !== '--with-zip'))
-      throw new Error('Use package [--with-zip]');
+    if (['ci', 'dev', 'release'].includes(action)) {
+      const options = parseGateOptions(args);
+      if (action !== 'dev' && options.selectors.length)
+        throw new Error('CI/release do not accept individual test filters');
+      if (action === 'dev') parseSelection(options.selectors);
+    }
+    if (
+      action === 'package' &&
+      args.some((arg) => !['--with-zip', '--full'].includes(arg))
+    )
+      throw new Error('Use package [--with-zip] [--full]');
     if (
       action === 'scripts' &&
       (!args.length ||
@@ -36,13 +70,28 @@ export function parseCli(input) {
     return ['run', action, '--', ...args];
   }
   if (action === 'doctor' && !args.length) return [action];
-  if (['status', 'logs', 'fetch', 'cancel', 'artifacts'].includes(action)) {
+  if (
+    [
+      'wait',
+      'summary',
+      'status',
+      'logs',
+      'fetch',
+      'cancel',
+      'artifacts',
+    ].includes(action)
+  ) {
     const id = args.shift();
     if (
       id &&
       /^[a-zA-Z0-9][a-zA-Z0-9-]{5,90}$/.test(id) &&
       (!args.length ||
-        (action === 'fetch' && args.length === 1 && args[0] === '--raw'))
+        (action === 'fetch' && args.length === 1 && args[0] === '--raw') ||
+        (action === 'summary' && args.length === 1 && args[0] === '--json') ||
+        (action === 'wait' &&
+          args.length === 2 &&
+          args[0] === '--timeout' &&
+          /^\d+(?:\.\d+)?$/.test(args[1])))
     )
       return [action, id, ...args];
   }
@@ -80,7 +129,7 @@ export async function verifyProof(
   )
     throw new Error('Gate did not validate the captured source');
   if (['release', 'package'].includes(manifest.task))
-    assertFullRelease(quality);
+    await verifyReleaseUnits(quality, root);
   if (manifest.task === 'package') {
     const record = JSON.parse(
       await fs.readFile(path.join(root, '.quality/package.json'), 'utf8'),
@@ -108,6 +157,9 @@ export async function verifyPackageRecord(record, directory, manifest) {
     ['application', 'installer', 'e2e'].some(
       (key) => record.validations?.[key] !== expected,
     ) ||
+    (expected === 'passed' &&
+      (record.diagnostics?.length !== 1 ||
+        record.diagnostics.some((report) => !report.complete))) ||
     record.release.identity.remote?.id !== manifest.id ||
     record.release.identity.remote?.transportDigest !==
       manifest.transportDigest ||
@@ -121,6 +173,24 @@ export async function verifyPackageRecord(record, directory, manifest) {
     throw new Error(
       'Package evidence or installer bytes do not match the validated task',
     );
+  const checksums = await readInstallerChecksums(directory);
+  const installers = Object.keys(record.files).filter((file) =>
+    /\.(?:dmg|zip|exe|AppImage|deb)$/.test(file),
+  );
+  if (
+    !record.files.SHA256SUMS ||
+    !checksums ||
+    !installers.length ||
+    hash(Object.keys(checksums).sort()) !== hash([...installers].sort())
+  )
+    throw new Error('Installer checksum manifest is missing or incomplete');
+  for (const file of installers) {
+    const checksum = createHash('sha256');
+    for await (const chunk of createReadStream(path.join(directory, file)))
+      checksum.update(chunk);
+    if (checksum.digest('hex') !== checksums[file])
+      throw new Error('Installer SHA-256 checksum mismatch: ' + file);
+  }
 }
 
 /** Stable task definitions; credentials and connection settings remain user-owned. */
@@ -136,7 +206,13 @@ export function deriveConfiguration(configuration, root, env = process.env) {
       'Project is not registered in the remote-test configuration',
     );
   const [id, project] = match;
-  project.env = { ...project.env };
+  project.env = {
+    ...project.env,
+    VERD_VERIFICATION_CACHE:
+      config.hosts[project.host].cacheDir.replace(/\/$/, '') +
+      '/verd-verification/' +
+      id,
+  };
   for (const name of [
     'VERD_UNIT_TEST_PACKAGES',
     'VERD_UNIT_TEST_WORKERS',
@@ -145,10 +221,25 @@ export function deriveConfiguration(configuration, root, env = process.env) {
     if (env[name] !== undefined) project.env[name] = env[name];
   project.tasks = {
     ...project.tasks,
+    ci: { command: ['pnpm', 'check:ci'] },
+    dev: { command: ['pnpm', 'check:dev'] },
     release: { command: ['pnpm', 'check:release'] },
     package: { command: ['pnpm', 'package:desktop'] },
     benchmark: { command: ['node', 'scripts/benchmark-tests.mjs'] },
   };
+  const originalPrepare = project.prepare ?? [];
+  if (project.requiresGui) {
+    project.prepare = [
+      ['node', GUI_SESSION_SCRIPT, '--check'],
+      ...originalPrepare,
+    ];
+    for (const name of ['ci', 'dev', 'release', 'package', 'benchmark'])
+      project.tasks[name].command = [
+        'node',
+        GUI_SESSION_SCRIPT,
+        ...project.tasks[name].command,
+      ];
+  }
   project.records = [
     ...new Set([
       ...(project.records ?? []),
@@ -160,9 +251,40 @@ export function deriveConfiguration(configuration, root, env = process.env) {
     capture: ['node', 'scripts/remote-test.mjs', '--capture-proof'],
     verify: ['node', 'scripts/remote-test.mjs', '--verify-proof'],
   };
-  config.projects[id + '-scripts'] = {
+  const isolated = {
     ...structuredClone(project),
+    requiresGui: false,
+    env: { ...project.env, ELECTRON_SKIP_BINARY_DOWNLOAD: '1' },
+    prepare: originalPrepare.filter(
+      (argv) =>
+        !argv.some((arg) =>
+          /playwright|install-electron|electron-smoke/.test(arg),
+        ),
+    ),
+    artifacts: { ...project.artifacts, requireReport: false },
+  };
+  config.projects[id + '-scripts'] = {
+    ...structuredClone(isolated),
     tasks: { scripts: { command: ['node', 'scripts/validate-scripts.mjs'] } },
+  };
+  config.projects[id + '-units'] = {
+    ...structuredClone(isolated),
+    tasks: { dev: { command: ['pnpm', 'check:dev'] } },
+  };
+  config.projects[id + '-dev'] = {
+    ...structuredClone(project),
+    tasks: { dev: project.tasks.dev },
+    artifacts: { ...project.artifacts, requireReport: false },
+  };
+  config.projects[id + '-web'] = {
+    ...structuredClone(project),
+    requiresGui: false,
+    env: { ...project.env, ELECTRON_SKIP_BINARY_DOWNLOAD: '1' },
+    prepare: originalPrepare.filter(
+      (argv) =>
+        !argv.some((arg) => /install-electron|electron-smoke/.test(arg)),
+    ),
+    tasks: { dev: { command: ['pnpm', 'check:dev'] } },
     artifacts: { ...project.artifacts, requireReport: false },
   };
   return { config, id, project };
@@ -194,6 +316,11 @@ export async function promotePackage(results, root = ROOT) {
     ),
   );
   await verifyPackageRecord(record, source, manifest);
+  if (
+    (await releaseInputs(root)).releaseInputDigest !==
+    manifest.proof?.releaseInputDigest
+  )
+    throw new Error('Local release inputs changed before delivery');
   const release = JSON.parse(
     await fs.readFile(
       path.join(results, 'source/.quality/release.json'),
@@ -205,6 +332,15 @@ export async function promotePackage(results, root = ROOT) {
       'Package and release proofs belong to different gate results',
     );
   const output = path.join(root, 'apps/desktop/release');
+  const alreadyDelivered = await verifyPackageRecord(
+    record,
+    output,
+    manifest,
+  ).then(
+    () => true,
+    () => false,
+  );
+  if (alreadyDelivered) return;
   await replaceReleaseDirectory(
     source,
     output,
@@ -227,7 +363,20 @@ export async function main(args, { execute, root = ROOT, configuration } = {}) {
     await verifyProof(undefined, root);
     return 0;
   }
+  const verbose = args.includes('--verbose');
+  args = args.filter((arg) => arg !== '--verbose');
   const forwarded = parseCli(args);
+  const baseIndex = forwarded.indexOf('--base');
+  if (baseIndex >= 0) {
+    const changes = await changedFiles(forwarded[baseIndex + 1], root);
+    changes.sourceDigest = (await releaseInputs(root)).releaseInputDigest;
+    forwarded.splice(
+      baseIndex,
+      2,
+      '--changes',
+      Buffer.from(JSON.stringify(changes)).toString('base64url'),
+    );
+  }
   if (args[0] === 'scripts')
     for (const file of args.slice(1)) {
       if (!(await fs.stat(path.join(root, file)).catch(() => null))?.isFile())
@@ -245,6 +394,14 @@ export async function main(args, { execute, root = ROOT, configuration } = {}) {
     );
   const { config, id, project } = deriveConfiguration(original, root);
   if (args[0] === 'scripts') forwarded.unshift('--project', id + '-scripts');
+  if (args[0] === 'dev') {
+    const plan = await createTestPlan({
+      root,
+      mode: 'dev',
+      options: parseGateOptions(forwarded.slice(forwarded.indexOf('--') + 1)),
+    });
+    forwarded.unshift('--project', developmentProfile(plan, id));
+  }
   const temporary = await fs.mkdtemp(
     path.join(os.tmpdir(), 'verd-remote-profile-'),
   );
@@ -261,42 +418,163 @@ export async function main(args, { execute, root = ROOT, configuration } = {}) {
         'Install the user-level remote-test tool; configuration: ~/.config/remote-test/config.json',
       );
     });
-    let output = '';
-    const code = await new Promise((resolve, reject) => {
-      const child = spawn(binary, forwarded, {
-        cwd: root,
-        stdio: ['inherit', 'pipe', 'inherit'],
-        env: options.env,
-      });
-      child.stdout.on('data', (chunk) => {
-        process.stdout.write(chunk);
-        output += chunk;
-      });
-      child.once('error', reject);
-      child.once('exit', (code) => resolve(code ?? 1));
-    });
-    const taskId =
-      forwarded[0] === 'fetch'
-        ? forwarded[1]
-        : output.match(/任务：([a-zA-Z0-9-]+)/)?.[1];
-    if (
-      code === 0 &&
-      taskId &&
-      (args[0] === 'package' || args[0] === 'fetch')
-    ) {
-      const resultsRoot = path.isAbsolute(project.resultsDir ?? '')
-        ? project.resultsDir
-        : path.join(root, project.resultsDir ?? 'test-results/remote');
-      await promotePackage(
-        path.join(
-          resultsRoot,
-          taskId,
-          ...(args.includes('--raw') ? ['raw'] : []),
-        ),
-        root,
+    const resultsRoot = path.isAbsolute(project.resultsDir ?? '')
+      ? project.resultsDir
+      : path.join(root, project.resultsDir ?? 'test-results/remote');
+    const logDirectory = path.join(root, '.quality/remote-logs');
+    await fs.mkdir(logDirectory, { recursive: true });
+    const processLog = path.join(logDirectory, Date.now() + '.log');
+    let taskId;
+    const command = async (argv, { capture = false, stream = false } = {}) => {
+      let output = '',
+        tail = '';
+      const decoder = new StringDecoder('utf8');
+      const log = createWriteStream(processLog, { flags: 'a' });
+      try {
+        const code = await new Promise((resolve, reject) => {
+          const child = spawn(binary, argv, {
+            cwd: root,
+            env: options.env,
+            stdio: ['ignore', 'pipe', 'pipe'],
+          });
+          const accept = (chunk) => {
+            const value = decoder.write(chunk);
+            log.write(value);
+            if (stream || verbose) process.stdout.write(value);
+            if (capture) {
+              output += value;
+              if (output.length > 2_000_000) child.kill();
+            }
+            tail = (tail + value).slice(-8192);
+            const found = tail.match(/任务：([a-zA-Z0-9-]+)\s/);
+            if (found && !taskId) {
+              taskId = found[1];
+              console.log('Task: ' + taskId);
+            }
+          };
+          child.stdout.on('data', accept);
+          child.stderr.on('data', (chunk) => {
+            log.write(chunk);
+            if (stream || verbose) process.stderr.write(chunk);
+          });
+          child.once('error', reject);
+          child.once('close', (code) => resolve(code ?? 1));
+        });
+        return { code, output, tail };
+      } finally {
+        log.end();
+        await finished(log);
+      }
+    };
+    const finish = async (id) => {
+      const directory = path.join(
+        resultsRoot,
+        id,
+        ...(args.includes('--raw') ? ['raw'] : []),
       );
+      const summary = await summarizeResults(directory);
+      summary.currentSource =
+        summary.currentSource &&
+        summary.validatedInputDigest ===
+          (await releaseInputs(root)).releaseInputDigest;
+      if (summary.task === 'package' && summary.status === 'passed') {
+        try {
+          await promotePackage(directory, root);
+          summary.deliveryStatus = 'delivered';
+        } catch (error) {
+          summary.deliveryStatus = 'failed';
+          summary.deliveryError = error.message;
+        }
+      }
+      await fs.mkdir(path.join(root, '.quality/remote'), { recursive: true });
+      await fs.writeFile(
+        path.join(root, '.quality/remote', id + '.json'),
+        JSON.stringify(summary, null, 2) + '\n',
+      );
+      return summary;
+    };
+    if (args[0] === 'summary') {
+      const summary = await fs
+        .readFile(path.join(root, '.quality/remote', args[1] + '.json'), 'utf8')
+        .then(JSON.parse)
+        .catch(() => summarizeResults(path.join(resultsRoot, args[1])));
+      summary.currentSource =
+        summary.validatedInputDigest ===
+        (await releaseInputs(root)).releaseInputDigest;
+      console.log(JSON.stringify(summary, null, 2));
+      return summaryExitCode(summary);
     }
-    return code;
+    if (args[0] === 'wait') {
+      try {
+        const summary = await waitForTask(args[1], {
+          timeout: args.includes('--timeout')
+            ? Number(args[args.indexOf('--timeout') + 1])
+            : 600,
+          status: async (id) => {
+            const result = await command(['status', id], { capture: true });
+            try {
+              return JSON.parse(result.output);
+            } catch {
+              throw new Error(
+                'Could not query task ' + id + '; log: ' + processLog,
+              );
+            }
+          },
+          fetch: (id) =>
+            fetchTaskResults(id, path.join(resultsRoot, id), command),
+          summarize: finish,
+        });
+        console.log(JSON.stringify(summary, null, 2));
+        return summary.timedOut ? 0 : summaryExitCode(summary);
+      } catch (error) {
+        console.error(
+          JSON.stringify({
+            taskId: args[1],
+            status: 'retrieval-failed',
+            error: error.message,
+            log: processLog,
+            recover: 'pnpm test:remote wait ' + args[1],
+          }),
+        );
+        return 1;
+      }
+    }
+    const passthrough = [
+      'doctor',
+      'status',
+      'logs',
+      'cancel',
+      'artifacts',
+    ].includes(args[0]);
+    const result = await command(forwarded, { stream: passthrough });
+    taskId ??= args[0] === 'fetch' ? args[1] : undefined;
+    if (taskId && !passthrough) {
+      try {
+        const summary = await finish(taskId);
+        console.log(JSON.stringify(summary, null, 2));
+        return result.code || summaryExitCode(summary);
+      } catch (error) {
+        console.error(
+          JSON.stringify({
+            taskId,
+            status: 'retrieval-failed',
+            error: error.message,
+            log: processLog,
+            recover: 'pnpm test:remote wait ' + taskId,
+          }),
+        );
+        return result.code || 1;
+      }
+    }
+    if (result.code && !passthrough)
+      console.error(
+        JSON.stringify({
+          status: 'submission-failed',
+          log: processLog,
+          error: result.tail,
+        }),
+      );
+    return result.code;
   } finally {
     await fs.rm(temporary, { recursive: true, force: true });
   }

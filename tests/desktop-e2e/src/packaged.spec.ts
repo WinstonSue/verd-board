@@ -15,6 +15,8 @@ import {
 } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
+import { execFileSync } from 'node:child_process';
+import { access } from 'node:fs/promises';
 import type { WorkspaceHistoryEntry } from '../../../packages/workspace/core/src/host/workspace-host';
 import { openWorkspaceMenu } from '../../web-e2e/src/app-actions';
 import { activeTabTitle } from '../../web-e2e/src/tab-actions';
@@ -26,6 +28,38 @@ test.skip(
   'Requires a freshly packaged macOS .app',
 );
 
+test('the current package declares Markdown and native canvas file associations', async () => {
+  const plist = JSON.parse(
+    execFileSync(
+      'plutil',
+      [
+        '-convert',
+        'json',
+        '-o',
+        '-',
+        path.join(appBundle!, 'Contents/Info.plist'),
+      ],
+      { encoding: 'utf8' },
+    ),
+  );
+  const extensions = plist.CFBundleDocumentTypes.flatMap(
+    (type: { CFBundleTypeExtensions?: string[] }) =>
+      type.CFBundleTypeExtensions ?? [],
+  );
+  expect(extensions).toEqual(
+    expect.arrayContaining(['md', 'markdown', 'verd']),
+  );
+  expect(extensions).not.toContain('json');
+  expect(plist.UTExportedTypeDeclarations).toEqual(
+    expect.arrayContaining([
+      expect.objectContaining({ UTTypeIdentifier: 'com.verdboard.canvas' }),
+    ]),
+  );
+  await access(
+    path.join(appBundle!, 'Contents/Resources/default-file-handler'),
+  );
+});
+
 async function nativeFiles(directory: string, prefix = ''): Promise<string[]> {
   const files: string[] = [];
   for (const entry of await readdir(directory, { withFileTypes: true })) {
@@ -35,7 +69,8 @@ async function nativeFiles(directory: string, prefix = ''): Promise<string[]> {
       files.push(
         ...(await nativeFiles(path.join(directory, entry.name), relative)),
       );
-    else if (/\.verd(?:-doc)?\.json$/.test(entry.name)) files.push(relative);
+    else if (/\.verd(?:(?:-doc)?\.json)?$/.test(entry.name))
+      files.push(relative);
   }
   return files.sort();
 }
@@ -47,6 +82,12 @@ test('real installed identity seeds architecture, recovers old folders and prese
   const directory = await mkdtemp(path.join(tmpdir(), 'verd-packaged-e2e-'));
   const userData = path.join(directory, 'VerdBoard');
   const workspace = path.join(userData, 'workspaces/default');
+  await mkdir(userData, { recursive: true });
+  // This recovery scenario uses a profile that already declined the system-default prompt.
+  await writeFile(
+    path.join(userData, 'file-associations.json'),
+    JSON.stringify({ prompted: true }),
+  );
   const oldDefault = path.join(directory, 'desktop/workspaces/default');
   const oldContent = JSON.stringify({
     format: 'verd-frame',
@@ -68,7 +109,7 @@ test('real installed identity seeds architecture, recovers old folders and prese
       value: { identity: 'packaged-test-project', workspaceInitialized: true },
     }),
   );
-  await writeFile(path.join(oldDefault, '旧画布.verd.json'), oldContent);
+  await writeFile(path.join(oldDefault, '旧画布.verd'), oldContent);
   let desktop: ElectronApplication | undefined;
   const env = { ...process.env, VERDBOARD_USER_DATA_PATH: userData };
   delete env.ELECTRON_RUN_AS_NODE;
@@ -171,9 +212,9 @@ test('real installed identity seeds architecture, recovers old folders and prese
     await page.getByTestId('workspace-open-builtin').click();
     await expect(activeTabTitle(page)).toHaveText('系统架构');
     await close();
-    expect(
-      await readFile(path.join(oldDefault, '旧画布.verd.json'), 'utf8'),
-    ).toBe(oldContent);
+    expect(await readFile(path.join(oldDefault, '旧画布.verd'), 'utf8')).toBe(
+      oldContent,
+    );
     expect(await nativeFiles(workspace)).toEqual(expected);
   } finally {
     await desktop?.close();
@@ -187,6 +228,12 @@ test('real packaged app preserves an intentionally empty default workspace', asy
   try {
     const userData = path.join(directory, 'VerdBoard');
     const workspace = path.join(userData, 'workspaces/default');
+    await mkdir(userData, { recursive: true });
+    // This recovery scenario uses a profile that already declined the system-default prompt.
+    await writeFile(
+      path.join(userData, 'file-associations.json'),
+      JSON.stringify({ prompted: true }),
+    );
     await mkdir(path.join(workspace, '.verdscrolls'), { recursive: true });
     await writeFile(
       path.join(workspace, '.verdscrolls/config.json'),

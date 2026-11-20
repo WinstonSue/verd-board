@@ -45,7 +45,7 @@ const setup = async (patch: Partial<WorkspaceSettingsProps> = {}) => {
       entries: [
         {
           entryId: 'trash-a',
-          originalPath: 'docs/gone.verd.json',
+          originalPath: 'docs/gone.verd',
           trashedAt: 1,
         },
       ],
@@ -69,6 +69,7 @@ const click = async (target: HTMLElement) => act(async () => target.click());
 afterEach(async () => {
   if (root) await act(async () => root.unmount());
   container?.remove();
+  vi.unstubAllGlobals();
 });
 
 it('shows a left menu, defaults to settings and keeps an empty workspace trash accessible', async () => {
@@ -155,14 +156,14 @@ it('restores entries while preventing duplicate operations or leaving during sub
   props.trash!.onRestore = onRestore;
   await render(props);
   await click(testId('settings-nav-workspace.trash'));
-  await click(button('还原 gone.verd.json'));
+  await click(button('还原 gone.verd'));
   expect(testId<HTMLButtonElement>('workspace-settings-back').disabled).toBe(
     true,
   );
   expect(
     testId('settings-nav-workspace.project').getAttribute('aria-disabled'),
   ).toBe('true');
-  await click(button('还原 gone.verd.json'));
+  await click(button('还原 gone.verd'));
   expect(onRestore).toHaveBeenCalledTimes(1);
   await act(async () =>
     testId('workspace-settings-page').dispatchEvent(
@@ -193,7 +194,10 @@ it('retains a failed purge confirmation and cancellation does not leave workspac
   await click(testId('settings-nav-workspace.trash'));
   await click(button('清空回收站'));
   expect(testId('workspace-action-confirmation').textContent).toContain(
-    '永久删除后无法恢复',
+    '无法从回收站还原',
+  );
+  expect(testId('workspace-action-confirmation').textContent).toContain(
+    '已提交的 Git 历史保留',
   );
   await click(button('确定'));
   expect(button('处理中…').disabled).toBe(true);
@@ -238,11 +242,11 @@ it('clears only entries captured when confirmation opened', async () => {
 it('confirms single-item deletion and hides all writes for readonly trash', async () => {
   const props = await setup();
   await click(testId('settings-nav-workspace.trash'));
-  await click(button('永久删除 gone.verd.json'));
+  await click(button('永久删除 gone.verd'));
   await click(button('确定'));
   expect(props.trash!.onPurge).toHaveBeenCalledWith(['trash-a']);
   await render({ ...props, trash: { ...props.trash!, readonly: true } });
-  expect(testId('workspace-trash').textContent).toContain('gone.verd.json');
+  expect(testId('workspace-trash').textContent).toContain('gone.verd');
   expect(testId('workspace-trash').querySelectorAll('button')).toHaveLength(0);
 });
 
@@ -254,8 +258,8 @@ it('offers explicit retry for an unconfirmed operation and blocks other trash ac
     trash: { ...props.trash!, unconfirmed: true, onRetry },
   });
   await click(testId('settings-nav-workspace.trash'));
-  expect(button('还原 gone.verd.json').disabled).toBe(true);
-  expect(button('永久删除 gone.verd.json').disabled).toBe(true);
+  expect(button('还原 gone.verd').disabled).toBe(true);
+  expect(button('永久删除 gone.verd').disabled).toBe(true);
   await click(button('重试'));
   expect(onRetry).toHaveBeenCalledOnce();
 });
@@ -284,6 +288,19 @@ it('edits project description and reading entries while exposing AI readiness', 
   });
   await click(testId('settings-nav-workspace.data'));
   expect(testId('workspace-agent-status').textContent).toContain('暂不可用');
+  expect(testId('workspace-agent-status').textContent).toContain(
+    '外部 AI 助手',
+  );
+  expect(testId('workspace-agent-status').textContent).toContain(
+    '创建和修改文档、图表',
+  );
+  expect(testId('workspace-agent-status').textContent).toContain(
+    '重新打开工作区后重试',
+  );
+  await click(button('诊断详情'));
+  expect(testId('workspace-agent-status').textContent).toContain(
+    'agent.shared-unready: Missing shared tools',
+  );
   await click(testId('settings-nav-workspace.project'));
   expect(
     testId<HTMLTextAreaElement>('workspace-settings-description').value,
@@ -325,7 +342,7 @@ it('searches shared metadata and focuses the selected field in the same dialog',
     Object.getOwnPropertyDescriptor(
       HTMLInputElement.prototype,
       'value',
-    )!.set!.call(input, '项目简介');
+    )!.set!.call(input, '工作区简介');
     input.dispatchEvent(new Event('input', { bubbles: true }));
   });
   await click(
@@ -493,4 +510,54 @@ it('opens the actual storage path and defaults bundled replacement to no backup'
   expect(checkbox.checked).toBe(false);
   await click(button('不备份，全部更新'));
   expect(update).toHaveBeenCalledWith('new', false);
+});
+
+it('copies the complete storage path without opening it and reports clipboard failures', async () => {
+  const writeText = vi.fn(async (_path: string) => {});
+  vi.stubGlobal('navigator', {
+    clipboard: { writeText },
+    userAgent: navigator.userAgent,
+    platform: navigator.platform,
+  });
+  const onOpenStorage = vi.fn(async () => {});
+  const props = await setup({
+    readonly: true,
+    storage: 'desktop',
+    storageLocation: '/Users/test/工作区 with spaces',
+    onOpenStorage,
+  });
+  await click(testId('settings-nav-workspace.data'));
+  await click(testId('workspace-storage-copy'));
+  expect(writeText).toHaveBeenCalledWith('/Users/test/工作区 with spaces');
+  expect(onOpenStorage).not.toHaveBeenCalled();
+  expect(container.querySelector('[role="status"]')?.textContent).toBe(
+    '已复制',
+  );
+
+  writeText.mockRejectedValueOnce(new Error('Permission denied'));
+  await click(testId('workspace-storage-copy'));
+  expect(container.querySelector('[role="status"]')?.textContent).toBe('');
+  expect(container.querySelector('[role="alert"]')?.textContent).toContain(
+    '复制失败',
+  );
+  await click(testId('workspace-storage-copy'));
+  expect(container.querySelector('[role="alert"]')).toBeNull();
+
+  await render({ ...props, storage: 'browser' });
+  expect(
+    container.querySelector('[data-testid="workspace-storage-copy"]'),
+  ).toBeNull();
+});
+
+it('explains how to use ready external AI tools without empty diagnostics', async () => {
+  const props = await setup({ agent: { ready: true, diagnostics: [] } });
+  await click(testId('settings-nav-workspace.data'));
+  const status = testId('workspace-agent-status');
+  expect(status.textContent).toContain('编写工具已就绪');
+  expect(status.textContent).toContain('让它读取 AGENTS.md');
+  expect(status.textContent).not.toContain('诊断详情');
+  await render({ ...props, locale: 'en' });
+  expect(status.textContent).toContain('External AI assistants');
+  expect(status.textContent).toContain('Authoring tools ready');
+  expect(status.textContent).toContain('ask it to read AGENTS.md');
 });

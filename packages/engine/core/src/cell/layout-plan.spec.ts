@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { createTestCellRegistry } from '../../../../../tests/fixtures/plugins/registry';
+import { createTestCellRegistry } from '../../../../../tests/fixtures/core/registry';
 import { arrangeCells } from './arrangement';
 import { applyCellOperations, createCellRuntime, groupCells } from './index';
 import {
@@ -20,51 +20,7 @@ import {
   type EdgeCell,
   type NodeCell,
 } from './types';
-
 const registry = createTestCellRegistry();
-
-it('persists one-shot editable paths and keeps repeat optimization idempotent', () => {
-  const original = make(
-    node('a', 0, 0),
-    node('b', 500, 500),
-    edge('e', 'a', 'b', { mode: 'auto' }),
-  );
-  const operations = optimizeEdges(original, ['e', 'e'], registry);
-  expect(operations).toHaveLength(1);
-  const optimized = applyCellOperations(original, operations, registry);
-  expect((optimized.cells.e as EdgeCell).route).toMatchObject({
-    mode: 'orthogonal',
-    points: expect.any(Array),
-  });
-  expect((optimized.cells.e as EdgeCell).source).toEqual(
-    (original.cells.e as EdgeCell).source,
-  );
-  expect(JSON.parse(JSON.stringify(optimized))).toEqual(optimized);
-  expect(optimizeEdges(optimized, ['e'], registry)).toEqual([]);
-  expect(optimized.cells.a).toEqual(original.cells.a);
-  const authored = structuredClone(optimized);
-  (authored.cells.e as EdgeCell).route = {
-    mode: 'orthogonal',
-    strategy: 'optimized',
-    points: [
-      [40, 10],
-      [500, 10],
-      [500, 510],
-    ],
-  };
-  const reset = applyCellOperations(
-    authored,
-    rerouteEdges(authored, ['e'], registry),
-    registry,
-  );
-  expect((reset.cells.e as EdgeCell).route).toEqual({
-    mode: 'orthogonal',
-    strategy: 'optimized',
-  });
-  expect(optimizeEdges(authored, ['e'], registry)).toHaveLength(1);
-  (authored.cells.e as EdgeCell).locked = true;
-  expect(optimizeEdges(authored, ['e'], registry)).toEqual([]);
-});
 const node = (id: string, x: number, y: number): NodeCell => ({
   id,
   cellType: 'node',
@@ -118,7 +74,48 @@ const grouped = () => {
     registry,
   );
 };
-
+it('persists one-shot editable paths and keeps repeat optimization idempotent', () => {
+  const original = make(
+    node('a', 0, 0),
+    node('b', 500, 500),
+    edge('e', 'a', 'b', { mode: 'auto' }),
+  );
+  const operations = optimizeEdges(original, ['e', 'e'], registry);
+  expect(operations).toHaveLength(1);
+  const optimized = applyCellOperations(original, operations, registry);
+  expect((optimized.cells.e as EdgeCell).route).toMatchObject({
+    mode: 'orthogonal',
+    points: expect.any(Array),
+  });
+  expect((optimized.cells.e as EdgeCell).source).toEqual(
+    (original.cells.e as EdgeCell).source,
+  );
+  expect(JSON.parse(JSON.stringify(optimized))).toEqual(optimized);
+  expect(optimizeEdges(optimized, ['e'], registry)).toEqual([]);
+  expect(optimized.cells.a).toEqual(original.cells.a);
+  const authored = structuredClone(optimized);
+  (authored.cells.e as EdgeCell).route = {
+    mode: 'orthogonal',
+    strategy: 'optimized',
+    points: [
+      [40, 10],
+      [500, 10],
+      [500, 510],
+    ],
+  };
+  const reset = applyCellOperations(
+    authored,
+    rerouteEdges(authored, ['e'], registry),
+    registry,
+  );
+  expect((reset.cells.e as EdgeCell).route).toEqual({
+    mode: 'orthogonal',
+    strategy: 'optimized',
+  });
+  expect(optimizeEdges(authored, ['e'], registry)).toHaveLength(1);
+  (authored.cells.e as EdgeCell).locked = true;
+  expect(optimizeEdges(authored, ['e'], registry)).toEqual([]);
+});
 describe('scoped layout planning', () => {
   it('resolves a focused Frame reference to its target without arranging the parent canvas', () => {
     let store = make(
@@ -153,7 +150,6 @@ describe('scoped layout planning', () => {
     for (const id of ['target', 'reference', 'outside'])
       expect(next.cells[id]).toEqual(store.cells[id]);
   });
-
   it('does not expand a hidden group into layout or routing targets', () => {
     const original = grouped();
     const store = applyCellOperations(
@@ -167,7 +163,6 @@ describe('scoped layout planning', () => {
     );
     expect(arrangementEdgeIds(store, selection)).toEqual([]);
   });
-
   it.each([
     { focus: ['root'], ids: ['g'] },
     { focus: ['root', 'g'], ids: [] },
@@ -203,7 +198,6 @@ describe('scoped layout planning', () => {
       expect(geometry(runtime.store, 'b')).toMatchObject({ x: 136, y: 0 });
     },
   );
-
   it('keeps nested groups rigid, expands only the selected level and never opens a nested Frame', () => {
     let store = make(
       node('a', 0, 0),
@@ -253,7 +247,6 @@ describe('scoped layout planning', () => {
       resolveCellArrangementScope(store, { focus: ['root'], ids: [] }).ids,
     ).toContain('outer');
   });
-
   it('treats multiple selected groups as separate rigid blocks', () => {
     let store = make(
       node('a', 0, 0),
@@ -285,7 +278,6 @@ describe('scoped layout planning', () => {
     expect(geometry(next, 'd').y - geometry(next, 'c').y).toBe(200);
     expect(geometry(next, 'c')).toMatchObject({ x: 336, y: 0 });
   });
-
   it('keeps nested groups with derived internal routes stable after layout', () => {
     let store = make(
       node('a', 0, 0),
@@ -310,7 +302,6 @@ describe('scoped layout planning', () => {
     expect((next.cells.inside as EdgeCell).route.origin).toBe('generated');
     expect(planCellLayout(next, selection, 'horizontal', registry)).toEqual([]);
   });
-
   it('enlarges layout around outside or locked nodes without mutating the source', () => {
     let store = make(
       node('a', 0, 0),
@@ -352,7 +343,6 @@ describe('scoped layout planning', () => {
       ).status,
     ).toBe('success');
   });
-
   it('keeps locked members fixed and does not expand an empty or edge-only scope to the Frame', () => {
     const store = make(node('a', 0, 0), node('b', 500, 500), {
       ...node('pinned', 0, 800),
@@ -392,7 +382,6 @@ describe('scoped layout planning', () => {
     ).toEqual([]);
   });
 });
-
 describe('relationship layout', () => {
   it('handles cycles, branching, duplicate/self/outside edges, disconnected nodes and stable input order', () => {
     const cells: Cell[] = ['a', 'b', 'c', 'd', 'e', 'z'].map((id, i) =>
@@ -438,7 +427,6 @@ describe('relationship layout', () => {
       Object.keys(first.cells).sort(),
     );
   });
-
   it('packs disconnected nodes as a grid and ignores edges leaving a local scope', () => {
     const store = make(
       node('a', 0, 0),
@@ -461,7 +449,6 @@ describe('relationship layout', () => {
     expect(next.cells.c).toEqual(store.cells.c);
   });
 });
-
 describe('scoped edge rerouting', () => {
   it('collects incident boundary edges and explicitly selected edges without moving nodes', () => {
     const store = grouped();
@@ -494,7 +481,6 @@ describe('scoped edge rerouting', () => {
     runtime.undo();
     expect(runtime.store).toEqual(store);
   });
-
   it('preserves ports, anchors, free endpoints, labels and appearance while converting fixed paths', () => {
     const a = {
       ...node('a', 0, 0),
@@ -528,7 +514,6 @@ describe('scoped edge rerouting', () => {
     expect(next.cells.e).toEqual({ ...e, route: { mode: 'auto' } });
     expect(next.cells.free).toEqual({ ...free, route: { mode: 'orthogonal' } });
   });
-
   it('skips straight, curved, automatic, hidden, locked and plugin-owned paths including ancestor locks', () => {
     const paths: EdgeCell[] = [
       edge('straight', 'a', 'b', {

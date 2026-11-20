@@ -46,6 +46,15 @@ export interface WorkspaceProjectInfo {
   entryDocumentIds: string[];
 }
 
+/** Resolved local context. These paths are observations, never portable configuration. */
+export interface WorkspaceDirectoryContext {
+  workspaceRoot: string;
+  projectRoot: string;
+  workspacePath: string;
+  repositoryRoot?: string;
+  repositoryPath?: string;
+}
+
 export interface WorkspaceTabRef {
   /** Stable file identity — canvas root frame id or document id. */
   fileId: CellId;
@@ -175,11 +184,13 @@ export interface WorkspaceEntryMeta {
   kind: 'file' | 'directory';
   /** Stable identity from directory metadata, when one has been assigned. */
   folderId?: string;
-  /** `*.verd.json` payload files. */
+  /** `*.verd` payload files. */
   canvas: boolean;
   /** `*.verd-doc.json` payload files; absent means "detect by suffix". */
   document?: boolean;
   version?: FileVersion;
+  /** Listing-only invalidation for large ordinary files; writes must obtain a digest from readFile. */
+  metadataRevision?: string;
   size?: number;
 }
 
@@ -213,7 +224,9 @@ export interface WorkspaceTrashMeta {
 }
 
 export interface WorkspaceHostSnapshot {
+  context?: WorkspaceDirectoryContext;
   agent?: {
+    enabled?: boolean;
     ready: boolean;
     resourceId: string | null;
     diagnostics: { code: string; message: string; path?: string }[];
@@ -387,6 +400,10 @@ export interface WorkspaceHost {
   /** Optional for third-party hosts; legacy snapshots remain readable. */
   git?: import('./workspace-git').WorkspaceGitHost;
   capabilities?: Readonly<WorkspaceHostCapabilities>;
+  /** Explicit setup/repair; opening a directory does not opt it into Agent instructions. */
+  initializeAgent?(
+    handle: WorkspaceHandle,
+  ): Promise<NonNullable<WorkspaceHostSnapshot['agent']>>;
   readWorkspaceLocation?(handle: WorkspaceHandle): Promise<string>;
   revealWorkspaceLocation?(handle: WorkspaceHandle): Promise<void>;
   readBuiltinUpdate?(
@@ -438,7 +455,7 @@ export interface WorkspaceHost {
   ): Promise<CommitReceipt>;
   closeWorkspace(handle: WorkspaceHandle): Promise<void>;
   /** Desktop waits for the app to flush before closing; web best-effort. */
-  onShutdown?(flush: () => Promise<void>): () => void;
+  onShutdown?(flush: () => Promise<void>, onCancelled?: () => void): () => void;
 }
 
 export const WORKSPACE_META_DIR = '.verdscrolls';
@@ -472,10 +489,11 @@ export const normalizeResourceKey = (input: string): string => {
 
 export const resourceStoragePath = (key: string) =>
   `${RESOURCE_DIR}/${normalizeResourceKey(key)}`;
-export const CANVAS_FILE_SUFFIX = '.verd.json';
+export const CANVAS_FILE_SUFFIX = '.verd';
+export const LEGACY_CANVAS_FILE_SUFFIX = '.verd.json';
 export const DOCUMENT_FILE_SUFFIX = '.verd-doc.json';
 
-export const isCanvasPath = (path: string) => path.endsWith(CANVAS_FILE_SUFFIX);
+export const isCanvasPath = (path: string) => /\.verd(?:\.json)?$/i.test(path);
 export const isDocumentPath = (path: string) =>
   path.endsWith(DOCUMENT_FILE_SUFFIX);
 
@@ -501,6 +519,7 @@ export const normalizeWorkspacePath = (path: string): string => {
   const segments = normalized.split('/');
   if (
     segments.some((part) => part === '..') ||
+    segments.some((segment) => segment.toLowerCase() === '.git') ||
     segments.some((segment) => RESERVED.has(segment)) ||
     segments[0].includes(':')
   )

@@ -65,9 +65,11 @@ async function seed(page: Page) {
     },
   }));
   await page
-    .locator('input[accept=".json,.verd.json,.verd-doc.json,.md,.markdown"]')
+    .locator(
+      'input[accept=".json,.verd,.verd.json,.verd-doc.json,.md,.markdown"]',
+    )
     .setInputFiles({
-      name: 'feedback.verd.json',
+      name: 'feedback.verd',
       mimeType: 'application/json',
       buffer: Buffer.from(
         JSON.stringify({

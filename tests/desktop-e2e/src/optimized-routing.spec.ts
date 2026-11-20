@@ -26,14 +26,14 @@ test('one-shot optimized paths persist across desktop restart without enabling c
     path.join(tmpdir(), 'verd-optimized-routing-'),
   );
   const workspace = path.join(directory, 'workspace');
-  const filename = path.join(workspace, 'routing.verd.json');
+  const filename = path.join(workspace, 'routing.verd');
   let desktop: ElectronApplication | undefined;
   try {
     await mkdir(workspace);
     await copyFile(
       path.join(
         root,
-        'workspace/架构图/细节/01-项目分层与依赖/01.1-完整包分层与依赖.verd.json',
+        'workspace/架构图/细节/01-项目分层与依赖/01.1-完整包分层与依赖.verd',
       ),
       filename,
     );
@@ -84,7 +84,7 @@ test('one-shot optimized paths persist across desktop restart without enabling c
         BrowserWindow.getAllWindows()[0].setSize(1440, 900),
       );
       await expect(page.locator('.workspace-shell')).toBeVisible();
-      await page.locator('.file-tree-name[title="routing.verd.json"]').click();
+      await page.locator('.file-tree-name[title="routing.verd"]').click();
       const pane = page.locator('.workspace-pane.is-active');
       await expect(pane.locator('[data-edge-hit]')).toHaveCount(edgeCount);
       await setAppLanguage(page, 'zh');

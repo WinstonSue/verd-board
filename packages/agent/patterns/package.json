@@ -1,6 +1,6 @@
 {
   "name": "@sue/verd-board-agent-patterns",
-  "version": "2.1.3",
+  "version": "0.1.0",
   "type": "module",
   "private": false,
   "main": "./dist/index.cjs",

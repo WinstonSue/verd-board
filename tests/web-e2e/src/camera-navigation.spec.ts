@@ -44,7 +44,9 @@ test('native edge hit targets keep twelve screen pixels through camera zoom', as
     },
   };
   await page
-    .locator('input[accept="application/json,.md,.markdown,.mmd,.mermaid"]')
+    .locator(
+      'input[accept="application/json,.verd,.verd.json,.md,.markdown,.mmd,.mermaid"]',
+    )
     .nth(1)
     .setInputFiles({
       name: 'hit-width.json',
@@ -223,7 +225,9 @@ for (const width of [1280, 800])
       },
     };
     await page
-      .locator('input[accept="application/json,.md,.markdown,.mmd,.mermaid"]')
+      .locator(
+        'input[accept="application/json,.verd,.verd.json,.md,.markdown,.mmd,.mermaid"]',
+      )
       .nth(1)
       .setInputFiles({
         name: 'recenter.json',
@@ -468,7 +472,9 @@ test('nested details return one level at a time and focus the opened shell', asy
     },
   };
   await page
-    .locator('input[accept="application/json,.md,.markdown,.mmd,.mermaid"]')
+    .locator(
+      'input[accept="application/json,.verd,.verd.json,.md,.markdown,.mmd,.mermaid"]',
+    )
     .nth(1)
     .setInputFiles({
       name: 'nested.json',

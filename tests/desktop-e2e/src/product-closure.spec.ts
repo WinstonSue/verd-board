@@ -50,7 +50,7 @@ test('Desktop native attachment packages cross workspaces and preserve saved nam
     const { exported, assets } = await exerciseNativePackage(
       page,
       async (action) => {
-        const target = path.join(directory, 'exported.verd.json');
+        const target = path.join(directory, 'exported.verd');
         await desktop!.evaluate(({ session }, target) => {
           (globalThis as any).__closureDownloadState = null;
           session.defaultSession.once('will-download', (_event, item) => {

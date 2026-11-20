@@ -16,7 +16,9 @@ const fileRow = (page: Page, name: string) =>
   page.locator('.file-tree-name', { hasText: name });
 const workspaceImport = (page: Page, file: string) =>
   page
-    .locator('input[accept=".json,.verd.json,.verd-doc.json,.md,.markdown"]')
+    .locator(
+      'input[accept=".json,.verd,.verd.json,.verd-doc.json,.md,.markdown"]',
+    )
     .setInputFiles(path.join(dir, file));
 // The active tab pane; hidden inputs live inside it.
 const activeHost = (page: Page) => page.locator('.workspace-pane.is-active');
@@ -25,7 +27,9 @@ const canvasInput = async (page: Page, index: 0 | 1, file: string) => {
   if (!(await canvas(page).isVisible())) await openActiveFile(page);
   await expect(canvas(page)).toBeVisible();
   return activeHost(page)
-    .locator('input[accept="application/json,.md,.markdown,.mmd,.mermaid"]')
+    .locator(
+      'input[accept="application/json,.verd,.verd.json,.md,.markdown,.mmd,.mermaid"]',
+    )
     .nth(index)
     .setInputFiles(path.join(dir, file));
 };

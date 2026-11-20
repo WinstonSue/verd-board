@@ -1,0 +1,919 @@
+{
+  "format": "verd-document",
+  "version": 1,
+  "id": "project-doc:packages/release-2",
+  "title": "SDK 接入与契约",
+  "text": {
+    "schemaVersion": 1,
+    "id": "project-doc:packages/release-2",
+    "kind": "block",
+    "content": {
+      "type": "doc",
+      "content": [
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 1
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "SDK 接入与契约"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "为宿主和 SDK 消费者说明插件组合、工作区、Actions、主题和资源接口。完整 React 用例见《React 接入》。"
+            }
+          ]
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 2
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "插件与 UI 接入"
+            }
+          ]
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 3
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "引擎与 UI 四层插件化"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "引擎和 UI 按领域显式组合。共享工作区 SDK 支持独立接入，画布只读预览由宿主提供所需插件。"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "依赖方向：core → 无领域；领域引擎 → core/共享文本/布局；react → core/内置富文本；领域 React → 对应引擎/react。verd-board-ui 默认组合五个领域，共享 verd-board-workspace 管理文件、会话、条件提交与通用 Git；verd-board-app 组合宿主、迁移和应用生命周期。最小嵌入不引入产品或转换器。"
+            }
+          ]
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 4
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "显式实例与原子事务"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "引擎使用 CellPlugin 和 createCellRegistry({ plugins })，领域导出 createDrawPlugin/createMindPlugin/createWorkflowPlugin/createArchitecturePlugin/createUmlPlugin。复用 CellRegistry/CellUtil。插件 ID 与 kind 冲突报错；运行时不热安装或卸载。"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "结构变化与删除闭包完成后，运行插件归一化、通用与领域校验；全部成功才提交。失败不改变状态、不通知、不写历史。独立复制粘贴、跨 Frame 转移、场景、排列、连接、路由等辅助函数显式使用同一 registry。"
+            }
+          ]
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 4
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "类型与文件兼容"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "领域 kind、模型、数据类型和工具从 core 移至各领域包。FrameView 与 FrameReferenceData 使用接口扩展；mind、mindOffsets 等序列化字段保留。FrameFileV2、DocumentFileV1 不升格式版本。缺少 kind 插件时先诊断并拒绝整个文件，保留原始数据，不归一化、不保存；安装插件后可重新打开。"
+            }
+          ]
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 4
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "UI 组合与可选转换器"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "FrameUIPlugin 同时贡献引擎、渲染、交互、创建工具、属性、设置、快捷键和语言。createFramePluginSet 生成 registry 与 UI 扩展；FrameEditor 接收 plugins，FrameCanvas 接收 pluginSet。value/onChange、adapter/onIntent、readonly、外部 history 保持。预览、嵌套引用、图像导出复用同一集合。"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "board-react/style.css 包含通用 UI 与内置文本样式；领域 React 提供各自 style.css。产品只组合公开 CSS。UI 核心和领域 UI 不依赖转换器；宿主安装转换器后通过 FrameEditor 的 importers/exporters 注入，产品继续组合 Markdown/Mermaid。"
+            }
+          ]
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 4
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "最小 Mind 接入"
+            }
+          ]
+        },
+        {
+          "type": "codeBlock",
+          "attrs": {
+            "language": "bash"
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "pnpm add @sue/board-core @sue/board-mind @sue/board-react @sue/board-react-mind react react-dom"
+            }
+          ]
+        },
+        {
+          "type": "codeBlock",
+          "attrs": {
+            "language": "tsx"
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "import { useState } from 'react';\nimport { createMindFrameSnapshot } from '@sue/board-mind';\nimport { FrameEditor } from '@sue/board-react';\nimport { createMindUIPlugin } from '@sue/board-react-mind';\nimport '@sue/board-react/style.css';\nimport '@sue/board-react-mind/style.css';\nconst plugins = [createMindUIPlugin()];\nexport function Editor() {\n  const [value, setValue] = useState(createMindFrameSnapshot('frame', 'topic'));\n  return <div style={{ height: 600 }}><FrameEditor plugins={plugins} value={value} onChange={change => setValue(change.snapshot)} /></div>;\n}"
+            }
+          ]
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 4
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "验证命令"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "pnpm check:plugins 检查依赖和领域分支边界；pnpm test:plugin-consumers 使用五个领域的真实 tarball，验证四包安装、传递闭包、ESM/CJS、严格声明、CSS、React 18/19 与生产挂载。现有类型检查、lint、单测、原生工作区校验、Web/Desktop 构建与生产 E2E 继续作为完整产品验收。"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "领域节点通过对应的 create*Plugin 工厂注册。create*FrameExtensions 用于底层渲染扩展，要求 registry 已安装对应引擎插件。完整编辑器使用 create*UIPlugin。snapTerminal 必须显式指定边的 kind。"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "FrameUIPlugin.actions 声明动作，工具使用 actionId 引用。宿主通过 executeAction 和 runOperations 提交操作。缺少必需插件时拒绝文件，原文件保持可恢复。"
+            }
+          ]
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 3
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "Actions 与图元链接"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "公共 Action 类型来自 @sue/board-react-actions。宿主通过统一注册接口查询和分派操作。"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "FrameCanvasController 的用户命令改为 getActionState/executeAction/actions。clipboard(\"copy\") → canvas.clipboard.copy；undo/redo → canvas.history.undo/redo；fit/centerSelection/setZoom → canvas.view.fit/center/set-zoom；editText → canvas.selection.edit；moveSelection → canvas.selection.move；selectionCommandState/executeSelectionCommand → action ID 与 frameSelectionActionId。dispatch/exportImage、相机读写和 bounds helper 保留供宿主组合。"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "FrameUIPlugin.shortcuts 和 FrameToolContribution.run/enabled/tool 删除；actions 声明 execute/getState/shortcuts/effect，tools 只引用 actionId。CellUtil.keyboard 删除，领域键盘行为在 UI Action 注册；内容 planner、校验与历史不下放到按钮。自定义 CellPastePlan 必须返回 idMap，由统一阶段重映射链接一次。"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "DocumentEditorController.toggleMark/setHeading/setLink/insertImage/表格命令/replace/replaceAll/can/undo/redo 删除，迁至 document.* Actions。getDocument/commit、selection、focus、查找、标题和订阅保留；新增 restoreSelection、flushEditing。onChange 返回 Promise 时必须返回实际宿主事务回执；不能以 void 发起 session.apply 后立即宣称已保存。行内 BoardTextController 是另一接口，不受这组删除影响。"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "app 不再导出 DocumentLink/createDocumentLink/parseDocumentLink；改从 @sue/board-common 导入 WorkspaceTarget/createWorkspaceLink/parseWorkspaceLink/remapWorkspaceLink，外部 HTTP/HTTPS 使用 parseExternalLink。DocumentPage.navigation 改为 {requestId,target,signal?}，配合 onNavigationResult；VerdFrame 的 revealCellId/revealNonce、initialFocusCellId 和 controller.revealCell 改为 revealTarget 请求。"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "FrameLinkHost 由宿主创建/激活链接；Cell owner 采用当前工作区派生索引，URL fileId 是提示。返回来源、取消、临时 Mind 展开和高亮只在 occurrence 内存，不写格式、不增加撤销或持久 redirect 表。FrameRenderExtension.layout 第三参接收 FrameViewProjection；visible 和控件读取同一投影，缓存必须带 identity，导出忽略临时展开。"
+            }
+          ]
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 3
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "各领域 Action ID"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "下文列出常用 Action ID 与定义位置。动态生成的可用动作由当前实例的 actions() 返回。"
+            }
+          ]
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 4
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "嵌入文档与队列时序"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "嵌入文档编辑视图是可选宿主能力：FrameDocumentEditingView 为 {cellId,state:unknown}；FrameDocumentReferences.captureEditingView(instanceId) 捕获状态，restoreEditingView(view,activate,signal?) 由适配器解析当前实例、调用 activate(instanceId) 并返回 Promise<ActionResult>。FrameCanvasController 对应提供 captureDocumentEditingView() 与 restoreDocumentEditingView(view,signal?)；不提供 hooks 的自定义宿主继续工作，SDK 不解析富文本或 DOM。"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "产品缓存只把 canonical targetDocumentId、正文 content 的 revision、selection 和 scroll 写入纯 JSON state。返回原引用实例，或原实例关闭后退到源画布时，以稳定 cellId 重新找到当前 occurrence；编辑器 onReady 和初始布局回执完成后再恢复。正文 revision 相同才恢复 caret，revision 变化仅恢复有效滚动位置。"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "恢复不改正文、不新增历史；缺失、隐藏、只读或挂起的 occurrence 不激活。AbortSignal、编辑器所属缓存释放和来源文档删除会结束就绪等待；不使用固定超时猜测挂载完成。NavigationOrigin 的 embeddedDocument 保存不透明快照；独立 DocumentPage 的选区恢复与文档预览滚动仍各自沿用既有接口。"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "ActionDefinition.beforeQueue 是进入 content 串行执行通道前的编辑器准备阶段。先 capture 原目标并启动 beforeFlush 的用户激活敏感传输，再等待 beforeQueue 刷新该编辑器，之后重新检查取消、身份、权限与可用状态，才将内容命令排入通道。beforeExecute 继续作为执行前屏障；不能在持有内容通道后等待一个自身还要向该通道提交的原生编辑器，否则会形成自等待。"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "WorkspaceSession 原生正文提交与用户离散命令共用规范写入入口。工作区历史、切换、文件/引用操作等声明 flushEditing 的 surface 通过 workspace-actions.ts 的 beforeQueue 取得捕获编辑器的真实提交回执；宿主接受但受控 value 尚未回传时，画布屏障仍等待 echo。拒绝或组合输入不能被当成提交完成。"
+            }
+          ]
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 4
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "Canvas"
+            }
+          ]
+        },
+        {
+          "type": "bulletList",
+          "content": [
+            {
+              "type": "listItem",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "旧 clipboard/undo/redo/fit/centerSelection/setZoom/editText/moveSelection/selectionCommandState/executeSelectionCommand：分别迁到 canvas.clipboard.copy、canvas.clipboard.cut、canvas.clipboard.paste、canvas.history.undo、canvas.history.redo、canvas.view.fit、canvas.view.center、canvas.view.zoom-in、canvas.view.zoom-out、canvas.view.zoom-reset、canvas.view.set-zoom、canvas.selection.edit、canvas.selection.move，以及 frameSelectionActionId 对应的排列命令。"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "listItem",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "画布选择与排列：canvas.selection.all、canvas.selection.delete、canvas.selection.duplicate、canvas.selection.group、canvas.selection.ungroup、canvas.selection.lock、canvas.selection.unlock、canvas.selection.fit-content；canvas.align.left、canvas.align.center、canvas.align.right、canvas.align.top、canvas.align.middle、canvas.align.bottom；canvas.distribute.horizontal、canvas.distribute.vertical；canvas.layout.grid、canvas.layout.horizontal、canvas.layout.vertical、canvas.layout.flow、canvas.layout.layers；canvas.order.forward、canvas.order.backward、canvas.order.front、canvas.order.back。容器与工具：canvas.container.enter、canvas.container.exit、canvas.tool.select、canvas.tool.hand；对象链接：canvas.link.copy。内部参数化事务入口为 canvas.apply-operations，连续文字提交使用 context.commitEditing(transaction)，不能再为每个输入事件启动另一条离散 Action。定义：packages/react/board/src/frame-actions.ts、frame-action-source.ts。"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 4
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "Draw"
+            }
+          ]
+        },
+        {
+          "type": "bulletList",
+          "content": [
+            {
+              "type": "listItem",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "旧工具 run/enabled/tool 回调与本地 pressed 判断 → draw.text、draw.shape、draw.ellipse、draw.arrow、draw.pen、draw.erase、draw.frame、draw.line、draw.curve、draw.bidirectional、draw.table、draw.swimlane、draw.vector-line。参数化形状和笔型仍通过 draw.shape({shape})、draw.pen({pen})；checked 由工具 mode/key 的 ActionState 派生，图形拾取器入口为 product.choose-shape。定义：packages/react/draw/src/plugin.tsx；产品绑定：packages/product/ui/src/canvas/frame-product-shell.tsx。"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 4
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "Mind"
+            }
+          ]
+        },
+        {
+          "type": "bulletList",
+          "content": [
+            {
+              "type": "listItem",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "旧 CellUtil.keyboard 与组件按钮直接 planner → mind.root、mind.add-child、mind.add-sibling、mind.toggle-collapse、mind.open-note、mind.summary、mind.update-properties。Tab/Enter、工具栏、菜单和命令面板共用这些定义；临时 reveal 展开仍由 occurrence 投影承担，不改已保存 collapsed。定义：packages/react/mind/src/plugin.tsx。"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 4
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "Workflow"
+            }
+          ]
+        },
+        {
+          "type": "bulletList",
+          "content": [
+            {
+              "type": "listItem",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "旧创建、自动布局与模式控件直接事务 → workflow.start、workflow.task、workflow.decision、workflow.layout、workflow.set-mode。创建前后的成员关系和流程模式仍由 engine planner/validator 校验。定义：packages/react/workflow/src/plugin.tsx。"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 4
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "Architecture"
+            }
+          ]
+        },
+        {
+          "type": "bulletList",
+          "content": [
+            {
+              "type": "listItem",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "旧添加层/模块、移动层及模块形状控件 → architecture.layer、architecture.box、architecture.decision、architecture.store、architecture.layer-up、architecture.layer-down、architecture.move-module、architecture.set-shape。层归属参数显式传入，动作不能按弹窗新焦点重新选目标。定义：packages/react/architecture/src/plugin.tsx。"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 4
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "UML"
+            }
+          ]
+        },
+        {
+          "type": "bulletList",
+          "content": [
+            {
+              "type": "listItem",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "旧 UML palette/properties 直接提交 → uml.class、uml.sequence、uml.add；分类器与参与者为 uml.add-class、uml.add-interface、uml.add-abstract、uml.add-enum、uml.add-participant、uml.add-actor；关系、时序与片段为 uml.add-message、uml.add-relation、uml.add-note、uml.add-alt、uml.add-opt、uml.add-loop、uml.add-activation、uml.participant-left、uml.participant-right、uml.event-earlier、uml.event-later、uml.move-event-to-branch、uml.add-branch、uml.delete-branch、uml.update-properties、uml.remove-activation。带端点、分支等必需参数的命令不直接显示在无参数 palette；定义：packages/react/uml/src/actions.ts、plugin.tsx。"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 4
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "Document"
+            }
+          ]
+        },
+        {
+          "type": "bulletList",
+          "content": [
+            {
+              "type": "listItem",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "旧 DocumentEditorController 的 toggleMark/setTextColor/setFontSize/setHighlight/setLink/clearFormatting → document.toggle-bold、document.toggle-italic、document.toggle-underline、document.toggle-strike、document.toggle-code、document.toggle-superscript、document.toggle-subscript、document.set-text-color、document.set-font-size、document.set-highlight、document.set-link、document.clear-formatting。旧 setParagraph/setHeading/列表、引用、代码块和对齐 → document.set-paragraph、document.set-heading、document.heading-1、document.heading-2、document.heading-3、document.heading-4、document.heading-5、document.heading-6、document.toggle-bullet-list、document.toggle-ordered-list、document.toggle-blockquote、document.toggle-code-block、document.set-text-align、document.align-left、document.align-center、document.align-right。"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "listItem",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "旧插入、表格与替换 API → document.insert-horizontal-rule、document.insert-image、document.insert-frame-reference、document.insert-table、document.add-row-before、document.add-row-after、document.add-column-before、document.add-column-after、document.delete-row、document.delete-column、document.delete-table、document.toggle-header-row、document.toggle-header-column、document.toggle-header-cell、document.replace、document.replace-all、document.undo、document.redo。参数 schema 与 palette 可见性以 document-controller.ts 注册为准。"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "listItem",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "DocumentPage 的界面动作：document.find、document.find-replace、document.link-dialog、document.image-dialog、document.frame-dialog、document.toggle-toc、document.help、document.export-dialog、document.export-json、document.export-markdown。read/focus/getSelection/restoreSelection/subscribe/commit/flushEditing 保留；底层行内 BoardTextController 不是这组控制器删除的对象。定义：packages/react/text/src/components/document/document-controller.ts；产品界面补充定义：packages/product/ui/src/documents/document-page.tsx。"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 4
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "Workspace"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "旧文件树、工作区菜单、标签/分组、图表库、回收站、设置与错误横幅的直接 callbacks/session.apply → WorkspaceApp 注入 ActionSource，并经 workspace.<semantic-id> 取得名称、状态与执行。WorkspaceTabs 在右键、关闭动画与拖拽开始时捕获原工作区和显式目标；分组草稿确认沿用打开前捕获的命令。提供 source 的产品路径不再回退到旧 callback；未提供 source 的独立 UI 接入仍保留 callback 模式。"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "fileTree：workspace.'create-canvas',create-canvas、workspace.'create-document',create-document、workspace.'import',import、workspace.'library',library、workspace.'file.open',file.open、workspace.'file.reveal',file.reveal、workspace.'file.rename',file.rename、workspace.'file.move',file.move、workspace.'file.duplicate',file.duplicate、workspace.'file.export',file.export、workspace.'file.trash',file.trash、workspace.'directory.create-canvas',directory.create-canvas、workspace.'directory.create-document',directory.create-document、workspace.'directory.new',directory.new、workspace.'directory.new-here',directory.new-here、workspace.'directory.confirm-trash',directory.confirm-trash、workspace.'directory.trash',directory.trash、workspace.'directory.toggle',directory.toggle、workspace.'owner.toggle',owner.toggle、workspace.'mkdir',mkdir。"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "workspaceMenu：workspace.'settings',settings、workspace.'open-folder',open-folder、workspace.'open-builtin',open-builtin、workspace.'my',my、workspace.'return',return、workspace.'command-palette',command-palette、workspace.'reload',reload。"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "tabs：workspace.'create-canvas',create-canvas、workspace.'tab.activate',tab.activate、workspace.'tab.close',tab.close、workspace.'tab.close-left',tab.close-left、workspace.'tab.close-right',tab.close-right、workspace.'tab.close-others',tab.close-others、workspace.'tab.reorder',tab.reorder、workspace.'group.switch',group.switch、workspace.'group.create-dialog',group.create-dialog、workspace.'group.rename-dialog',group.rename-dialog、workspace.'group.create',group.create、workspace.'group.rename',group.rename、workspace.'group.delete',group.delete。"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "library：workspace.file.open、workspace.library.back、workspace.library.pick。归属整理及 owner.toggle 动作已移除。"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "trash：workspace.'trash.confirm-purge',trash.confirm-purge、workspace.'trash.confirm-clear',trash.confirm-clear、workspace.'trash.restore',trash.restore、workspace.'trash.purge',trash.purge、workspace.'trash.retry',trash.retry。"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "settings：workspace.'settings.patch',settings.patch。"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "banners：workspace.'conflict.keep-local',conflict.keep-local、workspace.'conflict.load-disk',conflict.load-disk、workspace.'trash.retry',trash.retry、workspace.'save-retry',save-retry。"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "工作区 history/navigation/config 等内部入口由 packages/product/app/src/session/workspace-actions.ts 注册，包括 workspace.history.undo、workspace.history.redo、workspace.navigation.update、workspace.resolve-conflict、workspace.mkdir、workspace.set-config 及 WorkspaceCommand 对应的 workspace.<type>。完整用户 surface inventory 以 workspace-surface-actions.ts 的 WORKSPACE_UI_ACTION_IDS、WORKSPACE_ACTION_SURFACES 为准，不能另造按钮命令表。WORKSPACE_NATIVE_INTERACTIONS 保留原生文本/数字草稿、picker/search/scroll、展开与弹窗关闭、pointer/drop 传输和启动/退出生命周期；这些能力不会产生另一套内容写入入口。"
+            }
+          ]
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 4
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "根工具栏的动作路由"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "产品根工具栏的图表创建路由为 product.diagram.mind、product.diagram.workflow、product.diagram.architecture、product.diagram.uml-class、product.diagram.uml-sequence，用于选择下一次放置的图表工具；这与已有专业图中的 mind.root、workflow.start、architecture.layer、uml.class、uml.sequence 等内容创建动作分开。图表、连线、形状和笔型菜单从同一个 action source 读取 label、shortcuts、enabled 和 checked；pointer/drop 只传输参数，最终内容提交仍走 Action。定义：frame-product-shell.tsx 的 productDefinitions/targetFor 和各领域 plugin.tsx；不要恢复组件自算可用性或旧领域 run 分支。"
+            }
+          ]
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 3
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "主题适配增量接口"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "保留主题枚举及原有文件格式，新增 BoardAppearance、ColorSource、BoardThemeDefinitions、resolveBoardTheme、resolveCellAppearance 和 ResolvedBoardTheme。FrameCanvas/FrameEditor 的 appearance 是运行时可选参数，未传时保留历史显示。FrameImageOptions.appearance 控制一次导出，扩展通过 FrameRenderContext.theme 获取语义配色。"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "新建图元的默认颜色携带 theme 来源；颜色属性编辑携带 custom 来源，即使色值相同也可保留。恢复主题色只重置对应字段，复制和继承保留来源。旧文件缺失来源时只识别历史工厂默认值，不在读取或自动换肤时写回。当前有效主题为经典、缤纷、柔和、复古、清新（default/colorful/soft/retro/dark）。未知 ID 读取时回退经典，不维护专用别名；显式自定义背景和手动颜色保留，不批量改写用户文件。"
+            }
+          ]
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 3
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "当前 API 与文件兼容"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "CellIndex.membersOf 已删除：组成员使用 groupOf，领域归属使用 domainOwnerOf；需要兼容旧归属查找顺序时使用 parentOf → domainOwnerOf → groupOf。legacyThemeColors 已删除；resolveThemeColor 仅接收 value、source、fallback、theme 四个参数，固定颜色通过 colorSources 标注 custom。UI 类型 WorkspaceId 已删除，请改用 EditorKind。文件格式与持久化迁移入口继续有效。"
+            }
+          ]
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 3
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "项目资源与独立图表"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "图表使用独立源文件。FrameOrganization 仅用于读取旧文件中的归属信息。"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "WorkspaceHost.readResource 按 assets/<name>、history/<name> 逻辑键读取内部资源；快照 resources 独立于普通 entries，CommitRequest.resourceWrites 与正文共用一次 expectedVersion 条件提交，CommitReceipt.resourceVersions 与正文 versions 分离。普通文件读写、移动和回收不能访问项目目录。WorkspaceSession.readRawFile 保留旧 .verd-resources/ 逻辑地址兼容，commitResources 转入受控资源事务；永久删除继续原子清除版本索引及快照正文。"
+            }
+          ]
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 3
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "Agent Markdown 规范"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "Agent 执行规范与用户原生文档分别维护。catalog.guidePath 改为 Markdown 路径，skillPath、templatePaths、模板稳定身份和实例化行为保持不变。通过当前 catalog 或 verd patterns 发现路径，不再依赖旧规范 JSON 或 pattern-guide 的原生链接。"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "破坏性接口调整：loadPatternGuide(patternId?) 返回 AgentGuideSource { path, title, source }，不再返回 DocumentFileV1；无参返回通用写作规范。loadPatternGuides(patternId?) 返回按通用、场景、图表及所选范式排列的 Markdown 来源数组并去重。调用方应使用 source 获取正文，或在展示层转换为阅读模型；不要再访问 guide.text。"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "设置页使用现有 Markdown 转换器生成内存阅读模型，规范和 Skill 均可查看源码；不会维护原生 JSON 正文副本。通用 Skill 及引用细则和许可整体分发，资源摘要与未提交计划失效机制继续生效。用户推荐库和原生执行模板保持独立原生来源。"
+            }
+          ]
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 2
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "私有仓库与包入口"
+            }
+          ]
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 3
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "配置 npm scope"
+            }
+          ]
+        },
+        {
+          "type": "codeBlock",
+          "attrs": {
+            "language": "ini"
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "@sue:registry=https://packages.aliyun.com/69f800449b7ce0afb00bda0e/npm/npm-registry/\n@ylib:registry=https://packages.aliyun.com/6141c43fdd62cdb60fbbdbda/npm/npm-registry/"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "安装前需具备两个私有仓库的读权限。开发环境可在用户 .npmrc 中配置令牌，CI 使用 secret。通过公开入口消费 ESM、CJS、类型声明和 CSS。React 18 与 19 的接入在真实 tarball 消费者中验证。"
+            }
+          ]
+        }
+      ]
+    },
+    "plainText": "SDK 接入与契约\n为宿主和 SDK 消费者说明插件组合、工作区、Actions、主题和资源接口。完整 React 用例见《React 接入》。\n插件与 UI 接入\n引擎与 UI 四层插件化\n引擎和 UI 按领域显式组合。共享工作区 SDK 支持独立接入，画布只读预览由宿主提供所需插件。\n依赖方向：core → 无领域；领域引擎 → core/共享文本/布局；react → core/内置富文本；领域 React → 对应引擎/react。verd-board-ui 默认组合五个领域，共享 verd-board-workspace 管理文件、会话、条件提交与通用 Git；verd-board-app 组合宿主、迁移和应用生命周期。最小嵌入不引入产品或转换器。\n显式实例与原子事务\n引擎使用 CellPlugin 和 createCellRegistry({ plugins })，领域导出 createDrawPlugin/createMindPlugin/createWorkflowPlugin/createArchitecturePlugin/createUmlPlugin。复用 CellRegistry/CellUtil。插件 ID 与 kind 冲突报错；运行时不热安装或卸载。\n结构变化与删除闭包完成后，运行插件归一化、通用与领域校验；全部成功才提交。失败不改变状态、不通知、不写历史。独立复制粘贴、跨 Frame 转移、场景、排列、连接、路由等辅助函数显式使用同一 registry。\n类型与文件兼容\n领域 kind、模型、数据类型和工具从 core 移至各领域包。FrameView 与 FrameReferenceData 使用接口扩展；mind、mindOffsets 等序列化字段保留。FrameFileV2、DocumentFileV1 不升格式版本。缺少 kind 插件时先诊断并拒绝整个文件，保留原始数据，不归一化、不保存；安装插件后可重新打开。\nUI 组合与可选转换器\nFrameUIPlugin 同时贡献引擎、渲染、交互、创建工具、属性、设置、快捷键和语言。createFramePluginSet 生成 registry 与 UI 扩展；FrameEditor 接收 plugins，FrameCanvas 接收 pluginSet。value/onChange、adapter/onIntent、readonly、外部 history 保持。预览、嵌套引用、图像导出复用同一集合。\nboard-react/style.css 包含通用 UI 与内置文本样式；领域 React 提供各自 style.css。产品只组合公开 CSS。UI 核心和领域 UI 不依赖转换器；宿主安装转换器后通过 FrameEditor 的 importers/exporters 注入，产品继续组合 Markdown/Mermaid。\n最小 Mind 接入\npnpm add @sue/board-core @sue/board-mind @sue/board-react @sue/board-react-mind react react-dom\nimport { useState } from 'react';\nimport { createMindFrameSnapshot } from '@sue/board-mind';\nimport { FrameEditor } from '@sue/board-react';\nimport { createMindUIPlugin } from '@sue/board-react-mind';\nimport '@sue/board-react/style.css';\nimport '@sue/board-react-mind/style.css';\nconst plugins = [createMindUIPlugin()];\nexport function Editor() {\n  const [value, setValue] = useState(createMindFrameSnapshot('frame', 'topic'));\n  return <div style={{ height: 600 }}><FrameEditor plugins={plugins} value={value} onChange={change => setValue(change.snapshot)} /></div>;\n}\n验证命令\npnpm check:plugins 检查依赖和领域分支边界；pnpm test:plugin-consumers 使用五个领域的真实 tarball，验证四包安装、传递闭包、ESM/CJS、严格声明、CSS、React 18/19 与生产挂载。现有类型检查、lint、单测、原生工作区校验、Web/Desktop 构建与生产 E2E 继续作为完整产品验收。\n领域节点通过对应的 create*Plugin 工厂注册。create*FrameExtensions 用于底层渲染扩展，要求 registry 已安装对应引擎插件。完整编辑器使用 create*UIPlugin。snapTerminal 必须显式指定边的 kind。\nFrameUIPlugin.actions 声明动作，工具使用 actionId 引用。宿主通过 executeAction 和 runOperations 提交操作。缺少必需插件时拒绝文件，原文件保持可恢复。\nActions 与图元链接\n公共 Action 类型来自 @sue/board-react-actions。宿主通过统一注册接口查询和分派操作。\nFrameCanvasController 的用户命令改为 getActionState/executeAction/actions。clipboard(\"copy\") → canvas.clipboard.copy；undo/redo → canvas.history.undo/redo；fit/centerSelection/setZoom → canvas.view.fit/center/set-zoom；editText → canvas.selection.edit；moveSelection → canvas.selection.move；selectionCommandState/executeSelectionCommand → action ID 与 frameSelectionActionId。dispatch/exportImage、相机读写和 bounds helper 保留供宿主组合。\nFrameUIPlugin.shortcuts 和 FrameToolContribution.run/enabled/tool 删除；actions 声明 execute/getState/shortcuts/effect，tools 只引用 actionId。CellUtil.keyboard 删除，领域键盘行为在 UI Action 注册；内容 planner、校验与历史不下放到按钮。自定义 CellPastePlan 必须返回 idMap，由统一阶段重映射链接一次。\nDocumentEditorController.toggleMark/setHeading/setLink/insertImage/表格命令/replace/replaceAll/can/undo/redo 删除，迁至 document.* Actions。getDocument/commit、selection、focus、查找、标题和订阅保留；新增 restoreSelection、flushEditing。onChange 返回 Promise 时必须返回实际宿主事务回执；不能以 void 发起 session.apply 后立即宣称已保存。行内 BoardTextController 是另一接口，不受这组删除影响。\napp 不再导出 DocumentLink/createDocumentLink/parseDocumentLink；改从 @sue/board-common 导入 WorkspaceTarget/createWorkspaceLink/parseWorkspaceLink/remapWorkspaceLink，外部 HTTP/HTTPS 使用 parseExternalLink。DocumentPage.navigation 改为 {requestId,target,signal?}，配合 onNavigationResult；VerdFrame 的 revealCellId/revealNonce、initialFocusCellId 和 controller.revealCell 改为 revealTarget 请求。\nFrameLinkHost 由宿主创建/激活链接；Cell owner 采用当前工作区派生索引，URL fileId 是提示。返回来源、取消、临时 Mind 展开和高亮只在 occurrence 内存，不写格式、不增加撤销或持久 redirect 表。FrameRenderExtension.layout 第三参接收 FrameViewProjection；visible 和控件读取同一投影，缓存必须带 identity，导出忽略临时展开。\n各领域 Action ID\n下文列出常用 Action ID 与定义位置。动态生成的可用动作由当前实例的 actions() 返回。\n嵌入文档与队列时序\n嵌入文档编辑视图是可选宿主能力：FrameDocumentEditingView 为 {cellId,state:unknown}；FrameDocumentReferences.captureEditingView(instanceId) 捕获状态，restoreEditingView(view,activate,signal?) 由适配器解析当前实例、调用 activate(instanceId) 并返回 Promise<ActionResult>。FrameCanvasController 对应提供 captureDocumentEditingView() 与 restoreDocumentEditingView(view,signal?)；不提供 hooks 的自定义宿主继续工作，SDK 不解析富文本或 DOM。\n产品缓存只把 canonical targetDocumentId、正文 content 的 revision、selection 和 scroll 写入纯 JSON state。返回原引用实例，或原实例关闭后退到源画布时，以稳定 cellId 重新找到当前 occurrence；编辑器 onReady 和初始布局回执完成后再恢复。正文 revision 相同才恢复 caret，revision 变化仅恢复有效滚动位置。\n恢复不改正文、不新增历史；缺失、隐藏、只读或挂起的 occurrence 不激活。AbortSignal、编辑器所属缓存释放和来源文档删除会结束就绪等待；不使用固定超时猜测挂载完成。NavigationOrigin 的 embeddedDocument 保存不透明快照；独立 DocumentPage 的选区恢复与文档预览滚动仍各自沿用既有接口。\nActionDefinition.beforeQueue 是进入 content 串行执行通道前的编辑器准备阶段。先 capture 原目标并启动 beforeFlush 的用户激活敏感传输，再等待 beforeQueue 刷新该编辑器，之后重新检查取消、身份、权限与可用状态，才将内容命令排入通道。beforeExecute 继续作为执行前屏障；不能在持有内容通道后等待一个自身还要向该通道提交的原生编辑器，否则会形成自等待。\nWorkspaceSession 原生正文提交与用户离散命令共用规范写入入口。工作区历史、切换、文件/引用操作等声明 flushEditing 的 surface 通过 workspace-actions.ts 的 beforeQueue 取得捕获编辑器的真实提交回执；宿主接受但受控 value 尚未回传时，画布屏障仍等待 echo。拒绝或组合输入不能被当成提交完成。\nCanvas\n旧 clipboard/undo/redo/fit/centerSelection/setZoom/editText/moveSelection/selectionCommandState/executeSelectionCommand：分别迁到 canvas.clipboard.copy、canvas.clipboard.cut、canvas.clipboard.paste、canvas.history.undo、canvas.history.redo、canvas.view.fit、canvas.view.center、canvas.view.zoom-in、canvas.view.zoom-out、canvas.view.zoom-reset、canvas.view.set-zoom、canvas.selection.edit、canvas.selection.move，以及 frameSelectionActionId 对应的排列命令。\n画布选择与排列：canvas.selection.all、canvas.selection.delete、canvas.selection.duplicate、canvas.selection.group、canvas.selection.ungroup、canvas.selection.lock、canvas.selection.unlock、canvas.selection.fit-content；canvas.align.left、canvas.align.center、canvas.align.right、canvas.align.top、canvas.align.middle、canvas.align.bottom；canvas.distribute.horizontal、canvas.distribute.vertical；canvas.layout.grid、canvas.layout.horizontal、canvas.layout.vertical、canvas.layout.flow、canvas.layout.layers；canvas.order.forward、canvas.order.backward、canvas.order.front、canvas.order.back。容器与工具：canvas.container.enter、canvas.container.exit、canvas.tool.select、canvas.tool.hand；对象链接：canvas.link.copy。内部参数化事务入口为 canvas.apply-operations，连续文字提交使用 context.commitEditing(transaction)，不能再为每个输入事件启动另一条离散 Action。定义：packages/react/board/src/frame-actions.ts、frame-action-source.ts。\nDraw\n旧工具 run/enabled/tool 回调与本地 pressed 判断 → draw.text、draw.shape、draw.ellipse、draw.arrow、draw.pen、draw.erase、draw.frame、draw.line、draw.curve、draw.bidirectional、draw.table、draw.swimlane、draw.vector-line。参数化形状和笔型仍通过 draw.shape({shape})、draw.pen({pen})；checked 由工具 mode/key 的 ActionState 派生，图形拾取器入口为 product.choose-shape。定义：packages/react/draw/src/plugin.tsx；产品绑定：packages/product/ui/src/canvas/frame-product-shell.tsx。\nMind\n旧 CellUtil.keyboard 与组件按钮直接 planner → mind.root、mind.add-child、mind.add-sibling、mind.toggle-collapse、mind.open-note、mind.summary、mind.update-properties。Tab/Enter、工具栏、菜单和命令面板共用这些定义；临时 reveal 展开仍由 occurrence 投影承担，不改已保存 collapsed。定义：packages/react/mind/src/plugin.tsx。\nWorkflow\n旧创建、自动布局与模式控件直接事务 → workflow.start、workflow.task、workflow.decision、workflow.layout、workflow.set-mode。创建前后的成员关系和流程模式仍由 engine planner/validator 校验。定义：packages/react/workflow/src/plugin.tsx。\nArchitecture\n旧添加层/模块、移动层及模块形状控件 → architecture.layer、architecture.box、architecture.decision、architecture.store、architecture.layer-up、architecture.layer-down、architecture.move-module、architecture.set-shape。层归属参数显式传入，动作不能按弹窗新焦点重新选目标。定义：packages/react/architecture/src/plugin.tsx。\nUML\n旧 UML palette/properties 直接提交 → uml.class、uml.sequence、uml.add；分类器与参与者为 uml.add-class、uml.add-interface、uml.add-abstract、uml.add-enum、uml.add-participant、uml.add-actor；关系、时序与片段为 uml.add-message、uml.add-relation、uml.add-note、uml.add-alt、uml.add-opt、uml.add-loop、uml.add-activation、uml.participant-left、uml.participant-right、uml.event-earlier、uml.event-later、uml.move-event-to-branch、uml.add-branch、uml.delete-branch、uml.update-properties、uml.remove-activation。带端点、分支等必需参数的命令不直接显示在无参数 palette；定义：packages/react/uml/src/actions.ts、plugin.tsx。\nDocument\n旧 DocumentEditorController 的 toggleMark/setTextColor/setFontSize/setHighlight/setLink/clearFormatting → document.toggle-bold、document.toggle-italic、document.toggle-underline、document.toggle-strike、document.toggle-code、document.toggle-superscript、document.toggle-subscript、document.set-text-color、document.set-font-size、document.set-highlight、document.set-link、document.clear-formatting。旧 setParagraph/setHeading/列表、引用、代码块和对齐 → document.set-paragraph、document.set-heading、document.heading-1、document.heading-2、document.heading-3、document.heading-4、document.heading-5、document.heading-6、document.toggle-bullet-list、document.toggle-ordered-list、document.toggle-blockquote、document.toggle-code-block、document.set-text-align、document.align-left、document.align-center、document.align-right。\n旧插入、表格与替换 API → document.insert-horizontal-rule、document.insert-image、document.insert-frame-reference、document.insert-table、document.add-row-before、document.add-row-after、document.add-column-before、document.add-column-after、document.delete-row、document.delete-column、document.delete-table、document.toggle-header-row、document.toggle-header-column、document.toggle-header-cell、document.replace、document.replace-all、document.undo、document.redo。参数 schema 与 palette 可见性以 document-controller.ts 注册为准。\nDocumentPage 的界面动作：document.find、document.find-replace、document.link-dialog、document.image-dialog、document.frame-dialog、document.toggle-toc、document.help、document.export-dialog、document.export-json、document.export-markdown。read/focus/getSelection/restoreSelection/subscribe/commit/flushEditing 保留；底层行内 BoardTextController 不是这组控制器删除的对象。定义：packages/react/text/src/components/document/document-controller.ts；产品界面补充定义：packages/product/ui/src/documents/document-page.tsx。\nWorkspace\n旧文件树、工作区菜单、标签/分组、图表库、回收站、设置与错误横幅的直接 callbacks/session.apply → WorkspaceApp 注入 ActionSource，并经 workspace.<semantic-id> 取得名称、状态与执行。WorkspaceTabs 在右键、关闭动画与拖拽开始时捕获原工作区和显式目标；分组草稿确认沿用打开前捕获的命令。提供 source 的产品路径不再回退到旧 callback；未提供 source 的独立 UI 接入仍保留 callback 模式。\nfileTree：workspace.'create-canvas',create-canvas、workspace.'create-document',create-document、workspace.'import',import、workspace.'library',library、workspace.'file.open',file.open、workspace.'file.reveal',file.reveal、workspace.'file.rename',file.rename、workspace.'file.move',file.move、workspace.'file.duplicate',file.duplicate、workspace.'file.export',file.export、workspace.'file.trash',file.trash、workspace.'directory.create-canvas',directory.create-canvas、workspace.'directory.create-document',directory.create-document、workspace.'directory.new',directory.new、workspace.'directory.new-here',directory.new-here、workspace.'directory.confirm-trash',directory.confirm-trash、workspace.'directory.trash',directory.trash、workspace.'directory.toggle',directory.toggle、workspace.'owner.toggle',owner.toggle、workspace.'mkdir',mkdir。\nworkspaceMenu：workspace.'settings',settings、workspace.'open-folder',open-folder、workspace.'open-builtin',open-builtin、workspace.'my',my、workspace.'return',return、workspace.'command-palette',command-palette、workspace.'reload',reload。\ntabs：workspace.'create-canvas',create-canvas、workspace.'tab.activate',tab.activate、workspace.'tab.close',tab.close、workspace.'tab.close-left',tab.close-left、workspace.'tab.close-right',tab.close-right、workspace.'tab.close-others',tab.close-others、workspace.'tab.reorder',tab.reorder、workspace.'group.switch',group.switch、workspace.'group.create-dialog',group.create-dialog、workspace.'group.rename-dialog',group.rename-dialog、workspace.'group.create',group.create、workspace.'group.rename',group.rename、workspace.'group.delete',group.delete。\nlibrary：workspace.file.open、workspace.library.back、workspace.library.pick。归属整理及 owner.toggle 动作已移除。\ntrash：workspace.'trash.confirm-purge',trash.confirm-purge、workspace.'trash.confirm-clear',trash.confirm-clear、workspace.'trash.restore',trash.restore、workspace.'trash.purge',trash.purge、workspace.'trash.retry',trash.retry。\nsettings：workspace.'settings.patch',settings.patch。\nbanners：workspace.'conflict.keep-local',conflict.keep-local、workspace.'conflict.load-disk',conflict.load-disk、workspace.'trash.retry',trash.retry、workspace.'save-retry',save-retry。\n工作区 history/navigation/config 等内部入口由 packages/product/app/src/session/workspace-actions.ts 注册，包括 workspace.history.undo、workspace.history.redo、workspace.navigation.update、workspace.resolve-conflict、workspace.mkdir、workspace.set-config 及 WorkspaceCommand 对应的 workspace.<type>。完整用户 surface inventory 以 workspace-surface-actions.ts 的 WORKSPACE_UI_ACTION_IDS、WORKSPACE_ACTION_SURFACES 为准，不能另造按钮命令表。WORKSPACE_NATIVE_INTERACTIONS 保留原生文本/数字草稿、picker/search/scroll、展开与弹窗关闭、pointer/drop 传输和启动/退出生命周期；这些能力不会产生另一套内容写入入口。\n根工具栏的动作路由\n产品根工具栏的图表创建路由为 product.diagram.mind、product.diagram.workflow、product.diagram.architecture、product.diagram.uml-class、product.diagram.uml-sequence，用于选择下一次放置的图表工具；这与已有专业图中的 mind.root、workflow.start、architecture.layer、uml.class、uml.sequence 等内容创建动作分开。图表、连线、形状和笔型菜单从同一个 action source 读取 label、shortcuts、enabled 和 checked；pointer/drop 只传输参数，最终内容提交仍走 Action。定义：frame-product-shell.tsx 的 productDefinitions/targetFor 和各领域 plugin.tsx；不要恢复组件自算可用性或旧领域 run 分支。\n主题适配增量接口\n保留主题枚举及原有文件格式，新增 BoardAppearance、ColorSource、BoardThemeDefinitions、resolveBoardTheme、resolveCellAppearance 和 ResolvedBoardTheme。FrameCanvas/FrameEditor 的 appearance 是运行时可选参数，未传时保留历史显示。FrameImageOptions.appearance 控制一次导出，扩展通过 FrameRenderContext.theme 获取语义配色。\n新建图元的默认颜色携带 theme 来源；颜色属性编辑携带 custom 来源，即使色值相同也可保留。恢复主题色只重置对应字段，复制和继承保留来源。旧文件缺失来源时只识别历史工厂默认值，不在读取或自动换肤时写回。当前有效主题为经典、缤纷、柔和、复古、清新（default/colorful/soft/retro/dark）。未知 ID 读取时回退经典，不维护专用别名；显式自定义背景和手动颜色保留，不批量改写用户文件。\n当前 API 与文件兼容\nCellIndex.membersOf 已删除：组成员使用 groupOf，领域归属使用 domainOwnerOf；需要兼容旧归属查找顺序时使用 parentOf → domainOwnerOf → groupOf。legacyThemeColors 已删除；resolveThemeColor 仅接收 value、source、fallback、theme 四个参数，固定颜色通过 colorSources 标注 custom。UI 类型 WorkspaceId 已删除，请改用 EditorKind。文件格式与持久化迁移入口继续有效。\n项目资源与独立图表\n图表使用独立源文件。FrameOrganization 仅用于读取旧文件中的归属信息。\nWorkspaceHost.readResource 按 assets/<name>、history/<name> 逻辑键读取内部资源；快照 resources 独立于普通 entries，CommitRequest.resourceWrites 与正文共用一次 expectedVersion 条件提交，CommitReceipt.resourceVersions 与正文 versions 分离。普通文件读写、移动和回收不能访问项目目录。WorkspaceSession.readRawFile 保留旧 .verd-resources/ 逻辑地址兼容，commitResources 转入受控资源事务；永久删除继续原子清除版本索引及快照正文。\nAgent Markdown 规范\nAgent 执行规范与用户原生文档分别维护。catalog.guidePath 改为 Markdown 路径，skillPath、templatePaths、模板稳定身份和实例化行为保持不变。通过当前 catalog 或 verd patterns 发现路径，不再依赖旧规范 JSON 或 pattern-guide 的原生链接。\n破坏性接口调整：loadPatternGuide(patternId?) 返回 AgentGuideSource { path, title, source }，不再返回 DocumentFileV1；无参返回通用写作规范。loadPatternGuides(patternId?) 返回按通用、场景、图表及所选范式排列的 Markdown 来源数组并去重。调用方应使用 source 获取正文，或在展示层转换为阅读模型；不要再访问 guide.text。\n设置页使用现有 Markdown 转换器生成内存阅读模型，规范和 Skill 均可查看源码；不会维护原生 JSON 正文副本。通用 Skill 及引用细则和许可整体分发，资源摘要与未提交计划失效机制继续生效。用户推荐库和原生执行模板保持独立原生来源。\n私有仓库与包入口\n配置 npm scope\n@sue:registry=https://packages.aliyun.com/69f800449b7ce0afb00bda0e/npm/npm-registry/\n@ylib:registry=https://packages.aliyun.com/6141c43fdd62cdb60fbbdbda/npm/npm-registry/\n安装前需具备两个私有仓库的读权限。开发环境可在用户 .npmrc 中配置令牌，CI 使用 secret。通过公开入口消费 ESM、CJS、类型声明和 CSS。React 18 与 19 的接入在真实 tarball 消费者中验证。",
+    "align": "left"
+  }
+}

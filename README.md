@@ -1,10 +1,10 @@
 # 青编（VerdBoard）
 
-青编是画布与文档共存的本地知识工作区，支持白板、思维导图、流程图、架构图、UML 类图、UML 时序图与独立富文本文档。
+青编以真实文件夹为工作区，统一管理原生图文与普通资料。工作区既可独立使用，也可作为外部项目的文档目录，由桌面端或项目通过 SDK 接入的 Web 界面打开。
 
-原生文档、独立图表和普通资料按真实目录组织。画布通过稳定引用共享源内容；实时保存与手动版本分开。Desktop 与本机 Web service 使用文件系统工作区，支持版本预览、恢复及 Git 远端同步；独立 IndexedDB SDK 宿主提供浏览器本地工作区与历史。
+目录内用户文件按现有桌面能力管理，用户可继续在 IDE 或其他工具中修改同一批文件。项目内工作区沿用所属 Git 仓库，只提交和恢复工作区内容；独立仓库保留远端同步。实时保存与明确创建版本分开，普通永久删除保留 Git 历史。Agent 编写工具通过设置显式启用。
 
-VerdBoard combines native documents, independent diagrams and ordinary resources in a local workspace. Desktop and the local Web service use filesystem workspaces; the standalone IndexedDB SDK host provides browser storage. Diagrams share source content through stable references, and automatic saving stays separate from explicit version creation.
+VerdBoard treats a real folder as a workspace, either standalone or embedded in a project. Desktop and the project Web SDK edit the same files through the shared Node host. Project workspaces inherit their enclosing Git repository, with commits and restores limited to the content directory. External editors remain supported; automatic saving, explicit versions and trash deletion have separate behavior.
 
 ## 阅读入口
 
@@ -34,9 +34,9 @@ pnpm dev:web
 pnpm test:remote doctor
 ```
 
-验收范围以根级 [AGENTS.md](AGENTS.md) 为准，按实际改动选择内容专项或功能定向验证。开发机的 `check:dev`、`check:ci`、`check:release` 和正式打包默认转到远程测试机，结果绑定源码摘要与测试选择。全量门禁按依赖集中收集失败，修复方负责修复与定向验证；完整通过后，打包复用同轮已验收构建和资源。单测和 Web 使用受控并发，同一桌面会话的 Desktop 串行；ESLint、Prettier、类型、原生内容、单测、消费者、Agent 资源及四套 E2E 均保留。
+验收范围以根级 [AGENTS.md](AGENTS.md) 为准。测试按基础、领域、渲染、共享服务、产品与宿主分层，`tests/catalog.json` 登记用例归属；`pnpm test:plan --base <ref> --json` 查看影响，未变化上游有有效证明即可免跑，缺少证明才补跑。共享业务以 Web 生产态验证，Desktop 与开发态覆盖各自差异。功能改动保留全仓 ESLint、Prettier；技术检查默认在测试机执行。正式打包一次提交，执行器完成门禁、打包并返回终态摘要；不逐条向 Agent 传递测试日志。
 
-Use the root `AGENTS.md` to choose validation scope. Quality gates and Desktop packaging default to the remote test host. Gates collect independent failures for the repair owner; packaging consumes this run's complete passing proof and validated artifacts. Unit and Web tests use bounded parallelism, while native Desktop tests remain serial within one GUI session. All four development/production E2E suites remain required. Setup and recovery commands are documented in the native development guide.
+Use the root `AGENTS.md` to choose validation scope. `tests/catalog.json` assigns complete verification units, and `pnpm test:plan --base <ref> --json` explains the affected boundaries. Matching upstream proofs can be reused; missing proofs require execution. Shared browser behavior runs in Web production, with separate native Desktop and development runtime contracts. Remote packaging runs one gate and package task, then returns a terminal summary. Unit and Web tests retain bounded parallelism; Desktop uses one worker. Use `--full` for an explicit repository baseline. Setup and recovery commands are documented in the native development guide.
 
 ## 包分层与第三方接入
 
@@ -46,46 +46,34 @@ Use the root `AGENTS.md` to choose validation scope. Quality gates and Desktop p
 - `packages/product/{app,ui}`：宿主、迁移、应用组合与产品界面；app 根入口和 `/headless` 保留共享核心转导出。
 - `apps/{desktop,web,service}`：Electron、Web 界面与本机服务。系统介绍由既有内容构建脚本从根 `workspace/` 准备，不维护 product/docs 包壳。
 
-本次按包独立升版：产品应用、UI、Agent 与内置内容为 2.1.1，共享工作区 SDK 与 `board-react` 为 2.2.0，其余包以 manifest 为准。2.1.0 的插件与 Actions 契约保留为迁移基线；历史 2.0 接入者按[迁移说明](workspace/文档/包/2.0接入与迁移.verd-doc.json)调整。源码定版、本地产物与 registry 发布分别核对。
+当前源码基线为 `0.1.0`。包职责、插件组合和 Actions 接入见[包索引](workspace/文档/包/包索引.verd-doc.json)及[SDK 接入与契约](workspace/文档/包/SDK接入与契约.verd-doc.json)。
 
-下面的浏览器 SDK 示例展示工作区宿主接入；插件、Actions、CSS、资源和保存回执的完整契约以 React 接入及各包 README 为准。
+项目在现有 Node 服务中挂载 `@sue/verd-board-agent/node` 的 `createProjectWorkspaceService({ projectRoot, workspacePath })`，将请求交给其 `handleRequest(req, res)`；未处理的请求继续交给项目自身路由，退出时调用 `close()`。目录须已存在；也可在项目根 `.verd.config.json` 声明 `{ "workspace": "docs" }`，省略 `workspacePath`。默认仅面向本机 HTTP 使用。
+
+前端继续使用同一 `WorkspaceApp`，服务握手声明固定工作区的能力。完整 Node 挂载示例、目录范围和保存契约见原生 React 接入文档。`createWebWorkspaceHost` 仍提供独立 IndexedDB 工作区，不代表磁盘上的项目目录。
 
 <!-- consumer-example -->
 
 ```tsx
 import { useMemo } from 'react';
-import { WorkspaceApp, createWebWorkspaceHost, createWebStorageAdapter, migrateLegacyCellWorkspace } from '@sue/verd-board-app';
+import { WorkspaceApp, createServiceWorkspaceHost } from '@sue/verd-board-app';
 import '@sue/verd-board-ui/style.css';
 export function App() {
-  const host = useMemo(() => createWebWorkspaceHost(), []);
-  return (
-    <WorkspaceApp
-      host={host}
-      importLegacy={async () => {
-        const adapter = createWebStorageAdapter();
-        return (await adapter.listKeys()).length ? migrateLegacyCellWorkspace(adapter) : null;
-      }}
-    />
-  );
+  const host = useMemo(() => createServiceWorkspaceHost({ baseUrl: '/api/v1' }), []);
+  return <WorkspaceApp host={host} />;
 }
 ```
 
 [应用包](packages/product/app/README.md) · [底层画布](packages/react/board/README.md) · [独立文档](packages/react/text/README.md) · [UML](packages/react/uml/README.md)
 
-<a id="npm-2"></a>
-
-### 历史 npm 2.0.0 接入
-
-历史发布清单、两个私有 scope 的 registry 配置、读权限要求、1.0 → 2.0 破坏性变更及当时的验收记录，统一保存在[2.0 接入与迁移](workspace/文档/包/2.0接入与迁移.verd-doc.json)。本锚点保留为旧链接入口，不把历史接口当作当前接入推荐。
-
-Current source contracts use explicit engine/UI plugins, shared Actions and stable workspace targets. See the package and React guides for current APIs; historical 2.0 instructions and registry setup remain in the migration document. Local artifacts do not establish registry publication.
-
 ## Agent 与文档维护
 
-工作区 `AGENTS.md` 指向共享编写 Skill；从项目根执行 `.verdscrolls/shared/bin/verd context --json` 获取项目身份、阅读入口与适用 Skills。用户补充保存在 `.agents/skills/<name>/SKILL.md`，修改后重新生成未提交计划。
+工作区 `AGENTS.md` 指向共享编写 Skill；从工作区根执行 `.verdscrolls/shared/bin/verd context --json` 获取工作区身份、阅读入口与适用 Skills。用户补充保存在 `.agents/skills/<name>/SKILL.md`，修改后重新生成未提交计划。
 
 默认 Agent 规范以 `SKILL.md` 和 Markdown references 为单一维护源；执行模板保留原生 JSON。文档编写推荐库是面向用户的建议和示例，与 Agent 默认指令分别维护。共享资源升级后重新规划，已有用户副本仅在确认全量更新后替换，可选备份。
 
-本仓开发约定与验证门禁统一见根级 [AGENTS.md](AGENTS.md)。日常任务按实际影响定向验证，PR CI 与发布执行对应全量门禁。其他项目技能仍由 `pnpm install` 同步，CI 跳过；手动使用 `pnpm skills:sync` / `pnpm skills:status`，配置见 [project.json](.ai-config-manager/project.json)。
+本仓开发约定与验证门禁统一见根级 [AGENTS.md](AGENTS.md)。日常任务按实际影响定向验证，CI 与发布执行架构边界内的完整计划；显式 `--full` 用于新架构基线或要求全仓运行的情况。其他项目技能仍由 `pnpm install` 同步，CI 跳过；手动使用 `pnpm skills:sync` / `pnpm skills:status`，配置见 [project.json](.ai-config-manager/project.json)。
 
 产品及工程说明继续写入原生正文；正文、图和双语入口同步能力与限制。发布前分别核对 Agent 工程、用户推荐库与系统介绍；每版系统介绍须有实际业务正文更新，不能只改日期、版本或缓存。
+
+桌面端支持从系统打开 Markdown 和 `.verd` 画布。Markdown 可视化编辑后保存回原文件；新画布使用 `.verd`（JSON 内容），旧 `.verd.json` 继续兼容。默认打开方式按操作系统要求确认。

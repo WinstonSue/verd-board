@@ -79,7 +79,7 @@ it('ships standard Skills and resolvable Markdown references separately from nat
   for (const file of files.filter((file) => file.endsWith('.md')))
     await checkReferences(file, root);
   const native = files
-    .filter((file) => /\.verd(?:-doc)?\.json$/.test(file))
+    .filter((file) => /\.verd(?:(?:-doc)?\.json)?$/.test(file))
     .map((file) => path.relative(root, file).split(path.sep).join('/'));
   expect(native.sort()).toEqual(
     [...new Set(patterns.flatMap((pattern) => pattern.templatePaths))].sort(),

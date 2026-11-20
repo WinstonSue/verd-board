@@ -13,6 +13,14 @@ export async function exerciseDefaultSkillViewer(
     await page.getByTestId('settings-nav-workspace.skills').click();
     await page.getByTestId('workspace-skill-default').click();
     const viewer = page.getByTestId('workspace-default-skill-viewer');
+    await expect(page.getByRole('dialog')).toHaveCount(1);
+    await expect(page.getByTestId('my-page')).toContainText(
+      '默认 Skill 与规则',
+    );
+    await expect(
+      viewer.getByTestId('workspace-default-skill-back'),
+    ).toBeFocused();
+    await expect(page.getByTestId('workspace-skill-body')).toBeHidden();
     const editor = viewer.locator('.tiptap');
     await expect(editor).toHaveAttribute('contenteditable', 'false');
     const paragraph = editor.locator('p').first();
@@ -79,8 +87,9 @@ export async function exerciseDefaultSkillViewer(
       .getByRole('button', { name: '内容编写规范', exact: true })
       .click();
     await expect(viewer.locator('.tiptap')).toContainText('通用表达与事实');
-    await viewer
-      .getByRole('button', { name: '关闭默认 Skill', exact: true })
-      .click();
+    await viewer.getByTestId('workspace-default-skill-back').click();
+    await expect(viewer).toHaveCount(0);
+    await expect(page.getByTestId('workspace-skill-default')).toBeFocused();
+    await expect(page.getByRole('dialog')).toHaveCount(1);
   }
 }

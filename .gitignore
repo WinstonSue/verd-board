@@ -93,3 +93,6 @@ Thumbs.db
 
 # Machine-local remote test target (SSH/npm credentials stay in user config).
 /.remote-test.local.json
+
+# Generated macOS file association helper.
+/apps/desktop/build/default-file-handler*

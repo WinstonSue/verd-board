@@ -125,7 +125,7 @@ export async function readWorkspace(root = PROJECT_WORKSPACE) {
           'Workspace symlink is not a project content file: ' + absolute,
         );
       if (entry.isDirectory()) await walk(absolute);
-      else if (/\.verd(?:-doc)?\.json$/.test(entry.name)) {
+      else if (/\.verd(?:(?:-doc)?\.json)?$/.test(entry.name)) {
         const source = await readFile(absolute, 'utf8');
         files.push({
           path: path.relative(root, absolute).split(path.sep).join('/'),

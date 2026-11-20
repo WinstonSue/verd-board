@@ -5,7 +5,7 @@ import path from 'node:path';
 export async function seedEmptyCanvas(workspace: string) {
   await mkdir(workspace, { recursive: true });
   await writeFile(
-    path.join(workspace, '画布.verd.json'),
+    path.join(workspace, '画布.verd'),
     JSON.stringify({
       format: 'verd-frame',
       version: 2,
@@ -24,7 +24,7 @@ export async function seedEmptyCanvas(workspace: string) {
   );
 }
 
-/** Every `.verd.json` canvas file in the workspace, keyed by relative path. */
+/** Every `.verd` canvas file in the workspace, keyed by relative path. */
 export const canvasFiles = async (
   userData: string,
 ): Promise<Record<string, any>> => {
@@ -41,7 +41,7 @@ export const canvasFiles = async (
       const rel = prefix ? `${prefix}/${entry.name}` : entry.name;
       if (entry.isDirectory()) {
         await walk(path.join(dir, entry.name), rel);
-      } else if (entry.name.endsWith('.verd.json')) {
+      } else if (entry.name.endsWith('.verd')) {
         files[rel] = JSON.parse(
           await readFile(path.join(dir, entry.name), 'utf8'),
         );

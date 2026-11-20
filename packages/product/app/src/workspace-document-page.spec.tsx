@@ -183,10 +183,7 @@ describe('workspace document memo boundary', () => {
       snapshot: {
         ...options.snapshot,
         failedFiles: new Map([
-          [
-            'bad.verd.json',
-            { path: 'bad.verd.json', fileId: 'chart', diagnostics: [] },
-          ],
+          ['bad.verd', { path: 'bad.verd', fileId: 'chart', diagnostics: [] }],
         ]),
       },
     };

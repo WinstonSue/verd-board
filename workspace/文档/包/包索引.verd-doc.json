@@ -27,7 +27,7 @@
           "content": [
             {
               "type": "text",
-              "text": "先按职责选择共享核心、独立 Agent、产品组合、React 适配或领域引擎，再阅读相应接入文档。当前路径、依赖和导出以各包 package.json 及源码为准；旧版接入和发布记录保留在末节。"
+              "text": "先按职责选择共享核心、独立 Agent、产品组合、React 适配或领域引擎，再阅读相应接入文档。各包路径、依赖与导出以 package.json 及源码为准。"
             }
           ]
         },
@@ -45,7 +45,7 @@
           "content": [
             {
               "type": "text",
-              "text": "接入基线（2026-10-28）：应用与公开包的实际清单以源码 manifest 和派生包依赖图为准；引擎插件与 UI 插件显式组合。下方的 2.0 发布说明为历史基线，2.1.0迁移章节描述当前源码的破坏性 API 变化。"
+              "text": "应用与公开包的清单以源码 manifest 和派生包依赖图为准。接入时显式组合引擎与 UI 插件，公共 API 以各包公开类型为准。"
             }
           ]
         },
@@ -1626,7 +1626,7 @@
           "content": [
             {
               "type": "text",
-              "text": "2.1.0：引擎与 UI 四层插件化"
+              "text": "引擎与 UI 四层插件化"
             }
           ]
         },
@@ -1635,7 +1635,7 @@
           "content": [
             {
               "type": "text",
-              "text": "新增 @sue/board-react-draw；五个领域各有引擎与 UI 插件工厂。core 不导出领域类型；react 提供 FrameEditor/createFramePluginSet，保留内置文本。详细四层契约见系统架构的2.1.0章节。"
+              "text": "五个领域各有引擎与 UI 插件工厂。领域类型由各引擎包导出。board-react 提供 FrameEditor、createFramePluginSet 和内置文本。四层契约见《系统架构》。"
             }
           ]
         },
@@ -1647,7 +1647,7 @@
           "content": [
             {
               "type": "text",
-              "text": "2.1.0：公共 Action 与稳定图元链接"
+              "text": "公共 Action 与稳定图元链接"
             }
           ]
         },
@@ -1684,15 +1684,6 @@
             {
               "type": "text",
               "text": "@sue/board-core：无链接/富文本模型依赖，CellRegistry 接受 links 注入并调用领域 mapLinks；所有粘贴计划含 idMap。@sue/board-draw/mind 提供表格/笔记槽位映射，@sue/board-uml 的自定义粘贴走同一最终化。@sue/verd-board-app 解析实际 Cell owner、原子文档提交与内存导航；@sue/verd-board-ui 组合产品 Action 与对话框。"
-            }
-          ]
-        },
-        {
-          "type": "paragraph",
-          "content": [
-            {
-              "type": "text",
-              "text": "本节保留 2.1.0 的接入契约基线；产品 2.1.1 与共享工作区 SDK、board-react 2.2.0 按包独立升版。版本清单、Changeset 和 registry 发布证据分别核对，历史 2.0 能力与当前源码 API 分开验收。"
             }
           ]
         },
@@ -2053,7 +2044,7 @@
           "content": [
             {
               "type": "text",
-              "text": "npm 2.0.0 发布与第三方接入"
+              "text": "SDK 接入参考"
             }
           ]
         },
@@ -2062,7 +2053,7 @@
           "content": [
             {
               "type": "text",
-              "text": "2.0 接入与迁移",
+              "text": "SDK 接入与契约",
               "marks": [
                 {
                   "type": "link",
@@ -2079,7 +2070,7 @@
           "content": [
             {
               "type": "text",
-              "text": "以实际发布的 1.0.0 包为基线，包含应用入口/存储迁移、受控与宿主画布、独立文档、UML、转换器和逐包 API 变化。安装与代码示例同时随包 README 发布。"
+              "text": "接入说明包括私有仓库配置、显式插件组合、Actions 和工作区契约。各包 README 随包提供安装和代码示例。"
             }
           ]
         },
@@ -2140,7 +2131,7 @@
         }
       ]
     },
-    "plainText": "包文档\n先按职责选择共享核心、独立 Agent、产品组合、React 适配或领域引擎，再阅读相应接入文档。当前路径、依赖和导出以各包 package.json 及源码为准；旧版接入和发布记录保留在末节。\n内容核对：2026-11-13。依据为当前仓库源码、包清单与锁文件；具体机制和源码入口见本篇及配置与源码索引。历史记录保留原日期与适用范围。\n接入基线（2026-10-28）：应用与公开包的实际清单以源码 manifest 和派生包依赖图为准；引擎插件与 UI 插件显式组合。下方的 2.0 发布说明为历史基线，2.1.0迁移章节描述当前源码的破坏性 API 变化。\n打开画布 verd://file/board%2F20%3Aarchitecture-layered\n本文档索引 monorepo 中的 workspace 包。目录按产品、共享工作区、独立 Agent、React 适配、引擎和转换器分层。\n当前包分层与职责\n应用与产品层\n@sue/verd-board-ui（目录 packages/product/ui）\n产品入口导出 VerdFrame 与 ProductShell。VerdFrame 默认组合 Draw、Mind、Workflow、Architecture、UML 插件，经内部 FrameProductShell 提供工具、属性和导入导出；ProductShell 提供产品导航。低层 FrameEditor/FrameCanvas 接入见原生《React 接入》，画布行为见《画布模式》。\n@sue/verd-board-app（目录 packages/product/app）\n产品 app 组合 Web/Desktop 的宿主适配、WorkspaceApp、导航会话与旧格式迁移。文件模型、WorkspaceHost 契约、WorkspaceSession、条件提交、历史、资源和通用 Git 由共享 @sue/verd-board-workspace 提供，app 根与 /headless 保留转导出。Desktop 和本机 Web service 使用真实目录，独立 IndexedDB SDK 宿主使用浏览器虚拟目录；画布和文档共用历史、标签、回收站与条件提交。领域图是独立文件，普通画布以 frame-reference 共享源内容；旧 organization 仅作读取兼容，不驱动目录快捷入口。桌面关闭前等待会话 flush，旧平铺存储只经私有边界迁移。\nReact 包\n包名\n目录\n说明\n@sue/board-react\npackages/react/board\nFrameEditor、FrameCanvas、显式 pluginSet、控制器、运行时 Hook 与图像导出\n@sue/board-react-text\npackages/react/text\nTipTap 文本运行时、BoardTextController 与 DocumentEditor\n@sue/board-react-mind\npackages/react/mind\ncreateMindUIPlugin：引擎、树布局、媒体、概要、工具与属性\n@sue/board-react-workflow\npackages/react/workflow\ncreateWorkflowUIPlugin：引擎、端口、校验、布局与 UI\n@sue/board-react-architecture\npackages/react/architecture\ncreateArchitectureUIPlugin：引擎、层、模块、依赖与 UI\n@sue/board-react-actions\npackages/react/actions\n共享 Action 作用域、命令面板与快捷键帮助；common + React，无画布依赖。\n@sue/board-react-draw\npackages/react/draw\ncreateDrawUIPlugin；Rough、表格、泳道、折线与绘图工具\n@sue/board-react-uml\npackages/react/uml\ncreateUmlUIPlugin；类图与时序图、工具、属性和 Actions\nBoard 引擎：packages/engine\n包名\n目录\n说明\n@sue/board-common\npackages/engine/common\n纯文本模型、共享 Action runtime、稳定工作区链接与文本 mapper\n@sue/board-core\npackages/engine/core\nCellStore、原子事务、历史、索引、选择、共享几何与 Util 基类\n@sue/board-layouts\npackages/engine/layouts\nMind 树布局与通用 DAG 布局；白板关系布局和共享路由位于 core\n@sue/board-draw\npackages/engine/draw\n几何图形、流程图符号、表格\n@sue/board-mind\npackages/engine/mind\n原生中心/子主题、分支和概要边，树布局和事务命令\n@sue/board-text\npackages/engine/text\n文本控制器的 mark、对齐、链接与剪贴板工具\n@sue/board-workflow\npackages/engine/workflow\n原生开始事件、任务、判断与边，成员索引和 DAG/process 校验\n@sue/board-architecture\npackages/engine/architecture\n原生层、模块与依赖边，成员排布和共享正交路由\n@sue/board-uml\npackages/engine/uml\ncreateUmlPlugin；类图、时序图、关系与派生布局\n公开包通过 vite build 产出 dist ESM/CJS/d.ts/CSS；workspace 开发仍走 exports.development 源码入口，publishConfig 指向 dist。隔离 consumer 见 scripts/test-consumer.mjs。\n领域 React 包提供 create*UIPlugin 与 style.css；底层 Frame 扩展使用已安装相应引擎插件的 registry。旧领域 Canvas、SceneGraphic、旧元素 API 和私有文档 reducer 已删除；当前插件组合及样式入口继续有效。旧格式转换留在应用私有迁移边界。\n转换器：packages/converters\n包名\n目录\n说明\n@sue/board-markdown-to-board\npackages/converters/markdown-to-board\nparseMarkdownToFrameSnapshot / serializeFrameToMarkdown\n@sue/board-mermaid-to-board\npackages/converters/mermaid-to-board\nparseMermaidToFrameSnapshot / serializeFrameToMermaid；白板、流程、架构、UML 类图与时序图\nUML 包\n@sue/board-uml 提供 createUmlPlugin、模型、工厂、命令、校验和派生布局；@sue/board-react-uml 通过 createUmlUIPlugin 组合类框、生命线、片段、激活条、消息操作、工具与属性。低层 createUmlFrameExtensions 要求预先安装引擎插件。\n共享 Workspace SDK 与 Agent 分层\n@sue/verd-board-workspace（packages/workspace/core）提供共享文件模型、Host 契约、MemoryHost、Session、校验、资源和 Git 能力；不依赖产品 app/ui。实际文档 schema 继续复用 @sue/board-react-text/schema，与编辑器保持一致。\n@sue/verd-board-agent（packages/agent/runtime）提供既有根入口、/node、/cli 与 verd 命令；@sue/verd-board-agent-patterns（packages/agent/patterns）继续分别提供 Agent 执行资源和用户编写推荐。二者 npm 包名保持兼容。Agent 的 Node API 与 CLI 可配合第三方 SDK 使用，无需安装产品 app/ui。\n@sue/verd-board-app 根入口和 /headless 保留既有公共符号，转导出 workspace SDK 的共享实现。产品宿主、存储适配、迁移及应用组件继续由 app 提供。\n@sue/board-react 新增 FrameCanvasPreview 与 FrameCanvasPreviewProps：value、frameId、pluginSet 为必传；documentReferences、appearance、exporting 可选。产品 UI 的 CanvasPreview 保留原参数，继续提供默认插件和外观。\n原 product/docs 仅是内置原生文档构建入口，已移除。根 workspace/ 正文、build:content 命令和各应用资源生成流程继续保留；没有新增文档正文副本。\n编辑器插件与公共接入\n2.1.0：引擎与 UI 四层插件化\n新增 @sue/board-react-draw；五个领域各有引擎与 UI 插件工厂。core 不导出领域类型；react 提供 FrameEditor/createFramePluginSet，保留内置文本。详细四层契约见系统架构的2.1.0章节。\n2.1.0：公共 Action 与稳定图元链接\n@sue/board-common：纯 ActionDefinition/ActionResult/createActionRegistry、WorkspaceTarget 与链接 codec、mapBoardTextLinks/mapStandardCellLinks；不依赖 React 或 core。\n@sue/board-react-actions（packages/react/actions）：新增公开包，ActionScope、CommandPalette、ActionHelp、快捷键解析与订阅；运行时仅依赖 common 和 React peer，style.css 可独立加载。\n@sue/board-react：控制器统一 getActionState/executeAction/actions/actionSource，新增 FrameLinkHost、revealTarget、FrameViewProjection；五个领域 React 插件以 actions 与工具 actionId 贡献操作。@sue/board-react-text：独立文档 ActionController 与可等待的宿主提交回执；共享面板不会引入 board-react。\n@sue/board-core：无链接/富文本模型依赖，CellRegistry 接受 links 注入并调用领域 mapLinks；所有粘贴计划含 idMap。@sue/board-draw/mind 提供表格/笔记槽位映射，@sue/board-uml 的自定义粘贴走同一最终化。@sue/verd-board-app 解析实际 Cell owner、原子文档提交与内存导航；@sue/verd-board-ui 组合产品 Action 与对话框。\n本节保留 2.1.0 的接入契约基线；产品 2.1.1 与共享工作区 SDK、board-react 2.2.0 按包独立升版。版本清单、Changeset 和 registry 发布证据分别核对，历史 2.0 能力与当前源码 API 分开验收。\n外部 Settings SDK\n@sue/board-react 与 @sue/verd-board-ui 消费独立维护的 @sue/schema-settings-react；其最小闭包为 settings core、既有 schema core 各包、React view 和 grid。React 使用 peer，面板默认入口没有 Designable、Vue、Extend、Sue Design 或全局样式副作用。引擎包不依赖 Settings UI。\nReact 层新增 ConfigPanel、defineSettings、FrameSettingsControl、FrameSettingsText、FrameGeometryControls、FrameAppearanceSettings、createFrameSettingsContribution 及字段类型导出；Workflow 公开 WorkflowModeSettings 供两种宿主共用。旧插件组件入口及业务数据格式保留。\n@sue/board-markdown-to-text（packages/converters/markdown-to-text）提供 parseMarkdownToTextDocument / serializeTextDocumentToMarkdown，直接转换独立文档正文。\n内部依赖一律使用 workspace:*。\nE2E 在 tests/web-e2e，用 Playwright 验收 Web 产品路径。Markdown / Mermaid 导入联调走产品文本导入对话框；转换器用例在 @sue/board-mermaid-to-board 的 tests/fixtures。\n转换器 API 与数据保留范围见 Frame 转换器。\nAI 生成可导入画布数据的完整字段表、元素目录、约束与示例见 面向 AI 的画布数据生成规范。\n工作区操作与能力说明\n排列与 Group\n六向对齐、等距分布、拖动参考线、显式自动排列、嵌套组与独立锁定的规则及 API 见 对齐、自动排列与组合。\n文件夹回收与永久删除\n产品 UI 公开 MyPage 与 VerdFrameProps.onOpenMy；FileTreeProps 保留目录回收回调，回收站数据与还原、永久删除、重试回调迁到 WorkspaceSettings.trash / WorkspaceTrashProps。应用包公开的 WorkspaceCommand 增加 trash-directory、purge-trash，CommitRequest 增加 purge 条目列表；工作区持久文件格式不变。\nWorkspaceSessionSnapshot.trashUnconfirmed 暴露结果未确认状态，WorkspaceSession.retryTrashOperation 重放保留的原事务（包括撤销/重做）；工作区错误提示提供明确的「重试」入口。\nWorkspaceMenu 接收工作区名称、宿主可用操作与禁用状态，复用菜单键盘和焦点机制。MyPage 移除 onSettings 回调并直接展示共用 FrameSettingsContent；公开 FrameSettingsPage 包装器保持原参数。WorkspaceSettings 移除跨页偏好跳转回调，偏好存储与工作区数据接口保持不变。\nWorkspaceSettings.trash 接收当前工作区回收站条目、工作区名、只读状态及会话操作回调。WorkspaceTrash 独立呈现列表与空态，清空仍捕获确认时的条目；提交期间暂停重复操作及页面切换，结果未确认时提供重试。FrameSettingsContent 可指定标题层级；设置和工作区数据的持久化格式不变。\nFileTreeProps.revealFile 定位真实目录中的源文件；每个原生文件仅一行，普通资源通过 onOpenResource/onTrashResource 按路径处理。ChartLibrary 不再提供归属列、筛选或调整回调，只按类型、名称和路径浏览独立文件。\nAgent 与系统内置内容\nAgent 工具与独立内容包\n@sue/verd-board-agent（packages/agent/runtime）：CLI、AuthoringOperation / PreparedBatch / AuthoringDiagnostic、共用 Node 宿主、Skill 与真实渲染预览。\n@sue/verd-board-agent-patterns（packages/agent/patterns）：九类可执行范式、参数目录、规则说明及独立原生工作区；无 CLI 或文件宿主运行依赖。\n@sue/verd-board-app/headless：原生文件、引用、会话、batch 和通用校验；@sue/board-react-text/schema：实际编辑器使用的文档／画布文字 schema。\n系统内置项目文档\n系统介绍以 workspace/ 为唯一来源，范式库原生资料以 packages/agent/patterns/workspace/ 为来源。prepare-builtin-workspaces.mjs 直接复制经过校验的便携内容，生成记录产品版本的 release.json；不通过 npm 包交付或在线更新。\n包依赖图与历史迁移\nnpm 2.0.0 发布与第三方接入\n2.0 接入与迁移\n以实际发布的 1.0.0 包为基线，包含应用入口/存储迁移、受控与宿主画布、独立文档、UML、转换器和逐包 API 变化。安装与代码示例同时随包 README 发布。\n包依赖细节图\n完整包分层与依赖\n产品组合与按需接入\n原项目分层图作为专题总览；完整包节点与依赖已迁入细节图，自动刷新仍以实际包清单为准。",
+    "plainText": "包文档\n先按职责选择共享核心、独立 Agent、产品组合、React 适配或领域引擎，再阅读相应接入文档。各包路径、依赖与导出以 package.json 及源码为准。\n内容核对：2026-11-13。依据为当前仓库源码、包清单与锁文件；具体机制和源码入口见本篇及配置与源码索引。历史记录保留原日期与适用范围。\n应用与公开包的清单以源码 manifest 和派生包依赖图为准。接入时显式组合引擎与 UI 插件，公共 API 以各包公开类型为准。\n打开画布 verd://file/board%2F20%3Aarchitecture-layered\n本文档索引 monorepo 中的 workspace 包。目录按产品、共享工作区、独立 Agent、React 适配、引擎和转换器分层。\n当前包分层与职责\n应用与产品层\n@sue/verd-board-ui（目录 packages/product/ui）\n产品入口导出 VerdFrame 与 ProductShell。VerdFrame 默认组合 Draw、Mind、Workflow、Architecture、UML 插件，经内部 FrameProductShell 提供工具、属性和导入导出；ProductShell 提供产品导航。低层 FrameEditor/FrameCanvas 接入见原生《React 接入》，画布行为见《画布模式》。\n@sue/verd-board-app（目录 packages/product/app）\n产品 app 组合 Web/Desktop 的宿主适配、WorkspaceApp、导航会话与旧格式迁移。文件模型、WorkspaceHost 契约、WorkspaceSession、条件提交、历史、资源和通用 Git 由共享 @sue/verd-board-workspace 提供，app 根与 /headless 保留转导出。Desktop 和本机 Web service 使用真实目录，独立 IndexedDB SDK 宿主使用浏览器虚拟目录；画布和文档共用历史、标签、回收站与条件提交。领域图是独立文件，普通画布以 frame-reference 共享源内容；旧 organization 仅作读取兼容，不驱动目录快捷入口。桌面关闭前等待会话 flush，旧平铺存储只经私有边界迁移。\nReact 包\n包名\n目录\n说明\n@sue/board-react\npackages/react/board\nFrameEditor、FrameCanvas、显式 pluginSet、控制器、运行时 Hook 与图像导出\n@sue/board-react-text\npackages/react/text\nTipTap 文本运行时、BoardTextController 与 DocumentEditor\n@sue/board-react-mind\npackages/react/mind\ncreateMindUIPlugin：引擎、树布局、媒体、概要、工具与属性\n@sue/board-react-workflow\npackages/react/workflow\ncreateWorkflowUIPlugin：引擎、端口、校验、布局与 UI\n@sue/board-react-architecture\npackages/react/architecture\ncreateArchitectureUIPlugin：引擎、层、模块、依赖与 UI\n@sue/board-react-actions\npackages/react/actions\n共享 Action 作用域、命令面板与快捷键帮助；common + React，无画布依赖。\n@sue/board-react-draw\npackages/react/draw\ncreateDrawUIPlugin；Rough、表格、泳道、折线与绘图工具\n@sue/board-react-uml\npackages/react/uml\ncreateUmlUIPlugin；类图与时序图、工具、属性和 Actions\nBoard 引擎：packages/engine\n包名\n目录\n说明\n@sue/board-common\npackages/engine/common\n纯文本模型、共享 Action runtime、稳定工作区链接与文本 mapper\n@sue/board-core\npackages/engine/core\nCellStore、原子事务、历史、索引、选择、共享几何与 Util 基类\n@sue/board-layouts\npackages/engine/layouts\nMind 树布局与通用 DAG 布局；白板关系布局和共享路由位于 core\n@sue/board-draw\npackages/engine/draw\n几何图形、流程图符号、表格\n@sue/board-mind\npackages/engine/mind\n原生中心/子主题、分支和概要边，树布局和事务命令\n@sue/board-text\npackages/engine/text\n文本控制器的 mark、对齐、链接与剪贴板工具\n@sue/board-workflow\npackages/engine/workflow\n原生开始事件、任务、判断与边，成员索引和 DAG/process 校验\n@sue/board-architecture\npackages/engine/architecture\n原生层、模块与依赖边，成员排布和共享正交路由\n@sue/board-uml\npackages/engine/uml\ncreateUmlPlugin；类图、时序图、关系与派生布局\n公开包通过 vite build 产出 dist ESM/CJS/d.ts/CSS；workspace 开发仍走 exports.development 源码入口，publishConfig 指向 dist。隔离 consumer 见 scripts/test-consumer.mjs。\n领域 React 包提供 create*UIPlugin 与 style.css；底层 Frame 扩展使用已安装相应引擎插件的 registry。旧领域 Canvas、SceneGraphic、旧元素 API 和私有文档 reducer 已删除；当前插件组合及样式入口继续有效。旧格式转换留在应用私有迁移边界。\n转换器：packages/converters\n包名\n目录\n说明\n@sue/board-markdown-to-board\npackages/converters/markdown-to-board\nparseMarkdownToFrameSnapshot / serializeFrameToMarkdown\n@sue/board-mermaid-to-board\npackages/converters/mermaid-to-board\nparseMermaidToFrameSnapshot / serializeFrameToMermaid；白板、流程、架构、UML 类图与时序图\nUML 包\n@sue/board-uml 提供 createUmlPlugin、模型、工厂、命令、校验和派生布局；@sue/board-react-uml 通过 createUmlUIPlugin 组合类框、生命线、片段、激活条、消息操作、工具与属性。低层 createUmlFrameExtensions 要求预先安装引擎插件。\n共享 Workspace SDK 与 Agent 分层\n@sue/verd-board-workspace（packages/workspace/core）提供共享文件模型、Host 契约、MemoryHost、Session、校验、资源和 Git 能力；不依赖产品 app/ui。实际文档 schema 继续复用 @sue/board-react-text/schema，与编辑器保持一致。\n@sue/verd-board-agent（packages/agent/runtime）提供既有根入口、/node、/cli 与 verd 命令；@sue/verd-board-agent-patterns（packages/agent/patterns）继续分别提供 Agent 执行资源和用户编写推荐。二者 npm 包名保持兼容。Agent 的 Node API 与 CLI 可配合第三方 SDK 使用，无需安装产品 app/ui。\n@sue/verd-board-app 根入口和 /headless 保留既有公共符号，转导出 workspace SDK 的共享实现。产品宿主、存储适配、迁移及应用组件继续由 app 提供。\n@sue/board-react 新增 FrameCanvasPreview 与 FrameCanvasPreviewProps：value、frameId、pluginSet 为必传；documentReferences、appearance、exporting 可选。产品 UI 的 CanvasPreview 保留原参数，继续提供默认插件和外观。\n原 product/docs 仅是内置原生文档构建入口，已移除。根 workspace/ 正文、build:content 命令和各应用资源生成流程继续保留；没有新增文档正文副本。\n编辑器插件与公共接入\n引擎与 UI 四层插件化\n五个领域各有引擎与 UI 插件工厂。领域类型由各引擎包导出。board-react 提供 FrameEditor、createFramePluginSet 和内置文本。四层契约见《系统架构》。\n公共 Action 与稳定图元链接\n@sue/board-common：纯 ActionDefinition/ActionResult/createActionRegistry、WorkspaceTarget 与链接 codec、mapBoardTextLinks/mapStandardCellLinks；不依赖 React 或 core。\n@sue/board-react-actions（packages/react/actions）：新增公开包，ActionScope、CommandPalette、ActionHelp、快捷键解析与订阅；运行时仅依赖 common 和 React peer，style.css 可独立加载。\n@sue/board-react：控制器统一 getActionState/executeAction/actions/actionSource，新增 FrameLinkHost、revealTarget、FrameViewProjection；五个领域 React 插件以 actions 与工具 actionId 贡献操作。@sue/board-react-text：独立文档 ActionController 与可等待的宿主提交回执；共享面板不会引入 board-react。\n@sue/board-core：无链接/富文本模型依赖，CellRegistry 接受 links 注入并调用领域 mapLinks；所有粘贴计划含 idMap。@sue/board-draw/mind 提供表格/笔记槽位映射，@sue/board-uml 的自定义粘贴走同一最终化。@sue/verd-board-app 解析实际 Cell owner、原子文档提交与内存导航；@sue/verd-board-ui 组合产品 Action 与对话框。\n外部 Settings SDK\n@sue/board-react 与 @sue/verd-board-ui 消费独立维护的 @sue/schema-settings-react；其最小闭包为 settings core、既有 schema core 各包、React view 和 grid。React 使用 peer，面板默认入口没有 Designable、Vue、Extend、Sue Design 或全局样式副作用。引擎包不依赖 Settings UI。\nReact 层新增 ConfigPanel、defineSettings、FrameSettingsControl、FrameSettingsText、FrameGeometryControls、FrameAppearanceSettings、createFrameSettingsContribution 及字段类型导出；Workflow 公开 WorkflowModeSettings 供两种宿主共用。旧插件组件入口及业务数据格式保留。\n@sue/board-markdown-to-text（packages/converters/markdown-to-text）提供 parseMarkdownToTextDocument / serializeTextDocumentToMarkdown，直接转换独立文档正文。\n内部依赖一律使用 workspace:*。\nE2E 在 tests/web-e2e，用 Playwright 验收 Web 产品路径。Markdown / Mermaid 导入联调走产品文本导入对话框；转换器用例在 @sue/board-mermaid-to-board 的 tests/fixtures。\n转换器 API 与数据保留范围见 Frame 转换器。\nAI 生成可导入画布数据的完整字段表、元素目录、约束与示例见 面向 AI 的画布数据生成规范。\n工作区操作与能力说明\n排列与 Group\n六向对齐、等距分布、拖动参考线、显式自动排列、嵌套组与独立锁定的规则及 API 见 对齐、自动排列与组合。\n文件夹回收与永久删除\n产品 UI 公开 MyPage 与 VerdFrameProps.onOpenMy；FileTreeProps 保留目录回收回调，回收站数据与还原、永久删除、重试回调迁到 WorkspaceSettings.trash / WorkspaceTrashProps。应用包公开的 WorkspaceCommand 增加 trash-directory、purge-trash，CommitRequest 增加 purge 条目列表；工作区持久文件格式不变。\nWorkspaceSessionSnapshot.trashUnconfirmed 暴露结果未确认状态，WorkspaceSession.retryTrashOperation 重放保留的原事务（包括撤销/重做）；工作区错误提示提供明确的「重试」入口。\nWorkspaceMenu 接收工作区名称、宿主可用操作与禁用状态，复用菜单键盘和焦点机制。MyPage 移除 onSettings 回调并直接展示共用 FrameSettingsContent；公开 FrameSettingsPage 包装器保持原参数。WorkspaceSettings 移除跨页偏好跳转回调，偏好存储与工作区数据接口保持不变。\nWorkspaceSettings.trash 接收当前工作区回收站条目、工作区名、只读状态及会话操作回调。WorkspaceTrash 独立呈现列表与空态，清空仍捕获确认时的条目；提交期间暂停重复操作及页面切换，结果未确认时提供重试。FrameSettingsContent 可指定标题层级；设置和工作区数据的持久化格式不变。\nFileTreeProps.revealFile 定位真实目录中的源文件；每个原生文件仅一行，普通资源通过 onOpenResource/onTrashResource 按路径处理。ChartLibrary 不再提供归属列、筛选或调整回调，只按类型、名称和路径浏览独立文件。\nAgent 与系统内置内容\nAgent 工具与独立内容包\n@sue/verd-board-agent（packages/agent/runtime）：CLI、AuthoringOperation / PreparedBatch / AuthoringDiagnostic、共用 Node 宿主、Skill 与真实渲染预览。\n@sue/verd-board-agent-patterns（packages/agent/patterns）：九类可执行范式、参数目录、规则说明及独立原生工作区；无 CLI 或文件宿主运行依赖。\n@sue/verd-board-app/headless：原生文件、引用、会话、batch 和通用校验；@sue/board-react-text/schema：实际编辑器使用的文档／画布文字 schema。\n系统内置项目文档\n系统介绍以 workspace/ 为唯一来源，范式库原生资料以 packages/agent/patterns/workspace/ 为来源。prepare-builtin-workspaces.mjs 直接复制经过校验的便携内容，生成记录产品版本的 release.json；不通过 npm 包交付或在线更新。\n包依赖图与历史迁移\nSDK 接入参考\nSDK 接入与契约\n接入说明包括私有仓库配置、显式插件组合、Actions 和工作区契约。各包 README 随包提供安装和代码示例。\n包依赖细节图\n完整包分层与依赖\n产品组合与按需接入\n原项目分层图作为专题总览；完整包节点与依赖已迁入细节图，自动刷新仍以实际包清单为准。",
     "align": "left"
   }
 }

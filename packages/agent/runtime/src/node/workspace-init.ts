@@ -9,6 +9,7 @@ export async function initializeWorkspaceProject(
   const host = createFsWorkspaceHost({
     defaultRoot: () => root,
     sharedResources: options.resources ? () => options.resources! : undefined,
+    initializeAgent: true,
   });
   const handle = await host.openWorkspace({
     path: root,

@@ -42,9 +42,11 @@ async function seed(page: Page) {
     cells: {},
   }));
   await page
-    .locator('input[accept=".json,.verd.json,.verd-doc.json,.md,.markdown"]')
+    .locator(
+      'input[accept=".json,.verd,.verd.json,.verd-doc.json,.md,.markdown"]',
+    )
     .setInputFiles({
-      name: 'tabs.verd.json',
+      name: 'tabs.verd',
       mimeType: 'application/json',
       buffer: Buffer.from(
         JSON.stringify({
@@ -127,10 +129,26 @@ test('real tab menus close left, right and others after dragging, preserving the
     .getByText('Renamed before closing', { exact: true })
     .click();
   await expect(activeTabTitle(page)).toHaveText('Renamed before closing');
+  await expect(page.locator('.workspace-content')).toHaveAttribute(
+    'aria-busy',
+    'false',
+  );
+  await expect
+    .poll(async () => (await persistedWorkspace(page))?.tabs)
+    .toEqual(['b', 'doc']);
   await tab(page, 'doc').hover();
   await tab(page, 'doc')
     .getByRole('button', { name: '关闭 Renamed before closing', exact: true })
     .click();
+  await expect(tab(page, 'doc')).toHaveCount(0);
+  await expect(tab(page, 'b')).toHaveAttribute('aria-selected', 'true');
+  await expect(page.locator('.workspace-content')).toHaveAttribute(
+    'aria-busy',
+    'false',
+  );
+  await expect
+    .poll(async () => (await persistedWorkspace(page))?.tabs)
+    .toEqual(['b']);
   await close(page, 'b', '关闭');
   await expect(page.locator('.workspace-empty')).toBeVisible();
 });

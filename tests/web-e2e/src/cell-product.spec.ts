@@ -1,3 +1,4 @@
+import { activeTabTitle } from './tab-actions';
 import { placeArchitectureTool } from '../../helpers/architecture-cards';
 import {
   expectPropertyValue,
@@ -242,7 +243,11 @@ const summaryFixture = async (page: Page) => {
   await dialog.getByRole('button', { name: '插入', exact: true }).click();
   await cells(page, 'frame').locator('[data-frame-title-id]').first().click();
   await page.getByTestId('frame-open').locator('visible=true').click();
-  await page.getByRole('button', { name: '适配画布', exact: true }).click();
+  await expect(cells(page, 'frame-reference')).toHaveCount(0);
+  await page
+    .getByRole('button', { name: '适配画布', exact: true })
+    .locator('visible=true')
+    .click();
   const a = cells(page, 'mind-child').filter({ hasText: 'Topic A' }),
     b = cells(page, 'mind-child').filter({ hasText: 'Topic B' }),
     c = cells(page, 'mind-child').filter({ hasText: 'Topic C' });
@@ -644,6 +649,8 @@ test('deleting covered topics shrinks the summary and removing its last topic is
   await expect(cells(page, 'mind-summary')).toHaveCount(1);
   await expect.poll(() => summaryRange(page)).toEqual([cId, cId]);
   await selectHistoryAction(page, '撤销');
+  await expect(cells(page, 'mind-child')).toHaveCount(2);
+  await expect.poll(() => summaryRange(page)).toEqual([bId, cId]);
   await selectHistoryAction(page, '撤销');
   await expect(cells(page, 'mind-child')).toHaveCount(3);
   await expect.poll(() => summaryRange(page)).toEqual([aId, cId]);
@@ -708,6 +715,8 @@ test('deleting a container and undo restores its entire subtree', async ({
   await createAt(page, '思维导图');
   await cells(page, 'frame').locator('[data-frame-title-id]').first().click();
   await page.getByTestId('frame-open').locator('visible=true').click();
+  // The owner pane retains an embedded preview while the target file opens.
+  await expect(cells(page, 'frame-reference')).toHaveCount(0);
   await cells(page, 'mind-root').click();
   await canvas(page).press('Tab');
   await expect(cells(page, 'mind-child')).toHaveCount(1);
@@ -2129,7 +2138,9 @@ test('drawing and export shortcuts work on the canvas and preserve typing in ins
   await page.keyboard.press('v');
   const download = page.waitForEvent('download');
   await page.keyboard.press('ControlOrMeta+s');
-  expect((await download).suggestedFilename()).toBe('verd-frame.json');
+  expect((await download).suggestedFilename()).toBe(
+    `${await activeTabTitle(page).textContent()}.verd`,
+  );
 });
 
 type MindScreenBox = { x: number; y: number; width: number; height: number };

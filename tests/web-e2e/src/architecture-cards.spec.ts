@@ -13,19 +13,18 @@ import {
 } from '../../helpers/architecture-cards';
 import type { Cell } from '../../../packages/engine/core/src/cell/types';
 
-test('every text-capable canvas exposes an independent card with editable block content', async ({
-  page,
-  localService,
-}) => {
-  for (const { name, file } of cardSceneFixtures())
+for (const { name, file } of cardSceneFixtures()) {
+  test(`${name} exposes an independent card with editable block content`, async ({
+    page,
+    localService,
+  }) => {
     await writeFile(
-      path.join(localService.workspace, name + '.verd.json'),
+      path.join(localService.workspace, name + '.verd'),
       JSON.stringify(file),
     );
-  await localService.restart();
-  await page.goto('/');
-  await openActiveFile(page);
-  for (const { name, file } of cardSceneFixtures()) {
+    await localService.restart();
+    await page.goto('/');
+    await openActiveFile(page);
     await openCardScene(page, file.frame.id);
     await exerciseSceneTextPaste(page, name);
     await exerciseCardEntrypoint(page, name === 'board');
@@ -44,8 +43,8 @@ test('every text-capable canvas exposes an independent card with editable block 
         (block: { type: string }) => block.type,
       ),
     ).toEqual(['heading', 'paragraph']);
-  }
-});
+  });
+}
 
 test('architecture placement, independent cards and movable layers persist with exact undo', async ({
   page,
@@ -54,7 +53,7 @@ test('architecture placement, independent cards and movable layers persist with 
   await page.setViewportSize({ width: 1600, height: 1000 });
   const file = architectureCardsFixture();
   await writeFile(
-    path.join(localService.workspace, 'architecture-cards.verd.json'),
+    path.join(localService.workspace, 'architecture-cards.verd'),
     JSON.stringify(file),
   );
   await localService.restart();

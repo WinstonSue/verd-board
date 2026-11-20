@@ -6,6 +6,9 @@ import {
 } from './version-actions';
 import { expect, test, type Page } from './service-fixture';
 import path from 'node:path';
+import { writeFile, readFile, stat } from 'node:fs/promises';
+import { execFile } from 'node:child_process';
+import { promisify } from 'node:util';
 
 const modulePath = () =>
   test.info().project.metadata['runtime'] === 'production'
@@ -78,6 +81,73 @@ async function seed(page: Page) {
     .click();
   await expect(active(page).locator('.tiptap')).toContainText('Before Git');
 }
+
+test('project document history commits and restores within the directory while preserving code staging', async ({
+  page,
+  localService,
+}) => {
+  await seed(page);
+  const command = promisify(execFile);
+  const git = async (...args: string[]) =>
+    (await command('git', ['-C', localService.root, ...args])).stdout.trim();
+  const prefix = path
+    .relative(localService.root, localService.workspace)
+    .split(path.sep)
+    .join('/');
+  await git('init', '--initial-branch=main');
+  await git('config', 'user.name', 'Project Writer');
+  await git('config', 'user.email', 'project@example.com');
+  await writeFile(path.join(localService.root, 'code.txt'), 'Original code');
+  await git(
+    'add',
+    '--',
+    'code.txt',
+    `${prefix}/notes.txt`,
+    `${prefix}/Git note.verd-doc.json`,
+  );
+  await git('commit', '-m', 'Project baseline');
+  const first = await git('rev-parse', 'HEAD');
+  await writeFile(path.join(localService.root, 'code.txt'), 'Staged code');
+  await git('add', '--', 'code.txt');
+  await writeFile(
+    path.join(localService.workspace, 'notes.txt'),
+    'Document update',
+  );
+  const dialog = await openScopedVersions(page, 'notes.txt');
+  await dialog
+    .getByRole('textbox', { name: '版本说明', exact: true })
+    .fill('Document commit');
+  await dialog
+    .getByRole('button', { name: '为此文件创建版本', exact: true })
+    .click();
+  await expect(dialog.locator('.workspace-git-log article')).toHaveCount(2);
+  expect(await git('show', 'HEAD:code.txt')).toBe('Original code');
+  expect(await git('show', ':code.txt')).toBe('Staged code');
+  expect(await git('show', `HEAD:${prefix}/notes.txt`)).toBe('Document update');
+  const head = await git('rev-parse', 'HEAD');
+  await dialog
+    .locator('.workspace-git-log article')
+    .filter({ hasText: 'Project baseline' })
+    .getByRole('button', { name: '恢复此版本…', exact: true })
+    .click();
+  await dialog
+    .getByRole('region', { name: '恢复预览', exact: true })
+    .getByRole('button', { name: '确认恢复', exact: true })
+    .click();
+  await expect
+    .poll(() =>
+      readFile(path.join(localService.workspace, 'notes.txt'), 'utf8'),
+    )
+    .toBe('Original plain text');
+  expect(await git('rev-parse', 'HEAD')).toBe(head);
+  expect(await git('show', ':code.txt')).toBe('Staged code');
+  expect(await git('show', `${first}:${prefix}/notes.txt`)).toBe(
+    'Original plain text',
+  );
+  expect(
+    await stat(path.join(localService.workspace, '.git')).catch(() => null),
+  ).toBeNull();
+});
 
 test('versions are configured in settings, create manually and restore without creating another version', async ({
   page,

@@ -46,6 +46,25 @@ const deferred = () => {
   return { promise, resolve };
 };
 describe('workspace discrete surface inventory', () => {
+  it('permanently deletes trash without invoking Git history cleanup', async () => {
+    const session = await open();
+    await session.apply({ type: 'trash-file', fileId: 'a' });
+    await session.flush();
+    const entryId = session.getState().trash[0].entryId;
+    const versions = vi.spyOn(session, 'versions');
+    const invoke = vi.fn();
+    const registry = createWorkspaceActionRegistry({
+      getContext: () => ({ session }),
+      dialogs: createWorkspaceSurfaceActions({ getState: ui, invoke }),
+    });
+    await registry.executeAction('workspace.trash.purge', {
+      entryIds: [entryId],
+    });
+    expect(session.getState().trash).toHaveLength(0);
+    expect(versions).not.toHaveBeenCalled();
+    expect(invoke).not.toHaveBeenCalled();
+    registry.dispose();
+  });
   it('registers every inventoried semantic entry once with stable bilingual metadata', () => {
     const definitions = createWorkspaceSurfaceActions({
       getState: ui,

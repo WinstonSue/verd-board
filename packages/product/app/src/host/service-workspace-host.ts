@@ -22,6 +22,8 @@ export interface ServiceHostOptions {
     purpose: 'open' | 'create' | 'backup',
   ) => Promise<string | null>;
   onConnectionChange?: (connected: boolean, message?: string) => void;
+  /** A project SDK host opens only its server-configured content directory. */
+  fixedWorkspace?: boolean;
 }
 
 /** The public handle remains stable when a restarted service issues new keys. */
@@ -61,7 +63,19 @@ export function createServiceWorkspaceHost(options: ServiceHostOptions = {}) {
       });
       if (!response.ok)
         throw new Error(`Local service unavailable (${response.status})`);
-      const result = (await response.json()) as { token: string };
+      const result = (await response.json()) as {
+        token: string;
+        capabilities?: WorkspaceHost['capabilities'];
+      };
+      if (result.capabilities) {
+        for (const key of [
+          'pickWorkspace',
+          'openBuiltinWorkspace',
+          'openPatternWorkspace',
+        ] as const)
+          if (result.capabilities[key] === false)
+            host.capabilities = { ...host.capabilities!, [key]: false };
+      }
       token = result.token;
       notify(true);
       return result.token;
@@ -247,9 +261,9 @@ export function createServiceWorkspaceHost(options: ServiceHostOptions = {}) {
     storageKind: 'filesystem',
     versionProvider: { id: 'git' },
     capabilities: {
-      pickWorkspace: true,
-      openBuiltinWorkspace: true,
-      openPatternWorkspace: true,
+      pickWorkspace: !options.fixedWorkspace,
+      openBuiltinWorkspace: !options.fixedWorkspace,
+      openPatternWorkspace: !options.fixedWorkspace,
     },
     readGlobalConfig: () => send('readGlobalConfig', []),
     writeGlobalConfig: (value, version) =>
@@ -300,6 +314,7 @@ export function createServiceWorkspaceHost(options: ServiceHostOptions = {}) {
       return adopt(remote, item.request);
     },
     readSnapshot: (h) => withHandle('readSnapshot', h),
+    initializeAgent: (h) => withHandle('initializeAgent', h),
     readFile: (h, path) => withHandle('readFile', h, [path]),
     readResource: (h, key) => withHandle('readResource', h, [key]),
     openResourceExternal: (h, path) =>

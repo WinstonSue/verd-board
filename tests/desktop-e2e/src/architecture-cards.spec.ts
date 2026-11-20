@@ -24,12 +24,12 @@ test('Desktop architecture layers and text cards persist after a real restart', 
       userData = path.join(directory, 'profile');
     await mkdir(project);
     await mkdir(userData);
-    const file = path.join(project, 'architecture-cards.verd.json'),
+    const file = path.join(project, 'architecture-cards.verd'),
       launcher = path.join(directory, 'launch.cjs');
     await writeFile(file, JSON.stringify(architectureCardsFixture()));
     for (const item of cardSceneFixtures())
       await writeFile(
-        path.join(project, item.name + '.verd.json'),
+        path.join(project, item.name + '.verd'),
         JSON.stringify(item.file),
       );
     await writeDesktopLauncher(launcher, userData);
@@ -65,7 +65,7 @@ test('Desktop architecture layers and text cards persist after a real restart', 
         page.locator('.workspace-pane.is-active').getByTestId('save-status'),
       ).toHaveAttribute('data-save-state', 'saved');
       const written = JSON.parse(
-        await readFile(path.join(project, name + '.verd.json'), 'utf8'),
+        await readFile(path.join(project, name + '.verd'), 'utf8'),
       );
       expect(
         Object.values(written.cells).some(

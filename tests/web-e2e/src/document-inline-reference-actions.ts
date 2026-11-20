@@ -3,7 +3,7 @@ import { activeTabTitle } from './tab-actions';
 
 export async function exerciseDocumentInlineReferences(page: Page) {
   const fileInput = page.locator(
-    'input[accept=".json,.verd.json,.verd-doc.json,.md,.markdown"]',
+    'input[accept=".json,.verd,.verd.json,.verd-doc.json,.md,.markdown"]',
   );
   const treeFile = (title: string) =>
     page.locator('.file-tree-name').getByText(title, { exact: true });

@@ -14,7 +14,11 @@ import {
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { runGate, localTestExecutionAllowed } from './quality-gate.mjs';
+import {
+  runGate,
+  localTestExecutionAllowed,
+  gateDiagnostics,
+} from './quality-gate.mjs';
 import { assertReleaseContext, artifactFiles } from './release-proof.mjs';
 import { writeRecord } from './gate-runner.mjs';
 import { replaceReleaseDirectory } from './package-output.mjs';
@@ -24,8 +28,8 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const desktop = path.join(root, 'apps/desktop');
 const output = path.join(desktop, 'release');
 export function parseFlags(flags) {
-  if (flags.some((flag) => flag !== '--with-zip'))
-    throw new Error('Usage: pnpm package:desktop [--with-zip]');
+  if (flags.some((flag) => !['--with-zip', '--full'].includes(flag)))
+    throw new Error('Usage: pnpm package:desktop [--with-zip] [--full]');
   return [...new Set(flags)];
 }
 
@@ -64,7 +68,8 @@ async function nativeFiles(directory, prefix = '') {
       files.push(
         ...(await nativeFiles(path.join(directory, entry.name), relative)),
       );
-    else if (/\.verd(?:-doc)?\.json$/.test(entry.name)) files.push(relative);
+    else if (/\.verd(?:(?:-doc)?\.json)?$/.test(entry.name))
+      files.push(relative);
   }
   return files.sort();
 }
@@ -158,7 +163,7 @@ export async function packageDesktop(input = []) {
     const { main } = await import('./remote-test.mjs');
     return main(['package', ...flags]);
   }
-  return runGate('release', [], {
+  return runGate('release', flags.includes('--full') ? ['--full'] : [], {
     consume: async ({ context, contextFile }) => {
       const previousContext = process.env.VERD_RELEASE_CONTEXT;
       const previousRun = process.env.VERD_RELEASE_RUN_ID;
@@ -227,6 +232,9 @@ async function buildPackage(flags, context, evidence) {
       await validateMacApp(app, config);
       for (const file of artifacts.filter((file) => file.endsWith('.dmg')))
         await validateMacDmg(file, config, staging);
+      const previousDiagnostics = new Set(
+        (await gateDiagnostics()).map((report) => report.index),
+      );
       run(
         'pnpm',
         [
@@ -243,6 +251,16 @@ async function buildPackage(flags, context, evidence) {
           env: { ...process.env, VERDBOARD_PACKAGED_APP: app },
         },
       );
+      if (process.env.REMOTE_TEST_JOB_DIR) {
+        evidence.diagnostics = (await gateDiagnostics()).filter(
+          (report) => !previousDiagnostics.has(report.index),
+        );
+        if (
+          evidence.diagnostics.length !== 1 ||
+          evidence.diagnostics.some((report) => !report.complete)
+        )
+          throw new Error('Packaged E2E diagnostics are missing or incomplete');
+      }
     }
     evidence.validations = {
       application: process.platform === 'darwin' ? 'passed' : 'not-applicable',

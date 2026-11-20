@@ -1,7 +1,7 @@
-import { useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import type { BoardTextDocument } from '@sue/board-common';
 import { DocumentEditor } from '@sue/board-react-text';
-import { VmDialog } from '../shared/components/vm-dialog';
+import { ArrowLeft } from 'lucide-react';
 import { WorkspaceButton } from '../shared/workspace-design';
 
 export interface DefaultSkillContent {
@@ -19,13 +19,20 @@ export function DefaultSkillViewer({
   value,
   zh,
   onClose,
+  backLabel = zh ? '返回编辑' : 'Back to editor',
 }: {
   value: DefaultSkillContent | string;
   zh: boolean;
   onClose(): void;
+  backLabel?: string;
 }) {
+  const titleId = useId();
+  const back = useRef<HTMLButtonElement>(null);
   const [selected, setSelected] = useState(0);
   const [source, setSource] = useState(false);
+  useEffect(() => {
+    back.current?.focus({ preventScroll: true });
+  }, []);
   const items =
     typeof value === 'string'
       ? []
@@ -38,13 +45,35 @@ export function DefaultSkillViewer({
         ];
   const item = items[selected];
   return (
-    <VmDialog
-      title={zh ? '默认 Skill 与规则' : 'Default Skills and rules'}
-      onClose={onClose}
-      closeLabel={zh ? '关闭默认 Skill' : 'Close default Skills'}
-      className="workspace-default-skill-dialog"
+    <section
+      aria-labelledby={titleId}
+      className="workspace-default-skill-viewer"
       data-testid="workspace-default-skill-viewer"
+      onKeyDownCapture={(event) => {
+        if (event.key !== 'Escape' || event.nativeEvent.isComposing) return;
+        event.preventDefault();
+        event.stopPropagation();
+        onClose();
+      }}
     >
+      <WorkspaceButton
+        ref={back}
+        type="button"
+        intent="ghost"
+        icon={<ArrowLeft size={16} aria-hidden />}
+        data-testid="workspace-default-skill-back"
+        onClick={onClose}
+      >
+        {backLabel}
+      </WorkspaceButton>
+      <h2 id={titleId} className="workspace-default-skill-heading">
+        {zh ? '默认 Skill 与规则' : 'Default Skills and rules'}
+      </h2>
+      <p>
+        {zh
+          ? '供 AI 使用的内置编写规范，仅供查看。返回后可编辑当前工作区的补充要求。'
+          : 'Built-in writing instructions for AI, shown read-only. Return to edit this workspace’s instructions.'}
+      </p>
       <div
         className="workspace-default-skill-tabs"
         role="group"
@@ -103,6 +132,6 @@ export function DefaultSkillViewer({
           )
         )}
       </div>
-    </VmDialog>
+    </section>
   );
 }

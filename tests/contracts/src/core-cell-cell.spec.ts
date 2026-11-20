@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { createTestCellRegistry as createFixtureRegistry } from '../../../../../tests/fixtures/plugins/registry';
-import { DrawKind } from '../../../draw/src/public-api';
+import { createTestCellRegistry as createFixtureRegistry } from '../../fixtures/plugins/registry';
+import { DrawKind } from '../../../packages/engine/draw/src/public-api';
 import {
   applyCellOperations,
   commitCellOperations,
@@ -10,10 +10,13 @@ import {
   paintFrame,
   redoCells,
   undoCells,
-} from './index';
-import { createCellStore, createFrameCell, type NodeCell } from './types';
+} from '../../../packages/engine/core/src/cell/index';
+import {
+  createCellStore,
+  createFrameCell,
+  type NodeCell,
+} from '../../../packages/engine/core/src/cell/types';
 const testCellRegistry = createFixtureRegistry();
-
 const node = (id: string, kind = DrawKind.geometry): NodeCell => ({
   id,
   kind,
@@ -21,7 +24,6 @@ const node = (id: string, kind = DrawKind.geometry): NodeCell => ({
   geometry: { x: 0, y: 0, width: 10, height: 10, outline: 'rectangle' },
   content: { label: id },
 });
-
 describe('cell store', () => {
   it('keeps hierarchy on the frame and restores it with undo', () => {
     const root = createFrameCell('root', {
@@ -55,7 +57,6 @@ describe('cell store', () => {
       'b',
     ]);
   });
-
   it('drops edges whose endpoint was removed and dissolves a small group', () => {
     const root = createFrameCell('root');
     const store = applyCellOperations(
@@ -98,7 +99,6 @@ describe('cell store', () => {
     expect(next.cells.e).toBeUndefined();
     expect(next.cells.b).toBeTruthy();
   });
-
   it('asks the edge kind whether a connection is allowed', () => {
     const registry = createCellRegistry();
     registry.register({ kind: 'test-start' });
@@ -133,7 +133,6 @@ describe('cell store', () => {
     ).toBe('cannot target start');
   });
 });
-
 it('restores descendants and connected edges after deleting a frame', () => {
   const store = applyCellOperations(
     createCellStore(createFrameCell('root')),
@@ -168,7 +167,6 @@ it('restores descendants and connected edges after deleting a frame', () => {
     committed.store,
   );
 });
-
 it('dissolves groups after member deletion and restores the relationship on undo', () => {
   const store = applyCellOperations(
     createCellStore(createFrameCell('root')),
@@ -197,7 +195,6 @@ it('dissolves groups after member deletion and restores the relationship on undo
   expect(committed.store.cells.g).toBeUndefined();
   expect(undoCells(committed.store, committed.history).store).toEqual(store);
 });
-
 it('undoes a transaction with dependent insert and replace operations', () => {
   const store = createCellStore(createFrameCell('root'));
   const committed = commitCellOperations(
@@ -217,7 +214,6 @@ it('undoes a transaction with dependent insert and replace operations', () => {
   });
   expect(undoCells(committed.store, committed.history).store).toEqual(store);
 });
-
 it('rejects an invalid transaction atomically', () => {
   const store = createCellStore(createFrameCell('root'));
   expect(() =>
@@ -232,7 +228,6 @@ it('rejects an invalid transaction atomically', () => {
   ).toThrow('Duplicate');
   expect(store.cells.a).toBeUndefined();
 });
-
 it('rejects cross-frame edges and non-consecutive groups', () => {
   const store = applyCellOperations(
     createCellStore(createFrameCell('root')),
@@ -264,7 +259,6 @@ it('rejects cross-frame edges and non-consecutive groups', () => {
     ),
   ).toThrow('boundary');
 });
-
 it('protects the last anchor from moves and permits atomic anchor replacement', () => {
   const center = { ...node('center'), kind: 'mind-root' };
   const store = applyCellOperations(
@@ -297,7 +291,6 @@ it('protects the last anchor from moves and permits atomic anchor replacement', 
   );
   expect(replaced.cells.replacement).toBeTruthy();
 });
-
 it('deletes a parent, descendant and incident edge selection atomically without duplicate removals', () => {
   const root = createFrameCell('root'),
     nested = createFrameCell('nested');

@@ -53,7 +53,7 @@ test('Desktop restores tab groups, renamed files and shared document edits', asy
       }),
     );
     await writeFile(
-      path.join(workspace, 'Canvas.verd.json'),
+      path.join(workspace, 'Canvas.verd'),
       JSON.stringify({
         format: 'verd-frame',
         version: 2,

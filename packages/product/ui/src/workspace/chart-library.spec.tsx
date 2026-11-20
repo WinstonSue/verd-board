@@ -36,7 +36,7 @@ it('marks the active picker mode and keeps the list in its scroll container', as
           {
             frameId: 'c',
             name: 'Plan',
-            path: 'docs/c.verd.json',
+            path: 'docs/c.verd',
             diagram: 'mind',
             placement: 'unorganized',
             referenceLabel: '0 references',
@@ -105,7 +105,7 @@ it('uses captured workspace actions for names, availability and execution instea
             {
               frameId: 'chart',
               name: 'Plan',
-              path: 'plan.verd.json',
+              path: 'plan.verd',
               diagram: 'mind',
               placement: 'standalone',
               referenceLabel: '0 references',

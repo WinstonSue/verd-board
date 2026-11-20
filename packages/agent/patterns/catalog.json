@@ -40,10 +40,7 @@
         "description": "根文件标题"
       }
     },
-    "templatePaths": [
-      "whiteboard/模板.verd.json",
-      "whiteboard/进阶模板.verd.json"
-    ],
+    "templatePaths": ["whiteboard/模板.verd", "whiteboard/进阶模板.verd"],
     "rootFileId": "pattern:whiteboard/canvas-basic",
     "guidePath": "skills/verd-whiteboard/references/guide.md",
     "ruleIds": [
@@ -72,7 +69,7 @@
         "description": "根文件标题"
       }
     },
-    "templatePaths": ["mind-map/模板.verd.json"],
+    "templatePaths": ["mind-map/模板.verd"],
     "rootFileId": "pattern:mind-map/canvas-mind",
     "guidePath": "skills/verd-mind-map/references/guide.md",
     "ruleIds": [
@@ -101,7 +98,7 @@
         "description": "根文件标题"
       }
     },
-    "templatePaths": ["workflow-dag/模板.verd.json"],
+    "templatePaths": ["workflow-dag/模板.verd"],
     "rootFileId": "pattern:workflow-dag/canvas-flow-dag",
     "guidePath": "skills/verd-workflow-dag/references/guide.md",
     "ruleIds": [
@@ -131,7 +128,7 @@
         "description": "根文件标题"
       }
     },
-    "templatePaths": ["workflow-process/模板.verd.json"],
+    "templatePaths": ["workflow-process/模板.verd"],
     "rootFileId": "pattern:workflow-process/canvas-flow-process",
     "guidePath": "skills/verd-workflow-process/references/guide.md",
     "ruleIds": [
@@ -161,7 +158,7 @@
         "description": "根文件标题"
       }
     },
-    "templatePaths": ["architecture/模板.verd.json"],
+    "templatePaths": ["architecture/模板.verd"],
     "rootFileId": "pattern:architecture/canvas-arch",
     "guidePath": "skills/verd-architecture/references/guide.md",
     "ruleIds": [
@@ -190,7 +187,7 @@
         "description": "根文件标题"
       }
     },
-    "templatePaths": ["uml-class/模板.verd.json"],
+    "templatePaths": ["uml-class/模板.verd"],
     "rootFileId": "pattern:uml-class/uml-example-class",
     "guidePath": "skills/verd-uml-class/references/guide.md",
     "ruleIds": [
@@ -219,7 +216,7 @@
         "description": "根文件标题"
       }
     },
-    "templatePaths": ["uml-sequence/模板.verd.json"],
+    "templatePaths": ["uml-sequence/模板.verd"],
     "rootFileId": "pattern:uml-sequence/uml-example-sequence",
     "guidePath": "skills/verd-uml-sequence/references/guide.md",
     "ruleIds": [
@@ -249,10 +246,10 @@
       }
     },
     "templatePaths": [
-      "multi-system/协作总图.verd.json",
-      "multi-system/工单接入内部图.verd.json",
-      "multi-system/Agent 开发内部图.verd.json",
-      "multi-system/代码发布内部图.verd.json",
+      "multi-system/协作总图.verd",
+      "multi-system/工单接入内部图.verd",
+      "multi-system/Agent 开发内部图.verd",
+      "multi-system/代码发布内部图.verd",
       "multi-system/文档导航.verd-doc.json"
     ],
     "rootFileId": "pattern:multi-system/pattern:multi/overview",

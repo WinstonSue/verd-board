@@ -14,7 +14,9 @@ test('canvas find temporarily reveals collapsed Mind without changing saved cont
   await page.goto('/');
   await openActiveFile(page);
   await page
-    .locator('input[accept=".json,.verd.json,.verd-doc.json,.md,.markdown"]')
+    .locator(
+      'input[accept=".json,.verd,.verd.json,.verd-doc.json,.md,.markdown"]',
+    )
     .setInputFiles(
       path.resolve(__dirname, '../../fixtures/ai-canvas/mind-map.verd.json'),
     );

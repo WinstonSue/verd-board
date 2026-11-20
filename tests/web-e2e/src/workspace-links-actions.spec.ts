@@ -33,7 +33,9 @@ const cell = (page: Page, id: string) =>
 const fileRow = (page: Page, name: string) =>
   page.locator('.file-tree-name').filter({ hasText: name });
 const importInput = (page: Page) =>
-  page.locator('input[accept=".json,.verd.json,.verd-doc.json,.md,.markdown"]');
+  page.locator(
+    'input[accept=".json,.verd,.verd.json,.verd-doc.json,.md,.markdown"]',
+  );
 const fixture = (name: string): SceneFile =>
   JSON.parse(readFileSync(path.join(fixtures, name), 'utf8'));
 function collapsedMindFixture(): SceneFile {
@@ -195,7 +197,7 @@ test('workflow paste routes menu and native text and rejects damaged Verd fragme
 }) => {
   await context.grantPermissions(['clipboard-read', 'clipboard-write']);
   await page.goto('/');
-  await importJson(page, 'Flow.verd.json', fixture('workflow-dag.verd.json'));
+  await importJson(page, 'Flow.verd', fixture('workflow-dag.verd.json'));
   await fileRow(page, 'DAG 流程').click();
   const start = cell(page, 'flow-start');
   await expect(start).toBeVisible();
@@ -296,7 +298,7 @@ test('a link expands both collapsed Mind ancestors temporarily while export and 
 }) => {
   const scene = collapsedMindFixture();
   await page.goto('/');
-  await importJson(page, 'collapsed-mind.verd.json', scene);
+  await importJson(page, 'collapsed-mind.verd', scene);
   await fileRow(page, '思维导图').click();
   await expect(cell(page, 'mind-root')).toBeVisible();
   await expect(cell(page, 'topic-features')).toHaveCount(0);
@@ -452,7 +454,7 @@ test('return to an embedded document waits for its editor and restores the origi
       },
     },
   };
-  await importJson(page, 'embedded-origin-board.verd.json', board);
+  await importJson(page, 'embedded-origin-board.verd', board);
   await fileRow(page, 'Embedded origin board').click();
   const card = cell(page, 'e2e-origin-card');
   await card.getByText('Before link 0', { exact: true }).dblclick();
@@ -539,7 +541,7 @@ test('canvas text opens with click preference and presentation overrides modifie
     },
   };
   node.content = { ...node.content, label, text } as typeof node.content;
-  await importJson(page, 'linked.verd.json', scene);
+  await importJson(page, 'linked.verd', scene);
   await importJson(
     page,
     'target.verd-doc.json',

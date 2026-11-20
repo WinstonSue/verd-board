@@ -1,6 +1,6 @@
 {
   "name": "@sue/verd-board-agent",
-  "version": "2.1.2",
+  "version": "0.1.0",
   "type": "module",
   "private": false,
   "main": "./dist/index.cjs",
@@ -99,6 +99,7 @@
     "react": "19.2.0",
     "react-dom": "19.2.0",
     "jsdom": "22.1.0",
+    "@sue/verd-board-file-workspace": "workspace:*",
     "@sue/verd-board-workspace": "workspace:*"
   }
 }

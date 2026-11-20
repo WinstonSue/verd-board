@@ -128,7 +128,7 @@ describe('Git session save barrier', () => {
     ).toBe(false);
   });
 
-  it('prevents ordinary trash purge from bypassing version history cleanup', async () => {
+  it('deletes local trash without asking the enabled version provider to rewrite history', async () => {
     const { host, session, handle } = await setup();
     host.versions = vi.fn(async () => ({
       status: {
@@ -148,14 +148,16 @@ describe('Git session save barrier', () => {
     session.dispose();
     const guarded = await openWorkspaceSession(host, handle);
     sessions.push(guarded);
+    await guarded.apply({ type: 'trash-file', fileId: 'doc' });
+    await guarded.flush();
+    const entryId = guarded.getState().trash[0].entryId;
     const result = await guarded.apply({
       type: 'purge-trash',
-      entryIds: ['entry'],
+      entryIds: [entryId],
     });
-    expect(result.ok).toBe(false);
-    expect(result.diagnostics[0].message).toContain(
-      'version history cleanup plan',
-    );
+    expect(result.ok).toBe(true);
+    expect(guarded.getState().trash).toHaveLength(0);
+    expect(host.versions).not.toHaveBeenCalled();
   });
 
   it('keeps read-only history readable while rejecting Git writes', async () => {

@@ -1,3 +1,4 @@
+import { loadCatalog, unitInputs } from './test-catalog.mjs';
 import { publicPackages } from './pack-public.mjs';
 import {
   agentWorkspaceDependencyProblems,
@@ -16,6 +17,11 @@ const allowedCore = new Set([
   '@sue/schema-settings-react',
 ]);
 const errors = [];
+const testCatalog = await loadCatalog(root);
+for (const unit of testCatalog.units.filter(
+  (unit) => unit.layer === 'foundation',
+))
+  await unitInputs(unit, testCatalog, root);
 for (const layer of ['engine', 'react']) {
   for (const directory of await readdir(path.join(root, 'packages', layer))) {
     const folder = path.join(root, 'packages', layer, directory);

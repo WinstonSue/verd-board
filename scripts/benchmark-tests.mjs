@@ -15,6 +15,7 @@ import {
 import { writeRecord } from './gate-runner.mjs';
 import { publicPackages } from './pack-public.mjs';
 import { webE2EOptions } from './web-e2e-runtime.mjs';
+import { reporterPath } from './remote-playwright-reporter.cjs';
 
 const executeFile = promisify(execFile);
 const unitFiles = [
@@ -31,6 +32,12 @@ const webFiles = [
   'diagram-colors.spec.ts',
   'reference-navigation.spec.ts',
 ];
+
+export function benchmarkWebFiles(mode) {
+  if (mode === 'dev') return ['dev-runtime.spec.ts'];
+  if (mode === 'prod') return [...webFiles];
+  throw new Error('Unknown Web benchmark runtime: ' + mode);
+}
 
 export function chooseComparison(baseline, candidate) {
   const healthyMemory = (result) =>
@@ -214,7 +221,10 @@ export async function benchmarkTests() {
     status: 'failed',
     identity,
     sourceDigest: hash(await sourceInventory()),
-    selection: { unit: unitFiles, web: webFiles },
+    selection: {
+      unit: unitFiles,
+      web: { dev: benchmarkWebFiles('dev'), prod: benchmarkWebFiles('prod') },
+    },
     comparisons: [],
     hardware: { cpus: os.availableParallelism(), memoryBytes: os.totalmem() },
   };
@@ -331,9 +341,7 @@ export async function benchmarkTests() {
         const reporters = [
           'dot',
           'json',
-          ...(process.env.REMOTE_TEST_REPORTER
-            ? [process.env.REMOTE_TEST_REPORTER]
-            : []),
+          ...(process.env.REMOTE_TEST_REPORTER ? [reporterPath] : []),
         ].join(',');
         const result = await measured(
           [
@@ -346,7 +354,7 @@ export async function benchmarkTests() {
                 '--config',
                 `tests/web-e2e/playwright${mode === 'prod' ? '.prod' : ''}.config.ts`,
                 '--reporter=' + reporters,
-                ...webFiles,
+                ...benchmarkWebFiles(mode),
               ],
               options: {
                 env: {

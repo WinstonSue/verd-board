@@ -68,7 +68,7 @@ it('uses role defaults in cyclic workflows and keeps edge colors independent of 
         resolveThemeRole(theme, 'secondary', 'strong', 'overlay'),
       );
       expect(visual('task')).toMatchObject(
-        resolveThemeRole(theme, 'neutral', 'node', 'overlay'),
+        resolveThemeSeries(theme, 0, 'node', 'overlay'),
       );
       expect(visual('decision')).toMatchObject({
         fill: '#ffffff',
@@ -78,9 +78,14 @@ it('uses role defaults in cyclic workflows and keeps edge colors independent of 
         resolveThemeRole(theme, 'tertiary', 'emphasis', 'overlay').strokeColor,
       );
       expect(visual('loop').strokeColor).toBe(
-        resolveThemeRole(theme, 'neutral', 'node', 'overlay').strokeColor,
+        resolveThemeSeries(theme, 0, 'node', 'overlay').strokeColor,
       );
       expect(visual('task').fill).not.toBe(visual('start').fill);
+      const automatic = visual('task');
+      task.appearance = { styleColor: 'series-1' };
+      expect(visual('task')).toMatchObject(automatic);
+      delete task.appearance;
+      expect(visual('task')).toMatchObject(automatic);
     }
   }
   const theme = resolveBoardTheme();
@@ -95,7 +100,7 @@ it('uses role defaults in cyclic workflows and keeps edge colors independent of 
   expect(JSON.stringify(store)).toBe(original);
 });
 
-it('keeps a task-only chain neutral and permits an explicit family', () => {
+it('keeps a task-only chain in the first family and permits an explicit family', () => {
   const registry = createCellRegistry({ plugins: [createWorkflowPlugin()] });
   const extensions = createWorkflowFrameExtensions(registry);
   const frame = createFrameCell('frame');
@@ -127,7 +132,7 @@ it('keeps a task-only chain neutral and permits an explicit family', () => {
     resolveThemeSeries(theme, 3, 'node', 'overlay').fill,
   );
   expect(visual(tasks[0]).fill).toBe(
-    resolveThemeRole(theme, 'neutral', 'node', 'overlay').fill,
+    resolveThemeSeries(theme, 0, 'node', 'overlay').fill,
   );
   const edge = resolveFrameCellAppearance(
     { cell: edges[1], store, frameId: frame.id, theme },

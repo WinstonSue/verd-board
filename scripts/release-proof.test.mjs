@@ -6,12 +6,12 @@ import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 import {
   releaseInputs,
-  fullStageIds,
   assertFullRelease,
   assertReleaseContext,
   captureArtifacts,
 } from './release-proof.mjs';
 import { hash } from './release-review.mjs';
+import { releaseProofFixture } from '../tests/fixtures/release-proof.mjs';
 
 test('release inputs bind versions, packaged changelogs, file mode and deletion', async (t) => {
   const root = await fs.mkdtemp(path.join(os.tmpdir(), 'verd-inputs-'));
@@ -65,17 +65,7 @@ test('only one complete release proof can authorize unchanged artifacts in the s
     toolchain: { node: 'v24', pnpm: '11', electron: '44' },
     concurrency: { budget: 4, packages: 2, workers: 2, web: 2, desktop: 1 },
   };
-  const proof = {
-    format: 'verd-quality',
-    version: 2,
-    runId: 'same-run',
-    mode: 'release',
-    status: 'passed',
-    selection: null,
-    identity,
-    planDigest: hash(fullStageIds),
-    steps: fullStageIds.map((id) => ({ id, status: 'passed' })),
-  };
+  const proof = releaseProofFixture(identity);
   const artifacts = await captureArtifacts(directories);
   const context = {
     format: 'verd-release-context',
@@ -84,7 +74,12 @@ test('only one complete release proof can authorize unchanged artifacts in the s
     artifacts,
     digest: hash({ proof, artifacts }),
   };
-  const options = { root, runId: 'same-run', identity: async () => identity };
+  const options = {
+    root,
+    runId: 'same-run',
+    identity: async () => identity,
+    verifyUnits: async () => {},
+  };
   await assertReleaseContext(context, options);
   for (const altered of [
     { ...proof, mode: 'dev' },

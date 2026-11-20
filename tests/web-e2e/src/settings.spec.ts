@@ -1,3 +1,4 @@
+import { activeTabTitle } from './tab-actions';
 import { observeContentWrites } from './service-routes';
 import {
   expectSettingValue,
@@ -9,6 +10,13 @@ import { expect, test, type Page } from './service-fixture';
 import { openAppMenu, openSettings, selectAppAction } from './app-actions';
 import { selectDrawingTool } from './drawing-tools';
 import { backToPreviousCanvas } from './workspace-nav';
+
+test.beforeEach(async ({ page }) => {
+  // Local settings checks must not wait for third-party analytics.
+  await page.route('https://cloud.umami.is/script.js', (route) =>
+    route.abort(),
+  );
+});
 
 const preferenceKey = 'verdboard.interaction-settings';
 const canvas = (page: Page) =>
@@ -32,6 +40,48 @@ const slider = async (page: Page, name: string, value: string) => {
   await page.getByTestId('settings-nav-personal.editor').click();
   await setSettingSlider(page.getByTestId(`settings-${name}`), Number(value));
 };
+
+test('storage paths can be copied and external AI tools explain their use on wide and narrow screens', async ({
+  page,
+  context,
+  localService,
+}) => {
+  await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+  await page.goto('/');
+  const settings = await openSettings(page);
+  await settings.getByTestId('settings-nav-workspace.data').click();
+  await expect(settings.getByTestId('workspace-agent-status')).toContainText(
+    '尚未启用编写工具',
+  );
+  await settings
+    .getByRole('button', { name: '启用或修复编写工具', exact: true })
+    .click();
+  for (const width of [1440, 390]) {
+    await page.setViewportSize({ width, height: 844 });
+    await expect(settings.getByTestId('workspace-storage-location')).toHaveText(
+      localService.workspace,
+    );
+    await settings.getByTestId('workspace-storage-copy').click();
+    await expect
+      .poll(() => page.evaluate(() => navigator.clipboard.readText()))
+      .toBe(localService.workspace);
+    await expect(settings.locator('.settings-storage-copy-status')).toHaveText(
+      '已复制',
+    );
+    const agent = settings.getByTestId('workspace-agent-status');
+    await expect(agent).toContainText('外部 AI 助手');
+    await expect(agent).toContainText('编写工具已就绪');
+    await expect(agent).toContainText('让它读取 AGENTS.md');
+    expect(
+      await settings.evaluate((node) => node.scrollWidth <= node.clientWidth),
+    ).toBe(true);
+    expect(
+      await settings
+        .locator('.settings-sections-main')
+        .evaluate((node) => node.scrollWidth <= node.clientWidth),
+    ).toBe(true);
+  }
+});
 
 test('settings sections are grouped menu items with keyboard navigation', async ({
   page,
@@ -408,7 +458,9 @@ test('readonly allows settings and export while disabling destructive menu actio
   await page.getByTestId('my-back').click();
   const download = page.waitForEvent('download');
   await selectAppAction(page, '导出');
-  expect((await download).suggestedFilename()).toBe('verd-frame.json');
+  expect((await download).suggestedFilename()).toBe(
+    `${await activeTabTitle(page).textContent()}.verd`,
+  );
 });
 
 test('invalid stored preferences fall back and numeric outliers are clamped', async ({
@@ -442,7 +494,7 @@ test('unified settings search navigates between personal and project fields in o
   await page.getByTestId('workspace-my').click();
   const settings = page.getByTestId('my-page');
   await expect(settings.getByTestId('settings-language')).toBeVisible();
-  await settings.getByTestId('settings-search').fill('项目简介');
+  await settings.getByTestId('settings-search').fill('工作区简介');
   await settings.locator('.settings-search-result').click();
   await expect(page.getByRole('dialog')).toHaveCount(1);
   await expect(

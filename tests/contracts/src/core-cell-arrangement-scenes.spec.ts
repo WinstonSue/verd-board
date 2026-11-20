@@ -1,11 +1,18 @@
 import { describe, expect, it } from 'vitest';
-import flowFixture from '../../../../../tests/fixtures/diagrams/architecture-data-flow.json';
-import layeredFixture from '../../../../../tests/fixtures/diagrams/architecture-layered.json';
-import { createTestCellRegistry as createFixtureRegistry } from '../../../../../tests/fixtures/plugins/registry';
-import { type ArchitectureLayerData } from '../../../architecture/src/public-api';
-import { arrangeCells, arrangementAvailability } from './arrangement';
-import { applyCellOperations, groupCells, setCellsLocked } from './index';
-import { planCellLayout } from './layout-plan';
+import flowFixture from '../../fixtures/diagrams/architecture-data-flow.json';
+import layeredFixture from '../../fixtures/diagrams/architecture-layered.json';
+import { createTestCellRegistry as createFixtureRegistry } from '../../fixtures/plugins/registry';
+import { type ArchitectureLayerData } from '../../../packages/engine/architecture/src/public-api';
+import {
+  arrangeCells,
+  arrangementAvailability,
+} from '../../../packages/engine/core/src/cell/arrangement';
+import {
+  applyCellOperations,
+  groupCells,
+  setCellsLocked,
+} from '../../../packages/engine/core/src/cell/index';
+import { planCellLayout } from '../../../packages/engine/core/src/cell/layout-plan';
 import {
   createCellStore,
   createDocumentReferenceCell,
@@ -14,9 +21,8 @@ import {
   type CellStore,
   type FrameCell,
   type NodeCell,
-} from './types';
+} from '../../../packages/engine/core/src/cell/types';
 const testCellRegistry = createFixtureRegistry();
-
 const fixture = (name: string): CellStore =>
   structuredClone(
     name === 'architecture-layered' ? layeredFixture.store : flowFixture.store,
@@ -28,7 +34,6 @@ const modules = (store: CellStore) =>
     (cell): cell is NodeCell =>
       isNodeCell(cell) && cell.kind === 'architecture-module',
   );
-
 describe('authored graph layouts', () => {
   it('keeps document cards outside a specialized layout and ignores derived transparent layer bands', () => {
     let store = fixture('architecture-layered');
@@ -60,7 +65,6 @@ describe('authored graph layouts', () => {
       ),
     ).toEqual([]);
   });
-
   it.each(['architecture-layered', 'architecture-data-flow'])(
     'arranges %s without changing sizes, membership, topology or child order; repeated application is stable',
     (name) => {
@@ -144,7 +148,6 @@ describe('authored graph layouts', () => {
         expect(geometry(reordered, cell.id)).toEqual(cell.geometry);
     },
   );
-
   it('keeps group interiors and locked or unselected modules in place', () => {
     let store = fixture('architecture-layered');
     store = applyCellOperations(
@@ -199,7 +202,6 @@ describe('authored graph layouts', () => {
     for (const id of ids.filter((id) => !selected.includes(id)))
       expect(geometry(partial, id)).toEqual(geometry(store, id));
   });
-
   it('rejects architecture groups crossing layer boundaries', () => {
     let store = fixture('architecture-layered');
     store = applyCellOperations(
@@ -229,7 +231,6 @@ describe('authored graph layouts', () => {
       reason: 'A group crosses architecture layers',
     });
   });
-
   it('preserves workflow topology and rejects cycles including cycles created by grouping', () => {
     let store = createCellStore(createFrameCell('root'));
     store = applyCellOperations(

@@ -9,7 +9,7 @@ it('authors independent layer relationships, explicitly unowned modules and bloc
       kind: 'architecture',
       id: 'arch',
       title: 'Architecture',
-      path: 'arch.verd.json',
+      path: 'arch.verd',
     },
     {
       type: 'node.upsert',

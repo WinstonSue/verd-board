@@ -24,7 +24,8 @@ export async function collectStages(
   }
   const stages = [];
   let fatal;
-  for (const node of plan) {
+  let updates = Promise.resolve();
+  const runNode = async (node) => {
     if (stages.some((stage) => stage.id === node.id))
       throw new Error('Duplicate gate stage: ' + node.id);
     const dependencies = node.dependsOn ?? [];
@@ -73,10 +74,32 @@ export async function collectStages(
       }
     }
     stage.finishedAt = new Date().toISOString();
-    await update(stages);
+    updates = updates.then(() => update(stages));
+    await updates;
     console.log(
       `[gate:stage] ${stage.id}: ${stage.status}${stage.error ? ' — ' + stage.error : ''}`,
     );
+  };
+  // Only explicitly grouped unit nodes share a pool. Builds and GUI stages
+  // remain sequential, and package workers keep the existing CPU budget.
+  for (let index = 0; index < plan.length;) {
+    const node = plan[index];
+    const width = node.pool ? node.concurrency : 1;
+    if (!Number.isInteger(width) || width < 1)
+      throw new Error('Invalid gate concurrency: ' + node.id);
+    let end = index + 1;
+    while (
+      node.pool &&
+      end < plan.length &&
+      end - index < width &&
+      plan[end].pool === node.pool &&
+      !(plan[end].dependsOn ?? []).some((id) =>
+        plan.slice(index, end).some((entry) => entry.id === id),
+      )
+    )
+      end++;
+    await Promise.all(plan.slice(index, end).map(runNode));
+    index = end;
   }
   return {
     status: stages.every((stage) => stage.status === 'passed')

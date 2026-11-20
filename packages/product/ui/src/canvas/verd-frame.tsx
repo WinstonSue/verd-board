@@ -26,6 +26,7 @@ export interface VerdFrameProps {
   onReferenceDocument?(): void;
   onCreateDocumentFrame?(): void;
   onExportNative?(): void;
+  onImportNative?(file: File): Promise<void>;
   onOpenMy?(): void;
   value: FrameSnapshot;
   frameId: string;

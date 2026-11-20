@@ -130,9 +130,11 @@ async function seed(page: Page, plain = false, includeImage = false) {
     },
   ];
   await page
-    .locator('input[accept=".json,.verd.json,.verd-doc.json,.md,.markdown"]')
+    .locator(
+      'input[accept=".json,.verd,.verd.json,.verd-doc.json,.md,.markdown"]',
+    )
     .setInputFiles({
-      name: 'realtime.verd.json',
+      name: 'realtime.verd',
       mimeType: 'application/json',
       buffer: Buffer.from(
         JSON.stringify({

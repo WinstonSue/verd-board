@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { createTestCellRegistry as createFixtureRegistry } from '../../../../../tests/fixtures/plugins/registry';
+import { createTestCellRegistry as createFixtureRegistry } from '../../../../../tests/fixtures/core/registry';
 import {
   alignCells,
   groupCells,
@@ -20,7 +20,6 @@ import {
   type NodeCell,
 } from './types';
 const testCellRegistry = createFixtureRegistry();
-
 const fixture = () =>
   applyCellOperations(
     createCellStore(createFrameCell('root')),
@@ -36,7 +35,6 @@ const fixture = () =>
     })),
     testCellRegistry,
   );
-
 describe('selection commands', () => {
   it('distinguishes owned Frame shells from global and mounted roots without changing ordinary node capabilities', () => {
     const store = applyCellOperations(
@@ -110,7 +108,6 @@ describe('selection commands', () => {
       runtime.select({ focus: ['outer'], ids: ['outer'] }),
     ).toThrow();
   });
-
   it('blocks Frame modifications under a locked ancestor or group and preserves whole-selection capability checks', () => {
     let store = applyCellOperations(
       fixture(),
@@ -159,7 +156,6 @@ describe('selection commands', () => {
       selectionAllows(lockedGroup, ['outer'], testCellRegistry, 'move'),
     ).toBe(false);
   });
-
   it('translates selected groups and Frame shells once, keeps nested coordinates and restores the whole selection in one undo', () => {
     let store = fixture();
     store = applyCellOperations(

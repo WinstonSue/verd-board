@@ -29,7 +29,7 @@ const status = (value: WorkspaceGitStatus): VersionStatus => ({
     create: value.available,
     restore: value.available,
     directory: true,
-    cleanup: value.available,
+    cleanup: value.available && value.historyCleanupSupported !== false,
     sync: value.remoteSupported ?? false,
   },
 });

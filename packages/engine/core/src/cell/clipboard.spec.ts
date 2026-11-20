@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { createTestCellRegistry as createFixtureRegistry } from '../../../../../tests/fixtures/plugins/registry';
+import { createTestCellRegistry as createFixtureRegistry } from '../../../../../tests/fixtures/core/registry';
 import {
   applyCellOperations,
   copyCellFragment,

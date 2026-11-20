@@ -23,7 +23,7 @@ async function setup(options: WorkspaceSessionOptions = {}) {
     transactionId: 'seed',
     writes: [
       {
-        path: 'board.verd.json',
+        path: 'board.verd',
         content: JSON.stringify(createFrameFile(createFrameCell('board'))),
         expectedVersion: null,
       },

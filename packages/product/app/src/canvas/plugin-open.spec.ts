@@ -15,7 +15,7 @@ it('refuses a missing domain with diagnostics and zero writes, then opens the sa
   const source = JSON.stringify(frameFileFor(value.store, 'uml-file'));
   await host.commit(handle, {
     transactionId: 'seed',
-    writes: [{ path: 'uml.verd.json', content: source, expectedVersion: null }],
+    writes: [{ path: 'uml.verd', content: source, expectedVersion: null }],
   });
   const commits = vi.spyOn(host, 'commit');
   const registry = createCellRegistry({ plugins: [] });
@@ -24,7 +24,7 @@ it('refuses a missing domain with diagnostics and zero writes, then opens the sa
   const result = canvas.openFile('uml-file');
   expect(result.ok).toBe(false);
   // Workspace validation now isolates unavailable plugins before an editor opens.
-  expect(session.getState().failedFiles.get('uml.verd.json')).toMatchObject({
+  expect(session.getState().failedFiles.get('uml.verd')).toMatchObject({
     fileId: 'uml-file',
     diagnostics: expect.arrayContaining([
       expect.objectContaining({
@@ -36,9 +36,7 @@ it('refuses a missing domain with diagnostics and zero writes, then opens the sa
   await session.flush();
   expect(commits).not.toHaveBeenCalled();
   expect(
-    new TextDecoder().decode(
-      (await host.readFile(handle, 'uml.verd.json')).content,
-    ),
+    new TextDecoder().decode((await host.readFile(handle, 'uml.verd')).content),
   ).toBe(source);
   canvas.dispose();
   session.dispose();
@@ -53,9 +51,7 @@ it('refuses a missing domain with diagnostics and zero writes, then opens the sa
   expect(editor.openFile('uml-file')).toMatchObject({ ok: true });
   expect(commits).not.toHaveBeenCalled();
   expect(
-    new TextDecoder().decode(
-      (await host.readFile(handle, 'uml.verd.json')).content,
-    ),
+    new TextDecoder().decode((await host.readFile(handle, 'uml.verd')).content),
   ).toBe(source);
   editor.dispose();
   reopened.dispose();

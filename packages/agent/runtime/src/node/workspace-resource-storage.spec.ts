@@ -56,11 +56,7 @@ describe('managed project resources', () => {
       '.verd-resources/history/index.json',
       '{"version":1,"revisions":[]}',
     );
-    await put(
-      root,
-      '.verdscrolls/cache/internal.verd.json',
-      '{"format":"invalid"}',
-    );
+    await put(root, '.verdscrolls/cache/internal.verd', '{"format":"invalid"}');
     await put(root, 'ordinary/notes.md', '# notes');
     const { host, handle } = await open(root);
     const snapshot = await host.readSnapshot(handle);

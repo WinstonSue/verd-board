@@ -4,6 +4,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import os from 'node:os';
 import { execFileSync } from 'node:child_process';
+import ts from 'typescript';
 import { collectStages, assertStagesPassed } from './gate-runner.mjs';
 import { createGatePlan, gateDiagnostics } from './quality-gate.mjs';
 import { fullStageIds } from './release-proof.mjs';
@@ -13,6 +14,99 @@ import {
   packageTestCommands,
   unitManifests,
 } from './test-units.mjs';
+
+test('unit pools retain bounded concurrency, collect failures, and leave GUI stages sequential', async () => {
+  let active = 0;
+  let maximum = 0;
+  const visited = [];
+  const plan = ['first', 'second', 'third'].map((id) => ({
+    id,
+    pool: 'packages',
+    concurrency: 2,
+    run: async () => {
+      maximum = Math.max(maximum, ++active);
+      await new Promise((resolve) => setTimeout(resolve, 10));
+      active--;
+      visited.push(id);
+      if (id === 'first') throw new Error('ordinary failure');
+    },
+  }));
+  for (const id of ['web', 'desktop'])
+    plan.push({
+      id,
+      run: async () => {
+        assert.equal(active, 0);
+        visited.push(id);
+      },
+    });
+  const result = await collectStages(plan);
+  assert.equal(maximum, 2);
+  assert.deepEqual(visited.slice(-2), ['web', 'desktop']);
+  assert.deepEqual(
+    result.stages.map((stage) => stage.status),
+    ['failed', 'passed', 'passed', 'passed', 'passed'],
+  );
+});
+
+test('a kernel-only plan runs its full unit without business builds or unrelated E2E', async (t) => {
+  const directory = await fs.mkdtemp(
+    path.join(os.tmpdir(), 'verd-kernel-plan-'),
+  );
+  t.after(() => fs.rm(directory, { recursive: true, force: true }));
+  const calls = [];
+  const plan = await createGatePlan({
+    verification: {
+      mode: 'dev',
+      units: [
+        {
+          id: 'package:core',
+          layer: 'foundation',
+          directory: 'packages/engine/core',
+          action: 'run',
+          runner: 'vitest',
+          tests: ['packages/engine/core/src/cell/plugin.spec.ts'],
+        },
+      ],
+    },
+    env: {},
+    unitEnv: {},
+    resources: path.join(directory, 'resources'),
+    logDirectory: path.join(directory, 'logs'),
+    settings: testConcurrency({}, 8),
+    execute: async (program, args) => {
+      calls.push([program, args]);
+      if (args.includes('--project')) {
+        const file = args.at(-1);
+        const configuration = JSON.parse(await fs.readFile(file, 'utf8'));
+        const parsed = ts.parseJsonConfigFileContent(
+          configuration,
+          ts.sys,
+          path.dirname(file),
+          undefined,
+          file,
+        );
+        assert.ok(
+          parsed.fileNames.some((name) => name.endsWith('cell/registry.ts')),
+        );
+        assert.equal(
+          parsed.fileNames.some((name) => /\.(?:spec|test)\.ts$/.test(name)),
+          false,
+        );
+      }
+    },
+  });
+  assert.equal(
+    plan.some((stage) => stage.id === 'public-build'),
+    false,
+  );
+  assert.equal(
+    plan.some((stage) => /^(?:web|desktop)-/.test(stage.id)),
+    false,
+  );
+  const result = await collectStages(plan);
+  assertStagesPassed(result);
+  assert.ok(calls.some(([, args]) => args.includes('src/cell/plugin.spec.ts')));
+});
 
 test('the public unit command still executes script tests after a package failure', async () => {
   const calls = [];

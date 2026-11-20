@@ -8,6 +8,43 @@ module.exports = async (context) => {
   );
   const platform = context.electronPlatformName;
   const arch = ['ia32', 'x64', 'armv7l', 'arm64', 'universal'][context.arch];
+  if (platform === 'darwin') {
+    const { execFileSync } = require('node:child_process');
+    const output = path.join(__dirname, 'build/default-file-handler');
+    const architectures =
+      arch === 'universal'
+        ? ['arm64', 'x86_64']
+        : [arch === 'x64' ? 'x86_64' : arch];
+    for (const target of architectures) {
+      execFileSync(
+        'xcrun',
+        [
+          'swiftc',
+          '-O',
+          '-target',
+          `${target}-apple-macosx12.0`,
+          path.join(__dirname, 'electron/native/default-file-handler.swift'),
+          '-o',
+          `${output}-${target}`,
+        ],
+        { stdio: 'inherit' },
+      );
+    }
+    if (architectures.length === 1)
+      await fs.rename(`${output}-${architectures[0]}`, output);
+    else
+      execFileSync(
+        'xcrun',
+        [
+          'lipo',
+          '-create',
+          ...architectures.map((target) => `${output}-${target}`),
+          '-output',
+          output,
+        ],
+        { stdio: 'inherit' },
+      );
+  }
   const os =
     platform === 'darwin' ? 'mac' : platform === 'win32' ? 'win' : 'linux';
   const { stageReleaseResources } =

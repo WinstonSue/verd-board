@@ -32,10 +32,28 @@ function run(cmd, args, cwd, env = process.env, inheritOutput = false) {
 const hash = (bytes) =>
   'sha256-' + createHash('sha256').update(bytes).digest('hex');
 async function download(url) {
-  const response = await fetch(url);
-  if (!response.ok)
-    throw new Error(`Download failed ${response.status}: ${url}`);
-  return Buffer.from(await response.arrayBuffer());
+  // Use the same proxy-aware transport as the remote-test runtime bootstrap.
+  const result = spawnSync(
+    'curl',
+    [
+      '--fail',
+      '--silent',
+      '--show-error',
+      '--location',
+      '--ipv4',
+      '--connect-timeout',
+      '20',
+      '--max-time',
+      '120',
+      url,
+    ],
+    { maxBuffer: 256 * 1024 * 1024 },
+  );
+  if (result.error || result.status !== 0)
+    throw new Error(
+      'Download failed: ' + (result.error?.message ?? result.stderr.toString()),
+    );
+  return result.stdout;
 }
 export async function downloadNodeArchive(
   platform,

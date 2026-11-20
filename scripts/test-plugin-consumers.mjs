@@ -9,7 +9,7 @@ import path from 'node:path';
 import assert from 'node:assert/strict';
 import { spawnSync, spawn } from 'node:child_process';
 import { publicPackages, packPublicPackages, root } from './pack-public.mjs';
-import { chromium } from '@playwright/test';
+import { chromium, expect } from '@playwright/test';
 const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'verd-plugin-consumers-'));
 const packed = packPublicPackages(path.join(temp, 'tarballs'));
 const manifests = new Map(publicPackages.map(({ pkg }) => [pkg.name, pkg]));
@@ -262,9 +262,19 @@ createRoot(document.getElementById('root')!).render(<StrictMode><App /></StrictM
       .getByRole('option', { name: 'Heading level two Document' })
       .click();
     await page.locator('.board-document-content h2').waitFor();
+    await palette.waitFor({ state: 'hidden' });
+    // Tiptap restores editor focus on the next frame. Finish that command
+    // before a subsequent shortcut gives focus to a new panel.
+    await page.evaluate(
+      () => new Promise((resolve) => window.requestAnimationFrame(resolve)),
+    );
+    await expect(page.locator('.board-document-content')).toBeFocused();
     await page.getByRole('button', { name: 'Commands', exact: true }).focus();
     await page.keyboard.press('Control+Shift+P');
     await palette.waitFor();
+    await expect(
+      palette.getByRole('combobox', { name: 'Search commands' }),
+    ).toBeFocused();
     await page.keyboard.press('Escape');
     await palette.waitFor({ state: 'hidden' });
     await page.getByRole('button', { name: 'Shortcuts', exact: true }).click();

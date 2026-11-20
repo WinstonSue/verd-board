@@ -109,7 +109,7 @@ for (const [appearance, language] of [
       };
       await page
         .locator(
-          'input[accept=".json,.verd.json,.verd-doc.json,.md,.markdown"]',
+          'input[accept=".json,.verd,.verd.json,.verd-doc.json,.md,.markdown"]',
         )
         .setInputFiles({
           name: `${scenario.name}.json`,

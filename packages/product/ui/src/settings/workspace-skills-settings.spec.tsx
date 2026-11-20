@@ -27,6 +27,7 @@ const initial = {
 };
 let model: WorkspaceSkillsSettingsProps;
 let onSection: ReturnType<typeof vi.fn>;
+let onBack: ReturnType<typeof vi.fn>;
 async function render(section = 'workspace.skills') {
   await act(async () =>
     root.render(
@@ -35,7 +36,7 @@ async function render(section = 'workspace.skills') {
           <SettingsCenter
             section={section}
             onSection={onSection}
-            onBack={() => {}}
+            onBack={onBack}
             workspace={{
               config: {},
               defaultName: 'Project',
@@ -54,6 +55,7 @@ async function setup() {
   document.body.append(container);
   root = createRoot(container);
   onSection = vi.fn();
+  onBack = vi.fn();
   model = {
     workspaceKey: 'project-a',
     items: [
@@ -226,6 +228,188 @@ it('keeps IME text in the draft until composition ends and opens default guidanc
   await click('workspace-skill-default');
   expect(element('workspace-skill-guide').textContent).toBe(
     'Default pattern guidance',
+  );
+});
+
+it('reads default guidance in the same settings panel and returns to the existing scope and draft', async () => {
+  await setup();
+  await chooseScope('架构图');
+  await fill('workspace-skill-body', 'Keep my architecture draft');
+  const body = element<HTMLTextAreaElement>('workspace-skill-body');
+  const panel = container.querySelector<HTMLElement>(
+    '.settings-sections-main',
+  )!;
+  panel.scrollTop = 240;
+  await act(async () => body.focus());
+  await act(async () => element('workspace-skill-default').focus());
+  expect(model.save).not.toHaveBeenCalled();
+  await click('workspace-skill-default');
+  expect(container.querySelectorAll('dialog')).toHaveLength(1);
+  expect(body.closest('[hidden]')).toBeTruthy();
+  expect(element('workspace-default-skill-back').textContent).toContain(
+    '返回提示词',
+  );
+  expect(document.activeElement).toBe(element('workspace-default-skill-back'));
+  expect(panel.scrollTop).toBe(0);
+  await click('workspace-default-skill-back');
+  expect(
+    container.querySelector('[data-testid="workspace-default-skill-viewer"]'),
+  ).toBeNull();
+  expect(element('workspace-skill-body')).toBe(body);
+  expect(body.closest('[hidden]')).toBeNull();
+  expect(body.value).toBe('Keep my architecture draft');
+  expect(element<HTMLSelectElement>('workspace-skill-scope').value).toBe(
+    architecture,
+  );
+  expect(panel.scrollTop).toBe(240);
+  expect(document.activeElement).toBe(element('workspace-skill-default'));
+});
+
+it('returns from default guidance with Escape while preserving a new custom Skill draft', async () => {
+  await setup();
+  model.customItems = [];
+  await render('workspace.custom-skills');
+  await click('workspace-custom-skill-new');
+  await fill('workspace-custom-skill-name', 'domain-writing');
+  await fill('workspace-skill-body', 'Unfinished custom instructions');
+  await act(async () => element('workspace-skill-body').focus());
+  await act(async () => element('workspace-skill-default').focus());
+  expect(model.save).not.toHaveBeenCalled();
+  await click('workspace-skill-default');
+  expect(element('workspace-default-skill-back').textContent).toContain(
+    '返回自定义 Skills',
+  );
+  await act(async () =>
+    element('workspace-default-skill-back').dispatchEvent(
+      new KeyboardEvent('keydown', {
+        key: 'Escape',
+        bubbles: true,
+        cancelable: true,
+      }),
+    ),
+  );
+  expect(
+    container.querySelector('[data-testid="workspace-default-skill-viewer"]'),
+  ).toBeNull();
+  expect(element<HTMLInputElement>('workspace-custom-skill-name').value).toBe(
+    'domain-writing',
+  );
+  expect(element<HTMLTextAreaElement>('workspace-skill-body').value).toBe(
+    'Unfinished custom instructions',
+  );
+  expect(element('settings-center')).toBeTruthy();
+});
+
+it.each(['settings-center-back', 'settings-nav-personal.editor'])(
+  'shows the editor error and preserves the draft when %s cannot save from default guidance',
+  async (target) => {
+    await setup();
+    model.customItems = [];
+    model.save = vi.fn(async () => ({
+      status: 'rejected',
+      message: '名称不能为空',
+    }));
+    await render('workspace.custom-skills');
+    await click('workspace-custom-skill-new');
+    await fill('workspace-skill-body', 'Keep the unnamed draft');
+    await act(async () => element('workspace-skill-body').focus());
+    await act(async () => element('workspace-skill-default').focus());
+    await click('workspace-skill-default');
+    expect(element('workspace-skill-body').closest('[hidden]')).toBeTruthy();
+    await click(target);
+    expect(model.save).toHaveBeenCalledOnce();
+    expect(onBack).not.toHaveBeenCalled();
+    expect(onSection).not.toHaveBeenCalled();
+    expect(
+      container.querySelector('[data-testid="workspace-default-skill-viewer"]'),
+    ).toBeNull();
+    const error = container.querySelector('[role="alert"]');
+    expect(error?.textContent).toContain('名称不能为空');
+    expect(error?.closest('[hidden]')).toBeNull();
+    expect(element<HTMLInputElement>('workspace-custom-skill-name').value).toBe(
+      '',
+    );
+    expect(element<HTMLTextAreaElement>('workspace-skill-body').value).toBe(
+      'Keep the unnamed draft',
+    );
+    expect(element('settings-center')).toBeTruthy();
+  },
+);
+
+it('keeps default guidance open when a pending custom Skill creation completes', async () => {
+  await setup();
+  model.customItems = [];
+  let finishSave!: () => void;
+  const saving = new Promise<void>((resolve) => {
+    finishSave = resolve;
+  });
+  const path = '.agents/skills/domain-writing/SKILL.md';
+  model.save = vi.fn(async () => {
+    await saving;
+    model.customItems = [
+      { path, name: 'domain-writing', label: 'domain-writing', version: 'v2' },
+    ];
+    return { status: 'accepted' };
+  });
+  model.load = vi.fn(async () => ({
+    ...initial,
+    body: 'Created instructions',
+    version: 'v2',
+  }));
+  await render('workspace.custom-skills');
+  await click('workspace-custom-skill-new');
+  await fill('workspace-custom-skill-name', 'domain-writing');
+  await fill('workspace-skill-body', 'Created instructions');
+  await click('workspace-skill-save');
+  await click('workspace-skill-default');
+  expect(element('workspace-skill-guide').textContent).toBe(
+    'Default pattern guidance',
+  );
+  await act(async () => finishSave());
+  expect(element('workspace-skill-guide').textContent).toBe(
+    'Default pattern guidance',
+  );
+  await click('workspace-default-skill-back');
+  expect(element<HTMLSelectElement>('workspace-skill-scope').value).toBe(path);
+  expect(
+    element<HTMLInputElement>('workspace-custom-skill-name').readOnly,
+  ).toBe(true);
+  expect(element<HTMLTextAreaElement>('workspace-skill-body').value).toBe(
+    'Created instructions',
+  );
+});
+
+it('finishes opening default guidance when the editor completes a concurrent save', async () => {
+  await setup();
+  let finishSave!: (value: { status: 'accepted' }) => void;
+  let finishRead!: (value: string) => void;
+  const saving = new Promise<{ status: 'accepted' }>((resolve) => {
+    finishSave = resolve;
+  });
+  const reading = new Promise<string>((resolve) => {
+    finishRead = resolve;
+  });
+  model.save = vi.fn(() => saving);
+  model.readDefault = vi.fn(() => reading);
+  await render();
+  await fill('workspace-skill-body', 'Updated instructions');
+  await click('workspace-skill-save');
+  await click('workspace-skill-default');
+  await act(async () => {
+    model.load = vi.fn(async () => ({
+      ...initial,
+      body: 'Updated instructions',
+      version: 'v2',
+    }));
+    finishSave({ status: 'accepted' });
+  });
+  await act(async () => finishRead('Default pattern guidance'));
+  expect(element('workspace-skill-guide').textContent).toBe(
+    'Default pattern guidance',
+  );
+  await click('workspace-default-skill-back');
+  expect(element<HTMLTextAreaElement>('workspace-skill-body').value).toBe(
+    'Updated instructions',
   );
 });
 

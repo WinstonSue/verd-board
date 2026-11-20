@@ -23,7 +23,7 @@ test('package connectors keep canonical routes, show bridges and highlight relat
     });
     const filename = path.join(
       workspace,
-      '架构图/细节/01-项目分层与依赖/01.1-完整包分层与依赖.verd.json',
+      '架构图/细节/01-项目分层与依赖/01.1-完整包分层与依赖.verd',
     );
     const original = await readFile(filename, 'utf8');
     const edgeCount = Object.values<{ cellType: string }>(
@@ -43,7 +43,7 @@ test('package connectors keep canonical routes, show bridges and highlight relat
       const skip = page.getByRole('button', { name: '跳过', exact: true });
       if (await skip.isVisible()) await skip.click();
       const file = page.locator(
-        '.file-tree-name[title="架构图/01-项目分层与依赖.verd.json"]',
+        '.file-tree-name[title="架构图/01-项目分层与依赖.verd"]',
       );
       if (!(await file.isVisible()))
         await page.getByRole('button', { name: '架构图', exact: true }).click();

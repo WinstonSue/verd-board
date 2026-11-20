@@ -4,6 +4,30 @@ import { execFileSync } from 'node:child_process';
 import { ROOT, hash } from './release-review.mjs';
 import { testConcurrency } from './test-concurrency.mjs';
 import { webE2EOptions } from './web-e2e-runtime.mjs';
+import { digest, loadCatalog, verificationIdentity } from './test-catalog.mjs';
+import { validVerification } from './verification-cache.mjs';
+
+export const releaseStageIds = [
+  'lint',
+  'ui-styles',
+  'format',
+  'typecheck',
+  'plugins',
+  'workspace',
+  'public-build',
+  'builtin-workspaces',
+  'agent-resources',
+  'agent-resources-check',
+  'application-build',
+  'pack',
+  'consumer',
+  'plugin-consumers',
+  'agent-consumer',
+  'web-build',
+  'web-production-clean',
+  'web-e2e-build',
+  'desktop-build',
+];
 
 export const fullStageIds = [
   'lint',
@@ -174,9 +198,10 @@ export async function captureArtifacts(directories) {
 }
 
 export function assertFullRelease(record) {
+  const plan = record?.verification;
   if (
     record.format !== 'verd-quality' ||
-    record.version !== 2 ||
+    record.version !== 3 ||
     record.mode !== 'release' ||
     record.status !== 'passed' ||
     record.selection !== null ||
@@ -191,9 +216,37 @@ export function assertFullRelease(record) {
     !record.identity.toolchain?.electron ||
     !record.identity.concurrency?.budget ||
     !record.identity.environmentDigest ||
-    record.steps?.length !== fullStageIds.length ||
-    record.planDigest !== hash(fullStageIds) ||
-    fullStageIds.some(
+    !plan ||
+    plan.mode !== 'release' ||
+    record.planDigest !== plan.digest ||
+    plan.digest !== digest({ ...plan, digest: undefined }) ||
+    !plan.units?.length ||
+    new Set(plan.units.map((unit) => unit.id)).size !== plan.units.length ||
+    plan.units.some(
+      (unit) =>
+        !['run', 'reuse'].includes(unit.action) ||
+        (unit.action === 'reuse' && !validVerification(unit.evidence, unit)) ||
+        (unit.action === 'run' &&
+          !record.steps?.some(
+            (stage) =>
+              record.stageUnits?.[stage.id]?.includes(unit.id) &&
+              stage.status === 'passed' &&
+              stage.units?.includes(unit.id) &&
+              unit.tests.every((file) =>
+                stage.args?.includes(
+                  unit.directory
+                    ? path.posix.relative(unit.directory, file)
+                    : unit.host === 'web'
+                      ? file.replace('tests/web-e2e/', '')
+                      : file,
+                ),
+              ),
+          )),
+    ) ||
+    !record.requiredStages?.length ||
+    record.steps?.length !== record.requiredStages.length ||
+    releaseStageIds.some((id) => !record.requiredStages.includes(id)) ||
+    record.requiredStages.some(
       (id) =>
         record.steps?.filter(
           (step) => step.id === id && step.status === 'passed',
@@ -201,7 +254,40 @@ export function assertFullRelease(record) {
     ) ||
     record.steps?.some((step) => step.status !== 'passed')
   )
-    throw new Error('Packaging requires one complete, passed release gate');
+    throw new Error('Packaging requires one complete, passed release plan');
+}
+
+export async function verifyReleaseUnits(
+  record,
+  root = ROOT,
+  env = process.env,
+) {
+  assertFullRelease(record);
+  const catalog = await loadCatalog(root);
+  const expected = catalog.units.filter(
+    (unit) => !['manual', 'packaged'].includes(unit.runtime),
+  );
+  if (
+    record.verification.catalogDigest !== digest(catalog.units) ||
+    digest(expected.map((unit) => unit.id)) !==
+      digest(record.verification.units.map((unit) => unit.id))
+  )
+    throw new Error('Release verification catalog is incomplete or changed');
+  for (const unit of expected) {
+    const entry = record.verification.units.find(
+      (entry) => entry.id === unit.id,
+    );
+    if (unit.currentBuild && entry.action !== 'run')
+      throw new Error(
+        'Current-build contract cannot reuse an earlier run: ' + unit.id,
+      );
+    const identity = await verificationIdentity(unit, catalog, root, env);
+    if (
+      entry.fingerprint !== identity.digest ||
+      digest(entry.tests) !== digest(unit.tests)
+    )
+      throw new Error('Release unit inputs changed: ' + unit.id);
+  }
 }
 
 export async function assertReleaseContext(
@@ -211,6 +297,7 @@ export async function assertReleaseContext(
     runId = process.env.VERD_RELEASE_RUN_ID,
     identity = releaseIdentity,
     artifacts = true,
+    verifyUnits = verifyReleaseUnits,
   } = {},
 ) {
   assertFullRelease(context.proof);
@@ -227,6 +314,7 @@ export async function assertReleaseContext(
     throw new Error(
       'Release inputs, review, runtime or concurrency changed after validation',
     );
+  await verifyUnits(context.proof, root);
   for (const name of ['agent', 'builtin', 'desktop', 'electron'])
     if (!context.artifacts?.[name])
       throw new Error('Missing validated artifact: ' + name);

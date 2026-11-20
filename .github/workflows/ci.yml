@@ -43,8 +43,24 @@ jobs:
       - name: Install virtual display
         run: sudo apt-get install -y xvfb
 
-      - name: Full development validation
+      - name: Restore trusted verification baselines
+        uses: actions/cache/restore@v4
+        with:
+          path: .quality/verification-cache
+          key: verification-v1-${{ runner.os }}-${{ runner.arch }}-${{ github.sha }}
+          restore-keys: verification-v1-${{ runner.os }}-${{ runner.arch }}-
+
+      - name: Validate affected architecture boundaries
+        env:
+          VERD_VERIFICATION_WRITE: ${{ github.event_name == 'push' && github.ref_name == github.event.repository.default_branch && '1' || '0' }}
         run: pnpm check:ci
+
+      - name: Save trusted verification baselines
+        if: success() && github.event_name == 'push' && github.ref_name == github.event.repository.default_branch
+        uses: actions/cache/save@v4
+        with:
+          path: .quality/verification-cache
+          key: verification-v1-${{ runner.os }}-${{ runner.arch }}-${{ github.sha }}
 
       - uses: actions/upload-artifact@v4
         if: failure()

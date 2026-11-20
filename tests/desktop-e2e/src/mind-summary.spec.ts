@@ -15,7 +15,7 @@ test('Desktop summary range dragging survives selection raising, history and res
   try {
     const workspace = path.join(directory, 'workspace');
     await mkdir(workspace);
-    const file = path.join(workspace, 'summary.verd.json');
+    const file = path.join(workspace, 'summary.verd');
     await writeFile(file, JSON.stringify(mindSummaryFixture()));
     const launcher = path.join(directory, 'launch.cjs');
     await writeDesktopLauncher(launcher, path.join(directory, 'user-data'));

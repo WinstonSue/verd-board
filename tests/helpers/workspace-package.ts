@@ -6,7 +6,9 @@ import { selectAppAction } from '../web-e2e/src/app-actions';
 
 const active = (page: Page) => page.locator('.workspace-pane.is-active');
 const input = (page: Page) =>
-  page.locator('input[accept=".json,.verd.json,.verd-doc.json,.md,.markdown"]');
+  page.locator(
+    'input[accept=".json,.verd,.verd.json,.verd-doc.json,.md,.markdown"]',
+  );
 function pdf() {
   const parts = ['%PDF-1.4\n'];
   const objects = [
@@ -188,7 +190,7 @@ export async function exerciseNativePackage(
 ) {
   const { assets, value } = nativePackageFixture();
   await input(page).setInputFiles({
-    name: 'package.verd.json',
+    name: 'package.verd',
     mimeType: 'application/json',
     buffer: Buffer.from(JSON.stringify(value)),
   });
@@ -225,7 +227,7 @@ export async function importAndReadNativePackage(
   assets: ReturnType<typeof nativePackageFixture>['assets'],
 ) {
   await input(page).setInputFiles({
-    name: 'restored.verd.json',
+    name: 'restored.verd',
     mimeType: 'application/json',
     buffer: Buffer.from(JSON.stringify(exported)),
   });

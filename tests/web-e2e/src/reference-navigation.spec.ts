@@ -115,9 +115,11 @@ test('groups repeated embeds, distinguishes entry from ownership, and restores r
     document,
   ];
   await page
-    .locator('input[accept=".json,.verd.json,.verd-doc.json,.md,.markdown"]')
+    .locator(
+      'input[accept=".json,.verd,.verd.json,.verd-doc.json,.md,.markdown"]',
+    )
     .setInputFiles({
-      name: 'reference-navigation.verd.json',
+      name: 'reference-navigation.verd',
       mimeType: 'application/json',
       buffer: Buffer.from(
         JSON.stringify({

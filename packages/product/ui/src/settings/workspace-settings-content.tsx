@@ -46,7 +46,12 @@ export interface WorkspaceSettingsProps {
   actionSource?: ActionSource;
   locale?: 'zh' | 'en';
   config: WorkspaceSettingsConfig;
-  agent?: { ready: boolean; diagnostics: { code: string; message: string }[] };
+  agent?: {
+    enabled?: boolean;
+    ready: boolean;
+    diagnostics: { code: string; message: string }[];
+  };
+  onInitializeAgent?(): Promise<void>;
   /** Placeholder and sidebar title while the name is empty. */
   defaultName: string;
   onConfig(
@@ -57,6 +62,13 @@ export interface WorkspaceSettingsProps {
   readonly?: boolean;
   storage?: 'desktop' | 'filesystem' | 'browser';
   storageLocation?: string;
+  directoryContext?: {
+    workspaceRoot: string;
+    projectRoot: string;
+    workspacePath: string;
+    repositoryRoot?: string;
+    repositoryPath?: string;
+  };
   onOpenStorage?(): Promise<void>;
   onMigrateBrowserData?(): void;
   persistence?: { status: string; error?: string; onRetry(): void };
@@ -100,9 +112,9 @@ export function useWorkspaceSettingsDefinition(
         key: 'description',
         editor: 'text',
         group: 'general',
-        label: zh ? '项目简介' : 'Project description',
+        label: zh ? '工作区简介' : 'Workspace description',
         description: zh
-          ? '介绍项目内容，也用于 AI 项目上下文'
+          ? '介绍工作区内容，也用于 AI 工作区上下文'
           : 'Included in AI project context; empty until provided',
         props: {
           multiline: true,

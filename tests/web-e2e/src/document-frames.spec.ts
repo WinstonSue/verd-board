@@ -22,9 +22,11 @@ async function seed(page: Page, longDocument = false) {
     data: { targetDocumentId: 'shared-document' },
   }));
   await page
-    .locator('input[accept=".json,.verd.json,.verd-doc.json,.md,.markdown"]')
+    .locator(
+      'input[accept=".json,.verd,.verd.json,.verd-doc.json,.md,.markdown"]',
+    )
     .setInputFiles({
-      name: 'editable.verd.json',
+      name: 'editable.verd',
       mimeType: 'application/json',
       buffer: Buffer.from(
         JSON.stringify({

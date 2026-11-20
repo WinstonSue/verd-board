@@ -132,3 +132,51 @@ it('colors layers and members in structural order and recomputes only for new sn
   }
   expect(JSON.stringify(store)).toBe(original);
 });
+
+it('uses the first family for unlayered modules and their edges without persisting automatic choices', () => {
+  const extensions = createArchitectureFrameExtensions(
+    createCellRegistry({ plugins: [createArchitecturePlugin()] }),
+  );
+  const frame = createFrameCell('frame');
+  const module = createArchitectureModuleCell('module');
+  const edge: EdgeCell = {
+    id: 'edge',
+    kind: 'architecture-edge',
+    cellType: 'edge',
+    source: { cellId: module.id },
+    target: { point: [400, 40] },
+    route: { mode: 'auto' },
+  };
+  const store: CellStore = {
+    rootId: frame.id,
+    cells: { frame, module, edge },
+  };
+  frame.children = [module.id, edge.id];
+  for (const themeColorMode of Object.values(ThemeColorMode))
+    for (const appearance of ['light', 'dark'] as const) {
+      const theme = resolveBoardTheme({ themeColorMode }, appearance);
+      const visual = (id: string) =>
+        resolveFrameCellAppearance(
+          { cell: store.cells[id], store, frameId: frame.id, theme },
+          extensions,
+        );
+      const before = JSON.stringify(store);
+      const automatic = visual(module.id);
+      expect(automatic).toMatchObject({
+        ...resolveThemeSeries(theme, 0, 'node', 'overlay'),
+        styleFamily: 'series-1',
+      });
+      expect(JSON.stringify(store)).toBe(before);
+      module.appearance = { styleColor: 'series-1' };
+      expect(visual(module.id)).toMatchObject(automatic);
+      module.appearance = { styleColor: 'series-6' };
+      expect(visual(edge.id)).toMatchObject({
+        styleFamily: 'series-6',
+        strokeColor: resolveThemeSeries(theme, 5, 'node', 'overlay')
+          .strokeColor,
+      });
+      delete module.appearance;
+      expect(visual(module.id)).toMatchObject(automatic);
+      expect(visual(edge.id)).toMatchObject({ styleFamily: 'series-1' });
+    }
+});

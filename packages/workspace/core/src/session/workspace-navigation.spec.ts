@@ -168,9 +168,9 @@ describe('workspace tab navigation', () => {
 });
 
 it('reveals every ancestor of nested file paths and no directory for root files', () => {
-  expect(workspaceFileDirectories('架构图/深入/模型.verd.json')).toEqual([
+  expect(workspaceFileDirectories('架构图/深入/模型.verd')).toEqual([
     '架构图',
     '架构图/深入',
   ]);
-  expect(workspaceFileDirectories('项目导览.verd.json')).toEqual([]);
+  expect(workspaceFileDirectories('项目导览.verd')).toEqual([]);
 });

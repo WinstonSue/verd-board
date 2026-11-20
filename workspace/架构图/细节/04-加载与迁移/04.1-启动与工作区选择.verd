@@ -452,12 +452,12 @@
         }
       ],
       "content": {
-        "label": "读取 .verd.json 与 .verd-doc.json\n恢复标签与目录展开",
+        "label": "读取 .verd 与 .verd-doc.json\n恢复标签与目录展开",
         "text": {
           "schemaVersion": 1,
           "id": "demo:load/v2/text",
           "kind": "inline",
-          "plainText": "读取 .verd.json 与 .verd-doc.json\n恢复标签与目录展开",
+          "plainText": "读取 .verd 与 .verd-doc.json\n恢复标签与目录展开",
           "content": {
             "type": "doc",
             "content": [
@@ -466,7 +466,7 @@
                 "content": [
                   {
                     "type": "text",
-                    "text": "读取 .verd.json 与 .verd-doc.json",
+                    "text": "读取 .verd 与 .verd-doc.json",
                     "marks": [
                       {
                         "type": "textStyle",

@@ -67,16 +67,16 @@ async function setup(seed: Record<string, unknown>) {
 describe('workspace file failure isolation', () => {
   it('isolates the original workflow failure and unreadable JSON without changing disk bytes', async () => {
     const { host, handle, session, assertRuntime } = await setup({
-      'good.verd.json': board(),
-      'flow.verd.json': workflow(true),
+      'good.verd': board(),
+      'flow.verd': workflow(true),
       'broken.verd-doc.json': '{ unfinished',
     });
     const state = session.getState();
     expect([...state.files.keys()]).toEqual(['good']);
-    expect(state.failedFiles.get('flow.verd.json')?.fileId).toBe('flow');
+    expect(state.failedFiles.get('flow.verd')?.fileId).toBe('flow');
     expect(
       state.failedFiles
-        .get('flow.verd.json')
+        .get('flow.verd')
         ?.diagnostics.map((issue) => issue.message)
         .join(';'),
     ).toContain('Invalid workflow anchor');
@@ -98,7 +98,7 @@ describe('workspace file failure isolation', () => {
     expect(await session.flush()).toBe(true);
     expect(
       new TextDecoder().decode(
-        (await host.readFile(handle, 'flow.verd.json')).content,
+        (await host.readFile(handle, 'flow.verd')).content,
       ),
     ).toBe(JSON.stringify(workflow(true)));
     expect(
@@ -110,15 +110,15 @@ describe('workspace file failure isolation', () => {
 
   it('quarantines a clean external update and recovers after a valid external repair', async () => {
     const { session, write, assertRuntime } = await setup({
-      'good.verd.json': board(),
-      'flow.verd.json': workflow(),
+      'good.verd': board(),
+      'flow.verd': workflow(),
     });
-    await write('flow.verd.json', workflow(true));
+    await write('flow.verd', workflow(true));
     await session.syncFromHost();
     expect(session.getState().files.has('flow')).toBe(false);
     expect(session.getState().files.has('good')).toBe(true);
     assertRuntime();
-    await write('flow.verd.json', workflow());
+    await write('flow.verd', workflow());
     await session.syncFromHost();
     expect(session.getState().files.has('flow')).toBe(true);
     expect(session.getState().failedFiles.size).toBe(0);
@@ -148,28 +148,28 @@ describe('workspace file failure isolation', () => {
   });
 
   it('does not delay external failure detection behind queued navigation metadata', async () => {
-    const { session, write } = await setup({ 'flow.verd.json': workflow() });
+    const { session, write } = await setup({ 'flow.verd': workflow() });
     session.setSessionState({
       tabs: [{ fileId: 'flow' }],
       activeTabId: 'flow',
       expandedDirs: [],
     });
-    await write('flow.verd.json', workflow(true));
+    await write('flow.verd', workflow(true));
     await vi.waitFor(() =>
-      expect(session.getState().failedFiles.has('flow.verd.json')).toBe(true),
+      expect(session.getState().failedFiles.has('flow.verd')).toBe(true),
     );
     expect(session.getState().session.activeTabId).toBe('flow');
   });
 
   it('keeps unsaved content and history, and refuses to load invalid disk content', async () => {
     const { session, write, assertRuntime } = await setup({
-      'good.verd.json': board(),
+      'good.verd': board(),
     });
     const local = board();
     local.frame.name = 'Unsaved local';
     await session.apply({ type: 'file', file: local });
     const before = session.getState().files.get('good')?.file;
-    await write('good.verd.json', {
+    await write('good.verd', {
       ...board(),
       cells: {
         missingGeometry: {
@@ -195,21 +195,19 @@ describe('workspace file failure isolation', () => {
 
   it('reserves unavailable file identities and paths for creates, moves and imports', async () => {
     const { session, assertRuntime } = await setup({
-      'flow.verd.json': workflow(true),
-      'good.verd.json': board(),
+      'flow.verd': workflow(true),
+      'good.verd': board(),
     });
     expect(
       (
         await session.apply({
           type: 'create-file',
           file: board('other'),
-          path: 'flow.verd.json',
+          path: 'flow.verd',
         })
       ).ok,
     ).toBe(true);
-    expect(session.getState().files.get('other')?.path).not.toBe(
-      'flow.verd.json',
-    );
+    expect(session.getState().files.get('other')?.path).not.toBe('flow.verd');
     expect(
       (await session.apply({ type: 'create-file', file: board('flow') })).ok,
     ).toBe(false);
@@ -218,7 +216,7 @@ describe('workspace file failure isolation', () => {
         await session.apply({
           type: 'move-file',
           fileId: 'good',
-          toPath: 'flow.verd.json',
+          toPath: 'flow.verd',
         })
       ).ok,
     ).toBe(false);
@@ -228,39 +226,37 @@ describe('workspace file failure isolation', () => {
         await session.apply({
           type: 'create-file',
           file: doc,
-          path: 'flow.verd.json',
+          path: 'flow.verd',
         })
       ).ok,
     ).toBe(true);
-    expect(session.getState().documents.get('doc')?.path).not.toBe(
-      'flow.verd.json',
-    );
+    expect(session.getState().documents.get('doc')?.path).not.toBe('flow.verd');
     expect(
       (await session.apply({ type: 'import-files', files: [workflow()] })).ok,
     ).toBe(true);
     expect(session.getState().files.has('flow')).toBe(false);
-    expect(session.getState().failedFiles.has('flow.verd.json')).toBe(true);
+    expect(session.getState().failedFiles.has('flow.verd')).toBe(true);
     assertRuntime();
   });
 
   it('quarantines both sides of an identity collision while unrelated files remain usable', async () => {
     const { session, assertRuntime } = await setup({
-      'a.verd.json': board('duplicate'),
-      'b.verd.json': board('duplicate'),
-      'good.verd.json': board(),
+      'a.verd': board('duplicate'),
+      'b.verd': board('duplicate'),
+      'good.verd': board(),
     });
     expect([...session.getState().files.keys()]).toEqual(['good']);
     expect([...session.getState().failedFiles.keys()].sort()).toEqual([
-      'a.verd.json',
-      'b.verd.json',
+      'a.verd',
+      'b.verd',
     ]);
     assertRuntime();
   });
 
   it('does not reintroduce broken data when restoring a folder or replaying its history', async () => {
     const { session, host, handle, assertRuntime } = await setup({
-      'docs/flow.verd.json': workflow(true),
-      'good.verd.json': board(),
+      'docs/flow.verd': workflow(true),
+      'good.verd': board(),
     });
     expect(
       (await session.apply({ type: 'trash-directory', path: 'docs' })).ok,
@@ -270,9 +266,7 @@ describe('workspace file failure isolation', () => {
     expect((await session.apply({ type: 'restore-file', entryId })).ok).toBe(
       true,
     );
-    expect(session.getState().failedFiles.has('docs/flow.verd.json')).toBe(
-      true,
-    );
+    expect(session.getState().failedFiles.has('docs/flow.verd')).toBe(true);
     assertRuntime();
     expect((await session.undo()).ok).toBe(true);
     expect(session.getState().failedFiles.size).toBe(0);
@@ -280,14 +274,14 @@ describe('workspace file failure isolation', () => {
     assertRuntime();
     expect(
       new TextDecoder().decode(
-        (await host.readFile(handle, 'docs/flow.verd.json')).content,
+        (await host.readFile(handle, 'docs/flow.verd')).content,
       ),
     ).toBe(JSON.stringify(workflow(true)));
   });
 
   it('rejects an incoming file that collides only with unsaved local cells', async () => {
     const { session, write, assertRuntime } = await setup({
-      'good.verd.json': board(),
+      'good.verd': board(),
     });
     const local = board();
     local.frame.children = ['local-reference'];
@@ -299,23 +293,23 @@ describe('workspace file failure isolation', () => {
       data: { targetFrameId: 'absent' },
     };
     expect((await session.apply({ type: 'file', file: local })).ok).toBe(true);
-    await write('incoming.verd.json', board('local-reference'));
+    await write('incoming.verd', board('local-reference'));
     await session.syncFromHost();
     expect(session.getState().files.get('good')?.dirty).toBe(true);
-    expect(session.getState().failedFiles.has('incoming.verd.json')).toBe(true);
+    expect(session.getState().failedFiles.has('incoming.verd')).toBe(true);
     expect(session.getState().files.has('local-reference')).toBe(false);
     assertRuntime();
   });
 
   it('keeps unrelated edits saveable while a duplicate identity conflicts with a dirty local file', async () => {
     const { session, host, handle, write, assertRuntime } = await setup({
-      'good.verd.json': board(),
-      'other.verd.json': board('other'),
+      'good.verd': board(),
+      'other.verd': board('other'),
     });
     const local = board();
     local.frame.name = 'Unsaved';
     await session.apply({ type: 'file', file: local });
-    await write('copy.verd.json', board());
+    await write('copy.verd', board());
     await session.syncFromHost();
     const other = board('other');
     other.frame.name = 'Still saves';
@@ -323,7 +317,7 @@ describe('workspace file failure isolation', () => {
     await session.flush();
     expect(
       new TextDecoder().decode(
-        (await host.readFile(handle, 'other.verd.json')).content,
+        (await host.readFile(handle, 'other.verd')).content,
       ),
     ).toContain('Still saves');
     assertRuntime();
@@ -346,9 +340,9 @@ describe('workspace file failure isolation', () => {
     } as never;
     unknown.frame.children.push('unsupported');
     const { session, assertRuntime } = await setup({
-      'bad.verd.json': malformed,
-      'unknown.verd.json': unknown,
-      'good.verd.json': board(),
+      'bad.verd': malformed,
+      'unknown.verd': unknown,
+      'good.verd': board(),
     });
     expect(session.getState().failedFiles.size).toBe(2);
     expect([...session.getState().files.keys()]).toEqual(['good']);

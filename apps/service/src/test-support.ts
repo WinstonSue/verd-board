@@ -23,10 +23,7 @@ export async function seedLegacyWorkspace(
   await fs.mkdir(root, { recursive: true });
   const files = partitionCellStore(snapshot.store).files;
   for (const [index, file] of files.entries())
-    await fs.writeFile(
-      path.join(root, `${index}.verd.json`),
-      JSON.stringify(file),
-    );
+    await fs.writeFile(path.join(root, `${index}.verd`), JSON.stringify(file));
   await fs.mkdir(path.join(root, '.verdscrolls'), { recursive: true });
   await fs.writeFile(
     path.join(root, '.verdscrolls/config.json'),

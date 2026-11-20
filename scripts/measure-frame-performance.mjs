@@ -68,7 +68,7 @@ async function visit(directory) {
     if (entry.name.startsWith('.')) continue;
     const filename = path.join(directory, entry.name);
     if (entry.isDirectory()) await visit(filename);
-    else if (/\.verd(?:-doc)?\.json$/.test(entry.name)) {
+    else if (/\.verd(?:(?:-doc)?\.json)?$/.test(entry.name)) {
       const file = JSON.parse(await readFile(filename, 'utf8'));
       files.push(file);
       if (file.frame?.id === 'board-root')
@@ -291,10 +291,10 @@ for (let run = 0; run < runs; run++)
         if (platform === 'web')
           await page
             .locator(
-              'input[accept=".json,.verd.json,.verd-doc.json,.md,.markdown"]',
+              'input[accept=".json,.verd,.verd.json,.verd-doc.json,.md,.markdown"]',
             )
             .setInputFiles({
-              name: 'performance.verd.json',
+              name: 'performance.verd',
               mimeType: 'application/json',
               buffer: Buffer.from(
                 JSON.stringify({

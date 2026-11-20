@@ -40,9 +40,13 @@ export async function loadBuiltinSkill(patternId?: string): Promise<string> {
 }
 
 /** Browser-safe native template loading, shared by the product and embedding hosts. */
-const templateModules = import.meta.glob('../agent/**/*.verd*.json', {
-  import: 'default',
-});
+const templateModules = import.meta.glob(
+  ['../agent/**/*.verd', '../agent/**/*.verd*.json'],
+  {
+    query: '?raw',
+    import: 'default',
+  },
+);
 const commonGuidePaths = [
   'skills/verd-authoring/references/writing.md',
   'skills/verd-authoring/references/reports.md',
@@ -92,7 +96,7 @@ export async function loadPatternTemplates(
     pattern.templatePaths.map(async (path) => {
       const load = templateModules['../agent/' + path];
       if (!load) throw new Error('Missing native template: ' + path);
-      return load();
+      return JSON.parse((await load()) as string);
     }),
   );
 }

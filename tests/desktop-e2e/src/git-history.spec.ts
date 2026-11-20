@@ -1,5 +1,6 @@
 import {
   initializeVersions,
+  openVersionSettings,
   closeVersionSettings,
   openScopedVersions,
 } from '../../web-e2e/src/version-actions';
@@ -101,4 +102,60 @@ test('Desktop Git commits one file, preserves external staging and restores with
   expect(await git('rev-list', '--count', 'HEAD')).toBe('2');
   expect(await git('show', `${first}:notes.txt`)).toBe('Before Git');
   expect(await git('diff', '--cached', '--name-only')).toBe('other.txt');
+});
+
+test('Desktop opens a project document directory and leaves repository operations with the project', async () => {
+  const project = path.join(directory, 'project');
+  const workspace = path.join(project, 'docs');
+  const userData = path.join(directory, 'user-data');
+  await mkdir(workspace, { recursive: true });
+  await mkdir(userData);
+  await writeFile(
+    path.join(project, '.verd.config.json'),
+    JSON.stringify({ workspace: 'docs' }),
+  );
+  await writeFile(path.join(project, 'code.txt'), 'Original code');
+  await writeFile(path.join(workspace, 'notes.txt'), 'Original document');
+  const git = async (...args: string[]) =>
+    (await execute('git', ['-C', project, ...args])).stdout.trim();
+  await git('init', '--initial-branch=main');
+  await git('config', 'user.name', 'Project Writer');
+  await git('config', 'user.email', 'project@example.com');
+  await git('add', '.');
+  await git('commit', '-m', 'Project baseline');
+  const launcher = path.join(directory, 'launch.cjs');
+  await writeDesktopLauncher(launcher, userData);
+  desktop = await electron.launch({
+    args: [launcher],
+    env: { ...process.env, VERDBOARD_WORKSPACE_PATH: workspace },
+  });
+  const page = await desktop.firstWindow();
+  await expect(page.locator('.workspace-shell')).toBeVisible({
+    timeout: 60000,
+  });
+  await writeFile(path.join(project, 'code.txt'), 'Staged code');
+  await git('add', 'code.txt');
+  await writeFile(path.join(workspace, 'notes.txt'), 'Edited document');
+  const dialog = await openScopedVersions(page, 'notes.txt');
+  await dialog
+    .getByRole('textbox', { name: '版本说明', exact: true })
+    .fill('Document update');
+  await dialog
+    .getByRole('button', { name: '为此文件创建版本', exact: true })
+    .click();
+  await expect(dialog.locator('.workspace-git-log article')).toHaveCount(2);
+  expect(await git('show', 'HEAD:code.txt')).toBe('Original code');
+  expect(await git('show', ':code.txt')).toBe('Staged code');
+  expect(await git('show', 'HEAD:docs/notes.txt')).toBe('Edited document');
+  await page.keyboard.press('Escape');
+  const settings = await openVersionSettings(page);
+  await settings
+    .getByRole('button', { name: '存储与同步', exact: true })
+    .click();
+  await expect(settings).toContainText('沿用项目 Git');
+  await expect(settings.locator('.workspace-git-remote')).toHaveCount(0);
+  await expect(settings.locator('.workspace-git-purge')).toHaveCount(0);
+  await expect(
+    settings.getByRole('button', { name: '初始化 Git 仓库', exact: true }),
+  ).toHaveCount(0);
 });

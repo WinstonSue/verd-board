@@ -12,3 +12,8 @@ export { preserveWorkspaceResources } from './node/workspace-resource-storage';
 
 export * from './node/workspace-manager';
 export * from './node/builtin-workspace-update';
+
+export * from './node/workspace-service-transport';
+export { discoverWorkspaceRepository } from './node/workspace-git';
+export * from './node/workspace-context';
+export * from './node/project-workspace-service';

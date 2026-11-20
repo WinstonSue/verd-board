@@ -95,12 +95,12 @@ async function seed(
   };
   const writes = [
     {
-      path: 'folder/a.verd.json',
+      path: 'folder/a.verd',
       content: JSON.stringify(frame('a', titles.canvas ?? 'Quiet A', true)),
       expectedVersion: null,
     },
     {
-      path: 'folder/b.verd.json',
+      path: 'folder/b.verd',
       content: JSON.stringify(frame('b', 'Quiet B')),
       expectedVersion: null,
     },

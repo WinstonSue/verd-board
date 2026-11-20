@@ -219,7 +219,7 @@ describe('workspace full text search', () => {
         ]),
       ),
     } as unknown as import('@sue/verd-board-workspace').FrameFileV2;
-    records.push(extractSearchRecord(graph, 'diagram.verd.json'));
+    records.push(extractSearchRecord(graph, 'diagram.verd'));
     const timings = Array.from({ length: 10 }, () => {
       const start = performance.now();
       expect(searchRecords(records, '管理 architecture')).toHaveLength(1000);
@@ -270,7 +270,7 @@ it('indexes visible diagram text and fields without expanding reference addresse
       reference: { id: 'reference', data: { targetFrameId: 'internal-id' } },
     },
   } as unknown as import('@sue/verd-board-workspace').FrameFileV2;
-  const record = extractSearchRecord(file, 'board.verd.json');
+  const record = extractSearchRecord(file, 'board.verd');
   expect(searchRecords([record], 'customer ready')[0].fragment.cellId).toBe(
     'node',
   );

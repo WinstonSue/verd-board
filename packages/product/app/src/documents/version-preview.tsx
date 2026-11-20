@@ -45,7 +45,7 @@ export function versionSnapshot(
   const documents = new Map<string, WorkspaceFileEntry<DocumentFileV1>>();
   const fileIdByPath = new Map<string, string>();
   for (const item of versionFiles) {
-    if (!/\.verd(?:-doc)?\.json$/.test(item.path)) continue;
+    if (!/\.verd(?:(?:-doc)?\.json)?$/.test(item.path)) continue;
     const value: unknown = JSON.parse(new TextDecoder().decode(item.content));
     if (!isWorkspaceFile(value))
       throw new Error('Invalid historical file: ' + item.path);
@@ -82,7 +82,7 @@ export function versionSnapshot(
     entries: versionFiles.map((item) => ({
       path: item.path,
       kind: 'file' as const,
-      canvas: /\.verd\.json$/.test(item.path),
+      canvas: /\.verd(?:\.json)?$/.test(item.path),
     })),
     resources: [],
     canUndo: false,

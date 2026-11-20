@@ -13,7 +13,9 @@ export async function exerciseDocumentBubbleStability(page: Page) {
     ],
   }));
   await page
-    .locator('input[accept=".json,.verd.json,.verd-doc.json,.md,.markdown"]')
+    .locator(
+      'input[accept=".json,.verd,.verd.json,.verd-doc.json,.md,.markdown"]',
+    )
     .setInputFiles({
       name: 'Bubble stability.verd-doc.json',
       mimeType: 'application/json',

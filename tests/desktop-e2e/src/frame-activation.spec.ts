@@ -29,7 +29,7 @@ test('Desktop activates only one Frame across every chart type and releases it o
         'utf8',
       );
       const file = JSON.parse(bytes);
-      const filename = path.join(workspace, `${name}.verd.json`);
+      const filename = path.join(workspace, `${name}.verd`);
       await writeFile(filename, bytes);
       originals.set(filename, bytes);
       refs.push({
@@ -46,7 +46,7 @@ test('Desktop activates only one Frame across every chart type and releases it o
       });
     }
     await writeFile(
-      path.join(workspace, 'Guide.verd.json'),
+      path.join(workspace, 'Guide.verd'),
       JSON.stringify({
         format: 'verd-frame',
         version: 2,

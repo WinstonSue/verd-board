@@ -65,9 +65,11 @@ const documentFile = (id: string, frameId: string) => ({
 });
 async function importFiles(page: Page, files: object[]) {
   await page
-    .locator('input[accept=".json,.verd.json,.verd-doc.json,.md,.markdown"]')
+    .locator(
+      'input[accept=".json,.verd,.verd.json,.verd-doc.json,.md,.markdown"]',
+    )
     .setInputFiles({
-      name: 'reference-workspace.verd.json',
+      name: 'reference-workspace.verd',
       mimeType: 'application/json',
       buffer: Buffer.from(
         JSON.stringify({

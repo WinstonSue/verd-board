@@ -43,6 +43,29 @@ const writeJournal = async (
   await fs.writeFile(journalFile(root, id), JSON.stringify(journal, null, 2));
 };
 
+it('excludes mapped Wiki trash from the Verd index and still reads explicit files', async () => {
+  const project = await makeTmp();
+  const root = path.join(project, 'doc', 'tech-wiki');
+  await fs.mkdir(path.join(root, '.trash'), { recursive: true });
+  await fs.writeFile(path.join(root, 'Home.md'), '# Live');
+  await fs.writeFile(path.join(root, '.trash', 'Old.verd'), '{}');
+  await fs.writeFile(
+    path.join(project, '.verd.config.json'),
+    JSON.stringify({ workspace: 'doc/tech-wiki', exclude: ['.trash'] }),
+  );
+  const host = createFsWorkspaceHost({ defaultRoot: () => root, projectRoot: project });
+  const handle = (await host.openWorkspace({ create: true }))!;
+  try {
+    const snapshot = await host.readSnapshot(handle);
+    expect(snapshot.entries.map(({ path: relative }) => relative)).toContain('Home.md');
+    expect(snapshot.entries.some(({ path: relative }) => relative.startsWith('.trash'))).toBe(false);
+    expect(snapshot.canvases).toEqual([]);
+    expect(Buffer.from((await host.readFile(handle, '.trash/Old.verd')).content).toString()).toBe('{}');
+  } finally {
+    await host.closeWorkspace(handle);
+  }
+});
+
 const exists = (target: string) =>
   fs
     .access(target)
@@ -64,6 +87,74 @@ describeWorkspaceHostContract('fs host', async () => {
         path: path.join(root, `ws-${++counter}`),
       })) ?? Promise.reject(new Error('open failed')),
   };
+});
+
+describe('personal host session recovery', () => {
+  it('replays the original host session target without overwriting the recovering host', async () => {
+    const root = await makeTmp();
+    const workspace = path.join(root, 'workspace');
+    const host = (sessionNamespace: string) =>
+      createFsWorkspaceHost({ defaultRoot: () => workspace, sessionNamespace });
+    const a = host('web');
+    const b = host('desktop');
+    const first = (await a.openWorkspace())!;
+    const second = (await b.openWorkspace())!;
+    const session = (name: string) => ({
+      tabs: [],
+      activeTabId: null,
+      expandedDirs: [name],
+    });
+    await a.commit(first, {
+      transactionId: 'session-a',
+      session: session('web'),
+    });
+    const target = (
+      await fs.readdir(path.join(workspace, '.verdscrolls/sessions'))
+    )[0];
+    await b.commit(second, {
+      transactionId: 'session-b',
+      session: session('desktop'),
+    });
+    await a.closeWorkspace(first);
+    await b.closeWorkspace(second);
+    const id = 'session-recovery';
+    await writeJournal(
+      workspace,
+      id,
+      {
+        transactionId: id,
+        phase: 'applying',
+        createdAt: 1,
+        ops: [
+          {
+            kind: 'session',
+            target: 'sessions/' + target,
+            staged: `transactions/${id}.staging/session.json`,
+          },
+        ],
+      },
+      {
+        'session.json': JSON.stringify({
+          format: 'verd-workspace-session',
+          version: 1,
+          ...session('recovered-web'),
+        }),
+      },
+    );
+    const reopenedB = (await b.openWorkspace())!;
+    const reopenedA = (await a.openWorkspace())!;
+    try {
+      expect((await b.readSnapshot(reopenedB)).session?.expandedDirs).toEqual([
+        'desktop',
+      ]);
+      expect((await a.readSnapshot(reopenedA)).session?.expandedDirs).toEqual([
+        'recovered-web',
+      ]);
+    } finally {
+      await a.closeWorkspace(reopenedA);
+      await b.closeWorkspace(reopenedB);
+    }
+  });
 });
 
 describe('fs host transaction recovery', () => {

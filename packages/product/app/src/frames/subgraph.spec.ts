@@ -276,11 +276,11 @@ it('reads legacy organization as inert data without rewriting unrelated files on
     transactionId: 'legacy-source',
     writes: [
       {
-        path: 'a.verd.json',
+        path: 'a.verd',
         content: JSON.stringify(a),
         expectedVersion: null,
       },
-      { path: 'b.verd.json', content: bytes, expectedVersion: null },
+      { path: 'b.verd', content: bytes, expectedVersion: null },
     ],
   });
   const session = await openWorkspaceSession(host, handle);
@@ -290,9 +290,7 @@ it('reads legacy organization as inert data without rewriting unrelated files on
   ).toBeUndefined();
   expect(await session.flush()).toBe(true);
   expect(
-    new TextDecoder().decode(
-      (await host.readFile(handle, 'b.verd.json')).content,
-    ),
+    new TextDecoder().decode((await host.readFile(handle, 'b.verd')).content),
   ).toBe(bytes);
   await session.apply({
     type: 'file',
@@ -301,15 +299,11 @@ it('reads legacy organization as inert data without rewriting unrelated files on
   expect(await session.flush()).toBe(true);
   expect(
     JSON.parse(
-      new TextDecoder().decode(
-        (await host.readFile(handle, 'a.verd.json')).content,
-      ),
+      new TextDecoder().decode((await host.readFile(handle, 'a.verd')).content),
     ).organization,
   ).toBeUndefined();
   expect(
-    new TextDecoder().decode(
-      (await host.readFile(handle, 'b.verd.json')).content,
-    ),
+    new TextDecoder().decode((await host.readFile(handle, 'b.verd')).content),
   ).toBe(bytes);
   session.dispose();
 });

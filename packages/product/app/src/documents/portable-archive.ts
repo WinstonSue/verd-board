@@ -167,9 +167,9 @@ export async function importMarkdownCollection(input: readonly File[]) {
       const native = prepared?.files;
       if (native)
         native.forEach((file, index) => {
-          const stem = path.replace(/(?:\.verd(?:-doc)?)?\.json$/i, '');
+          const stem = path.replace(/\.verd(?:(?:-doc)?\.json)?$|\.json$/i, '');
           const suffix =
-            file.format === 'verd-document' ? '.verd-doc.json' : '.verd.json';
+            file.format === 'verd-document' ? '.verd-doc.json' : '.verd';
           nativeFiles.push({
             file,
             path: safePath(
@@ -295,7 +295,7 @@ function preparePortableEntries(
     files.map((file) => [
       workspaceFileId(file),
       (
-        paths.get(workspaceFileId(file)) ?? workspaceFileId(file) + '.verd.json'
+        paths.get(workspaceFileId(file)) ?? workspaceFileId(file) + '.verd'
       ).replace(/\.verd-doc\.json$/, '.md'),
     ]),
   );
@@ -312,7 +312,7 @@ function preparePortableEntries(
     const original =
       paths.get(workspaceFileId(file)) ??
       workspaceFileId(file) +
-        (file.format === 'verd-document' ? '.verd-doc.json' : '.verd.json');
+        (file.format === 'verd-document' ? '.verd-doc.json' : '.verd');
     entries[safePath('native/' + original)] = strToU8(
       JSON.stringify(file, null, 2),
     );
@@ -370,7 +370,7 @@ function preparePortableEntries(
         const path =
           paths.get(workspaceFileId(file)) ??
           workspaceFileId(file) +
-            (file.format === 'verd-document' ? '.verd-doc.json' : '.verd.json');
+            (file.format === 'verd-document' ? '.verd-doc.json' : '.verd');
         return { path: 'native/' + path, workspacePath: path };
       }),
     }),

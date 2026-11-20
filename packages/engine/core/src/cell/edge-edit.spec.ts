@@ -2,7 +2,7 @@ import { bindRouteTerminals } from '../terminal/edit';
 import { replaceTerminal } from '../terminal/edit';
 import { snapTerminal } from '../terminal/edit';
 import { describe, expect, it } from 'vitest';
-import { createTestCellRegistry as createFixtureRegistry } from '../../../../../tests/fixtures/plugins/registry';
+import { createTestCellRegistry as createFixtureRegistry } from '../../../../../tests/fixtures/core/registry';
 import { edgePolyline } from '../geometry/edge';
 import type { Point } from '../interfaces/point';
 import {
@@ -213,7 +213,6 @@ describe('native edge editing', () => {
       ),
     ).toBe(0.5);
   });
-
   it('keeps distributed automatic attachment points when authoring a bend or segment', () => {
     const frame = createFrameCell('frame'),
       graph = createCellStore(frame);

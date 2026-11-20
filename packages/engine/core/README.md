@@ -1,7 +1,5 @@
 # @sue/board-core
 
-以下为下一主版本的源码接入方式。本轮只交付代码与 Changesets，不升级版本、不发布；请用本仓构建的真实 tarball 验证，已发布的 2.0.0 不包含这些新入口。
-
 通用 Cell/Frame、原子事务、历史、索引、CellRegistry/CellUtil 和几何算法。领域模型与 kind 分别由 draw、mind、workflow、architecture、uml 包导出；核心不反向导出它们。
 
 在项目 .npmrc 配置两个 scope，访问权限和令牌由仓库管理员提供；令牌保存在用户配置或 CI secret。最小编辑器只使用 @sue，完整产品的 @ylib 传递依赖也需要相应授权。
@@ -30,7 +28,7 @@ assertRegisteredCellKinds 在导入归一化前检查；UnregisteredCellKindsErr
 
 独立辅助函数需要显式传递同一 registry，才能使用领域删除、重映射、场景、分组、布局、连接和路由规则。完整契约见原生系统架构文档。
 
-## 下一主版本：链接重映射边界
+## 链接重映射边界
 
 `createCellRegistry({ plugins, links })` accepts protocol-independent `rewriteHref(href, context)` and `mapStandard(cell, rewriteHref)` callbacks. Supply common's `remapWorkspaceLink` and `mapStandardCellLinks` in a host that supports workspace links; core itself keeps zero runtime dependencies. `registry.remapLinks` runs standard slots once, then each `CellPlugin.mapLinks` for its domain-owned fields.
 

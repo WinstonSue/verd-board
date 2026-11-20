@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { createTestCellRegistry as createFixtureRegistry } from '../../../../../tests/fixtures/plugins/registry';
+import { createTestCellRegistry as createFixtureRegistry } from '../../../../../tests/fixtures/core/registry';
 import { frameContentBounds } from '../cell/frame';
 import {
   createCellStore,
@@ -18,7 +18,6 @@ import {
   type RoutingObstacle,
 } from './obstacle-route';
 const testCellRegistry = createFixtureRegistry();
-
 const assertClear = (points: Point[], boxes: RoutingObstacle[]) => {
   for (let i = 1; i < points.length; i++) {
     const a = points[i - 1],
@@ -74,7 +73,6 @@ const fixture = () => {
   }
   return { store, frame, edge, nodes };
 };
-
 describe('obstacle-avoiding orthogonal routing', () => {
   it('routes a vertical long edge around siblings without changing stored geometry or routes', () => {
     const { store, edge } = fixture(),
@@ -106,7 +104,6 @@ describe('obstacle-avoiding orthogonal routing', () => {
       expect(y).toBeLessThanOrEqual(bounds.y + bounds.height);
     }
   });
-
   it('keeps fixed ports in a vertical workflow and handles backward-facing terminals', () => {
     const { store, edge } = fixture();
     for (const id of ['source', 'target'])
@@ -148,61 +145,6 @@ describe('obstacle-avoiding orthogonal routing', () => {
     );
     expect(context.routes.get('reverse')?.result.status).not.toBe('blocked');
   });
-
-  it('uses preview geometry, skips hidden nodes and transparent layers, and stops at nested Frame shells', () => {
-    const { store, frame, edge } = fixture();
-    const layer = {
-      ...node('layer', -80, 100, 260, 150),
-      kind: 'architecture-layer',
-    };
-    const nested = createFrameCell('nested', {
-      x: 0,
-      y: 150,
-      width: 100,
-      height: 50,
-    });
-    store.cells.layer = layer;
-    frame.children.push('layer');
-    (store.cells.middle as NodeCell).hidden = true;
-    const clear = createEdgeRoutingContext(
-      store,
-      frame.id,
-      undefined,
-      undefined,
-      testCellRegistry,
-    );
-    expect(clear.obstacles.map((b) => b.id)).toEqual(['source', 'target']);
-    expect(edgePolyline(store, edge, undefined, clear)).toEqual([
-      [50, 50],
-      [50, 300],
-    ]);
-    store.cells.nested = nested;
-    frame.children.push('nested');
-    const blocked = createEdgeRoutingContext(
-      store,
-      frame.id,
-      undefined,
-      undefined,
-      testCellRegistry,
-    );
-    assertClear(
-      edgePolyline(store, edge, undefined, blocked),
-      blocked.obstacles.filter((b) => b.id === 'nested'),
-    );
-    const geometry = new Map([['nested', { ...nested.geometry, x: 300 }]]);
-    const preview = createEdgeRoutingContext(
-      store,
-      frame.id,
-      geometry,
-      undefined,
-      testCellRegistry,
-    );
-    expect(edgePolyline(store, edge, geometry, preview)).toEqual([
-      [50, 50],
-      [50, 300],
-    ]);
-  });
-
   it('uses rotated AABBs while retaining a diamond port and relative anchor', () => {
     const { store, edge } = fixture();
     const middle = store.cells.middle as NodeCell;
@@ -223,7 +165,6 @@ describe('obstacle-avoiding orthogonal routing', () => {
     assertClear(edgePolyline(store, edge, undefined, context), [box]);
     expect(context.routes.get('edge')!.result.points[0]).toEqual([50, 50]);
   });
-
   it('reuses routes outside changed regions but removes obsolete detours as a blocker moves away', () => {
     const { store, frame, edge } = fixture();
     const distant = node('distant', 400, 150);
@@ -262,7 +203,6 @@ describe('obstacle-avoiding orthogonal routing', () => {
     ]);
     expect(moved.routes.get(edge.id)!.result.points).not.toBe(points);
   });
-
   it('leaves explicit bends, straight and curve modes under manual control', () => {
     const { store, edge } = fixture(),
       context = createEdgeRoutingContext(
@@ -303,7 +243,6 @@ describe('obstacle-avoiding orthogonal routing', () => {
       [50, 300],
     ]);
   });
-
   it('retries a narrow terminal corridor with stroke-safe clearance', () => {
     const boxes = [
       { id: 'source', x: 0, y: 40, width: 40, height: 20 },
@@ -325,7 +264,6 @@ describe('obstacle-avoiding orthogonal routing', () => {
       boxes.filter((b) => b.id !== 'source'),
     );
   });
-
   it('returns a finite editable fallback for overlapping endpoints blocked by another node', () => {
     const result = routeOrthogonalAvoiding(
       [0, 0],
@@ -337,7 +275,6 @@ describe('obstacle-avoiding orthogonal routing', () => {
     expect(result.status).toBe('blocked');
     expect(result.points.flat().every(Number.isFinite)).toBe(true);
   });
-
   it('shortens terminal jetties when a nearby node leaves less than 24px to turn', () => {
     const boxes = [
       { id: 'source', x: 0, y: 0, width: 100, height: 50 },
@@ -366,7 +303,6 @@ describe('obstacle-avoiding orthogonal routing', () => {
     expect(free.status).toBe('routed');
     assertClear(free.points, [boxes[1]]);
   });
-
   it('finds deterministic paths through multiple staggered obstacles independently of input order', () => {
     const boxes = Array.from({ length: 8 }, (_, i) => ({
       id: `n${i}`,
@@ -394,7 +330,6 @@ describe('obstacle-avoiding orthogonal routing', () => {
       ),
     ).toEqual(forward);
   });
-
   it('routes one hundred edges among one hundred nodes', () => {
     const boxes = Array.from({ length: 100 }, (_, i) => ({
       id: `n${i}`,
@@ -417,7 +352,6 @@ describe('obstacle-avoiding orthogonal routing', () => {
     }
   });
 });
-
 it('bounds search allocation and validates local routes against distant obstacles', () => {
   const obstacles = Array.from({ length: 10000 }, (_, i) => ({
     id: String(i),

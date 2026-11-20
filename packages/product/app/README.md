@@ -2,9 +2,17 @@
 
 Shared file models, `WorkspaceHost` contracts, `createMemoryWorkspaceHost`, `WorkspaceSession`, validation and common Git implementations live in `@sue/verd-board-workspace`. This package retains browser/service hosts, legacy storage migration and application composition. Both its root entry and `/headless` continue re-exporting the shared APIs for existing consumers; new headless integrations can depend directly on the workspace SDK without installing product app/ui.
 
-Next-major source navigation also preserves an embedded document editing view through optional canvas adapter hooks. The workspace preview cache keeps canonical document identity, content revision, selection and scroll in opaque JSON; it waits for editor-ready before restoration, checks the revision before restoring a caret, and cancels on abort, source deletion or cache release. Returning through a different occurrence resolves the stable cell again. View restoration changes no file content or history.
+Workspace navigation preserves an embedded document editing view through optional canvas adapter hooks. The workspace preview cache keeps canonical document identity, content revision, selection and scroll in opaque JSON; it waits for editor-ready before restoration, checks the revision before restoring a caret, and cancels on abort, source deletion or cache release. Returning through a different occurrence resolves the stable cell again. View restoration changes no file content or history.
 
-## 2.0.0 接入与变更
+## 项目文件夹接入
+
+工作区是实际内容目录，可独立使用，也可位于 `project/docs/`。项目通过 `@sue/verd-board-agent/node` 的 `createProjectWorkspaceService` 将现有 Node 文件宿主挂到自己的 HTTP 服务，前端通过下面的 `createServiceWorkspaceHost` 使用同一工作区界面。Node 服务配置项目根及工作区相对路径，也可读取项目根 `.verd.config.json` 的 `workspace` 字段；工作区目录须已存在。服务的 `handleRequest(req, res)` 返回是否处理请求，退出时调用 `close()`。
+
+服务端限制所有文件操作范围，并通过握手告知固定工作区能力；它不复制系统介绍或推荐库。Desktop 直接打开相同目录，原生图文、普通文件和外部编辑沿用现有行为。项目内工作区识别父仓库及 worktree，只提交、读取和恢复工作区内容；仓库配置、分支、推拉及历史清理由外部 Git 工具管理。独立仓库保留现有远端同步。普通回收站删除不改写 Git 历史。
+
+普通打开保留已有 Agent 指令，设置中的“启用或修复编写工具”显式接入；Web 与 Desktop 的个人会话隔离保存。原生文件格式与身份保持兼容。此入口面向本机项目编辑；浏览器本地存储仍可使用 `createWebWorkspaceHost`。
+
+## 接入
 
 文件工作区与会话。VerdBoardApp 改为 WorkspaceApp({host})；WorkspaceHost、WorkspaceSession 统一保存/历史/冲突，支持 FrameFileV2 与 DocumentFileV1。旧 StorageAdapter 仍作为迁移边界保留。
 
@@ -20,7 +28,7 @@ Next-major source navigation also preserves an embedded document editing view th
 两个仓库都需要获得访问授权。令牌放在用户级 `.npmrc` 或 CI secret，通过仓库管理员获取；不要提交令牌。`@ylib/tabs` 是产品包的传递依赖，只有 `@sue` 配置不足以安装完整产品。
 
 ```bash
-pnpm add @sue/verd-board-app@2.0.0 @sue/verd-board-ui@2.0.0 react react-dom
+pnpm add @sue/verd-board-app@0.1.0 @sue/verd-board-ui@0.1.0 react react-dom
 ```
 
 React 组件面向浏览器，支持 React 18/19；TypeScript 使用现代 Bundler 模块解析。ESM、CJS 与声明从 `dist` 加载，不导入 `src` 或未声明的深层路径。仓库开发的 Node/pnpm 要求不等同于浏览器运行时要求。
@@ -29,43 +37,31 @@ React 组件面向浏览器，支持 React 18/19；TypeScript 使用现代 Bundl
 
 ```tsx
 import { useMemo } from 'react';
-import { WorkspaceApp, createWebWorkspaceHost, createWebStorageAdapter, migrateLegacyCellWorkspace } from '@sue/verd-board-app';
+import { WorkspaceApp, createServiceWorkspaceHost } from '@sue/verd-board-app';
 import '@sue/verd-board-ui/style.css';
 export function App() {
-  const host = useMemo(() => createWebWorkspaceHost(), []);
-  return (
-    <WorkspaceApp
-      host={host}
-      importLegacy={async () => {
-        const adapter = createWebStorageAdapter();
-        return (await adapter.listKeys()).length ? migrateLegacyCellWorkspace(adapter) : null;
-      }}
-    />
-  );
+  const host = useMemo(() => createServiceWorkspaceHost({ baseUrl: '/api/v1' }), []);
+  return <WorkspaceApp host={host} />;
 }
 ```
 
 画布容器必须有明确高度。独立文本/画布加载 `@sue/board-react-text/style.css`；`VerdFrame`/`WorkspaceApp` 加载 `@sue/verd-board-ui/style.css`（已包含文本样式）。
 
-### 从 1.0.0 迁移
+### 旧工作区数据迁移
 
 旧入口 `<VerdBoardApp adapter={adapter} />` 已删除，改用上述 `WorkspaceApp host={host}`。Web 使用 `createWebWorkspaceHost`；自定义服务或桌面接入实现 `WorkspaceHost`，不要把 `StorageAdapter` 当作新 host。
 
 `createWorkspaceSaveQueue`、`collectWorkspaceRevisions`、`createEmptyWorkspaceRecord` 已移除。通过 `openWorkspaceSession(host, handle)` 取得会话，使用 `apply`、`undo/redo`、`flush`、`dispose`；空工作区由 `host.openWorkspace` 与应用初始化。旧 `StorageAdapter`、`loadCellWorkspace` 和 `saveCellWorkspace` 保留于旧存储迁移边界，不是新文件工作区的写入通道。
 
-`FrameFileV2` 保存 `.verd.json` 画布；`DocumentFileV1` 保存 `.verd-doc.json` 独立正文。`WorkspaceSession` 统一文件、历史和保存；`WorkspaceHost.commit` 按 `expectedVersion` 条件写入，事务 ID 支持重试。`flush()` 返回 `false` 时仍有失败或冲突，不能关闭后丢弃内容；冲突通过 `session.resolveConflict(fileId, 'keep-local' | 'load-disk')` 明确解决，再次 `flush()` 可重试保存。
+`FrameFileV2` 保存 `.verd` 画布；`DocumentFileV1` 保存 `.verd-doc.json` 独立正文。`WorkspaceSession` 统一文件、历史和保存；`WorkspaceHost.commit` 按 `expectedVersion` 条件写入，事务 ID 支持重试。`flush()` 返回 `false` 时仍有失败或冲突，不能关闭后丢弃内容；冲突通过 `session.resolveConflict(fileId, 'keep-local' | 'load-disk')` 明确解决，再次 `flush()` 可重试保存。
 
-`importLegacy` 只在尚未初始化、无现有文件的可写默认工作区被调用；显式目录不导入设备旧数据。迁移前备份原存储，保留迁移备份；新文件不是 1.0.0 应用的可回写格式。
+`importLegacy` 只在尚未初始化、无现有文件的可写默认工作区被调用；显式目录不导入设备旧数据。迁移前备份原存储，保留迁移备份。
 
-完整发布摘要与迁移入口见 [VerdBoard 2.0](https://github.com/WinstonSue/verd-board#npm-2)；逐包变更见本包随附的 `CHANGELOG.md`。`FrameCanvas` 已存在于 1.0.0，早期 BoardCanvas/领域 Canvas 的删除不是本次新增变更。
-
-## 下一主版本：稳定链接与可取消导航
+## 稳定链接与可取消导航
 
 Import `WorkspaceTarget` and the link codecs from `@sue/board-common`; the application package no longer exports `DocumentLink`, `createDocumentLink` or `parseDocumentLink`. Cell links use a typed `cell:` fragment and the workspace-global Cell owner index, so a move preserves the existing target. The URL file ID is a creation-time hint and a missing-target fallback, not a persistent redirect.
 
 Workspace navigation captures its source, waits for `DocumentEditorController.flushEditing()` / canvas editing receipts, and sends an abortable request to the mounted target. Return context, selection, camera and temporary Mind reveals remain in memory. Single-file and mixed graph copies/imports rewrite links once with the final identity/owner mapping; ordinary navigation links do not enlarge embedded-reference export closures.
-
-These next-major source APIs accompany major Changesets only; do not infer availability from the still-2.0.0 package version.
 
 File navigation shows the current source file, its latest successful entry, and grouped direct embed locations across canvases and documents. Ownership is displayed separately in file information. Direct opens clear that file’s return context; tab activation preserves it. Document embed locations include a body revision and are revalidated before selection; ordinary text links and repeated nested preview appearances are excluded from embed counts.
 

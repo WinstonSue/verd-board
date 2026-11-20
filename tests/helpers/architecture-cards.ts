@@ -131,6 +131,16 @@ export async function exerciseCardEntrypoint(page: Page, ordinary = false) {
   await editor.pressSequentially('Independent explanation.');
   await editor.press('Escape');
   await expect(card).toContainText('Independent explanation.');
+  const automaticFill = await card.getAttribute('fill');
+  expect(automaticFill).toMatch(/^#[\da-f]{6}$/i);
+  const styles = pane.getByRole('group', { name: '风格色', exact: true });
+  await styles.getByRole('button', { name: '风格色 1', exact: true }).click();
+  await expect(card).toHaveAttribute('fill', automaticFill!);
+  await styles.getByRole('button', { name: '自动', exact: true }).click();
+  await expect(
+    styles.getByRole('button', { name: '自动', exact: true }),
+  ).toHaveAttribute('aria-pressed', 'true');
+  await expect(card).toHaveAttribute('fill', automaticFill!);
 }
 
 export async function openCardScene(page: Page, fileId: string) {

@@ -60,6 +60,7 @@ export function WorkspaceSkillsSettings({
     [custom, model.customItems, model.items],
   );
   const [path, setPath] = useState(items[0]?.path ?? '');
+  const defaultPath = custom ? '' : path;
   const [creating, setCreating] = useState(false);
   const [newName, setNewName] = useState('');
   const item = items.find((entry) => entry.path === path) ?? {
@@ -77,9 +78,16 @@ export function WorkspaceSkillsSettings({
   const [guide, setGuide] = useState<DefaultSkillContent | string | null>(null);
   const [guideError, setGuideError] = useState('');
   const [guideLoading, setGuideLoading] = useState(false);
+  const editor = useRef<HTMLDivElement>(null);
+  const defaultButton = useRef<HTMLButtonElement>(null);
+  const guideReturn = useRef<{
+    panel: HTMLElement;
+    scrollTop: number;
+  } | null>(null);
   const composing = useRef(false);
   const alive = useRef(true);
   const generation = useRef(0);
+  const guideGeneration = useRef(0);
   const pending = useRef<Promise<boolean> | null>(null);
   const retry = useRef<{
     operation: 'save' | 'remove';
@@ -107,6 +115,17 @@ export function WorkspaceSkillsSettings({
       alive.current = false;
     };
   }, []);
+  useEffect(() => {
+    const position = guideReturn.current;
+    if (!position) return;
+    if (guide !== null) {
+      position.panel.scrollTop = 0;
+      return;
+    }
+    position.panel.scrollTop = position.scrollTop;
+    defaultButton.current?.focus({ preventScroll: true });
+    guideReturn.current = null;
+  }, [guide]);
   const reload = async () => {
     const token = ++generation.current;
     if (!latest.current.path) {
@@ -139,12 +158,16 @@ export function WorkspaceSkillsSettings({
   const reloadRef = useRef(reload);
   reloadRef.current = reload;
   useEffect(() => {
+    guideGeneration.current++;
+    setGuide(null);
+    setGuideError('');
+    setGuideLoading(false);
+  }, [defaultPath, model.workspaceKey]);
+  useEffect(() => {
     if (creating) return;
     setSaved(null);
     latest.current.saved = null;
     dirtyRef.current = false;
-    setGuide(null);
-    setGuideError('');
     void reloadRef.current();
   }, [path, model.workspaceKey, creating]);
   useEffect(() => {
@@ -218,8 +241,12 @@ export function WorkspaceSkillsSettings({
         if (alive.current) await reloadRef.current();
         return true;
       } catch (cause) {
-        if (alive.current)
+        if (alive.current) {
+          guideGeneration.current++;
+          setGuide(null);
+          setGuideLoading(false);
           setError(cause instanceof Error ? cause.message : String(cause));
+        }
         return false;
       } finally {
         pending.current = null;
@@ -264,314 +291,337 @@ export function WorkspaceSkillsSettings({
     });
   };
   const viewDefault = () => {
-    const token = generation.current;
+    const token = ++guideGeneration.current;
     setGuideLoading(true);
     setGuideError('');
     void model
-      .readDefault(custom ? '' : path)
+      .readDefault(defaultPath)
       .then((value) => {
-        if (alive.current && token === generation.current) setGuide(value);
+        if (!alive.current || token !== guideGeneration.current) return;
+        const panel = editor.current?.closest<HTMLElement>(
+          '.settings-sections-main',
+        );
+        if (panel) guideReturn.current = { panel, scrollTop: panel.scrollTop };
+        setGuide(value);
       })
       .catch((cause) => {
-        if (alive.current && token === generation.current)
+        if (alive.current && token === guideGeneration.current)
           setGuideError(String(cause));
       })
       .finally(() => {
-        if (alive.current) setGuideLoading(false);
+        if (alive.current && token === guideGeneration.current)
+          setGuideLoading(false);
       });
   };
   return (
     <div data-testid="workspace-skills-settings">
-      <p>
-        {custom
-          ? zh
-            ? '独立维护当前工作区的 Skill，Agent 根据名称和描述按需读取，不绑定默认范式。'
-            : 'Maintain independent workspace Skills. Agents select them by name and description.'
-          : zh
-            ? '在默认范式基础上补充当前工作区的术语、语言、结构与风格要求。'
-            : 'Supplement the default patterns with workspace terminology, language, structure and style.'}
-      </p>
-      <div className="workspace-skill-toolbar">
-        {custom && (
-          <WorkspaceButton
-            type="button"
-            disabled={disabled || saving || !!retry.current}
-            data-testid="workspace-custom-skill-new"
-            onClick={beginCreate}
-          >
-            {zh ? '新建自定义 Skill' : 'New custom Skill'}
-          </WorkspaceButton>
-        )}
-        <WorkspaceButton
-          type="button"
-          intent="ghost"
-          disabled={guideLoading}
-          data-testid="workspace-skill-default"
-          onClick={viewDefault}
-        >
+      <div ref={editor} hidden={guide !== null}>
+        <p>
           {custom
             ? zh
-              ? '查看通用编写 Skill'
-              : 'View authoring Skill'
+              ? '独立维护当前工作区的 Skill，Agent 根据名称和描述按需读取，不绑定默认范式。'
+              : 'Maintain independent workspace Skills. Agents select them by name and description.'
             : zh
-              ? '查看默认 Skill'
-              : 'View default Skill'}
-        </WorkspaceButton>
-      </div>
-      {guideError && <WorkspaceAlert type="error" title={guideError} />}
-      {!creating && items.length > 0 && (
-        <label className="workspace-skill-field">
-          {custom
-            ? zh
-              ? '自定义 Skill 列表'
-              : 'Custom Skills'
-            : zh
-              ? '提示词范围'
-              : 'Skill scope'}
-          <select
-            className="workspace-skill-scope"
-            value={path}
-            disabled={saving || loading}
-            aria-label={zh ? '提示词范围' : 'Skill scope'}
-            data-testid="workspace-skill-scope"
-            onChange={(event) => {
-              const value = event.target.value;
-              void saveRef.current().then((ok) => {
-                if (ok) setPath(value);
-              });
-            }}
-          >
-            {items.map((choice) => (
-              <option key={choice.path} value={choice.path}>
-                {choice.label}
-              </option>
-            ))}
-          </select>
-        </label>
-      )}
-      {custom && !creating && !path && (
-        <p data-testid="workspace-custom-skill-empty">
-          {zh
-            ? '暂无自定义 Skill，点击“新建自定义 Skill”开始维护。'
-            : 'No custom Skills yet. Create one to get started.'}
+              ? '在默认范式基础上补充当前工作区的术语、语言、结构与风格要求。'
+              : 'Supplement the default patterns with workspace terminology, language, structure and style.'}
         </p>
-      )}
-      {(path || creating) && (
-        <SettingsSection
-          title={
-            creating
+        <div className="workspace-skill-toolbar">
+          {custom && (
+            <WorkspaceButton
+              type="button"
+              disabled={disabled || saving || !!retry.current}
+              data-testid="workspace-custom-skill-new"
+              onClick={beginCreate}
+            >
+              {zh ? '新建自定义 Skill' : 'New custom Skill'}
+            </WorkspaceButton>
+          )}
+          <WorkspaceButton
+            ref={defaultButton}
+            type="button"
+            intent="ghost"
+            disabled={guideLoading}
+            data-testid="workspace-skill-default"
+            onClick={viewDefault}
+          >
+            {custom
               ? zh
-                ? '新建自定义 Skill'
-                : 'New custom Skill'
-              : custom
-                ? item.label
-                : `${item.label} · ${zh ? '自定义补充要求' : 'Custom supplement'}`
-          }
-        >
-          <form
-            onSubmit={(event) => {
-              event.preventDefault();
-              void commit();
-            }}
-            onBlur={(event) => {
-              if (
-                !event.currentTarget.contains(
-                  event.relatedTarget as Node | null,
-                )
-              )
-                void saveRef.current();
-            }}
-            onKeyDownCapture={(event) => {
-              if (
-                event.key === 'Enter' &&
-                (event.metaKey || event.ctrlKey) &&
-                !composing.current
-              ) {
+                ? '查看通用编写 Skill'
+                : 'View authoring Skill'
+              : zh
+                ? '查看默认 Skill'
+                : 'View default Skill'}
+          </WorkspaceButton>
+        </div>
+        {guideError && <WorkspaceAlert type="error" title={guideError} />}
+        {!creating && items.length > 0 && (
+          <label className="workspace-skill-field">
+            {custom
+              ? zh
+                ? '自定义 Skill 列表'
+                : 'Custom Skills'
+              : zh
+                ? '提示词范围'
+                : 'Skill scope'}
+            <select
+              className="workspace-skill-scope"
+              value={path}
+              disabled={saving || loading}
+              aria-label={zh ? '提示词范围' : 'Skill scope'}
+              data-testid="workspace-skill-scope"
+              onChange={(event) => {
+                const value = event.target.value;
+                void saveRef.current().then((ok) => {
+                  if (ok) setPath(value);
+                });
+              }}
+            >
+              {items.map((choice) => (
+                <option key={choice.path} value={choice.path}>
+                  {choice.label}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
+        {custom && !creating && !path && (
+          <p data-testid="workspace-custom-skill-empty">
+            {zh
+              ? '暂无自定义 Skill，点击“新建自定义 Skill”开始维护。'
+              : 'No custom Skills yet. Create one to get started.'}
+          </p>
+        )}
+        {(path || creating) && (
+          <SettingsSection
+            title={
+              creating
+                ? zh
+                  ? '新建自定义 Skill'
+                  : 'New custom Skill'
+                : custom
+                  ? item.label
+                  : `${item.label} · ${zh ? '自定义补充要求' : 'Custom supplement'}`
+            }
+          >
+            <form
+              onSubmit={(event) => {
                 event.preventDefault();
                 void commit();
-              }
-              if (
-                event.key === 'Escape' &&
-                !composing.current &&
-                saved &&
-                !retry.current &&
-                !saving
-              ) {
-                event.preventDefault();
-                event.stopPropagation();
-                setDraft({ description: saved.description, body: saved.body });
-                if (creating) setNewName('');
-                setError('');
-              }
-            }}
-          >
-            <fieldset disabled={locked} className="settings-workspace-fields">
-              <label className="workspace-skill-field">
-                {zh ? '名称' : 'Name'}
-                <WorkspaceInput
-                  value={creating ? newName : item.name}
-                  readOnly={!creating}
-                  data-testid="workspace-custom-skill-name"
-                  placeholder="domain-writing"
-                  maxLength={64}
-                  onChange={(event) => setNewName(event.target.value)}
-                  onCompositionStart={() => {
-                    composing.current = true;
-                  }}
-                  onCompositionEnd={() => {
-                    composing.current = false;
-                  }}
-                />
-              </label>
-              <label className="workspace-skill-field">
-                {zh ? '用途描述' : 'Description'}
-                <WorkspaceInput
-                  value={draft.description}
-                  maxLength={1024}
-                  data-testid="workspace-skill-description"
-                  onChange={(event) =>
-                    setDraft((value) => ({
-                      ...value,
-                      description: event.target.value,
-                    }))
-                  }
-                  onCompositionStart={() => {
-                    composing.current = true;
-                  }}
-                  onCompositionEnd={() => {
-                    composing.current = false;
-                  }}
-                />
-              </label>
-              <label className="workspace-skill-field">
-                {zh ? '提示词正文（Markdown）' : 'Instructions (Markdown)'}
-                <WorkspaceTextArea
-                  value={draft.body}
-                  rows={10}
-                  data-testid="workspace-skill-body"
-                  onChange={(event) =>
-                    setDraft((value) => ({
-                      ...value,
-                      body: event.target.value,
-                    }))
-                  }
-                  onCompositionStart={() => {
-                    composing.current = true;
-                  }}
-                  onCompositionEnd={() => {
-                    composing.current = false;
-                  }}
-                />
-              </label>
-            </fieldset>
-            {loading && <p role="status">{zh ? '正在读取…' : 'Loading…'}</p>}
-            {saved?.diagnostic && (
-              <>
-                <WorkspaceAlert type="error" title={saved.diagnostic} />
-                <details>
-                  <summary>{zh ? '查看原文' : 'View original source'}</summary>
-                  <pre className="workspace-skill-guide">{saved.source}</pre>
-                </details>
-              </>
-            )}
-            {external && (
-              <WorkspaceAlert
-                type="warning"
-                title={
-                  zh
-                    ? '文件已被外部修改，草稿已保留；请重新加载后编辑。'
-                    : 'File changed externally. Your draft is preserved; reload before editing.'
+              }}
+              onBlur={(event) => {
+                const target = event.relatedTarget as Node | null;
+                if (
+                  !event.currentTarget.contains(target) &&
+                  !defaultButton.current?.contains(target)
+                )
+                  void saveRef.current();
+              }}
+              onKeyDownCapture={(event) => {
+                if (
+                  event.key === 'Enter' &&
+                  (event.metaKey || event.ctrlKey) &&
+                  !composing.current
+                ) {
+                  event.preventDefault();
+                  void commit();
                 }
-              />
-            )}
-            {error && <WorkspaceAlert type="error" title={error} />}
-            <SettingsActions>
-              <WorkspaceButton
-                type="submit"
-                disabled={
-                  disabled ||
-                  loading ||
-                  saving ||
-                  !!saved?.diagnostic ||
-                  (!dirty && !retry.current)
-                }
-                data-testid="workspace-skill-save"
-              >
-                {saving
-                  ? zh
-                    ? '保存中…'
-                    : 'Saving…'
-                  : retry.current
-                    ? zh
-                      ? '重试原操作'
-                      : 'Retry operation'
-                    : creating
-                      ? zh
-                        ? '创建 Skill'
-                        : 'Create Skill'
-                      : zh
-                        ? '保存'
-                        : 'Save'}
-              </WorkspaceButton>
-              <WorkspaceButton
-                type="button"
-                disabled={
-                  disabled ||
-                  loading ||
-                  saving ||
-                  !!retry.current ||
-                  !saved?.version
-                }
-                data-testid="workspace-skill-remove"
-                onClick={() => void commit('remove')}
-              >
-                {custom
-                  ? zh
-                    ? '删除 Skill'
-                    : 'Delete Skill'
-                  : zh
-                    ? '移除补充'
-                    : 'Remove supplement'}
-              </WorkspaceButton>
-              <WorkspaceButton
-                type="button"
-                disabled={saving || !!retry.current}
-                data-testid="workspace-skill-reload"
-                onClick={() => void reload()}
-              >
-                {dirty
-                  ? zh
-                    ? '重新加载（放弃草稿）'
-                    : 'Reload (discard draft)'
-                  : zh
-                    ? '重新加载'
-                    : 'Reload'}
-              </WorkspaceButton>
-            </SettingsActions>
-            {creating && (
-              <WorkspaceButton
-                type="button"
-                intent="ghost"
-                disabled={saving || !!retry.current}
-                data-testid="workspace-custom-skill-cancel"
-                onClick={() => {
-                  setCreating(false);
-                  setPath(items[0]?.path ?? '');
+                if (
+                  event.key === 'Escape' &&
+                  !composing.current &&
+                  saved &&
+                  !retry.current &&
+                  !saving
+                ) {
+                  event.preventDefault();
+                  event.stopPropagation();
+                  setDraft({
+                    description: saved.description,
+                    body: saved.body,
+                  });
+                  if (creating) setNewName('');
                   setError('');
-                }}
-              >
-                {zh
-                  ? '取消新建（放弃草稿）'
-                  : 'Cancel creation (discard draft)'}
-              </WorkspaceButton>
-            )}
-          </form>
-        </SettingsSection>
-      )}
+                }
+              }}
+            >
+              <fieldset disabled={locked} className="settings-workspace-fields">
+                <label className="workspace-skill-field">
+                  {zh ? '名称' : 'Name'}
+                  <WorkspaceInput
+                    value={creating ? newName : item.name}
+                    readOnly={!creating}
+                    data-testid="workspace-custom-skill-name"
+                    placeholder="domain-writing"
+                    maxLength={64}
+                    onChange={(event) => setNewName(event.target.value)}
+                    onCompositionStart={() => {
+                      composing.current = true;
+                    }}
+                    onCompositionEnd={() => {
+                      composing.current = false;
+                    }}
+                  />
+                </label>
+                <label className="workspace-skill-field">
+                  {zh ? '用途描述' : 'Description'}
+                  <WorkspaceInput
+                    value={draft.description}
+                    maxLength={1024}
+                    data-testid="workspace-skill-description"
+                    onChange={(event) =>
+                      setDraft((value) => ({
+                        ...value,
+                        description: event.target.value,
+                      }))
+                    }
+                    onCompositionStart={() => {
+                      composing.current = true;
+                    }}
+                    onCompositionEnd={() => {
+                      composing.current = false;
+                    }}
+                  />
+                </label>
+                <label className="workspace-skill-field">
+                  {zh ? '提示词正文（Markdown）' : 'Instructions (Markdown)'}
+                  <WorkspaceTextArea
+                    value={draft.body}
+                    rows={10}
+                    data-testid="workspace-skill-body"
+                    onChange={(event) =>
+                      setDraft((value) => ({
+                        ...value,
+                        body: event.target.value,
+                      }))
+                    }
+                    onCompositionStart={() => {
+                      composing.current = true;
+                    }}
+                    onCompositionEnd={() => {
+                      composing.current = false;
+                    }}
+                  />
+                </label>
+              </fieldset>
+              {loading && <p role="status">{zh ? '正在读取…' : 'Loading…'}</p>}
+              {saved?.diagnostic && (
+                <>
+                  <WorkspaceAlert type="error" title={saved.diagnostic} />
+                  <details>
+                    <summary>
+                      {zh ? '查看原文' : 'View original source'}
+                    </summary>
+                    <pre className="workspace-skill-guide">{saved.source}</pre>
+                  </details>
+                </>
+              )}
+              {external && (
+                <WorkspaceAlert
+                  type="warning"
+                  title={
+                    zh
+                      ? '文件已被外部修改，草稿已保留；请重新加载后编辑。'
+                      : 'File changed externally. Your draft is preserved; reload before editing.'
+                  }
+                />
+              )}
+              {error && <WorkspaceAlert type="error" title={error} />}
+              <SettingsActions>
+                <WorkspaceButton
+                  type="submit"
+                  disabled={
+                    disabled ||
+                    loading ||
+                    saving ||
+                    !!saved?.diagnostic ||
+                    (!dirty && !retry.current)
+                  }
+                  data-testid="workspace-skill-save"
+                >
+                  {saving
+                    ? zh
+                      ? '保存中…'
+                      : 'Saving…'
+                    : retry.current
+                      ? zh
+                        ? '重试原操作'
+                        : 'Retry operation'
+                      : creating
+                        ? zh
+                          ? '创建 Skill'
+                          : 'Create Skill'
+                        : zh
+                          ? '保存'
+                          : 'Save'}
+                </WorkspaceButton>
+                <WorkspaceButton
+                  type="button"
+                  disabled={
+                    disabled ||
+                    loading ||
+                    saving ||
+                    !!retry.current ||
+                    !saved?.version
+                  }
+                  data-testid="workspace-skill-remove"
+                  onClick={() => void commit('remove')}
+                >
+                  {custom
+                    ? zh
+                      ? '删除 Skill'
+                      : 'Delete Skill'
+                    : zh
+                      ? '移除补充'
+                      : 'Remove supplement'}
+                </WorkspaceButton>
+                <WorkspaceButton
+                  type="button"
+                  disabled={saving || !!retry.current}
+                  data-testid="workspace-skill-reload"
+                  onClick={() => void reload()}
+                >
+                  {dirty
+                    ? zh
+                      ? '重新加载（放弃草稿）'
+                      : 'Reload (discard draft)'
+                    : zh
+                      ? '重新加载'
+                      : 'Reload'}
+                </WorkspaceButton>
+              </SettingsActions>
+              {creating && (
+                <WorkspaceButton
+                  type="button"
+                  intent="ghost"
+                  disabled={saving || !!retry.current}
+                  data-testid="workspace-custom-skill-cancel"
+                  onClick={() => {
+                    setCreating(false);
+                    setPath(items[0]?.path ?? '');
+                    setError('');
+                  }}
+                >
+                  {zh
+                    ? '取消新建（放弃草稿）'
+                    : 'Cancel creation (discard draft)'}
+                </WorkspaceButton>
+              )}
+            </form>
+          </SettingsSection>
+        )}
+      </div>
       {guide !== null && (
         <DefaultSkillViewer
           value={guide}
           zh={zh}
+          backLabel={
+            custom
+              ? zh
+                ? '返回自定义 Skills'
+                : 'Back to custom Skills'
+              : zh
+                ? '返回提示词'
+                : 'Back to prompts'
+          }
           onClose={() => setGuide(null)}
         />
       )}

@@ -398,24 +398,26 @@ export function VersionHistoryPanel({
               />
             </>
           )}
-          {scope.kind === 'workspace' && !!purgeEntryIds?.length && (
-            <WorkspaceButton
-              danger
-              disabled={locked}
-              onClick={() =>
-                void perform(async (epoch) => {
-                  const result = await session.versions({
-                    type: 'purge-plan',
-                    fileIds: [],
-                    trashEntryIds: purgeEntryIds,
-                  });
-                  if (epoch === generation.current) setPlan(result.plan);
-                })
-              }
-            >
-              {t('预览永久删除…', 'Preview permanent deletion…')}
-            </WorkspaceButton>
-          )}
+          {scope.kind === 'workspace' &&
+            status?.capabilities.cleanup &&
+            !!purgeEntryIds?.length && (
+              <WorkspaceButton
+                danger
+                disabled={locked}
+                onClick={() =>
+                  void perform(async (epoch) => {
+                    const result = await session.versions({
+                      type: 'purge-plan',
+                      fileIds: [],
+                      trashEntryIds: purgeEntryIds,
+                    });
+                    if (epoch === generation.current) setPlan(result.plan);
+                  })
+                }
+              >
+                {t('预览永久删除…', 'Preview permanent deletion…')}
+              </WorkspaceButton>
+            )}
         </>
       )}
       {plan && (

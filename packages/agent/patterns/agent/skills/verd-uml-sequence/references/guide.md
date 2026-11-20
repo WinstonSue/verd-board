@@ -23,4 +23,4 @@
 }
 ```
 
-[打开原生模板](../../../uml-sequence/模板.verd.json)
+[打开原生模板](../../../uml-sequence/模板.verd)

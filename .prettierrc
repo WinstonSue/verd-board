@@ -1,3 +1,4 @@
 {
-  "singleQuote": true
+  "singleQuote": true,
+  "overrides": [{ "files": "*.verd", "options": { "parser": "json" } }]
 }

@@ -31,8 +31,8 @@ const setup = async (patch: Partial<FileTreeProps> = {}) => {
   const props: FileTreeProps = {
     entries: [{ path: 'docs', kind: 'directory' }],
     canvases: [
-      { frameId: 'a', name: 'Alpha', path: 'docs/a.verd.json' },
-      { frameId: 'b', name: 'Beta', path: 'b.verd.json' },
+      { frameId: 'a', name: 'Alpha', path: 'docs/a.verd' },
+      { frameId: 'b', name: 'Beta', path: 'b.verd' },
     ],
     activeFileId: 'a',
     expandedDirs: ['docs'],
@@ -73,12 +73,12 @@ afterEach(async () => {
 
 describe('FileTree', () => {
   it('highlights only explicit selections while retaining the current file identity', async () => {
-    const props = await setup({ selectedPaths: ['docs', 'b.verd.json'] });
+    const props = await setup({ selectedPaths: ['docs', 'b.verd'] });
     const highlighted = () =>
       [...container.querySelectorAll<HTMLElement>('.is-highlighted')].map(
         (row) => row.dataset['entryPath'],
       );
-    expect(highlighted()).toEqual(['docs', 'b.verd.json']);
+    expect(highlighted()).toEqual(['docs', 'b.verd']);
     expect(button('Alpha').getAttribute('aria-current')).toBe('page');
     expect(
       button('Alpha')
@@ -88,7 +88,7 @@ describe('FileTree', () => {
     await act(async () =>
       root.render(<FileTree {...props} selectedPaths={[]} />),
     );
-    expect(highlighted()).toEqual(['docs/a.verd.json']);
+    expect(highlighted()).toEqual(['docs/a.verd']);
   });
 
   it('can repeatedly focus a directory without turning its reveal request into selection', async () => {
@@ -123,18 +123,18 @@ describe('FileTree', () => {
         { path: 'docs', kind: 'directory' },
         { path: 'notes.md', kind: 'file' },
       ],
-      failedFiles: [{ path: 'broken.verd.json' }],
-      activeFailedPath: 'broken.verd.json',
-      selectedPaths: ['notes.md', 'broken.verd.json'],
+      failedFiles: [{ path: 'broken.verd' }],
+      activeFailedPath: 'broken.verd',
+      selectedPaths: ['notes.md', 'broken.verd'],
     });
     expect(
       [...container.querySelectorAll<HTMLElement>('.is-highlighted')].map(
         (row) => row.dataset['entryPath'],
       ),
-    ).toEqual(['notes.md', 'broken.verd.json']);
+    ).toEqual(['notes.md', 'broken.verd']);
     expect(
       container
-        .querySelector('[data-failed-path="broken.verd.json"]')
+        .querySelector('[data-failed-path="broken.verd"]')
         ?.getAttribute('aria-selected'),
     ).toBe('true');
   });
@@ -143,19 +143,19 @@ describe('FileTree', () => {
     const onOpenFailedFile = vi.fn();
     await setup({
       failedFiles: [
-        { path: 'docs/broken.verd.json' },
+        { path: 'docs/broken.verd' },
         { path: 'unfinished.verd-doc.json' },
       ],
-      activeFailedPath: 'docs/broken.verd.json',
+      activeFailedPath: 'docs/broken.verd',
       onOpenFailedFile,
     });
     const row = container.querySelector<HTMLElement>(
-      '[data-failed-path="docs/broken.verd.json"]',
+      '[data-failed-path="docs/broken.verd"]',
     )!;
     expect(row.classList.contains('is-active')).toBe(true);
     expect(row.hasAttribute('data-file-id')).toBe(false);
     await click(row.querySelector('button')!);
-    expect(onOpenFailedFile).toHaveBeenCalledWith('docs/broken.verd.json');
+    expect(onOpenFailedFile).toHaveBeenCalledWith('docs/broken.verd');
     expect(container.querySelector('[data-file-id="b"]')).not.toBeNull();
   });
 
@@ -269,7 +269,7 @@ describe('FileTree', () => {
         {
           frameId: 'c',
           name: 'Child',
-          path: 'docs/c.verd.json',
+          path: 'docs/c.verd',
           diagram: 'mind',
         },
       ],
@@ -277,21 +277,19 @@ describe('FileTree', () => {
         {
           frameId: 'c',
           name: 'Child',
-          path: 'docs/c.verd.json',
+          path: 'docs/c.verd',
           diagram: 'mind',
           placement: 'unorganized',
         },
       ],
     });
-    expect(button('Child').getAttribute('title')).toBe('docs/c.verd.json');
+    expect(button('Child').getAttribute('title')).toBe('docs/c.verd');
     expect(container.querySelector('[data-entry-kind="shortcut"]')).toBeNull();
   });
   it('focuses the canonical row after its full directory path is expanded and can reveal it again', async () => {
     const request = { fileId: 'c', nonce: 1 };
     const props = await setup({
-      canvases: [
-        { frameId: 'c', name: 'Child', path: 'docs/deep/c.verd.json' },
-      ],
+      canvases: [{ frameId: 'c', name: 'Child', path: 'docs/deep/c.verd' }],
       expandedDirs: [],
       revealFile: request,
     });
@@ -378,10 +376,10 @@ it('dismisses on an outside captured pointer without swallowing it, and copies t
 });
 
 it('exposes selected paths and creation through a floating menu', async () => {
-  await setup({ selectedPaths: ['b.verd.json'] });
+  await setup({ selectedPaths: ['b.verd'] });
   expect(
     container
-      .querySelector('[data-entry-path="b.verd.json"]')
+      .querySelector('[data-entry-path="b.verd"]')
       ?.getAttribute('aria-selected'),
   ).toBe('true');
   expect(container.querySelector('.file-tree-header details')).toBeNull();

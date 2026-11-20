@@ -356,16 +356,16 @@ describe('reference instances, place mode, and return source', () => {
         .ok,
     ).toBe(true);
     expect(session.getState().files.get('legacy')?.path).toBe(
-      '未命名画布.verd.json',
+      '未命名画布.verd',
     );
     const created = await session.apply({
       type: 'create-file',
       file: nameless('A'),
-      path: '未命名画布.verd.json',
+      path: '未命名画布.verd',
     });
     expect(created.ok).toBe(true);
     const canvasA = session.getState().files.get('A');
-    expect(canvasA?.path).toBe('未命名画布 2.verd.json');
+    expect(canvasA?.path).toBe('未命名画布 2.verd');
     expect(canvasA?.conflicted).toBeFalsy();
     const mind = nameless('C', ['topic']);
     mind.organization = { kind: 'subgraph', ownerFrameId: 'A' };

@@ -11,7 +11,7 @@ test('Desktop reload routes body keys to workspace and focused keys to the canva
   const userData = path.join(directory, 'user-data');
   const workspace = path.join(userData, 'workspaces', 'default');
   await mkdir(workspace, { recursive: true });
-  const file = path.join(workspace, 'Palette.verd.json');
+  const file = path.join(workspace, 'Palette.verd');
   await writeFile(
     file,
     await readFile(

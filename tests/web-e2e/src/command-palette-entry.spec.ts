@@ -15,7 +15,9 @@ const canvas = (page: Page) =>
 const palette = (page: Page) =>
   page.getByRole('dialog', { name: /^(命令面板|Command palette)$/ });
 const importInput = (page: Page) =>
-  page.locator('input[accept=".json,.verd.json,.verd-doc.json,.md,.markdown"]');
+  page.locator(
+    'input[accept=".json,.verd,.verd.json,.verd-doc.json,.md,.markdown"]',
+  );
 
 for (const modifier of ['Control', 'Meta']) {
   test(`reload opens the workspace palette without clicking or focusing (${modifier})`, async ({
@@ -61,6 +63,9 @@ test('palette shortcut reaches canvas text editing without changing content or h
     ),
   );
   await page.locator('[data-file-id="canvas-basic"] .file-tree-name').click();
+  await expect(
+    page.locator('[role="tab"][data-tab-id="canvas-basic"]'),
+  ).toHaveAttribute('aria-selected', 'true');
   const undoDisabled = await (
     await openHistoryAction(page, '撤销')
   ).isDisabled();

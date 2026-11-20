@@ -42,7 +42,9 @@ test('HTTPS embed loads on demand and cannot access the app document', async ({
     },
   };
   await page
-    .locator('input[accept=".json,.verd.json,.verd-doc.json,.md,.markdown"]')
+    .locator(
+      'input[accept=".json,.verd,.verd.json,.verd-doc.json,.md,.markdown"]',
+    )
     .setInputFiles({
       name: 'Embed Test.verd-doc.json',
       mimeType: 'application/json',
@@ -76,7 +78,9 @@ test('pasting a HTTPS URL offers a non-loading bookmark choice', async ({
 }) => {
   await page.goto('/');
   await page
-    .locator('input[accept=".json,.verd.json,.verd-doc.json,.md,.markdown"]')
+    .locator(
+      'input[accept=".json,.verd,.verd.json,.verd-doc.json,.md,.markdown"]',
+    )
     .setInputFiles({
       name: 'Paste Note.md',
       mimeType: 'text/markdown',
@@ -111,7 +115,9 @@ test('pasting a HTTPS URL offers a non-loading bookmark choice', async ({
 test('new fold blocks stay open while editing their body', async ({ page }) => {
   await page.goto('/');
   await page
-    .locator('input[accept=".json,.verd.json,.verd-doc.json,.md,.markdown"]')
+    .locator(
+      'input[accept=".json,.verd,.verd.json,.verd-doc.json,.md,.markdown"]',
+    )
     .setInputFiles({
       name: 'Folds.md',
       mimeType: 'text/markdown',

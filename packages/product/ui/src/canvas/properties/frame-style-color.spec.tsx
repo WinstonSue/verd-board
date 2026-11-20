@@ -109,7 +109,7 @@ it.each(['en', 'zh'] as const)(
       frame.children.push(id);
     }
     const controller = {
-      resolveAppearance: () => ({ styleFamily: 'neutral', fill: '#ffffff' }),
+      resolveAppearance: () => ({ styleFamily: 'series-1', fill: '#ffffff' }),
     } as unknown as FrameCanvasController;
     const dispatch = vi.fn();
     const container = document.createElement('div');
@@ -158,9 +158,14 @@ it.each(['en', 'zh'] as const)(
           .querySelector<HTMLButtonElement>('.frame-style-colors button')!
           .click(),
       );
-      expect(
-        dispatch.mock.calls[1][0][0].cell.appearance.styleColor,
-      ).toBeUndefined();
+      for (const operation of dispatch.mock.calls[1][0]) {
+        expect(operation.cell.appearance.styleColor).toBeUndefined();
+        const original = store.cells[operation.cell.id] as NodeCell;
+        expect(operation.cell).toEqual({
+          ...original,
+          appearance: { ...original.appearance, styleColor: undefined },
+        });
+      }
     } finally {
       await act(async () => root.unmount());
       container.remove();

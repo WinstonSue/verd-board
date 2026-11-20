@@ -1,0 +1,126 @@
+{
+  "version": 1,
+  "policy": "Original assertions retained; neutral core contracts and real domain integration are separate.",
+  "files": [
+    {
+      "from": "packages/engine/core/src/cell/arrangement-scenes.spec.ts",
+      "foundation": null,
+      "contracts": "tests/contracts/src/core-cell-arrangement-scenes.spec.ts"
+    },
+    {
+      "from": "packages/engine/core/src/cell/arrangement.spec.ts",
+      "foundation": "packages/engine/core/src/cell/arrangement.spec.ts",
+      "contracts": null
+    },
+    {
+      "from": "packages/engine/core/src/cell/cell.spec.ts",
+      "foundation": null,
+      "contracts": "tests/contracts/src/core-cell-cell.spec.ts"
+    },
+    {
+      "from": "packages/engine/core/src/cell/clear.spec.ts",
+      "foundation": "packages/engine/core/src/cell/clear.spec.ts",
+      "contracts": "tests/contracts/src/core-cell-clear.spec.ts"
+    },
+    {
+      "from": "packages/engine/core/src/cell/clipboard.spec.ts",
+      "foundation": "packages/engine/core/src/cell/clipboard.spec.ts",
+      "contracts": null
+    },
+    {
+      "from": "packages/engine/core/src/cell/commands.spec.ts",
+      "foundation": "packages/engine/core/src/cell/commands.spec.ts",
+      "contracts": null
+    },
+    {
+      "from": "packages/engine/core/src/cell/document-reference.spec.ts",
+      "foundation": "packages/engine/core/src/cell/document-reference.spec.ts",
+      "contracts": "tests/contracts/src/core-cell-document-reference.spec.ts"
+    },
+    {
+      "from": "packages/engine/core/src/cell/edge-edit.spec.ts",
+      "foundation": "packages/engine/core/src/cell/edge-edit.spec.ts",
+      "contracts": null
+    },
+    {
+      "from": "packages/engine/core/src/cell/frame.spec.ts",
+      "foundation": "packages/engine/core/src/cell/frame.spec.ts",
+      "contracts": null
+    },
+    {
+      "from": "packages/engine/core/src/cell/geometry-plan.spec.ts",
+      "foundation": "packages/engine/core/src/cell/geometry-plan.spec.ts",
+      "contracts": "tests/contracts/src/core-cell-geometry-plan.spec.ts"
+    },
+    {
+      "from": "packages/engine/core/src/cell/group-bounds.spec.ts",
+      "foundation": "packages/engine/core/src/cell/group-bounds.spec.ts",
+      "contracts": null
+    },
+    {
+      "from": "packages/engine/core/src/cell/group-nesting.spec.ts",
+      "foundation": "packages/engine/core/src/cell/group-nesting.spec.ts",
+      "contracts": null
+    },
+    {
+      "from": "packages/engine/core/src/cell/identity.spec.ts",
+      "foundation": "packages/engine/core/src/cell/identity.spec.ts",
+      "contracts": null
+    },
+    {
+      "from": "packages/engine/core/src/cell/layout-plan.spec.ts",
+      "foundation": "packages/engine/core/src/cell/layout-plan.spec.ts",
+      "contracts": null
+    },
+    {
+      "from": "packages/engine/core/src/cell/name.spec.ts",
+      "foundation": "packages/engine/core/src/cell/name.spec.ts",
+      "contracts": null
+    },
+    {
+      "from": "packages/engine/core/src/cell/position.spec.ts",
+      "foundation": "packages/engine/core/src/cell/position.spec.ts",
+      "contracts": null
+    },
+    {
+      "from": "packages/engine/core/src/cell/runtime.spec.ts",
+      "foundation": "packages/engine/core/src/cell/runtime.spec.ts",
+      "contracts": null
+    },
+    {
+      "from": "packages/engine/core/src/cell/style-color.spec.ts",
+      "foundation": "packages/engine/core/src/cell/style-color.spec.ts",
+      "contracts": null
+    },
+    {
+      "from": "packages/engine/core/src/cell/text-annotation.spec.ts",
+      "foundation": null,
+      "contracts": "tests/contracts/src/core-cell-text-annotation.spec.ts"
+    },
+    {
+      "from": "packages/engine/core/src/cell/transfer.spec.ts",
+      "foundation": "packages/engine/core/src/cell/transfer.spec.ts",
+      "contracts": null
+    },
+    {
+      "from": "packages/engine/core/src/geometry/batch-route.spec.ts",
+      "foundation": "packages/engine/core/src/geometry/batch-route.spec.ts",
+      "contracts": "tests/contracts/src/core-geometry-batch-route.spec.ts"
+    },
+    {
+      "from": "packages/engine/core/src/geometry/obstacle-route.spec.ts",
+      "foundation": "packages/engine/core/src/geometry/obstacle-route.spec.ts",
+      "contracts": "tests/contracts/src/core-geometry-obstacle-route.spec.ts"
+    },
+    {
+      "from": "packages/engine/core/src/geometry/routing-cache.spec.ts",
+      "foundation": "packages/engine/core/src/geometry/routing-cache.spec.ts",
+      "contracts": null
+    },
+    {
+      "from": "packages/engine/core/src/geometry/routing-preview.spec.ts",
+      "foundation": "packages/engine/core/src/geometry/routing-preview.spec.ts",
+      "contracts": "tests/contracts/src/core-geometry-routing-preview.spec.ts"
+    }
+  ]
+}

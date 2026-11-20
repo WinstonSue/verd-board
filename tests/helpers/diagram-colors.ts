@@ -145,10 +145,10 @@ export async function checkDiagramColors(
       };
       await page
         .locator(
-          'input[accept=".json,.verd.json,.verd-doc.json,.md,.markdown"]',
+          'input[accept=".json,.verd,.verd.json,.verd-doc.json,.md,.markdown"]',
         )
         .setInputFiles({
-          name: `${id}.verd.json`,
+          name: `${id}.verd`,
           mimeType: 'application/json',
           buffer: Buffer.from(JSON.stringify(variant)),
         });
@@ -194,6 +194,25 @@ export async function checkDiagramColors(
         .getAttribute('data-cell-id'))!;
       const node = canvas.locator(`[data-cell-id="${nodeId}"]`).first();
       const originalFill = await node.getAttribute('fill');
+      if (backgroundName === 'white' && diagram === 'workflow-process') {
+        const originalStroke = await node.getAttribute('stroke');
+        await selectNode(node);
+        await expect(
+          styles().getByRole('button', { name: '自动', exact: true }),
+        ).toHaveAttribute('aria-pressed', 'true');
+        await styles()
+          .getByRole('button', { name: '风格色 1', exact: true })
+          .click();
+        await expect(node).toHaveAttribute('fill', originalFill!);
+        await expect(node).toHaveAttribute('stroke', originalStroke!);
+        await styles()
+          .getByRole('button', { name: '自动', exact: true })
+          .click();
+        await expect(
+          styles().getByRole('button', { name: '自动', exact: true }),
+        ).toHaveAttribute('aria-pressed', 'true');
+        await expect(node).toHaveAttribute('fill', originalFill!);
+      }
       if (backgroundName === 'white' && diagram !== 'architecture') {
         await selectNode(node);
         await styles()
@@ -358,9 +377,11 @@ export async function exerciseMindThemeColors(page: Page, info: TestInfo) {
     mind: { colorScheme: 'missing-mind-theme' },
   };
   await page
-    .locator('input[accept=".json,.verd.json,.verd-doc.json,.md,.markdown"]')
+    .locator(
+      'input[accept=".json,.verd,.verd.json,.verd-doc.json,.md,.markdown"]',
+    )
     .setInputFiles({
-      name: 'mind-theme-families.verd.json',
+      name: 'mind-theme-families.verd',
       mimeType: 'application/json',
       buffer: Buffer.from(JSON.stringify(file)),
     });

@@ -263,7 +263,7 @@ export async function readWorkspaceFiles(
   snapshot.diagnostics.forEach((issue) => {
     if (
       issue.path &&
-      /\.verd(?:-doc)?\.json$/.test(issue.path) &&
+      /\.verd(?:(?:-doc)?\.json)?$/.test(issue.path) &&
       !failedFiles.has(issue.path)
     )
       fail(

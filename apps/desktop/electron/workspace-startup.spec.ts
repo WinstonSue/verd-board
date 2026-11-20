@@ -25,7 +25,7 @@ const setup = async () => {
   const legacy = path.join(dir, 'user-data', 'verdboard-data.json');
   await fs.mkdir(path.join(source, '文档'), { recursive: true });
   await fs.writeFile(
-    path.join(source, 'board.verd.json'),
+    path.join(source, 'board.verd'),
     JSON.stringify({
       format: 'verd-frame',
       version: 2,
@@ -129,7 +129,7 @@ describe('desktop built-in workspace startup', () => {
     const { source, target, legacy } = await setup();
     await fs.mkdir(target, { recursive: true });
     await seedBuiltinWorkspace(source, target, legacy);
-    expect(await exists(path.join(target, 'board.verd.json'))).toBe(true);
+    expect(await exists(path.join(target, 'board.verd'))).toBe(true);
     await fs.rm(target, { recursive: true });
     await fs.mkdir(path.join(target, '.verdscrolls'), { recursive: true });
     await fs.writeFile(
@@ -140,14 +140,14 @@ describe('desktop built-in workspace startup', () => {
       }),
     );
     await seedBuiltinWorkspace(source, target, legacy);
-    expect(await exists(path.join(target, 'board.verd.json'))).toBe(false);
+    expect(await exists(path.join(target, 'board.verd'))).toBe(false);
   });
 
   it('rejects malformed or duplicate native identities before publishing', async () => {
     const { source, target, legacy } = await setup();
     await fs.copyFile(
-      path.join(source, 'board.verd.json'),
-      path.join(source, 'duplicate.verd.json'),
+      path.join(source, 'board.verd'),
+      path.join(source, 'duplicate.verd'),
     );
     await expect(seedBuiltinWorkspace(source, target, legacy)).rejects.toThrow(
       'Duplicate',
@@ -242,10 +242,7 @@ describe('desktop workspace history', () => {
         value: { identity: 'legacy-project', workspaceInitialized: true },
       }),
     );
-    await fs.writeFile(
-      path.join(oldDefault, 'old.verd.json'),
-      'old user content',
-    );
+    await fs.writeFile(path.join(oldDefault, 'old.verd'), 'old user content');
     const original = JSON.stringify({
       version: 1,
       value: {
@@ -259,7 +256,7 @@ describe('desktop workspace history', () => {
     const startup = manager({ legacyUserDataRoot: oldRoot });
     const builtin = (await startup.open())!;
     expect(builtin.isDefault).toBe(true);
-    expect(await exists(path.join(target, 'board.verd.json'))).toBe(true);
+    expect(await exists(path.join(target, 'board.verd'))).toBe(true);
     expect((await startup.listHistory()).map((entry) => entry.name)).toEqual([
       'custom',
       '旧工作区 (desktop)',
@@ -269,9 +266,9 @@ describe('desktop workspace history', () => {
     )!;
     const restored = await startup.open({ historyId: old.id });
     expect(restored?.isDefault).toBe(false);
-    expect(
-      await fs.readFile(path.join(oldDefault, 'old.verd.json'), 'utf8'),
-    ).toBe('old user content');
+    expect(await fs.readFile(path.join(oldDefault, 'old.verd'), 'utf8')).toBe(
+      'old user content',
+    );
     expect(
       await fs.readFile(
         path.join(oldRoot, 'verdboard-global-config.json'),

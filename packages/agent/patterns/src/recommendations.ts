@@ -17,9 +17,13 @@ export const recommendationWorkspaceUrl = new URL(
   '../workspace/',
   import.meta.url,
 );
-const templates = import.meta.glob('../workspace/**/*.verd*.json', {
-  import: 'default',
-});
+const templates = import.meta.glob(
+  ['../workspace/**/*.verd', '../workspace/**/*.verd*.json'],
+  {
+    query: '?raw',
+    import: 'default',
+  },
+);
 
 export async function loadRecommendationTemplates(
   id: string,
@@ -30,7 +34,7 @@ export async function loadRecommendationTemplates(
     recommendation.templatePaths.map(async (path) => {
       const load = templates['../workspace/' + path];
       if (!load) throw new Error('Missing recommendation template: ' + path);
-      return load();
+      return JSON.parse((await load()) as string);
     }),
   );
 }

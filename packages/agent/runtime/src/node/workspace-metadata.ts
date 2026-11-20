@@ -4,6 +4,7 @@ import {
   WORKSPACE_META_DIR,
   LEGACY_WORKSPACE_META_DIR,
 } from '@sue/verd-board-workspace';
+import { configuredProjectWorkspace } from './workspace-context';
 
 export const metadataPath = (root: string, ...parts: string[]) =>
   path.join(root, WORKSPACE_META_DIR, ...parts);
@@ -83,6 +84,8 @@ export async function discoverWorkspace(
   let dir = await fs.realpath(path.resolve(start));
   if (!(await fs.stat(dir)).isDirectory()) dir = path.dirname(dir);
   for (;;) {
+    const configured = await configuredProjectWorkspace(dir);
+    if (configured) return configured;
     if (
       (await metadataState(dir, WORKSPACE_META_DIR)) ||
       (await metadataState(dir, LEGACY_WORKSPACE_META_DIR))

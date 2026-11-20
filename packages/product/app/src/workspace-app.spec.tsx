@@ -2,12 +2,36 @@ import React, { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { I18nProvider } from '@sue/verd-board-ui';
-import { createWorkspaceLink } from '@sue/board-common';
+import { createWorkspaceLink, type ActionResult } from '@sue/board-common';
 import type { FrameCell, NodeCell } from '@sue/board-core';
+import type { Editor } from '@tiptap/core';
 import { createMemoryWorkspaceHost } from '@sue/verd-board-workspace';
 import { WorkspaceApp } from './workspace-app';
 import { createDocumentFile } from '@sue/verd-board-workspace';
 import type { WorkspaceSnapshot } from './frames/workspace-storage';
+
+const editorControllers = vi.hoisted(
+  () => new WeakMap<object, { flushEditing(): Promise<ActionResult> }>(),
+);
+vi.mock(
+  '../../../react/text/src/components/document/document-controller',
+  async (original) => {
+    const actual =
+      await original<
+        typeof import('../../../react/text/src/components/document/document-controller')
+      >();
+    return {
+      ...actual,
+      createDocumentController(
+        ...args: Parameters<typeof actual.createDocumentController>
+      ) {
+        const controller = actual.createDocumentController(...args);
+        editorControllers.set(args[0], controller);
+        return controller;
+      },
+    };
+  },
+);
 
 HTMLDialogElement.prototype.showModal ??= function (this: HTMLDialogElement) {
   this.open = true;
@@ -127,6 +151,201 @@ const hostWith = async (path = 'ws-ui') => {
 };
 
 describe('WorkspaceApp', () => {
+  it('keeps continuous document edits coherent with the real scheduler', async () => {
+    const { host, handle, path } = await hostWith('continuous-document-edits');
+    const file = createDocumentFile('continuous-note', 'Continuous edits');
+    file.text.plainText = 'Body';
+    file.text.content = {
+      type: 'doc',
+      content: [
+        { type: 'paragraph', content: [{ type: 'text', text: 'Body' }] },
+        { type: 'frameReference', attrs: { targetFrameId: 'missing-frame' } },
+      ],
+    };
+    await host.commit(handle, {
+      transactionId: 'seed-continuous-edits',
+      writes: [
+        {
+          path: 'note.verd-doc.json',
+          content: JSON.stringify(file),
+          expectedVersion: null,
+        },
+      ],
+      session: {
+        tabs: [{ fileId: file.id }],
+        activeTabId: file.id,
+        activeView: 'file',
+        expandedDirs: [],
+      },
+    });
+    await render(<WorkspaceApp host={host} workspace={{ path }} />);
+    const element = container.querySelector(
+      '.workspace-pane.is-active .ProseMirror',
+    ) as HTMLElement & { editor: Editor };
+    await act(async () => {
+      element.editor.commands.setTextSelection(5);
+    });
+    const environment = globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean };
+    const previous = environment.IS_REACT_ACT_ENVIRONMENT;
+    const failures: string[] = [];
+    const onError = (event: ErrorEvent) => {
+      failures.push(event.message);
+    };
+    window.addEventListener('error', onError);
+    const burst = ' continuous input'.repeat(12);
+    const controller = editorControllers.get(element.editor)!;
+    expect(controller).toBeTruthy();
+    try {
+      // act() drains all lanes after every edit and hides update-depth starvation.
+      environment.IS_REACT_ACT_ENVIRONMENT = false;
+      for (const character of burst) {
+        element.editor.commands.insertContent(character);
+        let timeout: ReturnType<typeof setTimeout> | undefined;
+        try {
+          const receipt = await Promise.race([
+            controller.flushEditing(),
+            new Promise<never>((_resolve, reject) => {
+              timeout = setTimeout(
+                () =>
+                  reject(new Error('Editing acknowledgement did not settle')),
+                2000,
+              );
+            }),
+          ]);
+          expect(['completed', 'noop']).toContain(receipt.status);
+        } finally {
+          clearTimeout(timeout);
+        }
+      }
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    } catch (error) {
+      failures.push(error instanceof Error ? error.message : String(error));
+    } finally {
+      environment.IS_REACT_ACT_ENVIRONMENT = previous;
+      window.removeEventListener('error', onError);
+    }
+    await act(async () => {});
+    expect(failures).toEqual([]);
+    expect(element.textContent).toContain('Body' + burst);
+  });
+
+  it('enters readonly presentation after editing and restores the draft on Escape', async () => {
+    const { host, handle, path } = await hostWith('document-presentation');
+    const file = createDocumentFile('presentation-note', 'Presentation note');
+    file.text.plainText = 'Document body';
+    file.text.content = {
+      type: 'doc',
+      content: [
+        {
+          type: 'paragraph',
+          content: [{ type: 'text', text: 'Document body' }],
+        },
+      ],
+    };
+    await host.commit(handle, {
+      transactionId: 'seed-presentation',
+      writes: [
+        {
+          path: 'note.verd-doc.json',
+          content: JSON.stringify(file),
+          expectedVersion: null,
+        },
+      ],
+      session: {
+        tabs: [{ fileId: file.id }],
+        activeTabId: file.id,
+        activeView: 'file',
+        expandedDirs: [],
+      },
+    });
+    const originals = [
+      [document, 'fullscreenElement'],
+      [document, 'exitFullscreen'],
+      [HTMLElement.prototype, 'requestFullscreen'],
+    ].map(([target, key]) => ({
+      target: target as object,
+      key: key as string,
+      descriptor: Object.getOwnPropertyDescriptor(target, key as string),
+    }));
+    let fullscreen: Element | null = null;
+    let gesture = false;
+    const request = vi.fn(function (this: HTMLElement) {
+      expect(gesture).toBe(true);
+      fullscreen = this;
+      queueMicrotask(() =>
+        document.dispatchEvent(new Event('fullscreenchange')),
+      );
+      return Promise.resolve();
+    });
+    Object.defineProperty(document, 'fullscreenElement', {
+      configurable: true,
+      get: () => fullscreen,
+    });
+    Object.defineProperty(document, 'exitFullscreen', {
+      configurable: true,
+      value: async () => {
+        fullscreen = null;
+        queueMicrotask(() =>
+          document.dispatchEvent(new Event('fullscreenchange')),
+        );
+      },
+    });
+    Object.defineProperty(HTMLElement.prototype, 'requestFullscreen', {
+      configurable: true,
+      value: request,
+    });
+    try {
+      await render(<WorkspaceApp host={host} workspace={{ path }} />);
+      const element = container.querySelector(
+        '.workspace-pane.is-active .ProseMirror',
+      ) as HTMLElement & { editor: Editor };
+      expect(element).toBeTruthy();
+      await act(async () => {
+        element.editor.commands.setTextSelection(
+          element.editor.state.doc.content.size - 1,
+        );
+      });
+      for (const character of ' preserved draft')
+        await act(async () => {
+          element.editor.commands.insertContent(character);
+        });
+      await act(async () => {
+        gesture = true;
+        container
+          .querySelector<HTMLButtonElement>(
+            '[data-action-id="document.presentation"]',
+          )!
+          .click();
+        gesture = false;
+      });
+      expect(request).toHaveBeenCalledOnce();
+      await vi.waitFor(() =>
+        expect(
+          container.querySelector('[data-testid="presentation-mode"]'),
+        ).toBeTruthy(),
+      );
+      expect(element.getAttribute('contenteditable')).toBe('false');
+      expect(element.textContent).toBe('Document body preserved draft');
+      await act(async () => {
+        document.dispatchEvent(
+          new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }),
+        );
+      });
+      expect(
+        container.querySelector('[data-testid="presentation-mode"]'),
+      ).toBeNull();
+      expect(element.getAttribute('contenteditable')).toBe('true');
+      expect(element.textContent).toBe('Document body preserved draft');
+    } finally {
+      await act(async () => root?.unmount());
+      root = null;
+      for (const { target, key, descriptor } of originals) {
+        if (descriptor) Object.defineProperty(target, key, descriptor);
+        else Reflect.deleteProperty(target, key);
+      }
+    }
+  });
+
   it.each([false, true])(
     'reveals a folder from a collapsed sidebar before frame focus without replacing the document (strict=%s)',
     async (strict) => {
@@ -273,7 +492,7 @@ describe('WorkspaceApp', () => {
       transactionId: 'seed-selection',
       mkdirs: ['A', 'B'],
       writes: ['alpha', 'beta'].map((id) => ({
-        path: `${id}.verd.json`,
+        path: `${id}.verd`,
         expectedVersion: null,
         content: JSON.stringify({
           format: 'verd-frame',
@@ -326,14 +545,14 @@ describe('WorkspaceApp', () => {
         .querySelector('[data-testid="verd-frame"]')
         ?.getAttribute('data-frame'),
     ).toBe('alpha');
-    await clickMain('alpha.verd.json');
+    await clickMain('alpha.verd');
     expect(selected()).toEqual([]);
     await clickMain('B', { shiftKey: true });
-    expect(selected()).toEqual(['B', 'alpha.verd.json']);
+    expect(selected()).toEqual(['B', 'alpha.verd']);
     await act(async () => {
       row('A').querySelector<HTMLButtonElement>('.file-tree-more')!.click();
     });
-    expect(selected()).toEqual(['B', 'alpha.verd.json']);
+    expect(selected()).toEqual(['B', 'alpha.verd']);
     await act(async () => {
       container
         .querySelector('ylib-tabs')!
@@ -379,12 +598,12 @@ describe('WorkspaceApp', () => {
       transactionId: 'seed-groups',
       writes: [
         {
-          path: 'folder/inside.verd.json',
+          path: 'folder/inside.verd',
           content: frame('inside'),
           expectedVersion: null,
         },
         {
-          path: 'outside.verd.json',
+          path: 'outside.verd',
           content: frame('outside'),
           expectedVersion: null,
         },
@@ -439,7 +658,7 @@ describe('WorkspaceApp', () => {
       transactionId: 'seed',
       writes: [
         {
-          path: 'board.verd.json',
+          path: 'board.verd',
           content: JSON.stringify({
             format: 'verd-frame',
             version: 2,
@@ -472,7 +691,7 @@ describe('WorkspaceApp', () => {
       transactionId: 'seed',
       writes: [
         {
-          path: 'a.verd.json',
+          path: 'a.verd',
           content: JSON.stringify({
             format: 'verd-frame',
             version: 2,
@@ -568,7 +787,7 @@ describe('WorkspaceApp', () => {
       transactionId: 'seed',
       writes: [
         {
-          path: 'kept.verd.json',
+          path: 'kept.verd',
           content: JSON.stringify({
             format: 'verd-frame',
             version: 2,
@@ -645,12 +864,12 @@ describe('WorkspaceApp', () => {
       transactionId: 'seed-references',
       writes: [
         {
-          path: '未命名画布.verd.json',
+          path: '未命名画布.verd',
           content: JSON.stringify(target),
           expectedVersion: null,
         },
         {
-          path: '项目导览.verd.json',
+          path: '项目导览.verd',
           content: JSON.stringify(source),
           expectedVersion: null,
         },
@@ -686,11 +905,11 @@ describe('WorkspaceApp', () => {
     );
     await act(async () => {
       await shutdown();
-      const sourceBytes = await host.readFile(handle, '项目导览.verd.json');
+      const sourceBytes = await host.readFile(handle, '项目导览.verd');
       const removed = await host.commit(handle, {
         transactionId: 'remove-source',
         trash: [
-          { path: '项目导览.verd.json', expectedVersion: sourceBytes.version },
+          { path: '项目导览.verd', expectedVersion: sourceBytes.version },
         ],
       });
       expect(removed.outcome).toBe('applied');
@@ -1012,7 +1231,7 @@ describe('workspace shell navigation', () => {
       transactionId: 'builtin-content',
       writes: [
         {
-          path: '项目导览.verd.json',
+          path: '项目导览.verd',
           expectedVersion: null,
           content: JSON.stringify({
             format: 'verd-frame',
@@ -1197,7 +1416,7 @@ describe('workspace shell navigation', () => {
     const { host, path } = await hostWith('ws-import');
     await render(<WorkspaceApp host={host} workspace={{ path }} />);
     const input = container.querySelector<HTMLInputElement>(
-      'input[accept=".json,.verd.json,.verd-doc.json,.md,.markdown"]',
+      'input[accept=".json,.verd,.verd.json,.verd-doc.json,.md,.markdown"]',
     )!;
     Object.defineProperty(input, 'files', {
       value: [{ name: 'bad.json', text: async () => '{' }],

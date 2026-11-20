@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { createTestCellRegistry as createFixtureRegistry } from '../../../../../tests/fixtures/plugins/registry';
+import { createTestCellRegistry as createFixtureRegistry } from '../../../../../tests/fixtures/core/registry';
 import { copyCellFragment, planCellPaste } from './clipboard';
 import { groupCells, translateCellSelection } from './commands';
 import { applyCellOperations } from './index';
@@ -17,7 +17,6 @@ import {
   type NodeCell,
 } from './types';
 const testCellRegistry = createFixtureRegistry();
-
 const fixture = () =>
   applyCellOperations(
     createCellStore(createFrameCell('root')),
@@ -51,7 +50,6 @@ const fixture = () =>
     ],
     testCellRegistry,
   );
-
 describe('authored integer positions', () => {
   it('rounds dimensions without hiding invalid sizes or changing angles', () => {
     expect(
@@ -72,7 +70,6 @@ describe('authored integer positions', () => {
     expect(invalid.width).toBe(-0.2);
     expect(Number.isNaN(invalid.height)).toBe(true);
   });
-
   it('normalizes new cells and dimension edits independently of legacy positions', () => {
     const store = fixture(),
       a = store.cells.a as NodeCell;

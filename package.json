@@ -1,6 +1,6 @@
 {
   "name": "@sue/verd-board-source",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "author": "winston-sue",
   "packageManager": "pnpm@11.18.0",
   "engines": {
@@ -50,7 +50,8 @@
     "check:ci": "node scripts/quality-gate.mjs ci",
     "check:release": "node scripts/quality-gate.mjs release",
     "release:review": "node scripts/release-review.mjs draft",
-    "test:remote": "node scripts/remote-test.mjs"
+    "test:remote": "node scripts/remote-test.mjs",
+    "test:plan": "node scripts/test-plan.mjs"
   },
   "devDependencies": {
     "@eslint/js": "^9.22.0",

@@ -327,6 +327,7 @@ export interface WorkspaceSessionSnapshot {
   resources?: WorkspaceHostSnapshot['resources'];
   trash: WorkspaceTrashMeta[];
   agent?: WorkspaceHostSnapshot['agent'];
+  context?: WorkspaceHostSnapshot['context'];
   config: { version: number; value: Record<string, unknown> };
   /** Last confirmed config, excluding form drafts awaiting persistence. */
   savedConfig?: { version: number; value: Record<string, unknown> };
@@ -512,6 +513,7 @@ export const createWorkspaceSession = (options: {
   onCommitted?: (savedAt: number) => void;
   files: Map<CellId, WorkspaceFileEntry>;
   agent?: WorkspaceHostSnapshot['agent'];
+  context?: WorkspaceHostSnapshot['context'];
   config: { version: number; value: Record<string, unknown> };
   session: WorkspaceSessionState | null;
   trash: WorkspaceTrashMeta[];
@@ -532,6 +534,7 @@ export const createWorkspaceSession = (options: {
       return [id, copy];
     }),
   );
+  let context = options.context;
   let config = clone(options.config);
   let agent = options.agent ? clone(options.agent) : undefined;
   let session = options.session ? clone(options.session) : clone(EMPTY_SESSION);
@@ -1881,13 +1884,6 @@ export const createWorkspaceSession = (options: {
     command: WorkspaceCommand,
     recordHistory: boolean,
   ): Promise<CommandResult> => {
-    if (command.type === 'purge-trash') {
-      const result = await versionHost(handle, { type: 'status' });
-      if (result.status.enabled)
-        return invalid(
-          'Review and execute a version history cleanup plan before permanently deleting this content',
-        );
-    }
     if (
       (command.type === 'batch' || command.type === 'import-files') &&
       command.resources !== undefined
@@ -2128,7 +2124,9 @@ export const createWorkspaceSession = (options: {
             {
               path,
               expectedVersion:
-                source.kind === 'file' ? source.version : undefined,
+                source.kind === 'file'
+                  ? (source.version ?? (await readRawFile(path)).version)
+                  : undefined,
             },
           ];
         } else if (command.type === 'restore-file') {
@@ -2288,6 +2286,7 @@ export const createWorkspaceSession = (options: {
         agent = snapshot.agent ? clone(snapshot.agent) : undefined;
       }
       entries = snapshot.entries;
+      context = snapshot.context;
       resources = [...(snapshot.resources ?? [])];
       trash = snapshot.trash;
       storageRetry = null;
@@ -2328,6 +2327,15 @@ export const createWorkspaceSession = (options: {
         const trashPaths = topLevelPaths(
           (command.trashPaths ?? []).map(normalizeWorkspacePath),
         );
+        const deferredVersions = new Map<string, FileVersion>();
+        for (const path of new Set([
+          ...selectedMoves.map((move) => move.from),
+          ...trashPaths,
+        ])) {
+          const entry = entries.find((entry) => entry.path === path);
+          if (entry?.kind === 'file' && !entry.version)
+            deferredVersions.set(path, (await readRawFile(path)).version);
+        }
         const source = (path: string) => {
           const item = entries.find((e) => e.path === path);
           if (!item) throw new Error('Source is missing: ' + path);
@@ -2337,7 +2345,8 @@ export const createWorkspaceSession = (options: {
             version:
               current?.version ??
               failedFiles.get(path)?.version ??
-              item.version,
+              item.version ??
+              deferredVersions.get(path),
           };
         };
         for (const move of selectedMoves) {
@@ -2476,6 +2485,7 @@ export const createWorkspaceSession = (options: {
       }
       failedFiles = loaded.failedFiles;
       entries = snapshot.entries;
+      context = snapshot.context;
       resources = [...(snapshot.resources ?? [])];
       trash = snapshot.trash;
       config = clone(snapshot.config);
@@ -2671,6 +2681,10 @@ export const createWorkspaceSession = (options: {
       JSON.stringify(entries) !== JSON.stringify(snapshot.entries) ||
       JSON.stringify(resources) !== JSON.stringify(snapshot.resources ?? []) ||
       JSON.stringify(trash) !== JSON.stringify(snapshot.trash);
+    if (JSON.stringify(context) !== JSON.stringify(snapshot.context)) {
+      context = snapshot.context;
+      changed = true;
+    }
     if (JSON.stringify(agent) !== JSON.stringify(snapshot.agent)) {
       agent = snapshot.agent ? clone(snapshot.agent) : undefined;
       changed = true;
@@ -2895,6 +2909,7 @@ export const createWorkspaceSession = (options: {
           loadDiagnostics = loaded.diagnostics;
           diagnostics = [...loaded.diagnostics];
           entries = snapshot.entries;
+          context = snapshot.context;
           resources = [...(snapshot.resources ?? [])];
           trash = snapshot.trash;
           config = clone(snapshot.config);
@@ -3012,6 +3027,7 @@ export const createWorkspaceSession = (options: {
         entries: [...entries],
         resources: [...resources],
         trash: [...trash],
+        context: context ? clone(context) : undefined,
         agent: agent ? clone(agent) : undefined,
         config: pending.config
           ? { version: config.version, value: clone(pending.config.value) }
@@ -3522,6 +3538,7 @@ export const openWorkspaceSession = async (
     onCommitted: options.onCommitted,
     files: loaded.files,
     failedFiles: loaded.failedFiles,
+    context: snapshot.context,
     agent: snapshot.agent,
     config: snapshot.config,
     // Legacy `{frameId}` tabs and v2 `{fileId}` tabs converge here.
@@ -3545,7 +3562,7 @@ export const canvasParentDir = (path: string) =>
   parentWorkspacePath(path) ?? '';
 
 export const canvasDisplayName = (path: string) =>
-  baseName(path).replace(/\.verd\.json$/, '');
+  baseName(path).replace(/\.verd(?:\.json)?$/, '');
 
 export const isDocumentEntry = (path: string) => isDocumentPath(path);
 

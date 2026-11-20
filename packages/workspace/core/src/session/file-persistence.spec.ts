@@ -27,7 +27,7 @@ const setup = async () => {
         expectedVersion: null,
       })),
       {
-        path: 'board.verd.json',
+        path: 'board.verd',
         content: JSON.stringify(createFrameFile(createFrameCell('board'))),
         expectedVersion: null,
       },

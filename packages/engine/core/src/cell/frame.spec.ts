@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { createTestCellRegistry as createFixtureRegistry } from '../../../../../tests/fixtures/plugins/registry';
+import { createTestCellRegistry as createFixtureRegistry } from '../../../../../tests/fixtures/core/registry';
 import {
   convertFramePoint,
   fitFrameContent,
@@ -11,7 +11,6 @@ import {
 import { applyCellOperations } from './index';
 import { createCellStore, createFrameCell } from './types';
 const testCellRegistry = createFixtureRegistry();
-
 describe('frame content coordinates', () => {
   it('contains the title and content in the outer shell without extending its bounds', () => {
     const nested = createFrameCell('nested', {
@@ -49,7 +48,6 @@ describe('frame content coordinates', () => {
     expect(fitted.offset[1]).toBe(viewport.y);
     expect(store.cells.nested).toEqual(nested);
   });
-
   it('safely collapses the content viewport of legacy small shells', () => {
     const geometry = { x: 10, y: 20, width: 8, height: 12 };
     expect(frameTitleBounds(geometry)).toEqual({
@@ -65,7 +63,6 @@ describe('frame content coordinates', () => {
       height: 0,
     });
   });
-
   it('converts through centered nested shells and round trips without moving content', () => {
     const outer = createFrameCell('outer', {
       x: 200,

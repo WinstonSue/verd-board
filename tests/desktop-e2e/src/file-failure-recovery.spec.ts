@@ -27,7 +27,7 @@ test('Desktop isolates broken generated files, keeps editing available and recov
     const broken = structuredClone(valid);
     broken.cells['task-fill'].data = broken.cells['pay-start'].data;
     delete broken.cells['pay-start'].data;
-    const flowPath = path.join(workspace, 'flow.verd.json');
+    const flowPath = path.join(workspace, 'flow.verd');
     const badBytes = JSON.stringify(broken);
     await writeFile(flowPath, badBytes);
     const unknownPath = path.join(workspace, 'unfinished.verd-doc.json');
@@ -70,10 +70,32 @@ test('Desktop isolates broken generated files, keeps editing available and recov
     desktop = await electron.launch({ args: [launcher], env });
     const page = await desktop.firstWindow();
     const errors: string[] = [];
-    page.on('pageerror', (error) => errors.push(error.message));
+    let phase = 'startup';
+    page.on('pageerror', (error) =>
+      errors.push(phase + ': ' + (error.stack ?? error.message)),
+    );
+    await page.addInitScript(() => {
+      const NativeChannel = window.MessageChannel;
+      window.MessageChannel = class extends NativeChannel {
+        constructor() {
+          super();
+          const post = this.port2.postMessage.bind(this.port2);
+          this.port2.postMessage = (
+            ...args: Parameters<MessagePort['postMessage']>
+          ) => {
+            // React's background scheduler posts null. Keep foreground
+            // microtasks and host IPC active while background work is delayed.
+            if (args.length === 1 && args[0] === null)
+              window.setTimeout(() => post(...args), 500);
+            else post(...args);
+          };
+        }
+      };
+    });
+    await page.reload();
     await expect(page.locator('.workspace-shell')).toBeVisible();
     const active = page.locator('.workspace-pane.is-active');
-    await page.locator('[data-failed-path="flow.verd.json"] button').click();
+    await page.locator('[data-failed-path="flow.verd"] button').click();
     await expect(active.getByTestId('workspace-file-error')).toContainText(
       'Invalid workflow anchor',
     );
@@ -83,14 +105,27 @@ test('Desktop isolates broken generated files, keeps editing available and recov
       .click();
     await expect(active.locator('.document-page')).toBeVisible();
     await expect(active.getByTestId('workspace-file-error')).toContainText(
-      'flow.verd.json',
+      'flow.verd',
     );
     const editor = active
       .locator('.ProseMirror[contenteditable="true"]')
       .first();
+    phase = 'document input';
     await editor.click();
     await page.keyboard.press('ControlOrMeta+Home');
     await page.keyboard.type('Saved while the diagram was broken. ');
+    phase = 'continuous editor commands';
+    const burst = 'Continuous draft text. '.repeat(12);
+    await page.evaluate(async (text) => {
+      const editor = (
+        document.querySelector('.workspace-pane.is-active .ProseMirror') as any
+      )?.editor;
+      if (!editor) throw new Error('Active document editor is unavailable');
+      for (const character of text) {
+        editor.commands.insertContent(character);
+        for (let turn = 0; turn < 64; turn++) await Promise.resolve();
+      }
+    }, burst);
     await expect
       .poll(async () =>
         (await readFile(docPath, 'utf8')).includes(
@@ -98,8 +133,12 @@ test('Desktop isolates broken generated files, keeps editing available and recov
         ),
       )
       .toBe(true);
+    await expect
+      .poll(async () => (await readFile(docPath, 'utf8')).includes(burst))
+      .toBe(true);
     expect(await readFile(flowPath, 'utf8')).toBe(badBytes);
     expect(await readFile(unknownPath, 'utf8')).toBe('{ still writing');
+    phase = 'opening unfinished document';
     await page
       .locator('[data-failed-path="unfinished.verd-doc.json"] button')
       .click();
@@ -112,28 +151,31 @@ test('Desktop isolates broken generated files, keeps editing available and recov
       title: 'Repaired document',
       text: { ...doc.text, id: 'repaired' },
     };
+    phase = 'repairing document';
     await writeFile(unknownPath, JSON.stringify(repaired));
     await expect(active.locator('.document-page__content')).toHaveAttribute(
       'aria-label',
       'Repaired document',
     );
+    phase = 'repairing diagram';
     await writeFile(flowPath, JSON.stringify(valid));
-    await expect(
-      page.locator('[data-failed-path="flow.verd.json"]'),
-    ).toHaveCount(0);
-    await page.locator('.file-tree-name[title="flow.verd.json"]').click();
+    await expect(page.locator('[data-failed-path="flow.verd"]')).toHaveCount(0);
+    await page.locator('.file-tree-name[title="flow.verd"]').click();
     await expect(
       active.locator('svg[aria-label="Frame canvas"][data-surface="root"]'),
     ).toBeVisible();
     // A later external failure replaces the current pane and leaves the app usable.
+    phase = 'external diagram failure';
     await writeFile(flowPath, badBytes);
     await expect(active.getByTestId('workspace-file-error')).toBeVisible();
+    phase = 'retrying broken diagram';
     await active.getByRole('button', { name: '重试', exact: true }).click();
     await expect(active.getByTestId('workspace-file-error')).toBeVisible();
     expect(await readFile(flowPath, 'utf8')).toBe(badBytes);
     await page.screenshot({
       path: info.outputPath(`isolated-file-error-${browserName}.png`),
     });
+    phase = 'final diagram repair';
     await writeFile(flowPath, JSON.stringify(valid));
     await expect(
       active.locator('svg[aria-label="Frame canvas"][data-surface="root"]'),

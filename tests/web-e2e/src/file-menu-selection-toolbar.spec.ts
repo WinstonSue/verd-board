@@ -21,9 +21,11 @@ test('file menus dismiss across canvas capture, copy stable links and selection 
   await page.goto('/');
   await openActiveFile(page);
   await page
-    .locator('input[accept=".json,.verd.json,.verd-doc.json,.md,.markdown"]')
+    .locator(
+      'input[accept=".json,.verd,.verd.json,.verd-doc.json,.md,.markdown"]',
+    )
     .setInputFiles({
-      name: 'selection.verd.json',
+      name: 'selection.verd',
       mimeType: 'application/json',
       buffer: Buffer.from(JSON.stringify(file)),
     });
@@ -304,7 +306,9 @@ test('document file links use encoded identities, work readonly and report clipb
   await page.goto('/');
   await openActiveFile(page);
   await page
-    .locator('input[accept=".json,.verd.json,.verd-doc.json,.md,.markdown"]')
+    .locator(
+      'input[accept=".json,.verd,.verd.json,.verd-doc.json,.md,.markdown"]',
+    )
     .setInputFiles({
       name: 'copy.verd-doc.json',
       mimeType: 'application/json',

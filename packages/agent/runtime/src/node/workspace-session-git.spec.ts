@@ -74,6 +74,22 @@ describe(
   'Git history through the canonical filesystem session',
   { timeout: 20000 },
   () => {
+    it('permanently deletes the trash copy while preserving committed Git history', async () => {
+      const f = await setup();
+      const head = await f.command('rev-parse', 'HEAD');
+      await f.session.apply({ type: 'trash-file', fileId: f.file.id });
+      await f.session.flush();
+      const entryId = f.session.getState().trash[0].entryId;
+      expect(
+        (await f.session.apply({ type: 'purge-trash', entryIds: [entryId] }))
+          .ok,
+      ).toBe(true);
+      expect(f.session.getState().trash).toHaveLength(0);
+      expect(await f.command('rev-parse', 'HEAD')).toBe(head);
+      expect(
+        JSON.parse(await f.command('show', `${head}:${f.entry.path}`)).id,
+      ).toBe(f.file.id);
+    });
     it('preserves restored Git-managed instructions and ignore rules when reopening', async () => {
       const f = await setup();
       const instructions =

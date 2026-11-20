@@ -19,7 +19,7 @@ test('Desktop joint geometry commits safe shared-port paths once and reloads the
       userData = path.join(directory, 'profile');
     await mkdir(project);
     await mkdir(userData);
-    const file = path.join(project, 'geometry.verd.json'),
+    const file = path.join(project, 'geometry.verd'),
       launcher = path.join(directory, 'launch.cjs');
     await writeFile(file, JSON.stringify(geometryFixture()));
     await writeDesktopLauncher(launcher, userData);

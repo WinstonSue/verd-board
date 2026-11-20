@@ -4,7 +4,7 @@ import fs from 'node:fs/promises';
 afterEach(() => {
   vi.doUnmock('../recommendations.json');
   vi.doUnmock('../catalog.json');
-  vi.doUnmock('../workspace/rich-document/模板.verd-doc.json');
+  vi.doUnmock('../workspace/rich-document/模板.verd-doc.json?raw');
   vi.resetModules();
 });
 
@@ -31,8 +31,8 @@ it('user recommendation metadata and templates cannot change executable Agent de
       },
     ],
   }));
-  vi.doMock('../workspace/rich-document/模板.verd-doc.json', () => ({
-    default: { userRecommendation: 'Changed user template' },
+  vi.doMock('../workspace/rich-document/模板.verd-doc.json?raw', () => ({
+    default: JSON.stringify({ userRecommendation: 'Changed user template' }),
   }));
   vi.resetModules();
   const recommendations = await import('./recommendations');

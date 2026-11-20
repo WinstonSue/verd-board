@@ -47,12 +47,15 @@ test('opens a local folder, preserves its files after service restart and expose
     const host = createServiceWorkspaceHost();
     const history = await host.listWorkspaceHistory();
     const handle = await host.openWorkspace({ historyId: history[0].id });
+    const before = await host.readSnapshot(handle);
+    await host.initializeAgent(handle);
     const snapshot = await host.readSnapshot(handle);
     await host.closeWorkspace(handle);
     host.dispose();
-    return snapshot.agent;
+    return { before: before.agent, after: snapshot.agent };
   }, modulePath());
-  expect(agent?.ready).toBe(true);
+  expect(agent.before?.enabled).toBe(false);
+  expect(agent.after?.ready).toBe(true);
   const { execFile } = await import('node:child_process');
   const { promisify } = await import('node:util');
   const cli = await promisify(execFile)(
@@ -269,7 +272,7 @@ test('browses, creates and cancels directories and backs up bundled content to t
   ).toBe(true);
   await selectWorkspaceAction(page, '打开系统介绍');
   await fs.writeFile(
-    path.join(localService.workspace, 'added.verd.json'),
+    path.join(localService.workspace, 'added.verd'),
     'Backup original bytes',
   );
   await selectWorkspaceAction(page, '工作区设置');
@@ -288,10 +291,7 @@ test('browses, creates and cancels directories and backs up bundled content to t
   await picker.getByRole('button', { name: '取消', exact: true }).click();
   await expect(confirmation).toBeVisible();
   expect(
-    await fs.readFile(
-      path.join(localService.workspace, 'added.verd.json'),
-      'utf8',
-    ),
+    await fs.readFile(path.join(localService.workspace, 'added.verd'), 'utf8'),
   ).toBe('Backup original bytes');
   await confirmation
     .getByRole('button', { name: '选择目录并备份更新', exact: true })
@@ -303,11 +303,11 @@ test('browses, creates and cancels directories and backs up bundled content to t
   );
   expect(backups).toHaveLength(1);
   expect(
-    await fs.readFile(path.join(chosen, backups[0], 'added.verd.json'), 'utf8'),
+    await fs.readFile(path.join(chosen, backups[0], 'added.verd'), 'utf8'),
   ).toBe('Backup original bytes');
   await expect
     .poll(async () =>
-      fs.access(path.join(localService.workspace, 'added.verd.json')).then(
+      fs.access(path.join(localService.workspace, 'added.verd')).then(
         () => true,
         () => false,
       ),

@@ -32,7 +32,7 @@ export async function observeContentWrites(
       const commit = request.args[1] as CommitRequest;
       const changed = nativeOnly
         ? commit.writes?.some((write) =>
-            /\.verd(?:-doc)?\.json$/.test(write.path),
+            /\.verd(?:(?:-doc)?\.json)?$/.test(write.path),
           )
         : [
             commit.writes,

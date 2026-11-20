@@ -57,7 +57,7 @@ const setup = async () => {
     transactionId: 'seed',
     writes: [
       {
-        path: 'Board.verd.json',
+        path: 'Board.verd',
         content: JSON.stringify(initial),
         expectedVersion: null,
       },
@@ -69,8 +69,12 @@ const setup = async () => {
     },
   });
   let flush: () => Promise<void> = async () => {};
-  host.onShutdown = (callback) => {
-    flush = callback;
+  host.onShutdown = (callback, onCancelled) => {
+    // These tests keep editing after flushing; cancel the simulated close.
+    flush = async () => {
+      await callback();
+      onCancelled?.();
+    };
     return () => {};
   };
   container = document.createElement('div');

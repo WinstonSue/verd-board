@@ -50,6 +50,39 @@ afterEach(async () => {
   );
 });
 describe('agent patterns and real authoring contracts', () => {
+  it('edits legacy canvas files without changing their suffix', async () => {
+    const root = await workspace();
+    const original = runOperations(
+      [],
+      [
+        {
+          type: 'file.create',
+          kind: 'whiteboard',
+          id: 'legacy',
+          title: 'Legacy',
+          path: 'old.verd.json',
+        },
+      ],
+    ).entries[0];
+    await fs.writeFile(
+      path.join(root, original.path),
+      JSON.stringify(original.file),
+    );
+    if (original.file.format !== 'verd-frame')
+      throw new Error('Expected canvas');
+    const file = {
+      ...original.file,
+      frame: { ...original.file.frame, name: 'Edited' },
+    };
+    const plan = await prepareAuthoringBatch(await readNativeSnapshot(root), [
+      { type: 'file.replace', fileId: 'legacy', file },
+    ]);
+    expect((await applyPreparedBatch(root, plan)).outcome).toBe('applied');
+    const saved = await readNativeSnapshot(root);
+    expect(saved.entries[0].path).toBe('old.verd.json');
+    expect((saved.entries[0].file as typeof file).frame.name).toBe('Edited');
+  });
+
   it('inspects the exact saved node from an older owner link and rejects duplicate identities', async () => {
     const root = await workspace();
     const id = 'node/with~escaped';
@@ -76,8 +109,8 @@ describe('agent patterns and real authoring contracts', () => {
           }
         : {},
     });
-    const original = path.join(root, 'old.verd.json');
-    const current = path.join(root, 'current.verd.json');
+    const original = path.join(root, 'old.verd');
+    const current = path.join(root, 'current.verd');
     await fs.writeFile(original, JSON.stringify(board('old', false)));
     await fs.writeFile(current, JSON.stringify(board('current', true)));
     const inspect = (target: string) =>
@@ -85,7 +118,7 @@ describe('agent patterns and real authoring contracts', () => {
     const href = 'verd://file/old#' + encodeURIComponent('cell:' + id);
     expect((await inspect(href)).result).toEqual({
       fileId: 'current',
-      path: 'current.verd.json',
+      path: 'current.verd',
       fileVersion: expect.stringMatching(/^sha256-/),
       pointer: '/cells/node~1with~0escaped',
       node: board('current', true).cells[id],
@@ -93,7 +126,7 @@ describe('agent patterns and real authoring contracts', () => {
     expect(
       (await inspect('verd://file/current#cell%3Acurrent')).result,
     ).toMatchObject({ pointer: '/frame', node: { id: 'current' } });
-    expect((await inspect('current.verd.json')).result).toMatchObject({
+    expect((await inspect('current.verd')).result).toMatchObject({
       entries: [{ fileId: 'current' }],
     });
     await fs.writeFile(original, JSON.stringify(board('old', true)));
@@ -116,7 +149,7 @@ describe('agent patterns and real authoring contracts', () => {
           type: 'file.create',
           kind: 'invented',
           title: 'X',
-          path: 'x.verd.json',
+          path: 'x.verd',
         },
       ]),
     ).toThrow();
@@ -143,7 +176,7 @@ describe('agent patterns and real authoring contracts', () => {
         kind: 'whiteboard',
         id: 'board',
         title: 'Board',
-        path: 'board.verd.json',
+        path: 'board.verd',
       },
       {
         type: 'node.upsert',
@@ -172,7 +205,7 @@ describe('agent patterns and real authoring contracts', () => {
         kind: 'mind',
         id: 'mind',
         title: 'Mind',
-        path: 'mind.verd.json',
+        path: 'mind.verd',
       },
       { type: 'node.upsert', fileId: 'mind', id: 'topic', kind: 'mind-child' },
       { type: 'node.upsert', fileId: 'mind', id: 'topic2', kind: 'mind-child' },
@@ -187,7 +220,7 @@ describe('agent patterns and real authoring contracts', () => {
         kind: 'architecture',
         id: 'arch',
         title: 'Architecture',
-        path: 'arch.verd.json',
+        path: 'arch.verd',
       },
       {
         type: 'node.upsert',
@@ -217,7 +250,7 @@ describe('agent patterns and real authoring contracts', () => {
         kind: 'uml-class',
         id: 'class',
         title: 'Classes',
-        path: 'class.verd.json',
+        path: 'class.verd',
       },
       { type: 'node.upsert', fileId: 'class', id: 'one', kind: 'uml-class' },
       {
@@ -240,7 +273,7 @@ describe('agent patterns and real authoring contracts', () => {
         kind: 'uml-sequence',
         id: 'sequence',
         title: 'Sequence',
-        path: 'sequence.verd.json',
+        path: 'sequence.verd',
       },
       {
         type: 'node.upsert',
@@ -334,27 +367,27 @@ describe('agent patterns and real authoring contracts', () => {
         type: 'mermaid.import',
         scene: 'workflow',
         source: 'flowchart TD\n A[Start] --> B[Task]',
-        path: 'flow.verd.json',
+        path: 'flow.verd',
       },
       {
         type: 'mermaid.import',
         scene: 'architecture',
         source: 'flowchart LR\n A[Client] --> B[Service]',
-        path: 'arch.verd.json',
+        path: 'arch.verd',
       },
       {
         type: 'mermaid.import',
         scene: 'uml-class',
         source:
           'classDiagram\n class Order\n class Repository\n Order --> Repository',
-        path: 'class.verd.json',
+        path: 'class.verd',
       },
       {
         type: 'mermaid.import',
         scene: 'uml-sequence',
         source:
           'sequenceDiagram\n participant User\n participant Service\n User->>Service: request()',
-        path: 'sequence.verd.json',
+        path: 'sequence.verd',
       },
     ]);
     expect(plan.diagnostics).toEqual([]);
@@ -369,7 +402,7 @@ describe('agent patterns and real authoring contracts', () => {
           kind: 'workflow',
           id: 'flow',
           title: 'Flow',
-          path: 'flow.verd.json',
+          path: 'flow.verd',
         },
         {
           type: 'node.upsert',
@@ -553,7 +586,7 @@ describe('agent patterns and real authoring contracts', () => {
       kind: kind as never,
       id: 'file-' + i,
       title: kind,
-      path: `${kind}${kind === 'document' ? '.verd-doc.json' : '.verd.json'}`,
+      path: `${kind}${kind === 'document' ? '.verd-doc.json' : '.verd'}`,
     }));
     const plan = await prepareAuthoringBatch(
       await readNativeSnapshot(root),
@@ -605,7 +638,7 @@ describe('agent patterns and real authoring contracts', () => {
         kind: 'workflow',
         id: 'flow',
         title: 'Flow',
-        path: 'flow.verd.json',
+        path: 'flow.verd',
       },
       {
         type: 'node.upsert',
@@ -660,7 +693,7 @@ describe('agent patterns and real authoring contracts', () => {
           kind: 'whiteboard',
           id: 'canvas',
           title: 'Canvas',
-          path: 'canvas.verd.json',
+          path: 'canvas.verd',
         },
         {
           type: 'reference.upsert',

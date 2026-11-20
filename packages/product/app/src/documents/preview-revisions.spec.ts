@@ -70,7 +70,7 @@ const snapshot = (...entries: WorkspaceFile[]): WorkspaceSessionSnapshot => {
     if (file.format === 'verd-frame')
       files.set(file.frame.id, {
         file,
-        path: `${file.frame.id}.verd.json`,
+        path: `${file.frame.id}.verd`,
         dirty: false,
       });
     else

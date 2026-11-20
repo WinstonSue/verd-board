@@ -126,12 +126,12 @@ const bundledDiagnostics=validateNativeWorkspace(bundledEntries);
 assert.ok(bundledDiagnostics.every(d=>d.code==='workflow.port-direction' && d.severity==='warning'));
 const assertValid = diagnostics => { assert.equal(diagnostics.length,bundledDiagnostics.length); assert.ok(diagnostics.every(d=>d.code==='workflow.port-direction' && d.severity==='warning')); };
 assert.ok(run(['rules','--json']).runtime['workflow.port-direction']);
-const reversed=JSON.parse(await fs.readFile(new URL('workflow-process/模板.verd.json',patternWorkspaceUrl),'utf8'));
+const reversed=JSON.parse(await fs.readFile(new URL('workflow-process/模板.verd',patternWorkspaceUrl),'utf8'));
 const reversedEdge=Object.values(reversed.cells).find(cell=>cell.cellType==='edge');
 reversed.cells[reversedEdge.source.cellId].ports.find(port=>port.id===reversedEdge.source.portId).side='top';
-const reversedDiagnostics=validateNativeWorkspace([{path:'reverse.verd.json',file:reversed}]);
+const reversedDiagnostics=validateNativeWorkspace([{path:'reverse.verd',file:reversed}]);
 assert.ok(reversedDiagnostics.some(d=>d.code==='workflow.port-direction' && d.severity==='warning'));
-assert.ok(!validateNativeWorkspace([{path:'reverse.verd.json',file:reversed}],{profile:'runtime'}).some(d=>d.code==='workflow.port-direction'));
+assert.ok(!validateNativeWorkspace([{path:'reverse.verd',file:reversed}],{profile:'runtime'}).some(d=>d.code==='workflow.port-direction'));
 const previews = [];
 if (process.argv.includes('--preview')) {
   for (const p of patterns) for (const [index, template] of p.templatePaths.entries()) {
@@ -189,6 +189,24 @@ const changed=await prepareAuthoringBatch(await readNativeSnapshot(root),[{type:
 await applyPreparedBatch(root,changed);worker.stdin.write('flush');
 await new Promise((resolve,reject)=>worker.on('exit',code=>code===0?resolve():reject(new Error(stdout))));
 assert.ok(stdout.includes('"saved":false'));
+
+// A project can mount the published Node service without installing product app/ui.
+const { createProjectWorkspaceService } = await import('@sue/verd-board-agent/node');
+const { encodeServiceValue, decodeServiceValue } = await import('@sue/verd-board-workspace');
+const sdk = await createProjectWorkspaceService({projectRoot:base,workspacePath:path.basename(root),dataRoot:path.join(base,'sdk-data')});
+try {
+ const port=await sdk.listen(0), endpoint='http://127.0.0.1:'+port+'/api/v1';
+ const connected=await fetch(endpoint+'/session',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({pageId:crypto.randomUUID()})});
+ const {token}=await connected.json();
+ const rpc=async(method,args)=>{const response=await fetch(endpoint+'/rpc',{method:'POST',headers:{'Content-Type':'application/json','X-Verd-Session':token},body:JSON.stringify(encodeServiceValue({method,args}))});const result=decodeServiceValue(await response.json());assert.ok(!result.error,JSON.stringify(result.error));return result.value;};
+ const handle=await rpc('openWorkspace',[{}]);
+ const state=await rpc('readSnapshot',[handle]);
+ assert.equal(state.context.workspaceRoot,await fs.realpath(root));
+ assert.equal(state.context.projectRoot,await fs.realpath(base));
+ assert.ok(state.documents.length>0);
+ await rpc('closeWorkspace',[handle]);
+} finally {await sdk.close();}
+
 assert.ok((await readNativeSnapshot(root)).entries.find(e=>e.file.id===doc.file.id).file.text.plainText.startsWith('CLI current'));
 assertValid(validateNativeWorkspace((await readNativeSnapshot(root)).entries));
 const dead=spawn(process.execPath,['--input-type=module','-e',  "import {withWorkspaceLock} from '@sue/verd-board-agent/node';await withWorkspaceLock(process.env.TEST_ROOT,async()=>{console.log('locked');await new Promise(()=>setInterval(()=>{},1000));});"],{cwd:base,env:{...process.env,NODE_OPTIONS:'',TEST_ROOT:root},stdio:['ignore','pipe','pipe']});

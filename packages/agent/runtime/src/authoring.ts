@@ -151,8 +151,10 @@ export async function prepareAuthoringBatch(
   for (const e of result.entries) {
     e.path = normalizeWorkspacePath(e.path);
     const suffix =
-      e.file.format === 'verd-document' ? '.verd-doc.json' : '.verd.json';
-    if (!e.path.endsWith(suffix) || !isWorkspaceContentPath(e.path))
+      e.file.format === 'verd-document'
+        ? /\.verd-doc\.json$/
+        : /\.verd(?:\.json)?$/i;
+    if (!suffix.test(e.path) || !isWorkspaceContentPath(e.path))
       throw new Error('Invalid native content path: ' + e.path);
     if (occupied.has(e.path))
       throw new Error('Repeated native content path: ' + e.path);

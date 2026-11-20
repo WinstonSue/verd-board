@@ -159,14 +159,14 @@ it('recalls a moved cell by identity, with its current location and the original
         href: 'verd://file/current#cell%3Anode',
         title: 'Review',
         detail: 'Design',
-        path: 'Projects/Design.verd.json',
+        path: 'Projects/Design.verd',
         kind: 'cell',
       },
       {
         href: 'verd://file/another#cell%3Adifferent',
         title: 'Review',
         detail: 'Other',
-        path: 'Projects/Other.verd.json',
+        path: 'Projects/Other.verd',
         kind: 'cell',
       },
     ],
@@ -178,7 +178,7 @@ it('recalls a moved cell by identity, with its current location and the original
     ).toBe('Review');
     expect(
       container.querySelector('.workspace-link-location')?.textContent,
-    ).toContain('Projects/Design.verd.json');
+    ).toContain('Projects/Design.verd');
     await click('Save');
     expect(commit).toHaveBeenCalledWith(
       href,

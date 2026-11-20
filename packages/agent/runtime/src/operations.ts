@@ -148,7 +148,7 @@ export function runOperations(
             ? file.title
             : (file.frame.name ?? 'Canvas');
         const suffix =
-          file.format === 'verd-document' ? '.verd-doc.json' : '.verd.json';
+          file.format === 'verd-document' ? '.verd-doc.json' : '.verd';
         const copiedId = workspaceFileId(file);
         entries.set(copiedId, {
           file,

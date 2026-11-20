@@ -70,7 +70,7 @@ describe('workspace action adapter', () => {
     const result = await registry.executeAction('workspace.move-file', {
       type: 'move-file',
       fileId: 'missing',
-      toPath: 'missing.verd.json',
+      toPath: 'missing.verd',
     });
     expect(result.status).toBe('rejected');
     expect(workspaceActionCommandResult(result)).toMatchObject({

@@ -320,7 +320,7 @@ export async function runCli(
       Array.isArray(input) ? input : input.operations,
     );
     if (flags.has('out')) {
-      if (/\.verd(?:-doc)?\.json$/.test(option('out')))
+      if (/\.verd(?:(?:-doc)?\.json)?$/.test(option('out')))
         throw new Error('Plan output must not be a native content file');
       await fs.writeFile(option('out'), JSON.stringify(result, null, 2) + '\n');
     }

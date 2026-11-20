@@ -98,17 +98,22 @@ interface GitOptions {
   notify?: (paths: string[]) => void;
 }
 const plans = new Map<string, Map<string, StoredPlan>>();
-export async function recoverGitNativeLock(root: string) {
-  const refs = (await walkFiles(root, '.git/refs'))
+export async function recoverGitNativeLock(
+  root: string,
+  gitdir = path.join(root, '.git'),
+) {
+  const info = await fs.lstat(gitdir).catch(() => null);
+  if (!info?.isDirectory()) return;
+  const refs = (await walkFiles(gitdir, 'refs'))
     .map((file) => file.path)
     .filter((relative) => relative.endsWith('.lock'));
   for (const relative of [
-    '.git/index.lock',
-    '.git/HEAD.lock',
-    '.git/packed-refs.lock',
+    'index.lock',
+    'HEAD.lock',
+    'packed-refs.lock',
     ...refs,
   ]) {
-    const lock = path.join(root, relative),
+    const lock = path.join(gitdir, relative),
       bytes = await fs.readFile(lock, 'utf8').catch(() => null);
     if (!bytes?.startsWith('{"format":"verd-git-lock"')) continue;
     const owner = JSON.parse(bytes) as { pid: number };
@@ -127,6 +132,7 @@ async function withNativeLocks<T>(
   root: string,
   names: string[],
   task: () => Promise<T>,
+  gitdir = path.join(root, '.git'),
 ): Promise<T> {
   const held: string[] = [],
     bytes = JSON.stringify({
@@ -136,7 +142,7 @@ async function withNativeLocks<T>(
     });
   try {
     for (const name of names) {
-      const target = path.join(root, '.git', name + '.lock');
+      const target = path.join(gitdir, name + '.lock');
       await fs.mkdir(path.dirname(target), { recursive: true });
       await fs.writeFile(target, bytes, { flag: 'wx' }).catch(() => {
         throw new Error('Git is locked by another operation: ' + name);
@@ -209,7 +215,7 @@ async function liveIdentityFiles(root: string): Promise<GitVersionFile[]> {
       if (child.isDirectory()) await visit(nested);
       else if (
         child.isFile() &&
-        (/\.verd(?:-doc)?\.json$/.test(child.name) ||
+        (/\.verd(?:(?:-doc)?\.json)?$/.test(child.name) ||
           child.name === '.verd-folder.json')
       ) {
         files.push({
@@ -302,7 +308,7 @@ async function localCleanup(
       if (child.isDirectory()) await inspectLive(nested);
       else if (
         child.isFile() &&
-        (/\.verd(?:-doc)?\.json$/.test(child.name) ||
+        (/\.verd(?:(?:-doc)?\.json)?$/.test(child.name) ||
           appPublishTempBase(nested))
       ) {
         const bytes = new Uint8Array(
@@ -320,7 +326,7 @@ async function localCleanup(
         if (removed) live.push({ path: nested, before: sha(bytes) });
       } else if (
         child.isSymbolicLink() &&
-        (/\.verd(?:-doc)?\.json$/.test(child.name) ||
+        (/\.verd(?:(?:-doc)?\.json)?$/.test(child.name) ||
           appPublishTempBase(nested))
       )
         throw new Error(
@@ -516,6 +522,46 @@ async function execute(
   });
 }
 
+/** Resolve through Git itself: .git may be an ancestor directory or a worktree pointer file. */
+export async function discoverWorkspaceRepository(
+  root: string,
+  executable = 'git',
+) {
+  const read = async (args: string[]) =>
+    decode(await execute(executable, root, args)).trim();
+  let repositoryRoot: string;
+  try {
+    repositoryRoot = await read(['rev-parse', '--show-toplevel']);
+  } catch {
+    return null;
+  }
+  repositoryRoot = await fs.realpath(repositoryRoot);
+  const workspaceRoot = await fs.realpath(root);
+  const relative = path.relative(repositoryRoot, workspaceRoot);
+  if (
+    relative === '..' ||
+    relative.startsWith('..' + path.sep) ||
+    path.isAbsolute(relative)
+  )
+    throw new Error('Workspace is outside its Git repository');
+  const gitDirectory = await fs.realpath(
+    await read(['rev-parse', '--absolute-git-dir']),
+  );
+  const commonDirectory = await fs.realpath(
+    path.resolve(root, await read(['rev-parse', '--git-common-dir'])),
+  );
+  const managed =
+    repositoryRoot === workspaceRoot &&
+    gitDirectory === path.join(workspaceRoot, '.git');
+  return {
+    root: repositoryRoot,
+    workspacePath: relative.split(path.sep).join('/'),
+    gitDirectory,
+    commonDirectory,
+    managed,
+  };
+}
+
 export function createNodeWorkspaceGit(root: string, options: GitOptions = {}) {
   const settingsPath = path.join(root, '.verdscrolls/git-settings.json');
   const cleanupPath = path.join(root, '.verdscrolls/git-cleanup.json');
@@ -526,14 +572,24 @@ export function createNodeWorkspaceGit(root: string, options: GitOptions = {}) {
     execute(executable, root, args, extra);
   const text = async (args: string[], allowFailure = false) =>
     decode(await run(args, { allowFailure })).trim();
-  const rootGitdir = path.join(root, '.git');
+  let rootGitdir = path.join(root, '.git');
+  let commonGitdir = rootGitdir;
+  let repository: Awaited<ReturnType<typeof discoverWorkspaceRepository>> =
+    null;
+  const localPath = (relative: string): string | undefined => {
+    const prefix = repository?.workspacePath;
+    return !prefix
+      ? relative
+      : relative.startsWith(prefix + '/')
+        ? relative.slice(prefix.length + 1)
+        : undefined;
+  };
 
   const rootRepository = async () => {
-    if (!(await exists(rootGitdir))) return false;
-    const actual = await text(['rev-parse', '--show-toplevel']);
-    if ((await fs.realpath(actual)) !== (await fs.realpath(root)))
-      throw new Error('Git repository must be rooted at this workspace');
-    return true;
+    repository = await discoverWorkspaceRepository(root, executable);
+    rootGitdir = repository?.gitDirectory ?? path.join(root, '.git');
+    commonGitdir = repository?.commonDirectory ?? rootGitdir;
+    return !!repository;
   };
   const token = async (
     head: string | null,
@@ -553,7 +609,7 @@ export function createNodeWorkspaceGit(root: string, options: GitOptions = {}) {
     );
     hash.update(
       await fs
-        .readFile(path.join(rootGitdir, 'config'))
+        .readFile(path.join(commonGitdir, 'config'))
         .catch(() => Buffer.alloc(0)),
     );
     const paths = split(
@@ -604,14 +660,23 @@ export function createNodeWorkspaceGit(root: string, options: GitOptions = {}) {
         (await text(['symbolic-ref', '--quiet', '--short', 'HEAD'], true)) ||
         null;
       const raw = split(
-        await run(['status', '--porcelain=v1', '-z', '--untracked-files=all']),
+        await run([
+          'status',
+          '--porcelain=v1',
+          '-z',
+          '--untracked-files=all',
+          '--',
+          '.',
+        ]),
       );
       const changes: GitChange[] = [];
       for (let i = 0; i < raw.length; i++) {
         const entry = raw[i]!,
           xy = entry.slice(0, 2),
-          relative = entry.slice(3);
+          relative = localPath(entry.slice(3));
         const renamed = xy.includes('R') || xy.includes('C');
+        if (renamed) i++;
+        if (!relative || isGitRuntimePath(relative)) continue;
         changes.push({
           path: relative,
           staged: xy[0] !== ' ' && xy[0] !== '?',
@@ -628,11 +693,8 @@ export function createNodeWorkspaceGit(root: string, options: GitOptions = {}) {
                       ? 'added'
                       : 'modified',
         });
-        if (renamed) i++;
       }
       const blocked: string[] = [];
-      if (!(await fs.lstat(rootGitdir)).isDirectory())
-        blocked.push('Linked Git worktrees require an external Git client');
       if (changes.some((change) => change.status === 'conflicted'))
         blocked.push('Resolve Git conflicts outside the application');
       for (const name of [
@@ -697,9 +759,23 @@ export function createNodeWorkspaceGit(root: string, options: GitOptions = {}) {
         behind,
         author: authorName && email ? { name: authorName, email } : undefined,
         blocked,
-        canSync: !!remoteUrl && !!branch && !changes.length && !blocked.length,
+        canSync:
+          !!repository?.managed &&
+          !!remoteUrl &&
+          !!branch &&
+          !changes.length &&
+          !blocked.length,
         cleanup: cleanup?.state,
-        remoteSupported: true,
+        remoteSupported: !!repository?.managed,
+        repositoryManaged: !!repository?.managed,
+        historyCleanupSupported: !!repository?.managed,
+        repository: repository
+          ? {
+              root: repository.root,
+              workspacePath: repository.workspacePath,
+              ownership: repository.managed ? 'workspace' : 'project',
+            }
+          : undefined,
       };
     } catch (error) {
       return {
@@ -748,8 +824,8 @@ export function createNodeWorkspaceGit(root: string, options: GitOptions = {}) {
     )) {
       const tab = row.indexOf('\t'),
         [mode, kind, object] = row.slice(0, tab).split(' '),
-        relative = row.slice(tab + 1);
-      if (kind === 'blob' || mode === '160000')
+        relative = localPath(row.slice(tab + 1));
+      if (relative && (kind === 'blob' || mode === '160000'))
         entries.set(relative, { path: relative, oid: object!, mode: mode! });
     }
     return entries;
@@ -774,7 +850,7 @@ export function createNodeWorkspaceGit(root: string, options: GitOptions = {}) {
     return files;
   };
   const fileIdentity = (file: GitVersionFile) => {
-    if (!/\.verd(?:-doc)?\.json$/.test(file.path)) return null;
+    if (!/\.verd(?:(?:-doc)?\.json)?$/.test(file.path)) return null;
     try {
       const parsed = JSON.parse(decode(file.content));
       return parsed.format === 'verd-document'
@@ -789,7 +865,7 @@ export function createNodeWorkspaceGit(root: string, options: GitOptions = {}) {
   const locate = async (entries: Map<string, TreeEntry>, fileId: string) => {
     for (const entry of entries.values())
       if (
-        /\.verd(?:-doc)?\.json$/.test(entry.path) &&
+        /\.verd(?:(?:-doc)?\.json)?$/.test(entry.path) &&
         fileIdentity(await blob(entry)) === fileId
       )
         return entry.path;
@@ -816,6 +892,7 @@ export function createNodeWorkspaceGit(root: string, options: GitOptions = {}) {
     let current = relative;
     for (const oid of commits) {
       result.set(oid, current);
+      let leftWorkspace = false;
       const rows = split(
         await run([
           'diff-tree',
@@ -830,19 +907,21 @@ export function createNodeWorkspaceGit(root: string, options: GitOptions = {}) {
       );
       for (let index = 0; index < rows.length; index++) {
         if (/^R\d+$/.test(rows[index]!)) {
-          const previous = rows[++index],
-            next = rows[++index];
-          if (next === current && previous) {
-            current = previous;
+          const previous = localPath(rows[++index]!),
+            next = localPath(rows[++index]!);
+          if (next === current) {
+            if (previous) current = previous;
+            else leftWorkspace = true;
             break;
           }
         } else index++;
       }
+      if (leftWorkspace) break;
     }
     return result;
   };
   const withIndexLock = async <T>(task: () => Promise<T>) => {
-    return withNativeLocks(root, ['index'], task);
+    return withNativeLocks(root, ['index'], task, rootGitdir);
   };
   const safeRemote = (url: string) => {
     if (
@@ -981,11 +1060,26 @@ export function createNodeWorkspaceGit(root: string, options: GitOptions = {}) {
 
   return async (request: WorkspaceGitRequest): Promise<WorkspaceGitResult> => {
     executable = (await readJson<Settings>(settingsPath))?.executable || 'git';
-    await recoverGitNativeLock(root);
+    await rootRepository();
+    await recoverGitNativeLock(root, rootGitdir);
     await recoverGitPurge(root);
     await recoverGitRestore(root);
     let state = await status();
     if (request.type === 'status') return { status: state };
+    if (
+      repository &&
+      !repository.managed &&
+      (request.type === 'init' ||
+        request.type === 'sync' ||
+        request.type === 'configure' ||
+        request.type === 'purge-plan' ||
+        request.type === 'purge' ||
+        request.type === 'cleanup-retry' ||
+        request.type === 'cleanup-confirm')
+    )
+      throw new Error(
+        'The enclosing project owns repository settings, synchronization and history cleanup; use an external Git client',
+      );
     if (request.type === 'configure' && request.executable !== undefined) {
       if (!request.executable.trim() || /[\r\n\0]/.test(request.executable))
         throw new Error('Invalid Git executable');
@@ -1252,7 +1346,7 @@ export function createNodeWorkspaceGit(root: string, options: GitOptions = {}) {
         : undefined;
       const oids = lineage
         ? [...lineage.keys()]
-        : (await text(['rev-list', '--date-order', 'HEAD']))
+        : (await text(['rev-list', '--date-order', 'HEAD', '--', '.']))
             .split('\n')
             .filter(Boolean);
       const commits: GitCommit[] = [];

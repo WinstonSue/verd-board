@@ -12,6 +12,11 @@ export {
   parseLegacyFrameDocument,
 } from './migration/cell-workspace';
 export { WorkspaceApp, type WorkspaceAppProps } from './workspace-app';
+export {
+  ExternalFileApp,
+  type ExternalFileBinding,
+  type ExternalFileActions,
+} from './external-file-app';
 
 export * from './documents/knowledge-index';
 

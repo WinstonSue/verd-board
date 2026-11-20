@@ -84,7 +84,7 @@ test('test workers, CI, explicit local debugging and publishing retain direct ga
   assert.equal(localTestExecutionAllowed({ CI: 'true' }), false);
 });
 
-test('feature filters require existing repository-relative unit and E2E selections without accepting full-gate flags', () => {
+test('test filters accept independent units and hosts while rejecting unsafe paths', () => {
   assert.equal(parseSelection([]), null);
   assert.deepEqual(
     parseSelection([
@@ -100,8 +100,6 @@ test('feature filters require existing repository-relative unit and E2E selectio
     },
   );
   for (const args of [
-    ['--unit', 'scripts/x.test.mjs'],
-    ['--web-e2e', 'tests/web-e2e/src/a.spec.ts'],
     ['--unit', '../x.test.mjs'],
     ['--skip-checks'],
     ['--unit', ''],

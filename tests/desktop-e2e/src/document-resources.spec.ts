@@ -71,7 +71,7 @@ test('Desktop reads local PDF with packaged worker and preserves attachment refe
     page.on('pageerror', (error) => console.log('PAGE ERROR', error.message));
     await expect(
       page.locator(
-        'input[accept=".json,.verd.json,.verd-doc.json,.md,.markdown"]',
+        'input[accept=".json,.verd,.verd.json,.verd-doc.json,.md,.markdown"]',
       ),
     ).toBeAttached({ timeout: 45000 });
     await exerciseDocumentResources(page);
@@ -97,9 +97,11 @@ test('Desktop reads local PDF with packaged worker and preserves attachment refe
       ),
     );
     await page
-      .locator('input[accept=".json,.verd.json,.verd-doc.json,.md,.markdown"]')
+      .locator(
+        'input[accept=".json,.verd,.verd.json,.verd-doc.json,.md,.markdown"]',
+      )
       .setInputFiles({
-        name: 'Link canvas.verd.json',
+        name: 'Link canvas.verd',
         mimeType: 'application/json',
         buffer: Buffer.from(JSON.stringify(fixture)),
       });

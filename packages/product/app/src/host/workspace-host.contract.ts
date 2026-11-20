@@ -72,7 +72,7 @@ export const describeWorkspaceHostContract = (
         ],
         resourceWrites: [
           {
-            path: 'history/snapshot.verd.json',
+            path: 'history/snapshot.verd',
             content: canvasJson('internal-frame'),
             expectedVersion: null,
           },
@@ -82,7 +82,7 @@ export const describeWorkspaceHostContract = (
       expect(await host.commit(handle, request)).toEqual(receipt);
       expect(Object.keys(receipt.versions ?? {})).toEqual(['ordinary.json']);
       expect(Object.keys(receipt.resourceVersions ?? {})).toEqual([
-        'history/snapshot.verd.json',
+        'history/snapshot.verd',
       ]);
       const snapshot = await host.readSnapshot(handle);
       expect(
@@ -94,25 +94,21 @@ export const describeWorkspaceHostContract = (
       expect(snapshot.canvases).toEqual([]);
       expect(snapshot.resources).toEqual([
         {
-          key: 'history/snapshot.verd.json',
-          version: receipt.resourceVersions!['history/snapshot.verd.json'],
+          key: 'history/snapshot.verd',
+          version: receipt.resourceVersions!['history/snapshot.verd'],
           size: new TextEncoder().encode(canvasJson('internal-frame')).length,
         },
       ]);
       expect(
         decode(
-          (await host.readResource(handle, 'history/snapshot.verd.json'))
-            .content,
+          (await host.readResource(handle, 'history/snapshot.verd')).content,
         ),
       ).toBe(canvasJson('internal-frame'));
       await expect(
-        host.readFile(
-          handle,
-          '.verdscrolls/resources/history/snapshot.verd.json',
-        ),
+        host.readFile(handle, '.verdscrolls/resources/history/snapshot.verd'),
       ).rejects.toThrow();
       await expect(
-        host.readFile(handle, '.verd-resources/history/snapshot.verd.json'),
+        host.readFile(handle, '.verd-resources/history/snapshot.verd'),
       ).rejects.toThrow();
       await host.closeWorkspace(handle);
     });
@@ -825,6 +821,16 @@ export const describeWorkspaceHostContract = (
       });
       expect(meta.outcome).toBe('rejected');
       expect(meta.reason).toBe('invalid');
+      for (const path of ['.git/config', 'nested/.GiT/HEAD']) {
+        const git = await host.commit(handle, {
+          transactionId: tx(),
+          writes: [
+            { path, content: 'not a content file', expectedVersion: null },
+          ],
+        });
+        expect(git.outcome).toBe('rejected');
+        expect(git.reason).toBe('invalid');
+      }
     });
   });
 };

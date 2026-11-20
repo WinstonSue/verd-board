@@ -1,7 +1,5 @@
 # @sue/board-react
 
-以下为下一主版本的源码接入方式。本轮只交付代码与 Changesets，不升级版本、不发布；请用本仓构建的真实 tarball 验证，已发布的 2.0.0 不包含这些新入口。
-
 通用 FrameCanvas、可组合 FrameEditor、工具栏、属性控件、快捷键分发、图像导出，以及内置富文本。不依赖领域引擎、领域 UI、产品包或转换器。
 
 在项目 .npmrc 配置两个 scope，访问权限和令牌由仓库管理员提供；令牌保存在用户配置或 CI secret。最小编辑器只使用 @sue，完整产品的 @ylib 传递依赖也需要相应授权。
@@ -49,7 +47,7 @@ export function Editor() {
 
 `FrameGeometryControls` 与 `FrameAppearanceSettings` 提供最小编辑器和产品面板共用的字段定义；`FrameSettingsText` 保留文本草稿，`FramePropertyNumber` 保留数字草稿，`FrameSettingsControl` 桥接即时生效的原生控件。新 SDK 为独立仓库候选包，联调使用校验过的 tarball；正式版本须在 SDK 发布并更新依赖后验证 registry 消费。
 
-## 下一主版本：统一用户操作与定位
+## 统一用户操作与定位
 
 `FrameCanvasController` exposes `actions()`, `getActionState(id,args?)`, `executeAction(id,args?,invocation?)` and `actionSource`. Toolbar, menu, shortcut, palette and help read the same definitions. `Ctrl/Cmd+Shift+P` opens the nearest scope's palette. `@sue/board-react-actions` supplies the shared React surface; board CSS already includes its styles.
 

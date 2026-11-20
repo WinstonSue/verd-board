@@ -13,7 +13,7 @@ import { DOCUMENT_FILE_SUFFIX, baseName } from '../host/workspace-host';
 export type { ContentProperties } from './content-properties';
 
 /**
- * Standalone rich-text document: a peer of the canvas `.verd.json` file.
+ * Standalone rich-text document: a peer of the canvas `.verd` file.
  * `id` is the workspace file identity — renames, moves, trash and restore
  * never change it; duplication and identity-colliding imports do, and keep
  * `text.id` in step.

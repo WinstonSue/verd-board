@@ -1,3 +1,5 @@
+import { reporterPath } from '../../scripts/remote-playwright-reporter.cjs';
+import { runtimeTests } from '../../scripts/e2e-selection.cjs';
 import { defineConfig } from '@playwright/test';
 import path from 'node:path';
 
@@ -5,11 +7,12 @@ process.env['VERDBOARD_E2E_MODE'] = 'dev';
 
 export default defineConfig({
   reporter: process.env.REMOTE_TEST_REPORTER
-    ? [['dot'], [process.env.REMOTE_TEST_REPORTER]]
+    ? [['dot'], [reporterPath]]
     : undefined,
   retries: 0,
   maxFailures: 0,
   testDir: './src',
+  testMatch: runtimeTests('desktop', 'development'),
   testIgnore: ['**/packaged.spec.ts', '**/demo.spec.ts'],
   grepInvert: /@prod/,
   workers: 1,
