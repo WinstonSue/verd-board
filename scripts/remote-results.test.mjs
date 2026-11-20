@@ -4,7 +4,6 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import os from 'node:os';
 import {
-  fetchTaskResults,
   readInstallerChecksums,
   summaryExitCode,
   waitForTask,
@@ -39,24 +38,6 @@ test('terminal success requires current complete gate evidence and actual packag
       deliveryStatus: 'delivered',
     }),
     0,
-  );
-});
-
-test('a retrieved failed task is summarized while a failed transfer stays recoverable', async (t) => {
-  const directory = await fs.mkdtemp(
-    path.join(os.tmpdir(), 'verd-failed-fetch-'),
-  );
-  t.after(() => fs.rm(directory, { recursive: true, force: true }));
-  await fetchTaskResults('failed-task', directory, async () => {
-    await fs.writeFile(
-      path.join(directory, 'local-comparison.json'),
-      '{"checkedAt":"new","current":true}',
-    );
-    return { code: 1 };
-  });
-  await assert.rejects(
-    fetchTaskResults('failed-task', directory, async () => ({ code: 1 })),
-    /resume task failed-task/,
   );
 });
 

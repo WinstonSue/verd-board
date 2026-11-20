@@ -56,25 +56,6 @@ export function summaryExitCode(summary) {
   return 0;
 }
 
-/** The generic tool returns the task's failure code even after a successful fetch. */
-export async function fetchTaskResults(id, directory, execute) {
-  const marker = path.join(directory, 'local-comparison.json');
-  const comparison = () =>
-    fs.readFile(marker, 'utf8').catch((error) => {
-      if (error.code === 'ENOENT') return null;
-      throw error;
-    });
-  const previous = await comparison();
-  const result = await execute(['fetch', id]);
-  if (result.code) {
-    const current = await comparison();
-    if (!current || current === previous) {
-      throw new Error('Result retrieval failed; resume task ' + id);
-    }
-  }
-  return result;
-}
-
 export async function summarizeResults(directory) {
   const [manifest, state, comparison, artifacts] = await Promise.all(
     [
@@ -168,15 +149,19 @@ export async function waitForTask(
     sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
   },
 ) {
-  if (!Number.isFinite(timeout) || timeout < 0)
+  if (timeout !== null && (!Number.isFinite(timeout) || timeout < 0))
     throw new Error('Invalid wait timeout');
-  const deadline = now() + timeout * 1000;
+  const deadline = timeout === null ? Infinity : now() + timeout * 1000;
   for (;;) {
     const current = await status(id);
-    if (terminal(current.state)) {
-      await fetch(id);
-      return summarize(id);
-    }
+    if (['upload-paused', 'upload-expired'].includes(current.state))
+      return {
+        taskId: id,
+        status: current.state,
+        confirmedBytes: current.confirmedBytes,
+        totalBytes: current.totalBytes,
+      };
+    if (terminal(current.state)) return summarize(id, await fetch(id));
     if (now() >= deadline)
       return {
         taskId: id,

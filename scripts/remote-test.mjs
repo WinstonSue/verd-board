@@ -4,14 +4,12 @@ import path from 'node:path';
 import os from 'node:os';
 import { spawn } from 'node:child_process';
 import { createReadStream, createWriteStream } from 'node:fs';
-import { createHash } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import { finished } from 'node:stream/promises';
-import { StringDecoder } from 'node:string_decoder';
 import { createTestPlan, parseGateOptions } from './test-plan.mjs';
 import { changedFiles } from './test-catalog.mjs';
 import { GUI_SESSION_SCRIPT } from './remote-gui-session.mjs';
 import {
-  fetchTaskResults,
   readInstallerChecksums,
   summaryExitCode,
   summarizeResults,
@@ -67,12 +65,13 @@ export function parseCli(input) {
       throw new Error('Select repository script test files');
     if (action === 'benchmark' && args.length)
       throw new Error('Benchmark uses its fixed comparison suite');
-    return ['run', action, '--', ...args];
+    return ['submit', '--json', action, '--', ...args];
   }
   if (action === 'doctor' && !args.length) return [action];
   if (
     [
       'wait',
+      'resume',
       'summary',
       'status',
       'logs',
@@ -88,15 +87,16 @@ export function parseCli(input) {
       (!args.length ||
         (action === 'fetch' && args.length === 1 && args[0] === '--raw') ||
         (action === 'summary' && args.length === 1 && args[0] === '--json') ||
-        (action === 'wait' &&
+        (['wait', 'resume'].includes(action) &&
           args.length === 2 &&
           args[0] === '--timeout' &&
-          /^\d+(?:\.\d+)?$/.test(args[1])))
+          /^\d+(?:\.\d+)?$/.test(args[1]) &&
+          Number.isFinite(Number(args[1]))))
     )
       return [action, id, ...args];
   }
   throw new Error(
-    'Use pnpm test:remote [ci|dev <selectors>|release|package [--with-zip]|scripts <test-files>|benchmark|doctor|status/logs/artifacts/fetch/cancel <ID> [--raw]]',
+    'Use pnpm test:remote [ci|dev <selectors>|release|package [--with-zip]|scripts <test-files>|benchmark|doctor|wait/resume <ID> [--timeout <seconds>]|status/logs/artifacts/fetch/cancel <ID> [--raw]]',
   );
 }
 export async function captureProof(root = ROOT) {
@@ -412,23 +412,22 @@ export async function main(args, { execute, root = ROOT, configuration } = {}) {
     env: { ...process.env, REMOTE_TEST_CONFIG: profile },
   };
   try {
-    if (execute) return await execute(binary, forwarded, options);
-    await fs.access(binary).catch(() => {
-      throw new Error(
-        'Install the user-level remote-test tool; configuration: ~/.config/remote-test/config.json',
-      );
-    });
+    if (!execute)
+      await fs.access(binary).catch(() => {
+        throw new Error(
+          'Install the user-level remote-test tool; configuration: ~/.config/remote-test/config.json',
+        );
+      });
     const resultsRoot = path.isAbsolute(project.resultsDir ?? '')
       ? project.resultsDir
       : path.join(root, project.resultsDir ?? 'test-results/remote');
     const logDirectory = path.join(root, '.quality/remote-logs');
-    await fs.mkdir(logDirectory, { recursive: true });
+    if (!execute) await fs.mkdir(logDirectory, { recursive: true });
     const processLog = path.join(logDirectory, Date.now() + '.log');
-    let taskId;
     const command = async (argv, { capture = false, stream = false } = {}) => {
+      if (execute) return await execute(binary, argv, options);
       let output = '',
         tail = '';
-      const decoder = new StringDecoder('utf8');
       const log = createWriteStream(processLog, { flags: 'a' });
       try {
         const code = await new Promise((resolve, reject) => {
@@ -437,8 +436,9 @@ export async function main(args, { execute, root = ROOT, configuration } = {}) {
             env: options.env,
             stdio: ['ignore', 'pipe', 'pipe'],
           });
-          const accept = (chunk) => {
-            const value = decoder.write(chunk);
+          child.stdout.setEncoding('utf8');
+          child.stderr.setEncoding('utf8');
+          child.stdout.on('data', (value) => {
             log.write(value);
             if (stream || verbose) process.stdout.write(value);
             if (capture) {
@@ -446,16 +446,11 @@ export async function main(args, { execute, root = ROOT, configuration } = {}) {
               if (output.length > 2_000_000) child.kill();
             }
             tail = (tail + value).slice(-8192);
-            const found = tail.match(/任务：([a-zA-Z0-9-]+)\s/);
-            if (found && !taskId) {
-              taskId = found[1];
-              console.log('Task: ' + taskId);
-            }
-          };
-          child.stdout.on('data', accept);
-          child.stderr.on('data', (chunk) => {
-            log.write(chunk);
-            if (stream || verbose) process.stderr.write(chunk);
+          });
+          child.stderr.on('data', (value) => {
+            log.write(value);
+            if (stream || verbose) process.stderr.write(value);
+            tail = (tail + value).slice(-8192);
           });
           child.once('error', reject);
           child.once('close', (code) => resolve(code ?? 1));
@@ -466,12 +461,7 @@ export async function main(args, { execute, root = ROOT, configuration } = {}) {
         await finished(log);
       }
     };
-    const finish = async (id) => {
-      const directory = path.join(
-        resultsRoot,
-        id,
-        ...(args.includes('--raw') ? ['raw'] : []),
-      );
+    const finish = async (id, directory) => {
       const summary = await summarizeResults(directory);
       summary.currentSource =
         summary.currentSource &&
@@ -504,77 +494,128 @@ export async function main(args, { execute, root = ROOT, configuration } = {}) {
       console.log(JSON.stringify(summary, null, 2));
       return summaryExitCode(summary);
     }
-    if (args[0] === 'wait') {
+    const action = args[0];
+    const passthrough = ['doctor', 'status', 'logs', 'cancel', 'artifacts'];
+    if (passthrough.includes(action)) {
+      const result = await command(forwarded, { stream: true });
+      return typeof result === 'number' ? result : result.code;
+    }
+    const report = (summary) => console.log(JSON.stringify(summary, null, 2));
+    const paused = (taskId, response) => ({
+      taskId,
+      status: response.state,
+      confirmedBytes: response.confirmedBytes,
+      totalBytes: response.totalBytes,
+      error: response.error,
+      recover:
+        response.state === 'upload-paused'
+          ? 'pnpm test:remote resume ' + taskId
+          : undefined,
+    });
+    const submitting =
+      forwarded[forwarded[0] === '--project' ? 2 : 0] === 'submit';
+    let taskId = args[1];
+    if (submitting || action === 'resume') {
+      let uploadArgs;
+      if (submitting) {
+        taskId =
+          new Date().toISOString().replace(/[-:.TZ]/g, '') +
+          '-' +
+          randomUUID().slice(0, 8);
+        console.log('Task: ' + taskId);
+        uploadArgs = [...forwarded];
+        uploadArgs.splice(uploadArgs.indexOf('--'), 0, '--id', taskId);
+      } else uploadArgs = ['resume', taskId, '--json'];
       try {
-        const summary = await waitForTask(args[1], {
-          timeout: args.includes('--timeout')
-            ? Number(args[args.indexOf('--timeout') + 1])
-            : 600,
-          status: async (id) => {
-            const result = await command(['status', id], { capture: true });
-            try {
-              return JSON.parse(result.output);
-            } catch {
-              throw new Error(
-                'Could not query task ' + id + '; log: ' + processLog,
-              );
-            }
-          },
-          fetch: (id) =>
-            fetchTaskResults(id, path.join(resultsRoot, id), command),
-          summarize: finish,
-        });
-        console.log(JSON.stringify(summary, null, 2));
-        return summary.timedOut ? 0 : summaryExitCode(summary);
+        const result = await command(uploadArgs, { capture: true });
+        const receipt = JSON.parse(result.output);
+        if (receipt.id === taskId && receipt.state === 'upload-paused') {
+          report(paused(taskId, receipt));
+          return result.code || 75;
+        }
+        if (result.code || receipt.id !== taskId || receipt.accepted !== true)
+          throw new Error(receipt.error || 'Invalid submission receipt');
       } catch (error) {
-        console.error(
-          JSON.stringify({
-            taskId: args[1],
-            status: 'retrieval-failed',
-            error: error.message,
-            log: processLog,
-            recover: 'pnpm test:remote wait ' + args[1],
-          }),
-        );
+        report({
+          taskId,
+          status: 'submission-failed',
+          error: error.message,
+          log: processLog,
+        });
         return 1;
       }
     }
-    const passthrough = [
-      'doctor',
-      'status',
-      'logs',
-      'cancel',
-      'artifacts',
-    ].includes(args[0]);
-    const result = await command(forwarded, { stream: passthrough });
-    taskId ??= args[0] === 'fetch' ? args[1] : undefined;
-    if (taskId && !passthrough) {
-      try {
-        const summary = await finish(taskId);
-        console.log(JSON.stringify(summary, null, 2));
-        return result.code || summaryExitCode(summary);
-      } catch (error) {
-        console.error(
-          JSON.stringify({
-            taskId,
-            status: 'retrieval-failed',
-            error: error.message,
-            log: processLog,
-            recover: 'pnpm test:remote wait ' + taskId,
-          }),
+
+    let execution,
+      failureStage = 'observation';
+    const fetch = async (id) => {
+      failureStage = 'retrieval';
+      const argv = [
+        'fetch',
+        id,
+        '--json',
+        ...(args.includes('--raw') ? ['--raw'] : []),
+      ];
+      const result = await command(argv, { capture: true });
+      const receipt = JSON.parse(result.output);
+      if (
+        receipt.id !== id ||
+        receipt.download?.state !== 'complete' ||
+        !path.isAbsolute(receipt.download.directory ?? '')
+      )
+        throw new Error(
+          receipt.download?.error ||
+            receipt.error ||
+            'Invalid result retrieval receipt',
         );
-        return result.code || 1;
+      execution = receipt.execution;
+      return receipt.download.directory;
+    };
+    try {
+      let summary;
+      if (action === 'fetch') {
+        summary = await finish(taskId, await fetch(taskId));
+      } else {
+        const timeoutIndex = args.indexOf('--timeout');
+        summary = await waitForTask(taskId, {
+          timeout: submitting
+            ? null
+            : timeoutIndex >= 0
+              ? Number(args[timeoutIndex + 1])
+              : 600,
+          status: async (id) => {
+            const result = await command(['status', id, '--json'], {
+              capture: true,
+            });
+            execution = JSON.parse(result.output);
+            if (execution.id !== id || !execution.state)
+              throw new Error(execution.error || 'Could not query task ' + id);
+            return execution;
+          },
+          fetch,
+          summarize: finish,
+        });
       }
+      if (['upload-paused', 'upload-expired'].includes(summary.status)) {
+        report(paused(taskId, { ...summary, state: summary.status }));
+        return summary.status === 'upload-paused' ? 75 : 1;
+      }
+      report(summary);
+      return summary.timedOut ? 0 : summaryExitCode(summary);
+    } catch (error) {
+      report({
+        taskId,
+        status:
+          failureStage === 'retrieval'
+            ? 'retrieval-failed'
+            : 'observation-failed',
+        execution,
+        error: error.message,
+        log: processLog,
+        recover: 'pnpm test:remote wait ' + taskId,
+      });
+      return 1;
     }
-    if (result.code && !passthrough)
-      console.error(
-        JSON.stringify({
-          status: 'submission-failed',
-          log: processLog,
-          error: result.tail,
-        }),
-      );
-    return result.code;
   } finally {
     await fs.rm(temporary, { recursive: true, force: true });
   }

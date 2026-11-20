@@ -133,7 +133,7 @@
   ],
   "previous": "baseline",
   "previousDigest": "4e6eecdec64e19a2981c49ebe523036126fa00ec8385b788d84b07d9a350af96",
-  "sourceDigest": "47d9a1bfc168a820ddbd60e22b2228e4dbf50a296a8d7fb51b1554bd4a781a7c",
+  "sourceDigest": "285710911b7c073ca8576eb271663cd0e2fa983e9b93e61b5a2894a850efb7ea",
   "versions": {
     "@sue/board-architecture": "0.1.0",
     "@sue/board-common": "0.1.0",
@@ -170,7 +170,7 @@
   },
   "introduction": {
     "project-doc:architecture/ARCHITECTURE": "1d671bbae87e6327174de3f7effb0b343ce8ce3fd1f11dac3c2c30c2e1a467d7",
-    "project-doc:development/README": "9e744851ec5c96c93e564b53f68866aecc0428f1584d5354179abd339dceba7e",
+    "project-doc:development/README": "5df2e00a73d883c4aa7255e6987ddc3be8d4d79bb70a4563e477d0b3cd9267cd",
     "project-doc:DOCUMENTATION_GUIDE": "d9fa1b9dd57b16941dc191d3bf88de1fe3ccff80bb5b5df672e9947b314e97fb",
     "project-doc:guides/ai-canvas-data-spec": "83ed2832e3aa021ee7d2d12ea82ad2c917a18fc37ab24650a8438eaa8599e3b6",
     "project-doc:guides/SETUP": "49db5f28d43f3b2d3251954bdcfec53e7896d204c1934ef57b040616690786c4",
@@ -211,9 +211,10 @@
     },
     "introduction": {
       "status": "updated",
-      "reason": "桌面使用指南说明回收站永久删除的实际范围和 Git 历史保留行为。",
+      "reason": "桌面使用指南说明回收站永久删除的实际范围和 Git 历史保留行为。 开发指南增加上传暂停、同一冻结快照续传和入队后等待的命令与行为说明。",
       "files": [
-        "workspace/文档/指南/桌面安装与使用.verd-doc.json"
+        "workspace/文档/指南/桌面安装与使用.verd-doc.json",
+        "workspace/文档/开发/开发指南.verd-doc.json"
       ]
     }
   }

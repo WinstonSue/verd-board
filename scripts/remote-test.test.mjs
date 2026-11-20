@@ -13,7 +13,7 @@ import {
   developmentProfile,
   verifyPackageRecord,
 } from './remote-test.mjs';
-import { artifactFiles } from './release-proof.mjs';
+import { artifactFiles, releaseInputs } from './release-proof.mjs';
 import { releaseProofFixture } from '../tests/fixtures/release-proof.mjs';
 
 test('pure package and consumer contracts need no GUI regardless of architecture layer', () => {
@@ -195,18 +195,24 @@ test('package evidence rejects failed, partial or changed installers', async (t)
 });
 
 test('repository adapter preserves full gate and development selection requirements', () => {
-  assert.deepEqual(parseCli([]), ['run', 'ci', '--']);
+  assert.deepEqual(parseCli([]), ['submit', '--json', 'ci', '--']);
   const args = [
     '--unit',
     'scripts/remote-test.test.mjs',
     '--desktop-e2e',
     'tests/desktop-e2e/src/dev-runtime.spec.ts',
   ];
-  assert.deepEqual(parseCli(['dev', ...args]), ['run', 'dev', '--', ...args]);
+  assert.deepEqual(parseCli(['dev', ...args]), [
+    'submit',
+    '--json',
+    'dev',
+    '--',
+    ...args,
+  ]);
   assert.throws(() => parseCli(['ci', ...args]));
   assert.deepEqual(
     parseCli(['dev', '--unit', 'scripts/remote-test.test.mjs']),
-    ['run', 'dev', '--', '--unit', 'scripts/remote-test.test.mjs'],
+    ['submit', '--json', 'dev', '--', '--unit', 'scripts/remote-test.test.mjs'],
   );
   assert.deepEqual(parseCli(['fetch', 'fixture-123', '--raw']), [
     'fetch',
@@ -353,9 +359,15 @@ test('derived release profiles are stable, preserve user configuration, and reco
     first.config.projects['fixture-scripts'].artifacts.requireReport,
     false,
   );
-  assert.deepEqual(parseCli(['release']), ['run', 'release', '--']);
+  assert.deepEqual(parseCli(['release']), [
+    'submit',
+    '--json',
+    'release',
+    '--',
+  ]);
   assert.deepEqual(parseCli(['package', '--with-zip']), [
-    'run',
+    'submit',
+    '--json',
     'package',
     '--',
     '--with-zip',
@@ -364,4 +376,180 @@ test('derived release profiles are stable, preserve user configuration, and reco
   assert.throws(() =>
     parseCli(['release', '--unit', 'scripts/remote-test.test.mjs']),
   );
+});
+
+test('paused submit and wait never fetch, then resume the same ID through package verification and delivery', async (t) => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), 'verd-resume-adapter-'));
+  t.after(() => fs.rm(root, { recursive: true, force: true }));
+  const { execFileSync } = await import('node:child_process');
+  execFileSync('git', ['init', '-q'], { cwd: root });
+  await fs.writeFile(
+    path.join(root, '.gitignore'),
+    '.quality/\ntest-results/\napps/desktop/release/\napps/desktop/release-history/\n',
+  );
+  const write = async (file, value) => {
+    await fs.mkdir(path.dirname(file), { recursive: true });
+    await fs.writeFile(file, JSON.stringify(value));
+  };
+  const configuration = {
+    version: 2,
+    hosts: { test: { ssh: 'test', cacheDir: '~/cache' } },
+    projects: { fixture: { root, host: 'test' } },
+  };
+  let id,
+    phase = 'paused';
+  const commands = [];
+  const execute = async (_binary, argv) => {
+    const [action, taskId] = argv;
+    commands.push(action);
+    if (action === 'submit') {
+      id = argv[argv.indexOf('--id') + 1];
+      assert.ok(argv.includes('--full'));
+      return {
+        code: 75,
+        output: JSON.stringify({
+          id,
+          state: 'upload-paused',
+          confirmedBytes: 1024,
+          totalBytes: 2048,
+        }),
+      };
+    }
+    assert.equal(taskId, id);
+    if (action === 'resume')
+      return { code: 0, output: JSON.stringify({ id, accepted: true }) };
+    const state =
+      phase === 'paused'
+        ? 'upload-paused'
+        : phase === 'gate'
+          ? 'failed'
+          : 'passed';
+    if (action === 'status') {
+      return {
+        code: state === 'failed' ? 1 : 0,
+        output: JSON.stringify({
+          id,
+          state,
+          confirmedBytes: 1024,
+          totalBytes: 2048,
+        }),
+      };
+    }
+
+    assert.equal(action, 'fetch');
+    assert.deepEqual(argv, ['fetch', id, '--json']);
+    if (phase === 'retrieval')
+      return {
+        code: 3,
+        output: JSON.stringify({
+          id,
+          download: { state: 'failed', error: 'Disconnected' },
+        }),
+      };
+    const results = path.join(root, 'test-results/original-target', id);
+    const { releaseInputDigest } = await releaseInputs(root);
+    const manifest = {
+      id,
+      task: 'package',
+      transportDigest: 'snapshot',
+      profileDigest: 'profile',
+      proof: { releaseInputDigest, sourceDigest: 'business' },
+    };
+    const release =
+      phase === 'gate'
+        ? { status: 'failed' }
+        : releaseProofFixture(
+            {
+              releaseInputDigest,
+              versions: { desktop: '0.1.0' },
+              reviewDigest: 'review',
+              environmentDigest: 'environment',
+              platform: 'darwin',
+              arch: 'arm64',
+              toolchain: { node: 'v24', pnpm: '11', electron: '44' },
+              concurrency: { budget: 4 },
+              remote: {
+                id,
+                transportDigest: manifest.transportDigest,
+                profileDigest: manifest.profileDigest,
+              },
+            },
+            { sourceDigest: 'business' },
+          );
+    await write(path.join(results, 'manifest.json'), manifest);
+    await write(path.join(results, 'status.json'), { state });
+    await write(path.join(results, 'local-comparison.json'), { current: true });
+    await write(path.join(results, 'artifacts.json'), { complete: true });
+    await write(path.join(results, 'source/.quality/release.json'), release);
+    if (phase !== 'gate') {
+      const installers = path.join(results, 'source/apps/desktop/release');
+      await fs.mkdir(installers, { recursive: true });
+      const bytes = 'verified installer';
+      const checksum = createHash('sha256').update(bytes).digest('hex');
+      await fs.writeFile(path.join(installers, 'VerdBoard.dmg'), bytes);
+      await fs.writeFile(
+        path.join(installers, 'SHA256SUMS'),
+        checksum + '  VerdBoard.dmg\n',
+      );
+      await write(path.join(results, 'source/.quality/package.json'), {
+        format: 'verd-desktop-package',
+        version: 1,
+        status: 'passed',
+        release,
+        validations: {
+          application: 'passed',
+          installer: 'passed',
+          e2e: 'passed',
+        },
+        diagnostics: [
+          { index: 'diagnostics/package/index.json', complete: true },
+        ],
+        files: await artifactFiles(installers),
+      });
+      if (phase === 'tampered')
+        await fs.appendFile(path.join(installers, 'VerdBoard.dmg'), '!');
+    }
+    return {
+      code: state === 'failed' ? 1 : 0,
+      output: JSON.stringify({
+        id,
+        download: { state: 'complete', directory: results },
+        execution: { state },
+      }),
+    };
+  };
+  const run = (...args) => main(args, { root, configuration, execute });
+  const restore = console.log;
+  const output = [];
+  console.log = (value) => output.push(value);
+  try {
+    assert.equal(await run('package', '--full'), 75);
+    assert.deepEqual(commands.splice(0), ['submit']);
+    assert.equal(JSON.parse(output.at(-1)).confirmedBytes, 1024);
+    assert.equal(await run('wait', id), 75);
+    assert.deepEqual(commands.splice(0), ['status']);
+    phase = 'gate';
+    assert.equal(await run('resume', id, '--timeout', '0'), 1);
+    assert.deepEqual(commands.splice(0), ['resume', 'status', 'fetch']);
+    assert.equal(JSON.parse(output.at(-1)).gateStatus, 'failed');
+    phase = 'retrieval';
+    assert.equal(await run('wait', id), 1);
+    assert.equal(JSON.parse(output.at(-1)).status, 'retrieval-failed');
+    assert.equal(JSON.parse(output.at(-1)).execution.state, 'passed');
+    phase = 'tampered';
+    assert.equal(await run('resume', id), 1);
+    assert.equal(JSON.parse(output.at(-1)).deliveryStatus, 'failed');
+    phase = 'valid';
+    assert.equal(await run('resume', id), 0);
+    assert.equal(JSON.parse(output.at(-1)).deliveryStatus, 'delivered');
+    assert.equal(
+      await fs.readFile(
+        path.join(root, 'apps/desktop/release/VerdBoard.dmg'),
+        'utf8',
+      ),
+      'verified installer',
+    );
+  } finally {
+    console.log = restore;
+  }
 });
