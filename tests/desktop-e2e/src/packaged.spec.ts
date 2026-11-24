@@ -201,11 +201,17 @@ test('real installed identity opens read-only architecture, restores navigation 
         }
       ).electronAPI.workspaceHost.listWorkspaceHistory(),
     );
-    expect(
-      history.filter((entry) => entry.name === '旧工作区 (desktop)'),
-    ).toHaveLength(1);
+    const recovered = history.filter(
+      (entry) => entry.name === '旧工作区 (desktop)',
+    );
+    expect(recovered).toHaveLength(1);
     const menu = await openWorkspaceMenu(page);
-    await menu.getByRole('button', { name: /旧工作区 \(desktop\)/ }).click();
+    await menu.getByTestId(`workspace-history-${recovered[0].id}`).click();
+    // The first writable workspace deploys the bundled Agent runtime.
+    await expect(page.getByTestId('workspace-menu-trigger')).toHaveText(
+      recovered[0].name,
+      { timeout: 60000 },
+    );
     await expect(
       page.locator('.file-tree-name').getByText('旧画布', { exact: true }),
     ).toBeVisible();
