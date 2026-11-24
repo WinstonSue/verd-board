@@ -16,10 +16,7 @@ import {
 } from 'node:fs/promises';
 import path from 'node:path';
 import { tmpdir } from 'node:os';
-import {
-  openProductHome,
-  openWorkspaceMenu,
-} from '../../web-e2e/src/app-actions';
+import { openWorkspaceMenu } from '../../web-e2e/src/app-actions';
 import { activeTabTitle } from '../../web-e2e/src/tab-actions';
 
 for (const kind of ['project', 'agent-patterns'] as const) {
@@ -35,16 +32,18 @@ for (const kind of ['project', 'agent-patterns'] as const) {
     const desktop = await electron.launch({ args: [launcher], env });
     try {
       const page = await desktop.firstWindow();
+      const home = page.getByTestId('product-home');
+      await expect(home).toBeVisible();
+      await home
+        .getByTestId(
+          kind === 'project'
+            ? 'workspace-open-builtin'
+            : 'workspace-open-patterns',
+        )
+        .click();
       await expect(page.locator('.workspace-shell')).toBeVisible({
         timeout: 60000,
       });
-      if (kind === 'agent-patterns') {
-        await (
-          await openProductHome(page)
-        )
-          .getByTestId('workspace-open-patterns')
-          .click();
-      }
       const root = path.join(
         userData,
         'workspaces',
@@ -125,15 +124,23 @@ for (const kind of ['project', 'agent-patterns'] as const) {
           page
             .locator('.workspace-pane.is-active svg[data-surface="root"]')
             .first();
-        for (const name of ['topic', 'detail']) {
+        for (const [name, referenceId] of [
+          ['topic', 'frame-ref:board/20:architecture-layered'],
+          ['detail', 'project:overview/01/detail/1'],
+        ]) {
           await expect(
             canvas().locator(
               '[data-cell-kind="document-frame"], [data-cell-kind="document-reference"]',
             ),
           ).toHaveCount(0);
-          const header = canvas()
-            .locator('[data-frame-header] [data-frame-title-id]')
-            .first();
+          await page
+            .locator('.workspace-pane.is-active')
+            .getByTestId('canvas-status-fit')
+            .press('Enter');
+          const header = canvas().locator(
+            `[data-cell-id="${referenceId}"] > [data-frame-header] > [data-frame-title-id]`,
+          );
+          await expect(header).toBeInViewport();
           const box = (await header.boundingBox())!;
           await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
           await page.keyboard.down('Control');
@@ -185,7 +192,13 @@ for (const kind of ['project', 'agent-patterns'] as const) {
           },
           path.join(root, '架构图/项目导览.verd'),
         );
-        await expect(activeTabTitle(page)).toHaveText('项目导览');
+        await expect(page.getByRole('tab', { selected: true })).toHaveAttribute(
+          'data-tab-id',
+          'board-root',
+        );
+        await expect(activeTabTitle(page)).toHaveText(
+          '青编 VerdBoard · 项目导览',
+        );
         await expect(page.getByTestId('workspace-readonly')).toBeVisible();
         expect(desktop.windows()).toHaveLength(1);
       }
@@ -193,31 +206,29 @@ for (const kind of ['project', 'agent-patterns'] as const) {
       await openWorkspaceMenu(page);
       await page.getByTestId('workspace-open-settings').click();
       await page.getByTestId('settings-nav-workspace.data').click();
-      await expect(
-        page.getByTestId('builtin-workspace-settings'),
-      ).toBeVisible();
-      await page
-        .getByRole('button', { name: /(?:更新为|恢复)系统内置内容…/ })
+      const settings = page.getByTestId('builtin-workspace-settings');
+      const update = settings.getByRole('button', {
+        name: /(?:更新为|恢复)系统内置内容…/,
+      });
+      const confirmation = page.getByTestId('workspace-action-confirmation');
+      await update.click();
+      await confirmation
+        .getByRole('button', { name: '取消', exact: true })
         .click();
-      await page.getByRole('button', { name: '取消', exact: true }).click();
       expect(await readFile(path.join(root, 'added.txt'), 'utf8')).toBe(
         'my addition',
       );
-      await page
-        .getByRole('button', { name: /(?:更新为|恢复)系统内置内容…/ })
-        .click();
+      await update.click();
       const backupParent = path.join(directory, 'chosen-backups');
       await mkdir(backupParent, { recursive: true });
-      await desktop.evaluate(({ dialog }, parent) => {
-        dialog.showOpenDialog = async () => ({
-          canceled: false,
-          filePaths: [parent],
-        });
-      }, backupParent);
-      await expect(
-        page.getByRole('checkbox', { name: '备份当前工作区' }),
-      ).not.toBeChecked();
-      await page.getByRole('checkbox', { name: '备份当前工作区' }).check();
+      const backup = confirmation.getByRole('checkbox', {
+        name: '备份当前工作区',
+      });
+      const chooseAndUpdate = confirmation.getByRole('button', {
+        name: '选择目录并备份更新',
+      });
+      await expect(backup).not.toBeChecked();
+      await backup.check();
       await desktop.evaluate(({ dialog }) => {
         const state = globalThis as typeof globalThis & {
           verdBuiltinBackupCancelledCalls: number;
@@ -228,7 +239,7 @@ for (const kind of ['project', 'agent-patterns'] as const) {
           return { canceled: true, filePaths: [] };
         };
       });
-      await page.getByRole('button', { name: '选择目录并备份更新' }).click();
+      await chooseAndUpdate.click();
       await expect
         .poll(() =>
           desktop.evaluate(
@@ -241,22 +252,19 @@ for (const kind of ['project', 'agent-patterns'] as const) {
           ),
         )
         .toBe(1);
-      await expect(
-        page.getByRole('button', { name: '选择目录并备份更新' }),
-      ).toBeEnabled();
-      await expect(
-        page.getByTestId('workspace-action-confirmation'),
-      ).toBeVisible();
+      await expect(chooseAndUpdate).toBeEnabled();
+      await expect(confirmation).toBeVisible();
       expect(await readFile(path.join(root, 'added.txt'), 'utf8')).toBe(
         'my addition',
       );
+      expect(await readdir(backupParent)).toEqual([]);
       await desktop.evaluate(({ dialog }, parent) => {
         dialog.showOpenDialog = async () => ({
           canceled: false,
           filePaths: [parent],
         });
       }, backupParent);
-      await page.getByRole('button', { name: '选择目录并备份更新' }).click();
+      await chooseAndUpdate.click();
       await expect(page.getByTestId('workspace-settings-page')).not.toBeVisible(
         {
           timeout: 60000,
@@ -284,16 +292,24 @@ for (const kind of ['project', 'agent-patterns'] as const) {
       );
       await expect(activeTabTitle(page)).toHaveText(entryTitle);
       await expect(page.getByRole('tab')).toHaveCount(1);
-      const backups = path.join(directory, 'chosen-backups');
-      const entries = await readdir(backups);
+      await expect(
+        readFile(path.join(root, 'added.txt')),
+      ).rejects.toMatchObject({
+        code: 'ENOENT',
+      });
+      const entries = await readdir(backupParent);
+      expect(entries).toHaveLength(1);
       expect(
-        await readFile(path.join(backups, entries[0], 'added.txt'), 'utf8'),
+        await readFile(
+          path.join(backupParent, entries[0], 'added.txt'),
+          'utf8',
+        ),
       ).toBe('my addition');
       const history: { id: string; name: string }[] = await page.evaluate(() =>
         (window as any).electronAPI.workspaceHost.listWorkspaceHistory(),
       );
       const backupId = createHash('sha256')
-        .update(await realpath(path.join(backups, entries[0])))
+        .update(await realpath(path.join(backupParent, entries[0])))
         .digest('hex');
       const copy = history.find((entry) => entry.id === backupId)!;
       expect(copy).toBeTruthy();
@@ -305,6 +321,7 @@ for (const kind of ['project', 'agent-patterns'] as const) {
       await backupRow.click();
       await expect(page.getByTestId('workspace-switcher')).not.toBeVisible();
       await expect(page.getByTestId('workspace-menu-trigger')).toBeEnabled();
+      await expect(page.getByTestId('workspace-readonly')).toHaveCount(0);
       await openWorkspaceMenu(page);
       await page.getByTestId('workspace-open-settings').click();
       await page.getByTestId('settings-nav-workspace.data').click();

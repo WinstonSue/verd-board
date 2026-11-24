@@ -12,6 +12,7 @@ import {
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import {
+  openProductHome,
   openWorkspaceMenu,
   setAppLanguage,
 } from '../../web-e2e/src/app-actions';
@@ -39,7 +40,7 @@ const nativeFiles = async (
   return files;
 };
 
-test('built-in native workspace opens its diagrams and documents, follows links and preserves edits across an upgrade', async ({
+test('read-only system introduction follows native links and upgrades without changing an editable copy', async ({
   browserName,
 }, info) => {
   test.setTimeout(240_000);
@@ -47,6 +48,7 @@ test('built-in native workspace opens its diagrams and documents, follows links 
   const userData = path.join(directory, 'user-data');
   const source = path.join(directory, 'builtin-source');
   const workspace = path.join(userData, 'workspaces', 'default');
+  const editable = path.join(directory, 'editable-copy');
   let desktop: ElectronApplication | undefined;
   try {
     await mkdir(userData);
@@ -79,11 +81,6 @@ test('built-in native workspace opens its diagrams and documents, follows links 
       await desktop.evaluate(({ BrowserWindow }) =>
         BrowserWindow.getAllWindows()[0].setSize(1600, 1100),
       );
-      await expect(page.locator('.workspace-shell')).toBeVisible();
-      if (await page.locator('svg[data-surface="root"]:visible').count())
-        await setAppLanguage(page, 'zh');
-      const skip = page.getByRole('button', { name: '跳过', exact: true });
-      if (await skip.isVisible().catch(() => false)) await skip.click();
       return page;
     };
     const close = async () => {
@@ -97,12 +94,20 @@ test('built-in native workspace opens its diagrams and documents, follows links 
       desktop = undefined;
     };
     let page = await launch();
+    await expect(page.getByTestId('product-home')).toBeVisible();
+    await page.getByTestId('workspace-open-builtin').click();
+    await expect(page.getByTestId('workspace-readonly')).toBeVisible();
+    await setAppLanguage(page, 'zh');
     const active = () => page.locator('.workspace-pane.is-active');
     const canvas = () =>
       active()
         .locator('svg[aria-label="Frame canvas"][data-surface="root"]')
         .first();
     await expect(activeTabTitle(page)).toHaveText('文档导航');
+    await expect(active().locator('.ProseMirror')).toHaveAttribute(
+      'contenteditable',
+      'false',
+    );
     await active()
       .getByRole('link', { name: '项目导览（画布）', exact: true })
       .click({ modifiers: ['ControlOrMeta'] });
@@ -243,11 +248,19 @@ test('built-in native workspace opens its diagrams and documents, follows links 
     await expect(active().locator('.board-document-content')).toContainText(
       'WorkspaceSession',
     );
-    await page
-      .locator('.file-tree-name')
-      .getByText('文档导航', { exact: true })
-      .click();
-    const editor = active().locator('.board-document-content');
+    await cp(source, editable, { recursive: true });
+    await desktop!.evaluate(({ dialog }, folder) => {
+      dialog.showOpenDialog = async () => ({
+        canceled: false,
+        filePaths: [folder],
+      });
+    }, editable);
+    const home = await openProductHome(page);
+    await home.getByRole('button', { name: '导入工作区', exact: true }).click();
+    await expect(activeTabTitle(page)).toHaveText('文档导航');
+    await expect(page.getByTestId('workspace-readonly')).toHaveCount(0);
+    const editor = active().locator('.ProseMirror');
+    await expect(editor).toHaveAttribute('contenteditable', 'true');
     await editor.click();
     await editor.press('ControlOrMeta+End');
     await editor.press('Enter');
@@ -260,14 +273,14 @@ test('built-in native workspace opens its diagrams and documents, follows links 
     const docPath = Object.keys(original).find(
       (file) => JSON.parse(original[file]).id === 'project-doc:README',
     )!;
-    const saved = JSON.parse(
-      await readFile(path.join(workspace, docPath), 'utf8'),
-    );
+    const editableDocument = path.join(editable, docPath);
+    const builtinDocument = path.join(workspace, docPath);
+    const saved = JSON.parse(await readFile(editableDocument, 'utf8'));
     expect(saved.text.plainText).toContain(
       'Builtin document edit survives upgrades.',
     );
     expect(await nativeFiles(source)).toEqual(original);
-    // A newer resource is available on the next launch. The user's copy wins.
+    expect(await nativeFiles(workspace)).toEqual(original);
     const newer = JSON.parse(original[docPath]);
     newer.title = 'A newer bundled title';
     await writeFile(path.join(source, docPath), JSON.stringify(newer));
@@ -276,10 +289,25 @@ test('built-in native workspace opens its diagrams and documents, follows links 
     await expect(active().locator('.board-document-content')).toContainText(
       'Builtin document edit survives upgrades.',
     );
+    await expect(page.getByTestId('workspace-readonly')).toHaveCount(0);
+    const reopenedHome = await openProductHome(page);
+    await reopenedHome.getByTestId('workspace-open-builtin').click();
+    await expect(page.getByTestId('workspace-readonly')).toBeVisible();
+    expect(await readFile(builtinDocument, 'utf8')).toBe(original[docPath]);
+    const builtinMenu = await openWorkspaceMenu(page);
+    await builtinMenu.getByTestId('workspace-open-settings').click();
+    await page.getByTestId('settings-nav-workspace.data').click();
+    await page
+      .getByRole('button', { name: '更新为系统内置内容…', exact: true })
+      .click();
+    await page
+      .getByRole('button', { name: '不备份，全部更新', exact: true })
+      .click();
+    await expect(page.getByTestId('workspace-settings-page')).toHaveCount(0);
+    await expect(page.getByTestId('workspace-readonly')).toBeVisible();
+    expect(JSON.parse(await readFile(builtinDocument, 'utf8'))).toEqual(newer);
     await close();
-    expect(
-      JSON.parse(await readFile(path.join(workspace, docPath), 'utf8')),
-    ).toEqual(saved);
+    expect(JSON.parse(await readFile(editableDocument, 'utf8'))).toEqual(saved);
     expect(
       await readFile(
         path.join(userData, 'verdboard-global-config.json'),

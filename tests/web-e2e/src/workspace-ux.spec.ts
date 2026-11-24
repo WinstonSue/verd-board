@@ -12,9 +12,11 @@ test('workspace navigation, drafts, quick open and bounded settings', async ({
   await page.getByTestId('workspace-my').click();
   const dialog = page.getByTestId('my-page');
   await expect(dialog).toBeVisible();
+  const settingsNav = dialog.getByRole('menu', { name: '设置栏目' });
+  await expect(settingsNav.getByRole('menuitem')).toHaveCount(9);
   await expect(
-    dialog.getByRole('menu', { name: '设置栏目' }).getByRole('menuitem'),
-  ).toHaveCount(8);
+    settingsNav.getByRole('menuitem', { name: 'Agent', exact: true }),
+  ).toBeVisible();
   await dialog.getByTestId('settings-nav-workspace.project').click();
   const name = page.getByTestId('workspace-settings-name');
   await name.fill('界面测试工作区');

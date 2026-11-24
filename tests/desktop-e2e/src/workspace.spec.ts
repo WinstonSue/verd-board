@@ -436,24 +436,19 @@ test('@prod Desktop reports corrupt storage without replacing it with an empty w
   const corrupt = '{ broken storage';
   await writeFile(storageFile, corrupt);
   const env = { ...process.env };
-
-  // Legacy fixtures exercise the default migration path; ordinary lifecycle
-  // tests request an isolated empty folder instead of the built-in content.
-  const hasLegacy = await readFile(storageFile, 'utf8').then(
-    (text) => text !== '{}',
-    () => false,
-  );
-  if (!hasLegacy) env.VERDBOARD_WORKSPACE_PATH = workspaceDir();
-  else delete env.VERDBOARD_WORKSPACE_PATH;
-  desktop = await electron.launch({ args: [launcher], env });
-  const page = await desktop.firstWindow();
-  await expect(page.getByRole('alert')).toContainText('Corrupt storage file');
-  await expect(canvas(page)).toHaveCount(0);
-  await page.getByRole('button', { name: '重新加载' }).click();
-  await expect(page.getByRole('alert')).toContainText('Corrupt storage file');
-  await closeWindow(page);
-  expect(await readFile(storageFile, 'utf8')).toBe(corrupt);
-  expect(await readFile(`${storageFile}.bak`, 'utf8')).toBe(corrupt);
+  delete env.VERDBOARD_WORKSPACE_PATH;
+  const verifyAfterLaunch = async () => {
+    desktop = await electron.launch({ args: [launcher], env });
+    const page = await desktop.firstWindow();
+    await expect(page.getByTestId('product-home')).toBeVisible();
+    await expect(page.getByRole('alert')).toContainText('Corrupt storage file');
+    await expect(canvas(page)).toHaveCount(0);
+    await closeWindow(page);
+    expect(await readFile(storageFile, 'utf8')).toBe(corrupt);
+    expect(await readFile(`${storageFile}.bak`, 'utf8')).toBe(corrupt);
+  };
+  await verifyAfterLaunch();
+  await verifyAfterLaunch();
 });
 
 test('Desktop surfaces an external file conflict and keep-local resolves it', async () => {
