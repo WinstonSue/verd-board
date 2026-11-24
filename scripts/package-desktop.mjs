@@ -59,6 +59,31 @@ async function unregisterMacApps(directory) {
   }
 }
 
+async function cleanupPackageStaging(staging) {
+  await unregisterMacApps(staging);
+  await rm(staging, {
+    recursive: true,
+    force: true,
+    maxRetries: 3,
+    retryDelay: 200,
+  });
+  // Restore the canonical installation after unregistering temporary copies.
+  if (process.platform === 'darwin') {
+    const installed = '/Applications/VerdBoard.app';
+    if (
+      await access(installed).then(
+        () => true,
+        () => false,
+      )
+    )
+      execFileSync(
+        '/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister',
+        ['-f', installed],
+        { stdio: 'pipe' },
+      );
+  }
+}
+
 async function nativeFiles(directory, prefix = '') {
   const files = [];
   for (const entry of await readdir(directory, { withFileTypes: true })) {
@@ -218,9 +243,8 @@ async function buildPackage(flags, context, evidence) {
       targets: platform.createTarget(targets),
       publish: 'never',
       config: {
-        ...config.build,
         beforePack: path.resolve(desktop, config.build.beforePack),
-        directories: { ...config.build.directories, output: staging },
+        directories: { output: staging },
       },
     });
     if (process.platform === 'darwin') {
@@ -297,26 +321,13 @@ async function buildPackage(flags, context, evidence) {
       },
     );
     console.log(`Installers: ${output}`);
-  } finally {
-    await unregisterMacApps(staging);
-    await rm(staging, { recursive: true, force: true });
-    // LaunchServices may disable an identical installed bundle when a temporary
-    // copy is unregistered. Restore the canonical local installation last.
-    if (process.platform === 'darwin') {
-      const installed = '/Applications/VerdBoard.app';
-      if (
-        await access(installed).then(
-          () => true,
-          () => false,
-        )
-      )
-        execFileSync(
-          '/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister',
-          ['-f', installed],
-          { stdio: 'pipe' },
-        );
-    }
+  } catch (cause) {
+    await cleanupPackageStaging(staging).catch((cleanupError) => {
+      console.error('Unable to clean temporary desktop package', cleanupError);
+    });
+    throw cause;
   }
+  await cleanupPackageStaging(staging);
 }
 
 if (
