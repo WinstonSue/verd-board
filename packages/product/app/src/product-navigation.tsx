@@ -306,7 +306,6 @@ export function ProductWorkspaceDialog({
         <label>
           {zh ? '名称' : 'Name'}
           <WorkspaceInput
-            autoFocus
             disabled={busy}
             value={name}
             onChange={(event) => setName(event.target.value)}

@@ -227,6 +227,14 @@
         "packages/react/board/src/frame-workspace-links.spec.ts",
         "packages/react/board/src/preview-mount.spec.tsx",
         "packages/react/board/src/theme-text-fixture.spec.ts"
+      ],
+      "inputs": [
+        "tests/fixtures/ai-canvas/architecture.verd.json",
+        "tests/fixtures/ai-canvas/mind-map.verd.json",
+        "tests/fixtures/ai-canvas/uml-class.verd.json",
+        "tests/fixtures/ai-canvas/uml-sequence.verd.json",
+        "tests/fixtures/ai-canvas/whiteboard-advanced.verd.json",
+        "tests/fixtures/ai-canvas/workflow-process.verd.json"
       ]
     },
     {

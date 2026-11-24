@@ -47,6 +47,7 @@ const mocks = vi.hoisted(() => {
     readSnapshot: vi.fn(),
     readFile: vi.fn(),
     readResource: vi.fn(),
+    assertWritable: vi.fn(),
     workspaces: new Map<string, { root: string }>(),
     commit: vi.fn(),
     resolveConflict: vi.fn(),
@@ -457,6 +458,7 @@ it('opens only ordinary workspace files through the trusted resource IPC', async
     await expect(
       open(event, { key: 'test' }, 'notes.md'),
     ).resolves.toBeUndefined();
+    expect(mocks.host.assertWritable).toHaveBeenCalledWith({ key: 'test' });
     const { shell } = await import('electron');
     expect(shell.openPath).toHaveBeenCalledWith(
       await fs.realpath(path.join(root, 'notes.md')),

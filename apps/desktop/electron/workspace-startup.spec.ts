@@ -331,6 +331,7 @@ describe('desktop workspace history', () => {
       {
         id: expect.any(String),
         name: 'missing',
+        directoryHint: path.basename(dir),
         lastOpenedAt: 0,
         pinned: false,
         availability: 'missing',

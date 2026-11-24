@@ -674,7 +674,7 @@ export async function createExternalFileHost(
               .rm(previous, { recursive: true, force: true })
               .catch(() => {});
             return name;
-          } finally {
+          } catch (cause) {
             try {
               if (!moved) {
                 if (published)
@@ -683,15 +683,16 @@ export async function createExternalFileHost(
                   if (!isMissing(cause)) throw cause;
                 });
               }
-            } catch (cause) {
+            } catch (rollbackError) {
               recoverable = true;
-              throw cause;
-            } finally {
-              if (!recoverable)
-                await fs
-                  .rm(staged, { recursive: true, force: true })
-                  .catch(() => {});
+              throw rollbackError;
             }
+            throw cause;
+          } finally {
+            if (!recoverable)
+              await fs
+                .rm(staged, { recursive: true, force: true })
+                .catch(() => {});
           }
         });
       });

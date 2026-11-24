@@ -39,7 +39,6 @@ export function IndependentFileRenameDialog({
         <label>
           {zh ? '文件名' : 'File name'}
           <WorkspaceInput
-            autoFocus
             value={value}
             onChange={(event) => setValue(event.target.value)}
           />

@@ -3058,6 +3058,7 @@ function WorkspaceAppShell({
       return true;
     } catch (cause) {
       notify(cause instanceof Error ? cause.message : String(cause), 'error');
+      return undefined;
     } finally {
       if (feedbackTicket) {
         if (!feedbackScheduled) navigationFeedback.cancel(feedbackTicket);

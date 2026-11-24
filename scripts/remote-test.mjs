@@ -222,7 +222,7 @@ export function deriveConfiguration(configuration, root, env = process.env) {
   ])
     if (env[name] !== undefined) project.env[name] = env[name];
   const routeChecks = (task) =>
-    project.tasks[task]?.routeChecks
+    project.tasks?.[task]?.routeChecks
       ? { routeChecks: project.tasks[task].routeChecks }
       : {};
   const scriptsChecks = routeChecks('scripts');

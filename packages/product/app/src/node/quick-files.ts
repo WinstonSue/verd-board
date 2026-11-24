@@ -30,8 +30,8 @@ export function defaultQuickEditDirectory(repository?: string) {
     process.platform === 'darwin'
       ? path.join(home, 'Library/Application Support')
       : process.platform === 'win32'
-        ? process.env.APPDATA || path.join(home, 'AppData/Roaming')
-        : process.env.XDG_CONFIG_HOME || path.join(home, '.config');
+        ? process.env['APPDATA'] || path.join(home, 'AppData/Roaming')
+        : process.env['XDG_CONFIG_HOME'] || path.join(home, '.config');
   return path.join(appData, 'VerdBoard', 'quick-edit');
 }
 
