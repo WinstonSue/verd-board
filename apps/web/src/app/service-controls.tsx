@@ -33,8 +33,13 @@ function ServiceDialog({
   const dialog = useRef<HTMLDialogElement>(null);
   useEffect(() => {
     const element = dialog.current!;
+    const opener = element.ownerDocument.activeElement;
     element.showModal();
-    return () => element.close();
+    return () => {
+      element.close();
+      if (opener instanceof HTMLElement && opener.isConnected)
+        opener.focus({ preventScroll: true });
+    };
   }, []);
   return (
     <dialog

@@ -231,10 +231,13 @@ test('Desktop remembers a selected folder, recovers a missing folder and returns
 
     page = await launch();
     await expect(page.getByRole('alert')).toContainText('unavailable');
-    await expect(
-      page.getByRole('button', { name: 'initial', exact: true }),
-    ).toBeVisible();
-    await page.getByRole('button', { name: 'initial', exact: true }).click();
+    const recoveryHome = page.getByTestId('product-home');
+    await expect(recoveryHome).toBeVisible();
+    const initialOnHome = recoveryHome.getByRole('button').filter({
+      has: page.getByText('initial', { exact: true }),
+    });
+    await expect(initialOnHome).toBeEnabled();
+    await initialOnHome.click();
     await expect(page.locator('.workspace-sidebar-header')).toHaveText(
       'initial',
       { timeout: 60000 },

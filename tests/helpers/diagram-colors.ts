@@ -7,6 +7,7 @@ import {
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import {
+  openSettings,
   selectAppAction,
   selectHistoryAction,
   setAppLanguage,
@@ -152,11 +153,19 @@ export async function checkDiagramColors(
           mimeType: 'application/json',
           buffer: Buffer.from(JSON.stringify(variant)),
         });
-      await page
-        .locator('.file-tree-name')
-        .filter({ hasText: new RegExp(`^${id}$`) })
-        .click();
       const canvas = pane.locator('svg[data-surface="root"]').first();
+      const openVariant = async () => {
+        await page.getByRole('button', { name: id, exact: true }).click();
+        await expect(
+          page.locator(`[role="tab"][data-tab-id="${id}"]`),
+        ).toHaveAttribute('aria-selected', 'true');
+        await expect(page.locator('.workspace-content')).toHaveAttribute(
+          'aria-busy',
+          'false',
+        );
+        await expect(canvas).toBeVisible();
+      };
+      await openVariant();
       const selector =
         diagram === 'uml-class'
           ? '[data-cell-kind="uml-class"]'
@@ -188,32 +197,32 @@ export async function checkDiagramColors(
           );
         expect(new Set(fills).size).toBe(2);
       }
-      const nodeId = (await canvas
-        .locator(selector)
-        .first()
-        .getAttribute('data-cell-id'))!;
-      const node = canvas.locator(`[data-cell-id="${nodeId}"]`).first();
-      const originalFill = await node.getAttribute('fill');
-      if (backgroundName === 'white' && diagram === 'workflow-process') {
-        const originalStroke = await node.getAttribute('stroke');
-        await selectNode(node);
-        await expect(
-          styles().getByRole('button', { name: '自动', exact: true }),
-        ).toHaveAttribute('aria-pressed', 'true');
-        await styles()
-          .getByRole('button', { name: '风格色 1', exact: true })
-          .click();
-        await expect(node).toHaveAttribute('fill', originalFill!);
-        await expect(node).toHaveAttribute('stroke', originalStroke!);
-        await styles()
-          .getByRole('button', { name: '自动', exact: true })
-          .click();
-        await expect(
-          styles().getByRole('button', { name: '自动', exact: true }),
-        ).toHaveAttribute('aria-pressed', 'true');
-        await expect(node).toHaveAttribute('fill', originalFill!);
-      }
       if (backgroundName === 'white' && diagram !== 'architecture') {
+        const nodeId = (await canvas
+          .locator(selector)
+          .first()
+          .getAttribute('data-cell-id'))!;
+        const node = canvas.locator(`[data-cell-id="${nodeId}"]`).first();
+        const originalFill = await node.getAttribute('fill');
+        if (diagram === 'workflow-process') {
+          const originalStroke = await node.getAttribute('stroke');
+          await selectNode(node);
+          await expect(
+            styles().getByRole('button', { name: '自动', exact: true }),
+          ).toHaveAttribute('aria-pressed', 'true');
+          await styles()
+            .getByRole('button', { name: '风格色 1', exact: true })
+            .click();
+          await expect(node).toHaveAttribute('fill', originalFill!);
+          await expect(node).toHaveAttribute('stroke', originalStroke!);
+          await styles()
+            .getByRole('button', { name: '自动', exact: true })
+            .click();
+          await expect(
+            styles().getByRole('button', { name: '自动', exact: true }),
+          ).toHaveAttribute('aria-pressed', 'true');
+          await expect(node).toHaveAttribute('fill', originalFill!);
+        }
         await selectNode(node);
         await styles()
           .getByRole('button', { name: '风格色 5', exact: true })
@@ -230,10 +239,7 @@ export async function checkDiagramColors(
         });
         if (diagram === 'workflow-process') {
           await page.reload();
-          await page
-            .locator('.file-tree-name')
-            .filter({ hasText: new RegExp(`^${id}$`) })
-            .click();
+          await openVariant();
           await selectNode(node);
           await expect(
             styles().getByRole('button', { name: '风格色 5', exact: true }),
@@ -419,8 +425,11 @@ export async function exerciseMindThemeColors(page: Page, info: TestInfo) {
     for (const appearance of ['light', 'dark'] as const) {
       await canvas.press('Escape');
       await selectPropertyValue(theme(), id);
-      await page.locator('.workspace-sidebar-footer button').click();
-      await selectSetting(page.getByTestId('settings-appearance'), appearance);
+      const settings = await openSettings(page);
+      await selectSetting(
+        settings.getByTestId('settings-appearance'),
+        appearance,
+      );
       await page.getByTestId('my-back').click();
       const rootTone = await roleTone(page, id, appearance, 4, 'strong');
       const branchTone = await roleTone(page, id, appearance, 2);

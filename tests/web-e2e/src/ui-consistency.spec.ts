@@ -38,22 +38,32 @@ for (const mode of ['light', 'dark'] as const) {
             const selectors = [
               '.workspace-menu-name',
               '.management-navigation nav svg',
-              '.vm-sidebar-section__label',
+              '.management-pinned-empty',
               '.file-tree-header > span',
               '.workspace-sidebar-footer svg',
             ];
-            return selectors.map(
-              (s) => aside.querySelector(s)!.getBoundingClientRect().left,
-            );
+            return selectors.map((selector) => {
+              const element = aside.querySelector(selector)!;
+              if (selector !== '.management-pinned-empty')
+                return element.getBoundingClientRect().left;
+              const label = document.createRange();
+              label.selectNodeContents(element);
+              return label.getBoundingClientRect().left;
+            });
           });
-        expect(Math.max(...rail) - Math.min(...rail)).toBeLessThanOrEqual(1);
+        expect(
+          Math.max(...rail) - Math.min(...rail),
+          JSON.stringify(rail),
+        ).toBeLessThanOrEqual(1);
         const toggle = page.getByRole('button', {
           name: zh ? '收起侧栏' : 'Collapse sidebar',
           exact: true,
         });
-        const triggerBox = (await trigger.boundingBox())!;
+        const settingsBox = (await page
+          .getByTestId('workspace-my')
+          .boundingBox())!;
         const toggleBox = (await toggle.boundingBox())!;
-        expect(triggerBox.x + triggerBox.width).toBeLessThanOrEqual(
+        expect(settingsBox.x + settingsBox.width).toBeLessThanOrEqual(
           toggleBox.x,
         );
         await toggle.click();
@@ -138,8 +148,9 @@ for (const mode of ['light', 'dark'] as const) {
         await page.screenshot({ path: info.outputPath('settings.png') });
         await page.keyboard.press('Escape');
         await page.keyboard.press('ControlOrMeta+p');
-        const quick = page.locator('.workspace-quick-open');
+        const quick = page.getByTestId('workspace-search-dialog');
         await expect(quick).toBeVisible();
+        await expect(quick.getByRole('combobox')).toBeFocused();
         expect(
           await quick.evaluate((el) => getComputedStyle(el).fontFamily),
         ).toBe(baseline.family);
@@ -196,6 +207,7 @@ for (const mode of ['light', 'dark'] as const) {
         const search = home.getByRole('searchbox');
         const searchControl = home.locator('.product-home__search');
         const searchIcon = searchControl.locator('.sue-input-prefix svg');
+        await search.fill(workspaceName);
         const list = home.getByRole('list');
         const row = list.getByRole('button', {
           name: new RegExp(workspaceName),

@@ -89,7 +89,10 @@ test('settings sections are grouped menu items with keyboard navigation', async 
   await page.goto('/');
   const settings = await openSettings(page);
   const menu = settings.getByRole('menu', { name: '设置栏目' });
-  await expect(menu.getByRole('menuitem')).toHaveCount(8);
+  await expect(menu.getByRole('menuitem')).toHaveCount(9);
+  await expect(
+    menu.getByRole('menuitem', { name: 'Agent', exact: true }),
+  ).toBeVisible();
   await expect(
     menu.getByRole('menuitem', { name: '自定义 Skills', exact: true }),
   ).toBeVisible();
@@ -189,7 +192,7 @@ test('More is the only low-frequency entry on wide and narrow screens and suppor
     await expect(menu).toHaveCount(0);
     await expect(page.getByTestId('app-menu-trigger')).toBeFocused();
     await openAppMenu(page);
-    await page.mouse.click(300, 700);
+    await page.mouse.click(1, 1);
     await expect(menu).toHaveCount(0);
     await openAppMenu(page);
     await expect(

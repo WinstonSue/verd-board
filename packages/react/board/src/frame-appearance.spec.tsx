@@ -10,6 +10,7 @@ import {
   isFrameCell,
   isNodeCell,
   resolveBoardTheme,
+  resolveThemeSeries,
   ThemeColorMode,
   type FrameSnapshot,
 } from '@sue/board-core';
@@ -21,7 +22,6 @@ import {
 import { createTestFramePluginSet } from '../../../../tests/fixtures/plugins/ui';
 import { FrameCanvas, type FrameCanvasController } from './frame-canvas';
 import { resolveTableEntryAppearance } from '../../draw/src/frame-draw-theme';
-import { resolveThemeRole } from '@sue/board-core';
 import type { TableCellData } from '../../../engine/draw/src/cell-commands';
 
 (
@@ -207,7 +207,7 @@ it.each([
             ).toBeGreaterThanOrEqual(3);
             if (cell.kind === 'uml-note')
               expect(visual.fill).toBe(
-                resolveThemeRole(theme, 'annotation', 'node', 'overlay').fill,
+                resolveThemeSeries(theme, 2, 'node', 'overlay').fill,
               );
             for (const text of element.querySelectorAll('text[fill]')) {
               const color = text.getAttribute('fill');

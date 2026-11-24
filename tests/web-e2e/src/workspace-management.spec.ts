@@ -109,6 +109,12 @@ test('workspace content, pinned files, search and restoration share the workspac
   page,
 }) => {
   await page.goto('/');
+  const sidebar = page.getByRole('navigation', { name: '当前工作区' });
+  const showWorkspace = sidebar.getByRole('button', {
+    name: '工作区',
+    exact: true,
+  });
+  await showWorkspace.click();
   const workspace = page.getByTestId('workspace-management-page');
   await expect(workspace.getByRole('heading', { level: 1 })).toHaveText(
     '工作区',
@@ -116,14 +122,15 @@ test('workspace content, pinned files, search and restoration share the workspac
   await page.getByTestId('file-tree-new').click();
   await page.getByRole('menuitem', { name: '新建文档', exact: true }).click();
   await expect(workspace).toHaveCount(0);
-  const row = page.locator('.file-tree-row[data-entry-kind=file]').last();
+  const row = page.getByRole('button', { name: '未命名文档', exact: true });
   await expect(row).toBeVisible();
-  const sidebar = page.getByRole('navigation', { name: '当前工作区' });
-  await sidebar.getByRole('button', { name: '工作区', exact: true }).click();
+  await showWorkspace.click();
   await expect(
     workspace.getByRole('heading', { name: '工作区', exact: true }),
   ).toBeVisible();
-  const item = workspace.locator('.management-result').last();
+  const item = workspace.locator('.management-result').filter({
+    has: page.getByRole('checkbox', { name: '选择 未命名文档', exact: true }),
+  });
   await item.getByRole('button', { name: '置顶', exact: true }).click();
   const pinned = page
     .locator('.management-sidebar-body .vm-sidebar-section')
@@ -228,7 +235,10 @@ test('finds user workspaces by directory, even when named like the bundled recom
   await expect(page.getByTestId('workspace-readonly')).toBeVisible();
   await expect(editor).toHaveAttribute('contenteditable', 'false');
   const homes = await openProductHome(page);
-  await homes.getByRole('button', { name, exact: true }).click();
+  await homes
+    .getByRole('list')
+    .getByRole('button', { name: /文档编写推荐库/ })
+    .click();
   await expect(page.getByTestId('workspace-readonly')).toHaveCount(0);
   await page.getByTestId('file-tree-new').click();
   await page.getByRole('menuitem', { name: '新建文档', exact: true }).click();

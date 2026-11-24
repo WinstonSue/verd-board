@@ -117,7 +117,7 @@
   ],
   "previous": "3f935175f8953650bd3710dc.json",
   "previousDigest": "50acc4acac6efe65c4598386e3acd03cd7501e849cdaed47d814e8204636159f",
-  "sourceDigest": "5512d8640fa483dc9cdd2bf39fb5b173df99981c24575ab10a5cd3e5ab9bf9a6",
+  "sourceDigest": "c7185f677eafd85bb19d51a9e881faf7aeb89d4febe43272f4fcf3d757572680",
   "versions": {
     "@sue/board-architecture": "0.2.0",
     "@sue/board-common": "0.2.0",

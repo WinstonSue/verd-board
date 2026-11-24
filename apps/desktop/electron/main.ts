@@ -709,6 +709,13 @@ function pickDesktopFiles(window?: Electron.BaseWindow) {
   return openFilePicker;
 }
 
+function requestOpenFiles(window?: Electron.BaseWindow) {
+  void pickDesktopFiles(window).catch((error) => {
+    console.error('打开文件失败', error);
+    dialog.showErrorBox('打开文件失败', String(error));
+  });
+}
+
 async function createDesktopFile(kind: unknown) {
   if (
     kind !== 'document' &&
@@ -823,7 +830,7 @@ function installFileMenu() {
             id: 'open-file',
             label: '打开文件…',
             accelerator: 'CommandOrControl+O',
-            click: run('打开文件失败', pickDesktopFiles),
+            click: (_item, window) => requestOpenFiles(window),
           },
           { type: 'separator' },
           {
@@ -1486,6 +1493,26 @@ function createWindow(external?: ExternalHost) {
 
   window.webContents.setWindowOpenHandler(() => {
     return { action: 'deny' };
+  });
+  window.webContents.on('before-input-event', (event, input) => {
+    const primaryModifier =
+      process.platform === 'darwin'
+        ? input.meta && !input.control
+        : input.control && !input.meta;
+    if (
+      input.type !== 'keyDown' ||
+      !primaryModifier ||
+      input.alt ||
+      input.shift ||
+      input.isComposing
+    )
+      return;
+    const key = input.key.toLowerCase();
+    if (key !== 'o' && key !== '0') return;
+    event.preventDefault();
+    if (input.isAutoRepeat) return;
+    if (key === 'o') requestOpenFiles(window);
+    else window.webContents.setZoomLevel(0);
   });
   window.webContents.on('will-navigate', (event, url) => {
     if (url === window?.webContents.getURL()) return;

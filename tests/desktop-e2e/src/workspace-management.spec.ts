@@ -19,6 +19,10 @@ test('Desktop creates an empty workspace and keeps removed history data on disk'
     });
     const page = await desktop.firstWindow();
     page.on('pageerror', (error) => console.log('PAGE ERROR', error.message));
+    const workspaceNav = page.getByRole('navigation', { name: '当前工作区' });
+    await workspaceNav
+      .getByRole('button', { name: '工作区', exact: true })
+      .click();
     await expect(page.getByTestId('workspace-management-page'))
       .toBeVisible({ timeout: 20000 })
       .catch(async (error) => {
@@ -77,7 +81,6 @@ test('Desktop creates an empty workspace and keeps removed history data on disk'
     await expect(trigger.locator('svg, .vm-dot')).toHaveCount(0);
     const main = page.locator('.workspace-content');
     const mainBounds = (await main.boundingBox())!;
-    const workspaceNav = page.getByRole('navigation', { name: '当前工作区' });
     const closedNav = (await workspaceNav.boundingBox())!;
     await trigger.press('ArrowDown');
     const recent = switcher

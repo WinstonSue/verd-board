@@ -17,7 +17,8 @@ test('fresh home finishes navigation and exposes filesystem workspace entries', 
   page,
 }) => {
   await page.goto('/');
-  await expect(page.getByTestId('workspace-management-page')).toBeVisible();
+  const home = await openProductHome(page);
+  await expect(home).toBeVisible();
   await expect(page.locator('.workspace-content')).toHaveAttribute(
     'aria-busy',
     'false',
@@ -30,7 +31,7 @@ test('fresh home finishes navigation and exposes filesystem workspace entries', 
   );
   await expect(switcher.getByTestId('workspace-open-builtin')).toHaveCount(0);
   await expect(switcher.getByTestId('workspace-open-patterns')).toHaveCount(0);
-  const home = await openProductHome(page);
+  await page.keyboard.press('Escape');
   await expect(
     home.getByRole('button', { name: '导入工作区', exact: true }),
   ).toBeVisible();
@@ -40,6 +41,7 @@ test('fresh home finishes navigation and exposes filesystem workspace entries', 
     .locator('.management-navigation nav')
     .getByRole('button', { name: '工作区', exact: true })
     .click();
+  await expect(page.getByTestId('workspace-management-page')).toBeVisible();
   await page.reload();
   await expect(page.locator('.workspace-content')).toHaveAttribute(
     'aria-busy',

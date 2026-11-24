@@ -331,7 +331,8 @@ for (const [width, appearance] of [
     await expect(trigger).toHaveAttribute('aria-label', '更多');
     const buttons = toolbar.locator('> .frame-tool-control > button, > button');
     await expect(buttons.nth(0)).toHaveAttribute('aria-label', '查找');
-    await expect(buttons.nth(1)).toHaveAttribute('aria-label', '演示');
+    await expect(buttons.nth(1)).toHaveText('发起 Agent');
+    await expect(buttons.nth(2)).toHaveAttribute('aria-label', '演示');
     const menu = await openWorkspaceMenu(page);
     await expect(menu.getByTestId('workspace-open-settings')).toHaveText(
       '工作区设置',

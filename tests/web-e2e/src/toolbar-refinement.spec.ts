@@ -114,16 +114,17 @@ for (const width of [800, 1440]) {
     const world = canvas.locator('> [data-frame-world]');
     const camera = await world.getAttribute('transform');
     const toolbar = active(page).getByRole('toolbar', { name: 'App actions' });
-    await expect(toolbar.locator('button')).toHaveCount(3);
+    await expect(toolbar.locator('button')).toHaveCount(4);
     await expect(toolbar.locator('button').nth(0)).toHaveAttribute(
       'aria-label',
       '查找',
     );
-    await expect(toolbar.locator('button').nth(1)).toHaveAttribute(
+    await expect(toolbar.locator('button').nth(1)).toHaveText('发起 Agent');
+    await expect(toolbar.locator('button').nth(2)).toHaveAttribute(
       'aria-label',
       '演示',
     );
-    await expect(toolbar.locator('button').nth(2)).toHaveAttribute(
+    await expect(toolbar.locator('button').nth(3)).toHaveAttribute(
       'aria-label',
       '更多',
     );
@@ -140,14 +141,14 @@ for (const width of [800, 1440]) {
     const find = active(page).getByRole('search', { name: '查找画布' });
     const input = find.getByRole('textbox', { name: '查找', exact: true });
     await expect(input).toBeFocused();
-    const [inputBox, searchButton] = await Promise.all([
+    const [inputBox, firstAction] = await Promise.all([
       input.boundingBox(),
-      toolbar.getByRole('button', { name: '演示', exact: true }).boundingBox(),
+      toolbar.getByTestId('canvas-agent-launch').boundingBox(),
     ]);
     if (width === 800) {
       // The narrow canvas wraps the search field above the action buttons.
       expect(inputBox!.y + inputBox!.height).toBeLessThanOrEqual(
-        searchButton!.y,
+        firstAction!.y,
       );
       const bounds = (await canvas.boundingBox())!;
       expect(inputBox!.x).toBeGreaterThanOrEqual(bounds.x);
@@ -155,9 +156,9 @@ for (const width of [800, 1440]) {
         bounds.x + bounds.width,
       );
     } else {
-      expect(inputBox!.x + inputBox!.width).toBeLessThan(searchButton!.x);
+      expect(inputBox!.x + inputBox!.width).toBeLessThan(firstAction!.x);
       expect(inputBox!.y + inputBox!.height / 2).toBeCloseTo(
-        searchButton!.y + searchButton!.height / 2,
+        firstAction!.y + firstAction!.height / 2,
         0,
       );
     }

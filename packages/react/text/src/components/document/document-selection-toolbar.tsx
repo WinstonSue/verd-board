@@ -715,13 +715,6 @@ export function DocumentSelectionToolbar({
           text('颜色与背景', 'Color and background'),
           Highlighter,
         )}
-        {divider}
-        {dropdown(
-          'more',
-          text('更多格式', 'More formatting'),
-          EllipsisVertical,
-          false,
-        )}
         {selectionAction && (
           <button
             type="button"
@@ -742,6 +735,13 @@ export function DocumentSelectionToolbar({
           >
             <ArrowUpRight strokeWidth={1.75} size={16} aria-hidden />
           </button>
+        )}
+        {divider}
+        {dropdown(
+          'more',
+          text('更多格式', 'More formatting'),
+          EllipsisVertical,
+          false,
         )}
       </div>
       {activePanel && (

@@ -323,7 +323,12 @@ test.describe('local Codex', () => {
     await expect(
       switcher.getByRole('button', { name: '发起 Agent', exact: true }),
     ).toHaveCount(0);
-    await switcher.getByRole('button', { name: '关闭', exact: true }).click();
+    await page.keyboard.press('Escape');
+    await expect(page.getByTestId('workspace-menu-trigger')).toBeFocused();
+    await expect(page.getByTestId('workspace-menu-trigger')).toHaveAttribute(
+      'aria-expanded',
+      'false',
+    );
 
     const dialog = page.getByTestId('workspace-agent-dialog');
     const task = dialog.getByRole('textbox', { name: '任务', exact: true });
@@ -370,7 +375,7 @@ test.describe('local Codex', () => {
     expect(await fs.readdir(directory)).toEqual([]);
   });
 
-  test('copies the focus and stable link in a readonly workspace', async ({
+  test('copies the focused file link for handoff and disables Agent in a readonly workspace', async ({
     context,
     page,
     localService,
@@ -380,26 +385,35 @@ test.describe('local Codex', () => {
       path.join(localService.workspace, 'copy.verd-doc.json'),
       JSON.stringify(createDocumentFile('agent-copy', 'Copy target')),
     );
-    await page.goto('/?readonly=1');
+    await page.goto('/');
     await openActiveFile(page);
-    await page
+    const launch = page
       .locator('.workspace-pane.is-active')
-      .getByTestId('document-agent-launch')
-      .press('Enter');
+      .getByTestId('document-agent-launch');
+    await launch.press('Enter');
     const dialog = page.getByTestId('workspace-agent-dialog');
     await expect(
       dialog.getByText('聚焦范围 · copy.verd-doc.json'),
     ).toBeVisible();
-    await expect(dialog.getByRole('button', { name: '快速执行' })).toHaveCount(
-      0,
-    );
     await dialog
       .getByRole('textbox', { name: '任务', exact: true })
       .fill('Review the linked page');
+    await dialog
+      .getByRole('button', { name: '在 Codex 中继续', exact: true })
+      .click();
     await dialog.getByRole('button', { name: '复制任务', exact: true }).click();
     await expect
       .poll(() => page.evaluate(() => navigator.clipboard.readText()))
       .toContain('verd://file/agent-copy');
+
+    await page.goto('/?readonly=1');
+    await openActiveFile(page);
+    await expect(
+      page.locator('.workspace-pane.is-active .ProseMirror'),
+    ).toHaveAttribute('contenteditable', 'false');
+    await expect(launch).toHaveCount(0);
+    await expect(page.getByTestId('workspace-agent-launch')).toHaveCount(0);
+    await expect(dialog).toHaveCount(0);
   });
 
   test('expires a running task after a service restart and keeps its draft', async ({
@@ -723,7 +737,10 @@ test('browses, creates and cancels directories and backs up bundled content to t
   await confirmation
     .getByRole('button', { name: '选择目录并备份更新', exact: true })
     .click();
-  await picker.getByRole('button', { name: '取消', exact: true }).click();
+  await page
+    .getByRole('dialog', { name: '选择本地文件夹', exact: true })
+    .getByRole('button', { name: '取消', exact: true })
+    .click();
   await expect(confirmation).toBeVisible();
   expect(await fs.readFile(path.join(builtin, 'added.verd'), 'utf8')).toBe(
     'Backup original bytes',

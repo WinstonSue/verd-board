@@ -159,7 +159,10 @@ test('keeps the tray after closing all windows and restores the product page', a
     await dialog.getByRole('button', { name: /^(取消|Cancel)$/ }).click();
     await expect(restored.getByTestId('quick-create-page')).toBeVisible();
     await expect(
-      restored.getByRole('button', { name: '未命名思维导图.verd' }),
+      restored.getByRole('button', {
+        name: '未命名思维导图.verd',
+        exact: true,
+      }),
     ).toBeVisible();
     await closeNativeWindow(application, restored);
     const closed = application.waitForEvent('close');
@@ -202,10 +205,14 @@ test('opens a lightweight file from workspace startup recovery', async () => {
       await readFile(source),
     );
     await quickCreate(page).click();
-    const editor = desktop.waitForEvent('window');
-    await page.getByRole('button', { name: path.basename(source) }).click();
+    const [editor] = await Promise.all([
+      desktop.waitForEvent('window'),
+      page
+        .getByRole('button', { name: path.basename(source), exact: true })
+        .click(),
+    ]);
     await expect(
-      (await editor).locator('[contenteditable="true"]').first(),
+      editor.locator('[contenteditable="true"]').first(),
     ).toContainText('Opened during recovery');
   } finally {
     await desktop?.close();
@@ -795,14 +802,30 @@ test('selects the deepest known workspace and continues a batch after an invalid
     const userData = path.join(directory, 'profile');
     const parent = path.join(directory, 'parent');
     const child = path.join(parent, 'child');
-    await mkdir(child, { recursive: true });
+    for (const root of [parent, child]) {
+      const metadata = path.join(root, '.verdscrolls');
+      const name = path.basename(root);
+      await mkdir(metadata, { recursive: true });
+      await writeFile(
+        path.join(metadata, 'config.json'),
+        JSON.stringify({
+          version: 1,
+          value: {
+            identity: name,
+            name,
+            project: { description: '', entryDocumentIds: [] },
+          },
+        }),
+      );
+    }
     await mkdir(userData);
     const source = path.join(child, 'Diagram.verd');
+    const notes = path.join(parent, 'notes.verd-doc.json');
     await writeFile(source, nativeCanvas('Diagram'));
-    await writeFile(
-      path.join(parent, 'notes.verd-doc.json'),
-      JSON.stringify(nativeDocument('notes', 'Notes', 'Original notes')),
+    const originalNotes = JSON.stringify(
+      nativeDocument('notes', 'Notes', 'Original notes'),
     );
+    await writeFile(notes, originalNotes);
     const other = path.join(directory, 'Outside.md');
     await writeFile(other, '# Outside\n');
     await writeFile(
@@ -871,15 +894,19 @@ test('selects the deepest known workspace and continues a batch after an invalid
         ),
       )
       .toContain('Diagram.verd');
+    const saveError = page.getByTestId('workspace-save-error');
+    await expect(saveError).toBeVisible();
+    expect(await readFile(notes, 'utf8')).toBe(originalNotes);
     await desktop.evaluate(() => {
       (globalThis as { blockWorkspaceWrite?: boolean }).blockWorkspaceWrite =
         false;
     });
-    await page.keyboard.press('ControlOrMeta+s');
-    await expect
-      .poll(() => readFile(path.join(parent, 'notes.verd-doc.json'), 'utf8'))
-      .toContain('Pending edit');
     await closeNativeWindow(desktop, standalone);
+    await saveError
+      .getByRole('button', { name: /^(重试保存|Retry save)$/ })
+      .click();
+    await expect.poll(() => readFile(notes, 'utf8')).toContain('Pending edit');
+    await expect(saveError).toHaveCount(0);
     await stubFilePicker(desktop, [path.join(directory, 'missing.md'), source]);
     await clickFileMenu(desktop, 'open-file');
     await expect(page.getByTestId('workspace-menu-trigger')).toHaveText(
@@ -1196,7 +1223,10 @@ test('aligns the sidebar and opens workspace files from each product view', asyn
     await sidebar
       .locator('[data-failed-path="Damaged.verd"] .file-tree-main')
       .click();
-    await expect(page.locator('.workspace-file-error')).toBeVisible();
+    const error = page.getByTestId('workspace-file-error');
+    await expect(error).toBeVisible();
+    await expect(error).toContainText('Damaged.verd');
+    await expect(page.getByTestId('product-home')).toHaveCount(0);
 
     const footer = sidebar.locator('.workspace-sidebar-footer');
     const settings = footer.getByTestId('workspace-my');
@@ -1224,12 +1254,31 @@ test('aligns the sidebar and opens workspace files from each product view', asyn
     await expect(expand).toBeFocused();
     await expect(sidebar).toHaveCSS('width', '44px');
     expect((await footer.boundingBox())!.y).toBe(footerBounds.y);
-    const railBounds = (await sidebar.boundingBox())!;
-    const expandBounds = (await expand.boundingBox())!;
-    expect(expandBounds.x + expandBounds.width / 2).toBeCloseTo(
-      railBounds.x + (railBounds.width - 1) / 2,
-      0,
-    );
+    const centers = await footer.evaluate((element) => {
+      const contentCenter = (node: Element) => {
+        const { left, right } = node.getBoundingClientRect();
+        const style = getComputedStyle(node);
+        return (
+          (left +
+            right +
+            parseFloat(style.borderLeftWidth) +
+            parseFloat(style.paddingLeft) -
+            parseFloat(style.borderRightWidth) -
+            parseFloat(style.paddingRight)) /
+          2
+        );
+      };
+      return {
+        footer: contentCenter(element),
+        rail: contentCenter(element.closest('.workspace-sidebar')!),
+      };
+    });
+    const expandCenter = await expand.evaluate((element) => {
+      const { left, width } = element.getBoundingClientRect();
+      return left + width / 2;
+    });
+    expect(centers.footer).toBeCloseTo(centers.rail, 1);
+    expect(expandCenter).toBeCloseTo(centers.footer, 1);
     await expect(home).toBeVisible();
     await expect(quick).toBeVisible();
     await expand.press('Enter');

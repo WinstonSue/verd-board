@@ -6,6 +6,7 @@ import type {
 } from '../../packages/engine/core/src/cell/types';
 import { selectNode } from './diagram-colors';
 import {
+  openSettings,
   selectHistoryAction,
   setAppLanguage,
 } from '../web-e2e/src/app-actions';
@@ -83,8 +84,11 @@ export async function exerciseStyleColorWorkspace(
         pane.getByLabel('Theme', { exact: true }),
         theme,
       );
-      await page.locator('.workspace-sidebar-footer button').click();
-      await selectSetting(page.getByTestId('settings-appearance'), appearance);
+      const settings = await openSettings(page);
+      await selectSetting(
+        settings.getByTestId('settings-appearance'),
+        appearance,
+      );
       await page.getByTestId('my-back').click();
       await expect(canvas).toHaveAttribute('data-board-appearance', appearance);
       const tone = await roleTone(page, theme, appearance, 4);

@@ -390,7 +390,7 @@ it('shares sequence families across participant parts and messages and reassigns
         ).toBe(resolveThemeSeries(theme, 0, 'node', 'overlay').strokeColor);
         expect(
           container.querySelector('[data-uml-note]')?.getAttribute('fill'),
-        ).toBe(resolveThemeRole(theme, 'annotation', 'node', 'overlay').fill);
+        ).toBe(resolveThemeSeries(theme, 2, 'node', 'overlay').fill);
         for (const [operator, role] of [
           ['alt', 'tertiary'],
           ['opt', 'secondary'],
