@@ -20,6 +20,8 @@ import type {
 export interface WorkspaceActionContext {
   session: WorkspaceSession | null;
   readonly?: boolean;
+  /** Embedded viewers can also restrict workspace switching. */
+  navigationReadonly?: boolean;
   /** Workspace switching/closing can pause before the session snapshot changes. */
   paused?: boolean;
   /** Captured editing surface barrier; refresh must never retarget it. */

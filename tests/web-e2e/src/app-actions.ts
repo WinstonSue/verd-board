@@ -77,7 +77,58 @@ export async function openWorkspaceMenu(page: Page) {
   const trigger = page.getByTestId('workspace-menu-trigger');
   if ((await trigger.getAttribute('aria-expanded')) !== 'true')
     await trigger.click();
-  return page.getByTestId('workspace-switcher-dialog');
+  return page.getByTestId('workspace-switcher');
+}
+
+export async function expectWorkspaceSearchFocus(page: Page) {
+  const nav = page.getByRole('navigation', { name: '当前工作区' });
+  const workspace = nav.getByRole('button', { name: '工作区', exact: true });
+  const trigger = page.locator('.workspace-search-trigger');
+  const dialog = page.getByTestId('workspace-search-dialog');
+  const content = page.getByTestId('workspace-management-page');
+
+  await expect(content).toBeVisible();
+  for (const dismiss of ['button', 'escape'] as const) {
+    await trigger.click();
+    await expect(dialog.getByRole('combobox')).toBeFocused();
+    await expect(trigger).toHaveAttribute('aria-expanded', 'true');
+    if (dismiss === 'button')
+      await dialog.getByRole('button', { name: '关闭', exact: true }).click();
+    else await page.keyboard.press('Escape');
+    await expect(dialog).toHaveCount(0);
+    await expect(trigger).toBeFocused();
+    await expect(trigger).toHaveCSS('outline-style', 'none');
+    await expect(trigger).toHaveCSS('border-top-width', '0px');
+    await expect(trigger).toHaveAttribute('aria-expanded', 'false');
+    await expect(trigger).not.toHaveAttribute('aria-current', 'page');
+    await expect(workspace).toHaveAttribute('aria-current', 'page');
+    await expect(content).toBeVisible();
+  }
+
+  await workspace.focus();
+  await page.keyboard.press('Tab');
+  await expect(trigger).toBeFocused();
+  await expect(trigger).toHaveCSS('outline-width', '1px');
+  await expect(trigger).toHaveCSS('outline-offset', '-1px');
+  await page.keyboard.press('Enter');
+  await expect(dialog.getByRole('combobox')).toBeFocused();
+  await page.keyboard.press('Escape');
+  await expect(dialog).toHaveCount(0);
+  await expect(trigger).toBeFocused();
+  await expect(trigger).toHaveCSS('outline-style', 'solid');
+  await expect(trigger).toHaveCSS('outline-width', '1px');
+  await expect(workspace).toHaveAttribute('aria-current', 'page');
+  await expect(content).toBeVisible();
+}
+
+export async function openProductHome(page: Page) {
+  const home = page.getByTestId('product-home');
+  if (!(await home.isVisible()))
+    await page
+      .locator('.product-navigation')
+      .getByRole('button', { name: /^(首页|Home)$/ })
+      .click();
+  return home;
 }
 
 export async function selectWorkspaceAction(page: Page, label: string) {

@@ -96,7 +96,7 @@ test('row menus trash and restore files, support keyboard dismissal and pointer 
 test('library highlights navigation and clicking the active tab returns to editing', async ({
   page,
 }) => {
-  await page.getByRole('button', { name: '所有内容', exact: true }).click();
+  await page.getByRole('button', { name: '工作区', exact: true }).click();
   await page.getByRole('button', { name: '图表', exact: true }).click();
   await expect(page.locator('.chart-library')).toBeVisible();
   await expect(
@@ -239,20 +239,53 @@ test('sidebar My opens global preferences and returns without remounting the can
   await expect(canvas(page)).toHaveAttribute('data-my-instance', 'original');
 });
 
-test('sidebar keeps only My at the bottom and groups workspace actions under the name', async ({
+test('the sidebar toggle sits to the right of Settings and retains keyboard focus', async ({
   page,
 }) => {
-  await expect(page.locator('.workspace-sidebar-footer button')).toHaveCount(1);
-  await expect(page.locator('.workspace-sidebar-footer button')).toHaveText(
-    '设置',
+  const footer = page.locator('.workspace-sidebar-footer');
+  const settings = footer.getByRole('button', { name: '设置', exact: true });
+  const collapse = footer.getByRole('button', {
+    name: '收起侧栏',
+    exact: true,
+  });
+  const settingsBounds = (await settings.boundingBox())!;
+  const collapseBounds = (await collapse.boundingBox())!;
+  expect(collapseBounds.x).toBeGreaterThanOrEqual(
+    settingsBounds.x + settingsBounds.width,
   );
+  expect(collapseBounds.y + collapseBounds.height / 2).toBeCloseTo(
+    settingsBounds.y + settingsBounds.height / 2,
+    0,
+  );
+  await settings.focus();
+  await page.keyboard.press('Tab');
+  await expect(collapse).toBeFocused();
+  await collapse.press('Enter');
+  const expand = footer.getByRole('button', { name: '展开侧栏', exact: true });
+  await expect(expand).toBeFocused();
+  await expect(settings).toBeHidden();
+  await expect(
+    page
+      .getByRole('navigation', { name: '应用导航' })
+      .getByRole('button', { name: '首页' }),
+  ).toBeVisible();
+  await expand.press('Enter');
+  await expect(collapse).toBeFocused();
+  await expect(settings).toBeVisible();
+
   await page.getByTestId('workspace-menu-trigger').press('ArrowDown');
-  const menu = page.getByTestId('workspace-switcher-dialog');
-  await expect(menu.getByRole('searchbox')).toBeFocused();
+  const menu = page.getByTestId('workspace-switcher');
+  await expect(
+    menu
+      .locator(
+        '.workspace-switcher-name:enabled, .workspace-switcher-operation:enabled',
+      )
+      .first(),
+  ).toBeFocused();
   await expect(menu.getByTestId('workspace-open-settings')).toBeVisible();
   await page.keyboard.press('Escape');
   await expect(page.getByTestId('workspace-menu-trigger')).toBeFocused();
-  await expect(menu).toHaveCount(0);
+  await expect(menu).toBeHidden();
 });
 
 test('long workspace names truncate in narrow layouts and retain their full title', async ({
@@ -277,10 +310,20 @@ test('long workspace names truncate in narrow layouts and retain their full titl
       'ellipsis',
     );
     expect((await trigger.boundingBox())!.width).toBeLessThanOrEqual(240);
-    await openWorkspaceMenu(page);
-    await expect(
-      page.getByTestId('workspace-switcher-dialog'),
-    ).toBeInViewport();
+    const nav = page.getByRole('navigation', { name: '当前工作区' });
+    const bounds = (await nav.boundingBox())!;
+    const menu = await openWorkspaceMenu(page);
+    await expect(menu).toBeInViewport();
+    expect(await nav.boundingBox()).toEqual(bounds);
+    expect(
+      await menu.evaluate(
+        (panel, { x, y, width, height }) =>
+          panel.contains(
+            document.elementFromPoint(x + width / 2, y + height / 2),
+          ),
+        bounds,
+      ),
+    ).toBe(true);
     await page.keyboard.press('Escape');
   }
 });
@@ -315,29 +358,67 @@ test('workspace settings own trash while My contains personal preferences', asyn
   await expect(page.getByTestId('workspace-my')).toBeFocused();
 });
 
-test('file tree favorite menu stays in sync across the sidebar, all content and reload', async ({
+test('pinning, ordering and collapsing files stay in sync across the workspace and reload', async ({
   page,
 }) => {
-  const file = rows(page).first();
-  await file.hover();
-  await file.locator('.file-tree-more').click();
-  await menu(page).getByRole('menuitem', { name: '收藏', exact: true }).click();
-  const shortcut = page.locator(
-    '.management-sidebar-body .management-shortcut',
-  );
-  await expect(shortcut).toHaveCount(1);
-  await page.getByRole('button', { name: '所有内容', exact: true }).click();
+  const sidebar = page.locator('.management-sidebar-body');
+  await expect(sidebar.getByText('置顶 · 暂无', { exact: true })).toBeVisible();
+  await page.getByTestId('file-tree-new').click();
+  await page.getByRole('menuitem', { name: '新建文档', exact: true }).click();
+  await expect(rows(page)).toHaveCount(2);
+  const first = rows(page).first();
+  const second = rows(page).last();
+  const title = (item: typeof first) =>
+    item.locator('.file-tree-label').innerText();
+  const firstId = await first.getAttribute('data-file-id');
+  const secondId = await second.getAttribute('data-file-id');
+  const firstTitle = await title(first);
+  const secondTitle = await title(second);
+  for (const item of [first, second]) {
+    await item.hover();
+    await item.locator('.file-tree-more').click();
+    await menu(page)
+      .getByRole('menuitem', { name: '置顶', exact: true })
+      .click();
+  }
+  const shortcuts = sidebar.locator('.management-shortcut');
+  const labels = shortcuts.locator('.management-shortcut-main');
+  await expect(labels).toHaveText([firstTitle, secondTitle]);
+  await shortcuts.last().hover();
+  await shortcuts.last().getByRole('button', { name: '上移置顶文件' }).click();
+  await expect(labels).toHaveText([secondTitle, firstTitle]);
+  await page.getByRole('button', { name: '工作区', exact: true }).click();
   await expect(
     page
       .getByTestId('workspace-management-page')
-      .getByRole('button', { name: '取消收藏', exact: true }),
-  ).toBeVisible();
+      .getByRole('button', { name: '取消置顶', exact: true }),
+  ).toHaveCount(2);
+  const pinned = sidebar.getByRole('button', { name: '置顶', exact: true });
+  await pinned.click();
+  await expect(pinned).toHaveAttribute('aria-expanded', 'false');
+  await expect
+    .poll(async () => {
+      const { meta } = await serviceFixture(page).readDisk();
+      return (
+        meta.config.value['navigation'] as { favorites: string[] } | undefined
+      )?.favorites;
+    })
+    .toEqual([secondId, firstId]);
   await page.reload();
-  await expect(shortcut).toHaveCount(1);
-  await file.hover();
-  await file.locator('.file-tree-more').click();
-  await menu(page)
-    .getByRole('menuitem', { name: '取消收藏', exact: true })
+  await expect(pinned).toHaveAttribute('aria-expanded', 'false');
+  await pinned.click();
+  await expect(labels).toHaveText([secondTitle, firstTitle]);
+  await shortcuts
+    .first()
+    .getByRole('button', { name: secondTitle, exact: true })
     .click();
-  await expect(shortcut).toHaveCount(0);
+  await expect(page.locator('.workspace-pane.is-active')).toBeVisible();
+  for (const item of [first, second]) {
+    await item.hover();
+    await item.locator('.file-tree-more').click();
+    await menu(page)
+      .getByRole('menuitem', { name: '取消置顶', exact: true })
+      .click();
+  }
+  await expect(sidebar.getByText('置顶 · 暂无', { exact: true })).toBeVisible();
 });

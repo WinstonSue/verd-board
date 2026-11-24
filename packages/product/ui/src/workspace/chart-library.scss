@@ -1,3 +1,5 @@
+@use './styles/management/interaction';
+
 .chart-library {
   position: absolute;
   inset: 0;
@@ -30,18 +32,7 @@
   border-radius: 8px;
   background: var(--vm-background-subtle);
   button {
-    border: 0;
-    padding: 5px 12px;
-    border-radius: 6px;
-    background: transparent;
-    color: var(--vm-foreground-secondary);
-    font: inherit;
-    cursor: pointer;
-    &[aria-pressed='true'] {
-      background: var(--vm-background);
-      color: var(--vm-primary);
-      box-shadow: var(--vm-shadow-card);
-    }
+    @include interaction.view-choice;
   }
 }
 .chart-library-filters {
@@ -70,6 +61,7 @@
   border-radius: 8px;
   color: var(--vm-foreground-tertiary);
   input {
+    @include interaction.keyboard-focus;
     width: 100%;
     min-width: 0;
     height: 32px;
@@ -78,10 +70,6 @@
     color: var(--vm-foreground);
     background: transparent;
     font: inherit;
-  }
-  &:focus-within {
-    outline: 2px solid var(--vm-focus);
-    outline-offset: -2px;
   }
 }
 .chart-library-scroll {
@@ -113,16 +101,25 @@
     box-sizing: border-box;
     border-bottom: 1px solid var(--vm-border);
   }
-  tbody tr:hover {
-    background: var(--vm-background-subtle);
-  }
+}
+.organize-preview tbody tr:hover {
+  background: var(--vm-background-subtle);
 }
 .chart-library-table {
+  tbody tr:hover {
+    background: var(--vm-fill-hover);
+  }
   th:nth-child(2) {
     width: 30%;
   }
   th:last-child {
     width: 64px;
+  }
+  .workspace-button-ghost {
+    @include interaction.keyboard-focus;
+    &:hover:not(:disabled) {
+      background: var(--vm-fill-hover);
+    }
   }
 }
 .chart-library-type {

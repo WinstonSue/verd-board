@@ -104,6 +104,9 @@ importers:
 
   apps/desktop:
     dependencies:
+      '@sue/board-core':
+        specifier: workspace:*
+        version: link:../../packages/engine/core
       '@sue/board-markdown-to-text':
         specifier: workspace:*
         version: link:../../packages/converters/markdown-to-text
@@ -646,6 +649,9 @@ importers:
       '@sue/verd-board-agent-patterns':
         specifier: workspace:*
         version: link:../../agent/patterns
+      '@sue/verd-board-file-workspace':
+        specifier: workspace:*
+        version: link:../../workspace/file-workspace
       '@sue/verd-board-ui':
         specifier: workspace:*
         version: link:../ui
@@ -1159,7 +1165,11 @@ importers:
         specifier: ^3.0.8
         version: 3.2.7(@types/debug@4.1.13)(@types/node@22.20.2)(@vitest/ui@3.2.7)(happy-dom@20.14.5)(jsdom@22.1.0(supports-color@8.1.1))(sass@1.104.1)(supports-color@8.1.1)(yaml@2.9.1)
 
-  packages/workspace/file-workspace: {}
+  packages/workspace/file-workspace:
+    devDependencies:
+      vite:
+        specifier: ^6.2.2
+        version: 6.4.3(@types/node@22.20.2)(sass@1.104.1)(yaml@2.9.1)
 
   tests/consumer:
     dependencies:

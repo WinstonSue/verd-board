@@ -113,6 +113,9 @@ export async function applyPreparedBatch(root: string, plan: PreparedBatch) {
       expectedWorkspaceVersion: plan.workspaceVersion,
       expectedAgentResourceId: plan.resourceId ?? null,
     });
+    // A reviewed batch must not fall through to autosave's per-path recovery.
+    if (receipt.outcome !== 'applied')
+      throw new Error('Agent batch was not committed');
     return receipt;
   };
   const session = await openWorkspaceSession(guarded, handle, {
@@ -135,7 +138,9 @@ export async function applyPreparedBatch(root: string, plan: PreparedBatch) {
       throw new Error(
         receipt?.reason === 'version-conflict'
           ? 'VERSION_CONFLICT: inspect and prepare again'
-          : 'COMMIT_UNCONFIRMED: retry this exact plan to confirm the transaction',
+          : receipt?.reason && receipt.reason !== 'io-error'
+            ? 'VALIDATION_FAILED: ' + receipt.reason
+            : 'COMMIT_UNCONFIRMED: retry this exact plan to confirm the transaction',
       );
     return (
       receipt ?? {

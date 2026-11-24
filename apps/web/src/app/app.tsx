@@ -62,7 +62,15 @@ export function App() {
       {ready ? (
         <WorkspaceApp
           host={host}
+          localAgent={
+            params.get('readonly') === '1' ? undefined : host.getLocalAgent()
+          }
           allowWorkspaceSwitching
+          productNavigation={
+            params.get('readonly') === '1'
+              ? undefined
+              : host.getProductNavigation()
+          }
           onMigrateBrowserData={() => setMigration(true)}
           readonly={params.get('readonly') === '1'}
         />

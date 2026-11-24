@@ -64,8 +64,10 @@ export function App() {
   return (
     <WorkspaceApp
       host={host}
+      localAgent={window.electronAPI.localAgent}
       onSetDefaultFileApplications={window.electronAPI.files.setDefaults}
       subscribeOpenFile={window.electronAPI.files.onOpenWorkspaceFile}
+      productNavigation={window.electronAPI.files.product}
       allowWorkspaceSwitching
       importLegacy={async () => {
         if (!(await legacyAdapter.listKeys()).length) return null;

@@ -40,7 +40,7 @@ async function fixture(name: string, content: string | Uint8Array) {
     source,
     path.join(directory, 'private'),
   );
-  return { ...external, directory };
+  return Object.assign(external, { directory });
 }
 
 describe('external file persistence', () => {
@@ -122,6 +122,88 @@ describe('external file persistence', () => {
       }
     },
   );
+
+  it('renames an open file in place, retains receipts and rejects an old path reused with identical bytes', async () => {
+    const text = '# Before\n';
+    const external = await fixture('before.md', text);
+    const oldPath = external.source;
+    const root = path.join(external.directory, 'private');
+    const stale = await createExternalFileHost(
+      oldPath,
+      path.join(external.directory, 'other-host'),
+    );
+    const before = (await stale.host.readSnapshot(stale.binding.handle))
+      .documents![0];
+    const receiptId = 'save-config-before-rename';
+    const handle = external.binding.handle;
+    await external.host.commit(handle, {
+      transactionId: receiptId,
+      config: { expectedVersion: 0, value: { persisted: true } },
+    });
+    await expect(external.rename('After')).resolves.toBe('After.md');
+    expect(external.binding.handle).toBe(handle);
+    expect(external.binding.displayName).toBe('After.md');
+    expect(await fs.readFile(external.source, 'utf8')).toBe(text);
+    await fs.writeFile(oldPath, text);
+    expect(
+      await stale.host.commit(stale.binding.handle, {
+        transactionId: 'stale-save',
+        writes: [
+          {
+            path: before.path,
+            expectedVersion: before.version,
+            content: new TextEncoder().encode(JSON.stringify(before.file)),
+          },
+        ],
+      }),
+    ).toMatchObject({ outcome: 'rejected', reason: 'version-conflict' });
+    const reopened = await createExternalFileHost(external.source, root);
+    expect(reopened.binding.rootFileId).toBe(external.binding.rootFileId);
+    expect(
+      (await reopened.host.readSnapshot(reopened.binding.handle)).config.value,
+    ).toEqual({ persisted: true });
+    expect(
+      await reopened.host.commit(reopened.binding.handle, {
+        transactionId: receiptId,
+      }),
+    ).toMatchObject({ outcome: 'applied' });
+    expect(await fs.readFile(oldPath, 'utf8')).toBe(text);
+    const live = (await external.host.readSnapshot(handle)).documents![0];
+    expect(
+      await external.host.commit(handle, {
+        transactionId: 'save-after-rename',
+        writes: [
+          {
+            path: live.path,
+            expectedVersion: live.version,
+            content: new TextEncoder().encode(
+              JSON.stringify(live.file).replaceAll('Before', 'Edited'),
+            ),
+          },
+        ],
+      }),
+    ).toMatchObject({ outcome: 'applied' });
+    expect(await fs.readFile(external.source, 'utf8')).toBe('# Edited\n');
+  });
+
+  it('preserves the legacy suffix and refuses a collision during rename', async () => {
+    const bytes = JSON.stringify(frame('unchanged'));
+    const external = await fixture('example.verd.json', bytes);
+    await fs.writeFile(
+      path.join(external.directory, 'occupied.verd.json'),
+      'other contents',
+    );
+    await expect(external.rename('occupied')).rejects.toThrow('同名文件已存在');
+    await expect(external.rename('EXAMPLE')).resolves.toBe('EXAMPLE.verd.json');
+    expect(await fs.readFile(external.source, 'utf8')).toBe(bytes);
+    expect(
+      await fs.readFile(
+        path.join(external.directory, 'occupied.verd.json'),
+        'utf8',
+      ),
+    ).toBe('other contents');
+    expect(await fs.readdir(external.directory)).toContain('EXAMPLE.verd.json');
+  });
 
   it('retains relative image and link addresses after a visual edit and reports conversion warnings', async () => {
     const original =

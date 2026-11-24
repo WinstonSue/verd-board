@@ -1,21 +1,66 @@
 import { contextBridge, ipcRenderer } from 'electron';
+import type {
+  IndependentFileRef,
+  WorkspaceFileOpenTarget,
+} from '@sue/verd-board-app';
+import type { QuickFileKind } from '@sue/verd-board-app/headless';
 
 // Keep activations until a live workspace view subscribes, including React remounts.
-const workspaceFileListeners = new Set<(path: string) => void>();
-const workspaceFilePaths: string[] = [];
-const deliverWorkspaceFiles = () => {
-  if (!workspaceFileListeners.size) return;
-  for (const path of workspaceFilePaths.splice(0))
-    workspaceFileListeners.forEach((listener) => listener(path));
+const workspaceFileListeners = new Set<
+  (target: WorkspaceFileOpenTarget) => Promise<void>
+>();
+let handlingWorkspaceFile = false;
+const receiveWorkspaceFiles = async () => {
+  if (handlingWorkspaceFile || !workspaceFileListeners.size) return;
+  handlingWorkspaceFile = true;
+  let completed = false;
+  try {
+    const target: WorkspaceFileOpenTarget | undefined =
+      await ipcRenderer.invoke('files:workspace-pending');
+    const listener = workspaceFileListeners.values().next().value;
+    if (!target || !listener) return;
+    let message: string | undefined;
+    try {
+      await listener(target);
+    } catch (error) {
+      message = error instanceof Error ? error.message : String(error);
+    }
+    await ipcRenderer.invoke('files:workspace-result', target.id, message);
+    completed = true;
+  } catch (error) {
+    console.error('Unable to acknowledge the workspace file request', error);
+  } finally {
+    handlingWorkspaceFile = false;
+    if (completed) void receiveWorkspaceFiles();
+  }
 };
-const receiveWorkspaceFiles = () => {
-  void ipcRenderer.invoke('files:workspace-pending').then((paths: string[]) => {
-    workspaceFilePaths.push(...paths);
-    deliverWorkspaceFiles();
-  });
+const subscribe = <T>(channel: string, listener: (value: T) => void) => {
+  const wrapped = (_event: Electron.IpcRendererEvent, value: T) =>
+    listener(value);
+  ipcRenderer.on(channel, wrapped);
+  return () => {
+    ipcRenderer.removeListener(channel, wrapped);
+  };
 };
-if (process.isMainFrame)
+const workspaceCreationListeners = new Set<() => void>();
+let workspaceCreationPending = false;
+const deliverWorkspaceCreation = () => {
+  if (!workspaceCreationPending || !workspaceCreationListeners.size) return;
+  workspaceCreationPending = false;
+  workspaceCreationListeners.forEach((listener) => listener());
+};
+const receiveWorkspaceCreation = () => {
+  void ipcRenderer
+    .invoke('application:take-create-workspace')
+    .then((pending: boolean) => {
+      if (pending) workspaceCreationPending = true;
+      deliverWorkspaceCreation();
+    });
+};
+if (process.isMainFrame) {
   ipcRenderer.on('files:workspace-file', receiveWorkspaceFiles);
+  ipcRenderer.on('application:create-workspace', receiveWorkspaceCreation);
+}
 
 if (process.isMainFrame)
   contextBridge.exposeInMainWorld('electronAPI', {
@@ -23,6 +68,13 @@ if (process.isMainFrame)
       ipcRenderer.invoke('pdf:asset', kind, name),
     openExternal: (url: string) => ipcRenderer.invoke('link:external', url),
     whenFullscreenReady: () => ipcRenderer.invoke('window:fullscreen-ready'),
+    localAgent: {
+      request: (handle: unknown, request: unknown) =>
+        ipcRenderer.invoke('workspace-host:agent', handle, request),
+      openHandoff: (url: string) =>
+        ipcRenderer.invoke('workspace-host:agent-open', url),
+      chooseExecutable: () => ipcRenderer.invoke('workspace-host:agent-choose'),
+    },
     onShutdown: (flush: () => Promise<void>, onCancelled?: () => void) => {
       const listener = (
         _event: Electron.IpcRendererEvent,
@@ -58,16 +110,51 @@ if (process.isMainFrame)
     },
     files: {
       binding: () => ipcRenderer.invoke('files:binding'),
+      product: {
+        startup: () => ipcRenderer.invoke('application:startup'),
+        workspaceIdle: () => ipcRenderer.invoke('application:workspace-idle'),
+        quickFiles: {
+          listQuickFiles: (directory: string) =>
+            ipcRenderer.invoke('files:list-quick-edit', directory),
+          listRecentFiles: () => ipcRenderer.invoke('files:recent'),
+          createQuickFile: (kind: QuickFileKind) =>
+            ipcRenderer.invoke('files:create', kind),
+          revealQuickDirectory: (directory: string) =>
+            ipcRenderer.invoke('files:reveal-quick-edit', directory),
+          openFile: (ref: IndependentFileRef) =>
+            ipcRenderer.invoke('files:open-independent', ref),
+          renameFile: (ref: IndependentFileRef, stem: string) =>
+            ipcRenderer.invoke('files:rename-independent', ref, stem),
+          trashFile: (ref: IndependentFileRef) =>
+            ipcRenderer.invoke('files:trash-independent', ref),
+          forgetRecentFile: (id: string) =>
+            ipcRenderer.invoke('files:forget-recent', id),
+          subscribe: (listener: () => void) =>
+            subscribe('files:independent-changed', listener),
+        },
+        onCreateWorkspace: (listener: () => void) => {
+          workspaceCreationListeners.add(listener);
+          deliverWorkspaceCreation();
+          receiveWorkspaceCreation();
+          return () => {
+            workspaceCreationListeners.delete(listener);
+          };
+        },
+      },
+      rename: (stem: string) => ipcRenderer.invoke('files:rename', stem),
+      onRenamed: (listener: (name: string) => void) =>
+        subscribe('files:renamed', listener),
       warnings: () => ipcRenderer.invoke('files:warnings'),
       readImage: (href: string) => ipcRenderer.invoke('files:image', href),
       openLink: (href: string) => ipcRenderer.invoke('files:link', href),
       setDefaults: () => ipcRenderer.invoke('files:defaults'),
       resolve: (action: string, files: unknown) =>
         ipcRenderer.invoke('files:resolve', action, files),
-      onOpenWorkspaceFile: (listener: (path: string) => void) => {
+      onOpenWorkspaceFile: (
+        listener: (target: WorkspaceFileOpenTarget) => Promise<void>,
+      ) => {
         workspaceFileListeners.add(listener);
-        deliverWorkspaceFiles();
-        receiveWorkspaceFiles();
+        void receiveWorkspaceFiles();
         return () => {
           workspaceFileListeners.delete(listener);
         };
@@ -138,7 +225,9 @@ if (process.isMainFrame)
         ipcRenderer.invoke('workspace-host:open', request),
       activateWorkspace: (handle: unknown) =>
         ipcRenderer.invoke('workspace-host:activate', handle),
-      createWorkspace: (request: { name: string }) =>
+      pickWorkspaceParent: () =>
+        ipcRenderer.invoke('workspace-host:pick-parent'),
+      createWorkspace: (request: { name: string; parentPath?: string }) =>
         ipcRenderer.invoke('workspace-host:create', request),
       updateWorkspaceHistory: (request: {
         id: string;

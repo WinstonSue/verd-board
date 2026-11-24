@@ -45,6 +45,47 @@ async function setup(kind: 'project' | 'agent-patterns' = 'project') {
   return { userData, source, target, host, handle, updater };
 }
 it.each(['project', 'agent-patterns'] as const)(
+  'resets the existing %s even when it already has the current release and only does it once',
+  async (kind) => {
+    const { target, host, handle, updater, userData } = await setup(kind);
+    const before = (await updater.info(handle))!;
+    expect(before.currentReleaseId).toBe(before.releaseId);
+    await fs.writeFile(path.join(target, 'old-edit.txt'), 'old');
+    await Promise.all([updater.prepare(kind), updater.prepare(kind)]);
+    await expect(
+      fs.access(path.join(target, 'old-edit.txt')),
+    ).rejects.toThrow();
+    await expect(
+      fs.access(path.join(userData, 'workspace-backups')),
+    ).rejects.toThrow();
+    await expect(host.readSnapshot(handle)).rejects.toThrow(
+      'WORKSPACE_REPLACED',
+    );
+    const instance = path.join(target, '.verdscrolls/instance.json');
+    const current = await fs.readFile(instance, 'utf8');
+    expect(JSON.parse(current)).toMatchObject({ kind, readonly: true });
+    await updater.prepare(kind);
+    expect(await fs.readFile(instance, 'utf8')).toBe(current);
+  },
+);
+
+it('keeps the original content when the first-open reset cannot stage the release', async () => {
+  const { target, host, handle, userData } = await setup();
+  await fs.writeFile(path.join(target, 'old-edit.txt'), 'old');
+  const updater = createBuiltinWorkspaceUpdater({
+    host,
+    userData: () => userData,
+    source: () => path.join(userData, 'missing-source'),
+  });
+  await expect(updater.prepare('project')).rejects.toThrow();
+  expect(await fs.readFile(path.join(target, 'old-edit.txt'), 'utf8')).toBe(
+    'old',
+  );
+  await expect(host.readSnapshot(handle)).resolves.toBeDefined();
+  expect(await fs.readdir(path.dirname(target))).toEqual(['default']);
+});
+
+it.each(['project', 'agent-patterns'] as const)(
   'fully replaces %s, backs up additions, retains identity and receipts, and fences old hosts',
   async (kind) => {
     const { target, host, handle, updater } = await setup(kind);

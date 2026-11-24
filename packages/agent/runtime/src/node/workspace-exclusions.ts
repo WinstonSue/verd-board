@@ -29,15 +29,23 @@ export async function readProjectContentExclusions(
       const mapping = JSON.parse(config) as WorkspaceMapping;
       if (
         typeof mapping.workspace === 'string' &&
-        (await fs.realpath(path.resolve(ancestor, mapping.workspace)).catch(() => null)) === workspaceRoot
+        (await fs
+          .realpath(path.resolve(ancestor, mapping.workspace))
+          .catch(() => null)) === workspaceRoot
       ) {
         if (mapping.exclude === undefined) return new Set();
-        if (!Array.isArray(mapping.exclude) || mapping.exclude.some((file) => typeof file !== 'string'))
+        if (
+          !Array.isArray(mapping.exclude) ||
+          mapping.exclude.some((file) => typeof file !== 'string')
+        )
           throw new Error('Verd workspace exclusion paths must be strings');
-        return new Set(mapping.exclude.map((file) => {
-          if (path.isAbsolute(file)) throw new Error('Verd workspace exclusion must be relative');
-          return normalizeWorkspacePath(file);
-        }));
+        return new Set(
+          mapping.exclude.map((file) => {
+            if (path.isAbsolute(file))
+              throw new Error('Verd workspace exclusion must be relative');
+            return normalizeWorkspacePath(file);
+          }),
+        );
       }
     }
     const git = await fs.lstat(path.join(ancestor, '.git')).catch((error) => {

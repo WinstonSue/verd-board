@@ -253,7 +253,7 @@ export function parseOperations(
   if (!Array.isArray(value)) throw new Error('Operations must be an array');
   value.forEach((op, index) => {
     const schema = authoringOperationSchema.oneOf.find(
-      (s) => s.properties?.type.const === op?.type,
+      (s) => s.properties?.['type']?.const === op?.type,
     );
     if (!schema) throw new Error('Unknown operation at ' + index);
     validateValue(op, schema, '/' + index);

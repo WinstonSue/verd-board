@@ -187,6 +187,12 @@ describe('workspace full text search', () => {
     expect(searchRecords([record], '管理 missing')).toHaveLength(0);
     expect(searchRecords([record], '管理', true)).toHaveLength(0);
     expect(searchRecords([record], 'notes', true)).toHaveLength(1);
+    expect(searchRecords([record], 'notes', 'body')).toHaveLength(0);
+    expect(searchRecords([record], '管理', 'names')).toHaveLength(0);
+    expect(searchRecords([record], '管理', 'body')[0].fragment.from).toBe(1);
+    expect(
+      searchRecords([record], 'notes 管理', 'all').map(({ source }) => source),
+    ).toEqual(['metadata', 'content']);
   });
   it('retains different positions for repeated text blocks', () => {
     const file = doc('one', '重复');

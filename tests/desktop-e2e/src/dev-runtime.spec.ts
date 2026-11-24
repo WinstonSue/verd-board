@@ -8,8 +8,14 @@ import {
   electron,
   writeDesktopLauncher,
 } from './desktop-launcher';
+import { checkFileShortcuts } from './file-shortcuts';
 
 const root = path.resolve(__dirname, '../../..');
+
+test(
+  'dispatches native open and actual size shortcuts in development',
+  checkFileShortcuts,
+);
 
 test('real dev isolates its persistent workspace and hot-updates modules and styles', async () => {
   const directory = await mkdtemp(path.join(tmpdir(), 'verd-dev-runtime-'));
@@ -46,6 +52,14 @@ test('real dev isolates its persistent workspace and hot-updates modules and sty
   const launch = async () => {
     desktop = await electron.launch({ args: [launcher], env });
     const page = await desktop.firstWindow();
+    await expect(
+      page.locator('.workspace-shell').or(page.getByTestId('product-home')),
+    ).toBeVisible();
+    if (await page.getByTestId('product-home').isVisible())
+      await page
+        .getByTestId('product-home')
+        .getByRole('button', { name: /^(系统介绍|System introduction)$/ })
+        .click();
     await expect(page.locator('.workspace-shell')).toBeVisible();
     await expect
       .poll(() =>

@@ -8,7 +8,7 @@ VerdBoard treats a real folder as a workspace, either standalone or embedded in 
 
 ## 阅读入口
 
-系统介绍的唯一正文来源是根 [`workspace/`](workspace/)。在应用切换器中选择「打开系统介绍」阅读内置副本；维护项目内容时主动打开仓库原目录。开发应用的默认工作区是独立副本，后续启动保留用户修改。
+系统介绍的唯一正文来源是根 [`workspace/`](workspace/)。从 Desktop 或本机 Web 首页只读浏览「系统介绍」和「文档编写推荐库」。首次打开新版内置库会恢复为随附内容。维护项目内容时主动打开仓库原目录。
 
 - [中文文档导航](workspace/文档导航.verd-doc.json) / [English documentation](workspace/Documentation.verd-doc.json)：按阅读目标选择入口。
 - [产品概览](workspace/文档/产品/产品概览.verd-doc.json)：定位、能力、宿主和限制。
@@ -68,6 +68,10 @@ export function App() {
 
 ## Agent 与文档维护
 
+Desktop 和本机 Web 可以从文档和画布顶部、文件树或命令面板选择「发起 Agent」。任务始终从工作区发起，当前文件、文件夹或选区提供聚焦上下文。默认 Agent 为 Codex，可在「设置 → 个人偏好 → Agent」查看。「快速执行」使用已安装并登录的本机 Codex CLI，可在 VerdBoard 内审阅并确认原生改动。「在 Codex 中继续」在对应工作区预填任务，由用户在 Codex 中发送。CLI 配置和断线行为见桌面安装与使用指南。
+
+Choose Start Agent from a page toolbar, the file tree, or the command palette. A file, folder, or selection focuses a task that starts in the current workspace. Codex is the default under Settings → Personal → Agent. Run a quick task with the installed Codex CLI and review changes in VerdBoard, or open a draft in the Codex desktop app.
+
 工作区 `AGENTS.md` 指向共享编写 Skill；从工作区根执行 `.verdscrolls/shared/bin/verd context --json` 获取工作区身份、阅读入口与适用 Skills。用户补充保存在 `.agents/skills/<name>/SKILL.md`，修改后重新生成未提交计划。
 
 默认 Agent 规范以 `SKILL.md` 和 Markdown references 为单一维护源；执行模板保留原生 JSON。文档编写推荐库是面向用户的建议和示例，与 Agent 默认指令分别维护。共享资源升级后重新规划，已有用户副本仅在确认全量更新后替换，可选备份。
@@ -76,4 +80,8 @@ export function App() {
 
 产品及工程说明继续写入原生正文；正文、图和双语入口同步能力与限制。发布前分别核对 Agent 工程、用户推荐库与系统介绍；每版系统介绍须有实际业务正文更新，不能只改日期、版本或缓存。
 
-桌面端支持从系统打开 Markdown 和 `.verd` 画布。Markdown 可视化编辑后保存回原文件；新画布使用 `.verd`（JSON 内容），旧 `.verd.json` 继续兼容。默认打开方式按操作系统要求确认。
+桌面端和本机 Web 的「首页」可按名称或目录查找「我的工作区」，也提供系统介绍和文档编写推荐库。点击侧栏工作区名称会打开与侧栏等宽的下拉框，覆盖下方导航。「工作区」页提供「全部内容」「图表」、筛选和已保存视图。侧栏「搜索」打开当前工作区的搜索弹窗，Cmd/Ctrl+P 默认搜索标题与路径，Cmd/Ctrl+Shift+F 默认搜索全部。侧栏底部「设置」右侧可以收起侧栏。Desktop 在同一个主窗口打开和切换工作区，已知工作区内的画布也在这里打开。
+
+Desktop 首页下方的「快速创建」浏览 `quick-edit/` 子目录并列出最近打开的目录外文件。可新建 Markdown 或图、重命名文件、移到废纸篓。独立文件在单独窗口编辑，可直接在窗口内改名。同一个文件重复打开时聚焦原窗口。可以从系统托盘、Dock 或「窗口 → 显示主窗口」恢复 Desktop 主窗口。本地交互开发使用仓库内 Git 忽略的 `tmp/verdboard/quick-edit/`。
+
+桌面的「文件 → 打开文件…」和系统文件管理器可打开 Markdown 与 `.verd` 画布，兼容旧 `.verd.json`。使用字母 `⌘O`（macOS）或 `Ctrl+O`（Windows/Linux）打开文件，使用数字 `⌘0` 或 `Ctrl+0` 恢复页面缩放。Markdown 保存回原文件，默认打开方式按操作系统要求确认。

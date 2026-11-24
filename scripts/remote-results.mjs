@@ -87,6 +87,8 @@ export async function summarizeResults(directory) {
     taskId: manifest.id,
     validatedInputDigest: manifest.proof?.releaseInputDigest ?? null,
     task: manifest.task,
+    executionTarget: state.executionTarget,
+    routing: state.routing ?? manifest.routing,
     status: state.state,
     exitCode: state.exitCode,
     currentSource: comparison?.current === true,

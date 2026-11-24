@@ -305,6 +305,7 @@ interface HistoryEntry {
 }
 
 export interface WorkspaceSessionSnapshot {
+  readonly: boolean;
   /** File-only feedback; navigation/configuration commits never dirty these states. */
   filePersistence: ReadonlyMap<CellId, FilePersistenceState>;
   store: CellStore;
@@ -603,7 +604,8 @@ export const createWorkspaceSession = (options: {
   let disposed = false;
   /** Desktop close: new content commands rejected while the queue drains. */
   let frozen = false;
-  let workspaceReadonly = false;
+  const hostReadonly = handle.readonly === true;
+  let workspaceReadonly = hostReadonly;
   /** Organization batch: content and file mutations wait; navigation does not. */
   let mutationsPaused = false;
   let gitFlight = false;
@@ -3013,6 +3015,7 @@ export const createWorkspaceSession = (options: {
             canvasEntries.set(id, entry as WorkspaceFileEntry<FrameFileV2>);
         });
       cachedSnapshot = {
+        readonly: workspaceReadonly,
         filePersistence: filePersistence.snapshot(),
         store,
         failedFiles: new Map(failedFiles),
@@ -3061,7 +3064,7 @@ export const createWorkspaceSession = (options: {
       );
     },
     setReadonly(next) {
-      workspaceReadonly = next;
+      workspaceReadonly = hostReadonly || next;
       emit();
     },
     syncFromHost,

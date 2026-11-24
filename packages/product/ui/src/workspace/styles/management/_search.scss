@@ -1,0 +1,94 @@
+@use './interaction';
+
+.workspace-search-dialog.vm-dialog {
+  width: min(580px, calc(100vw - 32px));
+  margin: 12dvh auto auto;
+
+  .vm-dialog__body {
+    display: grid;
+    gap: 8px;
+  }
+
+  .vm-dialog__header > button {
+    @include interaction.keyboard-focus;
+  }
+
+  .vm-search > input {
+    @include interaction.keyboard-focus;
+    width: 100%;
+    padding-inline-start: 32px;
+  }
+
+  .workspace-search-scopes {
+    display: flex;
+    gap: 4px;
+    flex-wrap: wrap;
+
+    > button {
+      @include interaction.view-choice;
+    }
+  }
+
+  [role='listbox'] {
+    overflow: auto;
+    max-height: 42dvh;
+
+    button {
+      @include interaction.flat-button;
+      @include interaction.keyboard-focus;
+      display: flex;
+      align-items: flex-start;
+      justify-content: flex-start;
+      gap: var(--vm-space-8);
+      width: 100%;
+      min-height: var(--vm-list-row-detail);
+      height: auto;
+      padding: 8px;
+      text-align: start;
+
+      &:hover {
+        background: var(--vm-fill-hover);
+      }
+
+      &[aria-selected='true'] {
+        background: var(--vm-fill-active);
+      }
+
+      > svg,
+      > .vm-badge {
+        flex: none;
+      }
+    }
+  }
+
+  .workspace-search-result {
+    display: grid;
+    gap: 2px;
+    flex: 1;
+    min-width: 0;
+
+    > span:first-child,
+    > small {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    small {
+      font-size: var(--vm-text-xs);
+      color: var(--vm-foreground-secondary);
+    }
+  }
+
+  .workspace-search-excerpt {
+    white-space: normal;
+    overflow-wrap: anywhere;
+    font-size: var(--vm-text-xs);
+    color: var(--vm-foreground-secondary);
+
+    mark {
+      background: var(--vm-info-bg);
+      color: var(--vm-info);
+    }
+  }
+}

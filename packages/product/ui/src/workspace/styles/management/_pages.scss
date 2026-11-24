@@ -1,3 +1,5 @@
+@use './interaction';
+
 .management-page {
   box-sizing: border-box;
   width: 100%;
@@ -35,7 +37,8 @@
   color: inherit;
   background: var(--vm-background);
 }
-.management-page button:not(.vm-btn):not(.vm-icon-btn),
+.management-page
+  button:not(.vm-btn):not(.vm-icon-btn):not(.management-result-open),
 .management-modal form button:not(.vm-btn) {
   border: 0;
   border-radius: var(--vm-radius-sm);
@@ -81,15 +84,20 @@
   padding: 8px;
   border: 0;
   border-bottom: 1px solid var(--vm-border);
+  border-radius: var(--vm-radius-sm);
   text-align: left;
   &:hover {
     background: var(--vm-fill-hover);
   }
+  &:has(> input:checked) {
+    background: var(--vm-fill-active);
+  }
+  :is(.management-result-open, .vm-icon-btn, input[type='checkbox']) {
+    @include interaction.keyboard-focus;
+  }
 }
-.management-result > button {
-  flex: none;
-}
-.management-result > button:first-of-type {
+.management-result > .management-result-open {
+  @include interaction.flat-button;
   display: flex;
   align-items: center;
   justify-content: flex-start;
@@ -97,10 +105,14 @@
   min-width: 0;
   min-height: var(--vm-control-height);
   height: auto;
+  padding: var(--vm-space-6) var(--vm-space-8);
   gap: 12px;
-  text-align: left;
+  text-align: start;
 }
-.management-result > button > span {
+.management-result-open > svg {
+  flex: none;
+}
+.management-result-open > span {
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -114,52 +126,21 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.management-result mark {
-  background: var(--vm-fill-active);
-  color: var(--vm-info);
-}
-.management-result > button:not(:first-of-type),
-.management-result > .frame-tooltip-control {
-  opacity: 0;
-}
-.management-result:hover > button,
-.management-result:focus-within > button,
-.management-result > button[aria-pressed='true'],
-.management-result:hover > .frame-tooltip-control,
-.management-result:focus-within > .frame-tooltip-control {
-  opacity: 1;
-}
-button.management-result {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  gap: 4px;
-  height: auto;
-  text-align: start;
-}
-button.management-result > span:last-child {
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
+@media (hover: hover) {
+  .management-result:not(:hover, :focus-within)
+    > .frame-tooltip-control:not(:has([aria-pressed='true'])) {
+    opacity: 0;
+  }
 }
 .content-tabs {
   display: flex;
-  gap: 16px;
+  gap: var(--vm-space-4);
   flex: none;
   padding: 12px 40px;
   border-bottom: 1px solid var(--vm-border);
 }
 .content-tabs > button {
-  padding: 8px;
-  border: 0;
-  font: inherit;
-  color: var(--vm-foreground-secondary);
-  background: transparent;
-  cursor: pointer;
-  &[aria-current='page'] {
-    color: var(--vm-foreground);
-    box-shadow: 0 2px var(--vm-primary);
-  }
+  @include interaction.view-choice;
 }
 .workspace-empty-state {
   padding-block: 24px;
@@ -169,9 +150,7 @@ button.management-result > span:last-child {
   font-size: var(--vm-text-xs);
   color: var(--vm-foreground-secondary);
 }
-.workspace-content[data-management-view='home'],
-.workspace-content[data-management-view='all'],
-.workspace-content[data-management-view='search'] {
+.workspace-content[data-management-view='all'] {
   > .workspace-panes,
   > .chart-library,
   > .workspace-empty,

@@ -30,19 +30,19 @@ pnpm workspace:check
 
 ## 默认工作区
 
-仓库根目录的 [workspace](../../workspace/) 是正式项目内容，包含项目导览、原生架构图与可直接编辑的文档；纳入 Git 管理。开发启动默认使用 `appData/VerdBoard Dev/workspaces/default` 的独立副本，首次复制原生内容并排除运行记录，之后保留修改且不自动覆盖。维护项目文档需主动打开仓库原目录。`.verdscrolls/` 保存项目配置与本机运行状态；内部 `.gitignore` 保留可共享的 `config.json`，排除会话、事务、回收站和本机共享链接。旧 `.verdboard` 在锁内整体迁移，冲突时停止写入。
+仓库根目录的 [workspace](../../workspace/) 是正式项目内容，包含项目导览、原生架构图与可直接编辑的文档；纳入 Git 管理。开发应用使用独立用户数据目录，其中的内置系统介绍以只读方式打开。维护项目文档需主动打开仓库原目录。`.verdscrolls/` 保存项目配置与本机运行状态；内部 `.gitignore` 保留可共享的 `config.json`，排除会话、事务、回收站和本机共享链接。旧 `.verdboard` 在锁内整体迁移，冲突时停止写入。
 
-打包时将这些原生文件放入应用资源。全新用户首次打开默认工作区时，先完整复制到用户数据目录，再以可编辑工作区打开：
+打包时将这些原生文件放入应用资源。全新用户首次打开系统介绍时，应用将随附内容安装到用户数据目录并以只读方式打开：
 
 - macOS：`~/Library/Application Support/VerdBoard/workspaces/default/`
 - Windows：`%APPDATA%/VerdBoard/workspaces/default/`
 - Linux：`~/.config/VerdBoard/workspaces/default/`
 
-正式运行时名称为 VerdBoard，应用标识固定 `com.verdboard.desktop`，userData 固定在 `appData/VerdBoard`。开发应用为 `VerdBoard Dev`，窗口带 `[DEV]`，使用全新的 `appData/VerdBoard Dev` 数据目录，不导入旧 `desktop` 的选择与历史；开发旧存储同样归入独立 userData。正式版首次启动将旧 `desktop/workspaces/default` 和已记住的自选目录加入历史入口，旧文件留在原处，旧选择不替代新默认项目。已有正式工作区和旧版资料优先。旧清单 `verdboard-data.json` / `drawnix-data.json` 仍支持备份后迁移；损坏资料显示错误并保留原文。应用升级不会覆盖或合并用户已经编辑的默认工作区副本。
+正式运行时名称为 VerdBoard，应用标识固定 `com.verdboard.desktop`，userData 固定在 `appData/VerdBoard`。开发应用为 `VerdBoard Dev`，窗口带 `[DEV]`，使用全新的 `appData/VerdBoard Dev` 数据目录，不导入旧 `desktop` 的选择与历史；开发旧存储同样归入独立 userData。正式版首次启动将旧 `desktop/workspaces/default` 和已记住的自选目录加入历史入口，旧文件留在原处，旧选择不替代新默认项目。旧个人资料继续在可编辑工作区恢复。旧清单 `verdboard-data.json` / `drawnix-data.json` 仍支持备份后迁移；损坏资料显示错误并保留原文。旧个人资料占用默认目录时，系统介绍安装到同级 `system-introduction`。
 
-旧开发目录 `apps/desktop/workspace/` 中的个人文件和运行记录保留在原处，可通过「打开工作区文件夹」访问。
+旧开发目录 `apps/desktop/workspace/` 中的个人文件和运行记录保留在原处，可通过「导入工作区」访问。
 
-侧栏提供「打开工作区文件夹」和「打开系统介绍」。成功切换后记住选择；切换先提交当前编辑并等待保存，保存失败会保留当前工作区。已选择的目录不可用时，可重新选择或打开系统介绍。自选空目录保持独立，不复制项目内容或导入其它目录的旧资料。
+从首页或侧栏「我的工作区」下拉框选择「导入工作区」，可打开已有目录。新建时在表单中填写名称、选择父目录，再点击「创建」。首页提供工作区查找、系统介绍和文档编写推荐库。切换前保存当前编辑，成功切换后记住选择。保存失败会保留当前工作区。已选择的目录不可用时，可重新选择或打开系统介绍。自选空目录保持独立，不复制项目内容或导入其它目录的旧资料。
 
 测试和自动化可用 `VERDBOARD_USER_DATA_PATH` 覆盖数据目录；只有正式包执行旧区恢复，且仅检查该数据目录旁的 `desktop`，避免访问真实用户资料。
 
@@ -68,8 +68,8 @@ pnpm workspace:refresh
 
 Desktop dev/prod E2E 统一使用 `tests/desktop-e2e/src/desktop-launcher.ts`，单 worker 串行执行，关闭前一个测试进程后才可重启。macOS 测试窗口以 accessory 模式运行，不占 Dock。用例必须在 `finally` / teardown 中关闭实例。公共启动器在关闭超过 10 秒时回收自己启动的子进程，worker 退出或消失时也自动回收。测试清理只针对本轮启动且使用临时数据的进程。
 
-新建或打开文件夹自动维护根 `AGENTS.md` 的专属受管块，并将 `.verdscrolls/shared` 链接到 userData 中按版本保留的工具资源。工作区设置显示 AI 就绪状态，可维护简介和入口文档 ID。打包钩子按目标平台准备经官方 SHA-256 校验的 Node 24.18.1 与完整 CLI；旧资源版本保留。开发时先运行 `pnpm exec turbo run build --filter=@sue/verd-board-agent` 和 `pnpm prepare:agent-resources apps/desktop/build/agent-resources/mac-arm64`，目标平台/CPU 按本机调整；也可用 `VERD_AGENT_RESOURCES` 指向临时准备目录。资源未准备时工作区仍可使用，并显示 AI 接入未就绪。
+新建或导入工作区时自动维护根 `AGENTS.md` 的专属受管块，并将 `.verdscrolls/shared` 链接到 userData 中按版本保留的工具资源。工作区设置显示 AI 就绪状态，可维护简介和入口文档 ID。打包钩子按目标平台准备经官方 SHA-256 校验的 Node 24.18.1 与完整 CLI；旧资源版本保留。开发时先运行 `pnpm exec turbo run build --filter=@sue/verd-board-agent` 和 `pnpm prepare:agent-resources apps/desktop/build/agent-resources/mac-arm64`，目标平台/CPU 按本机调整；也可用 `VERD_AGENT_RESOURCES` 指向临时准备目录。资源未准备时工作区仍可使用，并显示 AI 接入未就绪。
 
-系统介绍与 文档编写推荐库随应用内置，版本与产品版本一致，不通过 npm 检查或下载。安装新应用不会自动替换已有副本。仅进入对应工作区时，名称旁的小标记提示可用更新；点击进入“设置 → 数据与维护”，确认后更新为当前应用附带内容。更新默认不备份；勾选备份后选择父目录，完整副本保存到独立子目录并加入普通工作区列表。取消目录选择不更新。更新先保存当前会话，保留项目身份和终态事务回执，重新打开新版导航文档。
+系统介绍与文档编写推荐库随应用内置，两者均为只读。切换到只读模式后的首次打开会直接用当前应用随附内容替换旧副本，不创建备份。仅进入对应工作区时，名称旁的小标记提示可用更新；点击进入“设置 → 数据与维护”，确认后更新为当前应用附带内容。更新默认不备份；勾选备份后选择父目录，完整副本保存到独立子目录并加入普通工作区列表。取消目录选择不更新。更新先保存当前会话，保留项目身份和终态事务回执，重新打开新版导航文档。
 
 `pnpm build:content` 从仓库原生内容直接准备内置资源；`node --test scripts/builtin-package.test.mjs` 校验摘要和产品版本。内置内容不单独通过 npm 发布。

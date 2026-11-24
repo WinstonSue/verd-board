@@ -1,7 +1,9 @@
+import { agentLaunchLabel } from '../shared/preferences/agent-preferences';
 import { WorkspaceButton } from '../shared/workspace-design';
 import { useEffect, useRef, useState, type Ref, type ReactNode } from 'react';
 import {
   ChevronDown,
+  ArrowUpRight,
   Command,
   FolderOpen,
   House,
@@ -76,6 +78,16 @@ export function WorkspaceMenu({
     actionSource,
     'workspace.command-palette',
   );
+  const agent = bindWorkspaceAction(actionSource, 'workspace.agent');
+  if (agent)
+    items.push({
+      id: 'agent',
+      action: agent,
+      label: agentLaunchLabel(locale),
+      icon: ArrowUpRight,
+      testId: 'workspace-agent-open',
+      onSelect: () => {},
+    });
   if (commandPalette)
     items.push({
       id: 'command-palette',
@@ -89,7 +101,7 @@ export function WorkspaceMenu({
     items.push({
       id: 'open-folder',
       action: bindWorkspaceAction(actionSource, 'workspace.open-folder'),
-      label: zh ? '打开工作区文件夹' : 'Open workspace folder',
+      label: zh ? '导入工作区' : 'Import workspace',
       icon: FolderOpen,
       testId: 'workspace-open-folder',
       groupStart: true,

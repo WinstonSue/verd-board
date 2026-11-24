@@ -21,7 +21,11 @@ export interface FileWorkspaceWriteOptions {
 
 export interface FileWorkspaceTransaction {
   mkdir(relative: string): Promise<void>;
-  write(relative: string, bytes: string | Uint8Array, expectedVersion: string | null): Promise<void>;
+  write(
+    relative: string,
+    bytes: string | Uint8Array,
+    expectedVersion: string | null,
+  ): Promise<void>;
   move(from: string, to: string, expectedVersion: string): Promise<void>;
   remove(relative: string, expectedVersion: string): Promise<void>;
   removeEmptyDirectory(relative: string): Promise<void>;
@@ -41,9 +45,11 @@ export interface FileWorkspace {
   ): Promise<T>;
 }
 
-const missing = (error: unknown) => (error as NodeJS.ErrnoException).code === 'ENOENT';
+const missing = (error: unknown) =>
+  (error as NodeJS.ErrnoException).code === 'ENOENT';
 
-const listDirectory = (absolute: string) => fs.readdir(absolute, { withFileTypes: true });
+const listDirectory = (absolute: string) =>
+  fs.readdir(absolute, { withFileTypes: true });
 
 function unsafePath(relative: string): boolean {
   return (
@@ -51,9 +57,19 @@ function unsafePath(relative: string): boolean {
     relative.includes('\\') ||
     relative.includes('\0') ||
     /^[a-z]:/i.test(relative) ||
-    relative.split('/').some((part) =>
-      ['', '.', '..', '.git', runtimeDirectory, '.verdboard', '.verd-resources'].includes(part.toLowerCase()),
-    )
+    relative
+      .split('/')
+      .some((part) =>
+        [
+          '',
+          '.',
+          '..',
+          '.git',
+          runtimeDirectory,
+          '.verdboard',
+          '.verd-resources',
+        ].includes(part.toLowerCase()),
+      )
   );
 }
 
@@ -65,14 +81,21 @@ export class FileWorkspaceConflict extends Error {
 }
 
 /** Opens ordinary files in place. Opening never initializes, repairs or writes the directory. */
-export async function openFileWorkspace(folder: string): Promise<FileWorkspace> {
+export async function openFileWorkspace(
+  folder: string,
+): Promise<FileWorkspace> {
   const root = await fs.realpath(folder);
   const rootEntry = await fs.lstat(root);
-  if (!rootEntry.isDirectory()) throw new Error('File workspace must be a directory');
+  if (!rootEntry.isDirectory())
+    throw new Error('File workspace must be a directory');
 
   async function assertRoot() {
     const current = await fs.lstat(root);
-    if (!current.isDirectory() || current.dev !== rootEntry.dev || current.ino !== rootEntry.ino)
+    if (
+      !current.isDirectory() ||
+      current.dev !== rootEntry.dev ||
+      current.ino !== rootEntry.ino
+    )
       throw new Error('File workspace was replaced: ' + root);
   }
 
@@ -88,7 +111,9 @@ export async function openFileWorkspace(folder: string): Promise<FileWorkspace> 
         return null;
       });
       if (entry && !entry.isDirectory() && !entry.isFile())
-        throw new Error('File workspace refuses links and special files: ' + relative);
+        throw new Error(
+          'File workspace refuses links and special files: ' + relative,
+        );
     }
     return absolute;
   }
@@ -101,8 +126,13 @@ export async function openFileWorkspace(folder: string): Promise<FileWorkspace> 
   async function entryVersion(absolute: string): Promise<string> {
     const entry = await fs.lstat(absolute);
     if (entry.isFile()) return digest(await fs.readFile(absolute));
-    if (!entry.isDirectory()) throw new Error('File workspace refuses links and special files: ' + absolute);
-    const children = (await listDirectory(absolute)).map((child) => child.name).sort();
+    if (!entry.isDirectory())
+      throw new Error(
+        'File workspace refuses links and special files: ' + absolute,
+      );
+    const children = (await listDirectory(absolute))
+      .map((child) => child.name)
+      .sort();
     const manifest: [string, string][] = [];
     for (const name of children)
       manifest.push([name, await entryVersion(path.join(absolute, name))]);
@@ -135,11 +165,18 @@ export async function openFileWorkspace(folder: string): Promise<FileWorkspace> 
     read,
     version: async (relative) => entryVersion(await checked(relative)),
     subscribe(onChange) {
-      const watcher = watch(root, { recursive: true, persistent: false }, (_event, filename) => {
-        const relative = filename?.split(path.sep).join('/');
-        if (relative !== runtimeDirectory && !relative?.startsWith(runtimeDirectory + '/'))
-          onChange(relative ?? undefined);
-      });
+      const watcher = watch(
+        root,
+        { recursive: true, persistent: false },
+        (_event, filename) => {
+          const relative = filename?.split(path.sep).join('/');
+          if (
+            relative !== runtimeDirectory &&
+            !relative?.startsWith(runtimeDirectory + '/')
+          )
+            onChange(relative ?? undefined);
+        },
+      );
       watcher.on('error', () => {
         watcher.close();
         onChange();
@@ -154,11 +191,19 @@ export async function openFileWorkspace(folder: string): Promise<FileWorkspace> 
         const completed: string[] = [];
         const destination = (relative: string) => {
           if (!active) throw new Error('File workspace transaction is closed');
-          if (!relative) throw new Error('File workspace root cannot be modified');
+          if (!relative)
+            throw new Error('File workspace root cannot be modified');
           return checked(relative);
         };
-        const unchanged = async (relative: string, absolute: string, expected: string | null) => {
-          if ((await destination(relative)) !== absolute || (await currentVersion(absolute)) !== expected)
+        const unchanged = async (
+          relative: string,
+          absolute: string,
+          expected: string | null,
+        ) => {
+          if (
+            (await destination(relative)) !== absolute ||
+            (await currentVersion(absolute)) !== expected
+          )
             throw new FileWorkspaceConflict(relative);
         };
         async function publish(
@@ -175,7 +220,11 @@ export async function openFileWorkspace(folder: string): Promise<FileWorkspace> 
               return;
             } catch (error) {
               const code = (error as NodeJS.ErrnoException).code;
-              if (attempt >= 2 || !code || !['EBUSY', 'EPERM', 'EACCES'].includes(code))
+              if (
+                attempt >= 2 ||
+                !code ||
+                !['EBUSY', 'EPERM', 'EACCES'].includes(code)
+              )
                 throw error;
             }
           }
@@ -212,7 +261,10 @@ export async function openFileWorkspace(folder: string): Promise<FileWorkspace> 
               } else {
                 await fs.chmod(staged, 0o666 & ~process.umask());
               }
-              const previous = expectedVersion === null ? undefined : path.join(receipt, 'previous');
+              const previous =
+                expectedVersion === null
+                  ? undefined
+                  : path.join(receipt, 'previous');
               await publish(
                 [target],
                 () => unchanged(relative, target, expectedVersion),
@@ -220,7 +272,8 @@ export async function openFileWorkspace(folder: string): Promise<FileWorkspace> 
                   previous
                     ? fs.rename(staged, target)
                     : fs.link(staged, target).catch((error) => {
-                        if (error.code === 'EEXIST') throw new FileWorkspaceConflict(relative);
+                        if (error.code === 'EEXIST')
+                          throw new FileWorkspaceConflict(relative);
                         throw error;
                       }),
                 options.retainReplaced ? previous : undefined,
@@ -245,12 +298,21 @@ export async function openFileWorkspace(folder: string): Promise<FileWorkspace> 
                 )
                   throw new FileWorkspaceConflict(to);
               }
-              const receipt = await journal(transactionId, { action: 'move', from, to, expectedVersion });
+              const receipt = await journal(transactionId, {
+                action: 'move',
+                from,
+                to,
+                expectedVersion,
+              });
               await publish(
                 [source, target],
                 async () => {
                   await unchanged(from, source, expectedVersion);
-                  await unchanged(to, target, existing ? expectedVersion : null);
+                  await unchanged(
+                    to,
+                    target,
+                    existing ? expectedVersion : null,
+                  );
                 },
                 () => fs.rename(source, target),
               );
@@ -259,7 +321,11 @@ export async function openFileWorkspace(folder: string): Promise<FileWorkspace> 
             async remove(relative, expectedVersion) {
               const target = await destination(relative);
               await unchanged(relative, target, expectedVersion);
-              const receipt = await journal(transactionId, { action: 'remove', relative, expectedVersion });
+              const receipt = await journal(transactionId, {
+                action: 'remove',
+                relative,
+                expectedVersion,
+              });
               const previous = path.join(receipt, 'previous');
               await publish(
                 [target],
@@ -275,7 +341,9 @@ export async function openFileWorkspace(folder: string): Promise<FileWorkspace> 
             },
           });
           for (const receipt of completed)
-            await fs.rm(receipt, { recursive: true, force: true }).catch(() => {});
+            await fs
+              .rm(receipt, { recursive: true, force: true })
+              .catch(() => {});
           return value;
         } finally {
           active = false;

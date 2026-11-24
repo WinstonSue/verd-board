@@ -36,9 +36,9 @@
 
 ### 执行位置、并发与隔离
 
-- 自动化 lint、格式、类型、构建、单测和 E2E 默认在远程测试机执行；当前 Mac 仅编辑、核对、采集快照、传输和展示结果。先运行 `pnpm test:remote doctor`；远程不可用报告具体阻塞，不自动改成本机运行。
+- 日常 `dev` 和 `scripts` 由 remote-test 依次评估 verd-test、Tart 来宾和宿主 Mac。项目路由启用后，已授权在远端和来宾均不适用、宿主资源充足时自动在本机隔离快照中运行。CI、release、package 和 benchmark 固定在 verd-test。
 - 独立用户级 remote-test 的连接配置位于 `~/.config/remote-test/config.json`，仓库仅临时派生任务配置，不改写用户连接和凭据。主机 cacheDir 管理任务、运行时、下载和项目验证缓存。
-- 普通会话 check:dev/check:ci/check:release/package 默认委托远程，worker 设置 VERD_TEST_EXECUTION=remote，GitHub Actions 直接执行避免递归。禁止自行设置执行变量、CI=1 或改用手写 Electron 绕过本机保护；仅用户明确要求本机预览或调试时使用 VERD_TEST_EXECUTION=local。
+- 普通会话的 check:dev/check:ci/check:release/package 委托项目适配器。remote-test worker 根据执行端设置 VERD_TEST_EXECUTION，GitHub Actions 直接执行。禁止自行设置执行变量、CI=1 或改用手写 Electron 绕过本机保护。
 - 保持现有包级/包内单测并发与脚本文件并发预算。Web 使用隔离端口和数据；同一 GUI 的 Desktop 保持单 worker，宿主/运行态 E2E 阶段依次执行。并发写入记录；提高默认并发需同快照、工具链和集合的单次比较，全部通过、无资源恶化且提速至少 10%。
 - 日常开发不打包、安装、替换、注册或关闭正式应用。自动 E2E 使用测试机隔离服务、临时数据和工作区，不复用手动 Dev。Desktop Agent 专项使用本轮生成并验收的资源，设置 VERD_AGENT_RESOURCES 与 VERD_AGENT_RESOURCE_TEST_PATH。
 - npm registry 发布仍需明确授权，并使用同一受控端的当前验收构建；技术验收不授予 registry 发布、安装或替换正式应用的权限。

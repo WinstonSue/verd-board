@@ -1,3 +1,5 @@
+@use './interaction';
+
 .management-navigation {
   display: flex;
   flex: 1;
@@ -12,28 +14,19 @@
   flex-direction: column;
   overflow: auto;
 }
-.management-sidebar-body > nav {
-  display: grid;
-  padding: 8px;
-  gap: 2px;
-}
-.management-sidebar-body .file-tree-nav {
-  margin: 0;
-  justify-content: flex-start;
-  height: var(--vm-sidebar-row);
-  padding: 0 8px;
-}
-.management-sidebar-body .file-tree-nav[aria-current='page'] {
-  background: var(--vm-fill-active);
-  color: var(--vm-foreground);
-  font-weight: 500;
-}
 .management-tree {
   position: relative;
-  flex: 1;
-  min-height: 100px;
+  flex: none;
   display: flex;
   flex-direction: column;
+}
+.management-tree .file-tree-body {
+  flex: none;
+  overflow: visible;
+}
+.management-sidebar-body > .vm-sidebar-section {
+  flex: none;
+  padding-block: var(--vm-space-4);
 }
 .management-shortcut {
   margin: 0 8px;
@@ -44,6 +37,7 @@
   }
 }
 .management-shortcut > .management-shortcut-main {
+  @include interaction.keyboard-focus;
   display: flex;
   align-items: center;
   justify-content: flex-start;
@@ -73,20 +67,42 @@
 .management-shortcut:focus-within > .frame-tooltip-control {
   opacity: 1;
 }
-.management-favorites-empty {
-  margin: 0 8px;
-  padding: 8px;
+.management-pinned-empty {
+  display: flex;
+  align-items: center;
+  height: var(--vm-sidebar-row);
+  flex: none;
+  padding-inline: calc(2 * var(--workspace-sidebar-gutter));
 }
+
 .management-collapsed {
-  .workspace-menu-trigger,
-  .workspace-content-update,
-  .workspace-sidebar-footer,
-  .management-sidebar-body,
+  .workspace-switcher,
+  .workspace-sidebar-header,
+  .workspace-sidebar-settings,
+  .management-navigation,
   .workspace-resize-handle {
     display: none;
   }
-  .workspace-sidebar-header {
-    padding-inline: 8px;
+
+  .workspace-sidebar-footer {
+    justify-content: center;
+  }
+
+  .workspace-sidebar-nav {
+    padding-inline: var(--vm-space-4);
+
+    > .vm-nav-row {
+      justify-content: center;
+      padding-inline: 0;
+
+      > span {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        overflow: hidden;
+        clip-path: inset(50%);
+      }
+    }
   }
 }
 .workspace-resize-handle {

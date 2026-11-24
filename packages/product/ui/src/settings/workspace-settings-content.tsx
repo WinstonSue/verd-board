@@ -43,6 +43,7 @@ export interface WorkspaceSettingsProps {
   initialSection?: 'general' | 'trash';
   fileChoices?: { id: string; title: string; path: string }[];
   builtin?: BuiltinWorkspaceSettingsProps['source'];
+  builtinReadonly?: boolean;
   actionSource?: ActionSource;
   locale?: 'zh' | 'en';
   config: WorkspaceSettingsConfig;

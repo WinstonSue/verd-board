@@ -94,16 +94,21 @@ export function DirectoryPicker({
     request.resolve(path);
     onClose();
   };
+  const importLabel =
+    document.documentElement.lang === 'en' ? 'Import workspace' : '导入工作区';
   return (
-    <ServiceDialog label="选择本地文件夹" onClose={() => finish(null)}>
+    <ServiceDialog
+      label={request.purpose === 'open' ? importLabel : '选择本地文件夹'}
+      onClose={() => finish(null)}
+    >
       <h2>
         {request.purpose === 'create'
-          ? '选择新工作区的父文件夹'
+          ? '选择新工作区的父目录'
           : request.purpose === 'backup'
             ? '选择备份文件夹'
             : request.purpose === 'migration'
               ? '选择迁移目标的父文件夹'
-              : '选择工作区文件夹'}
+              : importLabel}
       </h2>
       <form
         onSubmit={(event) => {

@@ -12,10 +12,14 @@ import {
   realpath,
   rename,
   rm,
+  symlink,
 } from 'node:fs/promises';
 import path from 'node:path';
 import { tmpdir } from 'node:os';
-import { openWorkspaceMenu } from '../../web-e2e/src/app-actions';
+import {
+  openProductHome,
+  openWorkspaceMenu,
+} from '../../web-e2e/src/app-actions';
 import { activeTabTitle } from '../../web-e2e/src/tab-actions';
 
 for (const kind of ['project', 'agent-patterns'] as const) {
@@ -35,8 +39,11 @@ for (const kind of ['project', 'agent-patterns'] as const) {
         timeout: 60000,
       });
       if (kind === 'agent-patterns') {
-        await openWorkspaceMenu(page);
-        await page.getByTestId('workspace-open-patterns').click();
+        await (
+          await openProductHome(page)
+        )
+          .getByTestId('workspace-open-patterns')
+          .click();
       }
       const root = path.join(
         userData,
@@ -62,8 +69,36 @@ for (const kind of ['project', 'agent-patterns'] as const) {
         entryId,
       );
       await expect(activeTabTitle(page)).toHaveText(entryTitle);
+      await expect(page.getByTestId('workspace-readonly')).toHaveText('只读');
+      await expect(
+        page.locator('.workspace-pane.is-active .ProseMirror'),
+      ).toHaveAttribute('contenteditable', 'false');
       expect(before.value.project.entryDocumentIds[0]).toBe(entryId);
       if (kind === 'project') {
+        const alias = path.join(directory, 'system-alias');
+        await symlink(root, alias, 'junction');
+        const ipc = await page.evaluate(async (path) => {
+          const host = (window as any).electronAPI.workspaceHost;
+          const throughAlias = await host.openWorkspace({ path });
+          const receipt = await host.commit(
+            { ...throughAlias, readonly: false },
+            {
+              transactionId: 'read-only-write',
+              writes: [
+                {
+                  path: 'blocked.txt',
+                  content: 'blocked',
+                  expectedVersion: null,
+                },
+              ],
+            },
+          );
+          return { readonly: throughAlias.readonly, outcome: receipt.outcome };
+        }, alias);
+        expect(ipc).toEqual({ readonly: true, outcome: 'rejected' });
+        await expect(
+          readFile(path.join(root, 'blocked.txt')),
+        ).rejects.toThrow();
         await expect(
           page.locator('.file-tree-name[title="文档导航.verd-doc.json"]'),
         ).toBeVisible();
@@ -144,6 +179,15 @@ for (const kind of ['project', 'agent-patterns'] as const) {
           .click();
 
         await expect(activeTabTitle(page)).toHaveText(entryTitle);
+        await desktop.evaluate(
+          ({ app }, file) => {
+            app.emit('open-file', { preventDefault() {} }, file);
+          },
+          path.join(root, '架构图/项目导览.verd'),
+        );
+        await expect(activeTabTitle(page)).toHaveText('项目导览');
+        await expect(page.getByTestId('workspace-readonly')).toBeVisible();
+        expect(desktop.windows()).toHaveLength(1);
       }
       await writeFile(path.join(root, 'added.txt'), 'my addition');
       await openWorkspaceMenu(page);
@@ -255,13 +299,11 @@ for (const kind of ['project', 'agent-patterns'] as const) {
       expect(copy).toBeTruthy();
       await page.getByTestId('workspace-menu-trigger').click();
       const backupRow = page
-        .getByTestId('workspace-switcher-dialog')
+        .getByTestId('workspace-switcher')
         .getByTestId(`workspace-history-${copy.id}`);
       await expect(backupRow).toContainText(copy.name);
       await backupRow.click();
-      await expect(
-        page.getByTestId('workspace-switcher-dialog'),
-      ).not.toBeVisible();
+      await expect(page.getByTestId('workspace-switcher')).not.toBeVisible();
       await expect(page.getByTestId('workspace-menu-trigger')).toBeEnabled();
       await openWorkspaceMenu(page);
       await page.getByTestId('workspace-open-settings').click();
@@ -276,7 +318,7 @@ for (const kind of ['project', 'agent-patterns'] as const) {
   });
 }
 
-test('a legacy canvas-first copy changes only after confirmed replacement', async () => {
+test('first open resets a legacy canvas-first copy without creating a backup', async () => {
   const directory = await mkdtemp(path.join(tmpdir(), 'verd-legacy-builtin-'));
   const userData = path.join(directory, 'data');
   const root = path.join(userData, 'workspaces/default');
@@ -348,49 +390,11 @@ test('a legacy canvas-first copy changes only after confirmed replacement', asyn
   const desktop = await electron.launch({ args: [launcher], env });
   try {
     const page = await desktop.firstWindow();
-    await expect(page.getByRole('tab', { selected: true })).toHaveAttribute(
-      'data-tab-id',
-      'board-root',
-      { timeout: 60000 },
-    );
-    await expect(
-      page.locator(
-        '.workspace-pane.is-active svg[data-surface="root"] [data-cell-kind="document-frame"]',
-      ),
-    ).toHaveCount(3);
-    expect(await readFile(path.join(root, '项目导览.verd'), 'utf8')).toBe(
-      legacyCanvas,
-    );
-
-    await openWorkspaceMenu(page);
-    await page.getByTestId('workspace-open-settings').click();
-    await page.getByTestId('settings-nav-workspace.data').click();
-    await expect(page.getByTestId('builtin-workspace-settings')).toContainText(
-      '旧版 / 未知',
-    );
-    await page
-      .getByRole('button', { name: /(?:更新为|恢复)系统内置内容…/ })
-      .click();
-    await page.getByRole('button', { name: '取消', exact: true }).click();
-    expect(await readFile(path.join(root, '项目导览.verd'), 'utf8')).toBe(
-      legacyCanvas,
-    );
-    await page
-      .getByRole('button', { name: /(?:更新为|恢复)系统内置内容…/ })
-      .click();
-    const backupParent = path.join(directory, 'chosen-backups');
-    await mkdir(backupParent, { recursive: true });
-    await desktop.evaluate(({ dialog }, parent) => {
-      dialog.showOpenDialog = async () => ({
-        canceled: false,
-        filePaths: [parent],
-      });
-    }, backupParent);
-    await expect(
-      page.getByRole('checkbox', { name: '备份当前工作区' }),
-    ).not.toBeChecked();
-    await page.getByRole('checkbox', { name: '备份当前工作区' }).check();
-    await page.getByRole('button', { name: '选择目录并备份更新' }).click();
+    const home = page.getByTestId('product-home');
+    await expect(page.locator('.workspace-shell').or(home)).toBeVisible();
+    if (await home.isVisible())
+      await home.getByTestId('workspace-open-builtin').click();
+    await expect(page.getByTestId('workspace-readonly')).toBeVisible();
     await expect(activeTabTitle(page)).toHaveText('文档导航', {
       timeout: 60000,
     });
@@ -423,15 +427,14 @@ test('a legacy canvas-first copy changes only after confirmed replacement', asyn
           cell.kind === 'document-frame' || cell.kind === 'document-reference',
       ),
     ).toBe(false);
-    const backups = path.join(directory, 'chosen-backups');
-    const copies = await readdir(backups);
-    expect(copies).toHaveLength(1);
+    await expect(
+      readdir(path.join(userData, 'workspace-backups')),
+    ).rejects.toThrow();
     expect(
-      await readFile(path.join(backups, copies[0], '项目导览.verd'), 'utf8'),
-    ).toBe(legacyCanvas);
-    expect(
-      await readFile(path.join(backups, copies[0], 'my-notes.txt'), 'utf8'),
-    ).toBe('preserve my old copy');
+      (await readdir(path.dirname(root))).filter((name) =>
+        name.startsWith('default.previous-'),
+      ),
+    ).toEqual([]);
     await page.screenshot({
       path: test.info().outputPath('legacy-updated-document-home.png'),
     });

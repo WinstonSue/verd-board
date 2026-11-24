@@ -8,6 +8,7 @@ import {
   webE2EOptions,
 } from '../../../scripts/web-e2e-runtime.mjs';
 import { pathToFileURL } from 'node:url';
+import { prepareFakeCodex } from '../../fixtures/codex-test-cli';
 
 export * from '@playwright/test';
 export interface DiskSnapshot {
@@ -47,9 +48,10 @@ interface WebRuntime {
   setTarget(origin?: string): Promise<void>;
 }
 export const test = base.extend<
-  { localService: ServiceFixture },
+  { localService: ServiceFixture; useFakeCodex: boolean },
   { webRuntime: WebRuntime }
 >({
+  useFakeCodex: [false, { option: true }],
   webRuntime: [
     async ({}, runFixture, info) => {
       if (info.project.metadata.runtime === 'production') {
@@ -79,11 +81,12 @@ export const test = base.extend<
     await runFixture(webRuntime.origin ?? localService.origin);
   },
   localService: [
-    async ({ webRuntime }, runFixture, info) => {
+    async ({ webRuntime, useFakeCodex }, runFixture, info) => {
       const root = await fs.mkdtemp(path.join(os.tmpdir(), 'verd-web-e2e-'));
       const dataRoot = path.join(root, 'data');
       const workspace = path.join(dataRoot, 'workspaces/default');
       await fs.mkdir(workspace, { recursive: true });
+      const codex = useFakeCodex ? await prepareFakeCodex(root) : undefined;
       const production = info.project.metadata.runtime === 'production';
       const options = webE2EOptions();
       let port = production
@@ -95,6 +98,7 @@ export const test = base.extend<
         running = await startReadyProcess(
           process.execPath,
           [
+            ...(codex?.preload ? ['--require', codex.preload] : []),
             path.join(buildDirectory, 'main.mjs'),
             ...(production ? [] : ['--dev']),
           ],
@@ -112,6 +116,7 @@ export const test = base.extend<
                 ? new URL(webRuntime.origin).port
                 : String(port),
               VERDBOARD_SERVICE_TEST: '1',
+              VERDBOARD_CODEX_PATH: codex?.executable,
             },
           },
         );

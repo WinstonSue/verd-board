@@ -40,6 +40,7 @@ const resources =
     : path.join(repoRoot, 'apps/desktop/build/agent-resources', target));
 let deployed: Promise<string> | undefined;
 const service = await createLocalService({
+  localCodex: true,
   dataRoot,
   defaultRoot: process.env.VERDBOARD_WORKSPACE_PATH,
   seedDefault: process.env.VERDBOARD_EMPTY_DEFAULT !== '1',

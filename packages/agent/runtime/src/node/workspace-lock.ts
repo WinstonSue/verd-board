@@ -1,6 +1,10 @@
 import * as fs from 'node:fs/promises';
 import path from 'node:path';
-import { canonicalRoot, digest, withWorkspaceLock } from '@sue/verd-board-file-workspace';
+import {
+  canonicalRoot,
+  digest,
+  withWorkspaceLock,
+} from '@sue/verd-board-file-workspace';
 import { readProjectContentExclusions } from './workspace-exclusions';
 import { readWorkspaceSkillsUnlocked } from './workspace-skills';
 import {
@@ -11,7 +15,11 @@ import {
   type AuthoringDiagnostic,
 } from '@sue/verd-board-workspace';
 
-export { createSerialQueue, digest, withWorkspaceLock } from '@sue/verd-board-file-workspace';
+export {
+  createSerialQueue,
+  digest,
+  withWorkspaceLock,
+} from '@sue/verd-board-file-workspace';
 
 export async function readWorkspaceGeneration(
   root: string,
@@ -38,16 +46,23 @@ export interface NativeSnapshot {
   diagnostics: AuthoringDiagnostic[];
   resourceId?: string | null;
   folderIds?: string[];
+  directories?: { path: string; folderId?: string }[];
+  resourceFound?: boolean;
 }
 /** Caller must hold the common workspace lock. Does not create metadata or recover. */
 export async function readNativeSnapshotUnlocked(
   root: string,
+  focus?: { directories?: boolean; resourcePath?: string },
 ): Promise<NativeSnapshot> {
   root = await canonicalRoot(root);
   const entries: NativeSnapshot['entries'] = [],
     diagnostics: AuthoringDiagnostic[] = [];
   const manifest: [string, string][] = [];
   const folderIds: string[] = [];
+  const directories: NativeSnapshot['directories'] = focus?.directories
+    ? []
+    : undefined;
+  let resourceFound = false;
   const excluded = await readProjectContentExclusions(root);
   async function walk(dir: string) {
     const children = await fs
@@ -57,13 +72,15 @@ export async function readNativeSnapshotUnlocked(
         throw error;
       });
     const marker = children.find((child) => child.name === FOLDER_ID_FILE);
+    let folderId: string | undefined;
     if (dir && marker?.isFile()) {
       const relative = `${dir}/${FOLDER_ID_FILE}`;
       const bytes = await fs.readFile(path.join(root, relative), 'utf8');
-      const folderId = readFolderIdentity(bytes);
+      folderId = readFolderIdentity(bytes);
       if (folderId) folderIds.push(folderId);
       manifest.push([relative, digest(bytes)]);
     }
+    if (dir) directories?.push({ path: dir, folderId });
     for (const child of children.sort((a, b) =>
       a.name < b.name ? -1 : a.name > b.name ? 1 : 0,
     )) {
@@ -96,6 +113,8 @@ export async function readNativeSnapshotUnlocked(
             message: 'Invalid JSON',
           });
         }
+      } else if (relative === focus?.resourcePath && child.isFile()) {
+        resourceFound = true;
       }
     }
   }
@@ -125,6 +144,8 @@ export async function readNativeSnapshotUnlocked(
     entries,
     diagnostics,
     folderIds,
+    ...(directories && { directories }),
+    ...(focus?.resourcePath && { resourceFound }),
     resourceId: await readWorkspaceResourceId(root),
   };
 }
@@ -150,5 +171,7 @@ export async function readWorkspaceResourceId(
     throw error;
   }
 }
-export const readNativeSnapshot = (root: string) =>
-  withWorkspaceLock(root, () => readNativeSnapshotUnlocked(root));
+export const readNativeSnapshot = (
+  root: string,
+  focus?: Parameters<typeof readNativeSnapshotUnlocked>[1],
+) => withWorkspaceLock(root, () => readNativeSnapshotUnlocked(root, focus));

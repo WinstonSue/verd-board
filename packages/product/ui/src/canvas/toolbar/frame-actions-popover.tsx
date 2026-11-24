@@ -1,3 +1,4 @@
+import { agentLaunchLabel } from '../../shared/preferences/agent-preferences';
 import { actionLabel } from '@sue/board-common';
 import {
   formatActionShortcut,
@@ -21,6 +22,7 @@ import {
   AlignVerticalSpaceAround,
   ArrowDown,
   ArrowUp,
+  ArrowUpRight,
   BringToFront,
   ClipboardPaste,
   Copy,
@@ -54,6 +56,7 @@ export function FrameActionsPopover({
   controller,
   onClose,
   onFailure,
+  onAgentSelection,
 }: {
   point: [number, number];
   store: CellStore;
@@ -61,6 +64,7 @@ export function FrameActionsPopover({
   controller: FrameCanvasController;
   onClose(): void;
   onFailure(message: string): void;
+  onAgentSelection?(fileId: string, cellIds: string[]): void;
 }) {
   const { t, language } = useI18n();
   useActionSource(controller.actionSource);
@@ -181,6 +185,21 @@ export function FrameActionsPopover({
         ...command('canvas.selection.all', SquareDashed, 'selection'),
         ...command('canvas.view.fit', Maximize, 'view'),
       ];
+  const owner =
+    onAgentSelection && selection.ids.length
+      ? controller.getActionContext().fileId
+      : undefined;
+  if (onAgentSelection && owner)
+    items.push({
+      id: 'agent',
+      group: 'agent',
+      label: agentLaunchLabel(language),
+      icon: ArrowUpRight,
+      onSelect: () => {
+        if (valid() && controller.getActionContext().fileId === owner)
+          onAgentSelection(owner, [...selection.ids]);
+      },
+    });
   return (
     <FrameCommandMenu
       key={JSON.stringify(point)}

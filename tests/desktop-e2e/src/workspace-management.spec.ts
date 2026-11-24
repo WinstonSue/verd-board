@@ -3,6 +3,7 @@ import { test, expect, type ElectronApplication } from '@playwright/test';
 import { mkdtemp, rm, stat } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
+import { expectWorkspaceSearchFocus } from '../../web-e2e/src/app-actions';
 test('Desktop creates an empty workspace and keeps removed history data on disk', async () => {
   const directory = await mkdtemp(path.join(tmpdir(), 'verd-management-'));
   let desktop: ElectronApplication | undefined;
@@ -25,73 +26,97 @@ test('Desktop creates an empty workspace and keeps removed history data on disk'
         throw error;
       });
     await desktop.evaluate(({ dialog }, parent) => {
-      dialog.showOpenDialog = async () => ({
-        canceled: false,
-        filePaths: [parent],
-      });
+      let chosen = false;
+      dialog.showOpenDialog = async () => {
+        if (chosen) return { canceled: true, filePaths: [] };
+        chosen = true;
+        return { canceled: false, filePaths: [parent] };
+      };
     }, directory);
     await page.getByTestId('workspace-menu-trigger').click();
     const modal = page.locator('dialog[open]').last();
-    await modal
+    const switcher = page.getByTestId('workspace-switcher');
+    await switcher
       .getByRole('button', { name: '新建工作区', exact: true })
       .click();
-    await modal.getByRole('textbox').fill('资料库');
-    await modal.getByRole('button', { name: '创建', exact: true }).click();
+    const name = modal.getByLabel('名称', { exact: true });
+    const parent = modal.getByLabel('父目录', { exact: true });
+    const chooseParent = modal.getByRole('button', {
+      name: '选择父目录…',
+      exact: true,
+    });
+    const create = modal.getByRole('button', { name: '创建', exact: true });
+    await expect(name).toBeFocused();
+    await name.fill('资料库');
+    await expect(create).toBeDisabled();
+    await chooseParent.click();
+    await expect(parent).toHaveValue(directory);
+    const destination = path.join(directory, '资料库');
+    await expect(stat(destination)).rejects.toMatchObject({ code: 'ENOENT' });
+    await chooseParent.click();
+    await expect(create).toBeEnabled();
+    await expect(name).toHaveValue('资料库');
+    await expect(parent).toHaveValue(directory);
+    await create.click();
     await expect(page.getByTestId('workspace-menu-trigger')).toContainText(
       '资料库',
     );
     await expect(
       page.locator('.file-tree-row[data-entry-kind=file]'),
     ).toHaveCount(0);
+    expect((await stat(destination)).isDirectory()).toBe(true);
     await page.keyboard.press('ControlOrMeta+Shift+f');
+    const search = page.getByTestId('workspace-search-dialog');
     await expect(
-      page
-        .getByTestId('workspace-management-page')
-        .getByRole('heading', { name: '搜索', exact: true }),
-    ).toBeVisible();
-    await page.getByTestId('workspace-menu-trigger').click();
-    const recent = modal.locator('.workspace-switcher-row').filter({
-      hasText: 'initial',
-    });
-    const search = modal.getByRole('searchbox', { name: '查找工作区' });
-    const current = modal.locator('.workspace-switcher-row[aria-current]');
-    const currentName = current.locator('.workspace-switcher-text');
-    const badge = current.getByText('当前', { exact: true });
-    const nameBox = (await currentName.boundingBox())!;
-    const badgeBox = (await badge.boundingBox())!;
-    expect(badgeBox.x - nameBox.x - nameBox.width).toBeCloseTo(8, 0);
-    await expect(search).toBeFocused();
-    await expect(search).toHaveCSS('outline-style', 'none');
-    const focusedBorder = await search.evaluate(
-      (input) => getComputedStyle(input).borderColor,
-    );
-    const settings = modal.getByRole('button', {
-      name: '工作区设置',
-      exact: true,
-    });
-    await settings.hover();
-    await expect(settings).not.toHaveCSS(
-      'background-color',
-      'rgba(0, 0, 0, 0)',
-    );
-    const hoverBackground = await settings.evaluate(
-      (item) => getComputedStyle(item).backgroundColor,
-    );
-    await recent.hover();
-    await expect(recent).toHaveCSS('background-color', hoverBackground);
-    await expect(search).toBeFocused();
-    await expect(search).toHaveCSS('border-color', focusedBorder);
-    await page.keyboard.press('ArrowDown');
-    const recentName = recent.getByRole('button', {
+      search.getByRole('button', { name: '全部', exact: true }),
+    ).toHaveAttribute('aria-pressed', 'true');
+    await page.keyboard.press('Escape');
+    await expectWorkspaceSearchFocus(page);
+
+    const trigger = page.getByTestId('workspace-menu-trigger');
+    await expect(trigger.locator('svg, .vm-dot')).toHaveCount(0);
+    const main = page.locator('.workspace-content');
+    const mainBounds = (await main.boundingBox())!;
+    const workspaceNav = page.getByRole('navigation', { name: '当前工作区' });
+    const closedNav = (await workspaceNav.boundingBox())!;
+    await trigger.press('ArrowDown');
+    const recent = switcher
+      .locator('.workspace-switcher-row')
+      .filter({ hasText: 'initial' });
+    const initial = recent.getByRole('button', {
       name: 'initial',
       exact: true,
     });
-    await expect(recentName).toBeFocused();
-    await expect(search).not.toHaveCSS('border-color', focusedBorder);
-    await expect(recent).not.toHaveCSS('background-color', hoverBackground);
-    await expect(recentName).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)');
-    await expect(badge).toBeVisible();
-    expect((await badge.boundingBox())?.x).toBe(badgeBox.x);
+    await expect(initial).toBeFocused();
+    await expect(initial).toHaveCSS('outline-width', '1px');
+    await expect(
+      switcher.getByRole('heading', { name: '我的工作区' }),
+    ).toBeVisible();
+    const current = switcher.locator('.workspace-switcher-row[aria-current]');
+    await expect(current).toContainText('资料库');
+    const currentFill = await workspaceNav
+      .getByRole('button', { name: '工作区', exact: true })
+      .evaluate((button) => getComputedStyle(button).backgroundColor);
+    await current.hover();
+    await expect(current).toHaveCSS('background-color', currentFill);
+    await expect(switcher.getByRole('searchbox')).toHaveCount(0);
+    const panel = (await switcher.boundingBox())!;
+    const sidebar = (await page.locator('.workspace-sidebar').boundingBox())!;
+    const header = (await page
+      .locator('.workspace-sidebar-header')
+      .boundingBox())!;
+    expect(panel.x).toBeCloseTo(sidebar.x, 0);
+    expect(panel.width).toBeCloseTo(sidebar.width - 1, 0);
+    expect(panel.y).toBeCloseTo(header.y + header.height, 0);
+    expect(await workspaceNav.boundingBox()).toEqual(closedNav);
+    expect(await main.boundingBox()).toEqual(mainBounds);
+    await page.keyboard.press('Escape');
+    await expect(trigger).toBeFocused();
+    await expect(switcher).toBeHidden();
+    await trigger.click();
+    await main.click({ position: { x: 8, y: 8 } });
+    await expect(switcher).toBeHidden();
+    await trigger.click();
     await recent.getByRole('button', { name: '移除记录', exact: true }).click();
     expect((await stat(path.join(directory, 'initial'))).isDirectory()).toBe(
       true,

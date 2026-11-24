@@ -1,3 +1,6 @@
+import { Bot } from 'lucide-react';
+import { WorkspaceButton } from '../shared/workspace-design';
+import { agentLaunchLabel } from '../shared/preferences/agent-preferences';
 import {
   frameLanes,
   resolveBoardTheme,
@@ -285,6 +288,8 @@ function ThemedActionScope({
 }
 
 export function FrameProductShell({
+  onAgentSelection,
+  onStartAgent,
   pluginSet,
   presentation,
   mindMaxWidth,
@@ -1958,6 +1963,7 @@ export function FrameProductShell({
             )}
           {actions && !readonly && controller.current && (
             <FrameActionsPopover
+              onAgentSelection={onAgentSelection}
               point={actions.point}
               store={actions.controller.runtime.store}
               selection={actions.selection}
@@ -2018,6 +2024,19 @@ export function FrameProductShell({
                   disabled={!stateFor('product.find').enabled}
                   onClick={() => runAction('product.find')}
                 />
+              )}
+              {onStartAgent && !presenting && (
+                <WorkspaceButton
+                  type="button"
+                  size="small"
+                  intent="ghost"
+                  data-testid="canvas-agent-launch"
+                  onMouseDown={(event) => event.preventDefault()}
+                  onClick={onStartAgent}
+                >
+                  <Bot size={16} aria-hidden />
+                  {agentLaunchLabel(language)}
+                </WorkspaceButton>
               )}
               <FrameIconButton
                 label={labelFor('product.presentation')}

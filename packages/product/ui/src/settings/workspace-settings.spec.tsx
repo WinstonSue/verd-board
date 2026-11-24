@@ -2,6 +2,11 @@ import React, { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, expect, it, vi } from 'vitest';
 import { I18nProvider } from '../i18n';
+import {
+  agentPreferencesKey,
+  readDefaultAgent,
+  setDefaultAgent,
+} from '../shared/preferences/agent-preferences';
 import { WorkspaceDesignProvider } from '../shared/workspace-design';
 import {
   WorkspaceSettings,
@@ -83,7 +88,7 @@ it('shows a left menu, defaults to settings and keeps an empty workspace trash a
   });
   const menu = container.querySelector('[role="menu"]')!;
   expect(menu.getAttribute('aria-label')).toBe('设置栏目');
-  expect(menu.querySelectorAll('[role="menuitem"]')).toHaveLength(5);
+  expect(menu.querySelectorAll('[role="menuitem"]')).toHaveLength(6);
   expect(menu.querySelector('button')).toBeNull();
   expect(
     testId('settings-nav-workspace.project').getAttribute('aria-current'),
@@ -100,6 +105,26 @@ it('shows a left menu, defaults to settings and keeps an empty workspace trash a
   expect(testId('workspace-settings-name')).toBeTruthy();
   await click(testId('workspace-settings-back'));
   expect(props.onBack).toHaveBeenCalledOnce();
+});
+
+it('shows Codex as the default Agent and reads persisted and invalid preferences', async () => {
+  localStorage.removeItem(agentPreferencesKey);
+  try {
+    expect(readDefaultAgent()).toBe('codex');
+    localStorage.setItem(agentPreferencesKey, '{"defaultAgent":"legacy"}');
+    await setup();
+    await click(testId('settings-nav-personal.agent'));
+    const select = testId('settings-default-agent');
+    expect(select.getAttribute('data-setting-value')).toBe('codex');
+    expect(select.textContent).toContain('Codex');
+    setDefaultAgent('codex');
+    expect(JSON.parse(localStorage.getItem(agentPreferencesKey)!)).toEqual({
+      defaultAgent: 'codex',
+    });
+    expect(readDefaultAgent()).toBe('codex');
+  } finally {
+    localStorage.removeItem(agentPreferencesKey);
+  }
 });
 
 it('keeps the selected menu item until the draft is accepted and stays on rejection', async () => {

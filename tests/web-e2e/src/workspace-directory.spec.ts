@@ -77,7 +77,7 @@ test('independent diagrams have one real entry and keep references after rename,
   await expect(source(page, id)).toHaveCount(1);
   await source(page, id).locator('.file-tree-name').click();
   await expect(canvas(page)).toBeVisible();
-  await page.getByRole('button', { name: '所有内容', exact: true }).click();
+  await page.getByRole('button', { name: '工作区', exact: true }).click();
   await page
     .locator('.content-tabs')
     .getByRole('button', { name: '图表', exact: true })
@@ -249,7 +249,7 @@ test('ordinary originals are visible, preview without copies and keep their byte
       'utf8',
     ),
   ).toBe('# original bytes');
-  await page.getByRole('button', { name: '所有内容', exact: true }).click();
+  await page.getByRole('button', { name: '工作区', exact: true }).click();
   const content = page.getByTestId('workspace-management-page');
   await expect(content.locator('[data-entry-kind="resource"]')).toHaveCount(3);
   await expect(content.locator('[data-entry-kind="failed"]')).toHaveCount(1);

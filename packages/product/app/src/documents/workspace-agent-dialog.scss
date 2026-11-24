@@ -1,0 +1,42 @@
+.workspace-agent-dialog {
+  width: min(52rem, calc(100vw - 3rem));
+
+  .vm-dialog__body {
+    display: grid;
+    gap: 0.75rem;
+  }
+
+  .workspace-agent-task,
+  .workspace-agent-review {
+    display: grid;
+    gap: 0.5rem;
+  }
+
+  .workspace-agent-answer,
+  .workspace-agent-selection p {
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+  }
+
+  .workspace-agent-selection p {
+    max-height: 6rem;
+    overflow: auto;
+  }
+
+  .workspace-agent-handoff,
+  .workspace-agent-versions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: start;
+    gap: 1rem;
+  }
+
+  .workspace-agent-versions > section {
+    min-width: min(100%, 18rem);
+    flex: 1;
+  }
+
+  .workspace-agent-review > button {
+    justify-self: start;
+  }
+}

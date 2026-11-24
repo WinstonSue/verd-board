@@ -10,7 +10,10 @@ import {
   type ServiceHostOptions,
 } from '../../../packages/product/app/src/host/service-workspace-host';
 import { describeWorkspaceHostContract } from '../../../packages/product/app/src/host/workspace-host.contract';
-import { encodeServiceValue } from '../../../packages/product/app/src/host/service-protocol';
+import {
+  decodeServiceValue,
+  encodeServiceValue,
+} from '../../../packages/product/app/src/host/service-protocol';
 
 const cleanup: (() => Promise<void>)[] = [];
 afterEach(async () => {
@@ -49,7 +52,7 @@ class TestEventSource {
     this.controller.abort();
   }
 }
-async function context() {
+async function context(emptyDefault = false) {
   const root = await fs.mkdtemp(path.join(os.tmpdir(), 'verd-service-test-'));
   const options = {
     dataRoot: path.join(root, 'data'),
@@ -61,7 +64,13 @@ async function context() {
     openPath: async () => {},
   };
   await fs.mkdir(options.defaultRoot, { recursive: true });
-  let service = await createLocalService(options);
+  const start = () =>
+    createLocalService(
+      emptyDefault
+        ? { ...options, defaultRoot: undefined, seedDefault: false }
+        : options,
+    );
+  let service = await start();
   let closing: Promise<void> | undefined;
   const close = () => (closing ??= service.close());
   const port = await service.listen(0);
@@ -97,7 +106,7 @@ async function context() {
       (await host.openWorkspace({ path: options.defaultRoot }))!,
     restart: async () => {
       await close();
-      service = await createLocalService(options);
+      service = await start();
       closing = undefined;
       await service.listen(port);
     },
@@ -107,6 +116,39 @@ async function context() {
 describeWorkspaceHostContract('HTTP filesystem host', context);
 
 describe('local service lifecycle and security', () => {
+  it('does not expose independent-file operations over local Web RPC', async () => {
+    const ctx = await context();
+    const origin = `http://127.0.0.1:${ctx.port}`;
+    const session = await fetch(`${origin}/api/v1/session`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Origin: origin },
+      body: JSON.stringify({ pageId: crypto.randomUUID() }),
+    });
+    expect(session.ok).toBe(true);
+    const capabilities = await session.json();
+    expect(capabilities.restoreWorkspace).toBe(true);
+    expect(capabilities).not.toHaveProperty('quickEdit');
+    for (const method of [
+      'listQuickFiles',
+      'openQuickFile',
+      'createQuickFile',
+      'revealQuickDirectory',
+      'resolveQuickFile',
+    ]) {
+      const rpc = await fetch(`${origin}/api/v1/rpc`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-verd-session': capabilities.token,
+          Origin: origin,
+        },
+        body: JSON.stringify(encodeServiceValue({ method, args: [] })),
+      });
+      expect(decodeServiceValue(await rpc.json())).toMatchObject({
+        error: { message: 'Unknown service method' },
+      });
+    }
+  });
   it('advertises the directory and bundled-workspace capabilities supplied by the full service', async () => {
     const ctx = await context();
     const handle = await ctx.open();
@@ -116,6 +158,93 @@ describe('local service lifecycle and security', () => {
       openPatternWorkspace: true,
     });
     await ctx.host.closeWorkspace(handle);
+  });
+  it.each([
+    [{ default: true }, 'default'],
+    [{ patterns: true }, 'agent-patterns'],
+  ] as const)(
+    'enforces readonly access over HTTP for %j',
+    async (request, name) => {
+      const ctx = await context();
+      const root = path.join(ctx.options.dataRoot, 'workspaces', name);
+      await fs.mkdir(root, { recursive: true });
+      await fs.writeFile(path.join(root, 'old-edit.txt'), 'old');
+      const handle = (await ctx.host.openWorkspace(request))!;
+      expect(handle.readonly).toBe(true);
+      await expect(
+        fs.access(path.join(root, 'old-edit.txt')),
+      ).rejects.toThrow();
+      await expect(
+        fs.access(path.join(ctx.options.dataRoot, 'workspace-backups')),
+      ).rejects.toThrow();
+      const alias = path.join(ctx.root, 'alias');
+      await fs.symlink(root, alias, 'junction');
+      const throughAlias = (await ctx.host.openWorkspace({ path: alias }))!;
+      expect(throughAlias.readonly).toBe(true);
+      const session = {
+        tabs: [],
+        activeTabId: null,
+        expandedDirs: ['examples'],
+      };
+      const write = {
+        transactionId: 'protected-write',
+        writes: [{ path: 'new.txt', content: 'new', expectedVersion: null }],
+      };
+      const spoofed = { ...throughAlias, readonly: false };
+      expect(
+        await ctx.host.commit(spoofed, { ...write, session }),
+      ).toMatchObject({ outcome: 'rejected' });
+      await expect(ctx.host.initializeAgent!(spoofed)).rejects.toThrow(
+        'WORKSPACE_READ_ONLY',
+      );
+      await expect(ctx.host.git!(spoofed, { type: 'init' })).rejects.toThrow(
+        'WORKSPACE_READ_ONLY',
+      );
+      await expect(
+        ctx.host.openResourceExternal!(spoofed, 'AGENTS.md'),
+      ).rejects.toThrow('WORKSPACE_READ_ONLY');
+      await expect(
+        ctx.host.serviceCall('makeDirectory', [root, 'new-folder']),
+      ).rejects.toThrow('WORKSPACE_READ_ONLY');
+      expect(
+        await ctx.host.commit(handle, { transactionId: 'navigation', session }),
+      ).toMatchObject({ outcome: 'applied' });
+      const contents = await fs.readFile(
+        path.join(root, '.verdscrolls/instance.json'),
+        'utf8',
+      );
+      await ctx.restart();
+      const reopened = (await ctx.host.openWorkspace(request))!;
+      expect(reopened.readonly).toBe(true);
+      expect(
+        (await ctx.host.readSnapshot(reopened)).session?.expandedDirs,
+      ).toEqual(['examples']);
+      expect(
+        await fs.readFile(
+          path.join(root, '.verdscrolls/instance.json'),
+          'utf8',
+        ),
+      ).toBe(contents);
+      const normal = await ctx.open();
+      expect(normal.readonly).toBeUndefined();
+      expect(await ctx.host.commit(normal, write)).toMatchObject({
+        outcome: 'applied',
+      });
+    },
+  );
+  it('restores the managed selection when it lives beside a personal default', async () => {
+    const ctx = await context(true);
+    const personal = (await ctx.host.openWorkspace())!;
+    expect(personal.readonly).toBeUndefined();
+    const builtin = (await ctx.host.openWorkspace({ default: true }))!;
+    expect(builtin.readonly).toBe(true);
+    await ctx.host.activateWorkspace!(builtin);
+    await ctx.restart();
+    const reopened = (await ctx.host.openWorkspace())!;
+    expect(reopened.readonly).toBe(true);
+    expect(await ctx.host.readWorkspaceLocation!(reopened)).toMatch(
+      /workspaces[/\\]system-introduction$/,
+    );
   });
   it('drains accepted writes before exit and releases the exclusive data-directory lock', async () => {
     const ctx = await context();
@@ -186,16 +315,10 @@ describe('local service lifecycle and security', () => {
     const location = await updatingHost.readWorkspaceLocation!(managed);
     const peer = (await ctx.host.openWorkspace({ path: location }))!;
     const identity = (await ctx.host.readSnapshot(peer)).config.value.identity;
-    await updatingHost.commit(managed, {
-      transactionId: 'added-before-update',
-      writes: [
-        {
-          path: 'added.verd',
-          content: 'invalid native file retained in backup',
-          expectedVersion: null,
-        },
-      ],
-    });
+    await fs.writeFile(
+      path.join(location, 'added.verd'),
+      'invalid native file retained in backup',
+    );
     const release = (await updatingHost.readBuiltinUpdate!(managed))!;
     expect(
       await updatingHost.updateBuiltinWorkspace!(managed, release.releaseId, {

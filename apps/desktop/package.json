@@ -1,6 +1,6 @@
 {
   "name": "desktop",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "main": "dist-electron/main.js",
   "scripts": {
@@ -12,6 +12,7 @@
     "test": "vitest run --passWithNoTests"
   },
   "dependencies": {
+    "@sue/board-core": "workspace:*",
     "@sue/board-react": "workspace:*",
     "@sue/board-react-text": "workspace:*",
     "@sue/board-react-workflow": "workspace:*",

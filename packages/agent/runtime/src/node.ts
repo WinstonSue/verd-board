@@ -17,3 +17,4 @@ export * from './node/workspace-service-transport';
 export { discoverWorkspaceRepository } from './node/workspace-git';
 export * from './node/workspace-context';
 export * from './node/project-workspace-service';
+export * from './node/local-codex';

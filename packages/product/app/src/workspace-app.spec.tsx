@@ -486,6 +486,64 @@ describe('WorkspaceApp', () => {
     },
   );
 
+  it('keeps the old editor when a file-open barrier fails and opens the destination on retry', async () => {
+    const { host, handle, path } = await hostWith('file-open-barrier');
+    await host.commit(handle, {
+      transactionId: 'seed-file-open',
+      writes: ['source', 'destination'].map((id) => ({
+        path: `${id}.verd-doc.json`,
+        content: JSON.stringify(createDocumentFile(id, id)),
+        expectedVersion: null,
+      })),
+      session: {
+        tabs: [{ fileId: 'source' }],
+        activeTabId: 'source',
+        activeView: 'file',
+        expandedDirs: [],
+      },
+    });
+    await render(<WorkspaceApp host={host} workspace={{ path }} />);
+    const editor = container.querySelector(
+      '.workspace-pane.is-active .ProseMirror',
+    ) as HTMLElement & { editor: Editor };
+    const flush = vi
+      .spyOn(editorControllers.get(editor.editor)!, 'flushEditing')
+      .mockResolvedValueOnce({
+        status: 'rejected',
+        code: 'edit-uncommitted',
+        message: 'Commit the draft first',
+      });
+    const target = container.querySelector<HTMLButtonElement>(
+      '[data-file-id="destination"] .file-tree-main',
+    )!;
+    const click = async () => {
+      await act(async () => target.click());
+      await act(
+        async () =>
+          new Promise<void>((resolve) =>
+            requestAnimationFrame(() => setTimeout(resolve, 0)),
+          ),
+      );
+    };
+    await click();
+    expect(flush).toHaveBeenCalled();
+    expect(
+      container.querySelector('.file-tree-operation-error')?.textContent,
+    ).toContain('Commit the draft first');
+    expect(
+      container
+        .querySelector('[data-file-id="source"] .file-tree-main')
+        ?.getAttribute('aria-current'),
+    ).toBe('page');
+    await click();
+    expect(target.getAttribute('aria-current')).toBe('page');
+    expect(
+      container
+        .querySelector('.workspace-pane.is-active .document-page__content')
+        ?.getAttribute('aria-label'),
+    ).toBe('destination');
+  });
+
   it('clears sidebar multi-selection on ordinary activation and tab switches while preserving range selection', async () => {
     const { host, handle, path } = await hostWith('sidebar-selection');
     await host.commit(handle, {
@@ -930,7 +988,7 @@ describe('workspace shell navigation', () => {
           '.management-navigation nav button',
         ),
       ]
-        .find((b) => b.textContent?.includes('所有内容'))!
+        .find((b) => b.textContent === '工作区')!
         .click();
     });
     await act(async () => {
@@ -1088,8 +1146,10 @@ describe('workspace shell navigation', () => {
       container.querySelector('[data-testid="my-open-settings"]'),
     ).toBeNull();
     expect(
-      container.querySelectorAll('.workspace-sidebar-footer button'),
-    ).toHaveLength(1);
+      container.querySelector(
+        '.workspace-sidebar-footer [aria-label="收起侧栏"]',
+      ),
+    ).not.toBeNull();
     await act(async () =>
       container
         .querySelector<HTMLButtonElement>('[data-testid="my-back"]')!
@@ -1217,6 +1277,17 @@ describe('workspace shell navigation', () => {
       },
       expected: 'project-doc:README',
     },
+    {
+      name: 'restores a legacy search view as the workspace page with its tabs',
+      readingEntries: [],
+      savedSession: {
+        activeView: 'search' as const,
+        tabs: [{ fileId: 'project-doc:README' }],
+        activeTabId: 'project-doc:README',
+        expandedDirs: [],
+      },
+      expected: 'project-doc:README',
+    },
   ])('$name', async ({ readingEntries, savedSession, expected }) => {
     const { host, handle, path } = await hostWith(
       'builtin-entry-' + (expected ?? 'empty').replaceAll(':', '-'),
@@ -1281,7 +1352,14 @@ describe('workspace shell navigation', () => {
       container
         .querySelector('.workspace-content')
         ?.getAttribute('data-management-view'),
-    ).toBe(savedSession?.activeView ?? 'file');
+    ).toBe(
+      savedSession?.activeView === 'home' ||
+        savedSession?.activeView === 'search'
+        ? 'all'
+        : expected
+          ? 'file'
+          : 'all',
+    );
     if (expected === 'board-root') {
       expect(
         container
@@ -1393,7 +1471,7 @@ describe('workspace shell navigation', () => {
     expect(container.querySelector('[role="alert"]')?.textContent).toContain(
       'unavailable',
     );
-    expect(container.textContent).toContain('打开工作区文件夹');
+    expect(container.textContent).toContain('导入工作区');
     expect(container.textContent).toContain('打开系统介绍');
   });
 
@@ -1511,6 +1589,51 @@ it('blocks history switching before opening or recording a candidate when the cu
     '当前工作区未能保存',
   );
   expect(container.querySelector('[data-testid="verd-frame"]')).toBeTruthy();
+});
+
+it('keeps the creation form open without creating a directory when the current save fails', async () => {
+  const { host, path } = await historyHost();
+  host.pickWorkspaceParent = vi.fn(async () => '/parent');
+  host.createWorkspace = vi.fn(async () => null);
+  await render(
+    <WorkspaceApp host={host} workspace={{ path }} allowWorkspaceSwitching />,
+  );
+  vi.spyOn(host, 'commit').mockResolvedValue({
+    transactionId: 'failed',
+    outcome: 'rejected',
+    reason: 'io-error',
+  });
+  await openWorkspaceMenu();
+  const button = (scope: ParentNode, label: string) =>
+    [...scope.querySelectorAll('button')].find(
+      (item) => item.textContent === label,
+    )!;
+  await act(async () => button(container, '新建工作区').click());
+  const dialog = container.querySelector<HTMLDialogElement>(
+    'dialog.product-workspace-dialog',
+  )!;
+  const [name, parent] = dialog.querySelectorAll('input');
+  await act(async () => {
+    Object.getOwnPropertyDescriptor(
+      HTMLInputElement.prototype,
+      'value',
+    )!.set!.call(name, 'New workspace');
+    name.dispatchEvent(new Event('input', { bubbles: true }));
+    button(dialog, '选择父目录…').click();
+  });
+  expect(parent.value).toBe('/parent');
+  expect(button(dialog, '创建').disabled).toBe(false);
+  await act(async () => {
+    button(dialog, '创建').click();
+    await new Promise((resolve) => setTimeout(resolve, 15));
+  });
+  expect(host.createWorkspace).not.toHaveBeenCalled();
+  expect(dialog.open).toBe(true);
+  expect(dialog.querySelector('[role="alert"]')?.textContent).toContain(
+    '当前工作区未能保存',
+  );
+  expect(name.value).toBe('New workspace');
+  expect(parent.value).toBe('/parent');
 });
 
 it('keeps the current session and history after a recorded directory cannot load', async () => {

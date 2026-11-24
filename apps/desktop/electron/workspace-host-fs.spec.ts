@@ -53,14 +53,27 @@ it('excludes mapped Wiki trash from the Verd index and still reads explicit file
     path.join(project, '.verd.config.json'),
     JSON.stringify({ workspace: 'doc/tech-wiki', exclude: ['.trash'] }),
   );
-  const host = createFsWorkspaceHost({ defaultRoot: () => root, projectRoot: project });
+  const host = createFsWorkspaceHost({
+    defaultRoot: () => root,
+    projectRoot: project,
+  });
   const handle = (await host.openWorkspace({ create: true }))!;
   try {
     const snapshot = await host.readSnapshot(handle);
-    expect(snapshot.entries.map(({ path: relative }) => relative)).toContain('Home.md');
-    expect(snapshot.entries.some(({ path: relative }) => relative.startsWith('.trash'))).toBe(false);
+    expect(snapshot.entries.map(({ path: relative }) => relative)).toContain(
+      'Home.md',
+    );
+    expect(
+      snapshot.entries.some(({ path: relative }) =>
+        relative.startsWith('.trash'),
+      ),
+    ).toBe(false);
     expect(snapshot.canvases).toEqual([]);
-    expect(Buffer.from((await host.readFile(handle, '.trash/Old.verd')).content).toString()).toBe('{}');
+    expect(
+      Buffer.from(
+        (await host.readFile(handle, '.trash/Old.verd')).content,
+      ).toString(),
+    ).toBe('{}');
   } finally {
     await host.closeWorkspace(handle);
   }

@@ -188,6 +188,7 @@ describe('Project SDK on an existing Node server', () => {
   });
   it('opens the same directory as Desktop, retains every user file and discovers project context without changing instructions', async () => {
     const f = await fixture();
+    expect(f.host.getLocalAgent()).toBeUndefined();
     expect(
       await (await fetch(`http://127.0.0.1:${f.port}/project`)).text(),
     ).toBe('Project application');

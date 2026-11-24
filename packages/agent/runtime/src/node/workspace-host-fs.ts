@@ -1,4 +1,5 @@
 import { withGitVersioning } from '@sue/verd-board-workspace';
+import { canonicalRoot } from '@sue/verd-board-file-workspace';
 import {
   FOLDER_ID_FILE,
   isFolderIdentityPath,
@@ -289,6 +290,7 @@ interface FsWorkspace {
   id: string;
   root: string;
   name: string;
+  readonly: boolean;
   queue: <T>(task: () => Promise<T>) => Promise<T>;
   watcher: FSWatcher | null;
   /** Digests this host published, for suppressing its own watcher events. */
@@ -302,6 +304,8 @@ interface FsWorkspace {
 export interface FsWorkspaceHostOptions {
   /** Root used for `{default: true}` open requests. */
   defaultRoot: () => string;
+  /** Resolve content access from the host's directory policy before opening. */
+  resolveReadonly?: (canonicalPath: string) => Promise<boolean>;
   /** Global config lives next to the workspaces directory by default. */
   globalConfigPath?: () => string;
   pickDirectory?: () => Promise<string | null>;
@@ -387,6 +391,7 @@ const createFsWorkspaceHostInner = (
   options: FsWorkspaceHostOptions,
 ): WorkspaceHost & {
   workspaces: Map<string, FsWorkspace>;
+  assertWritable: (handle: WorkspaceHandle) => void;
   suspendWorkspaceWatch: (handle: WorkspaceHandle) => () => void;
   recoverWorkspace: (
     root: string,
@@ -1384,11 +1389,15 @@ const createFsWorkspaceHostInner = (
       throw new Error(`Unknown workspace: ${handle.key}`);
     return workspace;
   };
+  const assertWritable = (handle: WorkspaceHandle) => {
+    if (workspaceOf(handle).readonly) throw new Error('WORKSPACE_READ_ONLY');
+  };
 
   const openUnlocked = async (
     root: string,
     create: boolean,
     name?: string,
+    readonly = false,
   ): Promise<WorkspaceHandle | null> => {
     if (!(await exists(root))) {
       if (!create) return null;
@@ -1408,11 +1417,14 @@ const createFsWorkspaceHostInner = (
     }
     const configTarget = metaPath(root, CONFIG_FILE);
     // Resume explicit Git mutations before initialization can recreate restored metadata.
-    await recoverGitNativeLock(root);
-    await recoverGitPurge(root);
-    await recoverGitRestore(root);
+    if (!readonly) {
+      await recoverGitNativeLock(root);
+      await recoverGitPurge(root);
+      await recoverGitRestore(root);
+    }
     const hadProjectConfig = await exists(configTarget);
     if (!hadProjectConfig) {
+      if (readonly) return null;
       if (!create && (await fs.readdir(root)).length > 0) return null;
       await fs.mkdir(metaPath(root), { recursive: true });
       await fs.mkdir(metaPath(root, TRANSACTIONS_DIR), { recursive: true });
@@ -1449,36 +1461,40 @@ const createFsWorkspaceHostInner = (
       throw new Error(
         'WORKSPACE_CONFIG_INVALID: config.json is unreadable or has no identity',
       );
-    let shared: string | undefined;
     const agentSetupDiagnostics: AgentSetupDiagnostic[] = [];
-    try {
-      shared =
-        (await options.sharedResources?.()) ??
-        process.env['VERD_AGENT_RESOURCES'];
-    } catch (error) {
-      agentSetupDiagnostics.push({
-        code: 'agent.resources-unavailable',
-        message: String(error),
+    if (!readonly) {
+      let shared: string | undefined;
+      try {
+        shared =
+          (await options.sharedResources?.()) ??
+          process.env['VERD_AGENT_RESOURCES'];
+      } catch (error) {
+        agentSetupDiagnostics.push({
+          code: 'agent.resources-unavailable',
+          message: String(error),
+        });
+      }
+      const setup = await initializeWorkspaceAgentUnlocked(root, shared, {
+        preserveContent: hadProjectConfig && !options.initializeAgent,
+        setupGuide: options.initializeAgent === true,
       });
+      agentSetupDiagnostics.push(
+        ...setup.diagnostics.filter((d) => d.code.endsWith('-conflict')),
+      );
     }
-    const setup = await initializeWorkspaceAgentUnlocked(root, shared, {
-      preserveContent: hadProjectConfig && !options.initializeAgent,
-      setupGuide: options.initializeAgent === true,
-    });
-    agentSetupDiagnostics.push(
-      ...setup.diagnostics.filter((d) => d.code.endsWith('-conflict')),
-    );
+    const access = readonly ? { readonly: true } : {};
     if (existing) {
       existing.name = workspaceDisplayName(config.value.name, existing.name);
       existing.recoveryDiagnostics = recoveryDiagnostics;
       existing.agentSetupDiagnostics = agentSetupDiagnostics;
-      return { key: existing.id, name: existing.name };
+      return { key: existing.id, name: existing.name, ...access };
     }
     const workspace: FsWorkspace = {
       generation: await readWorkspaceGeneration(root),
       id: `ws-${++counter}`,
       root,
       name: workspaceDisplayName(config.value.name, name || baseName(root)),
+      readonly,
       queue: createSerialQueue(),
       watcher: null,
       ownWrites: new Map(),
@@ -1489,11 +1505,16 @@ const createFsWorkspaceHostInner = (
     workspaces.set(workspace.id, workspace);
     workspacesByRoot.set(root, workspace);
     beginWatch(workspace);
-    return { key: workspace.id, name: workspace.name };
+    return { key: workspace.id, name: workspace.name, ...access };
   };
 
-  const open = async (root: string, create: boolean, name?: string) =>
-    withWorkspaceLock(root, () => openUnlocked(root, create, name));
+  const open = async (root: string, create: boolean, name?: string) => {
+    if (options.resolveReadonly) root = await canonicalRoot(root);
+    const readonly = await options.resolveReadonly?.(root);
+    return withWorkspaceLock(root, () =>
+      openUnlocked(root, readonly ? false : create, name, readonly),
+    );
+  };
 
   const readFileInner = async (
     workspace: FsWorkspace,
@@ -1599,6 +1620,7 @@ const createFsWorkspaceHostInner = (
       openPatternWorkspace: false,
     },
     workspaces,
+    assertWritable,
     suspendWorkspaceWatch(handle) {
       const workspace = workspaces.get(handle.key);
       if (!workspace) throw new Error('Unknown workspace');
@@ -1650,6 +1672,7 @@ const createFsWorkspaceHostInner = (
       return open(root, request.create !== false, request.name);
     },
     async initializeAgent(handle) {
+      assertWritable(handle);
       const workspace = workspaceOf(handle);
       return workspace.queue(() =>
         withWorkspaceLock(workspace.root, async () => {
@@ -1846,6 +1869,20 @@ const createFsWorkspaceHostInner = (
     },
     async commit(handle, request) {
       const workspace = workspaceOf(handle);
+      if (workspace.readonly) {
+        const session = normalizeWorkspaceSessionState(request.session);
+        if (
+          !session ||
+          Object.entries(request).some(
+            ([key, value]) =>
+              key !== 'transactionId' &&
+              key !== 'session' &&
+              value !== undefined,
+          )
+        )
+          return reject(request.transactionId, 'invalid');
+        request = { transactionId: request.transactionId, session };
+      }
       return workspace.queue(() =>
         withWorkspaceLock(workspace.root, () =>
           applyCommit(workspace, request),
@@ -1854,6 +1891,11 @@ const createFsWorkspaceHostInner = (
     },
     async git(handle, request) {
       const workspace = workspaceOf(handle);
+      if (
+        workspace.readonly &&
+        !['status', 'log', 'read'].includes(request.type)
+      )
+        throw new Error('WORKSPACE_READ_ONLY');
       return workspace.queue(() =>
         withWorkspaceLock(workspace.root, async () => {
           if (
@@ -1861,8 +1903,11 @@ const createFsWorkspaceHostInner = (
             (await readWorkspaceGeneration(workspace.root))
           )
             throw new Error('WORKSPACE_REPLACED: reopen the workspace');
-          const recoveryErrors = await recoverWorkspace(workspace.root);
-          if (recoveryErrors.length) throw new Error(recoveryErrors.join('; '));
+          if (!workspace.readonly) {
+            const recoveryErrors = await recoverWorkspace(workspace.root);
+            if (recoveryErrors.length)
+              throw new Error(recoveryErrors.join('; '));
+          }
           const git = createNodeWorkspaceGit(workspace.root, {
             notify: (paths) =>
               workspace.listeners.forEach((listener) => listener({ paths })),
@@ -1877,6 +1922,7 @@ const createFsWorkspaceHostInner = (
       return () => workspace.listeners.delete(listener);
     },
     async resolveConflict(handle, request) {
+      assertWritable(handle);
       const workspace = workspaceOf(handle);
       return workspace.queue(() =>
         withWorkspaceLock(workspace.root, async () => {

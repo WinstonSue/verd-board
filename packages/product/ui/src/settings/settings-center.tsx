@@ -29,6 +29,12 @@ import { BuiltinWorkspaceSettings } from './builtin-workspace-settings';
 import { WorkspaceTrash } from '../workspace/workspace-trash';
 import { WorkspaceSkillsSettings } from './workspace-skills-settings';
 import { useMindMaxWidth } from '../shared/preferences/mind-preferences';
+import { SettingsSelect } from '../shared/settings-select';
+import {
+  agentNames,
+  readDefaultAgent,
+  setDefaultAgent,
+} from '../shared/preferences/agent-preferences';
 import './settings-sections.scss';
 
 export interface SettingsCenterProps {
@@ -75,6 +81,7 @@ function SettingsCenterContent({
   const [query, setQuery] = useState('');
   const [focusTarget, setFocusTarget] = useState<string>();
   const content = useRef<HTMLDivElement>(null);
+  const defaultAgentLabel = zh ? '默认 Agent' : 'Default Agent';
   const sections = [
     {
       id: 'personal.general',
@@ -84,6 +91,11 @@ function SettingsCenterContent({
     {
       id: 'personal.editor',
       label: zh ? '编辑' : 'Editor',
+      group: zh ? '个人偏好' : 'Personal',
+    },
+    {
+      id: 'personal.agent',
+      label: 'Agent',
       group: zh ? '个人偏好' : 'Personal',
     },
     ...(workspace
@@ -162,6 +174,12 @@ function SettingsCenterContent({
     onBack();
   };
   const fields = [
+    {
+      key: 'defaultAgent',
+      label: defaultAgentLabel,
+      description: '',
+      section: 'personal.agent',
+    },
     ...personal.fields.map((f) => ({
       key: f.key,
       label: String(f.label ?? f.key),
@@ -423,10 +441,28 @@ function SettingsCenterContent({
               )
             }
           />
-          {selected.startsWith('personal.') && (
+          {(selected === 'personal.general' ||
+            selected === 'personal.editor') && (
             <FrameSettingsContent
               section={selected === 'personal.editor' ? 'editor' : 'general'}
             />
+          )}
+          {selected === 'personal.agent' && (
+            <SettingsSection title="Agent">
+              <div
+                className="settings-form-row"
+                data-setting-key="defaultAgent"
+              >
+                <span>{defaultAgentLabel}</span>
+                <SettingsSelect
+                  aria-label={defaultAgentLabel}
+                  data-testid="settings-default-agent"
+                  value={readDefaultAgent()}
+                  options={[{ value: 'codex', label: agentNames.codex }]}
+                  onChange={setDefaultAgent}
+                />
+              </div>
+            </SettingsSection>
           )}
           {selected === 'personal.general' && onSetDefaultFileApplications && (
             <SettingsSection title={zh ? '文件打开方式' : 'File associations'}>
@@ -667,7 +703,7 @@ function SettingsCenterContent({
                     <BuiltinWorkspaceSettings
                       source={w.builtin}
                       zh={zh}
-                      readonly={disabled || busy}
+                      readonly={(w.builtinReadonly ?? disabled) || busy}
                       onBusy={setBusy}
                     />
                   )}
@@ -692,6 +728,7 @@ function SettingsCenterContent({
 export type SettingsSectionId =
   | 'personal.general'
   | 'personal.editor'
+  | 'personal.agent'
   | 'workspace.project'
   | 'workspace.skills'
   | 'workspace.custom-skills'
@@ -707,6 +744,7 @@ export function normalizeSettingsSection(section: string): SettingsSectionId {
     [
       'personal.general',
       'personal.editor',
+      'personal.agent',
       'workspace.project',
       'workspace.skills',
       'workspace.custom-skills',

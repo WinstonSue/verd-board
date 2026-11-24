@@ -21,6 +21,7 @@ import {
   VerdFrame,
   WorkspaceDesignProvider,
   I18nProvider,
+  useI18n,
   PreviewMountProvider,
   type DocumentEditorController,
 } from '@sue/verd-board-ui';
@@ -29,10 +30,10 @@ import {
   workspaceFileId,
   updateWorkspaceNavigation,
   type WorkspaceFile,
-  type WorkspaceHandle,
   type WorkspaceHost,
   type WorkspaceSession,
   type WorkspaceSessionSnapshot,
+  type ExternalFileBinding,
 } from '@sue/verd-board-workspace';
 import {
   createCanvasSession,
@@ -41,31 +42,25 @@ import {
 import { createCanvasInstanceHost } from './canvas/canvas-instance-host';
 import { WorkspaceAssetScope } from './documents/workspace-asset-scope';
 import { createWorkspaceDocumentPreviewCache } from './documents/workspace-previews';
+import { IndependentFileRenameDialog } from './independent-file-rename-dialog';
 import './external-file-app.scss';
 
-export interface ExternalFileBinding {
-  handle: WorkspaceHandle;
-  kind: 'markdown' | 'canvas';
-  displayName: string;
-  rootFileId: string;
-}
+export type { ExternalFileBinding } from '@sue/verd-board-workspace';
 export interface ExternalFileActions {
+  rename?(stem: string): Promise<string>;
+  onRenamed?(listener: (name: string) => void): () => void;
   warnings(): Promise<string[]>;
   readImage(href: string): Promise<Uint8Array>;
-  openLink(href: string): Promise<void>;
+  openLink?(href: string): Promise<void>;
   resolve(
     action: 'load-disk' | 'keep-local' | 'save-copy',
     files: { file: WorkspaceFile; path: string }[],
   ): Promise<boolean>;
-  setDefaults(): Promise<void>;
+  setDefaults?(): Promise<void>;
 }
 
 /** A file editor without directory, Agent or Git workspace affordances. */
-export function ExternalFileApp(props: {
-  host: WorkspaceHost;
-  binding: ExternalFileBinding;
-  actions: ExternalFileActions;
-}) {
+export function ExternalFileApp(props: ExternalFileAppProps) {
   return (
     <I18nProvider>
       <PreviewMountProvider>
@@ -74,15 +69,26 @@ export function ExternalFileApp(props: {
     </I18nProvider>
   );
 }
+
+interface ExternalFileAppProps {
+  host: WorkspaceHost;
+  binding: ExternalFileBinding;
+  actions: ExternalFileActions;
+  openLink?(href: string): Promise<void>;
+  registerFlush?(flush: () => Promise<void>): () => void;
+}
 function ExternalFileEditor({
   host,
   binding,
   actions,
-}: {
-  host: WorkspaceHost;
-  binding: ExternalFileBinding;
-  actions: ExternalFileActions;
-}) {
+  openLink: openExternalLink,
+  registerFlush,
+}: ExternalFileAppProps) {
+  const { language } = useI18n();
+  const locale = language === 'en' ? 'en' : 'zh';
+  const [displayName, setDisplayName] = useState(binding.displayName);
+  const [renaming, setRenaming] = useState(false);
+  useEffect(() => actions.onRenamed?.(setDisplayName), [actions]);
   const [session, setSession] = useState<WorkspaceSession | null>(null);
   const [state, setState] = useState<WorkspaceSessionSnapshot | null>(null);
   const [error, setError] = useState('');
@@ -179,6 +185,34 @@ function ExternalFileEditor({
       opened?.dispose();
     };
   }, [host, binding, actions, revision, flushEditors]);
+  useEffect(() => {
+    if (!session || host.onShutdown) return;
+    const flush = async () => {
+      await flushEditors();
+      if (!(await session.flush()))
+        throw new Error('文件仍有未保存的修改或冲突');
+    };
+    const release = registerFlush?.(flush);
+    const beforeUnload = (event: BeforeUnloadEvent) => {
+      const snapshot = session.getState();
+      if (
+        snapshot.dirty ||
+        snapshot.saveStatus === 'saving' ||
+        snapshot.saveStatus === 'error'
+      ) {
+        event.preventDefault();
+        event.returnValue = '';
+      }
+    };
+    const pageHide = () => void flush().catch(() => {});
+    window.addEventListener('beforeunload', beforeUnload);
+    window.addEventListener('pagehide', pageHide);
+    return () => {
+      release?.();
+      window.removeEventListener('beforeunload', beforeUnload);
+      window.removeEventListener('pagehide', pageHide);
+    };
+  }, [session, host, registerFlush, flushEditors]);
   useEffect(() => {
     if (
       !session ||
@@ -308,7 +342,7 @@ function ExternalFileEditor({
         await flushEditors();
         chooseFile(target.fileId);
         setNavigation({ requestId: Date.now(), target });
-      } else await actions.openLink(href);
+      } else await (openExternalLink ?? actions.openLink)?.(href);
     });
   const resolve = (action: 'load-disk' | 'keep-local' | 'save-copy') =>
     run(async () => {
@@ -363,8 +397,35 @@ function ExternalFileEditor({
   return (
     <WorkspaceDesignProvider>
       <main className="external-file-app" data-testid="external-file-editor">
+        {renaming && session && actions.rename && (
+          <IndependentFileRenameDialog
+            name={displayName}
+            locale={locale}
+            onClose={() => setRenaming(false)}
+            onRename={async (stem) => {
+              await flushEditors();
+              session.freeze();
+              try {
+                if (!(await session.flush()))
+                  throw new Error('文件仍有未保存的修改或冲突');
+                setDisplayName(await actions.rename!(stem));
+              } finally {
+                session.unfreeze();
+              }
+            }}
+          />
+        )}
         <header className="external-file-app__header">
-          <strong>{binding.displayName}</strong>
+          <strong>{displayName}</strong>
+          {actions.rename && (
+            <button
+              type="button"
+              disabled={!session || busy}
+              onClick={() => setRenaming(true)}
+            >
+              {locale === 'zh' ? '重命名' : 'Rename'}
+            </button>
+          )}
           <span role="status">
             {state?.saveStatus === 'error'
               ? '保存失败'
@@ -390,9 +451,14 @@ function ExternalFileEditor({
           >
             另存副本
           </button>
-          <button type="button" onClick={() => void run(actions.setDefaults)}>
-            设置默认打开方式
-          </button>
+          {actions.setDefaults && (
+            <button
+              type="button"
+              onClick={() => void run(() => actions.setDefaults!())}
+            >
+              设置默认打开方式
+            </button>
+          )}
         </header>
         {warnings.length > 0 && (
           <div className="external-file-app__notice" role="status">

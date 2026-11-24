@@ -357,6 +357,40 @@ describe('desktop workspace history', () => {
     });
   });
 
+  it('identifies the installed recommendation workspace by directory', async () => {
+    const { dir, manager } = await setup();
+    const patterns = path.join(
+      dir,
+      'user-data',
+      'workspaces',
+      'agent-patterns',
+    );
+    const startup = manager({ patternRoot: () => patterns });
+    const bundled = (await startup.open({
+      path: patterns,
+      name: '文档编写推荐库',
+    }))!;
+    await startup.activate(bundled);
+    const personal = (await startup.open({
+      path: path.join(dir, 'projects', '文档编写推荐库'),
+      name: '文档编写推荐库',
+    }))!;
+    await startup.activate(personal);
+    const entries = await startup.listHistory();
+    expect(entries.find((entry) => entry.id === bundled.historyId)?.kind).toBe(
+      'agent-patterns',
+    );
+    expect(
+      entries.find((entry) => entry.id === personal.historyId),
+    ).toMatchObject({
+      name: '文档编写推荐库',
+      directoryHint: 'projects',
+    });
+    expect(
+      entries.find((entry) => entry.id === personal.historyId)?.kind,
+    ).toBeUndefined();
+  });
+
   it('reopens stable history identities after closing handles and distinguishes identical folder names', async () => {
     const { dir, host, manager } = await setup();
     const startup = manager();

@@ -1,3 +1,4 @@
+import { agentLaunchLabel } from '@sue/verd-board-ui';
 import { isWorkspaceContentPath } from '@sue/verd-board-workspace';
 import { readOrganization } from '@sue/verd-board-workspace';
 import type { WorkspaceHostCapabilities } from '@sue/verd-board-workspace';
@@ -22,6 +23,10 @@ export const WORKSPACE_UI_ACTION_IDS = [
   'import',
   'library',
   'settings',
+  'agent',
+  'agent.workspace',
+  'directory.agent',
+  'resource.agent',
   'my',
   'command-palette',
   'quick-open',
@@ -49,6 +54,7 @@ export const WORKSPACE_UI_ACTION_IDS = [
   'file.move',
   'file.duplicate',
   'file.copy-link',
+  'file.agent',
   'file.favorite',
   'file.unfavorite',
   'file.export',
@@ -103,6 +109,10 @@ export const WORKSPACE_ACTION_SURFACES = {
     'reference.locate',
   ],
   fileTree: [
+    'file.agent',
+    'agent.workspace',
+    'directory.agent',
+    'resource.agent',
     'resource.open',
     'resource.rename-dialog',
     'resource.move-dialog',
@@ -135,6 +145,7 @@ export const WORKSPACE_ACTION_SURFACES = {
     'mkdir',
   ],
   workspaceMenu: [
+    'agent',
     'settings',
     'open-folder',
     'open-builtin',
@@ -291,6 +302,15 @@ export function createWorkspaceSurfaceActions(options: {
   add('import', '导入画布/包', 'Import canvas/bundle', write());
   add('library', '图表库', 'Chart library');
   add('settings', '工作区设置', 'Workspace settings');
+  add('agent', agentLaunchLabel('zh'), agentLaunchLabel('en'), write());
+  add(
+    'agent.workspace',
+    agentLaunchLabel('zh'),
+    agentLaunchLabel('en'),
+    write({
+      palette: false,
+    }),
+  );
   add('my', '设置', 'Settings');
   add('quick-open', '快速打开', 'Quick open', {
     flushEditing: true,
@@ -357,30 +377,32 @@ export function createWorkspaceSurfaceActions(options: {
             workspaceActionArgument(args, 'fromFileId'),
       ),
   });
-  add('open-folder', '打开工作区文件夹', 'Open workspace folder', {
+  add('open-folder', '导入工作区', 'Import workspace', {
     allowNoSession: true,
     getState: (c) => ({
       visible:
         options.getState().allowWorkspaceSwitching &&
-        !c.readonly &&
+        !(c.navigationReadonly ?? c.readonly) &&
         options.getState().capabilities?.pickWorkspace !== false,
     }),
   });
   add('open-patterns', '文档编写推荐库', 'Document authoring recommendations', {
     allowNoSession: true,
+    palette: false,
     getState: (c) => ({
       visible:
         options.getState().allowWorkspaceSwitching &&
-        !c.readonly &&
+        !(c.navigationReadonly ?? c.readonly) &&
         options.getState().capabilities?.openPatternWorkspace !== false,
     }),
   });
   add('open-builtin', '打开系统介绍', 'Open system introduction', {
     allowNoSession: true,
+    palette: false,
     getState: (c) => ({
       visible:
         options.getState().allowWorkspaceSwitching &&
-        !c.readonly &&
+        !(c.navigationReadonly ?? c.readonly) &&
         options.getState().capabilities?.openBuiltinWorkspace !== false,
       enabled: !options.getState().isDefaultWorkspace,
       reason: options.getState().isDefaultWorkspace
@@ -399,7 +421,7 @@ export function createWorkspaceSurfaceActions(options: {
       const visible =
         state.allowWorkspaceSwitching &&
         !!state.workspaceHistory &&
-        !c.readonly;
+        !(c.navigationReadonly ?? c.readonly);
       return {
         visible,
         enabled: visible && !!exists && id !== state.currentHistoryId,
@@ -416,16 +438,21 @@ export function createWorkspaceSurfaceActions(options: {
     ['file.reveal', '在文件夹中显示', 'Show in folder', 'view'],
     ['file.export', '导出(含依赖)', 'Export (with closure)', 'external'],
     ['file.copy-link', '复制链接', 'Copy link', 'external'],
+    ['file.agent', agentLaunchLabel('zh'), agentLaunchLabel('en'), 'view'],
   ] as const)
     add(id, zh, en, {
       effect,
       palette: false,
       validateArgs: (args) => stringArg(args, 'fileId'),
-      getState: (c, args) => targetState(fileExists(c, args)),
+      requiresWrite: id === 'file.agent',
+      getState: (c, args) => ({
+        ...targetState(fileExists(c, args)),
+        visible: id !== 'file.agent' || !c.readonly,
+      }),
     });
   for (const [id, favorite, zh, en] of [
-    ['file.favorite', true, '收藏', 'Favorite'],
-    ['file.unfavorite', false, '取消收藏', 'Unfavorite'],
+    ['file.favorite', true, '置顶', 'Pin'],
+    ['file.unfavorite', false, '取消置顶', 'Unpin'],
   ] as const)
     add(
       id,
@@ -675,6 +702,23 @@ export function createWorkspaceSurfaceActions(options: {
         )
     );
   };
+  for (const [kind, exists] of [
+    ['directory', directoryExists],
+    ['resource', resourceExists],
+  ] as const)
+    add(`${kind}.agent`, agentLaunchLabel('zh'), agentLaunchLabel('en'), {
+      effect: 'view',
+      allowPaused: false,
+      palette: false,
+      validateArgs: (args) => stringArg(args, 'path'),
+      requiresWrite: true,
+      getState: (c, args) => ({
+        ...targetState(
+          !!workspaceActionArgument(args, 'path') && exists(c, args),
+        ),
+        visible: !c.readonly,
+      }),
+    });
   for (const kind of ['file', 'resource', 'directory'])
     add(`${kind}.versions`, '版本历史', 'Version history', {
       effect: 'view',

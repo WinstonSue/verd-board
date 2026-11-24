@@ -22,6 +22,7 @@ import type { Editor } from '@tiptap/react';
 import type { BoundAction } from '@sue/board-common';
 import {
   Baseline,
+  ArrowUpRight,
   Bold,
   Check,
   ChevronDown,
@@ -58,6 +59,7 @@ export function DocumentSelectionToolbar({
   controller,
   zh,
   onEditLink,
+  selectionAction,
   onNotice,
   close,
 }: {
@@ -65,6 +67,7 @@ export function DocumentSelectionToolbar({
   controller: DocumentEditorController;
   zh: boolean;
   onEditLink?: () => void;
+  selectionAction?: { label: string; select(text: string): void };
   onNotice(message: string): void;
   close(): void;
 }) {
@@ -718,6 +721,27 @@ export function DocumentSelectionToolbar({
           text('更多格式', 'More formatting'),
           EllipsisVertical,
           false,
+        )}
+        {selectionAction && (
+          <button
+            type="button"
+            aria-label={selectionAction.label}
+            title={selectionAction.label}
+            onMouseDown={(event) => event.preventDefault()}
+            onClick={() => {
+              const { from, to } = scope.current.selection;
+              const selected = scope.current.doc.textBetween(
+                from,
+                to,
+                '\n',
+                '\n',
+              );
+              if (selected) selectionAction.select(selected);
+              close();
+            }}
+          >
+            <ArrowUpRight strokeWidth={1.75} size={16} aria-hidden />
+          </button>
         )}
       </div>
       {activePanel && (

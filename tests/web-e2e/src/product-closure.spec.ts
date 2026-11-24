@@ -1,7 +1,12 @@
 import { chooseLocalDirectory } from './service-actions';
 import { serviceFixture } from './service-fixture';
 import { expect, test } from './service-fixture';
-import { openActiveFile, openSettings, openWorkspaceMenu } from './app-actions';
+import {
+  openActiveFile,
+  openProductHome,
+  openSettings,
+  openWorkspaceMenu,
+} from './app-actions';
 import {
   exerciseNativePackage,
   importAndReadNativePackage,
@@ -19,14 +24,22 @@ test('fresh home finishes navigation and exposes filesystem workspace entries', 
   );
   await expect(page.getByRole('progressbar')).toHaveCount(0);
   await expect(page.getByRole('tab', { selected: true })).toHaveCount(0);
-  await openWorkspaceMenu(page);
-  for (const id of [
-    'workspace-open-folder',
-    'workspace-open-builtin',
-    'workspace-open-patterns',
-  ])
-    await expect(page.getByTestId(id)).toBeVisible();
-  await page.keyboard.press('Escape');
+  const switcher = await openWorkspaceMenu(page);
+  await expect(switcher.getByTestId('workspace-open-folder')).toHaveText(
+    '导入工作区',
+  );
+  await expect(switcher.getByTestId('workspace-open-builtin')).toHaveCount(0);
+  await expect(switcher.getByTestId('workspace-open-patterns')).toHaveCount(0);
+  const home = await openProductHome(page);
+  await expect(
+    home.getByRole('button', { name: '导入工作区', exact: true }),
+  ).toBeVisible();
+  await expect(home.getByTestId('workspace-open-builtin')).toBeVisible();
+  await expect(home.getByTestId('workspace-open-patterns')).toBeVisible();
+  await page
+    .locator('.management-navigation nav')
+    .getByRole('button', { name: '工作区', exact: true })
+    .click();
   await page.reload();
   await expect(page.locator('.workspace-content')).toHaveAttribute(
     'aria-busy',
@@ -40,7 +53,7 @@ test('saved workspace names agree with history and search after reload', async (
   page,
 }) => {
   await page.goto('/');
-  const creation = await openWorkspaceMenu(page);
+  const creation = await openProductHome(page);
   await creation
     .getByRole('button', { name: '新建工作区', exact: true })
     .click();
@@ -48,9 +61,12 @@ test('saved workspace names agree with history and search after reload', async (
     name: '新建工作区',
     exact: true,
   });
-  await nameDialog.getByRole('textbox').fill('History source');
-  await nameDialog.getByRole('button', { name: '创建', exact: true }).click();
+  await nameDialog.getByLabel('名称', { exact: true }).fill('History source');
+  await nameDialog
+    .getByRole('button', { name: '选择父目录…', exact: true })
+    .click();
   await chooseLocalDirectory(page, serviceFixture(page).root);
+  await nameDialog.getByRole('button', { name: '创建', exact: true }).click();
   await expect(page.getByTestId('workspace-menu-trigger')).toContainText(
     'History source',
   );
@@ -66,10 +82,10 @@ test('saved workspace names agree with history and search after reload', async (
     'Renamed library',
   );
   await page.reload();
-  const menu = await openWorkspaceMenu(page);
-  await menu.getByRole('searchbox').fill('Renamed library');
+  const searchableHome = await openProductHome(page);
+  await searchableHome.getByRole('searchbox').fill('Renamed library');
   await expect(
-    menu.locator('.workspace-switcher-text[title="Renamed library"]'),
+    searchableHome.getByRole('button', { name: /Renamed library/ }),
   ).toBeVisible();
 });
 test('native JSON carries nested document attachments into a fresh workspace and survives reload', async ({
@@ -80,9 +96,12 @@ test('native JSON carries nested document attachments into a fresh workspace and
   const menu = await openWorkspaceMenu(page);
   await menu.getByRole('button', { name: '新建工作区', exact: true }).click();
   const dialog = page.locator('dialog[open]').last();
-  await dialog.getByRole('textbox').fill('Package destination');
-  await dialog.getByRole('button', { name: '创建', exact: true }).click();
+  await dialog.getByLabel('名称', { exact: true }).fill('Package destination');
+  await dialog
+    .getByRole('button', { name: '选择父目录…', exact: true })
+    .click();
   await chooseLocalDirectory(page, serviceFixture(page).root);
+  await dialog.getByRole('button', { name: '创建', exact: true }).click();
   await expect(page.getByTestId('workspace-menu-trigger')).toContainText(
     'Package destination',
   );

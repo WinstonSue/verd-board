@@ -165,7 +165,7 @@ test('Desktop follows system, remembers manual appearance after restart, and lea
       'dark',
     );
     // Sidebar settings work independently of the active editor.
-    await page.locator('.workspace-sidebar-footer button').click();
+    await page.getByTestId('workspace-my').click();
     await expectSettingValue(page.getByTestId('settings-appearance'), 'system');
     expect(
       await page
@@ -196,7 +196,7 @@ test('Desktop follows system, remembers manual appearance after restart, and lea
     );
     const content = await readFile(docPath, 'utf8');
     const canvases = await workspaceDigest(userData);
-    await page.locator('.workspace-sidebar-footer button').click();
+    await page.getByTestId('workspace-my').click();
     await selectSetting(page.getByTestId('settings-appearance'), 'dark');
     await page.getByTestId('my-back').click();
     await expect(page.getByText('Original body', { exact: true })).toHaveCSS(
@@ -217,7 +217,7 @@ test('Desktop follows system, remembers manual appearance after restart, and lea
       'data-verd-appearance',
       'dark',
     );
-    await page.locator('.workspace-sidebar-footer button').click();
+    await page.getByTestId('workspace-my').click();
     await expectSettingValue(page.getByTestId('settings-appearance'), 'dark');
     await page.getByTestId('my-back').click();
     await page
@@ -309,7 +309,7 @@ test('Desktop follows system, remembers manual appearance after restart, and lea
       .locator('.file-tree-name')
       .filter({ hasText: /^Desktop theme board$/ })
       .click();
-    await page.locator('.workspace-sidebar-footer button').click();
+    await page.getByTestId('workspace-my').click();
     await selectSetting(page.getByTestId('settings-appearance'), 'system');
     await expect(page.locator('html')).toHaveAttribute(
       'data-verd-appearance',

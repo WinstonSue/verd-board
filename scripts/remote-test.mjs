@@ -209,7 +209,9 @@ export function deriveConfiguration(configuration, root, env = process.env) {
   project.env = {
     ...project.env,
     VERD_VERIFICATION_CACHE:
-      config.hosts[project.host].cacheDir.replace(/\/$/, '') +
+      (project.routing
+        ? '{hostCacheDir}'
+        : config.hosts[project.host].cacheDir.replace(/\/$/, '')) +
       '/verd-verification/' +
       id,
   };
@@ -219,14 +221,24 @@ export function deriveConfiguration(configuration, root, env = process.env) {
     'VERD_WEB_E2E_WORKERS',
   ])
     if (env[name] !== undefined) project.env[name] = env[name];
+  const routeChecks = (task) =>
+    project.tasks[task]?.routeChecks
+      ? { routeChecks: project.tasks[task].routeChecks }
+      : {};
+  const scriptsChecks = routeChecks('scripts');
+  const devChecks = routeChecks('dev');
   project.tasks = {
     ...project.tasks,
     ci: { command: ['pnpm', 'check:ci'] },
-    dev: { command: ['pnpm', 'check:dev'] },
+    dev: { ...devChecks, command: ['pnpm', 'check:dev'] },
     release: { command: ['pnpm', 'check:release'] },
     package: { command: ['pnpm', 'package:desktop'] },
     benchmark: { command: ['node', 'scripts/benchmark-tests.mjs'] },
   };
+  const routeFor = (task) =>
+    project.routing?.tasks.includes(task)
+      ? { ...project.routing, tasks: [task] }
+      : undefined;
   const originalPrepare = project.prepare ?? [];
   if (project.requiresGui) {
     project.prepare = [
@@ -265,26 +277,35 @@ export function deriveConfiguration(configuration, root, env = process.env) {
   };
   config.projects[id + '-scripts'] = {
     ...structuredClone(isolated),
-    tasks: { scripts: { command: ['node', 'scripts/validate-scripts.mjs'] } },
+    routing: routeFor('scripts'),
+    tasks: {
+      scripts: {
+        ...scriptsChecks,
+        command: ['node', 'scripts/validate-scripts.mjs'],
+      },
+    },
   };
   config.projects[id + '-units'] = {
     ...structuredClone(isolated),
-    tasks: { dev: { command: ['pnpm', 'check:dev'] } },
+    routing: routeFor('dev'),
+    tasks: { dev: { ...devChecks, command: ['pnpm', 'check:dev'] } },
   };
   config.projects[id + '-dev'] = {
     ...structuredClone(project),
+    routing: routeFor('dev'),
     tasks: { dev: project.tasks.dev },
     artifacts: { ...project.artifacts, requireReport: false },
   };
   config.projects[id + '-web'] = {
     ...structuredClone(project),
+    routing: routeFor('dev'),
     requiresGui: false,
     env: { ...project.env, ELECTRON_SKIP_BINARY_DOWNLOAD: '1' },
     prepare: originalPrepare.filter(
       (argv) =>
         !argv.some((arg) => /install-electron|electron-smoke/.test(arg)),
     ),
-    tasks: { dev: { command: ['pnpm', 'check:dev'] } },
+    tasks: { dev: { ...devChecks, command: ['pnpm', 'check:dev'] } },
     artifacts: { ...project.artifacts, requireReport: false },
   };
   return { config, id, project };
@@ -532,6 +553,10 @@ export async function main(args, { execute, root = ROOT, configuration } = {}) {
         if (receipt.id === taskId && receipt.state === 'upload-paused') {
           report(paused(taskId, receipt));
           return result.code || 75;
+        }
+        if (receipt.id === taskId && receipt.state === 'route-unavailable') {
+          report({ taskId, status: receipt.state, routing: receipt.routing });
+          return result.code || 69;
         }
         if (result.code || receipt.id !== taskId || receipt.accepted !== true)
           throw new Error(receipt.error || 'Invalid submission receipt');

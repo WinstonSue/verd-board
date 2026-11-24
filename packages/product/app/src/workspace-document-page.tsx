@@ -59,6 +59,7 @@ export function WorkspaceDocumentPage({
   latest.current = { page, preview };
   const hasExport = !!page.onExport;
   const hasPresent = !!page.onPresent;
+  const hasStartAgent = !!page.onStartAgent;
   const hasInsertImage = !!page.onInsertImage;
   const hasReady = !!page.onReady;
   const hasOpenLink = !!page.onOpenLink;
@@ -74,6 +75,9 @@ export function WorkspaceDocumentPage({
       },
       onPresent: hasPresent
         ? () => latest.current.page.onPresent?.()
+        : undefined,
+      onStartAgent: hasStartAgent
+        ? () => latest.current.page.onStartAgent?.()
         : undefined,
       onExport: hasExport
         ? (format: 'json' | 'markdown') =>
@@ -102,6 +106,7 @@ export function WorkspaceDocumentPage({
     [
       hasExport,
       hasPresent,
+      hasStartAgent,
       hasInsertImage,
       hasReady,
       hasOpenLink,

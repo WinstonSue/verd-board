@@ -1,4 +1,33 @@
-import type { WorkspaceHost } from './workspace-host';
+import type { WorkspaceFile } from '../documents/document-files';
+import type { DiagramKind } from '../frames/frame-organization';
+import type { WorkspaceHandle, WorkspaceHost } from './workspace-host';
+
+export type QuickFileKind = 'document' | DiagramKind;
+export const quickDiagramKinds = [
+  { kind: 'canvas', zh: '白板', en: 'Whiteboard' },
+  { kind: 'mind', zh: '思维导图', en: 'Mind map' },
+  { kind: 'workflow', zh: '流程图', en: 'Flowchart' },
+  { kind: 'architecture', zh: '架构图', en: 'Architecture' },
+  { kind: 'uml-class', zh: 'UML 类图', en: 'UML class diagram' },
+  { kind: 'uml-sequence', zh: 'UML 时序图', en: 'UML sequence diagram' },
+] as const satisfies readonly { kind: DiagramKind; zh: string; en: string }[];
+
+export interface QuickFileEntry {
+  name: string;
+  path: string;
+  kind: 'directory' | 'document' | 'canvas' | 'other';
+  modifiedAt: number;
+}
+
+export interface ExternalFileBinding {
+  handle: WorkspaceHandle;
+  kind: 'markdown' | 'canvas';
+  displayName: string;
+  rootFileId: string;
+}
+
+export type ExternalFileResolution = 'load-disk' | 'keep-local' | 'save-copy';
+export type ExternalFileCandidate = { file: WorkspaceFile; path: string }[];
 
 /** Every container is tagged so document objects cannot collide with byte tags. */
 export type ServiceValue =

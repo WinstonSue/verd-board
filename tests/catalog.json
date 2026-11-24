@@ -402,12 +402,17 @@
       "feature": "runtime",
       "directory": "packages/agent/runtime",
       "packages": ["@sue/verd-board-agent"],
-      "inputs": ["scripts/test-agent-consumer.mjs"],
+      "inputs": [
+        "scripts/test-agent-consumer.mjs",
+        "tests/fixtures/local-codex.mjs"
+      ],
       "runner": "vitest",
       "tests": [
+        "packages/agent/runtime/src/apply.spec.ts",
         "packages/agent/runtime/src/architecture-authoring.spec.ts",
         "packages/agent/runtime/src/authoring.spec.ts",
         "packages/agent/runtime/src/node/agent-resources.spec.ts",
+        "packages/agent/runtime/src/node/local-codex.spec.ts",
         "packages/agent/runtime/src/node/workspace-git.spec.ts",
         "packages/agent/runtime/src/node/workspace-project.spec.ts",
         "packages/agent/runtime/src/node/workspace-resource-storage.spec.ts",
@@ -459,7 +464,7 @@
         "packages/product/app/src/host/workspace-host.spec.ts",
         "packages/product/app/src/management/management.spec.ts",
         "packages/product/app/src/management/workspace-skills-model.spec.ts",
-        "packages/product/app/src/management/workspace-switcher-dialog.spec.tsx",
+        "packages/product/app/src/management/workspace-switcher.spec.tsx",
         "packages/product/app/src/migration/cell-workspace.spec.ts",
         "packages/product/app/src/migration/legacy-text.spec.ts",
         "packages/product/app/src/session/workspace-actions.spec.ts",
@@ -562,6 +567,7 @@
       "packages": ["service"],
       "runner": "vitest",
       "tests": [
+        "apps/service/src/local-agent.spec.ts",
         "apps/service/src/migration.spec.ts",
         "apps/service/src/service.spec.ts",
         "apps/service/src/project-workspace.spec.ts"
@@ -989,6 +995,7 @@
         "packages/engine/draw/package.json",
         "packages/engine/layouts/package.json",
         "packages/engine/mind/package.json",
+        "packages/engine/text/CHANGELOG.md",
         "packages/engine/text/package.json",
         "packages/engine/uml/package.json",
         "packages/engine/workflow/package.json",
@@ -2007,7 +2014,12 @@
       ],
       "tests": ["tests/web-e2e/src/service-local.spec.ts"],
       "inputDirectories": ["workspace"],
-      "inputs": ["scripts/test-agent-resources.mjs"]
+      "inputs": [
+        "scripts/test-agent-resources.mjs",
+        "tests/fixtures/codex-test-cli.ts",
+        "tests/fixtures/local-codex.mjs",
+        "tests/fixtures/ai-canvas/whiteboard-basic.verd.json"
+      ]
     },
     {
       "id": "e2e:web:settings",
@@ -2731,7 +2743,11 @@
       "runtime": "production",
       "packages": ["@sue/verd-board-app", "@sue/verd-board-ui", "desktop"],
       "tests": ["tests/desktop-e2e/src/workspace-agent.spec.ts"],
-      "inputs": ["scripts/test-agent-resources.mjs"]
+      "inputs": [
+        "scripts/test-agent-resources.mjs",
+        "tests/fixtures/codex-test-cli.ts",
+        "tests/fixtures/local-codex.mjs"
+      ]
     },
     {
       "id": "e2e:desktop:workspace-management",

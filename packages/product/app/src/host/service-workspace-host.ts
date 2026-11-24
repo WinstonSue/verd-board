@@ -12,7 +12,11 @@ import type {
   OpenWorkspaceRequest,
   WorkspaceHandle,
   WorkspaceHost,
+  LocalAgentClient,
 } from '@sue/verd-board-workspace';
+import type { ProductNavigationHost } from '../product-navigation';
+
+type RequestApi = ServiceHostApi & { localAgent: LocalAgentClient['request'] };
 
 export interface ServiceHostOptions {
   baseUrl?: string;
@@ -36,6 +40,9 @@ export function createServiceWorkspaceHost(options: ServiceHostOptions = {}) {
   let recovering: Promise<void> | undefined;
   let events: EventSource | undefined;
   let disposed = false;
+  let canRunLocalAgent = false;
+  let restoreWorkspace = false;
+  let productNavigation: ProductNavigationHost | undefined;
   const opened = new Map<
     string,
     {
@@ -66,7 +73,11 @@ export function createServiceWorkspaceHost(options: ServiceHostOptions = {}) {
       const result = (await response.json()) as {
         token: string;
         capabilities?: WorkspaceHost['capabilities'];
+        localAgent?: boolean;
+        restoreWorkspace?: boolean;
       };
+      canRunLocalAgent = result.localAgent === true;
+      restoreWorkspace = result.restoreWorkspace === true;
       if (result.capabilities) {
         for (const key of [
           'pickWorkspace',
@@ -86,10 +97,10 @@ export function createServiceWorkspaceHost(options: ServiceHostOptions = {}) {
       throw error;
     }));
 
-  async function raw<M extends ServiceMethod>(
+  async function raw<M extends keyof RequestApi>(
     method: M,
-    args: Parameters<ServiceHostApi[M]>,
-  ): Promise<Awaited<ReturnType<ServiceHostApi[M]>>> {
+    args: Parameters<RequestApi[M]>,
+  ): Promise<Awaited<ReturnType<RequestApi[M]>>> {
     const currentToken = await connect();
     let response: Response;
     try {
@@ -114,7 +125,7 @@ export function createServiceWorkspaceHost(options: ServiceHostOptions = {}) {
     const result = decodeServiceValue(
       (await response.json()) as ServiceValue,
     ) as {
-      value?: Awaited<ReturnType<ServiceHostApi[M]>>;
+      value?: Awaited<ReturnType<RequestApi[M]>>;
       error?: ServiceError;
     };
     if (result.error) {
@@ -128,7 +139,7 @@ export function createServiceWorkspaceHost(options: ServiceHostOptions = {}) {
       });
     }
     notify(true);
-    return result.value as Awaited<ReturnType<ServiceHostApi[M]>>;
+    return result.value as Awaited<ReturnType<RequestApi[M]>>;
   }
 
   async function recover(expiredToken: string) {
@@ -159,8 +170,8 @@ export function createServiceWorkspaceHost(options: ServiceHostOptions = {}) {
 
   async function send<M extends ServiceMethod>(
     method: M,
-    args: Parameters<ServiceHostApi[M]> | (() => Parameters<ServiceHostApi[M]>),
-  ): Promise<Awaited<ReturnType<ServiceHostApi[M]>>> {
+    args: Parameters<RequestApi[M]> | (() => Parameters<RequestApi[M]>),
+  ): Promise<Awaited<ReturnType<RequestApi[M]>>> {
     for (let attempt = 0; attempt < 2; attempt++) {
       if (recovering) await recovering;
       try {
@@ -224,11 +235,11 @@ export function createServiceWorkspaceHost(options: ServiceHostOptions = {}) {
     method: M,
     handle: WorkspaceHandle,
     rest: unknown[] = [],
-  ): Promise<Awaited<ReturnType<ServiceHostApi[M]>>> {
+  ): Promise<Awaited<ReturnType<RequestApi[M]>>> {
     return send(method, () => {
       const item = opened.get(handle.key);
       if (!item) throw new Error('Workspace unavailable');
-      return [item.remote, ...rest] as Parameters<ServiceHostApi[M]>;
+      return [item.remote, ...rest] as Parameters<RequestApi[M]>;
     });
   }
   async function adopt(remote: WorkspaceHandle, request: OpenWorkspaceRequest) {
@@ -278,8 +289,11 @@ export function createServiceWorkspaceHost(options: ServiceHostOptions = {}) {
       if (!remote) return null;
       return adopt(remote, request);
     },
+    pickWorkspaceParent: options.pickDirectory
+      ? () => pick('create')
+      : undefined,
     async createWorkspace(request) {
-      const parentPath = await pick('create');
+      const parentPath = request.parentPath ?? (await pick('create'));
       if (!parentPath) return null;
       const remote = await send('createWorkspace', [
         { ...request, parentPath },
@@ -346,8 +360,31 @@ export function createServiceWorkspaceHost(options: ServiceHostOptions = {}) {
       }
     },
   };
+  const localAgent: LocalAgentClient = {
+    async request(handle, request) {
+      const item = opened.get(handle.key);
+      if (!item || !canRunLocalAgent) throw new Error('AGENT_UNAVAILABLE');
+      // A recovered connection has a different lease and cannot replay commands.
+      if (recovering) {
+        await recovering;
+        return { state: 'missing' };
+      }
+      try {
+        return await raw('localAgent', [item.remote, request]);
+      } catch (error) {
+        if (!(error instanceof SessionExpired)) throw error;
+        await recover(error.expiredToken);
+        return { state: 'missing' };
+      }
+    },
+  };
   return Object.assign(host, {
     serviceCall: send,
+    getProductNavigation(): ProductNavigationHost | undefined {
+      if (options.fixedWorkspace) return undefined;
+      return (productNavigation ??= { restoreWorkspace });
+    },
+    getLocalAgent: () => (canRunLocalAgent ? localAgent : undefined),
     dispose() {
       disposed = true;
       events?.close();

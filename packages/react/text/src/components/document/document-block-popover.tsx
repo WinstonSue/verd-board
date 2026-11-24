@@ -160,6 +160,7 @@ export function DocumentBlockPopover({
   locale,
   onNotice,
   onEditLink,
+  selectionAction,
   suspended,
 }: {
   editor: Editor;
@@ -168,6 +169,7 @@ export function DocumentBlockPopover({
   locale: 'zh' | 'en';
   onNotice(message: string): void;
   onEditLink?: () => void;
+  selectionAction?: { label: string; select(text: string): void };
   suspended?: boolean;
 }) {
   const [target, setTarget] = useState<Block | null>(null);
@@ -823,6 +825,7 @@ export function DocumentBlockPopover({
             controller={controller}
             zh={zh}
             onEditLink={onEditLink}
+            selectionAction={selectionAction}
             onNotice={onNotice}
             close={closeText}
           />

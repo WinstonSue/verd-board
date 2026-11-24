@@ -27,6 +27,7 @@ interface DesktopBridge {
   revealWorkspaceLocation: NonNullable<
     WorkspaceHost['revealWorkspaceLocation']
   >;
+  pickWorkspaceParent: NonNullable<WorkspaceHost['pickWorkspaceParent']>;
   createWorkspace: NonNullable<WorkspaceHost['createWorkspace']>;
   updateWorkspaceHistory: NonNullable<WorkspaceHost['updateWorkspaceHistory']>;
   readBuiltinUpdate: NonNullable<WorkspaceHost['readBuiltinUpdate']>;
@@ -75,7 +76,7 @@ const electronApi = (): DesktopElectronApi | undefined =>
 /**
  * Renderer-side WorkspaceHost for the desktop app. Every call is a thin IPC
  * hop into the main process' fs-backed host; filesystem mutations resolve opaque workspace handle keys in the main process.
- * Absolute paths are exposed only for the storage location display.
+ * Absolute paths are exposed for directory selection and storage location display.
  */
 export const createDesktopWorkspaceHost = (): WorkspaceHost => {
   const bridge = () => {
@@ -99,6 +100,7 @@ export const createDesktopWorkspaceHost = (): WorkspaceHost => {
     updateBuiltinWorkspace: (h, id, options) =>
       bridge().updateBuiltinWorkspace(h, id, options),
     revealBuiltinBackups: (h) => bridge().revealBuiltinBackups(h),
+    pickWorkspaceParent: () => bridge().pickWorkspaceParent(),
     createWorkspace: (request) => bridge().createWorkspace(request),
     updateWorkspaceHistory: (request) =>
       bridge().updateWorkspaceHistory(request),

@@ -3,7 +3,11 @@ import { mkdtemp, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { electron, writeDesktopLauncher } from './desktop-launcher';
-import { openSettings, openWorkspaceMenu } from '../../web-e2e/src/app-actions';
+import {
+  openProductHome,
+  openSettings,
+  openWorkspaceMenu,
+} from '../../web-e2e/src/app-actions';
 import {
   exerciseNativePackage,
   importAndReadNativePackage,
@@ -39,14 +43,19 @@ test('Desktop native attachment packages cross workspaces and preserve saved nam
       desktop = undefined;
     };
     let page = await launch('source');
-    await openWorkspaceMenu(page);
-    for (const id of [
-      'workspace-open-folder',
-      'workspace-open-builtin',
-      'workspace-open-patterns',
-    ])
-      await expect(page.getByTestId(id)).toBeVisible();
-    await page.keyboard.press('Escape');
+    const switcher = await openWorkspaceMenu(page);
+    await expect(switcher.getByTestId('workspace-open-folder')).toBeVisible();
+    await expect(switcher.getByTestId('workspace-open-builtin')).toHaveCount(0);
+    await expect(switcher.getByTestId('workspace-open-patterns')).toHaveCount(
+      0,
+    );
+    const home = await openProductHome(page);
+    await expect(home.getByTestId('workspace-open-builtin')).toBeVisible();
+    await expect(home.getByTestId('workspace-open-patterns')).toBeVisible();
+    await page
+      .locator('.management-navigation nav')
+      .getByRole('button', { name: '工作区', exact: true })
+      .click();
     const { exported, assets } = await exerciseNativePackage(
       page,
       async (action) => {
@@ -80,12 +89,17 @@ test('Desktop native attachment packages cross workspaces and preserve saved nam
       '已保存',
     );
     await page.getByTestId('my-back').click();
-    const menu = await openWorkspaceMenu(page);
-    await menu.getByRole('searchbox').fill('Restored library');
+    const searchableHome = await openProductHome(page);
+    await searchableHome.getByRole('searchbox').fill('Restored library');
     await expect(
-      menu.locator('.workspace-switcher-text[title="Restored library"]'),
+      searchableHome.getByRole('button', { name: /Restored library/ }),
     ).toBeVisible();
-    await page.keyboard.press('Escape');
+    await searchableHome
+      .getByRole('button', { name: /Restored library/ })
+      .click();
+    await expect(
+      page.locator('.workspace-pane.is-active').getByAltText('Package image'),
+    ).toBeVisible();
     await close();
     page = await launch('destination');
     await expect(page.getByTestId('workspace-menu-trigger')).toContainText(

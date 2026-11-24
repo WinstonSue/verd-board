@@ -1,3 +1,4 @@
+import { agentLaunchLabel } from '../shared/preferences/agent-preferences';
 import { VmDialog } from '../shared/components/vm-dialog';
 import { IconButton } from '../shared/components/icon-button';
 import {
@@ -10,6 +11,7 @@ import {
   type ReactNode,
 } from 'react';
 import {
+  Bot,
   History,
   Boxes,
   Plus,
@@ -29,8 +31,8 @@ import {
   LibraryBig,
   Network,
   Pencil,
-  Star,
-  StarOff,
+  Pin,
+  PinOff,
   Trash2,
   TriangleAlert,
   Upload,
@@ -556,10 +558,14 @@ export function FileTree({
       fallback();
       return;
     }
+    setOperationError('');
     void bindWorkspaceAction(actionSource, id, args)
       ?.execute()
       .then((result) => {
-        if ('code' in result) setOperationError(result.message ?? result.code);
+        if (result.status === 'failed' || result.status === 'rejected')
+          setOperationError(result.message ?? result.code);
+        else if (result.status === 'cancelled' && result.message)
+          setOperationError(result.message);
       });
   };
   const openMenu = (
@@ -615,7 +621,7 @@ export function FileTree({
               'workspace.file.favorite',
               { fileId: id },
               '',
-              Star,
+              Pin,
               () => {},
             ),
             actionItem(
@@ -623,7 +629,7 @@ export function FileTree({
               'workspace.file.unfavorite',
               { fileId: id },
               '',
-              StarOff,
+              PinOff,
               () => {},
             ),
           ]
@@ -664,6 +670,17 @@ export function FileTree({
           ),
         );
     }
+    if (actionSource)
+      result.push(
+        actionItem(
+          'agent',
+          'workspace.file.agent',
+          { fileId: id },
+          agentLaunchLabel(locale),
+          Bot,
+          () => {},
+        ),
+      );
     result.push(...favoriteItems, ...copyItems);
     if (onVersions)
       result.push(
@@ -795,6 +812,18 @@ export function FileTree({
     const name = path.split('/').pop()!;
     const key = JSON.stringify(['resource', path]);
     const items: FileTreeMenuItem[] = [
+      ...(actionSource
+        ? [
+            actionItem(
+              'agent',
+              'workspace.resource.agent',
+              { path },
+              agentLaunchLabel(locale),
+              Bot,
+              () => {},
+            ),
+          ]
+        : []),
       ...(onVersions
         ? [
             actionItem(
@@ -1011,6 +1040,17 @@ export function FileTree({
           () => {},
         ),
       );
+    if (dir.path && actionSource)
+      items.unshift(
+        actionItem(
+          'agent',
+          'workspace.directory.agent',
+          { path: dir.path },
+          agentLaunchLabel(locale),
+          Bot,
+          () => {},
+        ),
+      );
     if (onOrganize && dir.path && !readonly)
       items.push(
         actionItem(
@@ -1207,6 +1247,11 @@ export function FileTree({
         ]
       : []),
   ];
+  const workspaceAgent = bindWorkspaceAction(
+    actionSource,
+    'workspace.agent.workspace',
+  );
+  const workspaceAgentState = workspaceAgent?.getState();
   return (
     <div className="file-tree">
       {onOpenLibrary && !hideLibraryNavigation ? (
@@ -1236,6 +1281,15 @@ export function FileTree({
       <div className="file-tree-header">
         <span>{t.files}</span>
         <div className="file-tree-header-actions">
+          {workspaceAgent && workspaceAgentState?.visible && (
+            <IconButton
+              icon={Bot}
+              aria-label={agentLaunchLabel(locale)}
+              data-testid="workspace-agent-launch"
+              disabled={!workspaceAgentState.enabled}
+              onClick={() => void workspaceAgent.execute()}
+            />
+          )}
           {actionSource || !readonly ? (
             <IconButton
               icon={Plus}

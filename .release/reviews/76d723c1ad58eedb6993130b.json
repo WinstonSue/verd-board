@@ -1,0 +1,207 @@
+{
+  "format": "verd-release-review",
+  "version": 1,
+  "targets": [
+    {
+      "name": "@sue/board-architecture",
+      "version": "0.2.0"
+    },
+    {
+      "name": "@sue/board-common",
+      "version": "0.2.0"
+    },
+    {
+      "name": "@sue/board-core",
+      "version": "0.2.0"
+    },
+    {
+      "name": "@sue/board-draw",
+      "version": "0.2.0"
+    },
+    {
+      "name": "@sue/board-layouts",
+      "version": "0.2.0"
+    },
+    {
+      "name": "@sue/board-markdown-to-board",
+      "version": "0.2.0"
+    },
+    {
+      "name": "@sue/board-markdown-to-text",
+      "version": "0.2.0"
+    },
+    {
+      "name": "@sue/board-mermaid-to-board",
+      "version": "0.2.0"
+    },
+    {
+      "name": "@sue/board-mind",
+      "version": "0.2.0"
+    },
+    {
+      "name": "@sue/board-react",
+      "version": "0.2.0"
+    },
+    {
+      "name": "@sue/board-react-actions",
+      "version": "0.2.0"
+    },
+    {
+      "name": "@sue/board-react-architecture",
+      "version": "0.2.0"
+    },
+    {
+      "name": "@sue/board-react-draw",
+      "version": "0.2.0"
+    },
+    {
+      "name": "@sue/board-react-mind",
+      "version": "0.2.0"
+    },
+    {
+      "name": "@sue/board-react-text",
+      "version": "0.2.0"
+    },
+    {
+      "name": "@sue/board-react-uml",
+      "version": "0.2.0"
+    },
+    {
+      "name": "@sue/board-react-workflow",
+      "version": "0.2.0"
+    },
+    {
+      "name": "@sue/board-text",
+      "version": "0.2.0"
+    },
+    {
+      "name": "@sue/board-uml",
+      "version": "0.2.0"
+    },
+    {
+      "name": "@sue/board-workflow",
+      "version": "0.2.0"
+    },
+    {
+      "name": "@sue/verd-board-agent",
+      "version": "0.2.0"
+    },
+    {
+      "name": "@sue/verd-board-agent-patterns",
+      "version": "0.2.0"
+    },
+    {
+      "name": "@sue/verd-board-app",
+      "version": "0.2.0"
+    },
+    {
+      "name": "@sue/verd-board-file-workspace",
+      "version": "0.2.0"
+    },
+    {
+      "name": "@sue/verd-board-ui",
+      "version": "0.2.0"
+    },
+    {
+      "name": "@sue/verd-board-workspace",
+      "version": "0.2.0"
+    },
+    {
+      "name": "desktop",
+      "version": "0.2.0"
+    },
+    {
+      "name": "service",
+      "version": "0.2.0"
+    }
+  ],
+  "previous": "3f935175f8953650bd3710dc.json",
+  "previousDigest": "50acc4acac6efe65c4598386e3acd03cd7501e849cdaed47d814e8204636159f",
+  "sourceDigest": "e03bc58cc5d2092461e939d9f90120adc52ab7a8b72efcc2daaee1ee9f2f3a38",
+  "versions": {
+    "@sue/board-architecture": "0.2.0",
+    "@sue/board-common": "0.2.0",
+    "@sue/board-core": "0.2.0",
+    "@sue/board-draw": "0.2.0",
+    "@sue/board-layouts": "0.2.0",
+    "@sue/board-markdown-to-board": "0.2.0",
+    "@sue/board-markdown-to-text": "0.2.0",
+    "@sue/board-mermaid-to-board": "0.2.0",
+    "@sue/board-mind": "0.2.0",
+    "@sue/board-react": "0.2.0",
+    "@sue/board-react-actions": "0.2.0",
+    "@sue/board-react-architecture": "0.2.0",
+    "@sue/board-react-draw": "0.2.0",
+    "@sue/board-react-mind": "0.2.0",
+    "@sue/board-react-text": "0.2.0",
+    "@sue/board-react-uml": "0.2.0",
+    "@sue/board-react-workflow": "0.2.0",
+    "@sue/board-text": "0.2.0",
+    "@sue/board-uml": "0.2.0",
+    "@sue/board-workflow": "0.2.0",
+    "@sue/verd-board-agent": "0.2.0",
+    "@sue/verd-board-agent-patterns": "0.2.0",
+    "@sue/verd-board-app": "0.2.0",
+    "@sue/verd-board-file-workspace": "0.2.0",
+    "@sue/verd-board-source": "0.1.0",
+    "@sue/verd-board-ui": "0.2.0",
+    "@sue/verd-board-workspace": "0.2.0",
+    "consumer-vite": "0.1.0",
+    "desktop": "0.2.0",
+    "service": "0.2.0",
+    "web": "0.1.0",
+    "web-e2e": "0.1.0"
+  },
+  "introduction": {
+    "project-doc:architecture/ARCHITECTURE": "27f03244c8cab9f00ba5d572d863c24c41dbaee7240efe973ac646a28f57b793",
+    "project-doc:development/README": "0954fe930f344a3228a4e9f83d369ba77501b4ef7440b156d429388290252483",
+    "project-doc:DOCUMENTATION_GUIDE": "d9fa1b9dd57b16941dc191d3bf88de1fe3ccff80bb5b5df672e9947b314e97fb",
+    "project-doc:guides/ai-canvas-data-spec": "83ed2832e3aa021ee7d2d12ea82ad2c917a18fc37ab24650a8438eaa8599e3b6",
+    "project-doc:guides/SETUP": "6e14fd2aa5875c6247ff710a6060a7626f9a5dfa73c21f87ee7127f116b6552d",
+    "project-doc:guides/体验回归验收": "4eb8e5c5eb9b3d90e4386436af9e7fa97640e7c4c6cd97e9c79ea2a6b5b6f4f2",
+    "project-doc:guides/配置与源码索引": "a28775324f1c4ea7c2ac9d4c0644e585c54f0d3108d95a10e1cdc472dd8a7fd0",
+    "project-doc:packages/board/arrangement": "accf53d2209524e58fb1edcdb3967521f3e9610763b1363cf924885f35171ce8",
+    "project-doc:packages/board/canvas-modes": "456330d0c9db4168ad7947e49b8adf9ead7166ac8851f0c1e90828827efa3c31",
+    "project-doc:packages/board/CHANGELOG": "667de424eceb440d44771974283be20a554c345b7126a758fa9e34eed18d70e5",
+    "project-doc:packages/board/frame-converters": "0d2338a8c98632db21f47334d1331c83d64f8fa05a14c5d9aa1f228a9b9c5ec5",
+    "project-doc:packages/board/mind-features": "459c1c62a752387ff8264079048ef90b36dc47a69523f7974931965c8df80cfb",
+    "project-doc:packages/board/NODE_WIDTH_SPECIFICATION": "a2ad80a9948531eac2ac4e57d4b03c18e15022e76136253f5ea011497da4674b",
+    "project-doc:packages/board/README": "ac14b19d8821f62bb2dded9d4ef47e2f2cd2cf84a36e14fc56563a93c9bb026f",
+    "project-doc:packages/board/README.zh-CN": "a3d7c5250c6a021bf0c463ce5b1f75ce73333c8a6cf71ac404022bdb7d695e0a",
+    "project-doc:packages/react/README": "748097e5c9faecb4bb7f85bf3fc9e4a721a4ac5d7d506d699df45897f17b2353",
+    "project-doc:packages/README": "ed715870d44ced4d8c34dbf7534716b93226bf05013638f887450844b6c6df67",
+    "project-doc:packages/release-2": "be260e4071157b33435b07c8f161f63ed4809ec9bea593fd506e7dff0455e0c4",
+    "project-doc:product/产品概览": "eeb1af217d55dfa9c381b5ecf18b10cccd5f00043bc1d22ff31493149d2adfa3",
+    "project-doc:README": "61445d59adc14704a6d29e4e4e4adaf5d13ecff3a0e6f0cba94b64948a38c4fd",
+    "project-doc:README_en": "47b907fb63fd4e3a8d3adfb01916b21ff5afca168d7f3830bd9b1426bda73b0b"
+  },
+  "reviews": {
+    "agent": {
+      "status": "updated",
+      "reason": "Agent 运行时接入本地 Codex 任务及提案审阅，补齐应用操作校验和内置工作区资源升级行为。",
+      "files": [
+        "packages/agent/runtime/src/node/local-codex.ts",
+        "packages/agent/runtime/src/apply.ts",
+        "packages/agent/runtime/src/node/builtin-workspace-update.ts"
+      ]
+    },
+    "recommendations": {
+      "status": "updated",
+      "reason": "推荐库说明新的首页只读入口，并同步范式导航和规则正文中的可编辑副本与手工编写路径。",
+      "files": [
+        "packages/agent/patterns/workspace/范式导航.verd-doc.json",
+        "packages/agent/patterns/workspace/rich-document/规则说明.verd-doc.json"
+      ]
+    },
+    "introduction": {
+      "status": "updated",
+      "reason": "产品概览、桌面指南和中英文入口同步工作区导航与搜索、独立文件和快速新建、本地 Codex 审阅与只读内置库的实际入口和限制。",
+      "files": [
+        "workspace/文档/产品/产品概览.verd-doc.json",
+        "workspace/文档/指南/桌面安装与使用.verd-doc.json",
+        "workspace/文档导航.verd-doc.json",
+        "workspace/Documentation.verd-doc.json"
+      ]
+    }
+  }
+}

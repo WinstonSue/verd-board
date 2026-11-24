@@ -32,3 +32,4 @@ export * from './session/organization';
 export * from './session/save-status';
 
 export * from './host/service-protocol';
+export * from './host/local-agent';

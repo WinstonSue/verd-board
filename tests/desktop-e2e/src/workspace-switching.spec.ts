@@ -1,5 +1,8 @@
 import { electron, writeDesktopLauncher } from './desktop-launcher';
-import { openWorkspaceMenu } from '../../web-e2e/src/app-actions';
+import {
+  openProductHome,
+  openWorkspaceMenu,
+} from '../../web-e2e/src/app-actions';
 import { test, expect, type ElectronApplication } from '@playwright/test';
 import { cp, mkdir, mkdtemp, readdir, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -136,7 +139,7 @@ test('Desktop remembers a selected folder, recovers a missing folder and returns
     await page.screenshot({
       path: test.info().outputPath('workspace-history.png'),
     });
-    await menu.getByRole('searchbox').press('ArrowDown');
+    await page.getByTestId('workspace-menu-trigger').press('ArrowDown');
     await expect(
       menu.locator(
         '.workspace-switcher-name:has(.workspace-switcher-text[title="initial"])',
@@ -169,10 +172,13 @@ test('Desktop remembers a selected folder, recovers a missing folder and returns
     await openWorkspaceMenu(page);
     await page.keyboard.press('Escape');
     await expect(page.getByTestId('workspace-menu-trigger')).toBeFocused();
-    await openWorkspaceMenu(page);
-    await page.getByTestId('workspace-open-builtin').click();
-    await openWorkspaceMenu(page);
-    await expect(page.getByTestId('workspace-open-builtin')).toBeDisabled();
+    await (
+      await openProductHome(page)
+    )
+      .getByTestId('workspace-open-builtin')
+      .click();
+    menu = await openWorkspaceMenu(page);
+    await expect(menu.getByTestId('workspace-open-builtin')).toHaveCount(0);
     await page.getByTestId('workspace-open-folder').focus();
     await expect(page.getByTestId('workspace-open-folder')).toBeFocused();
     await page.keyboard.press('Escape');
@@ -247,8 +253,11 @@ test('Desktop remembers a selected folder, recovers a missing folder and returns
       { timeout: 60000 },
     );
     expect(await readdir(directory)).not.toContain('selected');
-    await openWorkspaceMenu(page);
-    await page.getByTestId('workspace-open-builtin').click();
+    await (
+      await openProductHome(page)
+    )
+      .getByTestId('workspace-open-builtin')
+      .click();
     // Reopening restores the canvas the user selected before leaving.
     await expect(page.getByRole('tab', { selected: true })).toHaveAttribute(
       'data-tab-id',
@@ -259,8 +268,8 @@ test('Desktop remembers a selected folder, recovers a missing folder and returns
         '.workspace-pane.is-active [data-cell-kind="frame-reference"]:not([data-reference-card])',
       ),
     ).toHaveCount(diagramPaths.length);
-    await openWorkspaceMenu(page);
-    await expect(page.getByTestId('workspace-open-builtin')).toBeDisabled();
+    menu = await openWorkspaceMenu(page);
+    await expect(menu.getByTestId('workspace-open-builtin')).toHaveCount(0);
     await page.getByTestId('workspace-open-folder').focus();
     await expect(page.getByTestId('workspace-open-folder')).toBeFocused();
     await page.keyboard.press('Escape');

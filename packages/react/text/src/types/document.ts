@@ -64,6 +64,7 @@ export interface DocumentReferenceChoice {
 }
 
 export interface DocumentEditorProps {
+  selectionAction?: { label: string; select(text: string): void };
   locale?: 'zh' | 'en';
   referenceChoices?: readonly DocumentReferenceChoice[];
   onEditSelectionLink?(): void;
@@ -153,6 +154,7 @@ export interface DocumentSearchOptions {
  * types so the workspace layer stays schema-agnostic.
  */
 export interface DocumentEditorController {
+  getSelectedText?(): string;
   clearReveal?(): void;
   focus(position?: 'start' | 'end' | 'preserve'): void;
   commit(): BoardTextDocument;

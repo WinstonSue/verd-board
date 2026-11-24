@@ -1,6 +1,7 @@
 @use '../styles/primitives';
 @use './git-history-panel';
 @use '../styles/surface' as *;
+@use './styles/management/interaction';
 .workspace-shell {
   --workspace-footer-height: 43px;
 
@@ -43,8 +44,10 @@
 }
 
 .workspace-sidebar {
+  --workspace-sidebar-gutter: var(--vm-space-8);
+
   box-sizing: border-box;
-  width: 240px;
+  width: 248px;
   flex: none;
   display: flex;
   flex-direction: column;
@@ -54,6 +57,60 @@
 
   position: relative;
 }
+.workspace-sidebar-nav {
+  display: grid;
+  flex: none;
+  gap: var(--vm-space-2);
+  padding: var(--vm-space-6) var(--workspace-sidebar-gutter);
+}
+
+.workspace-sidebar-nav > .vm-nav-row {
+  @include interaction.keyboard-focus;
+  margin: 0;
+  padding: 0 var(--workspace-sidebar-gutter);
+  min-height: var(--vm-sidebar-row);
+  height: var(--vm-sidebar-row);
+  gap: var(--vm-space-8);
+  justify-content: flex-start;
+  font: inherit;
+  color: var(--vm-foreground);
+  cursor: pointer;
+
+  > svg {
+    flex: none;
+  }
+  > span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  &[aria-current='page'] {
+    background: var(--vm-fill-active);
+    color: var(--vm-primary);
+    font-weight: var(--vm-weight-medium);
+  }
+}
+
+.workspace-sidebar-nav
+  > .workspace-search-trigger[data-pointer-focus='true']:focus {
+  outline: none;
+}
+
+.workspace-sidebar
+  :is(
+    .file-tree-main,
+    .file-tree-more,
+    .vm-icon-btn,
+    .workspace-sidebar-settings,
+    .workspace-menu-trigger
+  ) {
+  @include interaction.keyboard-focus;
+}
+
+.workspace-sidebar > .product-navigation + .workspace-switcher {
+  border-top: 1px solid var(--vm-border);
+}
+
 .workspace-sidebar-header {
   box-sizing: border-box;
   height: 39px;
@@ -61,8 +118,7 @@
   display: flex;
   align-items: center;
   gap: 4px;
-  padding: 4px 8px;
-  border-bottom: 1px solid var(--vm-border);
+  padding: 4px var(--workspace-sidebar-gutter);
   font-weight: 600;
 }
 .workspace-menu-trigger {
@@ -103,23 +159,30 @@
 }
 .workspace-sidebar-footer {
   flex: none;
+  display: flex;
+  align-items: center;
+  margin-block-start: auto;
+  gap: var(--vm-space-4);
   box-sizing: border-box;
   min-height: var(--workspace-footer-height);
-  padding: 6px 8px;
+  padding: var(--vm-space-6) var(--workspace-sidebar-gutter);
   border-top: 1px solid var(--vm-border);
-  button {
-    width: 100%;
+
+  > .workspace-sidebar-settings {
+    flex: 1;
+    min-width: 0;
     display: flex;
     align-items: center;
-    gap: 8px;
-    height: 30px;
-    padding: 0 8px;
+    gap: var(--vm-space-8);
+    height: var(--vm-sidebar-row);
+    padding: 0 var(--workspace-sidebar-gutter);
     border: 0;
     border-radius: var(--vm-radius-sm);
     color: var(--vm-foreground-secondary);
     background: transparent;
     font: inherit;
     cursor: pointer;
+
     &:hover {
       color: var(--vm-foreground);
       background: var(--vm-fill-hover);
@@ -304,7 +367,7 @@ button.workspace-reference-action,
   background: transparent;
   color: var(--vm-foreground-secondary);
   &:hover {
-    background: var(--vm-border);
+    background: var(--vm-fill-hover);
   }
   opacity: 0;
   .file-tree-row:hover &,

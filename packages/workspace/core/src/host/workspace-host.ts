@@ -12,8 +12,12 @@ export interface WorkspaceHandle {
   /** Host-private key; renderers never resolve it to a real location. */
   key: WorkspaceKey;
   name: string;
-  /** Desktop's editable built-in default; absent on other hosts. */
+  /** Host-enforced content access. Personal navigation state may still be saved. */
+  readonly?: boolean;
+  /** The host's system introduction, or the default of an older host. */
   isDefault?: boolean;
+  /** This editable workspace can receive the host's legacy personal content. */
+  legacyMigration?: boolean;
   /** Durable history identity, independent of the process-local handle key. */
   historyId?: string;
 }
@@ -23,6 +27,8 @@ export interface WorkspaceHistoryEntry {
   name: string;
   /** Host-generated parent-folder hint for otherwise identical names. */
   description?: string;
+  directoryHint?: string;
+  kind?: 'agent-patterns';
   lastOpenedAt: number;
   pinned?: boolean;
   availability?: 'available' | 'missing' | 'unavailable';
@@ -336,7 +342,7 @@ export interface CommitReceipt {
 }
 
 export interface OpenWorkspaceRequest {
-  /** Open the installed agent pattern library's editable user copy (Desktop). */
+  /** Open the host-managed document authoring recommendations. */
   patterns?: boolean;
   /** Reopen a recorded workspace without creating a missing directory. */
   historyId?: string;
@@ -430,7 +436,12 @@ export interface WorkspaceHost {
   activateWorkspace?(handle: WorkspaceHandle): Promise<void>;
   /** Most recently opened first; filesystem locations remain host-private. */
   listWorkspaceHistory?(): Promise<WorkspaceHistoryEntry[]>;
-  createWorkspace?(request: { name: string }): Promise<WorkspaceHandle | null>;
+  /** Returns the selected parent directory, or null when cancelled. */
+  pickWorkspaceParent?(): Promise<string | null>;
+  createWorkspace?(request: {
+    name: string;
+    parentPath?: string;
+  }): Promise<WorkspaceHandle | null>;
   updateWorkspaceHistory?(request: {
     id: string;
     pinned?: boolean;

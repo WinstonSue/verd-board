@@ -108,6 +108,7 @@ type DocumentCommandName =
   | 'redo';
 
 interface DocumentCommands {
+  getSelectedText(): string;
   focus(position?: 'start' | 'end' | 'preserve'): void;
   /** Emits any pending change and returns the current document. */
   commit(): BoardTextDocument;
@@ -238,6 +239,12 @@ export function createDocumentController(
     },
     getSelection() {
       return editorTextSelection(editor);
+    },
+    getSelectedText() {
+      const range = editorTextSelection(editor);
+      return range && !range.collapsed
+        ? editor.state.doc.textBetween(range.from, range.to, '\n', '\n')
+        : '';
     },
 
     toggleMark(mark) {
@@ -1449,6 +1456,7 @@ export function createDocumentController(
     commit: commands.commit,
     getDocument: commands.getDocument,
     getSelection: commands.getSelection,
+    getSelectedText: commands.getSelectedText,
     restoreSelection,
     flushEditing,
     getToolbarState: commands.getToolbarState,

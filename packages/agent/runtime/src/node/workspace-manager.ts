@@ -1,9 +1,14 @@
-import { stageBuiltinWorkspace } from './builtin-workspace';
+import {
+  stageBuiltinWorkspace,
+  type BuiltinWorkspaceKind,
+} from './builtin-workspace';
+import { canonicalRoot } from '@sue/verd-board-file-workspace';
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import { createHash } from 'crypto';
 import {
   workspaceDisplayName,
+  isWorkspaceContentPath,
   WORKSPACE_META_DIR,
   LEGACY_WORKSPACE_META_DIR,
   type OpenWorkspaceRequest,
@@ -88,6 +93,12 @@ export async function seedBuiltinWorkspace(
 export function createLocalWorkspaceManager(options: {
   host: WorkspaceHost;
   defaultRoot(): string;
+  patternRoot?(): string;
+  managedBuiltins?: {
+    rootFor(kind: BuiltinWorkspaceKind): Promise<string>;
+    prepare(kind: BuiltinWorkspaceKind): Promise<void>;
+    assertWritableLocation(location: string): Promise<void>;
+  };
   builtinSource(): string;
   hasLegacyStorage?(): Promise<boolean>;
   /** Former shared development/production data; recover as history, never select. */
@@ -96,16 +107,17 @@ export function createLocalWorkspaceManager(options: {
   explicitRoot?: string;
   /** Embedded hosts may start with an empty default workspace. */
   seedDefault?: boolean;
-  pickDirectory(): Promise<string | null>;
+  pickDirectory(purpose: 'open' | 'create'): Promise<string | null>;
   now?(): number;
 }) {
   const candidates = new Map<string, { root: string; isDefault: boolean }>();
   const opening = new Map<string, Promise<WorkspaceHandle | null>>();
   let preparing: Promise<void> | undefined;
   let recovering: Promise<void> | undefined;
+  let managedProjectRoot: string | undefined;
   const readHistory = (value: Record<string, unknown>) => {
     const entries = new Map<string, StoredWorkspaceHistory>();
-    const builtin = path.resolve(options.defaultRoot());
+    const builtin = managedProjectRoot ?? path.resolve(options.defaultRoot());
     const add = (item: Partial<StoredWorkspaceHistory>) => {
       if (typeof item.path !== 'string' || !path.isAbsolute(item.path)) return;
       const root = path.resolve(item.path);
@@ -140,6 +152,9 @@ export function createLocalWorkspaceManager(options: {
     );
   };
   const recoverLegacyHistory = async () => {
+    managedProjectRoot ??=
+      options.managedBuiltins &&
+      (await canonicalRoot(await options.managedBuiltins.rootFor('project')));
     if (!options.legacyUserDataRoot) return;
     recovering ??= (async () => {
       const marker = 'desktopLegacyHistoryImported';
@@ -196,6 +211,7 @@ export function createLocalWorkspaceManager(options: {
       root: string,
       details?: { name?: string; pinned?: boolean; lastOpenedAt?: number },
     ) {
+      await recoverLegacyHistory();
       root = path.resolve(root);
       for (let attempt = 0; attempt < 5; attempt++) {
         const config = await options.host.readGlobalConfig();
@@ -218,6 +234,11 @@ export function createLocalWorkspaceManager(options: {
     },
     async listHistory(): Promise<WorkspaceHistoryEntry[]> {
       await recoverLegacyHistory();
+      const patternRoot = options.patternRoot?.();
+      const resolveLocation = (root: string) =>
+        fs.realpath(root).catch(() => path.resolve(root));
+      const installedPatterns =
+        patternRoot && (await resolveLocation(patternRoot));
       const entries = await Promise.all(
         readHistory((await options.host.readGlobalConfig()).value).map(
           async (entry) => ({
@@ -254,6 +275,12 @@ export function createLocalWorkspaceManager(options: {
             name: entry.name,
             lastOpenedAt: entry.lastOpenedAt,
             pinned: entry.pinned,
+            directoryHint:
+              description ?? path.basename(path.dirname(entry.path)),
+            ...(installedPatterns &&
+            (await resolveLocation(entry.path)) === installedPatterns
+              ? { kind: 'agent-patterns' as const }
+              : {}),
             availability: await fs.stat(entry.path).then(
               (stat) =>
                 stat.isDirectory()
@@ -276,11 +303,65 @@ export function createLocalWorkspaceManager(options: {
       const name = request.name.trim();
       if (!name || name === '.' || name === '..' || /[/\\]/.test(name))
         throw new Error('Invalid workspace name');
-      const parent = request.parentPath ?? (await options.pickDirectory());
+      const parent =
+        request.parentPath ?? (await options.pickDirectory('create'));
       if (!parent) return null;
       const root = path.join(parent, name);
+      await options.managedBuiltins?.assertWritableLocation(root);
       await fs.mkdir(root);
       return this.open({ path: root, name });
+    },
+    /** Inspect already-known workspaces without opening or initializing them. */
+    async findFileOwner(filename: string, activeRoot?: string) {
+      await recoverLegacyHistory();
+      const config = await options.host.readGlobalConfig();
+      const known: { root: string; request?: OpenWorkspaceRequest }[] = [
+        ...(activeRoot ? [{ root: activeRoot }] : []),
+        {
+          root: managedProjectRoot ?? options.defaultRoot(),
+          request: { default: true, create: false },
+        },
+        ...(options.patternRoot
+          ? [{ root: options.patternRoot(), request: { patterns: true } }]
+          : []),
+        ...(options.explicitRoot
+          ? [
+              {
+                root: options.explicitRoot,
+                request: { path: options.explicitRoot, create: false },
+              },
+            ]
+          : []),
+        ...readHistory(config.value).map((entry) => ({
+          root: entry.path,
+          request: { historyId: entry.id, create: false },
+        })),
+      ];
+      const matches = await Promise.all(
+        known.map(async ({ root, request }) => {
+          const canonical = await fs.realpath(root).catch(() => null);
+          if (!canonical) return null;
+          const relative = path.relative(canonical, filename);
+          if (
+            !relative ||
+            relative === '..' ||
+            relative.startsWith('..' + path.sep) ||
+            path.isAbsolute(relative)
+          )
+            return null;
+          return {
+            root: canonical,
+            path: relative.split(path.sep).join('/'),
+            request,
+          };
+        }),
+      );
+      const match = matches
+        .filter((item) => item !== null)
+        .sort((a, b) => b.root.length - a.root.length)[0];
+      if (match && !isWorkspaceContentPath(match.path))
+        throw new Error('该文件属于工作区内部数据');
+      return match ?? null;
     },
     async updateHistory(request: {
       id: string;
@@ -324,7 +405,9 @@ export function createLocalWorkspaceManager(options: {
       let name = request?.name;
       let isDefault = false;
       let create = request?.create !== false;
-      if (request?.historyId !== undefined) {
+      if (request?.patterns && options.managedBuiltins) {
+        root = await options.managedBuiltins.rootFor('agent-patterns');
+      } else if (request?.historyId !== undefined) {
         const entries = readHistory(
           (await options.host.readGlobalConfig()).value,
         );
@@ -334,7 +417,7 @@ export function createLocalWorkspaceManager(options: {
         name = entry.name;
         create = false;
       } else if (request?.pick) {
-        const picked = await options.pickDirectory();
+        const picked = await options.pickDirectory('open');
         if (!picked) return null;
         root = path.resolve(picked);
       } else if (request?.path) {
@@ -352,11 +435,14 @@ export function createLocalWorkspaceManager(options: {
           root = selected.path;
           create = false;
         } else {
-          root = options.defaultRoot();
+          root =
+            selected?.kind === 'default' && managedProjectRoot
+              ? managedProjectRoot
+              : options.defaultRoot();
           isDefault = true;
         }
       } else {
-        root = options.defaultRoot();
+        root = managedProjectRoot ?? options.defaultRoot();
         isDefault = true;
       }
       root = path.resolve(root);
@@ -366,12 +452,31 @@ export function createLocalWorkspaceManager(options: {
         !request?.pick &&
         !request?.default &&
         !!options.explicitRoot;
-      if (
+      let legacyMigration = false;
+      if (options.managedBuiltins) {
+        root = await canonicalRoot(root);
+        isDefault = root === managedProjectRoot;
+        legacyMigration =
+          !isDefault &&
+          !explicitEnvironment &&
+          root === (await canonicalRoot(options.defaultRoot()));
+        const patternRoot = await canonicalRoot(
+          await options.managedBuiltins.rootFor('agent-patterns'),
+        );
+        if (isDefault || root === patternRoot)
+          await options.managedBuiltins.prepare(
+            isDefault ? 'project' : 'agent-patterns',
+          );
+      } else if (
         !explicitEnvironment &&
         path.resolve(root) === path.resolve(options.defaultRoot())
       )
         isDefault = true;
-      if (isDefault && options.seedDefault !== false) {
+      if (
+        !options.managedBuiltins &&
+        isDefault &&
+        options.seedDefault !== false
+      ) {
         preparing ??= seedBuiltinWorkspace(
           options.builtinSource(),
           root,
@@ -402,6 +507,7 @@ export function createLocalWorkspaceManager(options: {
       return {
         ...handle,
         isDefault,
+        ...(legacyMigration && { legacyMigration: true }),
         ...(!isDefault ? { historyId: historyIdFor(root) } : {}),
       };
     },

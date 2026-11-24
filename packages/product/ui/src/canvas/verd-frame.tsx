@@ -16,6 +16,8 @@ import { createVerdFramePluginSet } from './frame-plugins';
 import { FrameProductShell } from './frame-product-shell';
 import { useMindMaxWidth } from '../shared/preferences/mind-preferences';
 export interface VerdFrameProps {
+  onAgentSelection?(fileId: string, cellIds: string[]): void;
+  onStartAgent?(): void;
   presentation?: {
     active: boolean;
     fullscreenRoot: import('react').RefObject<HTMLElement | null>;

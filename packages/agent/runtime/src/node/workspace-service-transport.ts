@@ -14,6 +14,8 @@ import {
   type ServiceHostApi,
   type ServiceError,
   type ServiceValue,
+  type LocalAgentRequest,
+  type LocalAgentResponse,
 } from '@sue/verd-board-workspace';
 
 export interface WorkspaceServiceTransportOptions {
@@ -24,9 +26,22 @@ export interface WorkspaceServiceTransportOptions {
   webRoot?: string;
   leaseMs?: number;
   waitIdle?: () => Promise<void>;
+  restoreWorkspace?: boolean;
+  localAgent?: {
+    request(
+      scope: string,
+      handle: WorkspaceHandle,
+      input: LocalAgentRequest,
+    ): Promise<LocalAgentResponse>;
+    release(scope: string): Promise<void>;
+  };
 }
 
-type Lease = { actual: WorkspaceHandle; unsubscribe: () => void };
+type Lease = {
+  actual: WorkspaceHandle;
+  agentScope: string;
+  unsubscribe: () => void;
+};
 type Client = {
   token: string;
   pageId: string;
@@ -88,6 +103,7 @@ export function createWorkspaceServiceTransport(
     const lease = client.handles.get(key);
     if (!lease) return;
     client.handles.delete(key);
+    await options.localAgent?.release(lease.agentScope);
     lease.unsubscribe();
     const count = (refs.get(lease.actual.key) ?? 1) - 1;
     if (count > 0) refs.set(lease.actual.key, count);
@@ -107,6 +123,7 @@ export function createWorkspaceServiceTransport(
     refs.set(actual.key, (refs.get(actual.key) ?? 0) + 1);
     client.handles.set(key, {
       actual,
+      agentScope: key,
       unsubscribe: host.subscribe(actual, (hint) =>
         emit(client, { key, hint }),
       ),
@@ -127,7 +144,21 @@ export function createWorkspaceServiceTransport(
   async function dispatch(
     client: Client,
     request: { method: string; args: unknown[] },
+    origin: string | undefined,
   ) {
+    if (!Array.isArray(request.args))
+      throw new Error('Invalid service arguments');
+    if (request.method === 'localAgent') {
+      if (!options.localAgent || !origin || !Array.isArray(request.args))
+        throw new Error('Unknown service method');
+      const [handle, input] = request.args as [
+        WorkspaceHandle,
+        LocalAgentRequest,
+      ];
+      const lease = client.handles.get(handle?.key);
+      if (!lease) throw new Error('Unknown workspace handle');
+      return options.localAgent.request(lease.agentScope, lease.actual, input);
+    }
     if (!Object.hasOwn(methods, request.method) || !Array.isArray(request.args))
       throw new Error('Unknown service method');
     const args = [...request.args];
@@ -160,9 +191,15 @@ export function createWorkspaceServiceTransport(
       const count = refs.get(original!.key) ?? 0;
       refs.delete(original!.key);
       refs.set(next.key, (refs.get(next.key) ?? 0) + count);
+      const releases: Promise<void>[] = [];
       for (const peer of clients.values())
         for (const [key, lease] of peer.handles)
           if (lease.actual.key === original!.key) {
+            if (options.localAgent) {
+              const previousScope = lease.agentScope;
+              lease.agentScope = randomUUID();
+              releases.push(options.localAgent.release(previousScope));
+            }
             lease.unsubscribe();
             lease.actual = next;
             lease.unsubscribe = host.subscribe(next, (hint) =>
@@ -170,6 +207,7 @@ export function createWorkspaceServiceTransport(
             );
             emit(peer, { key, hint: {} });
           }
+      await Promise.all(releases);
       // The initiating page creates a new WorkspaceSession after replacement.
       // Give it a separate lease so closing its previous session cannot close
       // the replacement or another page's unchanged handle.
@@ -255,6 +293,8 @@ export function createWorkspaceServiceTransport(
           JSON.stringify({
             token: client.token,
             capabilities: host.capabilities,
+            localAgent: !!options.localAgent,
+            restoreWorkspace: options.restoreWorkspace === true,
           }),
         );
         return;
@@ -309,6 +349,7 @@ export function createWorkspaceServiceTransport(
               method: string;
               args: unknown[];
             },
+            req.headers.origin,
           ),
         };
       } catch (error) {

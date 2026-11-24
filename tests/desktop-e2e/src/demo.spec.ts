@@ -119,8 +119,8 @@ test('built-in native workspace opens its diagrams and documents, follows links 
     expect(Object.keys(await nativeFiles(workspace))).toHaveLength(
       Object.keys(original).length,
     );
-    await openWorkspaceMenu(page);
-    await expect(page.getByTestId('workspace-open-builtin')).toBeDisabled();
+    const switcher = await openWorkspaceMenu(page);
+    await expect(switcher.getByTestId('workspace-open-builtin')).toHaveCount(0);
     await page.keyboard.press('Escape');
     await page.screenshot({
       path: info.outputPath(`builtin-${browserName}-overview.png`),

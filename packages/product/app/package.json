@@ -1,6 +1,6 @@
 {
   "name": "@sue/verd-board-app",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": false,
   "main": "./dist/index.cjs",
   "types": "./src/index.ts",
@@ -24,6 +24,7 @@
     "@sue/board-uml": "workspace:*",
     "@sue/board-workflow": "workspace:*",
     "@sue/verd-board-agent-patterns": "workspace:*",
+    "@sue/verd-board-file-workspace": "workspace:*",
     "@sue/verd-board-ui": "workspace:*",
     "fflate": "0.8.3",
     "localforage": "^1.10.0",
@@ -56,6 +57,12 @@
       "types": "./src/headless.ts",
       "import": "./dist/headless.js",
       "require": "./dist/headless.cjs"
+    },
+    "./node": {
+      "development": "./src/node.ts",
+      "types": "./src/node.ts",
+      "import": "./dist/node.js",
+      "require": "./dist/node.cjs"
     }
   },
   "type": "module",
@@ -79,6 +86,11 @@
         "types": "./dist/headless.d.ts",
         "import": "./dist/headless.js",
         "require": "./dist/headless.cjs"
+      },
+      "./node": {
+        "types": "./dist/node.d.ts",
+        "import": "./dist/node.js",
+        "require": "./dist/node.cjs"
       }
     },
     "registry": "https://packages.aliyun.com/69f800449b7ce0afb00bda0e/npm/npm-registry/",

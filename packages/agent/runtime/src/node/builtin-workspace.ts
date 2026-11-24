@@ -118,6 +118,7 @@ export async function stageBuiltinWorkspace(
   target: string,
   kind: BuiltinWorkspaceKind,
   appVersion?: string,
+  readonly = false,
 ) {
   const release = await readBuiltinRelease(source, kind, appVersion);
   for (const [relative, hash] of Object.entries(release.files)) {
@@ -145,6 +146,7 @@ export async function stageBuiltinWorkspace(
       generation: randomUUID(),
       kind,
       releaseId: release.releaseId,
+      ...(readonly && { readonly: true }),
     }),
   );
   await fs.writeFile(

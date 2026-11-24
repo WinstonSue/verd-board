@@ -1,100 +1,239 @@
 import { WorkspaceButton, WorkspaceInput, VmDialog } from '@sue/verd-board-ui';
-import { useState, useRef, useEffect } from 'react';
-import { FileText } from 'lucide-react';
-export function QuickOpen({
-  files,
-  recent,
-  onOpen,
-  onClose,
-  zh,
-}: {
-  files: { id: string; title: string; path: string }[];
-  recent: string[];
-  onOpen(id: string): void;
-  onClose(): void;
-  zh: boolean;
-}) {
-  const [query, setQuery] = useState('');
-  const [active, setActive] = useState(0);
-  const ref = useRef<HTMLDialogElement>(null);
-  const rows = (
-    query
-      ? files.filter((f) =>
-          `${f.title} ${f.path}`.toLowerCase().includes(query.toLowerCase()),
-        )
-      : recent
-          .map((id) => files.find((f) => f.id === id))
-          .filter((f): f is (typeof files)[number] => !!f)
-  ).slice(0, 30);
-  useEffect(() => {
-    const opener = document.activeElement as HTMLElement;
-    const element = ref.current;
-    element?.showModal();
-    return () => {
-      element?.close();
-      opener?.focus();
-    };
-  }, []);
+import { useId, useLayoutEffect, useRef, useState } from 'react';
+import { FileText, Search } from 'lucide-react';
+import type { SearchHit, WorkspaceSearchScope } from './search';
+
+interface PathResult {
+  path: string;
+  kind: 'resource' | 'failed';
+}
+
+const maxResults = 60;
+
+function searchExcerpt(hit: SearchHit) {
+  const text = hit.fragment.text;
+  const index = text.toLowerCase().indexOf(hit.term);
+  if (index < 0) return text;
   return (
-    <dialog
-      ref={ref}
-      className="workspace-quick-open"
-      aria-label={zh ? '快速打开' : 'Quick open'}
-      onCancel={(e) => {
-        e.preventDefault();
-        onClose();
-      }}
-      onKeyDown={(e) => {
-        if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
-          e.preventDefault();
-          setActive((i) =>
-            Math.max(
-              0,
-              Math.min(rows.length - 1, i + (e.key === 'ArrowDown' ? 1 : -1)),
-            ),
-          );
-        }
-        if (e.key === 'Enter' && rows[active]) {
-          e.preventDefault();
-          onOpen(rows[active]!.id);
-        }
-      }}
+    <>
+      {text.slice(0, index)}
+      <mark>{text.slice(index, index + hit.term.length)}</mark>
+      {text.slice(index + hit.term.length)}
+    </>
+  );
+}
+
+export function WorkspaceSearchDialog({
+  zh,
+  scope,
+  query,
+  hits,
+  paths,
+  loading,
+  onQuery,
+  onScope,
+  onClose,
+  onOpenHit,
+  onOpenPath,
+}: {
+  zh: boolean;
+  scope: WorkspaceSearchScope;
+  query: string;
+  hits: SearchHit[];
+  paths: PathResult[];
+  loading: boolean;
+  onQuery(query: string): void;
+  onScope(scope: WorkspaceSearchScope): void;
+  onClose(): void;
+  onOpenHit(hit: SearchHit): Promise<boolean>;
+  onOpenPath(result: PathResult): void;
+}) {
+  const t = (a: string, b: string) => (zh ? a : b);
+  const [active, setActive] = useState(0);
+  const [limit, setLimit] = useState(maxResults);
+  const [opening, setOpening] = useState(false);
+  const selecting = useRef(false);
+  const input = useRef<HTMLInputElement>(null);
+  const results = useRef<HTMLDivElement>(null);
+  const listId = useId();
+  const rows = [
+    ...hits.map((hit) => ({
+      title: hit.title || hit.path.split('/').pop()!,
+      path: hit.path,
+      hit,
+      open: () => onOpenHit(hit),
+    })),
+    ...paths.map((item) => ({
+      title: item.path.split('/').pop()!,
+      path: item.path,
+      hit: undefined,
+      open: async () => {
+        onOpenPath(item);
+        return true;
+      },
+    })),
+  ];
+  const visibleRows = rows.slice(0, limit);
+  const index = Math.min(active, visibleRows.length - 1);
+  useLayoutEffect(() => {
+    results.current
+      ?.querySelector('[aria-selected="true"]')
+      ?.scrollIntoView?.({ block: 'nearest' });
+  }, [index]);
+  useLayoutEffect(() => {
+    setActive(0);
+    setLimit(maxResults);
+    input.current?.focus();
+  }, [scope]);
+  const select = async (position: number) => {
+    const row = visibleRows[position];
+    if (!row || selecting.current) return;
+    selecting.current = true;
+    setOpening(true);
+    try {
+      if (await row.open()) onClose();
+    } finally {
+      selecting.current = false;
+      setOpening(false);
+    }
+  };
+
+  return (
+    <VmDialog
+      title={t('搜索当前工作区', 'Search current workspace')}
+      className="workspace-search-dialog"
+      data-testid="workspace-search-dialog"
+      closeLabel={t('关闭', 'Close')}
+      busy={opening}
+      onClose={onClose}
     >
-      <WorkspaceInput
-        ref={(el) => el?.focus()}
-        type="search"
-        placeholder={zh ? '搜索文件名或路径…' : 'Search files…'}
-        value={query}
-        onChange={(e) => {
-          setQuery(e.target.value);
-          setActive(0);
-        }}
-        aria-label={zh ? '快速打开' : 'Quick open'}
-      />
-      <div role="listbox">
-        {rows.map((f, i) => (
-          <WorkspaceButton
+      <div className="vm-search">
+        <Search className="vm-search__icon" size={16} aria-hidden />
+        <WorkspaceInput
+          ref={input}
+          type="search"
+          role="combobox"
+          aria-autocomplete="list"
+          aria-controls={listId}
+          aria-expanded={visibleRows.length > 0}
+          aria-activedescendant={index >= 0 ? `${listId}-${index}` : undefined}
+          aria-label={t('搜索当前工作区', 'Search current workspace')}
+          className="vm-input--search"
+          value={query}
+          placeholder={t(
+            '输入标题、路径或正文关键词…',
+            'Enter a title, path or text…',
+          )}
+          onChange={(event) => {
+            onQuery(event.target.value);
+            setActive(0);
+            setLimit(maxResults);
+          }}
+          onKeyDown={(event) => {
+            if (event.nativeEvent.isComposing || event.keyCode === 229) return;
+            if (event.key === 'Escape' && !selecting.current) {
+              event.preventDefault();
+              event.stopPropagation();
+              onClose();
+            }
+            if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+              event.preventDefault();
+              setActive(
+                Math.max(
+                  0,
+                  Math.min(
+                    visibleRows.length - 1,
+                    index + (event.key === 'ArrowDown' ? 1 : -1),
+                  ),
+                ),
+              );
+            }
+            if (event.key === 'Enter') {
+              event.preventDefault();
+              void select(index);
+            }
+          }}
+        />
+      </div>
+      <div
+        className="workspace-search-scopes"
+        role="group"
+        aria-label={t('搜索范围', 'Search scope')}
+      >
+        {(
+          [
+            ['all', t('全部', 'All')],
+            ['names', t('标题与路径', 'Title and path')],
+            ['body', t('正文', 'Content')],
+          ] as const
+        ).map(([key, label]) => (
+          <button
+            type="button"
+            key={key}
+            aria-pressed={scope === key}
+            onClick={() => onScope(key)}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+      <div
+        ref={results}
+        id={listId}
+        role="listbox"
+        aria-label={t('搜索结果', 'Search results')}
+        aria-busy={loading}
+      >
+        {visibleRows.map((row, position) => (
+          <button
             type="button"
             role="option"
-            aria-selected={i === active}
-            key={f.id}
-            onClick={() => onOpen(f.id)}
+            tabIndex={-1}
+            id={`${listId}-${position}`}
+            key={`${row.path}-${position}`}
+            aria-selected={position === index}
+            aria-disabled={opening || undefined}
+            onClick={() => void select(position)}
           >
-            <FileText strokeWidth={1.75} size={16} />
-            <span>
-              {f.title}
-              <small>{f.path}</small>
+            <FileText strokeWidth={1.75} size={16} aria-hidden />
+            <span className="workspace-search-result">
+              <span>{row.title}</span>
+              <small>{row.path}</small>
+              {row.hit?.source === 'content' && (
+                <span className="workspace-search-excerpt">
+                  {searchExcerpt(row.hit)}
+                </span>
+              )}
             </span>
-          </WorkspaceButton>
+            <span className="vm-badge">
+              {row.hit?.source === 'content'
+                ? t('正文', 'Content')
+                : t('标题与路径', 'Title and path')}
+            </span>
+          </button>
         ))}
-        {!rows.length && (
-          <p>{zh ? '没有可打开的匹配文件' : 'No matching files'}</p>
-        )}
       </div>
-      <footer>
-        <kbd>↑</kbd> <kbd>↓</kbd> <kbd>Enter</kbd> <kbd>Esc</kbd>
-      </footer>
-    </dialog>
+      {!visibleRows.length && (
+        <p className="vm-empty" role="status">
+          {loading
+            ? t('正在搜索…', 'Searching…')
+            : query.trim()
+              ? t('没有匹配的内容', 'No matching content')
+              : t(
+                  '输入关键词搜索当前工作区',
+                  'Enter a query to search this workspace',
+                )}
+        </p>
+      )}
+      {rows.length > limit && (
+        <WorkspaceButton
+          type="button"
+          onClick={() => setLimit(limit + maxResults)}
+        >
+          {t('显示更多', 'Show more')}
+        </WorkspaceButton>
+      )}
+    </VmDialog>
   );
 }
 

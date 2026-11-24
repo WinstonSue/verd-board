@@ -261,13 +261,13 @@ export function runOperations(
           case 'uml-note':
             node = uml.createUmlNoteCell(
               id,
-              (op.data?.participantIds as string[]) ?? [],
+              (op.data?.['participantIds'] as string[]) ?? [],
             );
             break;
           case 'uml-fragment':
             node = uml.createUmlFragmentCell(
               id,
-              (op.data?.operator as 'alt' | 'opt' | 'loop') ?? 'opt',
+              (op.data?.['operator'] as 'alt' | 'opt' | 'loop') ?? 'opt',
             );
             break;
           case 'table':
@@ -310,7 +310,7 @@ export function runOperations(
           case 'geometry':
             node = draw.createGeometryCell(
               id,
-              (op.data?.shape as string) ?? 'rectangle',
+              (op.data?.['shape'] as string) ?? 'rectangle',
               [[60, 60]],
             );
             break;

@@ -80,6 +80,36 @@ const spyHost = (inner: WorkspaceHost) => {
   return { host, commits };
 };
 
+it('enforces host readonly access while saving only navigation', async () => {
+  const { host, commits } = spyHost(createMemoryWorkspaceHost());
+  const handle = (await host.openWorkspace({ path: 'readonly' }))!;
+  const session = await openWorkspaceSession(host, {
+    ...handle,
+    readonly: true,
+  });
+  try {
+    session.setReadonly(false);
+    expect(session.getState().readonly).toBe(true);
+    expect(
+      await session.apply({ type: 'create-file', file: fileFor('blocked') }),
+    ).toMatchObject({ ok: false });
+    expect(session.mkdir('blocked')).toMatchObject({ ok: false });
+    session.setWorkspaceConfig({ name: 'blocked' });
+    const navigation = {
+      tabs: [],
+      activeTabId: null,
+      expandedDirs: ['examples'],
+    };
+    session.setSessionState(navigation);
+    expect(await session.flush()).toBe(true);
+    expect(commits).toEqual([expect.objectContaining({ session: navigation })]);
+    expect(commits[0].writes).toBeUndefined();
+    expect(commits[0].config).toBeUndefined();
+  } finally {
+    session.dispose();
+  }
+});
+
 const openSession = async (options?: {
   host?: WorkspaceHost;
   seed?: (snapshot: WorkspaceHostSnapshot) => void;

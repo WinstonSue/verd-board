@@ -86,6 +86,7 @@ export const DocumentEditor: React.FC<DocumentEditorProps> = ({
   locale = 'zh',
   referenceChoices,
   onEditSelectionLink,
+  selectionAction,
   selectionLinkOpen,
   captureInsertionScope,
   onInsertionError,
@@ -962,6 +963,7 @@ export const DocumentEditor: React.FC<DocumentEditorProps> = ({
               locale={locale}
               onNotice={setBlockNotice}
               onEditLink={editLinkRef.current}
+              selectionAction={selectionAction}
               suspended={
                 selectionLinkOpen || !!insertPopup || !!webEdit || !!mathEdit
               }

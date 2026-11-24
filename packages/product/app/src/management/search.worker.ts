@@ -36,12 +36,12 @@ self.onmessage = async ({ data }) => {
   for (const record of records.values()) {
     batch.push(record);
     if (batch.length < 25) continue;
-    hits.push(...searchRecords(batch, data.query, data.namesOnly));
+    hits.push(...searchRecords(batch, data.query, data.scope));
     batch.length = 0;
     await new Promise((resolve) => setTimeout(resolve, 0));
     if (current !== sequence) return;
   }
-  hits.push(...searchRecords(batch, data.query, data.namesOnly));
+  hits.push(...searchRecords(batch, data.query, data.scope));
   hits.sort((a, b) => a.rank - b.rank || a.title.localeCompare(b.title));
-  self.postMessage({ id: data.id, hits });
+  self.postMessage({ id: data.id, key: data.key, hits });
 };

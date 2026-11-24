@@ -369,8 +369,8 @@ test('outline toggles keep the block grip aligned and workspace chrome out of te
   await selectSetting(page.getByTestId('settings-appearance'), 'dark');
   await page.getByTestId('my-back').click();
   await expectFooterAligned();
-  await page.getByTestId('workspace-menu-trigger').click();
-  const search = page.getByRole('searchbox', { name: '查找工作区' });
+  await page.getByRole('button', { name: '首页', exact: true }).click();
+  const search = page.getByTestId('product-home').getByRole('searchbox');
   await search.fill('Toolbar');
   await search.press('ControlOrMeta+a');
   expect(

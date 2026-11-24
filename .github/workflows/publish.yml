@@ -45,3 +45,7 @@ jobs:
           restore-keys: verification-v1-${{ runner.os }}-${{ runner.arch }}-
       - name: Validate and publish
         run: pnpm pub
+      - name: Verify published packages in consumers
+        env:
+          VERD_CONSUMER_SOURCE: registry
+        run: pnpm test:consumer

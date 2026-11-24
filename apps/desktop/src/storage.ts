@@ -1,6 +1,7 @@
 declare global {
   interface Window {
     electronAPI: {
+      localAgent: import('@sue/verd-board-app').LocalAgentClient;
       files: import('./external-file-types').DesktopFilesApi;
       onShutdown: (
         flush: () => Promise<void>,

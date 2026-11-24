@@ -9,6 +9,7 @@ import { preserveWorkspaceResources } from './workspace-resource-storage';
 import * as fs from 'node:fs/promises';
 import path from 'node:path';
 import { randomUUID } from 'node:crypto';
+import { canonicalRoot } from '@sue/verd-board-file-workspace';
 import { createFsWorkspaceHost } from './workspace-host-fs';
 import type { WorkspaceHandle } from '@sue/verd-board-workspace';
 
@@ -30,10 +31,13 @@ export function createBuiltinWorkspaceUpdater(options: {
   host: ReturnType<typeof createFsWorkspaceHost>;
   userData: () => string;
   appVersion?(): string;
+  projectRoot?(): string | Promise<string>;
+  readonly?: boolean;
   registerBackup?(root: string): Promise<void>;
   source: (kind: BuiltinWorkspaceKind) => string;
 }) {
-  const rootFor = (kind: BuiltinWorkspaceKind) =>
+  const rootFor = async (kind: BuiltinWorkspaceKind) =>
+    (kind === 'project' && (await options.projectRoot?.())) ||
     path.join(
       options.userData(),
       'workspaces',
@@ -43,13 +47,22 @@ export function createBuiltinWorkspaceUpdater(options: {
     path.join(options.userData(), 'workspace-backups', kind);
   const logFor = (kind: BuiltinWorkspaceKind) =>
     path.join(options.userData(), 'workspace-updates', kind + '.json');
+  const kinds = ['project', 'agent-patterns'] as const;
+  const within = (root: string, location: string) => {
+    const relative = path.relative(root, location);
+    return (
+      relative !== '..' &&
+      !relative.startsWith('..' + path.sep) &&
+      !path.isAbsolute(relative)
+    );
+  };
   const kindOf = async (handle: WorkspaceHandle) => {
     const workspace = options.host.workspaces.get(handle.key);
     if (!workspace) throw new Error('Workspace unavailable');
-    for (const kind of ['project', 'agent-patterns'] as const) {
-      const root = rootFor(kind);
+    for (const kind of kinds) {
+      const root = await rootFor(kind);
       if (
-        path.resolve(workspace.root) === path.resolve(root) &&
+        (await canonicalRoot(workspace.root)) === (await canonicalRoot(root)) &&
         !(await fs.lstat(root)).isSymbolicLink()
       )
         return kind;
@@ -64,49 +77,158 @@ export function createBuiltinWorkspaceUpdater(options: {
     await fs.mkdir(path.dirname(lastBackupFile(kind)), { recursive: true });
     await fs.writeFile(lastBackupFile(kind), JSON.stringify({ path: backup }));
   }
-  async function recoverKind(kind: BuiltinWorkspaceKind) {
+  async function recoverUnlocked(kind: BuiltinWorkspaceKind, target: string) {
     const log = logFor(kind);
     if (!(await exists(log))) return;
-    await withWorkspaceLock(rootFor(kind), async () => {
-      if (!(await exists(log))) return;
-      const record = await json(log);
-      if (!/^[a-f0-9-]+$/.test(record.id))
-        throw new Error('Invalid workspace update journal');
-      const target = rootFor(kind),
-        staging = target + '.update-' + record.id;
-      // v1 journals used a permanent backup as the rollback directory.
-      const rollback =
-        record.version === 2
-          ? target + '.previous-' + record.id
-          : path.join(backupDirectory(kind), record.id);
-      if (await exists(target)) {
-        const instance = await json(
-          path.join(target, '.verdscrolls/instance.json'),
-        ).catch(() => null);
-        if (instance?.generation === record.generation) {
-          await rememberBackup(kind, record.backup);
-          if (record.version === 2)
-            await fs.rm(rollback, { recursive: true, force: true });
-          await fs.rm(staging, { recursive: true, force: true });
-          await fs.rm(log);
-          return;
-        }
-        if (await exists(rollback))
-          throw new Error('Ambiguous workspace recovery; all copies preserved');
-      } else if (await exists(rollback)) await fs.rename(rollback, target);
-      else
-        throw new Error(
-          'Workspace update recovery requires attention; all copies preserved',
+    const record = await json(log);
+    if (!/^[a-f0-9-]+$/.test(record.id))
+      throw new Error('Invalid workspace update journal');
+    const staging = target + '.update-' + record.id;
+    // v1 journals used a permanent backup as the rollback directory.
+    const rollback =
+      record.version === 2
+        ? target + '.previous-' + record.id
+        : path.join(backupDirectory(kind), record.id);
+    if (await exists(target)) {
+      const instance = await json(
+        path.join(target, '.verdscrolls/instance.json'),
+      ).catch(() => null);
+      if (instance?.generation === record.generation) {
+        await rememberBackup(kind, record.backup);
+        if (record.version === 2)
+          await fs.rm(rollback, { recursive: true, force: true });
+        await fs.rm(staging, { recursive: true, force: true });
+        await fs.rm(log);
+        return;
+      }
+      if (await exists(rollback))
+        throw new Error('Ambiguous workspace recovery; all copies preserved');
+    } else if (await exists(rollback)) await fs.rename(rollback, target);
+    else
+      throw new Error(
+        'Workspace update recovery requires attention; all copies preserved',
+      );
+    await rememberBackup(kind, record.backup);
+    await fs.rm(staging, { recursive: true, force: true });
+    await fs.rm(log);
+  }
+  async function recoverKind(kind: BuiltinWorkspaceKind) {
+    if (!(await exists(logFor(kind)))) return;
+    const target = await rootFor(kind);
+    await withWorkspaceLock(target, () => recoverUnlocked(kind, target));
+  }
+  async function replace(
+    kind: BuiltinWorkspaceKind,
+    root: string,
+    staging: string,
+    id: string,
+    backup?: string,
+  ) {
+    const log = logFor(kind);
+    const rollback = root + '.previous-' + id;
+    const { generation } = await json(
+      path.join(staging, '.verdscrolls/instance.json'),
+    );
+    await fs.mkdir(path.dirname(log), { recursive: true });
+    const temporaryLog = `${log}.${id}.tmp`;
+    const journal = await fs.open(temporaryLog, 'wx');
+    try {
+      try {
+        await journal.writeFile(
+          JSON.stringify({ version: 2, id, generation, backup }),
         );
-      await rememberBackup(kind, record.backup);
-      await fs.rm(staging, { recursive: true, force: true });
+        await journal.sync();
+      } finally {
+        await journal.close();
+      }
+      if (await exists(log))
+        throw new Error('An earlier workspace update needs recovery');
+      await fs.rename(temporaryLog, log);
+    } finally {
+      await fs.rm(temporaryLog, { force: true });
+    }
+    try {
+      await fs.rename(root, rollback);
+      await fs.rename(staging, root);
+      await rememberBackup(kind, backup);
+      await fs.rm(rollback, { recursive: true, force: true });
       await fs.rm(log);
-    });
+    } catch (error) {
+      await recoverUnlocked(kind, root);
+      const installed = await json(
+        path.join(root, '.verdscrolls/instance.json'),
+      ).catch(() => null);
+      if (installed?.generation !== generation) throw error;
+    }
+  }
+  async function keepIdentity(root: string, staging: string) {
+    const configPath = '.verdscrolls/config.json';
+    const old =
+      (await json(path.join(root, configPath)).catch(() => null)) ??
+      (await json(path.join(root, '.verdboard/config.json')).catch(() => null));
+    if (typeof old?.value?.identity !== 'string') return;
+    const target = path.join(staging, configPath);
+    const config = await json(target);
+    config.value.identity = old.value.identity;
+    if (Number.isSafeInteger(old.version)) config.version = old.version + 1;
+    await fs.writeFile(target, JSON.stringify(config, null, 2) + '\n');
   }
   return {
+    rootFor,
+    async resolveReadonly(location: string) {
+      for (const kind of kinds) {
+        const root = await canonicalRoot(await rootFor(kind));
+        if (root === location) return true;
+        if (within(root, location) || within(location, root))
+          throw new Error(
+            'WORKSPACE_READ_ONLY: choose a separate workspace directory',
+          );
+      }
+      return false;
+    },
+    async assertWritableLocation(location: string) {
+      const canonical = await canonicalRoot(location);
+      for (const kind of kinds)
+        if (within(await canonicalRoot(await rootFor(kind)), canonical))
+          throw new Error('WORKSPACE_READ_ONLY');
+    },
+    async prepare(kind: BuiltinWorkspaceKind) {
+      const root = await rootFor(kind);
+      return withWorkspaceLock(root, async () => {
+        const entry = await fs.lstat(root).catch((error) => {
+          if (error.code === 'ENOENT') return null;
+          throw error;
+        });
+        if (entry && !entry.isDirectory())
+          throw new Error('Invalid managed workspace directory');
+        await recoverUnlocked(kind, root);
+        const instance = await json(
+          path.join(root, '.verdscrolls/instance.json'),
+        ).catch(() => null);
+        if (instance?.kind === kind && instance.readonly === true) return;
+        const id = randomUUID();
+        const staging = root + '.update-' + id;
+        await fs.mkdir(staging, { recursive: true });
+        try {
+          await stageBuiltinWorkspace(
+            options.source(kind),
+            staging,
+            kind,
+            options.appVersion?.(),
+            true,
+          );
+          if (await exists(root)) {
+            await keepIdentity(root, staging);
+            await replace(kind, root, staging, id);
+          } else await fs.rename(staging, root);
+        } finally {
+          if (!(await exists(logFor(kind))))
+            await fs.rm(staging, { recursive: true, force: true });
+        }
+      });
+    },
     async recover() {
-      for (const kind of ['project', 'agent-patterns'] as const)
-        await recoverKind(kind);
+      for (const kind of kinds) await recoverKind(kind);
     },
     async info(handle: WorkspaceHandle) {
       const kind = await kindOf(handle);
@@ -117,7 +239,7 @@ export function createBuiltinWorkspaceUpdater(options: {
         options.appVersion?.(),
       );
       const instance = await json(
-        path.join(rootFor(kind), '.verdscrolls/instance.json'),
+        path.join(await rootFor(kind), '.verdscrolls/instance.json'),
       ).catch(() => null);
       return {
         kind,
@@ -147,17 +269,16 @@ export function createBuiltinWorkspaceUpdater(options: {
       const kind = await kindOf(handle);
       if (!kind) throw new Error('Not a managed built-in workspace');
       const source = options.source(kind);
-      const target = rootFor(kind),
+      const target = await rootFor(kind),
         id = randomUUID(),
         staging = target + '.update-' + id;
-      const rollback = target + '.previous-' + id,
-        log = logFor(kind);
+      const log = logFor(kind);
       let backup: string | undefined;
       if (updateOptions.backupParent) {
         const parent = await fs.realpath(updateOptions.backupParent);
         for (const protectedRoot of [
-          rootFor('project'),
-          rootFor('agent-patterns'),
+          await rootFor('project'),
+          await rootFor('agent-patterns'),
           options.source('project'),
           options.source('agent-patterns'),
         ]) {
@@ -186,30 +307,20 @@ export function createBuiltinWorkspaceUpdater(options: {
         );
       }
       await fs.mkdir(staging);
-      let journaled = false;
-      let generation: string | undefined;
       try {
         const release = await stageBuiltinWorkspace(
           source,
           staging,
           kind,
           options.appVersion?.(),
+          options.readonly,
         );
         if (release.releaseId !== releaseId)
           throw new Error('Built-in resources changed; check again');
         await options.host.maintainWorkspace(handle, async (root) => {
           await preserveWorkspaceSkills(root, staging);
           await preserveWorkspaceResources(root, staging);
-          const old = await json(path.join(root, '.verdscrolls/config.json'));
-          const config = await json(
-            path.join(staging, '.verdscrolls/config.json'),
-          );
-          config.value.identity = old.value.identity;
-          config.version = old.version + 1;
-          await fs.writeFile(
-            path.join(staging, '.verdscrolls/config.json'),
-            JSON.stringify(config, null, 2) + '\n',
-          );
+          await keepIdentity(root, staging);
           const receipts = path.join(root, '.verdscrolls/receipts');
           for (const name of await directoryEntries(receipts)) {
             const stat = await fs.lstat(path.join(receipts, name));
@@ -243,39 +354,11 @@ export function createBuiltinWorkspaceUpdater(options: {
             });
             // Keep a full, editable copy. Its history name is independent of the original project name.
           }
-          await fs.mkdir(path.dirname(log), { recursive: true });
-          const instance = await json(
-            path.join(staging, '.verdscrolls/instance.json'),
-          );
-          generation = instance.generation;
-          const journal = await fs.open(log, 'wx');
-          try {
-            await journal.writeFile(
-              JSON.stringify({ version: 2, id, generation, backup }),
-            );
-            await journal.sync();
-          } finally {
-            await journal.close();
-          }
-          journaled = true;
-          await fs.rename(root, rollback);
-          await fs.rename(staging, root);
-          await rememberBackup(kind, backup);
-          await fs.rm(rollback, { recursive: true, force: true });
-          await fs.rm(log);
-          journaled = false;
+          await replace(kind, root, staging, id, backup);
         });
-      } catch (error) {
-        if (journaled) {
-          await recoverKind(kind);
-          journaled = false;
-          const installed = await json(
-            path.join(target, '.verdscrolls/instance.json'),
-          ).catch(() => null);
-          if (installed?.generation !== generation) throw error;
-        } else throw error;
       } finally {
-        if (!journaled) await fs.rm(staging, { recursive: true, force: true });
+        if (!(await exists(log)))
+          await fs.rm(staging, { recursive: true, force: true });
       }
       const next = await options.host.openWorkspace({ path: target });
       if (!next)

@@ -14,6 +14,7 @@ export interface SearchRecord {
   metadata?: string;
   fragments: SearchFragment[];
 }
+export type WorkspaceSearchScope = 'all' | 'names' | 'body';
 export interface SearchHit {
   source: 'metadata' | 'content';
   id: string;
@@ -109,14 +110,17 @@ export function extractSearchRecord(
 export function searchRecords(
   records: Iterable<SearchRecord>,
   query: string,
-  namesOnly = false,
+  scope: WorkspaceSearchScope | boolean = false,
 ): SearchHit[] {
   const terms = query.toLocaleLowerCase().trim().split(/\s+/).filter(Boolean);
   const hits: SearchHit[] = [];
   for (const record of records) {
     const meta =
-      `${record.title}\n${record.path}\n${namesOnly ? '' : (record.metadata ?? '')}`.toLocaleLowerCase();
-    const fragments = namesOnly ? [] : record.fragments;
+      scope === 'body'
+        ? ''
+        : `${record.title}\n${record.path}\n${scope === false ? (record.metadata ?? '') : ''}`.toLocaleLowerCase();
+    const fragments =
+      scope === 'names' || scope === true ? [] : record.fragments;
     if (
       !terms.every(
         (t) =>

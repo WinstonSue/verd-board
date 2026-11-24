@@ -1,4 +1,11 @@
-import { mkdtemp, readdir, readFile, rm, symlink, writeFile } from 'node:fs/promises';
+import {
+  mkdtemp,
+  readdir,
+  readFile,
+  rm,
+  symlink,
+  writeFile,
+} from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
@@ -22,8 +29,12 @@ describe('plain file workspace', () => {
     await writeFile(file, contents);
 
     const workspace = await openFileWorkspace(root);
-    expect((await workspace.list()).map((entry) => entry.name)).toEqual(['Home.md']);
-    expect((await workspace.stat('Home.md')).size).toBe(Buffer.byteLength(contents));
+    expect((await workspace.list()).map((entry) => entry.name)).toEqual([
+      'Home.md',
+    ]);
+    expect((await workspace.stat('Home.md')).size).toBe(
+      Buffer.byteLength(contents),
+    );
     expect((await workspace.read('Home.md')).bytes.toString()).toBe(contents);
     expect(await readdir(root)).toEqual(['Home.md']);
   });
@@ -33,8 +44,12 @@ describe('plain file workspace', () => {
     const order: string[] = [];
     let hold!: () => void;
     let ready!: () => void;
-    const held = new Promise<void>((resolve) => { ready = resolve; });
-    const release = new Promise<void>((resolve) => { hold = resolve; });
+    const held = new Promise<void>((resolve) => {
+      ready = resolve;
+    });
+    const release = new Promise<void>((resolve) => {
+      hold = resolve;
+    });
     const native = withWorkspaceLock(root, async () => {
       order.push('native open');
       ready();
@@ -58,14 +73,21 @@ describe('plain file workspace', () => {
     const initial = await workspace.read('Home.md');
     await writeFile(file, 'external');
     await expect(
-      workspace.transact((transaction) => transaction.write('Home.md', 'stale', initial.version)),
+      workspace.transact((transaction) =>
+        transaction.write('Home.md', 'stale', initial.version),
+      ),
     ).rejects.toBeInstanceOf(FileWorkspaceConflict);
 
     const external = await workspace.read('Home.md');
     await expect(
       workspace.transact(
-        (transaction) => transaction.write('Home.md', 'revoked', external.version),
-        { beforePublish: () => { throw new Error('revoked'); } },
+        (transaction) =>
+          transaction.write('Home.md', 'revoked', external.version),
+        {
+          beforePublish: () => {
+            throw new Error('revoked');
+          },
+        },
       ),
     ).rejects.toThrow('revoked');
 
@@ -73,8 +95,12 @@ describe('plain file workspace', () => {
     expect((await reopened.read('Home.md')).bytes.toString()).toBe('external');
     const receipts = path.join(root, '.verdscrolls/file-recovery');
     const [receipt] = await readdir(receipts);
-    expect(await readFile(path.join(receipts, receipt, 'previous'), 'utf8')).toBe('external');
-    expect(await readFile(path.join(receipts, receipt, 'incoming'), 'utf8')).toBe('revoked');
+    expect(
+      await readFile(path.join(receipts, receipt, 'previous'), 'utf8'),
+    ).toBe('external');
+    expect(
+      await readFile(path.join(receipts, receipt, 'incoming'), 'utf8'),
+    ).toBe('revoked');
   });
 
   it('retains prior bytes from an interrupted batch without replaying unpublished writes', async () => {
@@ -102,16 +128,28 @@ describe('plain file workspace', () => {
     const results = await Promise.all(
       (await readdir(receipts)).map(async (entry) => {
         const directory = path.join(receipts, entry);
-        const record = JSON.parse(await readFile(path.join(directory, 'operation.json'), 'utf8'));
-        return { record, old: await readFile(path.join(directory, 'previous'), 'utf8') };
+        const record = JSON.parse(
+          await readFile(path.join(directory, 'operation.json'), 'utf8'),
+        );
+        return {
+          record,
+          old: await readFile(path.join(directory, 'previous'), 'utf8'),
+        };
       }),
     );
-    expect(new Set(results.map(({ record }) => record.transactionId)).size).toBe(1);
-    expect(results.map(({ old }) => old).sort()).toEqual(['original one', 'original two']);
+    expect(
+      new Set(results.map(({ record }) => record.transactionId)).size,
+    ).toBe(1);
+    expect(results.map(({ old }) => old).sort()).toEqual([
+      'original one',
+      'original two',
+    ]);
 
     const reopened = await openFileWorkspace(root);
     expect((await reopened.read('One.md')).bytes.toString()).toBe('authorized');
-    expect((await reopened.read('Two.md')).bytes.toString()).toBe('original two');
+    expect((await reopened.read('Two.md')).bytes.toString()).toBe(
+      'original two',
+    );
   });
 
   it('checks the digest of descendants for a rename and supports case-only changes', async () => {
@@ -123,12 +161,20 @@ describe('plain file workspace', () => {
     const version = await workspace.version('Section');
     await writeFile(path.join(root, 'Section/Home.md'), 'two');
     await expect(
-      workspace.transact((transaction) => transaction.move('Section', 'Renamed', version)),
+      workspace.transact((transaction) =>
+        transaction.move('Section', 'Renamed', version),
+      ),
     ).rejects.toBeInstanceOf(FileWorkspaceConflict);
     const current = await workspace.version('Section');
-    await workspace.transact((transaction) => transaction.move('Section', 'section', current));
-    expect((await workspace.list()).map((entry) => entry.name)).toContain('section');
-    expect((await workspace.read('section/Home.md')).bytes.toString()).toBe('two');
+    await workspace.transact((transaction) =>
+      transaction.move('Section', 'section', current),
+    );
+    expect((await workspace.list()).map((entry) => entry.name)).toContain(
+      'section',
+    );
+    expect((await workspace.read('section/Home.md')).bytes.toString()).toBe(
+      'two',
+    );
   });
 
   it('allows authorized trash paths and refuses symlink traversal', async () => {
@@ -137,9 +183,15 @@ describe('plain file workspace', () => {
       await transaction.mkdir('.trash');
       await transaction.write('.trash/Home.md', 'restore me', null);
     });
-    expect((await workspace.read('.trash/Home.md')).bytes.toString()).toBe('restore me');
+    expect((await workspace.read('.trash/Home.md')).bytes.toString()).toBe(
+      'restore me',
+    );
     await symlink(os.tmpdir(), path.join(root, 'outside'), 'junction');
-    await expect(workspace.read('outside/anything')).rejects.toThrow('refuses links');
-    await expect(workspace.read('../anything')).rejects.toThrow('Invalid file workspace path');
+    await expect(workspace.read('outside/anything')).rejects.toThrow(
+      'refuses links',
+    );
+    await expect(workspace.read('../anything')).rejects.toThrow(
+      'Invalid file workspace path',
+    );
   });
 });

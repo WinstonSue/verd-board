@@ -344,26 +344,23 @@ test('toolbar and slash menus expose the same insertion choices', async ({
   await expect(active(page).locator('.tiptap hr')).toHaveCount(1);
 });
 
-test('native writing templates can be previewed and created', async ({
+test('workspace content leaves reading and recommendations on product home', async ({
   page,
 }) => {
   await page.goto('/');
-  await page.getByRole('button', { name: '首页', exact: true }).click();
-  await page.getByTestId('management-new').click();
-  await page.getByRole('menuitem', { name: '从模板创建', exact: true }).click();
-  const templates = page.getByRole('dialog', {
-    name: '从模板创建',
-    exact: true,
-  });
-  await templates.getByRole('textbox', { name: '搜索模板' }).fill('ADR');
-  await templates
-    .getByRole('button', { name: '预览模板', exact: true })
-    .click();
+  await page.getByRole('button', { name: '工作区', exact: true }).click();
+  const workspace = page.getByTestId('workspace-management-page');
   await expect(
-    templates.getByRole('region', { name: '模板预览' }),
-  ).toContainText('决策背景');
-  await templates.getByRole('button', { name: '创建', exact: true }).click();
-  await expect(activeTabTitle(page)).toHaveText('ADR 决策记录');
+    workspace.getByRole('heading', { name: '工作区' }),
+  ).toBeVisible();
+  await expect(
+    workspace.getByRole('heading', { name: '阅读入口' }),
+  ).toHaveCount(0);
+  await expect(workspace.getByText('从模板创建')).toHaveCount(0);
+  await page.getByRole('button', { name: '首页', exact: true }).click();
+  await expect(
+    page.getByTestId('product-home').getByTestId('workspace-open-patterns'),
+  ).toBeVisible();
 });
 
 test('metadata, named versions and filtered views persist across reload', async ({
@@ -427,7 +424,7 @@ test('metadata, named versions and filtered views persist across reload', async 
   await expect(active(page).locator('.tiptap')).toContainText(
     'Original decision',
   );
-  await page.getByRole('button', { name: '所有内容', exact: true }).click();
+  await page.getByRole('button', { name: '工作区', exact: true }).click();
   await page.getByRole('textbox', { name: '标签筛选' }).fill('design');
   await page.getByRole('textbox', { name: '视图名称' }).fill('Design docs');
   await page.getByRole('button', { name: '保存筛选视图', exact: true }).click();
@@ -471,7 +468,7 @@ test('ZIP imports keep folders, links and images with an explicit result', async
     buffer: Buffer.from(bytes),
   });
   await expect(page.locator('.sue-message-notice')).toContainText('导入 2');
-  await page.getByRole('button', { name: '所有内容', exact: true }).click();
+  await page.getByRole('button', { name: '工作区', exact: true }).click();
   await page
     .locator('.management-result')
     .filter({ hasText: 'research/A.verd-doc.json' })

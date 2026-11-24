@@ -7,7 +7,7 @@ import {
   createFsWorkspaceHost,
   createLocalWorkspaceManager,
   createBuiltinWorkspaceUpdater,
-  initializePatternWorkspace,
+  createLocalCodexRunner,
 } from '@sue/verd-board-agent/node';
 import {
   normalizeWorkspacePath,
@@ -30,6 +30,7 @@ export interface LocalServiceOptions {
   /** Optional filesystem boundary, used by isolated test and embedded hosts. */
   workspaceBoundary?: string;
   openPath?: (location: string) => Promise<void>;
+  localCodex?: boolean;
 }
 
 const systemOpen = (location: string) =>
@@ -65,8 +66,15 @@ export async function createLocalService(options: LocalServiceOptions) {
   }
   const defaultRoot = () =>
     path.join(options.dataRoot, 'workspaces', 'default');
+  const restoreWorkspace =
+    !!options.defaultRoot ||
+    (await fs.stat(defaultRoot()).then(
+      (info) => info.isDirectory(),
+      () => false,
+    ));
   const host = createFsWorkspaceHost({
     defaultRoot,
+    resolveReadonly: (root): Promise<boolean> => updater.resolveReadonly(root),
     globalConfigPath: () =>
       path.join(options.dataRoot, 'verdboard-global-config.json'),
     sharedResources: options.sharedResources,
@@ -76,7 +84,24 @@ export async function createLocalService(options: LocalServiceOptions) {
     openBuiltinWorkspace: !!options.builtinSource,
     openPatternWorkspace: !!options.patternSource,
   };
+  const patternRoot = () =>
+    path.join(options.dataRoot, 'workspaces', 'agent-patterns');
+  const updater = createBuiltinWorkspaceUpdater({
+    host,
+    userData: () => options.dataRoot,
+    source: (kind) =>
+      kind === 'project' ? options.builtinSource : options.patternSource,
+    appVersion: () => options.productVersion,
+    projectRoot: () =>
+      options.seedDefault === false
+        ? path.join(options.dataRoot, 'workspaces', 'system-introduction')
+        : defaultRoot(),
+    readonly: true,
+    registerBackup: (root): Promise<void> => manager.rememberBackup(root),
+  });
   const manager = createLocalWorkspaceManager({
+    patternRoot,
+    managedBuiltins: updater,
     host,
     defaultRoot,
     builtinSource: () => options.builtinSource,
@@ -84,14 +109,6 @@ export async function createLocalService(options: LocalServiceOptions) {
     explicitRoot: options.defaultRoot,
     seedDefault: options.seedDefault,
     pickDirectory: async () => null,
-  });
-  const updater = createBuiltinWorkspaceUpdater({
-    host,
-    userData: () => options.dataRoot,
-    source: (kind) =>
-      kind === 'project' ? options.builtinSource : options.patternSource,
-    appVersion: () => options.productVersion,
-    registerBackup: (root) => manager.rememberBackup(root),
   });
   const openPath = options.openPath ?? systemOpen;
   const rootFor = (handle: WorkspaceHandle) => {
@@ -142,17 +159,6 @@ export async function createLocalService(options: LocalServiceOptions) {
       if (request?.pick) throw new Error('Choose a directory before opening');
       if (options.workspaceBoundary && request?.path)
         await checkedLocation(request.path);
-      if (request?.patterns) {
-        const result = await initializePatternWorkspace(
-          path.join(options.dataRoot, 'workspaces', 'agent-patterns'),
-          {
-            preserveExisting: true,
-            appVersion: options.productVersion,
-            source: options.patternSource,
-          },
-        );
-        return manager.open({ path: result.path, name: '文档编写推荐库' });
-      }
       return manager.open(request);
     },
     activateWorkspace: (h) => manager.activate(h),
@@ -183,6 +189,7 @@ export async function createLocalService(options: LocalServiceOptions) {
     readFile: (h, relative) => host.readFile(h, relative),
     readResource: (h, key) => host.readResource(h, key),
     async openResourceExternal(h, relative) {
+      host.assertWritable(h);
       const root = await fs.realpath(rootFor(h));
       const target = await fs.realpath(
         path.join(root, normalizeWorkspacePath(relative)),
@@ -209,18 +216,27 @@ export async function createLocalService(options: LocalServiceOptions) {
       if (!name.trim() || name === '.' || name === '..' || /[/\\\0]/.test(name))
         throw new Error('Invalid directory name');
       const root = await checkedLocation(parent);
+      await updater.assertWritableLocation(path.join(root, name));
       await fs.mkdir(path.join(root, name));
       return browseDirectories(path.join(root, name));
     },
-    importBrowserBackup: async (backup, parent) =>
-      importBrowserBackup(
+    async importBrowserBackup(backup, parent) {
+      const location = await checkedLocation(parent);
+      await updater.assertWritableLocation(location);
+      return importBrowserBackup(
         backup,
-        await checkedLocation(parent),
+        location,
         options.dataRoot,
         manager,
         host,
-      ),
+      );
+    },
   };
+  const codex = options.localCodex
+    ? createLocalCodexRunner({
+        executable: () => process.env['VERDBOARD_CODEX_PATH'],
+      })
+    : undefined;
   const transport = createWorkspaceServiceTransport({
     host,
     methods,
@@ -228,6 +244,14 @@ export async function createLocalService(options: LocalServiceOptions) {
     webRoot: options.webRoot,
     leaseMs: options.leaseMs,
     waitIdle: () => host.waitIdle(),
+    restoreWorkspace,
+    localAgent: codex && {
+      request: (scope, handle, input) => {
+        host.assertWritable(handle);
+        return codex.request(scope, rootFor(handle), input);
+      },
+      release: codex.release,
+    },
   });
   return {
     ...transport,

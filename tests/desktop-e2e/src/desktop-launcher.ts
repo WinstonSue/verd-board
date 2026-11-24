@@ -13,7 +13,11 @@ type DesktopLaunchOptions = Omit<
 > & { env?: NodeJS.ProcessEnv };
 
 /** Every launch, including restarts, must use the test's own data directory. */
-export async function writeDesktopLauncher(launcher: string, userData: string) {
+export async function writeDesktopLauncher(
+  launcher: string,
+  userData: string,
+  preload?: string,
+) {
   const main = path.join(
     root,
     'apps/desktop',
@@ -33,6 +37,7 @@ export async function writeDesktopLauncher(launcher: string, userData: string) {
       'setInterval(() => {',
       '  try { process.kill(ownerPid, 0); } catch { app.exit(0); }',
       '}, 1000).unref();',
+      ...(preload ? [`require(${JSON.stringify(preload)});`] : []),
       `require(${JSON.stringify(main)});`,
     ].join('\n'),
   );

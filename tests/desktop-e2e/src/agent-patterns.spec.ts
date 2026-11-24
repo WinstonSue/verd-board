@@ -1,12 +1,12 @@
+import { openProductHome } from '../../web-e2e/src/app-actions';
 import { electron, writeDesktopLauncher } from './desktop-launcher';
-import { openWorkspaceMenu } from '../../web-e2e/src/app-actions';
 import { test, expect, type ElectronApplication } from '@playwright/test';
-import { mkdtemp, mkdir, readFile, writeFile, rm } from 'node:fs/promises';
+import { mkdtemp, mkdir, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 
 // eslint-disable-next-line no-empty-pattern -- Electron owns its window; no browser fixture is needed.
-test('Document authoring recommendations follows template links and preserves edits on subsequent opens and restart', async ({}, info) => {
+test('Document authoring recommendations follows template links and remains read only across restart', async ({}, info) => {
   test.setTimeout(240_000);
   const directory = await mkdtemp(path.join(tmpdir(), 'verd-patterns-e2e-'));
   const source = path.resolve(
@@ -29,8 +29,11 @@ test('Document authoring recommendations follows template links and preserves ed
     });
     const page = await desktop.firstWindow();
     await expect(page.locator('.workspace-shell')).toBeVisible();
-    await openWorkspaceMenu(page);
-    await page.getByTestId('workspace-open-patterns').click();
+    await (
+      await openProductHome(page)
+    )
+      .getByTestId('workspace-open-patterns')
+      .click();
     await expect(page.getByRole('tab', { selected: true })).toContainText(
       '文档编写推荐库',
     );
@@ -107,26 +110,14 @@ test('Document authoring recommendations follows template links and preserves ed
       userData,
       'workspaces/agent-patterns/范式导航.verd-doc.json',
     );
-    const local = JSON.parse(await readFile(copied, 'utf8'));
-    local.title = '本地范式副本';
-    await writeFile(copied, JSON.stringify(local, null, 2));
-    await expect(page.getByRole('tab', { selected: true })).toContainText(
-      '本地范式副本',
-    );
-    await openWorkspaceMenu(page);
-    await page.getByTestId('workspace-open-patterns').click();
-    expect(JSON.parse(await readFile(copied, 'utf8')).title).toBe(
-      '本地范式副本',
-    );
-    expect(await readFile(source, 'utf8')).toBe(original);
-    const editor = active().locator('.board-document-content');
+    await expect(page.getByTestId('workspace-readonly')).toHaveText('只读');
+    const editor = active().locator('.ProseMirror');
+    await expect(editor).toHaveAttribute('contenteditable', 'false');
     await editor.click();
-    await editor.press('ControlOrMeta+End');
-    await editor.press('Enter');
-    await editor.pressSequentially('Pattern library edit survives restart.');
-    await expect(editor).toContainText(
-      'Pattern library edit survives restart.',
-    );
+    await page.keyboard.press('End');
+    await page.keyboard.type('Read only edit attempt');
+    await expect(editor).not.toContainText('Read only edit attempt');
+    expect(await readFile(copied, 'utf8')).toBe(original);
     const closed = page.waitForEvent('close');
     await desktop.evaluate(({ BrowserWindow }) =>
       BrowserWindow.getAllWindows()[0].close(),
@@ -134,17 +125,16 @@ test('Document authoring recommendations follows template links and preserves ed
     await closed;
     await desktop.close();
     desktop = undefined;
-    expect(JSON.parse(await readFile(copied, 'utf8')).text.plainText).toContain(
-      'Pattern library edit survives restart.',
-    );
+    expect(await readFile(copied, 'utf8')).toBe(original);
     desktop = await electron.launch({
       args: [launcher],
       env: { ...process.env },
     });
     const restored = await desktop.firstWindow();
+    await expect(restored.getByTestId('workspace-readonly')).toBeVisible();
     await expect(
-      restored.locator('.workspace-pane.is-active .board-document-content'),
-    ).toContainText('Pattern library edit survives restart.');
+      restored.locator('.workspace-pane.is-active .ProseMirror'),
+    ).toHaveAttribute('contenteditable', 'false');
     expect(await readFile(source, 'utf8')).toBe(original);
   } finally {
     await desktop?.close();

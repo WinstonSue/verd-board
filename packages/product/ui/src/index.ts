@@ -14,6 +14,7 @@ export {
 export type { DocumentPreviewController } from '@sue/board-react-text';
 export * from './shared/preferences/appearance-preferences';
 export * from './shared/preferences/interaction-preferences';
+export * from './shared/preferences/agent-preferences';
 export { CanvasPreview } from './canvas/preview/canvas-preview';
 export * from './workspace/chart-library';
 export * from './workspace/workspace-switcher';

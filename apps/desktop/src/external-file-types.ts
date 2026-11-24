@@ -1,9 +1,15 @@
-import type { WorkspaceFile, WorkspaceHost } from '@sue/verd-board-app';
+import type {
+  ProductNavigationHost,
+  WorkspaceFile,
+  WorkspaceFileOpenTarget,
+  WorkspaceHost,
+} from '@sue/verd-board-app';
 
 export type { ExternalFileBinding } from '@sue/verd-board-app';
 import type { ExternalFileBinding } from '@sue/verd-board-app';
 export interface DesktopFilesApi {
   binding(): Promise<ExternalFileBinding | null>;
+  product: ProductNavigationHost & { startup(): Promise<boolean> };
   host: Pick<
     WorkspaceHost,
     | 'readSnapshot'
@@ -14,6 +20,8 @@ export interface DesktopFilesApi {
     | 'closeWorkspace'
     | 'subscribe'
   >;
+  rename(stem: string): Promise<string>;
+  onRenamed(listener: (name: string) => void): () => void;
   warnings(): Promise<string[]>;
   readImage(href: string): Promise<Uint8Array>;
   openLink(href: string): Promise<void>;
@@ -22,5 +30,7 @@ export interface DesktopFilesApi {
     files: { file: WorkspaceFile; path: string }[],
   ): Promise<boolean>;
   setDefaults(): Promise<void>;
-  onOpenWorkspaceFile(listener: (path: string) => void): () => void;
+  onOpenWorkspaceFile(
+    listener: (target: WorkspaceFileOpenTarget) => Promise<void>,
+  ): () => void;
 }

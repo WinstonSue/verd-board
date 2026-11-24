@@ -20,7 +20,11 @@ afterEach(async () => {
   for (const cleanup of cleanups.splice(0)) await cleanup();
 });
 
-async function mount(language: 'zh' | 'en' = 'en', empty = false) {
+async function mount(
+  language: 'zh' | 'en' = 'en',
+  empty = false,
+  onAgentSelection?: (fileId: string, cellIds: string[]) => void,
+) {
   const store = createCellStore(createFrameCell('root'));
   store.cells['a'] = {
     id: 'a',
@@ -64,10 +68,12 @@ async function mount(language: 'zh' | 'en' = 'en', empty = false) {
       execute,
     });
   source.seal();
+  const actionContext = { fileId: 'canvas' };
   const controller = {
     runtime,
     actions: source.actions,
     actionSource: source,
+    getActionContext: () => actionContext,
   } as unknown as FrameCanvasController;
   const container = document.createElement('div');
   document.body.append(container);
@@ -88,12 +94,14 @@ async function mount(language: 'zh' | 'en' = 'en', empty = false) {
           controller={controller}
           onClose={onClose}
           onFailure={onFailure}
+          onAgentSelection={onAgentSelection}
         />
       </I18nProvider>,
     ),
   );
   return {
     runtime,
+    actionContext,
     execute,
     onFailure,
     onClose,
@@ -163,4 +171,17 @@ it('refuses a stale selection and reports rejected Actions', async () => {
   expect(test.execute).toHaveBeenCalledTimes(1);
   expect(test.onFailure).toHaveBeenCalledExactlyOnceWith('Host denied');
   expect(test.onClose).toHaveBeenCalledTimes(2);
+});
+
+it('passes only the current canvas selection to Codex', async () => {
+  const onAgentSelection = vi.fn();
+  const test = await mount('en', false, onAgentSelection);
+  const command = test.menu.querySelector<HTMLButtonElement>(
+    '[data-action-id="agent"]',
+  )!;
+  await act(async () => command.click());
+  expect(onAgentSelection).toHaveBeenCalledExactlyOnceWith('canvas', ['a']);
+  test.actionContext.fileId = 'another-canvas';
+  await act(async () => command.click());
+  expect(onAgentSelection).toHaveBeenCalledTimes(1);
 });

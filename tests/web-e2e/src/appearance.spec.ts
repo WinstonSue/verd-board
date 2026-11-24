@@ -169,7 +169,7 @@ async function seed(page: Page) {
 }
 async function appearance(page: Page, value: string) {
   // This entry also works while a standalone document is active.
-  await page.locator('.workspace-sidebar-footer button').click();
+  await page.getByTestId('workspace-my').click();
   await selectSetting(page.getByTestId('settings-appearance'), value);
   await page.getByTestId('my-back').click();
 }
@@ -310,7 +310,7 @@ test('dark interface covers settings, portaled menus, help, and readonly at wide
   ).toBe('rgba(0, 0, 0, 0.6)');
   await page.keyboard.press('Escape');
   await page.goto('/?readonly=1');
-  await page.locator('.workspace-sidebar-footer button').click();
+  await page.getByTestId('workspace-my').click();
   await page.getByTestId('settings-nav-personal.general').click();
   await selectSetting(page.getByTestId('settings-appearance'), 'light');
   await expect(page.locator('html')).toHaveAttribute(

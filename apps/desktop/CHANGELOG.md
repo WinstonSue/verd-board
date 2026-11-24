@@ -1,5 +1,10 @@
 # desktop
 
+## 0.2.0
+
+- Add workspace navigation and search, Quick Create, and editing for independent files.
+- Review local Codex tasks in the workspace and browse bundled libraries from Home.
+
 ## 0.1.0
 
 Initial VerdBoard development baseline.

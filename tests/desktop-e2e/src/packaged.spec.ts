@@ -18,7 +18,10 @@ import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { access } from 'node:fs/promises';
 import type { WorkspaceHistoryEntry } from '../../../packages/workspace/core/src/host/workspace-host';
-import { openWorkspaceMenu } from '../../web-e2e/src/app-actions';
+import {
+  openProductHome,
+  openWorkspaceMenu,
+} from '../../web-e2e/src/app-actions';
 import { activeTabTitle } from '../../web-e2e/src/tab-actions';
 
 const appBundle = process.env.VERDBOARD_PACKAGED_APP;
@@ -75,7 +78,7 @@ async function nativeFiles(directory: string, prefix = ''): Promise<string[]> {
   return files.sort();
 }
 
-test('real installed identity seeds architecture, recovers old folders and preserves edits after restart', async ({
+test('real installed identity opens read-only architecture, restores navigation and recovers old folders', async ({
   browserName,
 }, info) => {
   test.setTimeout(120_000);
@@ -170,24 +173,22 @@ test('real installed identity seeds architecture, recovers old folders and prese
       .click();
     const active = () => page.locator('.workspace-pane.is-active');
     await expect(activeTabTitle(page)).toHaveText('系统架构');
-    const editor = active().locator('.board-document-content');
+    await expect(page.getByTestId('workspace-readonly')).toHaveText('只读');
+    const editor = active().locator('.ProseMirror');
+    await expect(editor).toHaveAttribute('contenteditable', 'false');
     await editor.click();
-    await editor.press('ControlOrMeta+End');
-    await editor.press('Enter');
-    await editor.pressSequentially(
-      'Packaged application edit survives restart.',
-    );
-    await expect(editor).toContainText(
-      'Packaged application edit survives restart.',
-    );
+    await page.keyboard.type('Packaged app edit attempt');
+    await expect(editor).not.toContainText('Packaged app edit attempt');
     await page.screenshot({
       path: info.outputPath(`packaged-architecture-${browserName}.png`),
     });
     await close();
     page = await launch();
     await expect(activeTabTitle(page)).toHaveText('系统架构');
-    await expect(active().locator('.board-document-content')).toContainText(
-      'Packaged application edit survives restart.',
+    await expect(page.getByTestId('workspace-readonly')).toBeVisible();
+    await expect(active().locator('.ProseMirror')).toHaveAttribute(
+      'contenteditable',
+      'false',
     );
     const history = await page.evaluate(() =>
       (
@@ -208,8 +209,11 @@ test('real installed identity seeds architecture, recovers old folders and prese
     await expect(
       page.locator('.file-tree-name').getByText('旧画布', { exact: true }),
     ).toBeVisible();
-    await openWorkspaceMenu(page);
-    await page.getByTestId('workspace-open-builtin').click();
+    await (
+      await openProductHome(page)
+    )
+      .getByTestId('workspace-open-builtin')
+      .click();
     await expect(activeTabTitle(page)).toHaveText('系统架构');
     await close();
     expect(await readFile(path.join(oldDefault, '旧画布.verd'), 'utf8')).toBe(
@@ -222,7 +226,7 @@ test('real installed identity seeds architecture, recovers old folders and prese
   }
 });
 
-test('real packaged app preserves an intentionally empty default workspace', async () => {
+test('real packaged app preserves an intentionally empty personal workspace at the old default path', async () => {
   const directory = await mkdtemp(path.join(tmpdir(), 'verd-packaged-empty-'));
   let desktop: ElectronApplication | undefined;
   try {

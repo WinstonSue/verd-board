@@ -1,3 +1,6 @@
+import { Bot } from 'lucide-react';
+import { WorkspaceButton } from '../shared/workspace-design';
+import { agentLaunchLabel } from '../shared/preferences/agent-preferences';
 import {
   DocumentSaveStatus,
   type DocumentSaveState,
@@ -78,6 +81,7 @@ export type {
 } from '@sue/board-react-text';
 
 export interface DocumentPageProps {
+  selectionAction?: import('@sue/board-react-text').DocumentEditorProps['selectionAction'];
   folding?: import('@sue/board-react-text').DocumentFoldingAdapter;
   onAttachmentFile?: import('@sue/board-react-text').DocumentEditorProps['onAttachmentFile'];
   renderAttachment?: import('@sue/board-react-text').DocumentEditorProps['renderAttachment'];
@@ -96,6 +100,7 @@ export interface DocumentPageProps {
   saveState?: DocumentSaveState;
   showSaveStatus?: boolean;
   onPresent?(): void | Promise<ActionResult>;
+  onStartAgent?(): void;
   history?: DocumentHistoryAdapter;
   restore?: { revision: number; selection?: DocumentSelection };
   onChange: import('@sue/board-react-text').DocumentEditorProps['onChange'];
@@ -342,6 +347,7 @@ export function DocumentPage(props: DocumentPageProps) {
 }
 
 function DocumentPageContent({
+  selectionAction,
   value,
   title,
   readonly = false,
@@ -349,6 +355,7 @@ function DocumentPageContent({
   saveState = 'saved',
   showSaveStatus = true,
   onPresent,
+  onStartAgent,
   history,
   restore,
   compact = false,
@@ -937,6 +944,19 @@ function DocumentPageContent({
                       icon={Search}
                     />
                   )}
+                  {onStartAgent && (
+                    <WorkspaceButton
+                      type="button"
+                      size="small"
+                      intent="ghost"
+                      data-testid="document-agent-launch"
+                      onMouseDown={(event) => event.preventDefault()}
+                      onClick={onStartAgent}
+                    >
+                      <Bot size={16} aria-hidden />
+                      {agentLaunchLabel(locale)}
+                    </WorkspaceButton>
+                  )}
                   {onPresent && (
                     <ToolbarButton
                       title={locale === 'zh' ? '演示' : 'Present'}
@@ -1067,6 +1087,7 @@ function DocumentPageContent({
               aria-label={title || t.untitled}
             >
               <DocumentEditor
+                selectionAction={selectionAction}
                 locale={locale}
                 referenceChoices={referenceChoices}
                 selectionLinkOpen={!!findOpen || framePickerOpen}

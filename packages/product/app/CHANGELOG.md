@@ -1,5 +1,31 @@
 # @sue/verd-board-app
 
+## 0.2.0
+
+### Minor Changes
+
+- Release VerdBoard 0.2.0 with workspace navigation and search, independent file editing and Quick Create, local Codex task review, and read-only bundled libraries.
+
+### Patch Changes
+
+- Updated dependencies
+  - @sue/board-architecture@0.2.0
+  - @sue/board-common@0.2.0
+  - @sue/board-core@0.2.0
+  - @sue/board-draw@0.2.0
+  - @sue/board-layouts@0.2.0
+  - @sue/board-markdown-to-text@0.2.0
+  - @sue/board-mind@0.2.0
+  - @sue/board-react-actions@0.2.0
+  - @sue/board-react-text@0.2.0
+  - @sue/board-react-uml@0.2.0
+  - @sue/board-uml@0.2.0
+  - @sue/board-workflow@0.2.0
+  - @sue/verd-board-agent-patterns@0.2.0
+  - @sue/verd-board-file-workspace@0.2.0
+  - @sue/verd-board-ui@0.2.0
+  - @sue/verd-board-workspace@0.2.0
+
 ## 0.1.0
 
 Initial VerdBoard development baseline.

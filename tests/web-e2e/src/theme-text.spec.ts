@@ -13,7 +13,7 @@ test.use({ actionTimeout: 10_000 });
 
 const pane = (page: Page) => page.locator('.workspace-pane.is-active');
 async function appearance(page: Page, value: 'light' | 'dark') {
-  await page.locator('.workspace-sidebar-footer button').click();
+  await page.getByTestId('workspace-my').click();
   await selectSetting(page.getByTestId('settings-appearance'), value);
   await page.getByTestId('my-back').click();
 }

@@ -1,25 +1,54 @@
-.workspace-switcher-dialog {
-  --workspace-switcher-row-height: 36px;
+@use './interaction';
 
-  .workspace-switcher-search > .vm-input {
-    height: var(--workspace-switcher-row-height);
-    padding-inline-start: 35px;
-    border-radius: var(--vm-radius-sm);
-    background: var(--vm-background-subtle);
+.workspace-switcher {
+  position: relative;
+  flex: none;
+  min-width: 0;
+}
 
-    &:focus {
-      border-color: var(--vm-focus);
-      outline: none;
-    }
-  }
+.workspace-readonly-label {
+  flex: none;
+  margin-inline-start: 6px;
+  color: var(--vm-foreground-secondary);
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.workspace-switcher-panel {
+  --workspace-switcher-row-height: var(--vm-sidebar-row);
+  position: absolute;
+  inset-block-start: 100%;
+  inset-inline: 0;
+  z-index: 30;
+  box-sizing: border-box;
+  max-height: min(420px, 60dvh);
+  overflow: auto;
+  border: 1px solid var(--vm-border);
+  border-radius: var(--vm-radius-lg);
+  background: var(--vm-background);
+  box-shadow: var(--vm-shadow-menu);
+  padding: 2px var(--workspace-sidebar-gutter) 6px;
 
   .workspace-switcher-section {
-    margin-block-start: 12px;
+    max-height: min(240px, 30dvh);
+    overflow: auto;
   }
 
+  .workspace-switcher-operations {
+    border-top: 1px solid var(--vm-border);
+    margin-top: 4px;
+    padding-top: 4px;
+  }
+
+  .workspace-switcher-error {
+    overflow-wrap: anywhere;
+    margin: 4px 8px;
+    color: var(--vm-danger);
+  }
   .workspace-switcher-label {
     margin-block-end: 4px;
     padding: 3px 8px;
+    margin-block-start: 0;
   }
 
   .workspace-switcher-item,
@@ -55,14 +84,11 @@
 
   .workspace-switcher-operation,
   .workspace-switcher-name {
+    @include interaction.keyboard-focus;
     cursor: pointer;
 
     &:disabled {
       cursor: default;
-    }
-
-    &:focus {
-      outline: none;
     }
   }
 
@@ -81,11 +107,12 @@
   .workspace-switcher-title {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 5px;
     min-width: 0;
 
     .vm-badge {
-      padding: 1px 5px;
+      white-space: nowrap;
+      padding: 1px 4px;
     }
   }
 
@@ -102,18 +129,16 @@
     color: var(--vm-foreground-secondary);
   }
 
-  .workspace-switcher-row:has(.workspace-switcher-name:focus),
-  .workspace-switcher-operation:focus {
-    background: var(--vm-fill-active);
-  }
-
   @media (hover: hover) {
-    .workspace-switcher-row:has(.workspace-switcher-name:enabled):hover:not(
-        :focus-within
-      ),
-    .workspace-switcher-operation:enabled:hover:not(:focus) {
+    .workspace-switcher-row:hover,
+    .workspace-switcher-operation:enabled:hover {
       background: var(--vm-fill-hover);
     }
+  }
+
+  .workspace-switcher-row[aria-current='true'] {
+    background: var(--vm-fill-active);
+    color: var(--vm-primary);
   }
 
   .workspace-switcher-actions {
@@ -121,6 +146,11 @@
     flex: none;
     gap: 2px;
     opacity: 0;
+
+    .vm-icon-btn {
+      width: 23px;
+      height: 25px;
+    }
   }
 
   .workspace-switcher-row:is(:hover, :focus-within)
@@ -131,15 +161,6 @@
   @media (hover: none) {
     .workspace-switcher-actions {
       opacity: 1;
-    }
-  }
-
-  @media (forced-colors: active) {
-    .workspace-switcher-search > .vm-input:focus,
-    .workspace-switcher-row:has(.workspace-switcher-name:focus-visible),
-    .workspace-switcher-operation:focus-visible {
-      outline: 1px solid Highlight;
-      outline-offset: -1px;
     }
   }
 }

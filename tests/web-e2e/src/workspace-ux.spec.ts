@@ -28,15 +28,13 @@ test('workspace navigation, drafts, quick open and bounded settings', async ({
   await page.screenshot({ path: info.outputPath('settings.png') });
   await page.getByTestId('my-back').click();
   await page.keyboard.press('ControlOrMeta+p');
-  await expect(
-    page.getByRole('dialog', { name: '快速打开', exact: true }),
-  ).toBeVisible();
+  await expect(page.getByTestId('workspace-search-dialog')).toBeVisible();
   await page.screenshot({ path: info.outputPath('quick-open.png') });
   await page.keyboard.press('Escape');
   await expect(page.getByRole('dialog')).toHaveCount(0);
   await page
     .locator('.management-navigation nav')
-    .getByRole('button', { name: '所有内容', exact: true })
+    .getByRole('button', { name: '工作区', exact: true })
     .click();
   await expect(page.getByTestId('workspace-management-page')).toBeVisible();
   await page.screenshot({ path: info.outputPath('content.png') });
@@ -45,12 +43,14 @@ test('workspace navigation, drafts, quick open and bounded settings', async ({
     .getByRole('button', { name: '搜索', exact: true })
     .click();
   await page
-    .getByRole('searchbox', { name: '搜索工作区', exact: true })
+    .getByTestId('workspace-search-dialog')
+    .getByRole('combobox')
     .fill('未命名');
   await expect(
-    page.locator('.management-page .management-result').first(),
+    page.getByTestId('workspace-search-dialog').getByRole('option').first(),
   ).toBeVisible();
   await page.screenshot({ path: info.outputPath('search.png') });
+  await page.keyboard.press('Escape');
   for (const [width, height] of [
     [1440, 900],
     [1024, 768],
