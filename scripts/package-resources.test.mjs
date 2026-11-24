@@ -69,4 +69,16 @@ test('packaging copies the accepted bundle and rejects proof or target mismatch 
     (await fs.stat(path.join(destination, 'runtime'))).mode & 0o111,
     0o111,
   );
+  await stageReleaseResources(
+    context,
+    { ...options, builtinDestination: path.resolve('accepted-builtin') },
+    {
+      ...hooks,
+      copyBuiltin: () => {
+        assert.fail(
+          'Built-in resources are already in the package input directory',
+        );
+      },
+    },
+  );
 });
